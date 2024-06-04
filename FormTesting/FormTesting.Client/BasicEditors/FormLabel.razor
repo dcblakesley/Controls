@@ -2,9 +2,14 @@
 <div class="flex-row">
     <label for=@Id>@Name @if (IsRequired) { <i>*</i> } </label>
 </div>
+@if (Description != null)
+{
+    <div class="description">@((MarkupString)Description)</div>
+}
 
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Description { get; set; }
     [Parameter] public bool IsRequired { get; set; }
 }

@@ -149,8 +149,6 @@ public static class AttributesHelper
         var requiredAttribute = attrs.OfType<RequiredAttribute>().FirstOrDefault();
         return requiredAttribute != null;
     }
-
-    
     public static (int? MinLength, int? MaxLength) GetMinAndMaxLengths(List<Attribute> attributes)
     {
         var min = 0;
@@ -175,4 +173,6 @@ public static class AttributesHelper
 
         return (min, max);
     }
+
+
 }

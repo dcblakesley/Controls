@@ -49,13 +49,11 @@
     {
         <div style="color: yellow">@message</div>
     } *@
-    <div class="flex-row flex-wrap">
-        <TextEditor Css="w200" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
-        <TextEditor Css="w300" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
-        <TextEditor Css="w500" @bind-Value="Model!.S1" Field=@(() => Model.S1) />
-        <TextEditor Css="w600" @bind-Value="Model!.S2" Field=@(() => Model.S2) />
-        <TextEditor Css="w700" @bind-Value="Model!.S3" Field=@(() => Model.S3) />
-    </div>
+    <TextEditor Css="w500" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
+    <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
+    <TextEditor Css="w500" @bind-Value="Model!.S1" Field=@(() => Model.S1) />
+    <TextEditor Css="w500" @bind-Value="Model!.S2" Field=@(() => Model.S2) />
+    <TextEditor Css="w500" @bind-Value="Model!.S3" Field=@(() => Model.S3) />
 
     <div>
         <label>
@@ -160,7 +158,6 @@
         [Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
         public string Id { get; set; } = "";
 
-        //[Description(" ")]
         public string UsersFavoriteColor { get; set; } = string.Empty;
         public string S1 { get; set; }  = string.Empty;
         public string S2 { get; set; } = string.Empty;

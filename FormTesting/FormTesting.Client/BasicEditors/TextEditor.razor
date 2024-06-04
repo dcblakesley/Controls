@@ -5,14 +5,9 @@
 @inherits InputBase<string>
 
 <div class="form-group">
-    <InputLabel Id=@_id Name=@_name IsRequired=@_isRequired />
-    @if (_description != null)
-    {
-        <div class="description">@((MarkupString)_description)</div>
-    }
+    <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
 
     <input @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css />
-
     
     <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
@@ -31,7 +26,6 @@
     FieldIdentifier _fieldIdentifier;
 
     // Get validation messages for FieldName
-    // 
     protected override void OnInitialized()
     {
         _fieldIdentifier = FieldIdentifier.Create(Field);
@@ -52,9 +46,7 @@
         }
 
     }
-
-
-
+    
     protected override bool TryParseValueFromString(string? value, out string result, out string? validationErrorMessage)
     {
         result = value;

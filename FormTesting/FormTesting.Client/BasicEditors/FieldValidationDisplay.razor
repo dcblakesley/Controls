@@ -3,7 +3,7 @@
 {
     @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
     {
-        <div class="validation-message">@GetValidationMessage(x)</div>
+        <div class="validation-message">@GetValidationMessage(x, _fieldName)</div>
     }
 }
 
@@ -13,16 +13,16 @@
     [Parameter] public required List<Attribute> Attributes { get; set; }
 
     bool _isRequired;
-    int? _min;
-    int? _max;
+    int? _minCharacters;
+    int? _maxCharacters;
     string _fieldName = string.Empty;
 
     protected override void OnInitialized()
     {
         _isRequired = Attributes.Any(x => x is RequiredAttribute);
         var minAndMax = AttributesHelper.GetMinAndMaxLengths(Attributes);
-        _min = minAndMax.MinLength;
-        _max = minAndMax.MaxLength;
+        _minCharacters = minAndMax.MinLength;
+        _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
     }
 
@@ -43,42 +43,42 @@
     // MaxLength Attribute
     // The field Id must be a string or array type with a maximum length of '16'.
     
-    public string GetValidationMessage(string message)
+    string GetValidationMessage(string message, string fieldName)
     {
         var output = message;
         
         // Required
-        if (string.Equals(message, $"The {FieldIdentifier.FieldName} field is required."))
+        if (string.Equals(message, $"The {_fieldName} field is required."))
         {
             return RequiredString();
         }
         
         // Check for any StringLength - all begin with "The field Id must be a string"
-        if (!message.StartsWith($"The field {FieldIdentifier.FieldName} must be a string with a maximum length of"))
+        if (!message.StartsWith($"The field {_fieldName} must be a string with a maximum length of"))
             return message;
 
         // StringLength with only max
-        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_max}."))
+        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
         {
-            return MaxLengthString(_max);
+            return MaxLengthString(_maxCharacters);
         }
 
         // StringLength with Min
-        if (string.Equals(message, $"The field {_fieldName} must be a string with a minimum length of {_min} and a maximum length of {_max}."))
+        if (string.Equals(message, $"The field {_fieldName} must be a string with a minimum length of {_minCharacters} and a maximum length of {_maxCharacters}."))
         {
-            return RangeString(_min, _max);
+            return RangeString(_minCharacters, _maxCharacters);
         }
 
         // MinLength
-        if (string.Equals(message, $"The field {_fieldName} must be a string or array type with a minimum length of '{_min}'."))
+        if (string.Equals(message, $"The field {_fieldName} must be a string or array type with a minimum length of '{_minCharacters}'."))
         {
-            return MinLengthString(_min);
+            return MinLengthString(_minCharacters);
         }
 
         // MaxLength
-        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_max}."))
+        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
         {
-            return MaxLengthString(_max);
+            return MaxLengthString(_maxCharacters);
         }
 
         return output;
