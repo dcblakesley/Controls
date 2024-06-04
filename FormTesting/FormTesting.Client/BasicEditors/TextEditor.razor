@@ -1,7 +1,6 @@
 ﻿@using System.Linq.Expressions
 @inherits InputText
 
-
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
 
@@ -30,18 +29,5 @@
         _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
         _id = AttributesHelper.GetId(Id, _name);
         _description = AttributesHelper.GetDescription(_attributes);
-        // RequiredAttribute, StringLengthAttribute, MinLengthAttribute
-
-        foreach (var attr in _attributes)
-        {
-           
-            var x = attr;
-@*                 if(attr is MaxLengthAttribute maxLengthAttribute)
-            {
-                // Do what you want with maxLengthAttribute     
-            } *@
-        }
-
     }
-    
 }

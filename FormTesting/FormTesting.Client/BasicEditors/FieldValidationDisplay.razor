@@ -39,6 +39,8 @@
     // 
     // MinLength Attribute
     // The field Id must be a string or array type with a minimum length of '3'.
+    // The field Id must be a string or array type with a minimum length of '3'.
+    // 
     //
     // MaxLength Attribute
     // The field Id must be a string or array type with a maximum length of '16'.
@@ -53,10 +55,6 @@
             return RequiredString();
         }
         
-        // Check for any StringLength - all begin with "The field Id must be a string"
-        if (!message.StartsWith($"The field {_fieldName} must be a string with a maximum length of"))
-            return message;
-
         // StringLength with only max
         if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
         {

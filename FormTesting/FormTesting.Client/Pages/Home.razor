@@ -10,37 +10,7 @@
 
 <h2>New Ship Entry Form</h2>
 
-<style>
-    .w200 {
-        width: 100px;
-    }
-    .w300 {
-        width: 300px;
-    }
-    .w400 {
-        width: 400px;
-    }
-    .w500 {
-        width: 500px;
-    }
-    .w600 {
-        width: 600px;
-    }
-    .w700 {
-        width: 700px;
-    }
-    .description {
-        font-family: 'DM Sans';
-        font-style: normal;
-        font-weight: 400;
-        font-size: 14px;
-        line-height: 22px;
-        min-height: 22px;
-        opacity: 0.65;
-    }
 
-
-</style>
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="Starship3">
     <DataAnnotationsValidator />
@@ -144,8 +114,9 @@
     public class Starship
     {
         [Required]
-        [DisplayName("Really Long Identifier")]
+        [DisplayName("DisplayName, Max=16, Min=3, Required")]
         [StringLength(16)]
+        [MinLength(3)]
         [Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
         public string Id { get; set; } = "";
 
@@ -154,6 +125,7 @@
         public string S2 { get; set; } = string.Empty;
         public string S3 { get; set; } = string.Empty;
 
+        [Required]
         public string Description { get; set; } = string.Empty;
 
         [Required]

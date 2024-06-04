@@ -64,3 +64,19 @@ h1:focus {
 .arrow { cursor: default }
 .not-allowed { cursor: not-allowed }
 .nowrap { white-space: nowrap }
+
+.description {
+    font-family: 'DM Sans';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 22px;
+    min-height: 22px;
+    opacity: 0.65;
+}
+.w200 { width: 100px;}
+.w300 { width: 300px;}
+.w400 { width: 400px;}
+.w500 { width: 500px;}
+.w600 { width: 600px;}
+.w700 { width: 700px;}

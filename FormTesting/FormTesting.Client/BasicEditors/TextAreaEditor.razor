@@ -1,5 +1,5 @@
 ﻿@using System.Linq.Expressions
-@inherits InputBase<string>
+@inherits InputTextArea
 
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
@@ -10,7 +10,6 @@
 </div>
 
 @code {
-
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
@@ -30,23 +29,5 @@
         _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
         _id = AttributesHelper.GetId(Id, _name);
         _description = AttributesHelper.GetDescription(_attributes);
-        // RequiredAttribute, StringLengthAttribute, MinLengthAttribute
-
-        foreach (var attr in _attributes)
-        {
-           
-            var x = attr;
-            @*                 if(attr is MaxLengthAttribute maxLengthAttribute)
-            {
-                // Do what you want with maxLengthAttribute     
-            } *@
-        }
-    }
-    
-    protected override bool TryParseValueFromString(string? value, out string result, out string? validationErrorMessage)
-    {
-        result = value;
-        validationErrorMessage = null;
-        return true;
     }
 }
