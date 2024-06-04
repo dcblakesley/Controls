@@ -1,25 +1,25 @@
-﻿@using System.Linq.Expressions
-@inherits InputText
-
+﻿@inherits InputNumber<T>
+@using System.Linq.Expressions
+@typeparam T
 
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
 
-    <input @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css />
+    <input type="number" id="@Id" @bind-value="@CurrentValueAsString" @bind-value:event="oninput" />
 
     <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
     [Parameter] public string? Id { get; set; }
-    [Parameter] public required Expression<Func<string>> Field { get; set; }
+    [Parameter] public required Expression<Func<T>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
 
     bool _isRequired;
     string _id = string.Empty;
     string _name = string.Empty;
     string? _description;
-    List<Attribute>? _attributes;
+    List<Attribute> _attributes;
     FieldIdentifier _fieldIdentifier;
 
     // Get validation messages for FieldName
@@ -36,12 +36,10 @@
         {
            
             var x = attr;
-@*                 if(attr is MaxLengthAttribute maxLengthAttribute)
+            @*                 if(attr is MaxLengthAttribute maxLengthAttribute)
             {
                 // Do what you want with maxLengthAttribute     
             } *@
         }
-
-    }
-    
+     }
 }

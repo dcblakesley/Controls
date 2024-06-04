@@ -51,16 +51,12 @@
     } *@
     <TextEditor Css="w500" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
     <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
-    <TextEditor Css="w500" @bind-Value="Model!.S1" Field=@(() => Model.S1) />
-    <TextEditor Css="w500" @bind-Value="Model!.S2" Field=@(() => Model.S2) />
-    <TextEditor Css="w500" @bind-Value="Model!.S3" Field=@(() => Model.S3) />
+@*     <TextEditor Css="w500" @bind-Value="Model!.S1" Field=@(() => Model.S1) />
+    <TextEditor Css="w500" @bind-Value="Model!.S2" Field=@(() => Model.S2) /> *@
+    <TextAreaEditor Css="w500" @bind-Value="Model!.Description" Field=@(() => Model!.Description) />
+    <NumberEditor @bind-Value="Model!.IntNumber" Field=@(() => Model!.IntNumber) />
+    <NumberEditor @bind-Value="Model!.DoubleNumberMin5" Field=@(() => Model!.DoubleNumberMin5) />
 
-    <div>
-        <label>
-            Description (optional): 
-            <InputTextArea @bind-Value="Model!.Description"  />
-        </label>
-    </div>
     <div>
         <label>
             Primary Classification: 
@@ -83,12 +79,7 @@
             </InputSelect>
         </label>
     </div>
-    <div>
-        <label>
-            Maximum Accommodation: 
-            <InputNumber @bind-Value="Model!.MaximumAccommodation"  />
-        </label>
-    </div>
+
     <div>
         <label>
             Engineering Approval: 
@@ -147,7 +138,7 @@
                               "{MaximumAccommodation} IsValidatedDesign = " +
                               "{IsValidatedDesign} ProductionDate = {ProductionDate}",
             Model?.Id, Model?.Description, Model?.Classification,
-            Model?.MaximumAccommodation, Model?.IsValidatedDesign,
+            Model?.IntNumber, Model?.IsValidatedDesign,
             Model?.ProductionDate);
     }
     public class Starship
@@ -169,7 +160,10 @@
         public string? Classification { get; set; }
 
         [Range(1, 100000, ErrorMessage = "Accommodation invalid (1-100000).")]
-        public int MaximumAccommodation { get; set; }
+        public int IntNumber { get; set; }
+
+        [Required]
+        public double? DoubleNumberMin5 { get; set; }
 
         [Required]
         [Range(typeof(bool), "true", "true", ErrorMessage = "Approval required.")]
