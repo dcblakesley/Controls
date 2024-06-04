@@ -1,0 +1,35 @@
+﻿<!-- Editor for Restaurant Config -->
+@if (IsEditMode || Value != 0)
+{
+    <div class="form-group">
+
+        <div class="form-label flex-row">
+            @Name
+            @if (!string.IsNullOrWhiteSpace(ToolTip))
+            {
+                <i class="far fa-info-circle text-info" style="margin-left: 1rem" title=@ToolTip></i>
+            }
+        </div>
+        @if (IsEditMode)
+        {
+            <input class="form-control" type="number" min=@Min max=@Max @bind:get=Value @bind:set=SetAsync @bind:event="oninput" />
+        }
+        else
+        {
+            <div class="form-text">@Value</div>
+        }
+
+    </div>
+}
+@code {
+
+    //<IntEditor Name="Price (Cents)" @bind-Value=@_selectedMenuItem.Cents IsEditMode=IsEditMode />    [Parameter] public string? Name { get; set; }
+    [Parameter] public string Name { get; set; }
+    [Parameter] public string? ToolTip { get; set; }
+    [Parameter] public float Min { get; set; } = 0;
+    [Parameter] public float Max { get; set; } = 100000;
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public required int Value { get; set; }
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+    private async Task SetAsync(int value) => await ValueChanged.InvokeAsync(value);
+}

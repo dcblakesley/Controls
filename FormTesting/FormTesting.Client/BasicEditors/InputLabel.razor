@@ -1,0 +1,10 @@
+﻿@using System.Linq.Expressions
+<div class="flex-row">
+    <label for=@Id>@Name @if (IsRequired) { <i>*</i> } </label>
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public bool IsRequired { get; set; }
+}

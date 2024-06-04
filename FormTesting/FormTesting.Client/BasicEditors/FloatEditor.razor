@@ -1,0 +1,33 @@
+﻿<div class="form-group">
+	<div class="form-label flex-row">
+		@Name
+		@if (!string.IsNullOrWhiteSpace(ToolTip))
+		{
+			<i class="far fa-info-circle text-info" style="margin-left: 1rem" title=@ToolTip></i>
+		}
+	</div>
+	@if (IsEditMode)
+	{
+		<input class="form-control" type="number" step=@Step min=@Min max=@Max  @bind:get=Value @bind:set=SetAsync @bind:event="oninput"  />
+	}
+	else
+	{
+		<div class="form-text">@Value</div>
+	}
+</div>
+
+@code {
+#pragma warning disable 4014, 1998
+
+	// Parameters and Binding
+	[Parameter] public float Min { get; set; } = 0;
+	[Parameter] public float Max { get; set; } = 100;
+	[Parameter] public float Step { get; set; } = 0.1f;
+	[Parameter] public string ToolTip { get; set; } = "";
+	[Parameter] public string? Name { get; set; }
+	[Parameter] public bool IsEditMode { get; set; } = true;
+
+	[Parameter] public required float Value { get; set; }
+	[Parameter] public EventCallback<float> ValueChanged { get; set; }
+	async Task SetAsync(float value) => await ValueChanged.InvokeAsync(value);
+}

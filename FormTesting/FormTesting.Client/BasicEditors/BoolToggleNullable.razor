@@ -1,0 +1,71 @@
+﻿<div class="form-group">
+	@if (!string.IsNullOrWhiteSpace(Name))
+	{
+		<div class="flex-row">
+			<div class="flex-column">
+				<div class="flex-fill"></div>
+				<div class="form-label nowrap">
+					@Name
+				</div>
+				<div class="flex-fill"></div>
+			</div>
+
+			@if (!string.IsNullOrWhiteSpace(ToolTip))
+			{
+				<div class="flex-column">
+					<div class="flex-fill"></div>
+					<i class="far fa-info-circle" title=@ToolTip></i>
+					<div class="flex-fill"></div>
+				</div>
+			}
+		</div>
+	}
+
+
+	@if (IsEditMode)
+	{
+		<div class="custom-control custom-switch" @onkeyup:stopPropagation="true">
+			<input type="checkbox" class="custom-control-input" id="@_id" checked=@Value @oninput=@UpdateValue @oninput:stopPropagation="true" />
+			<label class="custom-control-label" for="@_id"></label>
+		</div>
+	}
+	else
+	{
+		<div class="custom-control custom-switch" @onkeyup:stopPropagation="true">
+			<input type="checkbox" class="custom-control-input disabled" id="@_id" checked=@Value />
+			<label class="custom-control-label"></label>
+		</div>
+	}
+</div>
+
+
+@code {
+#pragma warning disable 4014, 1998
+
+	Guid _id = Guid.NewGuid();
+
+	[Parameter] public string ToolTip { get; set; }
+	[Parameter] public string Name { get; set; }
+	
+
+	[Parameter] public bool IsEditMode { get; set; } = true;
+
+	[Parameter] public bool? Value { get; set; }
+	[Parameter] public EventCallback<bool?> ValueChanged { get; set; }
+	async Task UpdateValue(ChangeEventArgs args)
+	{
+		if (!IsEditMode)
+			return;
+		try
+		{
+			bool.TryParse(args.Value?.ToString(), out var result);
+			Value = result ? true : null;
+			await ValueChanged.InvokeAsync(Value);
+		}
+		catch
+		{
+			Value = null;
+			await ValueChanged.InvokeAsync(Value);
+		}
+	}
+}

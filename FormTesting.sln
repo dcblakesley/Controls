@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.34909.67
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormTesting", "FormTesting\FormTesting\FormTesting.csproj", "{F5985EED-F69C-4F60-BDE2-8079BA6C1C36}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormTesting.Client", "FormTesting\FormTesting.Client\FormTesting.Client.csproj", "{ED2E590F-74DF-47BE-BFEB-834DB1112378}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F5985EED-F69C-4F60-BDE2-8079BA6C1C36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F5985EED-F69C-4F60-BDE2-8079BA6C1C36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F5985EED-F69C-4F60-BDE2-8079BA6C1C36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F5985EED-F69C-4F60-BDE2-8079BA6C1C36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ED2E590F-74DF-47BE-BFEB-834DB1112378}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED2E590F-74DF-47BE-BFEB-834DB1112378}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED2E590F-74DF-47BE-BFEB-834DB1112378}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED2E590F-74DF-47BE-BFEB-834DB1112378}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {56692978-CEA5-4A5C-9A93-C0E32F59DA99}
+	EndGlobalSection
+EndGlobal

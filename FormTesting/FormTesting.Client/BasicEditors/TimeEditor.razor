@@ -1,0 +1,64 @@
+﻿@if (IsEditMode)
+{
+    <div class="form-group">
+
+        <div class="form-label flex-row">
+            @Name
+            @if (!string.IsNullOrWhiteSpace(ToolTip))
+            {
+                <i class="far fa-info-circle form-info-button" title=@ToolTip></i>
+            }
+        </div>
+
+        @if (IsEditMode)
+        {
+            <div class="flex-row">
+                <input id=@Id class="form-control" type="time" @bind=@Value @bind:event="oninput" @onkeyup:stopPropagation="true" />
+
+                <div class="flex-column">
+                    <div class="flex-fill"></div>
+                    <i class="far fa-times pointer fa-lg" @onclick=SetToNull style="margin-left: 1rem"></i>
+                    <div class="flex-fill"></div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="form-text">@Value.ToShortTimeString()</div>
+        }
+    </div>
+}
+
+
+
+@code
+{
+    [Parameter] public bool IsTextArea { get; set; }
+    [Parameter] public bool ShowName { get; set; } = true;
+    [Parameter] public bool IsMarkup { get; set; }
+    [Parameter] public string Class { get; set; }
+    [Parameter] public string Id { get; set; }
+    [Parameter] public string ToolTip { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public string ValidationMessage { get; set; }
+    [Parameter] public DateTime Value { get; set; }
+    [Parameter] public string Name { get; set; }
+    [Parameter] public EventCallback<DateTime> ValueChanged { get; set; }
+
+    //private async Task UpdateValue(ChangeEventArgs args)
+    //{
+    //    try
+    //    {
+    //        Value = DateTime.Parse(args.Value.ToString() ?? string.Empty);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Value = DateTime.Parse("1 Jan 1999 15:00:00Z").ToUniversalTime();
+    //        LogHelper.Log(ex);
+    //    }
+
+    //    await ValueChanged.InvokeAsync(Value);
+    //}
+
+    async Task SetToNull() => await ValueChanged.InvokeAsync(Value);
+}
