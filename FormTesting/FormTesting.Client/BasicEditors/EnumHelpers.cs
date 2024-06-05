@@ -173,6 +173,4 @@ public static class AttributesHelper
 
         return (min, max);
     }
-
-
 }

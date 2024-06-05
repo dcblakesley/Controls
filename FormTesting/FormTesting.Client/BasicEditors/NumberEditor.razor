@@ -30,16 +30,6 @@
         _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
         _id = AttributesHelper.GetId(Id, _name);
         _description = AttributesHelper.GetDescription(_attributes);
-        // RequiredAttribute, StringLengthAttribute, MinLengthAttribute
-
-        foreach (var attr in _attributes)
-        {
-           
-            var x = attr;
-            @*                 if(attr is MaxLengthAttribute maxLengthAttribute)
-            {
-                // Do what you want with maxLengthAttribute     
-            } *@
-        }
+        _isRequired = AttributesHelper.GetIsRequired(_attributes);
      }
 }

@@ -24,10 +24,12 @@
     // Get validation messages for FieldName
     protected override void OnInitialized()
     {
+        base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
         _id = AttributesHelper.GetId(Id, _name);
         _description = AttributesHelper.GetDescription(_attributes);
+        _isRequired = AttributesHelper.GetIsRequired(_attributes);
     }
 }

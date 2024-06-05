@@ -1,17 +1,17 @@
-﻿@using System.Linq.Expressions
-@inherits InputTextArea
+﻿@inherits InputDate<T>
+@using System.Linq.Expressions
+@typeparam T
 
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
-
-    <textarea @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css ></textarea>
-    
+@*     <input   id="@Id" @bind-value="@CurrentValueAsString" @bind-value:event="oninput" />
+ *@    <InputDate @bind-Value="CurrentValue" Type=Type  />
     <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
     [Parameter] public string? Id { get; set; }
-    [Parameter] public required Expression<Func<string>> Field { get; set; }
+    [Parameter] public required Expression<Func<T>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
 
     bool _isRequired;
@@ -24,6 +24,7 @@
     // Get validation messages for FieldName
     protected override void OnInitialized()
     {
+        base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
@@ -32,3 +33,4 @@
         _isRequired = AttributesHelper.GetIsRequired(_attributes);
     }
 }
+

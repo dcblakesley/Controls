@@ -1,4 +1,4 @@
-﻿@page "/"
+﻿@page "/home"
 @using System.ComponentModel
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
@@ -14,52 +14,25 @@
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="Starship3">
     <DataAnnotationsValidator />
-@*     <ValidationSummary />
-    @foreach (var message in context.GetValidationMessages())
-    {
-        <div style="color: yellow">@message</div>
-    } *@
-    <TextEditor Css="w500" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
+     <TextEditor Css="w300" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
     <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
-@*     <TextEditor Css="w500" @bind-Value="Model!.S1" Field=@(() => Model.S1) />
-    <TextEditor Css="w500" @bind-Value="Model!.S2" Field=@(() => Model.S2) /> *@
+    <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
+
     <TextAreaEditor Css="w500" @bind-Value="Model!.Description" Field=@(() => Model!.Description) />
     <NumberEditor @bind-Value="Model!.IntNumber" Field=@(() => Model!.IntNumber) />
-    <NumberEditor @bind-Value="Model!.DoubleNumberMin5" Field=@(() => Model!.DoubleNumberMin5) />
-
-    <div>
-        <label>
-            Primary Classification: 
-            <InputSelect @bind-Value="Model!.Classification">
-                <option value="">
-                    Select classification ...
-                </option>
-                <option checked="@(Model!.Classification == "Exploration")" 
-                        value="Exploration">
-                    Exploration
-                </option>
-                <option checked="@(Model!.Classification == "Diplomacy")" 
-                        value="Diplomacy">
-                    Diplomacy
-                </option>
-                <option checked="@(Model!.Classification == "Defense")" 
-                        value="Defense">
-                    Defense
-                </option>
-            </InputSelect>
-        </label>
-    </div>
-
-    <div>
-        <label>
-            Engineering Approval: 
-            <InputCheckbox @bind-Value="Model!.IsValidatedDesign" />
-        </label>
-    </div>
+    <NumberEditor @bind-Value="Model!.DoubleNumberMin5"  Field=@(() => Model!.DoubleNumberMin5) />
+    <BoolEditor   @bind-Value="Model!.IsValidatedDesign" Field=@(() => Model!.IsValidatedDesign) />
+    <DateEditor   @bind-Value="Model!.ProductionDate" Field=@(() => Model!.ProductionDate) Type="InputDateType.Month"/>
     <div>
         <label>
             Production Date: 
-            <InputDate @bind-Value="Model!.ProductionDate" />
+            <InputDate @bind-Value="Model!.ProductionDate" Type="InputDateType.Month" />
+        </label>
+    </div>   
+    <div>
+        <label>
+            Date 2:
+            <input @bind-value="@Model!.ProductionDate"  />
         </label>
     </div>
     <div>
@@ -70,11 +43,31 @@
             <button class="btn btn-secondary" type="submit">Submit</button>
         }
     </div>
+    <div>
+        <label>
+            Primary Classification:
+            <InputSelect @bind-Value="Model!.Classification">
+                @foreach (var option in _options)
+                {
+                    <option value=@option.Value>@option.Text</option>
+                }
+            </InputSelect>
+        </label>
+    </div>
 </EditForm>
 
 
 
 @code{
+
+    public record StringOption(string Value, string Text);
+    List<StringOption> _options =
+    [
+        new("", "Select classification ..."),
+        new("Exploration", "Exploration"),
+        new("Diplomacy", "Diplomacy"),
+        new ("Defense", "Defense")
+    ];
 
     [SupplyParameterFromForm]
     private Starship? Model { get; set; }
@@ -117,13 +110,10 @@
         [DisplayName("DisplayName, Max=16, Min=3, Required")]
         [StringLength(16)]
         [MinLength(3)]
-        [Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
+        //[Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
         public string Id { get; set; } = "";
 
         public string UsersFavoriteColor { get; set; } = string.Empty;
-        public string S1 { get; set; }  = string.Empty;
-        public string S2 { get; set; } = string.Empty;
-        public string S3 { get; set; } = string.Empty;
 
         [Required]
         public string Description { get; set; } = string.Empty;
@@ -138,11 +128,12 @@
         public double? DoubleNumberMin5 { get; set; }
 
         [Required]
+        [DisplayName("Engineering Approval")]
         [Range(typeof(bool), "true", "true", ErrorMessage = "Approval required.")]
         public bool IsValidatedDesign { get; set; }
 
-        [Required]
-        public DateTime ProductionDate { get; set; }
+        
+        [Required] public DateTime? ProductionDate { get; set; } = DateTime.UtcNow;
     }
 
 

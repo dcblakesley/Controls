@@ -1,0 +1,35 @@
+﻿@page "/"
+
+<PageTitle>Price Scraping system prototype</PageTitle>
+
+<!-- Table of ScrapingConfigurations -->
+
+<input @bind=_filter placeholder="filter..." />
+<table class="table table-hover">
+    <thead>
+    <tr>
+        <th scope="col">Item Number</th>
+        <th scope="col">Category</th>
+        <th scope="col">Product Name</th>
+        <th scope="col">Urls</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var configuration in FakePriceScrapingApp.ScrapingConfigurations)
+    {
+
+        <tr >
+            <th scope="row">Active</th>
+            <td>Column content</td>
+            <td>Column content</td>
+            <td>Column content</td>
+        </tr>
+    }
+
+</table>
+
+
+@code {
+    string _filter = "";
+
+}
