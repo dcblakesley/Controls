@@ -14,11 +14,13 @@
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="Starship3">
     <DataAnnotationsValidator />
-     <TextEditor Css="w300" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
-    <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
-    <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
+    <div class="flex-row flex-wrap">
+        <TextEditor Css="w300" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
+        <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
+        <TextAreaEditor Css="w500" @bind-Value="Model!.Description" Field=@(() => Model!.Description) />
 
-    <TextAreaEditor Css="w500" @bind-Value="Model!.Description" Field=@(() => Model!.Description) />
+    </div>
+
     <NumberEditor @bind-Value="Model!.IntNumber" Field=@(() => Model!.IntNumber) />
     <NumberEditor @bind-Value="Model!.DoubleNumberMin5"  Field=@(() => Model!.DoubleNumberMin5) />
     <BoolEditor   @bind-Value="Model!.IsValidatedDesign" Field=@(() => Model!.IsValidatedDesign) />

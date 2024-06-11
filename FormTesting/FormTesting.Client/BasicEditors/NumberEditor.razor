@@ -4,8 +4,15 @@
 
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
+    @if(IsEditMode)
+    {    <input type="number" id="@Id" @bind-value="@CurrentValueAsString" @bind-value:event="oninput" />
 
-    <input type="number" id="@Id" @bind-value="@CurrentValueAsString" @bind-value:event="oninput" />
+       @*  <input type="number" id=@_id @bind="CurrentValue" class=@Css /> *@
+    }
+    else
+    {
+        <div class="form-text">@Value</div>
+    }
 
     <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
@@ -14,6 +21,7 @@
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<T>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
+    [Parameter] public bool IsEditMode { get; set; } = true;
 
     bool _isRequired;
     string _id = string.Empty;

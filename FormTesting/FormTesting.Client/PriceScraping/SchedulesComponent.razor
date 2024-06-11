@@ -1,0 +1,35 @@
+﻿@page "/schedules"
+
+<h5>Schedules</h5>
+
+<div class="flex-row" >
+
+<table class="table table-hover" id="ttt">
+    <thead>
+    <tr>
+        <th scope="col">Name</th>
+        <th scope="col" style="width: 5rem">Type</th>
+        <th scope="col" style="width: 5rem">Value</th>
+    </tr>
+    </thead>
+    <tbody>
+    @foreach (var s in FakePriceScrapingApp.Schedules)
+    {
+        <tr>
+            <td style="">@s.Name</td>
+            <td>@s.Type</td>
+            <td>@s.Value</td>
+        </tr>
+    }
+    </tbody>
+    </table>
+</div>
+ 
+@code {
+
+    protected override void OnInitialized()
+    {
+        FakePriceScrapingApp.Initialize();
+    }
+
+}
