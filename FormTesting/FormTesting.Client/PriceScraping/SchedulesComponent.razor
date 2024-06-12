@@ -1,27 +1,36 @@
 ﻿@page "/schedules"
+@inject NavigationManager Navigation
 
-<h5>Schedules</h5>
+<button @onclick=@(()=>Navigation.NavigateTo("/"))>Home</button>
+<h5>Schedules Editor</h5>
 
 <div class="flex-row" >
 
-<table class="table table-hover" id="ttt">
-    <thead>
-    <tr>
-        <th scope="col">Name</th>
-        <th scope="col" style="width: 5rem">Type</th>
-        <th scope="col" style="width: 5rem">Value</th>
-    </tr>
-    </thead>
-    <tbody>
-    @foreach (var s in FakePriceScrapingApp.Schedules)
-    {
+    <table class="table table-hover" id="ttt" style="width: 35rem">
+        <thead>
         <tr>
-            <td style="">@s.Name</td>
-            <td>@s.Type</td>
-            <td>@s.Value</td>
+            <th scope="col">Name</th>
+            <th scope="col">Type</th>
+            <th scope="col">Value</th>
         </tr>
-    }
-    </tbody>
+        </thead>
+        <tbody>
+        @foreach (var s in FakePriceScrapingApp.Schedules)
+        {
+            <tr>
+                <td><input style="width: 100%" @bind=s.Name/></td>
+                <td>
+                    <select @bind=s.Type>
+                        <option value="@ScheduleType.Days">Days</option>
+                        <option value="@ScheduleType.Weeks">Weeks</option>
+                        <option value="@ScheduleType.Months">Months</option>
+                    </select>
+                    
+                </td>
+                <td><input @bind=s.Value style="width: 5rem"/></td>
+            </tr>
+        }
+        </tbody>
     </table>
 </div>
  
@@ -31,5 +40,4 @@
     {
         FakePriceScrapingApp.Initialize();
     }
-
 }

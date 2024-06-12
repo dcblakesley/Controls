@@ -78,7 +78,7 @@
         <h5>Actions</h5>
         
         <div class="flex-row flex-wrap">
-            <button> Import</button>
+            <button @onclick=Import> Import</button>
             <button>Add ItemNumber</button>
         </div>
     </div>
@@ -126,7 +126,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var configuration in FakePriceScrapingApp.ScrapingConfigurations.Where(IsVisible))
+                @foreach (var configuration in FakePriceScrapingApp.ItemConfigurations.Where(IsVisible))
                 {
                     <tr>
                         <td>
@@ -183,7 +183,7 @@
         //FakePriceScrapingApp.User.SubscribedItemNumbers.Add("950AGM36Laa");
     }
 
-    public bool IsVisible(ProductScrapingConfiguration x)
+    public bool IsVisible(ItemConfiguration x)
     {
         if (string.IsNullOrEmpty(_filter))
             return true;
@@ -213,7 +213,6 @@
     {
         // This doens't work right now because of a bug in Blazor
         await JS.InvokeVoidAsync("console.log", "Hello");
-        return;
         // Get the contents of the clipboard
         var clipboardText = await JS.InvokeAsync<string>("navigator.clipboard.readText");
 
@@ -234,16 +233,16 @@
             }
 
             // Check if the item is already in the list
-            var configuration = FakePriceScrapingApp.ScrapingConfigurations.FirstOrDefault(x => x.Id == columns[0]);
+            var configuration = FakePriceScrapingApp.ItemConfigurations.FirstOrDefault(x => x.Id == columns[0]);
             
             // If the configuration is null, add a new one
             if (configuration == null)
             {
-                configuration = new ProductScrapingConfiguration
+                configuration = new ItemConfiguration
                 {
                     Id = columns[0],
                 };
-                FakePriceScrapingApp.ScrapingConfigurations.Add(configuration);
+                FakePriceScrapingApp.ItemConfigurations.Add(configuration);
             }
 
             // Add the URL to the configuration

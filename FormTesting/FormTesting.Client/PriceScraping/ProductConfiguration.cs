@@ -10,8 +10,8 @@ public static class FakePriceScrapingApp
 
     static bool _isInitialized = false;
     public static User User { get; set; } = new() { Id = 22777, Name = "Dave" };
-    public static List<ProductScrapingConfiguration> ScrapingConfigurations { get; set; } = [];
-    public static List<ScrapingResults> ScrapingResults { get; set; } = [];
+    public static List<ItemConfiguration> ItemConfigurations { get; set; } = [];
+    public static List<ItemScrapeResult> ScrapingResults { get; set; } = [];
     public static List<ItemsGroup> ItemsGroups { get; set; } = [];
     public static List<Schedule> Schedules { get; set; } = [];
 
@@ -30,7 +30,7 @@ public static class FakePriceScrapingApp
 
     static void CreateScrapingConfigurations()
     {
-        ScrapingConfigurations =
+        ItemConfigurations =
         [
             new("950AGM24L", "AAA","GRILL COUNTER MANUAL LP 24X24,54K BTU, 4\"ADJ LEG", 1, GetDate(30), GetDate(2),
             [
@@ -56,7 +56,7 @@ public static class FakePriceScrapingApp
     static void CreateResults()
     {
         // Scraping results for the first product
-        var scrapingResults = new ScrapingResults()
+        var scrapingResults = new ItemScrapeResult()
         {
             Id = "1",
             ItemNumber = "950AGM24L",
@@ -102,12 +102,16 @@ public static class FakePriceScrapingApp
 }
 
 
-/// <summary> Configuration for a Product. Allows the user to add Urls to be scraped and a schedule. </summary>
-public class ProductScrapingConfiguration
+/// <summary>
+/// Scraping Configuration for an Item. <br/>
+/// Allows the user to add Urls to be scraped and a schedule. <br/>
+/// Also contains a copy of necessary information from other systems such as Content and IDS
+/// </summary>
+public class ItemConfiguration
 {
     // full constructor
-    public ProductScrapingConfiguration(){}
-    public ProductScrapingConfiguration(string itemNumber, string categoryCode, string productName, int updatedBy, DateTime created, DateTime lastRun, List<string> urls)
+    public ItemConfiguration(){}
+    public ItemConfiguration(string itemNumber, string categoryCode, string productName, int updatedBy, DateTime created, DateTime lastRun, List<string> urls)
     {
         Id = itemNumber;
         CategoryCode = categoryCode;
@@ -121,18 +125,17 @@ public class ProductScrapingConfiguration
 
     [DisplayName("Item Number")]
     public string Id { get; set; } = "";
-    public string CategoryCode { get; set; }
+    public string CategoryCode { get; set; } = "";
     public List<StringWrapper> Urls { get; set; } = [];
     public string ProductName { get; set; } = "";
-
-
+    public string? ScheduleId { get; set; }
     public DateTime LastRun { get; set; }
 }
 
 /// <summary> The result from a single URL. These are aggregated into a ScrapingResults object to ensure that the results are from the same time.</summary>
 public class ScrapingResult
 {
-    // full Constructor
+    public ScrapingResult() { }
     public ScrapingResult(string url, decimal? pdpPrice, decimal? loggedInPrice, decimal? cartPrice, bool hasIssues = false, List<string>? issues = null)
     {
         Url = url;
@@ -156,7 +159,7 @@ public class ScrapingResult
 }
 
 /// <summary> A collection of scraping results for a single item. All scrapes for an Item should be done at the same time. </summary>
-public class ScrapingResults
+public class ItemScrapeResult
 {
     public string? Id { get; set; }
     public string ItemNumber { get; set; } = "";
