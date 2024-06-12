@@ -55,13 +55,13 @@
     protected override void OnInitialized()
     {
         // Ensure there is always an Id. Allow the users to set it manually, generate one from the Name, or generate a random one.
-        _id = Id ?? Name.Replace(" ", "");
+        _id = Id ?? Name?.Replace(" ", "");
         if (_id == string.Empty)
             _id = Guid.NewGuid().ToString();
         DisplayName = Name;
     }
 
-    async Task SetAsync(string value) => await ValueChanged.InvokeAsync(value);
+    async Task SetAsync(string? value) => await ValueChanged.InvokeAsync(value);
     protected override bool TryParseValueFromString(string? value, out string result, out string? validationErrorMessage)
     {
         result = value;

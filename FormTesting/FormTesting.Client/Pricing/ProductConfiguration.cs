@@ -2,12 +2,10 @@
 using FormTesting.Client.BasicEditors;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace FormTesting.Client.PriceScraping;
+namespace FormTesting.Client.Pricing;
 
 public static class FakePriceScrapingApp
 {
-    static Random _random = new Random();
-
     static bool _isInitialized = false;
     public static User User { get; set; } = new() { Id = 22777, Name = "Dave" };
     public static List<ItemConfiguration> ItemConfigurations { get; set; } = [];
@@ -42,7 +40,7 @@ public static class FakePriceScrapingApp
                 "https://www.kitchenrestock.com/wolf-agm24_nat-heavy-duty-griddle-countertop-gas.html"
             ]),
             new("950AGM36Laa", "DDD", "Test Product 2", 1, GetDate(-30), GetDate(3), ["https://www.google.com"]),
-            new("950AGM48Lbb","ABC", "Test Product 3", 1, GetDate(-30), GetDate(4), []),
+            new("950AGM48Lbb", "ABC", "Test Product 3", 1, GetDate(-30), GetDate(4), []),
             new("950AGM60Lcc", "ABC", "Test Product 4", 1, GetDate(-30), GetDate(5), []),
             new("950AGM72Ldd", "ZZZ", "Test Product 5", 1, GetDate(-30), GetDate(6), []),
             new("ab95", "ZZZ", "Test Product 6", 1, GetDate(-30), GetDate(7), []),
@@ -50,7 +48,6 @@ public static class FakePriceScrapingApp
             new("ab37", "ZZZ", "Test Product 8", 1, GetDate(-30), GetDate(9), []),
             new("abc5", "ZZZ", "Test Product 9", 1, GetDate(-30), GetDate(10), []),
             new("abc6", "ZZZ", "Test Product 10", 1, GetDate(-30), GetDate(11), []),
-
         ];
     }
     static void CreateResults()
@@ -58,7 +55,6 @@ public static class FakePriceScrapingApp
         // Scraping results for the first product
         var scrapingResults = new ItemScrapeResult()
         {
-            Id = "1",
             ItemNumber = "950AGM24L",
             Timestamp = GetDate(1),
             Results =
@@ -111,7 +107,7 @@ public class ItemConfiguration
 {
     // full constructor
     public ItemConfiguration(){}
-    public ItemConfiguration(string itemNumber, string categoryCode, string productName, int updatedBy, DateTime created, DateTime lastRun, List<string> urls)
+    public ItemConfiguration(string itemNumber, string categoryCode, string idsDescription, int updatedBy, DateTime created, DateTime lastRun, List<string> urls)
     {
         Id = itemNumber;
         CategoryCode = categoryCode;
@@ -119,7 +115,7 @@ public class ItemConfiguration
         {
             Urls.Add(new(url));
         }
-        ProductName = productName;
+        IdsDescription = idsDescription;
         LastRun = lastRun;
     }
 
@@ -127,16 +123,29 @@ public class ItemConfiguration
     public string Id { get; set; } = "";
     public string CategoryCode { get; set; } = "";
     public List<StringWrapper> Urls { get; set; } = [];
-    public string ProductName { get; set; } = "";
+    public string IdsDescription { get; set; } = "";
     public string? ScheduleId { get; set; }
     public DateTime LastRun { get; set; }
 }
 
-/// <summary> The result from a single URL. These are aggregated into a ScrapingResults object to ensure that the results are from the same time.</summary>
-public class ScrapingResult
+/// <summary>
+/// The result from a single URL. <br/>
+/// These are aggregated into an <see cref="ItemScrapeResult"/> object to ensure that the results are from the same time.
+/// </summary>
+public class SiteScrapeResult
 {
-    public ScrapingResult() { }
-    public ScrapingResult(string url, decimal? pdpPrice, decimal? loggedInPrice, decimal? cartPrice, bool hasIssues = false, List<string>? issues = null)
+    public SiteScrapeResult() { }
+
+    public SiteScrapeResult(string leadTime, decimal cartPrice, bool freeShipping, decimal shipCost, string url)
+    {
+        Url = url;
+        LeadTime = leadTime;
+        CartPrice = cartPrice;
+        FreeShipping = freeShipping;
+        ShippingCost = shipCost;
+    }
+
+    public SiteScrapeResult(string url, decimal? pdpPrice, decimal? loggedInPrice, decimal? cartPrice, bool hasIssues = false, List<string>? issues = null)
     {
         Url = url;
         PdpPrice = pdpPrice;
@@ -153,6 +162,10 @@ public class ScrapingResult
     public decimal? LoggedInPrice { get; set; } 
     public decimal? CartPrice { get; set; }
 
+    public bool FreeShipping { get; set; }
+    public decimal? ShippingCost { get; set; }
+    public string LeadTime { get; set; } = "";
+
     // Problems?
     public bool HasIssues { get; set; }
     public List<string>? Issues { get; set; }
@@ -161,19 +174,27 @@ public class ScrapingResult
 /// <summary> A collection of scraping results for a single item. All scrapes for an Item should be done at the same time. </summary>
 public class ItemScrapeResult
 {
-    public string? Id { get; set; }
+    [BsonId]
     public string ItemNumber { get; set; } = "";
+
+    // Properties are copied from the ItemConfiguration to allow indexing results without needing to join
+    public string CategoryCode { get; set; } = "";
+    public string VendorCode { get; set; } = "";
+
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-
+    public List<SiteScrapeResult> Results { get; set; } = [];
+    
+    [BsonIgnore]
     public bool HasIssues => Results.Any(r => r.HasIssues);
-
-    public List<ScrapingResult> Results { get; set; } = [];
 }
+
+
 
 public class User
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
+    public List<int> CategorySubscriptions { get; set; } = [];
 }
 
 /// <summary> Define a set of items or categories that a user is subscribed to </summary>

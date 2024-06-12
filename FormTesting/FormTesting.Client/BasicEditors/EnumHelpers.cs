@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using System.Reflection;
+// ReSharper disable UsePatternMatching
 
 namespace FormTesting.Client.BasicEditors;
 
@@ -23,11 +24,11 @@ public static class EnumHelpers
         }
         return "";
     }
-    public static string GetDescription(object value)
+    public static string? GetDescription(object value)
     {
-        var fi = value.GetType().GetField(value.ToString());
+        var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
 
-        var attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
+        var attributes = fi!.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
 
         if (attributes != null && attributes.Any())
         {
@@ -38,9 +39,9 @@ public static class EnumHelpers
     }
     public static string GetDisplayName(object value)
     {
-        var fi = value.GetType().GetField(value.ToString());
+        var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
 
-        var attributes = fi.GetCustomAttributes(typeof(DisplayNameAttribute), false) as DisplayNameAttribute[];
+        var attributes = fi?.GetCustomAttributes(typeof(DisplayNameAttribute), false) as DisplayNameAttribute[];
 
         if (attributes != null && attributes.Any())
         {
@@ -51,8 +52,8 @@ public static class EnumHelpers
     }
     public static string GetName(this object value)
     {
-        var fi = value.GetType().GetField(value.ToString());
-        var attributes = fi.GetCustomAttributes(typeof(DisplayNameAttribute), false) as DisplayNameAttribute[];
+        var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
+        var attributes = fi?.GetCustomAttributes(typeof(DisplayNameAttribute), false) as DisplayNameAttribute[];
         if (attributes != null && attributes.Any())
         {
             return attributes.First().Value;
@@ -61,9 +62,9 @@ public static class EnumHelpers
     }
     public static string? GetToolTip(object value)
     {
-        var fi = value.GetType().GetField(value.ToString());
+        var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
 
-        var attributes = fi.GetCustomAttributes(typeof(ToolTipAttribute), false) as ToolTipAttribute[];
+        var attributes = fi?.GetCustomAttributes(typeof(ToolTipAttribute), false) as ToolTipAttribute[];
 
         if (attributes != null && attributes.Any())
         {

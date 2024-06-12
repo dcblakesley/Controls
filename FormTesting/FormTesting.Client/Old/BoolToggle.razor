@@ -40,8 +40,8 @@
 
 @code{
     Guid _id = Guid.NewGuid();
-    [Parameter] public string ToolTip { get; set; }
-    [Parameter] public string Name { get; set; }
+    [Parameter] public string? ToolTip { get; set; }
+    [Parameter] public string? Name { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool Value { get; set; }
     [Parameter] public EventCallback<bool> ValueChanged { get; set; }
@@ -52,7 +52,7 @@
             return;
         try
         {
-            Value = bool.Parse(args.Value.ToString());
+            Value = bool.Parse(args.Value?.ToString() ?? string.Empty);
             await ValueChanged.InvokeAsync(Value);
             //Events.NotifyStateHasChanged(StateChangedType.Theme_Modified);
         }
