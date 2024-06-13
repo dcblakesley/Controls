@@ -1,6 +1,6 @@
 ﻿@page "/pricing/configure/{ItemNumber}"
 @using FormTesting.Client.BasicEditors
-@inject NavigationManager Navigation
+<PricingNavigationControl/>
 
 @if (ItemNumber == null)
 {
@@ -12,7 +12,6 @@
 }
 else
 {
-    <button @onclick=Back>Back</button>
     <EditForm Model=_configuration OnValidSubmit="Submit" FormName="Starship3">
         <DataAnnotationsValidator/>
         
@@ -153,11 +152,6 @@ else
     void Submit()
     {
         Console.WriteLine("submitted");
-    }
-
-    void Back()
-    {
-        Navigation.NavigateTo("/");
     }
 
     public string GetDomainFromUrl(string url)

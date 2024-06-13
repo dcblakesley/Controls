@@ -1,0 +1,37 @@
+﻿@inject NavigationManager Navigation
+
+
+<nav class="flex-row">
+    <span class="flex-fill"></span>
+    @foreach (var url in _urls)
+    {
+        <a class="btn @(Navigation.Uri == $"{Navigation.BaseUri}{url.Url}" ? "btn-primary" : "btn-secondary") " href="@url.Url" style="margin-left: 1rem">@url.Name</a>
+    }
+</nav>
+
+@code {
+
+    List<UrlWrapper> _urls = [new("Items", "pricing/items"), new("Results", "pricing/results"), new("Schedules", "pricing/schedules")];
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        StateHasChanged();
+    }
+
+    class UrlWrapper
+    {
+        // full constructor
+        public UrlWrapper(string name, string url)
+        {
+            Name = name;
+            Url = url;
+        }
+        public string Name { get; set; }
+        public string Url { get; set; }
+    }
+}
