@@ -42,7 +42,7 @@
                 </select>
             </div>
 
-            <a href="/pricing/results/categoryWasSelected" class="btn btn-secondary" @onclick=SelectCategory>Select</a>
+            <a  href="/pricing/results/categoryWasSelected" class="btn btn-secondary" @onclick=SelectCategory>Select</a>
         </div>
 
         <!-- Vendors -->
@@ -60,7 +60,7 @@
 
            <div class="flex-fill"></div>
 
-            <a href="/pricing/results/vendorWasSelected" class="btn btn-secondary" @onclick=SelectCategory>Select</a>
+            <a  href="/pricing/results/vendorWasSelected" class="btn btn-secondary" @onclick=SelectCategory>Select</a>
         </div>
 
         <!-- Role -->
@@ -179,12 +179,12 @@ else
                     <td>$@x.ShipCost</td>
                     <td class="flex-row">
                         <!-- Wss -->
-                        <a href="@x.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                        <a target="_blank" href="@x.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
                         <span class="flex-fill"></span>
                         <!-- Comp lower price -->
                         @if (x.Results.MinBy(y => y.CartPrice)!.CartPrice < x.CartPrice)
                         {
-                            <a style="color: red" href="@x.Results.MinBy(y => y.CartPrice)!.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                            <a style="color: red" target="_blank" href="@x.Results.MinBy(y => y.CartPrice)!.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
                         }
                     </td>
                 </tr>
@@ -220,11 +220,11 @@ else
                                 <!-- Comp lower price -->
                                 @if (z.CartPrice < x.CartPrice)
                                 {
-                                    <a style="color: red" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                                    <a style="color: red" target="_blank" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
                                 }
                                 else
                                 {
-                                    <a style="color: grey" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                                    <a style="color: grey" target="_blank" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
 
                                 }
                             </td>

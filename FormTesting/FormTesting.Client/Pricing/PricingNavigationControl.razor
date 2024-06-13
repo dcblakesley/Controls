@@ -5,7 +5,7 @@
     <span class="flex-fill"></span>
     @foreach (var url in _urls)
     {
-        <a class="btn @(Navigation.Uri == $"{Navigation.BaseUri}{url.Url}" ? "btn-primary" : "btn-secondary") " href="@url.Url" style="margin-left: .5rem">@url.Name</a>
+        <a class="btn @(Navigation.Uri == $"{Navigation.BaseUri}{url.Url}" ? "btn-primary" : "btn-secondary") "  href="@url.Url" style="margin-left: .5rem">@url.Name</a>
     }
 </nav>
 
