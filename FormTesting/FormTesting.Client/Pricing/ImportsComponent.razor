@@ -1,0 +1,78 @@
+﻿@page "/pricing/imports"
+
+<PricingNavigationControl />
+<PageTitle>Pricing Imports</PageTitle>
+
+<h3>ImportsPage</h3>
+<p>Paste in rows of ItemNumber and URL pairs, the data is expected to be copied from Excel and use tab separation</p>
+
+@if (!_isImporting)
+{
+    <textarea @bind=_importData @bind:event="oninput" rows="10" style="width: 100%"></textarea>
+    <button class="btn btn-primary" @onclick=Import>Import</button>
+}
+else
+{
+    <table>
+        <thead>
+        <th>Item Number</th>
+        <th>Shortened URL</th>
+        <th>Result</th>
+        </thead>
+        <tbody>
+            @foreach (var result in _importResults)
+            {
+                <tr>
+                    <td>@result.ItemNumber</td>
+                    <td>@GetDomainFromUrl(result.Url)</td>
+                    <td>@result.Result</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    string _importData = "";
+    bool _isImporting = false;
+    List<ImportResult> _importResults = [];
+
+    async Task Import()
+    {
+        _isImporting = true;
+        var data = _importData.Split("\n").Select(x => x.Split("\t")).ToList();
+        //await JS.InvokeVoidAsync("console.log", data);
+
+        foreach (var row in data)
+        {
+            if (row.Length != 2)
+            {
+                _importResults.Add(new ImportResult { ItemNumber = row[0], Url = row[1], Result = "Invalid row" });
+                continue;
+            }
+
+            var itemNumber = row[0];
+            var url = row[1];
+
+            //await JS.InvokeVoidAsync("console.log", itemNumber, url);
+
+            //var result = await _pricingService.Import(itemNumber, url);
+            var result = "Success";
+            _importResults.Add(new ImportResult { ItemNumber = itemNumber, Url = url, Result = result });
+        }
+
+    }
+    public string GetDomainFromUrl(string url)
+    {
+        url = url.Replace("https://", "").Replace("http://", "").Replace("www.", ""); //Remove the prefix
+        string[] fragments = url.Split('/');
+        return fragments[0];
+    }
+
+    public class ImportResult
+    {
+        public string ItemNumber { get; set; }
+        public string Url { get; set; }
+        public string Result { get; set; }
+    }
+}
