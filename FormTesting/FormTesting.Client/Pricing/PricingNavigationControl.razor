@@ -1,17 +1,23 @@
 ﻿@inject NavigationManager Navigation
 
 
-<nav class="flex-row">
+<nav class="flex-row" style="margin-bottom: 1rem">
     <span class="flex-fill"></span>
     @foreach (var url in _urls)
     {
-        <a class="btn @(Navigation.Uri == $"{Navigation.BaseUri}{url.Url}" ? "btn-primary" : "btn-secondary") " href="@url.Url" style="margin-left: 1rem">@url.Name</a>
+        <a class="btn @(Navigation.Uri == $"{Navigation.BaseUri}{url.Url}" ? "btn-primary" : "btn-secondary") " href="@url.Url" style="margin-left: .5rem">@url.Name</a>
     }
 </nav>
 
 @code {
 
-    List<UrlWrapper> _urls = [new("Items", "pricing/items"), new("Results", "pricing/results"), new("Schedules", "pricing/schedules")];
+    List<UrlWrapper> _urls = [
+        new("Dashboard", "pricing/dashboard"),
+        new("System Dashboard", "pricing/systemDashboard"),
+        new("Items", "pricing/items"),
+        new("Items Complex", "pricing/items/complex"), 
+        new("Results", "pricing/results"), 
+        new("Schedules", "pricing/schedules")];
 
     protected override void OnInitialized()
     {

@@ -1,0 +1,57 @@
+﻿@page "/pricing/dashboard"
+<PageTitle>Dashboard</PageTitle>
+<PricingNavigationControl />
+
+<h5>Category Subscriptions</h5>
+<style>
+    .btna {
+        margin-right: .5rem;
+        margin-bottom: .5rem;
+    }
+</style>
+@foreach (var category in _categorySubscriptions)
+{
+    <a class="btn btna @(category.HasAlert ? "btn-danger" : "btn-secondary") " href="/pricing/results/@category">@category.Name</a>
+}
+
+<h5 style="margin-top: 2rem">Vendor Subscriptions</h5>
+@foreach (var vendor in _vendorSubscriptions)
+{
+    <a class="btn btna @(vendor.HasAlert ? "btn-danger" : "btn-secondary") " href="/pricing/results/@vendor">@vendor.Name</a>
+}
+
+@code {
+
+    readonly List<CategoryInfo> _categorySubscriptions =
+    [
+        new("ICE MERCHISR OUTDOOR", false),
+        new("BAKERY DISP CASE REF", true),
+        new("ROTISSERIE OVEN", false),
+        new("EVAPORATOR COILS (P/A)", false),
+        new("FREEZER WORKTOP", true),
+        new("CTRTOP FRZ MERCH", false),
+        new("ISLAND OPEN AIR MERCHANDISER)", false)
+    ];
+
+    // List of CategoryInfo objects
+    readonly List<CategoryInfo> _vendorSubscriptions =
+    [
+        new("Coke", false),
+        new("Pepsi", false),
+        new("Mt. Dew", false),
+        new("Dr. Pepper", true),
+        new("Sprite", false),
+    ];
+
+    class CategoryInfo
+    {
+        // full constructor
+        public CategoryInfo(string name, bool hasAlert)
+        {
+            Name = name;
+            HasAlert = hasAlert;
+        }
+        public string Name { get; set; } = "";
+        public bool HasAlert { get; set; }
+    }
+}

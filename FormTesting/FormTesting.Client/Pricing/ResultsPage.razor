@@ -1,125 +1,255 @@
 ﻿@page "/pricing/results"
+@page "/pricing/results/{CategoryCode}"
 <PageTitle>Results Example</PageTitle>
 <PricingNavigationControl/>
 
-<!-- Outer Table, Summary Rows -->
-<table class="table table-hover" id="ttt" style="">
-    <thead>
-    <tr>
-        <th scope="col"></th>
+@if (string.IsNullOrWhiteSpace(CategoryCode))
+{
+    <h5>Choose a Results group</h5>
+    <div class="flex-row">
+        <style>
+        .card {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            margin-right: 1rem;
+        }
+    </style>
+        <!-- Category -->
+        <div class="card">
+            <h6 class="text-warning">Just IDS Categories?</h6>
+
+            <!-- Select Category Level -->
+            <div class="form-group">
+                <label>Category Levels</label>
+                <div></div>
+                <select>
+                    @foreach (var t in _categoryLevels)
+                    {
+                        <option>@t</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Select Category Name -->
+            <div class="form-group">
+                <label>Category Names</label>
+                <div></div>
+                <select>
+                    @foreach (var t in _categoryNames)
+                    {
+                        <option>@t</option>
+                    }
+                </select>
+            </div>
+
+            <a href="/pricing/results/categoryWasSelected" class="btn btn-secondary" @onclick=SelectCategory>Select</a>
+        </div>
+
+        <!-- Vendors -->
+        <div class="card">
+            <div class="form-group">
+                <label>Vendors</label>
+                <div></div>
+                <select>
+                    @foreach (var t in _vendors)
+                    {
+                        <option>@t</option>
+                    }
+                </select>
+            </div>
+
+           <div class="flex-fill"></div>
+
+            <a href="/pricing/results/vendorWasSelected" class="btn btn-secondary" @onclick=SelectCategory>Select</a>
+        </div>
+
+        <!-- Role -->
+        <div class="card">
+            <h6>Roles</h6>
+            <p>
+                Each would only be visible if the user was in one of the roles
+            </p>
+            <div class="form-group">
+                <label>President</label>
+                <div></div>
+                <select>
+                    @foreach (var t in _categoryNames)
+                    {
+                        <option>@t</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>VP</label>
+                <div></div>
+                <select>
+                    @foreach (var t in _categoryNames)
+                    {
+                        <option>@t</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Category Manager</label>
+                <div></div>
+                <select>
+                    @foreach (var t in _categoryNames)
+                    {
+                        <option>@t</option>
+                    }
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Category Analyst</label>
+                <div></div>
+                <select>
+                    @foreach (var t in _categoryNames)
+                    {
+                        <option>@t</option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex-fill"></div>
+
+            <a href="/pricing/results/roleWasSelected" class="btn btn-secondary" @onclick=SelectCategory>Select</a>
+        </div>
+
+    </div>
+}
+else
+{
+    <button class="btn btn-secondary">Unsubscribe</button>
+
+    <!-- Outer Table, Summary Rows -->
+    <table class="table table-hover" id="ttt" style="">
+        <thead>
+        <tr>
+            <th scope="col"></th>
             <th scope="col">Item #</th>
             <th scope="col">MFR #</th>
-        <th scope="col">Description</th>
-        <th scope="col">Lead Time</th>
-        <th scope="col">Price</th>
-        <th scope="col">FS</th>
-        <th scope="col">Ship Cost</th>
-        <th scope="col">Link</th>
-    </tr>
-    </thead>
-    <tbody>
-    @foreach (var x in _results)
-    {
-        @if (!_isFiltered || x.Results.MinBy(y => y.CartPrice)!.CartPrice < x.CartPrice)
+            <th scope="col">Description</th>
+            <th scope="col">Lead Time</th>
+            <th scope="col">Price</th>
+            <th scope="col">FS</th>
+            <th scope="col">Ship Cost</th>
+            <th scope="col">Link</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var x in _results)
         {
-            <tr>
-                <td class="pointer" @onclick=@(()=>x.IsExpanded = !x.IsExpanded)>
-                    @if (x.IsExpanded)
-                    {
-                        <i class="fa-duotone fa-square-minus" ></i>
-                    }
-                    else
-                    {
-                        <i class="fa-duotone fa-square-plus"></i>
-                    }
-                </td>
-                <td>@x.ItemNumber</td>
-                <td>@x.MfrNum</td>
-                <td>@x.Description</td>
-                <td>@x.LeadTime</td>
-                <td class="flex-row">
-                    <!-- Comp lower price -->
-                    @if (x.Results.MinBy(y => y.CartPrice)!.CartPrice < x.CartPrice)
-                    {
-                        <span style="color: red;" class="flex-fill">$@x.CartPrice</span>
-                    }
-                    else
-                    {
-                        <span class="flex-fill">$@x.CartPrice</span>
-                    }
-                </td>
-                <td>
-                    @if (x.FreeShipping)
-                    {
-                        <i class="fa-sharp fa-light fa-check" style="color: grey"></i>
-                    }
-                </td>
-                <td>$@x.ShipCost</td>
-                <td class="flex-row">
-                    <!-- Wss -->
-                    <a href="@x.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
-                    <span class="flex-fill"></span>
-                    <!-- Comp lower price -->
-                    @if (x.Results.MinBy(y => y.CartPrice)!.CartPrice < x.CartPrice)
-                    {
-                        <a style="color: red" href="@x.Results.MinBy(y => y.CartPrice)!.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
-                    }
-                </td>
-            </tr>
-
-            <!-- Results Rows -->
-            @if (x.IsExpanded)
+            @if (!_isFiltered || x.Results.MinBy(y => y.CartPrice)!.CartPrice < x.CartPrice)
             {
-                @foreach (var z in x.Results.OrderBy(x=>x.CartPrice))
-                {
-                    <tr >
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td style="text-align: right">@GetDomainFromUrl(z.Url)</td>
-                        <td>@z.LeadTime</td>
-                        <td class="flex-row">
-                            <!-- Comp lower price -->
-                            @if (z.CartPrice < x.CartPrice)
-                            {
-                                <span style="color: red;" class="flex-fill">$@z.CartPrice</span>
-                            }
-                            else
-                            {
-                                <span class="flex-fill">$@z.CartPrice</span>
-                            }
-                        </td>
-                        <td></td>
-                        <td>$@z.ShippingCost</td>
-                        <td class="flex-row">
-                            
-                            <!-- Comp lower price -->
-                            @if (z.CartPrice < x.CartPrice)
-                            {
-                                <a style="color: red" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
-                            }
-                            else
-                            {
-                                <a style="color: grey" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                <tr>
+                    <td class="pointer" @onclick=@(() => x.IsExpanded = !x.IsExpanded)>
+                        @if (x.IsExpanded)
+                        {
+                            <i class="fa-duotone fa-square-minus"></i>
+                        }
+                        else
+                        {
+                            <i class="fa-duotone fa-square-plus"></i>
+                        }
+                    </td>
+                    <td>@x.ItemNumber</td>
+                    <td>@x.MfrNum</td>
+                    <td>@x.Description</td>
+                    <td>@x.LeadTime</td>
+                    <td class="flex-row">
+                        <!-- Comp lower price -->
+                        @if (x.Results.MinBy(y => y.CartPrice)!.CartPrice < x.CartPrice)
+                        {
+                            <span style="color: red;" class="flex-fill">$@x.CartPrice</span>
+                        }
+                        else
+                        {
+                            <span class="flex-fill">$@x.CartPrice</span>
+                        }
+                    </td>
+                    <td>
+                        @if (x.FreeShipping)
+                        {
+                            <i class="fa-sharp fa-light fa-check" style="color: grey"></i>
+                        }
+                    </td>
+                    <td>$@x.ShipCost</td>
+                    <td class="flex-row">
+                        <!-- Wss -->
+                        <a href="@x.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                        <span class="flex-fill"></span>
+                        <!-- Comp lower price -->
+                        @if (x.Results.MinBy(y => y.CartPrice)!.CartPrice < x.CartPrice)
+                        {
+                            <a style="color: red" href="@x.Results.MinBy(y => y.CartPrice)!.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                        }
+                    </td>
+                </tr>
 
-                            }
-                        </td>
+                <!-- Results Rows -->
+                @if (x.IsExpanded)
+                {
+                    @foreach (var z in x.Results.OrderBy(x => x.CartPrice))
+                    {
+                        <tr >
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td style="text-align: right">@GetDomainFromUrl(z.Url)</td>
+                            <td>@z.LeadTime</td>
+                            <td class="flex-row">
+                                <!-- Comp lower price -->
+                                @if (z.CartPrice < x.CartPrice)
+                                {
+                                    <span style="color: red;" class="flex-fill">$@z.CartPrice
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="flex-fill">$@z.CartPrice
+                                    </span>
+                                }
+                            </td>
+                            <td></td>
+                            <td>$@z.ShippingCost</td>
+                            <td class="flex-row">
+
+                                <!-- Comp lower price -->
+                                @if (z.CartPrice < x.CartPrice)
+                                {
+                                    <a style="color: red" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+                                }
+                                else
+                                {
+                                    <a style="color: grey" href="@z.Url"><i class="fa-duotone fa-arrow-up-right-from-square"></i></a>
+
+                                }
+                            </td>
                         </tr>
 
 
+                    }
                 }
             }
         }
-    }
-    </tbody>
-</table>
-<button class="btn @(_isFiltered ? "btn-danger" : "btn-secondary")" @onclick=@(()=>_isFiltered = !_isFiltered)>Filter</button>
+        </tbody>
+    </table>
+    <button class="btn @(_isFiltered ? "btn-danger" : "btn-secondary")" @onclick=@(() => _isFiltered = !_isFiltered)>Filter</button>
+}
 
 @code {
 
     [Parameter] public string? CategoryCode { get; set; }
     // Demo results
 
+
+    List<string> _categoryLevels = ["Major Category", "Ids Category", "Business Segment", "Product Type", "Family", "Segment"];
+    List<string> _categoryNames = ["VERTICAL BROILERS", "STORAGE CONTAINERS", "CHEST FREEZERS", "COUNTERTOP HOOD REQUIRED", "INDUCTION EQUIPMENT", "RANGES"];
+    List<string> _vendors = ["Kraft", "Coors", "Budweiser", "Smirnoff", "Seagrams"];
+    
     bool _isFiltered = false;
     List<ItemScrapeResultVm> _results = [];
 
@@ -128,7 +258,7 @@
         //FakePriceScrapingApp.Initialize();
         GetResults();
     }
-    
+
     public class ItemScrapeResultVm : ItemScrapeResult
     {
         // constructors
@@ -186,15 +316,15 @@
         var item1 = new ItemScrapeResultVm("64560131103", "6013.1103", "12 x 20 Roasting / Baking Tray", "1 DAY", 41.50m, 77.47m, 55.99m, true, 15.97m, "https://www.webstaurantstore.com/rational-6013-1103-12-x-20-roasting-baking-tray/64560131103.html");
 
         /*
-            $58.10 	N	$17.23	https://www.rewonline.com/restaurant-equipment-new/Rational-6013-1103-Combi-Oven-Parts-Accessories/RAT-6013-1103.html
-            4-8 days	$57.99 	N	$13.97	https://www.katom.com/703-60131103.html
-            1 month	$62.60 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60131103-Gastronorm-Baking-Tray-1-1-GN-12in-x/RTNL-60131103
-            $63.86 	N	$14.12	https://www.centralrestaurant.com/rational-60131103-baking-tray-11-size-non-stick-p020-041.html
-            7-9 days	$65.00 	N	$9.99	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-GASTRONRM-BKNG-TRAY/p/RAG6013.1103
-            $66.40 	N	$14.99	https://www.restaurantsupply.com/rational-6013-1103-gastronorm-baking-tray-1-1-gn-12-3-4-x-20-7-8
-            1 DAY	$77.47 	N	$19.34	https://www.culinarydepotinc.com/rational-60131103-gastroNrm-baking-tray
-            $66.70 	N	$12.52	https://www.ckitchen.com/p/rational-6013.1103-gastroNrm-baking-tray-2.html
-         */
+        $58.10 	N	$17.23	https://www.rewonline.com/restaurant-equipment-new/Rational-6013-1103-Combi-Oven-Parts-Accessories/RAT-6013-1103.html
+        4-8 days	$57.99 	N	$13.97	https://www.katom.com/703-60131103.html
+        1 month	$62.60 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60131103-Gastronorm-Baking-Tray-1-1-GN-12in-x/RTNL-60131103
+        $63.86 	N	$14.12	https://www.centralrestaurant.com/rational-60131103-baking-tray-11-size-non-stick-p020-041.html
+        7-9 days	$65.00 	N	$9.99	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-GASTRONRM-BKNG-TRAY/p/RAG6013.1103
+        $66.40 	N	$14.99	https://www.restaurantsupply.com/rational-6013-1103-gastronorm-baking-tray-1-1-gn-12-3-4-x-20-7-8
+        1 DAY	$77.47 	N	$19.34	https://www.culinarydepotinc.com/rational-60131103-gastroNrm-baking-tray
+        $66.70 	N	$12.52	https://www.ckitchen.com/p/rational-6013.1103-gastroNrm-baking-tray-2.html
+        */
         item1.Results.Add(new("", 58.10m, false, 17.23m, "https://www.rewonline.com/restaurant-equipment-new/Rational-6013-1103-Combi-Oven-Parts-Accessories/RAT-6013-1103.html"));
         item1.Results.Add(new("4-8 days", 57.99m, false, 13.97m, "https://www.katom.com/703-60131103.html"));
         item1.Results.Add(new("1 month", 62.60m, false, 16.04m, "https://www.brescoinc.com/buy/product/Rational-60131103-Gastronorm-Baking-Tray-1-1-GN-12in-x/RTNL-60131103"));
@@ -207,16 +337,16 @@
         // 6456070943	60.70.943	12" x 20" Grill and Pizza Tray	1 DAY	$134.50 	$269.00	$174.99 	FP	$15.97	https://www.webstaurantstore.com/rational-60-70-943-12-x-20-grill-and-pizza-tray/6456070943.html
         var item2 = new ItemScrapeResultVm("6456070943", "60.70.943", "12 x 20 Grill and Pizza Tray", "1 DAY", 134.50m, 269.00m, 174.99m, true, 15.97m, "https://www.webstaurantstore.com/rational-60-70-943-12-x-20-grill-and-pizza-tray/6456070943.html");
         /*
-         *	$188.30 	N	$18.54	https://www.rewonline.com/restaurant-equipment-new/Rational-60-70-943-Combi-Oven-Parts-Accessories/RAT-60-70-943.html
-           4-8 days	$182.09 	N	$23.71	https://www.katom.com/703-6070943.html
-            $199.82 	N	$15.00	https://www.centralrestaurant.com/rational-6070943-grillpizza-tray-11-gastroNrm-size-trilax-coating-p020-089.html?gclid=CjwKCAiAleOeBhBdEiwAfgmXf07dCbfT_nqcOToOw2fZaCoBRoeqheG8YM9Ma2D5Oz8f5DuDwc1iJBoCxXoQAvD_BwE
-            $202.92 	N	$13.14	https://www.brescoinc.com/buy/product/Rational-6070943-Grill-and-Pizza-Tray-1-1-GN-12in-x-20/RTNL-6070943
-            $205.00 	Y	$0.00	https://www.amazon.com/Rational-Grill-and-Pizza-Tray/dp/B00K83CYD0
-            $215.20 	N	$15.99	https://www.restaurantsupply.com/rational-60-70-943-grill-pizza-tray-1-1-gn-12-x-20
-            $221.44 	Y	$0.00	https://www.ckitchen.com/p/rational-60-70-943-grill-pizza-tray.html
-            $251.07 	Y	$0.00	https://www.culinarydepotinc.com/rational-6070943-grill-pizza-tray
+        *	$188.30 	N	$18.54	https://www.rewonline.com/restaurant-equipment-new/Rational-60-70-943-Combi-Oven-Parts-Accessories/RAT-60-70-943.html
+          4-8 days	$182.09 	N	$23.71	https://www.katom.com/703-6070943.html
+           $199.82 	N	$15.00	https://www.centralrestaurant.com/rational-6070943-grillpizza-tray-11-gastroNrm-size-trilax-coating-p020-089.html?gclid=CjwKCAiAleOeBhBdEiwAfgmXf07dCbfT_nqcOToOw2fZaCoBRoeqheG8YM9Ma2D5Oz8f5DuDwc1iJBoCxXoQAvD_BwE
+           $202.92 	N	$13.14	https://www.brescoinc.com/buy/product/Rational-6070943-Grill-and-Pizza-Tray-1-1-GN-12in-x-20/RTNL-6070943
+           $205.00 	Y	.00	https://www.amazon.com/Rational-Grill-and-Pizza-Tray/dp/B00K83CYD0
+       $215.20 	N	$15.99	https://www.restaurantsupply.com/rational-60-70-943-grill-pizza-tray-1-1-gn-12-x-20
+       $221.44 	Y	.00	https://www.ckitchen.com/p/rational-60-70-943-grill-pizza-tray.html
+       $251.07 	Y	.00	https://www.culinarydepotinc.com/rational-6070943-grill-pizza-tray
 
-         */
+        */
         item2.Results.Add(new("", 188.30m, false, 18.54m, "https://www.rewonline.com/restaurant-equipment-new/Rational-60-70-943-Combi-Oven-Parts-Accessories/RAT-60-70-943.html"));
         item2.Results.Add(new("4-8 days", 182.09m, false, 23.71m, "https://www.katom.com/703-6070943.html"));
         item2.Results.Add(new("", 199.82m, false, 15.00m, "https://www.centralrestaurant.com/rational-6070943-grillpizza-tray-11-gastroNrm-size-trilax-coating-p020-089.html?gclid=CjwKCAiAleOeBhBdEiwAfgmXf07dCbfT_nqcOToOw2fZaCoBRoeqheG8YM9Ma2D5Oz8f5DuDwc1iJBoCxXoQAvD_BwE"));
@@ -229,15 +359,15 @@
         // 64560141102	6014.1102	Granite Enamel Roasting Pan - 21" x 12" x 3/4"	1 DAY	$57.00 	$114.00	$76.99 	FP	$13.16	https://www.webstaurantstore.com/rational-6014-1102-granite-enamel-roasting-pan-21-x-12-x-3-4/64560141102.html
         var item3 = new ItemScrapeResultVm("64560141102", "6014.1102", "Granite Enamel Roasting Pan - 21 x 12 x 3/4", "1 DAY", 57.00m, 114.00m, 76.99m, true, 13.16m, "https://www.webstaurantstore.com/rational-6014-1102-granite-enamel-roasting-pan-21-x-12-x-3-4/64560141102.html");
         /*
-         *	$79.80 	N	$18.36	https://www.rewonline.com/restaurant-equipment-new/Rational-6014-1102-Combi-Oven-Parts-Accessories/RAT-6014-1102.html
-           4 to 8 days	$79.80 	N	$22.12	https://www.katom.com/703-60141102.html
-            $86.00 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60141102-Gastronorm-Container-1-1-size-12in-x/RTNL-60141102
-            $87.55 	N	$14.12	https://www.centralrestaurant.com/rational-60141102-gastronorm-container-11-size-34-deep-granite-enamel-p020-047.html
-            $91.20 	N	$14.99	https://www.restaurantsupply.com/rational-6014-1102-gastronorm-container-1-1-size-12-3-4-x-20-7-8
-            $106.40 	Y	$0.00	https://www.culinarydepotinc.com/rational-60141102-gastroNrm-container
-            $91.61 	N	$12.54	https://www.ckitchen.com/p/rational-6014.1102-gastroNrm-container-2.html
+        *	$79.80 	N	$18.36	https://www.rewonline.com/restaurant-equipment-new/Rational-6014-1102-Combi-Oven-Parts-Accessories/RAT-6014-1102.html
+          4 to 8 days	$79.80 	N	$22.12	https://www.katom.com/703-60141102.html
+           $86.00 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60141102-Gastronorm-Container-1-1-size-12in-x/RTNL-60141102
+           $87.55 	N	$14.12	https://www.centralrestaurant.com/rational-60141102-gastronorm-container-11-size-34-deep-granite-enamel-p020-047.html
+           $91.20 	N	$14.99	https://www.restaurantsupply.com/rational-6014-1102-gastronorm-container-1-1-size-12-3-4-x-20-7-8
+           $106.40 	Y	.00	https://www.culinarydepotinc.com/rational-60141102-gastroNrm-container
+       $91.61 	N	$12.54	https://www.ckitchen.com/p/rational-6014.1102-gastroNrm-container-2.html
 
-         */
+        */
         item3.Results.Add(new("", 79.80m, false, 18.36m, "https://www.rewonline.com/restaurant-equipment-new/Rational-6014-1102-Combi-Oven-Parts-Accessories/RAT-6014-1102.html"));
         item3.Results.Add(new("4 to 8 days", 79.80m, false, 22.12m, "https://www.katom.com/703-60141102.html"));
         item3.Results.Add(new("", 86.00m, false, 16.04m, "https://www.brescoinc.com/buy/product/Rational-60141102-Gastronorm-Container-1-1-size-12in-x/RTNL-60141102"));
@@ -249,16 +379,16 @@
         // 64560351016	6035.1016	4 lb. Chicken and Duck Super Spike - 6 Bird	1 DAY	$40.00 	$80.00	$55.99 	FP	$13.42	https://www.webstaurantstore.com/rational-6035-1016-4-lb-chicken-and-duck-super-spike-6-bird-capacity/64560351016.html
         var item4 = new ItemScrapeResultVm("64560351016", "6035.1016", "4 lb. Chicken and Duck Super Spike - 6 Bird", "1 DAY", 40.00m, 80.00m, 55.99m, true, 13.42m, "https://www.webstaurantstore.com/rational-6035-1016-4-lb-chicken-and-duck-super-spike-6-bird-capacity/64560351016.html");
         /*
-         *4-8 days	$55.99 	N	$22.12	https://www.katom.com/703-60351016.html
-            $56.00 	N	$17.23	https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1016-Combi-Oven-Parts-Accessories/RAT-6035-1016.html
-            $60.35 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60351016-Gastronorm-Super-Spike-Chicken-Grid-1-1/RTNL-60351016
-            $64.00 	N	$14.99	https://www.restaurantsupply.com/rational-6035-1016-chicken-superspike-1-1-size-12-3-4-x-20-7-8
-            $65.92 	N	$14.12	https://www.centralrestaurant.com/rational-60351016-gastronorm-chicken-grid-11-size-holds-6-4-lb-birds-p020-083.html
-            $74.67 	N	$29.51	https://www.culinarydepotinc.com/rational-60351016-gastroNrm-super-spike-chicken-grid
-           Day of	$80.00 	N	$30.83	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-CHICKEN-GRID/p/RAG6035.1016
-            $103.80 	Y	$0.00	https://www.amazon.com/Rational-Cooking-Systems-6035-1016-CHICKEN/dp/B079BC14Y9
-            $64.29 	N	$11.87	https://www.ckitchen.com/p/rational-6035.1016-gastroNrm-super-spike-chicken-grid-2.html
-         */
+        *4-8 days	$55.99 	N	$22.12	https://www.katom.com/703-60351016.html
+           $56.00 	N	$17.23	https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1016-Combi-Oven-Parts-Accessories/RAT-6035-1016.html
+           $60.35 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60351016-Gastronorm-Super-Spike-Chicken-Grid-1-1/RTNL-60351016
+           $64.00 	N	$14.99	https://www.restaurantsupply.com/rational-6035-1016-chicken-superspike-1-1-size-12-3-4-x-20-7-8
+           $65.92 	N	$14.12	https://www.centralrestaurant.com/rational-60351016-gastronorm-chicken-grid-11-size-holds-6-4-lb-birds-p020-083.html
+           $74.67 	N	$29.51	https://www.culinarydepotinc.com/rational-60351016-gastroNrm-super-spike-chicken-grid
+          Day of	$80.00 	N	$30.83	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-CHICKEN-GRID/p/RAG6035.1016
+           $103.80 	Y	.00	https://www.amazon.com/Rational-Cooking-Systems-6035-1016-CHICKEN/dp/B079BC14Y9
+       $64.29 	N	$11.87	https://www.ckitchen.com/p/rational-6035.1016-gastroNrm-super-spike-chicken-grid-2.html
+        */
         item4.Results.Add(new("4-8 days", 55.99m, false, 22.12m, "https://www.katom.com/703-60351016.html"));
         item4.Results.Add(new("", 56.00m, false, 17.23m, "https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1016-Combi-Oven-Parts-Accessories/RAT-6035-1016.html"));
         item4.Results.Add(new("", 60.35m, false, 16.04m, "https://www.brescoinc.com/buy/product/Rational-60351016-Gastronorm-Super-Spike-Chicken-Grid-1-1/RTNL-60351016"));
@@ -272,16 +402,16 @@
         // 64560351017	6035.1017	CombiGrill 12" x 20" Grill Tray	1 DAY	$110.00 	$220.00	$149.99 	FP	$13.42	https://www.webstaurantstore.com/rational-6035-1017-combigrill-12-x-20-grill-tray/64560351017.html
         var item5 = new ItemScrapeResultVm("64560351017", "6035.1017", "CombiGrill 12 x 20 Grill Tray", "1 DAY", 110.00m, 220.00m, 149.99m, true, 13.42m, "https://www.webstaurantstore.com/rational-6035-1017-combigrill-12-x-20-grill-tray/64560351017.html");
         /*
-         *	$154.00 	N	$18.36	https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1017-Combi-Oven-Parts-Accessories/RAT-6035-1017.html
-           6-8 weeks	$154.00 	N	$23.71	https://www.katom.com/703-60351017.html
-            $169.95 	N	$10.92	https://www.brescoinc.com/buy/product/Rational-60351017-Gastronorm-CombiGrill-1-1-GN-12in-x-2/RTNL-60351017
-            $170.98 	N	$14.12	https://www.centralrestaurant.com/rational-60351017-gastronorm-combigrill-pan-11-size-trilax-coating-p020-043.html
-            $176.00 	N	$53.71	https://www.restaurantsupply.com/rational-6035-1017-gastronorm-combigrill-1-1-gn-12-3-4-x-20-7-8
-           1-3 days	$176.00 	N	$13.28	https://www.hotelrestaurantsupply.com/rtn-60351017.html
-            $205.33 	N	$34.90	https://www.culinarydepotinc.com/rational-60351017-gastroNrm-combigrill
-           OOS	$245.00 	N	$26.79	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-GASTRONRM-COMBIGRILL/p/RAG6035.1017
-            $176.79 	N	$15.00	https://www.ckitchen.com/p/rational-6035.1017-gastroNrm-combigrill-2.html
-         */
+        *	$154.00 	N	$18.36	https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1017-Combi-Oven-Parts-Accessories/RAT-6035-1017.html
+          6-8 weeks	$154.00 	N	$23.71	https://www.katom.com/703-60351017.html
+           $169.95 	N	$10.92	https://www.brescoinc.com/buy/product/Rational-60351017-Gastronorm-CombiGrill-1-1-GN-12in-x-2/RTNL-60351017
+           $170.98 	N	$14.12	https://www.centralrestaurant.com/rational-60351017-gastronorm-combigrill-pan-11-size-trilax-coating-p020-043.html
+           $176.00 	N	$53.71	https://www.restaurantsupply.com/rational-6035-1017-gastronorm-combigrill-1-1-gn-12-3-4-x-20-7-8
+          1-3 days	$176.00 	N	$13.28	https://www.hotelrestaurantsupply.com/rtn-60351017.html
+           $205.33 	N	$34.90	https://www.culinarydepotinc.com/rational-60351017-gastroNrm-combigrill
+          OOS	$245.00 	N	$26.79	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-GASTRONRM-COMBIGRILL/p/RAG6035.1017
+           $176.79 	N	$15.00	https://www.ckitchen.com/p/rational-6035.1017-gastroNrm-combigrill-2.html
+        */
         item5.Results.Add(new("", 154.00m, false, 18.36m, "https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1017-Combi-Oven-Parts-Accessories/RAT-6035-1017.html"));
         item5.Results.Add(new("6-8 weeks", 154.00m, false, 23.71m, "https://www.katom.com/703-60351017.html"));
         item5.Results.Add(new("", 169.95m, false, 10.92m, "https://www.brescoinc.com/buy/product/Rational-60351017-Gastronorm-CombiGrill-1-1-GN-12in-x-2/RTNL-60351017"));
@@ -295,15 +425,15 @@
         // 64560351018	6035.1018	12" x 20" Spare Rib Grill	1 DAY	$87.00 	$174.00	$116.99 	FP	$13.16	https://www.webstaurantstore.com/rational-6035-1018-12-x-20-spare-rib-grill/64560351018.html
         var item6 = new ItemScrapeResultVm("64560351018", "6035.1018", "12 x 20 Spare Rib Grill", "1 DAY", 87.00m, 174.00m, 116.99m, true, 13.16m, "https://www.webstaurantstore.com/rational-6035-1018-12-x-20-spare-rib-grill/64560351018.html");
         /*
-         *	$121.80 	N	$18.36	https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1018-Combi-Oven-Parts-Accessories/RAT-6035-1018.html
-           6-8 weeks	$121.80 	N	$23.71	https://www.katom.com/703-60351018.html
-            $131.25 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60351018-Gastronorm-CombiRib-Grid-1x1-size-12in/RTNL-60351018
-            $132.87 	N	$14.12	https://www.centralrestaurant.com/rational-60351018-gastronorm-combirib-grid-11-size-alum-silicon-coated-p020-044.html
-            $139.20 	N	$14.99	https://www.restaurantsupply.com/rational-6035-1018-rib-rack-1x1-size-12-x-20
-           1-3 Days	$139.20 	N	$13.28	https://www.hotelrestaurantsupply.com/rtn-60351018.html
-           1-5 days	$162.40 	Y	$0.00	https://www.culinarydepotinc.com/rational-60351018-gastroNrm-combirib-grid
-            $139.83 	N	$0.00	https://www.ckitchen.com/p/rational-6035.1018-gastroNrm-combirib-grid-2.html
-         */
+        *	$121.80 	N	$18.36	https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1018-Combi-Oven-Parts-Accessories/RAT-6035-1018.html
+          6-8 weeks	$121.80 	N	$23.71	https://www.katom.com/703-60351018.html
+           $131.25 	N	$16.04	https://www.brescoinc.com/buy/product/Rational-60351018-Gastronorm-CombiRib-Grid-1x1-size-12in/RTNL-60351018
+           $132.87 	N	$14.12	https://www.centralrestaurant.com/rational-60351018-gastronorm-combirib-grid-11-size-alum-silicon-coated-p020-044.html
+           $139.20 	N	$14.99	https://www.restaurantsupply.com/rational-6035-1018-rib-rack-1x1-size-12-x-20
+          1-3 Days	$139.20 	N	$13.28	https://www.hotelrestaurantsupply.com/rtn-60351018.html
+          1-5 days	$162.40 	Y	.00	https://www.culinarydepotinc.com/rational-60351018-gastroNrm-combirib-grid
+       $139.83 	N	.00	https://www.ckitchen.com/p/rational-6035.1018-gastroNrm-combirib-grid-2.html
+        */
         item6.Results.Add(new("", 121.80m, false, 18.36m, "https://www.rewonline.com/restaurant-equipment-new/Rational-6035-1018-Combi-Oven-Parts-Accessories/RAT-6035-1018.html"));
         item6.Results.Add(new("6-8 weeks", 121.80m, false, 23.71m, "https://www.katom.com/703-60351018.html"));
         item6.Results.Add(new("", 131.25m, false, 16.04m, "https://www.brescoinc.com/buy/product/Rational-60351018-Gastronorm-CombiRib-Grid-1x1-size-12in/RTNL-60351018"));
@@ -316,16 +446,16 @@
         // 6456075367	60.75.367	VarioSmoker Portable Smoker	1 DAY	$451.50 	$903.00	$549.00 	FP	$24.02	https://www.webstaurantstore.com/rational-60-73-010-variosmoker-portable-smoker/6456073010.html
         var item7 = new ItemScrapeResultVm("6456075367", "60.75.367", "VarioSmoker Portable Smoker", "1 DAY", 451.50m, 903.00m, 549.00m, true, 24.02m, "https://www.webstaurantstore.com/rational-60-73-010-variosmoker-portable-smoker/6456073010.html");
         /*
-         *	$550.20 	N	$15.45	https://www.rewonline.com/restaurant-equipment-new/Rational-60-75-367-Combi-Oven-Parts-Accessories/RAT-60-75-367.html
-           1-3 Days	$628.80 	N	$15.38	https://www.hotelrestaurantsupply.com/rtn-6075367.html
-            $597.40 	N	$14.26	https://www.centralrestaurant.com/rational-6075367-variosmoker-for-all-rational-combis-120v-p020-173.html
-            $599.00 	N	$14.05	https://www.chefsdeal.com/rational-60-75-367-variosmoker-combi-oven-smoker.html
-           4-8 Days	$622.13 	N	$30.29	https://www.katom.com/703-6075367.html
-            $722.40 	N	$14.99	https://www.restaurantsupply.com/rational-60-75-367-variosmoker-combi-oven-smoker-cook-and-smoke-at-the-same-time
-           1-5 days	$733.60 	Y	$0.00	https://www.culinarydepotinc.com/rational-6073010-variosmoker
-            $745.35 	Y	$0.00	https://www.ckitchen.com/p/rational-60-75-367-variosmoker-combi-oven-smoke.html
-            $805.00 	Y	$0.00	https://www.amazon.com/Rational-60-73-010-RATIONAL-SMOKER/dp/B016Q3ABXK/ref=sr_1_1?keywords=60.73.010&qid=1569865662&s=industrial&sr=1-1
-         */
+        *	$550.20 	N	$15.45	https://www.rewonline.com/restaurant-equipment-new/Rational-60-75-367-Combi-Oven-Parts-Accessories/RAT-60-75-367.html
+          1-3 Days	$628.80 	N	$15.38	https://www.hotelrestaurantsupply.com/rtn-6075367.html
+           $597.40 	N	$14.26	https://www.centralrestaurant.com/rational-6075367-variosmoker-for-all-rational-combis-120v-p020-173.html
+           $599.00 	N	$14.05	https://www.chefsdeal.com/rational-60-75-367-variosmoker-combi-oven-smoker.html
+          4-8 Days	$622.13 	N	$30.29	https://www.katom.com/703-6075367.html
+           $722.40 	N	$14.99	https://www.restaurantsupply.com/rational-60-75-367-variosmoker-combi-oven-smoker-cook-and-smoke-at-the-same-time
+          1-5 days	$733.60 	Y	.00	https://www.culinarydepotinc.com/rational-6073010-variosmoker
+       $745.35 	Y	.00	https://www.ckitchen.com/p/rational-60-75-367-variosmoker-combi-oven-smoke.html
+       $805.00 	Y	.00	https://www.amazon.com/Rational-60-73-010-RATIONAL-SMOKER/dp/B016Q3ABXK/ref=sr_1_1?keywords=60.73.010&qid=1569865662&s=industrial&sr=1-1
+        */
         item7.Results.Add(new("", 550.20m, false, 15.45m, "https://www.rewonline.com/restaurant-equipment-new/Rational-60-75-367-Combi-Oven-Parts-Accessories/RAT-60-75-367.html"));
         item7.Results.Add(new("1-3 Days", 628.80m, false, 15.38m, "https://www.hotelrestaurantsupply.com/rtn-6075367.html"));
         item7.Results.Add(new("", 597.40m, false, 14.26m, "https://www.centralrestaurant.com/rational-6075367-variosmoker-for-all-rational-combis-120v-p020-173.html"));
@@ -339,11 +469,11 @@
         // 64560191150	6019.115	CombiFry 12" x 20" French Fry Tray	1 DAY	$67.50 	$135.00	$88.99 	FP	$13.16	https://www.webstaurantstore.com/rational-6019-1150-combifry-12-x-20-french-fry-tray/64560191150.html
         var item8 = new ItemScrapeResultVm("64560191150", "6019.115", "CombiFry 12 x 20 French Fry Tray", "1 DAY", 67.50m, 135.00m, 88.99m, true, 13.16m, "https://www.webstaurantstore.com/rational-6019-1150-combifry-12-x-20-french-fry-tray/64560191150.html");
         /*
-         *1-5 days	$126.00 	Y	$0.00	https://www.culinarydepotinc.com/rational-60191150-combifry-basket
-           6-8 weeks	$88.49 	N	$18.54	https://www.katom.com/703-60191150.html
-            $111.13 	N	$15.00	https://www.ckitchen.com/p/rational-6019-1150-combifry-basket-1.html
-           UP $60	$189.00 	N	$9.99	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-FRY-BASKET--12-X-20/p/RAG6019.1150
-         */
+        *1-5 days	$126.00 	Y	.00	https://www.culinarydepotinc.com/rational-60191150-combifry-basket
+       6-8 weeks	$88.49 	N	$18.54	https://www.katom.com/703-60191150.html
+       $111.13 	N	$15.00	https://www.ckitchen.com/p/rational-6019-1150-combifry-basket-1.html
+       UP $60	$189.00 	N	$9.99	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-FRY-BASKET--12-X-20/p/RAG6019.1150
+        */
         item8.Results.Add(new("1-5 days", 126.00m, true, 0.00m, "https://www.culinarydepotinc.com/rational-60191150-combifry-basket"));
         item8.Results.Add(new("6-8 weeks", 88.49m, false, 18.54m, "https://www.katom.com/703-60191150.html"));
         item8.Results.Add(new("", 111.13m, false, 15.00m, "https://www.ckitchen.com/p/rational-6019-1150-combifry-basket-1.html"));
@@ -352,11 +482,11 @@
         // 64560101101	6010.1101	12" x 20" Stainless Steel Oven Grid / Rack	1-5 days	$26.50 	$53.00	$36.49 	N	$8.93	https://www.webstaurantstore.com/rational-6010-1101-12-x-20-stainless-steel-oven-grid-rack/64560101101.html
         var item9 = new ItemScrapeResultVm("64560101101", "6010.1101", "12 x 20 Stainless Steel Oven Grid / Rack", "1-5 days", 26.50m, 53.00m, 36.49m, false, 8.93m, "https://www.webstaurantstore.com/rational-6010-1101-12-x-20-stainless-steel-oven-grid-rack/64560101101.html");
         /*
-         *1-3 days	$36.49 	N	$13.68	https://www.katom.com/703-60101101.html
-            $43.63 	N	$15.00	https://www.ckitchen.com/p/rational-6010.1101-gastroNrm-grid-shelf-2.html
-           1 DAY	$57.45 	N	$9.99	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-GASTRONRM-GRID-SHELF-SS/p/RAG6010.1101
-            $72.73 	Y	$8.57	https://www.amazon.com/Rational-Cooking-Systems-6010-1101-GRID/dp/B00A3K4NPU/ref=sr_1_1?keywords=6010.1101&qid=1569865847&s=industrial&sr=1-1
-         */
+        *1-3 days	$36.49 	N	$13.68	https://www.katom.com/703-60101101.html
+           $43.63 	N	$15.00	https://www.ckitchen.com/p/rational-6010.1101-gastroNrm-grid-shelf-2.html
+          1 DAY	$57.45 	N	$9.99	https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-GASTRONRM-GRID-SHELF-SS/p/RAG6010.1101
+           $72.73 	Y	$8.57	https://www.amazon.com/Rational-Cooking-Systems-6010-1101-GRID/dp/B00A3K4NPU/ref=sr_1_1?keywords=6010.1101&qid=1569865847&s=industrial&sr=1-1
+        */
         item9.Results.Add(new("1-3 days", 36.49m, false, 13.68m, "https://www.katom.com/703-60101101.html"));
         item9.Results.Add(new("", 43.63m, false, 15.00m, "https://www.ckitchen.com/p/rational-6010.1101-gastroNrm-grid-shelf-2.html"));
         item9.Results.Add(new("1 DAY", 57.45m, false, 9.99m, "https://www.heritageparts.com/Manufacturers/Rational-Cooking-Systems/RATIONAL-GASTRONRM-GRID-SHELF-SS/p/RAG6010.1101"));
@@ -365,11 +495,11 @@
         // 64560141106	6014.1106	Granite Enamel Roasting Pan - 21" x 12" x 2 1/2"	1 DAY	$106.99 	FP	$13.16	https://www.webstaurantstore.com/rational-6014-1106-granite-enamel-roasting-pan-21-x-12-x-2-1-2/64560141106.html
         var item10 = new ItemScrapeResultVm("64560141106", "6014.1106", "Granite Enamel Roasting Pan - 21 x 12 x 2 1/2", "1 DAY", 106.99m, 155.00m, 108.49m, true, 13.16m, "https://www.webstaurantstore.com/rational-6014-1106-granite-enamel-roasting-pan-21-x-12-x-2-1-2/64560141106.html");
         /*
-         *6-8 weeks	$108.49 	N	$15.36	https://www.katom.com/703-60141106.html
-           OOS	$124.12 	N	$9.99	https://www.partstown.com/rational/ratl6014-1106
-            $95.49 	N	$15.00	https://www.ckitchen.com/p/rational-6014.1106-gastroNrm-container-2.html
+        *6-8 weeks	$108.49 	N	$15.36	https://www.katom.com/703-60141106.html
+          OOS	$124.12 	N	$9.99	https://www.partstown.com/rational/ratl6014-1106
+           $95.49 	N	$15.00	https://www.ckitchen.com/p/rational-6014.1106-gastroNrm-container-2.html
 
-         */
+        */
         item10.Results.Add(new("6-8 weeks", 108.49m, false, 15.36m, "https://www.katom.com/703-60141106.html"));
         item10.Results.Add(new("OOS", 124.12m, false, 9.99m, "https://www.partstown.com/rational/ratl6014-1106"));
         item10.Results.Add(new("", 95.49m, false, 15.00m, "https://www.ckitchen.com/p/rational-6014.1106-gastroNrm-container-2.html"));
@@ -385,24 +515,24 @@
 
 
         /*
-         *6456071157	60.71.157	MULTI BAKER PAN 1/1 GN RATIONAL	1 DAY	$86.99 	FP	$20.31	https://www.webstaurantstore.com/rational-60-71-157-multibaker-12-13-16-x-20-7-8-Nn-stick-8-mold-baking-pan/6456071157.html
-                    1-5 days	$138.13 	Y	$0.00	https://www.culinarydepotinc.com/rational-60-71-157-multibaker/
-                    6-8 weeks	$87.50 	N	$15.50	https://www.katom.com/703-6071157.html
-                        $102.90 	N	$11.65	https://www.ckitchen.com/p/rational-60.71.157-multibaker-2.html
-           64560102101	6010.2101	GRID, STAINLESS, RATIONAL	1 DAY	$62.99 	FP	$20.31	https://www.webstaurantstore.com/rational-6010-2101-rack-grid-20-3-4-x-25-1-2/64560102101.html
-                    2-3 weeks	$62.99 	N	$14.03	https://www.katom.com/703-60102101.html
-                    1-5 days	$77.47 	N	$9.84	https://www.culinarydepotinc.com/rational-6010-2101-gastroNrm-grid-shelf/
-                        $72.32 	N	$12.78	https://www.ckitchen.com/p/rational-6010.2101-gastroNrm-grid-shelf-2.html
-           6456073314	60.73.314	DIAMOND GRILL GRATE	1 DAY	$169.99 	FP	$13.16	https://www.webstaurantstore.com/rational-60-73-314-diamond-cross-and-stripe-grill-grate/6456073314.html
-                    1-5 days	$227.23 	Y	$-   	https://www.culinarydepotinc.com/rational-60-73-314-cross-stripe-grill-plate/
-                        $200.86 	Y	$-   	https://www.ckitchen.com/p/rational-60.73.314-cross-stripe-grill-plate-1.html
-                    6-8 weeks	$170.80 	N	$16.22	https://www.katom.com/703-6073314.html
-           64560191250	6019.125	COMBIFRY 12X10 1/2 GN-RATIONAL	1 DAY	$69.99 	FP	$13.16	https://www.webstaurantstore.com/rational-6019-1250-combifry-12-x-10-french-fry-tray/64560191250.html
-                    1-5 days	$94.27 	N	$10.52	https://www.culinarydepotinc.com/rational-6019-125-combifry-basket/
-                    6-8 weeks	$70.70 	N	$14.03	https://www.katom.com/703-60191250.html
-                    2-4 weeks	$81.16 	N	$15.00	https://www.ckitchen.com/p/rational-6019-1250-combifry-basket-1.html
+        *6456071157	60.71.157	MULTI BAKER PAN 1/1 GN RATIONAL	1 DAY	$86.99 	FP	$20.31	https://www.webstaurantstore.com/rational-60-71-157-multibaker-12-13-16-x-20-7-8-Nn-stick-8-mold-baking-pan/6456071157.html
+                   1-5 days	$138.13 	Y	.00	https://www.culinarydepotinc.com/rational-60-71-157-multibaker/
+           6-8 weeks	$87.50 	N	$15.50	https://www.katom.com/703-6071157.html
+                       $102.90 	N	$11.65	https://www.ckitchen.com/p/rational-60.71.157-multibaker-2.html
+          64560102101	6010.2101	GRID, STAINLESS, RATIONAL	1 DAY	$62.99 	FP	$20.31	https://www.webstaurantstore.com/rational-6010-2101-rack-grid-20-3-4-x-25-1-2/64560102101.html
+                   2-3 weeks	$62.99 	N	$14.03	https://www.katom.com/703-60102101.html
+                   1-5 days	$77.47 	N	$9.84	https://www.culinarydepotinc.com/rational-6010-2101-gastroNrm-grid-shelf/
+                       $72.32 	N	$12.78	https://www.ckitchen.com/p/rational-6010.2101-gastroNrm-grid-shelf-2.html
+          6456073314	60.73.314	DIAMOND GRILL GRATE	1 DAY	$169.99 	FP	$13.16	https://www.webstaurantstore.com/rational-60-73-314-diamond-cross-and-stripe-grill-grate/6456073314.html
+                   1-5 days	$227.23 	Y	$-   	https://www.culinarydepotinc.com/rational-60-73-314-cross-stripe-grill-plate/
+                       $200.86 	Y	$-   	https://www.ckitchen.com/p/rational-60.73.314-cross-stripe-grill-plate-1.html
+                   6-8 weeks	$170.80 	N	$16.22	https://www.katom.com/703-6073314.html
+          64560191250	6019.125	COMBIFRY 12X10 1/2 GN-RATIONAL	1 DAY	$69.99 	FP	$13.16	https://www.webstaurantstore.com/rational-6019-1250-combifry-12-x-10-french-fry-tray/64560191250.html
+                   1-5 days	$94.27 	N	$10.52	https://www.culinarydepotinc.com/rational-6019-125-combifry-basket/
+                   6-8 weeks	$70.70 	N	$14.03	https://www.katom.com/703-60191250.html
+                   2-4 weeks	$81.16 	N	$15.00	https://www.ckitchen.com/p/rational-6019-1250-combifry-basket-1.html
 
-         */
+        */
         var item12 = new ItemScrapeResultVm("6456071157", "60.71.157", "MULTI BAKER PAN 1/1 GN RATIONAL", "1 DAY", 86.99m, 125.00m, 138.00m, true, 20.31m, "https://www.webstaurantstore.com/rational-60-71-157-multibaker-12-13-16-x-20-7-8-Nn-stick-8-mold-baking-pan/6456071157.html");
         item12.Results.Add(new("1-5 days", 138.13m, true, 0.00m, "https://www.culinarydepotinc.com/rational-60-71-157-multibaker/"));
         item12.Results.Add(new("6-8 weeks", 87.50m, false, 15.50m, "https://www.katom.com/703-6071157.html"));
@@ -426,5 +556,9 @@
 
         _results.AddRange([item1, item2, item3, item4, item5, item6, item7, item8]);
         _results.AddRange([item9, item10, item11, item12, item13, item14, item15]);
+    }
+    private void SelectCategory(MouseEventArgs e)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -1,14 +1,13 @@
 ﻿@page "/pricing/items"
 @inject IJSRuntime JS;
 
-<PricingNavigationControl/>
+<PricingNavigationControl />
 <PageTitle>Items List</PageTitle>
 
 <style>
     .badge {
         margin-right: .5rem;
         margin-bottom: .2rem;
-        
     }
 </style>
 <style>
@@ -20,99 +19,99 @@
 </style>
 <div class="flex-row">
 
-<div class="flex-column" style="width: 20rem">
-    <!-- Filters -->
-    <div class="card" >
-        <h5>Filters</h5>
-        <div>
-            <div class="">
+    <div class="flex-column" style="width: 20rem">
+        <!-- Filters -->
+        <div class="card">
+            <h5>Filters</h5>
+            <div>
+                <div>
 
+                    <!-- Select Category Level -->
+                    <div class="form-group">
+                        <label>Category Levels</label>
+                        <div></div>
+                        <select>
+                            @foreach (var t in _categoryLevels)
+                            {
+                                <option>@t</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Select Category Name -->
+                    <div class="form-group">
+                        <label>Category Names</label>
+                        <div></div>
+                        <select>
+                            @foreach (var t in _categoryNames)
+                            {
+                                <option>@t</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Add Button -->
+                    <button style="margin-top: -2rem">Add</button>
+
+
+                    <!-- Item Number Filter -->
+                    <div class="form-group" style="margin-top: 1rem">
+                        <label>Item Number</label>
+                        <div></div>
+                        <input @bind=_filter @bind:event="oninput" style="width: 9rem" />
+
+                    </div>
+
+                </div>
+            </div>
+            <h6>Active Filters</h6>
+            <div class="flex-row flex-wrap">
+                <span class="badge bg-secondary">Major Category: Oven Cleaners</span>
+                <span class="badge bg-secondary">IDS Category: Tasty Food </span>
+                <span class="badge bg-secondary">Item Numbers: ABC123, DEF456, GHI789</span>
+
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex-fill card">
+            <h5>Actions</h5>
+
+            <div class="flex-row flex-wrap">
+                <button @onclick=Import> Import</button>
+                <button>Add ItemNumber</button>
+            </div>
+        </div>
+        <!-- Item Groups -->
+        <div class="card">
+            <h5>Item Groups</h5>
+
+            <div>
                 <!-- Select Category Level -->
                 <div class="form-group">
-                    <label>Category Levels</label>
+                    <label>Item Groups</label>
                     <div></div>
                     <select>
-                        @foreach (var t in _categoryLevels)
-                        {
-                            <option>@t</option>
-                        }
+                        <option style="font-weight: bold">My Group 1</option>
+                        <option style="font-weight: bold">My Group 2</option>
+                        <option style="font-weight: bold" disabled=""></option>
+                        <option>Group that I'm not subscribed to 1</option>
+                        <option>Group that I'm not subscribed to 2</option>
+                        <option>Group that I'm not subscribed to 3</option>
+                        <option>Group that I'm not subscribed to 4</option>
+                        <option>Group that I'm not subscribed to 5</option>
                     </select>
                 </div>
-
-                <!-- Select Category Name -->
-                <div class="form-group">
-                    <label>Category Names</label>
-                    <div></div>
-                    <select>
-                        @foreach (var t in _categoryNames)
-                        {
-                            <option>@t</option>
-                        }
-                    </select>
-                </div>
-                
-                <!-- Add Button -->
-                <button style="margin-top: -2rem" >Add</button>
-
-
-                <!-- Item Number Filter -->
-                <div class="form-group" style="margin-top: 1rem" >
-                    <label>Item Number</label>
-                    <div></div>
-                    <input @bind=_filter @bind:event="oninput" style="width: 9rem" />
-
+                <div class="flex-column">
+                    <button>Create Group from current filters</button>
+                    <button>Subscribe to Group</button>
                 </div>
 
             </div>
         </div>
-        <h6>Active Filters</h6>
-        <div class="flex-row flex-wrap">
-            <span class="badge bg-secondary">Major Category: Oven Cleaners</span>
-            <span class="badge bg-secondary">IDS Category: Tasty Food </span>
-            <span class="badge bg-secondary">Item Numbers: ABC123, DEF456, GHI789</span>
-
-        </div>
     </div>
-    
-    <!-- Actions -->
-    <div class="flex-fill card">
-        <h5>Actions</h5>
-        
-        <div class="flex-row flex-wrap">
-            <button @onclick=Import> Import</button>
-            <button>Add ItemNumber</button>
-        </div>
-    </div>
-    <!-- Item Groups -->
-    <div class="card" >
-        <h5>Item Groups</h5>
-        
-        <div >
-        <!-- Select Category Level -->
-        <div class="form-group">
-            <label>Item Groups</label>
-            <div></div>
-            <select>
-                <option style="font-weight: bold">My Group 1</option>
-                <option style="font-weight: bold">My Group 2</option>
-                <option style="font-weight: bold" disabled=""></option>
-                <option>Group that I'm not subscribed to 1</option>
-                <option>Group that I'm not subscribed to 2</option>
-                <option>Group that I'm not subscribed to 3</option>
-                <option>Group that I'm not subscribed to 4</option>
-                <option>Group that I'm not subscribed to 5</option>
-            </select>
-        </div>
-        <div class="flex-column">
-            <button>Create Group from current filters</button>
-            <button>Subscribe to Group</button>
-        </div>
 
-         </div>
-    </div>
-</div>
-
-<!-- Table of ScrapingConfigurations -->
+    <!-- Table of ScrapingConfigurations -->
     <div>
         <table class="table table-hover" id="ttt">
             <thead>
@@ -146,21 +145,21 @@
                         <td>@configuration.CategoryCode</td>
                         <td>@configuration.IdsDescription</td>
                         <td>@configuration.Urls.Count</td>
-                        <td><a href="/configure/@configuration.Id">Configure</a> </td>
+                        <td><a href="pricing/configure/@configuration.Id">Configure</a> </td>
                     </tr>
                 }
             </tbody>
         </table>
-         <h5 class="text-success">List View</h5>
+        <h5 class="text-success">List View</h5>
         <p>A place to see all Item Numbers. There is expected to be over a hundred thousand eventually, so the data displayed here should be fairly limited.</p>
         <p>This will allow users to </p>
         <ul>
-        <li>Enable users to Filter by ItemNumber, Category, other?</li>
-        <li>Modify ItemGroups</li>
-        <li>Link to the configuration pages for each item Number</li>
-        </ul> 
+            <li>Enable users to Filter by ItemNumber, Category, other?</li>
+            <li>Modify ItemGroups</li>
+            <li>Link to the configuration pages for each item Number</li>
+        </ul>
 
-</div>
+    </div>
 
 
 </div>
@@ -168,7 +167,7 @@
 
 @code {
 
-    List<string> _categoryLevels = ["Major Category", "Ids Category","Business Segment", "Product Type", "Family", "Segment"];
+    List<string> _categoryLevels = ["Major Category", "Ids Category", "Business Segment", "Product Type", "Family", "Segment"];
     List<string> _categoryNames = ["VERTICAL BROILERS", "STORAGE CONTAINERS", "CHEST FREEZERS", "COUNTERTOP HOOD REQUIRED", "INDUCTION EQUIPMENT", "RANGES"];
 
     string _filter = "";
@@ -235,14 +234,14 @@
 
             // Check if the item is already in the list
             var configuration = FakePriceScrapingApp.ItemConfigurations.FirstOrDefault(x => x.Id == columns[0]);
-            
+
             // If the configuration is null, add a new one
             if (configuration == null)
             {
                 configuration = new ItemConfiguration
-                {
-                    Id = columns[0],
-                };
+                    {
+                        Id = columns[0],
+                    };
                 FakePriceScrapingApp.ItemConfigurations.Add(configuration);
             }
 
