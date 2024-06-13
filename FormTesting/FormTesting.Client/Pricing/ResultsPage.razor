@@ -222,7 +222,13 @@ else
                                     <i class="fa-sharp fa-light fa-check" style="color: grey"></i>
                                 }
                             </td>
-                            <td>$@z.ShippingCost</td>
+                            <td>
+                                @if(z.FreeShipping && z.ShippingCost == 0) { }
+                                else
+                                {
+                                     @($"${z.ShippingCost}")
+                                }
+                            </td>
                             <td class="flex-row">
 
                                 <!-- Comp lower price -->

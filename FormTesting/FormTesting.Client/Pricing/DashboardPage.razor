@@ -11,13 +11,13 @@
 </style>
 @foreach (var category in _categorySubscriptions)
 {
-    <a class="btn btna @(category.HasAlert ? "btn-danger" : "btn-secondary") " href="/pricing/results/@category">@category.Name</a>
+    <a class="btn btna @(category.HasAlert ? "btn-danger" : "btn-secondary") " href="/pricing/results/@category.Name">@category.Name</a>
 }
 
 <h5 style="margin-top: 2rem">Vendor Subscriptions</h5>
 @foreach (var vendor in _vendorSubscriptions)
 {
-    <a class="btn btna @(vendor.HasAlert ? "btn-danger" : "btn-secondary") " href="/pricing/results/@vendor">@vendor.Name</a>
+    <a class="btn btna @(vendor.HasAlert ? "btn-danger" : "btn-secondary") " href="/pricing/results/@vendor.Name">@vendor.Name</a>
 }
 
 @code {
