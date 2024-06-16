@@ -1,19 +1,25 @@
-﻿@page "/home"
+﻿@page "/"
 @using System.ComponentModel
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
 @using FormTesting.Client.BasicEditors
 @using DisplayNameAttribute = FormTesting.Client.BasicEditors.DisplayNameAttribute
+@using FormTesting.Client.Pricing
 
 
 <h1>Starfleet Starship Database</h1>
 
 <h2>New Ship Entry Form</h2>
 
+<PricingNavigationControl />
 
 
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="Starship3">
     <DataAnnotationsValidator />
+    
+    <SelectEnum Type=typeof(AnimalType) @bind-Value=@Model!.Animal  Field=@(() => Model.Animal)  />
+
+@* 
     <div class="flex-row flex-wrap">
         <TextEditor Css="w300" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
         <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
@@ -55,7 +61,7 @@
                 }
             </InputSelect>
         </label>
-    </div>
+    </div> *@
 </EditForm>
 
 
@@ -76,12 +82,15 @@
 
     protected override void OnInitialized()
     {
-        Model ??= new() { ProductionDate = DateTime.UtcNow };
+        Model ??= new()
+        {
+            //ProductionDate = DateTime.UtcNow 
+
+        };
         
         // Get the DisplayName of Starship.Id
-        var x = GetName<Starship>(nameof(Model.Id));
+        //var x = GetName<Starship>(nameof(Model.Id));
     }
-
     string GetName<T>(string propertyName)
     {
         PropertyInfo? propInfo = typeof(T).GetProperty(propertyName);
@@ -95,48 +104,62 @@
         }
         return propertyName;
     }
-
-    private void Submit()
+    void Submit()
     {
-        Console.WriteLine("Id = {Id} Description = {Description} " +
-                              "Classification = {Classification} MaximumAccommodation = " +
-                              "{MaximumAccommodation} IsValidatedDesign = " +
-                              "{IsValidatedDesign} ProductionDate = {ProductionDate}",
-            Model?.Id, Model?.Description, Model?.Classification,
-            Model?.IntNumber, Model?.IsValidatedDesign,
-            Model?.ProductionDate);
+        // Console.WriteLine("Id = {Id} Description = {Description} " +
+        //                       "Classification = {Classification} MaximumAccommodation = " +
+        //                       "{MaximumAccommodation} IsValidatedDesign = " +
+        //                       "{IsValidatedDesign} ProductionDate = {ProductionDate}",
+        //     Model?.Id, Model?.Description, Model?.Classification,
+        //     Model?.IntNumber, Model?.IsValidatedDesign,
+        //     Model?.ProductionDate);
     }
     public class Starship
     {
-        [Required]
-        [DisplayName("DisplayName, Max=16, Min=3, Required")]
-        [StringLength(16)]
-        [MinLength(3)]
-        //[Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
-        public string Id { get; set; } = "";
+        [DisplayName("Abacabb")]
+        public AnimalType Animal { get; set; } 
 
-        public string UsersFavoriteColor { get; set; } = string.Empty;
+        // [Required]
+        // [DisplayName("DisplayName, Max=16, Min=3, Required")]
+        // [StringLength(16)]
+        // [MinLength(3)]
+        // //[Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
+        // public string Id { get; set; } = "";
 
-        [Required]
-        public string Description { get; set; } = string.Empty;
+        // public string UsersFavoriteColor { get; set; } = string.Empty;
 
-        [Required]
-        public string? Classification { get; set; }
+        // [Required]
+        // public string Description { get; set; } = string.Empty;
 
-        [Range(1, 100000, ErrorMessage = "Accommodation invalid (1-100000).")]
-        public int IntNumber { get; set; }
+        // [Required]
+        // public string? Classification { get; set; }
 
-        [Required]
-        public double? DoubleNumberMin5 { get; set; }
+        // [Range(1, 100000, ErrorMessage = "Accommodation invalid (1-100000).")]
+        // public int IntNumber { get; set; }
 
-        [Required]
-        [DisplayName("Engineering Approval")]
-        [Range(typeof(bool), "true", "true", ErrorMessage = "Approval required.")]
-        public bool IsValidatedDesign { get; set; }
+        // [Required]
+        // public double? DoubleNumberMin5 { get; set; }
+
+        // [Required]
+        // [DisplayName("Engineering Approval")]
+        // [Range(typeof(bool), "true", "true", ErrorMessage = "Approval required.")]
+        // public bool IsValidatedDesign { get; set; }
 
         
-        [Required] public DateTime? ProductionDate { get; set; } = DateTime.UtcNow;
+        // [Required] public DateTime? ProductionDate { get; set; } = DateTime.UtcNow;
     }
 
+    public enum AnimalType
+    {
+        Cat = 4,
 
+        [DisplayName("Puppy Dog")]
+        Dog = 1,
+
+        [DisplayName("Tweety Bird")]
+        Bird = 2,
+
+        [DisplayName("Gold Fish")]
+        Fish = 3
+    }
 }

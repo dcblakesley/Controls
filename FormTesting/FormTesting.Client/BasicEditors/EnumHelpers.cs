@@ -58,6 +58,15 @@ public static class EnumHelpers
         {
             return attributes.First().Value;
         }
+
+        var text = value.ToString();
+        if (text != null)
+        {
+            // split by camel case
+            text = string.Concat(text.Select(x => char.IsUpper(x) ? " " + x : x.ToString())).TrimStart(' ');
+            return text;
+        }
+
         return "";
     }
     public static string? GetToolTip(object value)
