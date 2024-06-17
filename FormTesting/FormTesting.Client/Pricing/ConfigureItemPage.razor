@@ -18,9 +18,9 @@ else
         
         <!-- Basic Info -->
         <div class="flex-row">
-            <TextEditor Css="w300" @bind-Value="_configuration!.Id" Field=@(() => _configuration.Id) IsEditMode=false />
-            <TextEditor Css="w800" @bind-Value="_configuration!.IdsDescription" Field=@(() => _configuration.IdsDescription) IsEditMode=false />
-            <TextEditor Css="w200" @bind-Value="_configuration!.CategoryCode" Field=@(() => _configuration.CategoryCode) IsEditMode=false />
+            <EditString Css="w300" @bind-Value="_configuration!.Id" Field=@(() => _configuration.Id) IsEditMode=false />
+            <EditString Css="w800" @bind-Value="_configuration!.IdsDescription" Field=@(() => _configuration.IdsDescription) IsEditMode=false />
+            <EditString Css="w200" @bind-Value="_configuration!.CategoryCode" Field=@(() => _configuration.CategoryCode) IsEditMode=false />
             
             
             <!-- Select Category Level -->

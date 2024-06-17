@@ -17,9 +17,11 @@
 <EditForm Model="Model" OnValidSubmit="Submit" FormName="Starship3">
     <DataAnnotationsValidator />
     
-    <SelectEnum Type=typeof(AnimalType) @bind-Value=@Model!.Animal  Field=@(() => Model.Animal)  />
+    <EditSelectIntId Options=Model!.People />    
+    @*  
+    <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@Model!.Animal  Field=@(() => Model.Animal)  />
 
-@* 
+
     <div class="flex-row flex-wrap">
         <TextEditor Css="w300" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
         <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
@@ -80,6 +82,7 @@
     [SupplyParameterFromForm]
     private Starship? Model { get; set; }
 
+
     protected override void OnInitialized()
     {
         Model ??= new()
@@ -116,8 +119,12 @@
     }
     public class Starship
     {
-        [DisplayName("Abacabb")]
-        public AnimalType Animal { get; set; } 
+        
+        public Person SelectedPerson { get; set; }
+        public List<IIntIdAndName> People { get; set; } = [new Person(1, "Ted"), new Person(2, "Bill"), new Person(3, "Sue")];
+
+        // [DisplayName("Abacabb")]
+        // public AnimalType Animal { get; set; } 
 
         // [Required]
         // [DisplayName("DisplayName, Max=16, Min=3, Required")]
@@ -151,7 +158,7 @@
 
     public enum AnimalType
     {
-        Cat = 4,
+        Cat = 0,
 
         [DisplayName("Puppy Dog")]
         Dog = 1,
@@ -161,5 +168,26 @@
 
         [DisplayName("Gold Fish")]
         Fish = 3
+    }
+
+    public class Person : IIntIdAndName
+    {
+        // Constructors
+        public Person() { }
+        public Person(int id, string name)
+        {
+            Id = id;
+            Name = name;
+        }
+
+        public int Id { get; set; }
+        public string? Name { get; set; }
+
+    }
+
+    public interface IIntIdAndName
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
     }
 }

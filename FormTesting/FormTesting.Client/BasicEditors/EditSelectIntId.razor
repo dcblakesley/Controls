@@ -1,29 +1,32 @@
 ﻿@using System.Linq.Expressions
-@typeparam T
+@using FormTesting.Client.Pages
+
 
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
 
     <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select">
-
-        @foreach (var x in Enum.GetValues(Type))
+        @foreach (var x in Options)
         {
-            <option title=@EnumHelpers.GetToolTip(x) value=@x>@x.GetName()</option>
+            <option value=@x>@x.Name</option>
         }
     </select> 
+
     <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
     [Parameter] public string? Id { get; set; }
-    [Parameter] public required Expression<Func<T>> Field { get; set; }
+    [Parameter] public Expression<Func<int>> Field { get; set; }
     
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public Type Type { get; set; }
-    [Parameter] public T Value { get; set; }
-    [Parameter] public EventCallback<T> ValueChanged { get; set; }
+    [Parameter] public int Value { get; set; }
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
 
     [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    [Parameter] public List<Home.IIntIdAndName> Options { get; set; }
     
     bool _isRequired;
     string _id = string.Empty;
@@ -43,5 +46,5 @@
         _description = AttributesHelper.GetDescription(_attributes);
         _isRequired = AttributesHelper.GetIsRequired(_attributes);
     }
-    async Task SetAsync(T value) => await ValueChanged.InvokeAsync(value);
+    async Task SetAsync(int value) => await ValueChanged.InvokeAsync(value);
 }
