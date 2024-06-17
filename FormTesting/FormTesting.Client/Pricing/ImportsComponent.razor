@@ -1,4 +1,6 @@
 ﻿@page "/pricing/imports"
+@using System.Text.Json
+@using System.Text.Json.Serialization
 
 <PricingNavigationControl />
 <PageTitle>Pricing Imports</PageTitle>
@@ -6,64 +8,95 @@
 <h3>ImportsPage</h3>
 <p>Paste in rows of ItemNumber and URL pairs, the data is expected to be copied from Excel and use tab separation</p>
 
+<style>
+    td { padding-right: 1rem; }
+    th { padding-right: 1rem; }
+</style>
+
 @switch (_importStatus)
 {
     case ImportStatus.NotStarted:
         <textarea @bind=_importData @bind:event="oninput" rows="10" style="width: 100%"></textarea>
-        <button class="btn btn-primary" @onclick=Import>Submit</button>
+        <button class="btn btn-primary" @onclick=Import>Validate</button>
         break;
 
     case ImportStatus.LocalValidationFailed:
         <h5 class="text-danger">Local Validation Failed</h5>
 
-<style>
-    td {
-        padding: 0 15px;
-            }
-
-            th {
-                padding: 0 15px;
-            }
-</style>
         <!-- Display the problems -->
         <table>
             <thead>
-            <th>Line #</th>
-            <th>Issue</th>
-            <th>Text</th>
+                <th>Line #</th>
+                <th>Issue</th>
+                <th>Text</th>
             </thead>
-        <tbody>
-        @foreach (var problem in _importProblems)
-        {
-            <tr>
-                <td>@problem.Line</td>
-                <td>@problem.Issue</td>
-                <td>@problem.Text</td>
-            </tr>
-        }
-        </tbody>
+            <tbody>
+                @foreach (var problem in _importProblems)
+                {
+                    <tr>
+                        <td>@problem.Line</td>
+                        <td>@problem.Issue</td>
+                        <td>@problem.Text</td>
+                    </tr>
+                }
+            </tbody>
         </table>
 
         break;
 
-    case ImportStatus.Complete:
-@*         <table>
+    case ImportStatus.Prepared:
+        <!-- Display the prep results -->
+        <h5>Local validation summary</h5>
+        <table>
             <thead>
             <th>Item Number</th>
-            <th>MAP</th>
-            <th>URLs</th>
+            <th>URLS</th>
+            <th>Is Map</th>
             </thead>
             <tbody>
             @foreach (var item in _importRequest.Items)
             {
                 <tr>
                     <td>@item.ItemNumber</td>
-                    <td>@item.IsMap</td>
-                    <td>@item.Urls.Count</td>
+                        <td style="padding-left: 1rem">@item.Urls.Count</td>
+                    <td>
+                        @if(item.IsMap)
+                        {
+                            <i style="padding-left: 1rem" class="fa-solid fa-check"></i>
+                        }
+                    </td>
                 </tr>
             }
             </tbody>
-        </table> *@
+        </table>
+        <button class="btn btn-primary" @onclick=ProcessImport>Process Import</button>
+        break;
+        case ImportStatus.Complete:
+        <h5>Import Results</h5>
+        <table>
+            <thead>
+            <th>Item Number</th>
+            <th>URLS</th>
+            <th>Is Map</th>
+            <td>Configure</td>
+            </thead>
+            <tbody>
+            @foreach (var item in _importRequest.Items)
+            {
+                <tr>
+                    <td>@item.ItemNumber</td>
+                    <td style="padding-left: 1rem">@item.Urls.Count</td>
+                    <td>
+                        @if(item.IsMap)
+                        {
+                            <i style="padding-left: 1rem" class="fa-solid fa-check"></i>
+                        }
+                    </td>
+                        <td><a target="_blank" href="pricing/configure/950AGM36Laa"><i class="fa-light fa-gear"></i></a> </td>
+                </tr>
+            }
+            </tbody>
+        </table>
         break;
     default:
         <h2>Unexpected Status</h2>
@@ -73,10 +106,8 @@
 
 @code {
     string _importData = "";
-    bool _isImporting;
-    bool _hasInvalidInputData;
-    ImportRequest _importRequest = new();
-    List<LocalImportIssue> _importProblems = [];
+    readonly ImportRequest _importRequest = new();
+    readonly List<LocalImportIssue> _importProblems = [];
     ImportStatus _importStatus = ImportStatus.NotStarted;
 
     protected override void OnInitialized()
@@ -86,14 +117,14 @@
 
     void Import()
     {
-        _isImporting = true;
         var data = _importData.Split("\n").Select(x => x.Split("\t")).ToList();
         //await JS.InvokeVoidAsync("console.log", data);
 
-        List<ImportItemRow> importRows = new();
+        List<ImportItemRow> importRows = [];
         _importProblems.Clear();
+        _importRequest.Items.Clear();
         
-        // Convert input text to ImportItem objects
+        // Convert input text to importRows
         var lineCount = 0;
         foreach (var row in data.Where(x=>x != null && x.Any()))
         {
@@ -123,7 +154,7 @@
 
                     if(row.Length >1)
                     {
-                        url = row[1];
+                        url = itemNumber;
                     }
                     if(row.Length == 3)
                     {
@@ -150,21 +181,48 @@
         }
 
         // Data format is valid, attempt import
-        //_importRequest.Items = importRows;
 
+        // Convert ImportRows to ImportItems
+        foreach (var importRow in importRows.Where(x=> !string.IsNullOrWhiteSpace(x.ItemNumber)))
+        {
+            var existingItem = _importRequest.Items.FirstOrDefault(x => x.ItemNumber == importRow.ItemNumber);
+            if (existingItem == null)
+            {
+                existingItem = new()
+                {
+                    ItemNumber = importRow.ItemNumber,
+                    IsMap = importRow.IsMap
+                };
+                _importRequest.Items.Add(existingItem);
+            }
 
+            // If any of the rows are marked as a map, the item is a map
+            if (importRow.IsMap)
+            {
+                existingItem.IsMap = true;
+            }
+
+            if (importRow.Url != null) 
+                existingItem.Urls.Add(importRow.Url);
+        }
+        _importStatus = ImportStatus.Prepared;
 
     }
 
     async Task ProcessImport()
     {
-        var httpClient = new HttpClient();
-        var response = httpClient.PostAsJsonAsync("https://localhost:5001/api/imports", _importRequest);
+        _importStatus = ImportStatus.Complete;
+        //var httpClient = new HttpClient();
 
-        foreach (var importRequestItem in _importRequest.Items)
-        {
-            
-        }
+        // var request = new GetItemDetailsFromContentRequest
+        // {
+        //     ItemNumbers = _importRequest.Items.Select(x => x.ItemNumber).ToList()
+        // };
+        // var address = "https://catalog.dev.webstaurantstore.com/wss/products?nocache=false&enqueueCacheUpdate=false";
+        // var response = await httpClient.PostAsJsonAsync(address, request);
+        // var content = await response.Content.ReadAsStringAsync();
+        // var itemDetails = JsonSerializer.Deserialize<GetItemDetailsFromContentResponse>(content);
+        // var x = itemDetails;
     }
 
     public string GetDomainFromUrl(string url)
@@ -213,11 +271,23 @@
     {
         NotStarted,
         LocalValidationFailed,
+        Prepared,
         Complete
     }
 
     public class GetItemDetailsFromContentRequest
     {
-        public List<string> ItemNumbers { get; set; } = [];
+        public List<string?> ItemNumbers { get; set; } = [];
     }
+    public class GetItemDetailsFromContentResponse
+    {
+        public List<ImportItem> Items { get; set; } = [];
+    }
+    
+    public class ContentItemDetails
+    {
+        [JsonPropertyName("description")]
+        public string? Description { get; set; }
+    }
+
 }
