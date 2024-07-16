@@ -1,10 +1,19 @@
-﻿@using System.Linq.Expressions
+﻿@using Microsoft.AspNetCore.Components.Forms
 @inherits InputCheckbox
 
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
+    
+    @if (IsEditMode)
+    {
+        <input type="checkbox"  id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
 
-    <input type="checkbox" id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+    }
+    else
+    {
+        <input type="checkbox" disabled id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+
+    }
 
     <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
@@ -14,6 +23,7 @@
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
+    [Parameter] public bool IsEditMode { get; set; }
 
     bool _isRequired;
     string _id = string.Empty;

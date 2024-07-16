@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormTesting", "FormTesting\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormTesting.Client", "FormTesting\FormTesting.Client\FormTesting.Client.csproj", "{ED2E590F-74DF-47BE-BFEB-834DB1112378}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Controls", "Controls\Controls.csproj", "{1B2E5AAD-EDAA-4142-8918-68DBCA67FDB8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{ED2E590F-74DF-47BE-BFEB-834DB1112378}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ED2E590F-74DF-47BE-BFEB-834DB1112378}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ED2E590F-74DF-47BE-BFEB-834DB1112378}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1B2E5AAD-EDAA-4142-8918-68DBCA67FDB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1B2E5AAD-EDAA-4142-8918-68DBCA67FDB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1B2E5AAD-EDAA-4142-8918-68DBCA67FDB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1B2E5AAD-EDAA-4142-8918-68DBCA67FDB8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

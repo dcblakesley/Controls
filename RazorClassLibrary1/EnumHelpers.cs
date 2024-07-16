@@ -1,11 +1,12 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using System.Reflection;
+using Microsoft.AspNetCore.Components.Forms;
+
 // ReSharper disable UsePatternMatching
 
-namespace FormTesting.Client.BasicEditors;
+namespace RazorClassLibrary1;
 
 public static class EnumHelpers
 {
@@ -92,7 +93,6 @@ public class DisplayNameAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;
 }
-
 public static class AttributesHelper
 {
     public static MemberInfo GetExpressionMember<T>(Expression<Func<T>> accessor)
@@ -152,6 +152,11 @@ public static class AttributesHelper
     {
         var descriptionAttribute = attrs.OfType<DescriptionAttribute>().FirstOrDefault();
         return descriptionAttribute?.Description;
+    }
+    public static string? GetToolTip(List<Attribute> attrs)
+    {
+        var descriptionAttribute = attrs.OfType<ToolTipAttribute>().FirstOrDefault();
+        return descriptionAttribute?.Value;
     }
 
     public static bool GetIsRequired(List<Attribute> attrs)

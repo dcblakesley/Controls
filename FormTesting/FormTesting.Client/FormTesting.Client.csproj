@@ -25,4 +25,8 @@
     <_ContentIncludedByDefault Remove="Pages\PriceTracker.razor" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\Controls\Controls.csproj" />
+  </ItemGroup>
+
 </Project>

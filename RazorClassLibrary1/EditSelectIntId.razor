@@ -1,7 +1,5 @@
 ﻿@using System.Linq.Expressions
-@using FormTesting.Client.Pages
-
-
+@using ProcurementHub.Client.Pages
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
 
@@ -26,7 +24,7 @@
 
     [CascadingParameter] private EditContext? EditContext { get; set; }
 
-    [Parameter] public List<Home.IIntIdAndName> Options { get; set; }
+    [Parameter] public List<ControlsDemoPage.IIntIdAndName> Options { get; set; }
     
     bool _isRequired;
     string _id = string.Empty;

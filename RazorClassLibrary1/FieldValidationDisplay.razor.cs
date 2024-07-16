@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
-namespace FormTesting.Client.BasicEditors;
+namespace RazorClassLibrary1;
 
 // Default validation messages
 

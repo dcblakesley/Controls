@@ -1,16 +1,24 @@
 ﻿@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
 @inherits InputTextArea
 
 <div class="form-group">
     <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
-
-    <textarea @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css ></textarea>
+    
+    @if(IsEditMode)
+    {
+        <textarea @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css ></textarea>
+    }
+    else{
+        <div class="form-text">@Value</div>
+    }
     
     <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
     [Parameter] public string? Id { get; set; }
+    [Parameter] public bool IsEditMode { get; set; }
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
 

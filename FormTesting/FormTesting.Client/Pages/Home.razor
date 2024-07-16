@@ -2,25 +2,27 @@
 @using System.ComponentModel
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
-@using FormTesting.Client.BasicEditors
-@using DisplayNameAttribute = FormTesting.Client.BasicEditors.DisplayNameAttribute
-@using FormTesting.Client.Pricing
-
+@using Controls
 
 <h1>Starfleet Starship Database</h1>
 
 <h2>New Ship Entry Form</h2>
 
-<PricingNavigationControl />
 
 
-<EditForm Model="Model" OnValidSubmit="Submit" FormName="Starship3">
+<EditForm Model=@Model OnValidSubmit="Submit" FormName="Starship3">
     <DataAnnotationsValidator />
     
-    <EditSelectIntId Options=Model!.People />    
-    @*  
+    
     <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@Model!.Animal  Field=@(() => Model.Animal)  />
+    
+    <EditNumber @bind-Value="Model!.IntNumber" Field=@(() => Model!.IntNumber) />
+    <EditNumber @bind-Value="Model!.DoubleNumberMin5"  Field=@(() => Model!.DoubleNumberMin5) />
+    <EditBool   @bind-Value="Model!.IsValidatedDesign" Field=@(() => Model!.IsValidatedDesign) /> 
 
+    @* 
+    <EditSelectIntId Options=Model!.People />    
+  
 
     <div class="flex-row flex-wrap">
         <TextEditor Css="w300" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
@@ -29,9 +31,6 @@
 
     </div>
 
-    <NumberEditor @bind-Value="Model!.IntNumber" Field=@(() => Model!.IntNumber) />
-    <NumberEditor @bind-Value="Model!.DoubleNumberMin5"  Field=@(() => Model!.DoubleNumberMin5) />
-    <BoolEditor   @bind-Value="Model!.IsValidatedDesign" Field=@(() => Model!.IsValidatedDesign) />
     <DateEditor   @bind-Value="Model!.ProductionDate" Field=@(() => Model!.ProductionDate) Type="InputDateType.Month"/>
     <div>
         <label>
@@ -85,11 +84,11 @@
 
     protected override void OnInitialized()
     {
-        Model ??= new()
-        {
-            //ProductionDate = DateTime.UtcNow 
+         Model ??= new()
+         {
+             //ProductionDate = DateTime.UtcNow 
 
-        };
+         };
         
         // Get the DisplayName of Starship.Id
         //var x = GetName<Starship>(nameof(Model.Id));
@@ -102,7 +101,7 @@
             var displayNameAttribute = propInfo.GetCustomAttribute<DisplayNameAttribute>();
             if (displayNameAttribute != null)
             {
-                return displayNameAttribute.Value;
+                return displayNameAttribute.DisplayName;
             }
         }
         return propertyName;
@@ -123,50 +122,50 @@
         public Person SelectedPerson { get; set; }
         public List<IIntIdAndName> People { get; set; } = [new Person(1, "Ted"), new Person(2, "Bill"), new Person(3, "Sue")];
 
-        // [DisplayName("Abacabb")]
-        // public AnimalType Animal { get; set; } 
+        [DisplayName("Abacabb")]
+        public AnimalType Animal { get; set; } 
 
-        // [Required]
-        // [DisplayName("DisplayName, Max=16, Min=3, Required")]
-        // [StringLength(16)]
-        // [MinLength(3)]
-        // //[Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
-        // public string Id { get; set; } = "";
+        [Required]
+        [DisplayName("DisplayName, Max=16, Min=3, Required")]
+        [StringLength(16)]
+        [MinLength(3)]
+        //[Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
+        public string Id { get; set; } = "";
 
-        // public string UsersFavoriteColor { get; set; } = string.Empty;
+        public string UsersFavoriteColor { get; set; } = string.Empty;
 
-        // [Required]
-        // public string Description { get; set; } = string.Empty;
+        [Required]
+        public string Description { get; set; } = string.Empty;
 
-        // [Required]
-        // public string? Classification { get; set; }
+        [Required]
+        public string? Classification { get; set; }
 
-        // [Range(1, 100000, ErrorMessage = "Accommodation invalid (1-100000).")]
-        // public int IntNumber { get; set; }
+        [Range(1, 100000, ErrorMessage = "Accommodation invalid (1-100000).")]
+        public int IntNumber { get; set; }
 
-        // [Required]
-        // public double? DoubleNumberMin5 { get; set; }
+        [Required]
+        public double? DoubleNumberMin5 { get; set; }
 
-        // [Required]
-        // [DisplayName("Engineering Approval")]
-        // [Range(typeof(bool), "true", "true", ErrorMessage = "Approval required.")]
-        // public bool IsValidatedDesign { get; set; }
+        [Required]
+        [DisplayName("Engineering Approval")]
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Approval required.")]
+        public bool IsValidatedDesign { get; set; }
 
         
-        // [Required] public DateTime? ProductionDate { get; set; } = DateTime.UtcNow;
+        [Required] public DateTime? ProductionDate { get; set; } = DateTime.UtcNow;
     }
 
     public enum AnimalType
     {
         Cat = 0,
 
-        [DisplayName("Puppy Dog")]
+        [EnumDisplayName("Puppy Dog")]
         Dog = 1,
 
-        [DisplayName("Tweety Bird")]
+        [EnumDisplayName("Tweety Bird")]
         Bird = 2,
 
-        [DisplayName("Gold Fish")]
+        [EnumDisplayName("Gold Fish")]
         Fish = 3
     }
 

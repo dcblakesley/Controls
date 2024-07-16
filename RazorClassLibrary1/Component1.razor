@@ -1,0 +1,12 @@
+﻿<div class="my-component">
+    This component is defined in the <strong>RazorClassLibrary1</strong> library.
+    <div>@_count</div>
+        <button class="btn btn-primary" @onclick=@(() => _count++)>Increment</button>
+
+</div>
+
+@code{
+
+    int _count = 33;
+
+}
