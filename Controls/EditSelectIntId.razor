@@ -1,7 +1,7 @@
 ﻿@using System.Linq.Expressions
 @using Microsoft.AspNetCore.Components.Forms
 <div class="form-group">
-    <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
+    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
 
     <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select">
         @foreach (var x in Options)
@@ -10,7 +10,7 @@
         }
     </select> 
 
-    <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
@@ -22,7 +22,7 @@
     [Parameter] public int Value { get; set; }
     [Parameter] public EventCallback<int> ValueChanged { get; set; }
 
-    [CascadingParameter] private EditContext? EditContext { get; set; }
+    [CascadingParameter] EditContext? EditContext { get; set; }
 
     [Parameter] public List<IIntIdAndName> Options { get; set; }
     
@@ -39,10 +39,7 @@
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
-        _id = AttributesHelper.GetId(Id, _name);
-        _description = AttributesHelper.GetDescription(_attributes);
-        _isRequired = AttributesHelper.GetIsRequired(_attributes);
+        _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
     async Task SetAsync(int value) => await ValueChanged.InvokeAsync(value);
 

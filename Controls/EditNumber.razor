@@ -4,8 +4,8 @@
 @typeparam T
 
 <div class="form-group">
-    <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description ToolTip=@_toolTip />
-    @if(IsEditMode)
+    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+    @if (IsEditMode)
     {    
         <input type="number" id=@Id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" />
     }
@@ -15,7 +15,7 @@
     }
 
 
-    <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
@@ -25,12 +25,8 @@
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public decimal Step { get; set; }
 
-    bool _isRequired;
     string _id = string.Empty;
-    string _name = string.Empty;
-    string? _description;
-    string? _toolTip;
-    List<Attribute> _attributes;
+    List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
     // Get validation messages for FieldName
@@ -38,10 +34,6 @@
     {
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
-        _toolTip = AttributesHelper.GetToolTip(_attributes);
-        _id = AttributesHelper.GetId(Id, _name);
-        _description = AttributesHelper.GetDescription(_attributes);
-        _isRequired = AttributesHelper.GetIsRequired(_attributes);
+        _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
 }

@@ -6,56 +6,15 @@ namespace Controls;
 
 public static class EnumHelpers
 {
-    public static string GetEnumDescription(this Enum value)
-    {
-        var type = value.GetType();
-        var name = Enum.GetName(type, value)!;
-
-        var field = type.GetField(name);
-        if (field != null)
-        {
-            var attr = Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute)) as DescriptionAttribute;
-            if (attr != null)
-                return attr.Description;
-
-        }
-        return "";
-    }
-    public static string? GetDescription(object value)
-    {
-        var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
-
-        var attributes = fi!.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
-
-        if (attributes != null && attributes.Any())
-        {
-            return attributes.First().Description;
-        }
-
-        return value.ToString();
-    }
-    public static string GetDisplayName(object value)
-    {
-        var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
-
-        var attributes = fi?.GetCustomAttributes(typeof(DisplayNameAttribute), false) as DisplayNameAttribute[];
-
-        if (attributes != null && attributes.Any())
-        {
-            return attributes.First().DisplayName;
-        }
-
-        return "";
-    }
     public static string GetName(this object value)
     {
         var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
-        var attributes = fi?.GetCustomAttributes(typeof(DisplayNameAttribute), false) as DisplayNameAttribute[];
+        var attributes = fi?.GetCustomAttributes(typeof(EnumDisplayNameAttribute), false) as EnumDisplayNameAttribute[];
         if (attributes != null && attributes.Any())
         {
-            return attributes.First().DisplayName;
+            return attributes.First().Value;
         }
-
+        
         var text = value.ToString();
         if (text != null)
         {
@@ -66,28 +25,15 @@ public static class EnumHelpers
 
         return "";
     }
-    public static string? GetToolTip(object value)
-    {
-        var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
-
-        var attributes = fi?.GetCustomAttributes(typeof(ToolTipAttribute), false) as ToolTipAttribute[];
-
-        if (attributes != null && attributes.Any())
-        {
-            return attributes.First().Value;
-        }
-
-        return null;
-    }
 }
 
 public class ToolTipAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;
 }
-public class DisplayNameAttribute(string value) : Attribute
+public class EnumDisplayNameAttribute(string value) : Attribute
 {
-    public string DisplayName { get; protected set; } = value;
+    public string Value { get; protected set; } = value;
 }
 public static class AttributesHelper
 {
@@ -111,55 +57,17 @@ public static class AttributesHelper
         return memberExpression.Member;
     }
 
-    public static List<Attribute> GetExpressionCustomAttributes<T>(Expression<Func<T>> accessor)
-    {
-        return GetExpressionMember(accessor).GetCustomAttributes().ToList();
-    }
+    public static List<Attribute> GetExpressionCustomAttributes<T>(Expression<Func<T>> accessor) => GetExpressionMember(accessor).GetCustomAttributes().ToList();
 
-    public static IEnumerable<TAttribute> GetExpressionCustomAttributes<T, TAttribute>(Expression<Func<T>> accessor, bool inherit = false)
-        where TAttribute : Attribute
-    {
-        return GetExpressionMember(accessor).GetCustomAttributes<TAttribute>(inherit);
-    }
 
-    public static string GetLabelText(IEnumerable<Attribute> attrs, FieldIdentifier fieldIdentifier)
-    {
-        // Order: DisplayNameAttribute, PropertyName
-        var displayNameAttribute = attrs.OfType<DisplayNameAttribute>().FirstOrDefault();
-        var labelText = displayNameAttribute?.DisplayName;
-        if (string.IsNullOrEmpty(labelText))
-        {
-            labelText = fieldIdentifier.FieldName;
-            // split by camel case
-            labelText = string.Concat(labelText.Select(x => char.IsUpper(x) ? " " + x : x.ToString())).TrimStart(' ');
-        }
 
-        return labelText;
-    }
-    public static string GetId(string? id, string? name)
-    {
-        // Ensure there is always an Id. Allow the users to set it manually, generate one from the Name, or generate a random one.
-        var i = id ?? name?.Replace(" ", "");
-        if (string.IsNullOrEmpty(i))
-            i = Guid.NewGuid().ToString();
-        return i;
-    }
-    public static string? GetDescription(List<Attribute> attrs)
-    {
-        var descriptionAttribute = attrs.OfType<DescriptionAttribute>().FirstOrDefault();
-        return descriptionAttribute?.Description;
-    }
-    public static string? GetToolTip(List<Attribute> attrs)
-    {
-        var descriptionAttribute = attrs.OfType<ToolTipAttribute>().FirstOrDefault();
-        return descriptionAttribute?.Value;
-    }
+    // Basic Attributes
+    public static bool IsRequired(this List<Attribute>? attrs) => attrs?.OfType<RequiredAttribute>().FirstOrDefault() != null;
+    public static string? Description(this List<Attribute>? attrs) => attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
+    public static string? ToolTip(this List<Attribute>? attrs) => attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
+    public static string GetId(string? id, FieldIdentifier fieldIdentifier) => id ?? fieldIdentifier.FieldName.Replace(" ", "");
 
-    public static bool GetIsRequired(List<Attribute> attrs)
-    {
-        var requiredAttribute = attrs.OfType<RequiredAttribute>().FirstOrDefault();
-        return requiredAttribute != null;
-    }
+    // Complex
     public static (int? MinLength, int? MaxLength) GetMinAndMaxLengths(List<Attribute> attributes)
     {
         var min = 0;
@@ -184,4 +92,28 @@ public static class AttributesHelper
 
         return (min, max);
     }
+    public static string GetLabelText(this List<Attribute>? attrs, FieldIdentifier fieldIdentifier)
+    {
+        // Order: DisplayNameAttribute, EnumDisplayNameAttribute, PropertyName
+        var displayNameAttribute = attrs?.OfType<DisplayNameAttribute>().FirstOrDefault();
+        var labelText = displayNameAttribute?.DisplayName;
+        if (displayNameAttribute == null)
+        {
+            var enumDisplayName = attrs?.OfType<EnumDisplayNameAttribute>().FirstOrDefault();
+            if(enumDisplayName != null)
+            {
+                labelText = enumDisplayName.Value;
+            }
+        }
+        if (string.IsNullOrEmpty(labelText))
+        {
+            labelText = fieldIdentifier.FieldName;
+            // split by camel case
+            labelText = string.Concat(labelText.Select(x => char.IsUpper(x) ? " " + x : x.ToString())).TrimStart(' ');
+        }
+
+        return labelText;
+    }
+       
+    
 }

@@ -3,7 +3,7 @@
 @inherits InputTextArea
 
 <div class="form-group">
-    <FormLabel Id=@_id Name=@_name IsRequired=@_isRequired Description=@_description />
+    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
     
     @if(IsEditMode)
     {
@@ -13,7 +13,7 @@
         <div class="form-text">@Value</div>
     }
     
-    <FieldValidationDisplay EditContext=EditContext FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
@@ -22,11 +22,8 @@
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
 
-    bool _isRequired;
     string _id = string.Empty;
-    string _name = string.Empty;
-    string? _description;
-    List<Attribute> _attributes;
+    List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
     // Get validation messages for FieldName
@@ -34,9 +31,6 @@
     {
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _name = AttributesHelper.GetLabelText(_attributes, _fieldIdentifier);
-        _id = AttributesHelper.GetId(Id, _name);
-        _description = AttributesHelper.GetDescription(_attributes);
-        _isRequired = AttributesHelper.GetIsRequired(_attributes);
+        _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
 }

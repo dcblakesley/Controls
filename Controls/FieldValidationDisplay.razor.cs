@@ -27,8 +27,9 @@ namespace Controls;
 public partial class FieldValidationDisplay
 {
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
-    [Parameter] public required EditContext EditContext { get; set; }
     [Parameter] public required List<Attribute> Attributes { get; set; }
+    [CascadingParameter] EditContext? EditContext { get; set; }
+
     bool _isRequired;
     int? _minCharacters;
     int? _maxCharacters;
