@@ -8,47 +8,49 @@
 
 <h2>New Ship Entry Form</h2>
 
+<input type="tel" id="phone" name="phone" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required />
 
+<h3>abc</h3>
 
-<EditForm Model=@Model OnValidSubmit="Submit" FormName="Starship3">
+<EditForm Model=Model OnValidSubmit=Submit FormName="Starship3" style="padding: 1rem">
     <DataAnnotationsValidator />
-    
-    
-    <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@Model!.Animal  Field=@(() => Model.Animal)  />
-    
-    <EditNumber @bind-Value="Model!.IntNumber" Field=@(() => Model!.IntNumber) />
-    <EditNumber @bind-Value="Model!.DoubleNumberMin5"  Field=@(() => Model!.DoubleNumberMin5) />
-    <EditBool   @bind-Value="Model!.IsValidatedDesign" Field=@(() => Model!.IsValidatedDesign) /> 
+    <EditString @bind-Value=Model!.PhoneNumber Field=@(() => Model!.PhoneNumber) />
 
-    @* 
-    <EditSelectIntId Options=Model!.People />    
-  
+    <EditNumber @bind-Value=Model!.IntNumber Field=@(() => Model!.IntNumber) />
+    <EditNumber @bind-Value=Model!.DoubleNumber Field=@(() => Model!.DoubleNumber) />
+    <EditBool @bind-Value=Model!.IsValidatedDesign Field=@(() => Model!.IsValidatedDesign) />
 
+    <EditSelectEnum Css="w200" Type=typeof(AnimalType) @bind-Value=@Model!.Animal Field=@(() => Model.Animal) />
+@*     <EditSelectIntId Options=Model!.People @bind-Value=Model!.SelectedPerson Field=@(() => Model!.SelectedPerson) />
+ *@ 
     <div class="flex-row flex-wrap">
-        <TextEditor Css="w300" @bind-Value="Model!.Id" Field=@(() => Model.Id) />
-        <TextEditor Css="w500" @bind-Value="Model!.UsersFavoriteColor" Field=@(() => Model.UsersFavoriteColor) />
-        <TextAreaEditor Css="w500" @bind-Value="Model!.Description" Field=@(() => Model!.Description) />
-
+        <EditString Css="w300" @bind-Value=Model!.Id Field=@(() => Model.Id) />
+        <EditString Css="w500" @bind-Value=Model!.UsersFavoriteColor Field=@(() => Model.UsersFavoriteColor) />
+        <EditTextArea Css="w500" @bind-Value=Model!.Description Field=@(() => Model!.Description) />
     </div>
 
-    <DateEditor   @bind-Value="Model!.ProductionDate" Field=@(() => Model!.ProductionDate) Type="InputDateType.Month"/>
+    <EditDate @bind-Value="Model!.ProductionDate" Field=@(() => Model!.ProductionDate) Type="InputDateType.Month" />
+    
+
     <div>
         <label>
-            Production Date: 
+            Production Date:
             <InputDate @bind-Value="Model!.ProductionDate" Type="InputDateType.Month" />
         </label>
-    </div>   
+    </div>
     <div>
         <label>
             Date 2:
-            <input @bind-value="@Model!.ProductionDate"  />
+            <input @bind-value="@Model!.ProductionDate" />
         </label>
     </div>
     <div>
-        @if(context.GetValidationMessages().Any())
+        @if (context.GetValidationMessages().Any())
         {
             <button class="btn disabled" type="submit">Submit</button>
-        }else{
+        }
+        else
+        {
             <button class="btn btn-secondary" type="submit">Submit</button>
         }
     </div>
@@ -62,8 +64,8 @@
                 }
             </InputSelect>
         </label>
-    </div> *@
-</EditForm>
+    </div>
+</EditForm> 
 
 
 
@@ -87,7 +89,6 @@
          Model ??= new()
          {
              //ProductionDate = DateTime.UtcNow 
-
          };
         
         // Get the DisplayName of Starship.Id
@@ -118,17 +119,17 @@
     }
     public class Starship
     {
-        
-        public Person SelectedPerson { get; set; }
-        public List<IIntIdAndName> People { get; set; } = [new Person(1, "Ted"), new Person(2, "Bill"), new Person(3, "Sue")];
+        [RegularExpression("^(\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$\r\n", ErrorMessage = "Must be a valid phone number")]
+        public string PhoneNumber { get; set; }
 
+        //[DisplayName("Blah")]
+        //public IIntIdAndName SelectedPerson { get; set; } = new();
+        //public List<IIntIdAndName> People { get; set; } = [new Person(1, "Ted"), new Person(2, "Bill"), new Person(3, "Sue")];
+        
         [DisplayName("Abacabb")]
         public AnimalType Animal { get; set; } 
 
-        [Required]
-        [DisplayName("DisplayName, Max=16, Min=3, Required")]
-        [StringLength(16)]
-        [MinLength(3)]
+        [Required,StringLength(16), MinLength(3), DisplayName("DisplayName, Max=16, Min=3, Required")]
         //[Description("This is the unique identifier for the <span style='color: cyan'>starship.</span>")]
         public string Id { get; set; } = "";
 
@@ -144,7 +145,7 @@
         public int IntNumber { get; set; }
 
         [Required]
-        public double? DoubleNumberMin5 { get; set; }
+        public double? DoubleNumber { get; set; }
 
         [Required]
         [DisplayName("Engineering Approval")]
@@ -182,11 +183,5 @@
         public int Id { get; set; }
         public string? Name { get; set; }
 
-    }
-
-    public interface IIntIdAndName
-    {
-        public int Id { get; set; }
-        public string? Name { get; set; }
     }
 }

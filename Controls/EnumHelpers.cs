@@ -58,9 +58,7 @@ public static class AttributesHelper
     }
 
     public static List<Attribute> GetExpressionCustomAttributes<T>(Expression<Func<T>> accessor) => GetExpressionMember(accessor).GetCustomAttributes().ToList();
-
-
-
+    
     // Basic Attributes
     public static bool IsRequired(this List<Attribute>? attrs) => attrs?.OfType<RequiredAttribute>().FirstOrDefault() != null;
     public static string? Description(this List<Attribute>? attrs) => attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;

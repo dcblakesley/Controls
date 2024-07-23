@@ -15,21 +15,18 @@
 
 @code {
     [Parameter] public string? Id { get; set; }
-    [Parameter] public Expression<Func<int>> Field { get; set; }
+    [Parameter] public Expression<Func<IIntIdAndName>> Field { get; set; }
     
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public Type Type { get; set; }
-    [Parameter] public int Value { get; set; }
-    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+    [Parameter] public IIntIdAndName Value { get; set; }
+    [Parameter] public EventCallback<IIntIdAndName> ValueChanged { get; set; }
 
     [CascadingParameter] EditContext? EditContext { get; set; }
 
-    [Parameter] public List<IIntIdAndName> Options { get; set; }
+    [Parameter] public required List<IIntIdAndName> Options { get; set; }
     
-    bool _isRequired;
     string _id = string.Empty;
-    string _name = string.Empty;
-    string? _description;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
@@ -41,7 +38,7 @@
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
-    async Task SetAsync(int value) => await ValueChanged.InvokeAsync(value);
+    async Task SetAsync(IIntIdAndName value) => await ValueChanged.InvokeAsync(value);
 
 
 }

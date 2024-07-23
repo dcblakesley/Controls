@@ -23,10 +23,8 @@
     [Parameter] public string Css { get; set; } = "";
     [Parameter] public bool IsEditMode { get; set; }
 
-    bool _isRequired;
     string _id = string.Empty;
-    string? _description;
-    List<Attribute> _attributes;
+    List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
     // Get validation messages for FieldName

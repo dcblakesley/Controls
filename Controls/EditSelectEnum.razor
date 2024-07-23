@@ -4,7 +4,7 @@
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
 
-    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select">
+    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select @Css">
         @foreach (var x in Enum.GetValues(Type))
         {
             <option title=@_attributes.ToolTip() value=@x>@x.GetName()</option>
@@ -17,6 +17,7 @@
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<T>> Field { get; set; }
+    [Parameter] public string Css { get; set; } = "";
     
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public Type Type { get; set; }
