@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>Blazor Controls</Title>
+    <PackageId>WssBlazorControls</PackageId>
   </PropertyGroup>
 
 

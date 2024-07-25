@@ -1,10 +1,13 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 <div class="flex-row">
     <label title=@Attributes.ToolTip() for=@Id>
-        @Attributes.GetLabelText(FieldIdentifier)
-        @if (Attributes.IsRequired())
+        @if(Label != null)
         {
-            <i>*</i>
+            @Label
+        }
+        else
+        {
+            @Attributes.GetLabelText(FieldIdentifier)
         }
     </label>
 </div>
@@ -19,4 +22,5 @@
     [Parameter] public string? Id { get; set; }
     [Parameter] public List<Attribute>? Attributes { get; set; }
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
+    [Parameter] public string? Label { get; set; }
 }

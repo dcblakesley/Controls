@@ -2,9 +2,9 @@
 @typeparam T
 
 <div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
+    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
 
-    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select @Css">
+    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select @Css" id=@Id data-test-id=@Id>
         @foreach (var x in Enum.GetValues(Type))
         {
             <option title=@_attributes.ToolTip() value=@x>@x.GetName()</option>
@@ -23,6 +23,7 @@
     [Parameter] public Type Type { get; set; }
     [Parameter] public T Value { get; set; }
     [Parameter] public EventCallback<T> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
 
     [CascadingParameter] private EditContext? EditContext { get; set; }
     

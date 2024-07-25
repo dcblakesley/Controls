@@ -3,11 +3,11 @@
 @typeparam T
 
 <div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
-    
+    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />   
+
     @if (IsEditMode)
     {
-        <InputDate @bind-Value="CurrentValue" Type=Type />
+        <InputDate @bind-Value="CurrentValue" id=@Id data-test-id=@Id Type=Type />
     }
     else
     {
@@ -22,6 +22,8 @@
     [Parameter] public required Expression<Func<T>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
     [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public string? Label { get; set; }
+
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;

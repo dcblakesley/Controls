@@ -8,8 +8,6 @@
 
 <h2>New Ship Entry Form</h2>
 
-<input type="tel" id="phone" name="phone" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required />
-
 <h3>abc</h3>
 
 <EditForm Model=Model OnValidSubmit=Submit FormName="Starship3" style="padding: 1rem">
@@ -29,19 +27,19 @@
         <EditTextArea Css="w500" @bind-Value=Model!.Description Field=@(() => Model!.Description) />
     </div>
 
-    <EditDate @bind-Value="Model!.ProductionDate" Field=@(() => Model!.ProductionDate) Type="InputDateType.Month" />
+    <EditDate @bind-Value="Model!.ProductionDate" Field=@(() => Model!.ProductionDate) Type=InputDateType.Month />
     
 
     <div>
         <label>
             Production Date:
-            <InputDate @bind-Value="Model!.ProductionDate" Type="InputDateType.Month" />
+            <InputDate @bind-Value=Model!.ProductionDate Type=InputDateType.Month />
         </label>
     </div>
     <div>
         <label>
             Date 2:
-            <input @bind-value="@Model!.ProductionDate" />
+            <input @bind-value=@Model!.ProductionDate />
         </label>
     </div>
     <div>
@@ -57,7 +55,7 @@
     <div>
         <label>
             Primary Classification:
-            <InputSelect @bind-Value="Model!.Classification">
+            <InputSelect @bind-Value=Model!.Classification>
                 @foreach (var option in _options)
                 {
                     <option value=@option.Value>@option.Text</option>

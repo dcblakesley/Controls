@@ -1,14 +1,13 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
-namespace FormTesting.Client
-{
-    internal class Program
-    {
-        static async Task Main(string[] args)
-        {
-            var builder = WebAssemblyHostBuilder.CreateDefault(args);
+namespace FormTesting.Client;
 
-            await builder.Build().RunAsync();
-        }
+internal class Program
+{
+    static async Task Main(string[] args)
+    {
+        var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
+        await builder.Build().RunAsync();
     }
 }

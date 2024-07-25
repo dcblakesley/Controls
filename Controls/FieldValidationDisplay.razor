@@ -1,4 +1,4 @@
-﻿@if (EditContext.GetValidationMessages().Any())
+﻿@if (EditContext!.GetValidationMessages().Any())
 {
     @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
     {

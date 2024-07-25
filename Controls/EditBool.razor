@@ -2,15 +2,15 @@
 @inherits InputCheckbox
 
 <div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
-    
+    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />    
+
     @if (IsEditMode)
     {
-        <input type="checkbox"  id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+        <input type="checkbox" id=@Id data-test-id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
     }
     else
     {
-        <input type="checkbox" disabled id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+        <input type="checkbox" disabled id=@Id data-test-id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
     }
 
     <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
@@ -22,6 +22,7 @@
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
     [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public string? Label { get; set; }
 
     string _id = string.Empty;
     List<Attribute>? _attributes;

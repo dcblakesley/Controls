@@ -3,8 +3,8 @@
 @inherits InputTextArea
 
 <div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
-    
+    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label /> 
+
     @if(IsEditMode)
     {
         <textarea @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css ></textarea>
@@ -21,6 +21,7 @@
     [Parameter] public bool IsEditMode { get; set; }
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
+    [Parameter] public string? Label { get; set; }
 
     string _id = string.Empty;
     List<Attribute>? _attributes;

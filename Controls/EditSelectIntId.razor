@@ -1,9 +1,9 @@
 ﻿@using System.Linq.Expressions
 @using Microsoft.AspNetCore.Components.Forms
 <div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes  />
+    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
 
-    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select">
+    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select" id=@Id data-test-id=@Id>
         @foreach (var x in Options)
         {
             <option value=@x>@x.Name</option>
@@ -21,6 +21,7 @@
     [Parameter] public Type Type { get; set; }
     [Parameter] public IIntIdAndName Value { get; set; }
     [Parameter] public EventCallback<IIntIdAndName> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
 
     [CascadingParameter] EditContext? EditContext { get; set; }
 
