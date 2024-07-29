@@ -1,0 +1,36 @@
+﻿@page "/Person"
+@using Controls
+
+<h3>Person</h3>
+
+<EditForm Model=_person OnValidSubmit=Submit FormName="_personForm">
+    <DataAnnotationsValidator />
+    <EditString @bind-Value=_person.Name Field=@(() => _person.Name) Css="w200" />
+    <EditNumber @bind-Value=_person.Age Field=@(() => _person.Age) Css="w200" />
+    <EditString @bind-Value=_person.Pet.Type Field=@(() => _person.Pet.Type) Css="w200" />
+</EditForm>
+
+@code {
+    Person? _person { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Initialize the model
+    }
+
+    private void Submit()
+    {
+        // Submit the model
+    }
+
+    public class Person
+    {
+        public string Name { get; set; }
+        public int Age { get; set; }
+        public Pet Pet { get; set; }
+    }
+    public class Pet
+    {
+        public string Type { get; set; }
+    }
+}
