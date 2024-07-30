@@ -40,6 +40,4 @@
         _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
     async Task SetAsync(IIntIdAndName value) => await ValueChanged.InvokeAsync(value);
-
-
 }

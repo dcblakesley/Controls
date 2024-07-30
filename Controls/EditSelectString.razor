@@ -1,0 +1,96 @@
+﻿@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+@inherits InputText
+
+<div class="form-group" >
+    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />    
+
+    @if (IsEditMode)
+    {
+        <fieldset>
+            <legend>Manufacturer</legend>
+            <InputRadioGroup @bind-Value=@SelectedOption id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") >
+                @foreach (var option in Options)
+                {
+                    <div>
+                        <label>
+                            <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}") />
+                            @option
+                        </label>
+                    </div>
+                }
+
+                <!-- Other -->
+                <div>
+                    <label>
+                        <InputRadio Value=@OtherName id=@($"rb_{_id}_other") data-test-id=@($"rb_{_id}_other") />
+                        Other
+                    </label>
+                    <input disabled="@(_selectedOption != "Other")" type="text" @bind:get=@_otherText @bind:set=SetOtherTextAsync @bind:event="oninput" />
+                </div>
+
+            </InputRadioGroup>
+        </fieldset>
+    }
+    else
+    {
+        <div class="form-text">@Value</div>
+    }
+
+    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+</div>
+
+@code {
+
+    // Get validation messages for FieldName{
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public required Expression<Func<string>> Field { get; set; }
+    [Parameter] public string Css { get; set; } = "";
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public required List<string> Options { get; set; }
+    string _otherText = "";
+    const string OtherName = "Other";
+    string? _selectedOption;
+
+    string? SelectedOption
+    {
+        get => _selectedOption;
+        set
+        {
+            _selectedOption = value;
+            if (value == "Other")
+            {
+                Value = _otherText;
+                ValueChanged.InvokeAsync(_otherText);
+            }
+            else
+            {
+                Value = value;
+                _otherText = "";
+                ValueChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    string _id = string.Empty;
+    List<Attribute>? _attributes;
+    FieldIdentifier _fieldIdentifier;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _fieldIdentifier = FieldIdentifier.Create(Field);
+        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
+        _id = AttributesHelper.GetId(Id, _fieldIdentifier);
+        _selectedOption = Value;
+    }
+
+    async Task SetOtherTextAsync(string value)
+    {
+        _otherText = value;
+        Value = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+}

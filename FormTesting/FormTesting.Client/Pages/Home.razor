@@ -13,14 +13,19 @@
 <EditForm Model=Model OnValidSubmit=Submit FormName="Starship3">
     <DataAnnotationsValidator />
     <EditString @bind-Value=Model!.PhoneNumber Field=@(() => Model!.PhoneNumber) />
+    
+    <EditSelectString Options=@_colors @bind-Value=Model!.SelectedColor Field=@(() => Model!.SelectedColor) />
 
+    <h6 style="color: @Model!.SelectedColor.ToLower()">@Model!.SelectedColor</h6>
+    @*
     <EditNumber @bind-Value=Model!.IntNumber Field=@(() => Model!.IntNumber) />
     <EditNumber @bind-Value=Model!.DoubleNumber Field=@(() => Model!.DoubleNumber) />
     <EditBool @bind-Value=Model!.IsValidatedDesign Field=@(() => Model!.IsValidatedDesign) />
 
     <EditSelectEnum Css="w200" Type=typeof(AnimalType) @bind-Value=@Model!.Animal Field=@(() => Model.Animal) />
-@*     <EditSelectIntId Options=Model!.People @bind-Value=Model!.SelectedPerson Field=@(() => Model!.SelectedPerson) />
- *@ 
+
+     <EditSelectIntId Options=Model!.People @bind-Value=Model!.SelectedPerson Field=@(() => Model!.SelectedPerson) />
+ 
     <div class="flex-row flex-wrap">
         <EditString Css="w300" @bind-Value=Model!.Id Field=@(() => Model.Id) />
         <EditString Css="w500" @bind-Value=Model!.UsersFavoriteColor Field=@(() => Model.UsersFavoriteColor) />
@@ -62,13 +67,14 @@
                 }
             </InputSelect>
         </label>
-    </div>
+    </div>*@
 </EditForm> 
 
 
 
 @code{
 
+    List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White" };
     public record StringOption(string Value, string Text);
     List<StringOption> _options =
     [
@@ -117,6 +123,8 @@
     }
     public class Starship
     {
+        public string SelectedColor { get; set; } = "Red";
+
         [RegularExpression("^(\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$\r\n", ErrorMessage = "Must be a valid phone number")]
         public string PhoneNumber { get; set; }
 
