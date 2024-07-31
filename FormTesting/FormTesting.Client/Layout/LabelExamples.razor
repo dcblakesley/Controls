@@ -29,6 +29,7 @@
     <h5>Controls</h5>
     <div class="flex-row">
         <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) Css="standard-width" />
+        <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) Css="standard-width" />
         <EditNumber @bind-Value=_model.EditInt Field=@(() => _model.EditInt) Css="standard-width" />
         <EditNumber @bind-Value=_model.EditDouble Field=@(() => _model.EditDouble) Css="standard-width" />
     </div>
@@ -61,6 +62,7 @@
 
         // Controls
         public string EditString { get; set; } = "";
+        public string EditTextArea { get; set; } = "";
         [DisplayName("EditNumber, using a int")]
         public int EditInt { get; set; }
         [DisplayName("EditNumber, using a double")]
