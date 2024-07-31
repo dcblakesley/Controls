@@ -7,9 +7,10 @@
 
     @if(IsEditMode)
     {
-        <textarea @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css ></textarea>
+        <textarea @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css rows=@Rows ></textarea>
     }
-    else{
+    else
+    {
         <div class="form-text">@Value</div>
     }
     
@@ -22,6 +23,7 @@
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
     [Parameter] public string? Label { get; set; }
+    [Parameter] public int Rows { get; set; } = 2;
 
     string _id = string.Empty;
     List<Attribute>? _attributes;

@@ -6,9 +6,12 @@
 </div>
 @if (Attributes.Description() != null)
 {
-    <div class="description">
-        @((MarkupString)Attributes!.Description()!)
-    </div>
+    @if(DisplayDescription() != null)
+    {
+        <p class="description">
+            @((MarkupString)DisplayDescription())
+        </p>
+    }
 }
 
 @code {
@@ -16,5 +19,7 @@
     [Parameter] public List<Attribute>? Attributes { get; set; }
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
     [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Description { get; set; }
     string DisplayLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
+    string? DisplayDescription() => Description ?? Attributes.Description();
 }

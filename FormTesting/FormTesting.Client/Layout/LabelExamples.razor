@@ -1,0 +1,88 @@
+﻿@using System.ComponentModel
+@using Controls
+
+<EditForm Model=_model FormName="Starship3">
+    <DataAnnotationsValidator />
+    <style>
+        .standard-width {
+            width: 400px
+        }
+        .description {
+            margin: 0; padding: 0
+        }
+    </style>
+    
+    <h5>Labels</h5>
+    <div class="flex-row">
+        <EditString @bind-Value=_model.Name Field=@(() => _model.Name) Css="standard-width"/>
+        <EditString @bind-Value=_model.FirstName Field=@(() => _model.FirstName) Css="standard-width"/>
+        <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) Css="standard-width"/>
+        <EditString @bind-Value=_model.LastName Field=@(() => _model.LastName) Css="standard-width"/>
+    </div>
+
+    <h5>Descriptions</h5>
+    <div class="flex-row">
+        <EditString @bind-Value=_model.Dog Field=@(() => _model.Dog) Css="standard-width" />
+        <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) Css="standard-width" />
+    </div>
+
+    <h5>Controls</h5>
+    <div class="flex-row">
+        <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) Css="standard-width" />
+        <EditNumber @bind-Value=_model.EditInt Field=@(() => _model.EditInt) Css="standard-width" />
+        <EditNumber @bind-Value=_model.EditDouble Field=@(() => _model.EditDouble) Css="standard-width" />
+    </div>
+    
+    <div class="flex-row">
+        <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) Css="standard-width" />
+        <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model!.Animal Field=@(() => @_model.Animal) Css="standard-width" />
+    </div>
+
+</EditForm>
+
+@code {
+    readonly Person _model = new();
+
+    class Person
+    {
+        // Labels
+        public string Name { get; set; } = "";
+        public string FirstName { get; set; } = "";
+        [DisplayName("MiddleName modified with [DisplayNameAttribute]")]
+        public string MiddleName { get; set; } = "";
+        [DisplayName("<span style='color: cyan'>Last </span><span style='color: lime'>Name</span><span style='color: magenta'> with embedded html</span>")]
+        public string LastName { get; set; } = "";
+
+        // Descriptions
+        [Description("This is a description for Dog")]
+        public string Dog { get; set; } = "";
+        [Description("<span style='color: cyan; font-weight: bold'>This is a description for Cat with embedded html</span>")]
+        public string Cat { get; set; } = "";
+
+        // Controls
+        public string EditString { get; set; } = "";
+        [DisplayName("EditNumber, using a int")]
+        public int EditInt { get; set; }
+        [DisplayName("EditNumber, using a double")]
+        public double EditDouble { get; set; }
+        public DateTime EditDate { get; set; } = DateTime.UtcNow;
+        public AnimalType Animal { get; set; }
+
+        // Validation
+
+    }
+
+    public enum AnimalType
+    {
+        Cat = 0,
+
+        [EnumDisplayName("Puppy Dog")]
+        Dog = 1,
+
+        [EnumDisplayName("Tweety Bird")]
+        Bird = 2,
+
+        [EnumDisplayName("Gold Fish")]
+        Fish = 3
+    }
+}

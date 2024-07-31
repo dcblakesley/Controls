@@ -3,21 +3,48 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Reflection
 @using Controls
+@using FormTesting.Client.Layout
 
-<h1>Starfleet Starship Database</h1>
+<h3>Blazor Control Examples</h3>
 
-<h2>New Ship Entry Form</h2>
+@if (Model != null)
+{
+    <EditForm Model=Model OnValidSubmit=Submit FormName="Starship3">
+        <DataAnnotationsValidator/>
 
-<h3>abc</h3>
+        <h5>General Usage</h5>
+        <p>The controls are all setup to provide a consistent look and feel with minimal markup. They each provide
+            <ul>
+                <li>Label</li>
+                <ul>
+                    <li>Default behavior - Automatically generated from the Property Name, spaces are added based on PascalCasing</li>
+                    <li>optional - override the DisplayName Attribute</li>
+                    <li>optional - Set directly in the markup</li>
+                    <li>Supports markup</li>
+                </ul>
+                <li>Description under the label</li>
+                <ul>
+                    <li>Supports Markup</li>
+                </ul>
+                <li>Input/Control</li>
+                <li>Validation</li>
+                <ul>
+                    <li>Based on DataAnnotations</li>
+                </ul>
+            </ul>
+        </p>
+        
+        <!-- Table -->
+        <LabelExamples />
+        
 
-<EditForm Model=Model OnValidSubmit=Submit FormName="Starship3">
-    <DataAnnotationsValidator />
-    <EditString @bind-Value=Model!.PhoneNumber Field=@(() => Model!.PhoneNumber) />
+        @*
+        <EditString @bind-Value=Model!.PhoneNumber Field=@(() => Model!.PhoneNumber)/>
+
+        <EditSelectString Options=@_colors @bind-Value=Model!.SelectedColor Field=@(() => Model!.SelectedColor)/>
+
+        <h6 style="color: @Model!.SelectedColor.ToLower()">@Model!.SelectedColor</h6>
     
-    <EditSelectString Options=@_colors @bind-Value=Model!.SelectedColor Field=@(() => Model!.SelectedColor) />
-
-    <h6 style="color: @Model!.SelectedColor.ToLower()">@Model!.SelectedColor</h6>
-    @*
     <EditNumber @bind-Value=Model!.IntNumber Field=@(() => Model!.IntNumber) />
     <EditNumber @bind-Value=Model!.DoubleNumber Field=@(() => Model!.DoubleNumber) />
     <EditBool @bind-Value=Model!.IsValidatedDesign Field=@(() => Model!.IsValidatedDesign) />
@@ -68,11 +95,12 @@
             </InputSelect>
         </label>
     </div>*@
-</EditForm> 
-
-
+    </EditForm>
+}
 
 @code{
+
+    string _selectedExample = "Basic";
 
     List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White" };
     public record StringOption(string Value, string Text);
@@ -123,6 +151,13 @@
     }
     public class Starship
     {
+        [DisplayName("Label"),
+         Description("Description"),
+         Required(ErrorMessage = "Required"),
+         StringLength(16, MinimumLength = 3, ErrorMessage = "Must be between 3 and 16 characters")]
+        public string Example1 { get; set; } = "";
+
+
         public string SelectedColor { get; set; } = "Red";
 
         [RegularExpression("^(\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$\r\n", ErrorMessage = "Must be a valid phone number")]
