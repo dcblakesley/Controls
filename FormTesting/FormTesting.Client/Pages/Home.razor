@@ -5,15 +5,14 @@
 @using Controls
 @using FormTesting.Client.Layout
 
-<h3>Blazor Control Examples</h3>
-
-@if (Model != null)
-{
-    <EditForm Model=Model OnValidSubmit=Submit FormName="Starship3">
-        <DataAnnotationsValidator/>
-
+<div class="flex-row">
+    <div>
+        <h3>Blazor Control Examples</h3>
         <h5>General Usage</h5>
-        <p>The controls are all setup to provide a consistent look and feel with minimal markup. They each provide
+        <p>The controls are all setup to provide a consistent look and feel with minimal markup.</p>
+        <p> They each provide a Label, Description, Input/Control and Validation</p>
+    </div>
+        <p>
             <ul>
                 <li>Label</li>
                 <ul>
@@ -33,6 +32,16 @@
                 </ul>
             </ul>
         </p>
+</div>
+
+
+
+@if (Model != null)
+{
+    <EditForm Model=Model OnValidSubmit=Submit FormName="Starship3">
+        <DataAnnotationsValidator/>
+
+
         
         <!-- Table -->
         <LabelExamples />
