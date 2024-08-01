@@ -6,11 +6,11 @@
 
     @if (IsEditMode)
     {
-        <input type="checkbox" id=@Id data-test-id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+        <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
     }
     else
     {
-        <input type="checkbox" disabled id=@Id data-test-id=@Id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+        <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
     }
 
     <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
@@ -21,7 +21,7 @@
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
     [Parameter] public string Css { get; set; } = "";
-    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public string? Label { get; set; }
 
     string _id = string.Empty;
@@ -34,5 +34,6 @@
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, FieldIdentifier);
+        Console.WriteLine($"_id: {_id} - Id: {Id} - FieldIdentifier: {FieldIdentifier}");
     }
 }

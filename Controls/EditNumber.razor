@@ -8,7 +8,7 @@
 
     @if (IsEditMode)
     {    
-        <input type="number" id=@Id data-test-id=@Id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@Css />
+        <input type="number" id=@_id data-test-id=@_id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@Css />
     }
     else
     {

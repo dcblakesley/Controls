@@ -1,19 +1,22 @@
 ﻿@using System.ComponentModel
+@using System.ComponentModel.DataAnnotations
 @using Controls
 
-<EditForm Model=_model FormName="Starship3">
+<EditForm Model=_model FormName="Starship3" @ref="editForm">
     <DataAnnotationsValidator />
     <style>
         .standard-width {
-            width: 400px
+            width: @($"{_model.EditorWidth}px")
         }
         .description {
             margin: 0; padding: 0
         }
     </style>
-    
+
+    <EditNumber @bind-Value=_model.EditorWidth Field=@(() => _model.EditorWidth) Css="standard-width" Step=50 />
+        
     <h5>Labels</h5>
-    <div class="flex-row">
+    <div class="flex-row flex-wrap">
         <EditString @bind-Value=_model.Name Field=@(() => _model.Name) Css="standard-width"/>
         <EditString @bind-Value=_model.FirstName Field=@(() => _model.FirstName) Css="standard-width"/>
         <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) Css="standard-width"/>
@@ -21,31 +24,40 @@
     </div>
 
     <h5>Descriptions</h5>
-    <div class="flex-row">
+    <div class="flex-row flex-wrap">
         <EditString @bind-Value=_model.Dog Field=@(() => _model.Dog) Css="standard-width" />
         <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) Css="standard-width" />
     </div>
 
     <h5>Controls</h5>
-    <div class="flex-row">
+    <div class="flex-row flex-wrap">
         <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) Css="standard-width" />
         <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) Css="standard-width" />
-        <EditNumber @bind-Value=_model.EditInt Field=@(() => _model.EditInt) Css="standard-width" />
-        <EditNumber @bind-Value=_model.EditDouble Field=@(() => _model.EditDouble) Css="standard-width" />
+        <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) Css="standard-width" />
+        <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) Css="standard-width" />
     </div>
-    
-    <div class="flex-row">
+    <div class="flex-row flex-wrap">
         <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) Css="standard-width" />
-        <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model!.Animal Field=@(() => @_model.Animal) Css="standard-width" />
+        <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model!.EditSelectEnum Field=@(() => @_model.EditSelectEnum) Css="standard-width" />
     </div>
 
 </EditForm>
 
 @code {
     readonly Person _model = new();
+    int _width = 400;
+    EditForm editForm; // Set by @ref during Render
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        editForm!.EditContext!.Validate();
+    }
 
     class Person
     {
+        // Width
+        public int EditorWidth { get; set; } = 400;
+
         // Labels
         public string Name { get; set; } = "";
         public string FirstName { get; set; } = "";
@@ -61,14 +73,12 @@
         public string Cat { get; set; } = "";
 
         // Controls
-        public string EditString { get; set; } = "";
-        public string EditTextArea { get; set; } = "";
-        [DisplayName("EditNumber, using a int")]
-        public int EditInt { get; set; }
-        [DisplayName("EditNumber, using a double")]
-        public double EditDouble { get; set; }
-        public DateTime EditDate { get; set; } = DateTime.UtcNow;
-        public AnimalType Animal { get; set; }
+        [DisplayName("&lt;EditString/&gt;")]     public string     EditString     { get; set; } = "";
+        [DisplayName("&lt;EditTextArea/&gt;")]   public string     EditTextArea   { get; set; } = "";
+        [DisplayName("&lt;EditNumber/&gt;")]     public double     EditNumber     { get; set; } = 2.5;
+        [DisplayName("&lt;EditBool/&gt;")]       public bool       EditBool       { get; set; }
+        [DisplayName("&lt;EditDate/&gt;")]       public DateTime   EditDate       { get; set; } = DateTime.UtcNow;
+        [DisplayName("&lt;EditSelectEnum/&gt;")] public AnimalType EditSelectEnum { get; set; }
 
         // Validation
 

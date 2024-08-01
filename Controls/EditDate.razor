@@ -7,7 +7,7 @@
 
     @if (IsEditMode)
     {
-        <InputDate @bind-Value="CurrentValue" id=@Id data-test-id=@Id Type=Type class=@Css/>
+        <InputDate @bind-Value="CurrentValue" id=@_id data-test-id=@_id Type=Type class=@Css/>
     }
     else
     {
