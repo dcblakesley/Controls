@@ -7,7 +7,7 @@
 
     @if (IsEditMode)
     {
-        <input @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css/>
+        <input @bind="CurrentValue" id=@_id data-test-id=@_id class=@Css placeholder=@Placeholder/>
     } else
     {
         <div class="form-text">@Value</div>
@@ -23,6 +23,8 @@
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+
 
     string _id = string.Empty;
     List<Attribute>? _attributes;

@@ -5,34 +5,11 @@
 @using Controls
 @using FormTesting.Client.Layout
 
-<div class="flex-row">
-    <div>
-        <h3>Blazor Control Examples</h3>
-        <h5>General Usage</h5>
-        <p>The controls are all setup to provide a consistent look and feel with minimal markup.</p>
-        <p> They each provide a Label, Description, Input/Control and Validation</p>
-    </div>
-        <p>
-            <ul>
-                <li>Label</li>
-                <ul>
-                    <li>Default behavior - Automatically generated from the Property Name, spaces are added based on PascalCasing</li>
-                    <li>optional - override the DisplayName Attribute</li>
-                    <li>optional - Set directly in the markup</li>
-                    <li>Supports markup</li>
-                </ul>
-                <li>Description under the label</li>
-                <ul>
-                    <li>Supports Markup</li>
-                </ul>
-                <li>Input/Control</li>
-                <li>Validation</li>
-                <ul>
-                    <li>Based on DataAnnotations</li>
-                </ul>
-            </ul>
-        </p>
-</div>
+
+
+
+
+<LabelExamples />
 
 
 
@@ -40,11 +17,7 @@
 {
     <EditForm Model=Model OnValidSubmit=Submit FormName="Starship3">
         <DataAnnotationsValidator/>
-
-
         
-        <!-- Table -->
-        <LabelExamples />
         
 
         @*

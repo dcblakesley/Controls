@@ -8,7 +8,7 @@
     @if (IsEditMode)
     {
         <fieldset>
-            <legend>Manufacturer</legend>
+            @* <legend >Manufacturer</legend> *@
             <InputRadioGroup @bind-Value=@SelectedOption id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") >
                 @foreach (var option in Options)
                 {

@@ -56,29 +56,31 @@ public partial class FieldValidationDisplay
         }
 
         // StringLength with only max
-        if (string.Equals(message,
-                $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
+        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
         {
             return MaxLengthString(_maxCharacters);
         }
 
         // StringLength with Min
-        if (string.Equals(message,
-                $"The field {_fieldName} must be a string with a minimum length of {_minCharacters} and a maximum length of {_maxCharacters}."))
+        if (string.Equals(message, $"The field {_fieldName} must be a string with a minimum length of {_minCharacters} and a maximum length of {_maxCharacters}."))
         {
             return RangeString(_minCharacters, _maxCharacters);
         }
 
         // MinLength
-        if (string.Equals(message,
-                $"The field {_fieldName} must be a string or array type with a minimum length of '{_minCharacters}'."))
+        if (string.Equals(message, $"The field {_fieldName} must be a string or array type with a minimum length of '{_minCharacters}'."))
         {
             return MinLengthString(_minCharacters);
         }
 
         // MaxLength
-        if (string.Equals(message,
-                $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
+        // 
+        // 
+        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
+        {
+            return MaxLengthString(_maxCharacters);
+        }
+        if (string.Equals(message, $"The field {_fieldName} must be a string or array type with a maximum length of '{_maxCharacters}'."))
         {
             return MaxLengthString(_maxCharacters);
         }
