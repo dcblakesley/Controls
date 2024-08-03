@@ -16,7 +16,17 @@
             color: blueviolet;
         }
     </style>
-    
+
+    <h5>EditSelectString</h5>
+    <p>Binds to a string, with an input List of strings for the options </p>
+    <div class="flex-row">
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true HasHorizontalRadioButtons=true />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true Css="w100" />
+        @* <EditSelectString Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true /> *@
+    </div>
+    <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5>
+@* 
     <div class="flex-row">
         <h5>General Usage</h5>
         <ul style="margin-right: 2rem">
@@ -69,7 +79,7 @@
     <div class="flex-row flex-wrap">
         <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) Css="standard-width" />
         <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) Css="standard-width" />
-        <EditString @bind-Value=_model.Lion Field=@(() => _model.Lion) Css="standard-width" />
+        <EditString @bind-Value=_model.Lion  Field=@(() => _model.Lion) Css="standard-width" />
         <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) Css="standard-width" />
     </div>
 
@@ -84,8 +94,7 @@
         <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) Css="standard-width" />
         <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model!.EditSelectEnum Field=@(() => @_model.EditSelectEnum) Css="standard-width" />
         <EditSelectString Options=@_colorOptions @bind-Value=@_model!.EditSelectString Field=@(() => _model!.EditSelectString) />
-
-    </div>
+    </div> *@
     
     
 
