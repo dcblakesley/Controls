@@ -4,6 +4,9 @@
 
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <DataAnnotationsValidator />
+@*     <ObjectGraphDataAnnotationsValidator />
+ *@
+
     <style>
         .standard-width {
             width: @($"{_model.EditorWidth}px")
@@ -15,15 +18,26 @@
         h5 {
             color: blueviolet;
         }
+        .fun{
+            background-color: lime;
+            color: magenta;
+        }
     </style>
+    
+    <EditString @bind-Value=_model.Animal.Name Field=@(() => _model.Animal.Name) class="standard-width" />
+    <EditString disabled @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" />
+    
+    <InputText @bind-Value=@_model.Horse />
+
+    <button type="submit">Submit</button>
 
     <h5>EditSelectString</h5>
     <p>Binds to a string, with an input List of strings for the options </p>
     <div class="flex-row">
-        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true />
+        @*<EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true />
         <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true HasHorizontalRadioButtons=true />
         <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true Css="w100" />
-        @* <EditSelectString Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true /> *@
+        <EditSelectString Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true /> *@
     </div>
     <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5>
 @* 
@@ -108,8 +122,17 @@
     // Forces validation to show up immediately, it typically only shows up after a field has been touched
     protected override void OnAfterRender(bool firstRender) => editForm!.EditContext!.Validate();
 
+    class Animal
+    {
+        [Required]
+        public string Name { get; set; } = ""; 
+    }
+
     class Person
     {
+        [ValidateComplexType]
+        public Animal Animal { get; set; } = new();
+
         // Width
         public int EditorWidth { get; set; } = 400;
         [Required(ErrorMessage = "Validation"), MinLength(3), MaxLength(6), Description("Description")]

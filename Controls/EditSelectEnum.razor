@@ -1,15 +1,23 @@
-﻿@using Microsoft.AspNetCore.Components.Forms
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
 @typeparam T
+@inherits InputBase<T>
 
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
-
-    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class=@Css id=@_id data-test-id=@_id>
-        @foreach (var x in Enum.GetValues(Type))
-        {
-            <option title=@_attributes.ToolTip() value=@x>@x.GetName()</option>
-        }
-    </select> 
+    
+    @if(IsEditMode)
+    {
+        <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class=@CssClass id=@_id data-test-id=@_id>
+            @foreach (var x in Enum.GetValues(Type))
+            {
+                <option title=@_attributes.ToolTip() value=@x>@x.GetName()</option>
+            }
+        </select> 
+    } else
+    {
+        <div class="form-text">@Value</div>
+    }
 
     <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
@@ -17,8 +25,8 @@
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<T>> Field { get; set; }
-    [Parameter] public string Css { get; set; } = "";
-    
+    [Parameter] public bool IsEditMode { get; set; }
+
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public Type Type { get; set; }
     [Parameter] public T Value { get; set; }
@@ -41,4 +49,39 @@
         _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
     async Task SetAsync(T value) => await ValueChanged.InvokeAsync(value);
+    protected override bool TryParseValueFromString(string value, out T result, out string validationErrorMessage)
+    {
+        // Let's Blazor convert the value for us 
+        if (BindConverter.TryConvertTo(value, CultureInfo.CurrentCulture, out T parsedValue))
+        {
+            result = parsedValue;
+            validationErrorMessage = null;
+            return true;
+        }
+
+        // Map null/empty value to null if the bound object is nullable
+        if (string.IsNullOrEmpty(value))
+        {
+            var nullableType = Nullable.GetUnderlyingType(typeof(T));
+            if (nullableType != null)
+            {
+                result = default;
+                validationErrorMessage = null;
+                return true;
+            }
+        }
+
+        // The value is invalid => set the error message
+        result = default;
+        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
+        return false;
+    }
+
+    // protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
+    // {
+    //     result = value;
+    //     validationErrorMessage = null;
+    //     return true;
+    // }
+
 }
