@@ -65,7 +65,7 @@ dioxide
 .not-allowed { cursor: not-allowed }
 .nowrap { white-space: nowrap }
 
-.description {
+.form-description {
     font-family: 'DM Sans';
     font-style: normal;
     font-weight: 400;
@@ -87,7 +87,7 @@ dioxide
 .w1100 { width: 1100px;}
 
 
-.form-group{
+.form-group {
     margin-bottom: 1rem;
     margin-right: 1rem;
 }

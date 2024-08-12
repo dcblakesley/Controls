@@ -1,6 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 <div >
-    <label title=@Attributes.ToolTip() for=@Id>
+    <label class="form-label" title=@Attributes.ToolTip() for=@Id>
         @((MarkupString)DisplayLabel())
     </label>
 </div>
@@ -8,7 +8,7 @@
 {
     @if(DisplayDescription() != null)
     {
-        <p class="description">
+        <p class="form-description">
             @((MarkupString)DisplayDescription())
         </p>
     }
