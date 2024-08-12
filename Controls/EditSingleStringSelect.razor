@@ -4,7 +4,9 @@
 
 <div class="form-group" >
        
-    <legend><FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label /> </legend>
+    <legend>
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+    </legend>
 
     @if (IsEditMode)
     {
@@ -12,7 +14,7 @@
         {
             <fieldset>
                 @*  *@
-                <InputRadioGroup @bind-Value=@SelectedOption id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}")>
+                <InputRadioGroup @bind-Value=@SelectedOption id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass>
                     @foreach (var option in Options)
                     {
                         @if(!HasHorizontalRadioButtons)
@@ -44,7 +46,7 @@
         else
         {
             // Use a select instead of RadioButtons
-            <select @bind="SelectedOption" class=@Css id=@_id data-test-id=@_id>
+            <select @bind="SelectedOption" class=@CssClass id=@_id data-test-id=@_id disabled=@IsDisabled>
                 @foreach (var option in Options)
                 {
                     <option value=@option id=@($"option_{_id}_{option}")>@option</option>
@@ -56,7 +58,7 @@
             </select>
             @if (HasOther)
             {
-                <input disabled="@(_selectedOption != "Other")" type="text" @bind:get=@_otherText @bind:set=SetOtherTextAsync @bind:event="oninput"/>
+                <input disabled="@(_selectedOption != "Other")" type="text" @bind:get=@_otherText @bind:set=SetOtherTextAsync @bind:event="oninput" />
             }
         }
     }
@@ -73,8 +75,8 @@
     // Get validation messages for FieldName{
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<string>> Field { get; set; }
-    [Parameter] public string Css { get; set; } = "";
     [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public required List<string> Options { get; set; }
 

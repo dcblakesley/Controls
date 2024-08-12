@@ -6,11 +6,11 @@
 
     @if (IsEditMode)
     {
-        <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+        <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class=@CssClass disabled=@IsDisabled />
     }
     else
     {
-        <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue />
+        <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class=@CssClass />
     }
 
     <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
@@ -20,8 +20,8 @@
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
-    [Parameter] public string Css { get; set; } = "";
     [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
 
     string _id = string.Empty;

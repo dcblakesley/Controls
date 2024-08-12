@@ -2,6 +2,8 @@
 @using System.ComponentModel.DataAnnotations
 @using Controls
 
+@page "/"
+
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <DataAnnotationsValidator />
 @*     <ObjectGraphDataAnnotationsValidator />
@@ -24,33 +26,18 @@
         }
     </style>
     
-    <EditString @bind-Value=_model.Animal.Name Field=@(() => _model.Animal.Name) class="standard-width" />
-    <EditString disabled @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" />
     
-    <InputText @bind-Value=@_model.Horse />
 
-    <button type="submit">Submit</button>
-
-    <h5>EditSelectString</h5>
-    <p>Binds to a string, with an input List of strings for the options </p>
-    <div class="flex-row">
-        @*<EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true />
-        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true HasHorizontalRadioButtons=true />
-        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true Css="w100" />
-        <EditSelectString Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true /> *@
-    </div>
-    <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5>
-@* 
     <div class="flex-row">
         <h5>General Usage</h5>
         <ul style="margin-right: 2rem">
             <li>The controls are all setup to provide a consistent look and feel with minimal markup.</li>
             <li>They each provide a Label, Description, Input/Control and Validation</li>
         </ul>
-        <EditNumber @bind-Value=_model.EditorWidth Field=@(() => _model.EditorWidth) Css="w100" Step=50 />
+        <EditNumber @bind-Value=_model.EditorWidth Field=@(() => _model.EditorWidth) class="w100" Step=50 />
     </div>
     <div style="margin-left: 3rem">
-        <EditString @bind-Value=_model.Label Field=@(() => _model.Label) Css="standard-width" Placeholder="Input/Control with placeholder text" />
+        <EditString @bind-Value=_model.Label Field=@(() => _model.Label) class="standard-width" Placeholder="Input/Control with placeholder text" />
     </div>
         
     <div class="flex-row">
@@ -64,10 +51,10 @@
         </ul>
     </div>
     <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       Css="standard-width"/>
-        <EditString @bind-Value=_model.FirstName  Field=@(() => _model.FirstName)  Css="standard-width"/>
-        <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) Css="standard-width"/>
-        <EditString @bind-Value=_model.LastName   Field=@(() => _model.LastName)   Css="standard-width"/>
+        <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       class="standard-width"/>
+        <EditString @bind-Value=_model.FirstName  Field=@(() => _model.FirstName)  class="standard-width"/>
+        <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) class="standard-width"/>
+        <EditString @bind-Value=_model.LastName   Field=@(() => _model.LastName)   class="standard-width"/>
     </div>
     
     <div class="flex-row">
@@ -79,8 +66,8 @@
         </ul>
     </div>
     <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.Dog Field=@(() => _model.Dog) Css="standard-width" />
-        <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) Css="standard-width" />
+        <EditString @bind-Value=_model.Dog Field=@(() => _model.Dog) class="standard-width" />
+        <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) class="standard-width" />
     </div>
     
     <div class="flex-row">
@@ -91,26 +78,34 @@
         </ul>
     </div>
     <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) Css="standard-width" />
-        <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) Css="standard-width" />
-        <EditString @bind-Value=_model.Lion  Field=@(() => _model.Lion) Css="standard-width" />
-        <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) Css="standard-width" />
+        <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" />
+        <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) class="standard-width" />
+        <EditString @bind-Value=_model.Lion  Field=@(() => _model.Lion) class="standard-width" />
+        <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" />
     </div>
 
     <h5>Controls</h5>
     <div class="flex-row flex-wrap">
-        <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   Css="standard-width"/>
-        <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) Css="standard-width"/>
-        <EditNumber   @bind-Value=_model.EditNumber   Field=@(() => _model.EditNumber)   Css="standard-width"/>
-        <EditBool     @bind-Value=_model.EditBool     Field=@(() => _model.EditBool)     Css="standard-width"/>
+        <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   class="standard-width"/>
+        <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width"/>
+        <EditNumber   @bind-Value=_model.EditNumber   Field=@(() => _model.EditNumber)   class="standard-width"/>
+        <EditBool     @bind-Value=_model.EditBool     Field=@(() => _model.EditBool)     class="standard-width"/>
     </div>
     <div class="flex-row flex-wrap">
-        <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) Css="standard-width" />
-        <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model!.EditSelectEnum Field=@(() => @_model.EditSelectEnum) Css="standard-width" />
-        <EditSelectString Options=@_colorOptions @bind-Value=@_model!.EditSelectString Field=@(() => _model!.EditSelectString) />
-    </div> *@
+        <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />
+@*          <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model!.EditSelectEnum Field=@(() => @_model.EditSelectEnum) class="standard-width" />
+ *@         <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model!.EditSelectString Field=@(() => _model!.EditSelectString) />
+    </div> 
     
-    
+    <h5>EditSelectString</h5>
+    <p>Binds to a string, with an input List of strings for the options </p>
+    <div class="flex-row">
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true HasHorizontalRadioButtons=true />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true class="w100" />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true /> 
+    </div>
+    <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5>
 
 </EditForm>
 

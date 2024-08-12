@@ -7,7 +7,7 @@
 
     @if (IsEditMode)
     {
-        <InputDate @bind-Value="CurrentValue" id=@_id data-test-id=@_id Type=Type class=@Css/>
+        <InputDate @bind-Value="CurrentValue" id=@_id data-test-id=@_id Type=Type class=@CssClass disabled=@IsDisabled/>
     }
     else
     {
@@ -20,8 +20,8 @@
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<T>> Field { get; set; }
-    [Parameter] public string Css { get; set; } = "";
     [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
 
     string _id = string.Empty;

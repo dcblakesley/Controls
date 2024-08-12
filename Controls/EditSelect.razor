@@ -1,9 +1,12 @@
 ﻿@using System.Linq.Expressions
 @using Microsoft.AspNetCore.Components.Forms
+@inherits InputSelect<TValue>
+@typeparam TValue
+
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
 
-    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select" id=@_id data-test-id=@_id>
+    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select" id=@_id data-test-id=@_id >
         @foreach (var x in Options)
         {
             <option value=@x>@x.Name</option>

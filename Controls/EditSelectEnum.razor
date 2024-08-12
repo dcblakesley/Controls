@@ -1,7 +1,8 @@
 ﻿@using System.Globalization
 @using Microsoft.AspNetCore.Components.Forms
-@typeparam T
-@inherits InputBase<T>
+@typeparam TEnum
+
+@inherits InputBase<TEnum>
 
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
@@ -24,13 +25,13 @@
 
 @code {
     [Parameter] public string? Id { get; set; }
-    [Parameter] public required Expression<Func<T>> Field { get; set; }
+    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public bool IsEditMode { get; set; }
 
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public Type Type { get; set; }
-    [Parameter] public T Value { get; set; }
-    [Parameter] public EventCallback<T> ValueChanged { get; set; }
+    [Parameter] public TEnum Value { get; set; }
+    [Parameter] public EventCallback<TEnum> ValueChanged { get; set; }
     [Parameter] public string? Label { get; set; }
 
     [CascadingParameter] private EditContext? EditContext { get; set; }
@@ -48,11 +49,11 @@
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
-    async Task SetAsync(T value) => await ValueChanged.InvokeAsync(value);
-    protected override bool TryParseValueFromString(string value, out T result, out string validationErrorMessage)
+    async Task SetAsync(TEnum value) => await ValueChanged.InvokeAsync(value);
+    protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
     {
         // Let's Blazor convert the value for us 
-        if (BindConverter.TryConvertTo(value, CultureInfo.CurrentCulture, out T parsedValue))
+        if (BindConverter.TryConvertTo(value, CultureInfo.CurrentCulture, out TEnum parsedValue))
         {
             result = parsedValue;
             validationErrorMessage = null;
@@ -62,7 +63,7 @@
         // Map null/empty value to null if the bound object is nullable
         if (string.IsNullOrEmpty(value))
         {
-            var nullableType = Nullable.GetUnderlyingType(typeof(T));
+            var nullableType = Nullable.GetUnderlyingType(typeof(TEnum));
             if (nullableType != null)
             {
                 result = default;

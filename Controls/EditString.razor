@@ -1,14 +1,15 @@
 ﻿@using System.Linq.Expressions
 @using Microsoft.AspNetCore.Components.Forms
-@inherits InputBase<string>
+@inherits InputText
 
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />    
 
     @if (IsEditMode)
     {
-        <input @bind="CurrentValue" disabled=@_disabled id=@_id data-test-id=@_id class=@CssClass placeholder=@Placeholder />
-    } else
+        <input @bind="CurrentValue" disabled=@IsDisabled id=@_id data-test-id=@_id class=@CssClass placeholder=@Placeholder/>
+    }
+    else
     {
         <div class="form-text">@Value</div>
     }
@@ -20,6 +21,7 @@
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Placeholder { get; set; }
@@ -27,7 +29,6 @@
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
-    bool _disabled;
 
     // Get validation messages for FieldName
     protected override void OnInitialized()
@@ -36,18 +37,5 @@
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, _fieldIdentifier);
-        if (AdditionalAttributes != null)
-        {
-            if(AdditionalAttributes.TryGetValue("disabled", out var disabledAttribute))
-            {
-                _disabled = true;
-            }
-        }
-    }
-    protected override bool TryParseValueFromString(string? value, out string result, out string? validationErrorMessage)
-    {
-        result = value;
-        validationErrorMessage = null;
-        return true;
     }
 } 
