@@ -2,19 +2,27 @@
 @inherits InputCheckbox
 
 <div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />    
+    
+    <div class="form-check">
+@*         <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
+ *@        
+        @if (IsEditMode)
+        {
+            <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input" disabled=@IsDisabled />
+        }
+        else
+        {
+            <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input" />
+        }
 
-    @if (IsEditMode)
-    {
-        <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class=@CssClass disabled=@IsDisabled />
-    }
-    else
-    {
-        <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class=@CssClass />
-    }
+        <label class="form-check-label" for=@_id>
+            @((MarkupString)DisplayLabel())
+        </label>
+    </div>
 
     <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
+
 
 
 @code {
@@ -23,6 +31,9 @@
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Description { get; set; }
+    string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
+    string? DisplayDescription() => Description ?? _attributes.Description();
 
     string _id = string.Empty;
     List<Attribute>? _attributes;
@@ -34,6 +45,6 @@
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, FieldIdentifier);
-        Console.WriteLine($"_id: {_id} - Id: {Id} - FieldIdentifier: {FieldIdentifier}");
+        //Console.WriteLine($"_id: {_id} - Id: {Id} - FieldIdentifier: {FieldIdentifier}");
     }
 }
