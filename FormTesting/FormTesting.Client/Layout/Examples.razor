@@ -51,8 +51,8 @@
         </ul>
     </div>
     <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       class="standard-width"/>
-        <EditString @bind-Value=_model.FirstName  Field=@(() => _model.FirstName)  class="standard-width"/>
+        <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       class="standard-width" IsEditMode=false MaskText="****" />
+        <EditString @bind-Value=_model.Name  Field=@(() => _model.Name)  class="standard-width"/>
         <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) class="standard-width"/>
         <EditString @bind-Value=_model.LastName   Field=@(() => _model.LastName)   class="standard-width"/>
     </div>
@@ -130,11 +130,11 @@
 
         // Width
         public int EditorWidth { get; set; } = 400;
-        [Required(ErrorMessage = "Validation"), MinLength(3), MaxLength(6), Description("Description")]
-        public string Label { get; set; } = "";
+        [MinLength(1)]
+        public string? Label { get; set; } 
 
         // Labels
-        public string Name { get; set; } = "";
+        public string Name { get; set; } = "abcdefghijklmnopqrstuvwxyz";
         public string FirstName { get; set; } = "";
         [DisplayName("MiddleName modified with [DisplayNameAttribute]")]
         public string MiddleName { get; set; } = "";

@@ -8,14 +8,14 @@
  *@        
         @if (IsEditMode)
         {
-            <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input" disabled=@IsDisabled />
+            <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer" disabled=@IsDisabled />
         }
         else
         {
-            <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input" />
+            <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer" />
         }
 
-        <label class="form-check-label" for=@_id>
+        <label class="form-check-label pointer" for=@_id>
             @((MarkupString)DisplayLabel())
         </label>
     </div>

@@ -5,9 +5,9 @@
 
 <EditForm Model=_person OnValidSubmit=Submit FormName="_personForm">
     <DataAnnotationsValidator />
-    <EditString @bind-Value=_person.Name Field=@(() => _person.Name) Css="w200" />
-    <EditNumber @bind-Value=_person.Age Field=@(() => _person.Age) Css="w200" />
-    <EditString @bind-Value=_person.Pet.Type Field=@(() => _person.Pet.Type) Css="w200" />
+    <EditString @bind-Value=_person.Name Field=@(() => _person.Name) class="w200" />
+    <EditNumber @bind-Value=_person.Age Field=@(() => _person.Age) class="w200" />
+    <EditString @bind-Value=_person.Pet.Type Field=@(() => _person.Pet.Type) class="w200" />
 </EditForm>
 
 @code {
