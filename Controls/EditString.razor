@@ -2,6 +2,13 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inherits InputText
 
+<style>
+    .form-text-link {
+        color: lime;
+        text-decoration: none;
+    }
+</style>
+
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />    
 
@@ -13,6 +20,7 @@
     {
         @if (!string.IsNullOrWhiteSpace(MaskText))
         {
+            <!-- Masks with eye icons to show/hide masked text.  -->
             @if (!_showMaskedValue)
             {
                 <div>
@@ -38,7 +46,14 @@
         }
         else
         {
-            <div class="form-text">@Value</div>
+            @if(Url != null)
+            {
+                <a href=@Url target=@UrlTarget class="form-text-link">@Value</a>
+            }
+            else
+            {
+                <div class="form-text">@Value</div>
+            }
         }
     }
 
@@ -46,15 +61,24 @@
 </div>
 
 @code {
-    [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<string>> Field { get; set; }
+
+    [Parameter] public string? Id { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
+    /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>
     [Parameter] public string? MaskText { get; set; }
-    
+
+    /// <summary> Non-Edit mode will be a link </summary>
+    [Parameter] public string? Url { get; set; }
+    /// <summary> Only used with Urls, Sets target="UrlTarget" in the link </summary>
+    [Parameter] public string? UrlTarget { get; set; }
+
     string? GetMaskValue()
     {
         if(MaskText == null || CurrentValue == null)
