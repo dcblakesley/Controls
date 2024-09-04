@@ -48,11 +48,11 @@
         {
             @if(Url != null)
             {
-                <a href=@Url target=@UrlTarget class="form-text-link">@Value</a>
+                <a href=@Url target=@UrlTarget class="form-text-link @CssClass">@Value</a>
             }
             else
             {
-                <div class="form-text">@Value</div>
+                <div class="form-text @CssClass">@Value</div>
             }
         }
     }

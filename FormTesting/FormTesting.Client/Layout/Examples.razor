@@ -4,6 +4,7 @@
 
 @page "/"
 
+<button @onclick=@(()=>_isEditMode =! _isEditMode)>Edit Mode</button>
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <DataAnnotationsValidator />
 @*     <ObjectGraphDataAnnotationsValidator />
@@ -26,7 +27,7 @@
         }
     </style>
     
-    <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
+    <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) IsEditMode=@_isEditMode />
 
     <div class="flex-row">
         <h5>General Usage</h5>
@@ -34,10 +35,10 @@
             <li>The controls are all setup to provide a consistent look and feel with minimal markup.</li>
             <li>They each provide a Label, Description, Input/Control and Validation</li>
         </ul>
-        <EditNumber @bind-Value=_model.EditorWidth Field=@(() => _model.EditorWidth) class="w100" Step=50 />
+        <EditNumber @bind-Value=_model.EditorWidth Field=@(() => _model.EditorWidth) class="w100" Step=50 IsEditMode=@_isEditMode />
     </div>
     <div style="margin-left: 3rem">
-        <EditString @bind-Value=_model.Label Field=@(() => _model.Label) class="standard-width" Placeholder="Input/Control with placeholder text" />
+        <EditString @bind-Value=_model.Label Field=@(() => _model.Label) class="standard-width" Placeholder="Input/Control with placeholder text" IsEditMode=@_isEditMode />
     </div>
         
     <div class="flex-row">
@@ -52,9 +53,9 @@
     </div>
     <div class="flex-row flex-wrap">
         <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       class="standard-width" IsEditMode=false Url="https://www.google.com" />
-        <EditString @bind-Value=_model.Name  Field=@(() => _model.Name)  class="standard-width"/>
-        <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) class="standard-width"/>
-        <EditString @bind-Value=_model.LastName   Field=@(() => _model.LastName)   class="standard-width"/>
+        <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.LastName   Field=@(() => _model.LastName)   class="standard-width" IsEditMode=@_isEditMode />
     </div>
     
     <div class="flex-row">
@@ -78,10 +79,10 @@
         </ul>
     </div>
     <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" />
-        <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) class="standard-width" />
-        <EditString @bind-Value=_model.Lion  Field=@(() => _model.Lion) class="standard-width" />
-        <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" />
+        <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.Lion Field=@(() => _model.Lion) class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" IsEditMode=@_isEditMode />
     </div>
 
     <h5>Controls</h5>
@@ -111,6 +112,7 @@
 
 @code {
     readonly Person _model = new();
+    bool _isEditMode = true;
     EditForm editForm; // Set by @ref during Render
     List<string> _colorOptions = new() { "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White" };
 

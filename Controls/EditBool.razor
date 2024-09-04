@@ -8,11 +8,11 @@
  *@        
         @if (IsEditMode)
         {
-            <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer" disabled=@IsDisabled />
+            <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" disabled=@IsDisabled />
         }
         else
         {
-            <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer" />
+            <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" />
         }
 
         <label class="form-check-label pointer" for=@_id>
