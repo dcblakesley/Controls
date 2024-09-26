@@ -42,11 +42,11 @@ public static class AttributesHelper
     public static List<Attribute> GetExpressionCustomAttributes<T>(Expression<Func<T>> accessor) => GetExpressionMember(accessor).GetCustomAttributes().ToList();
     
     // Basic Attributes
-    public static bool IsRequired(this List<Attribute>? attrs) => attrs?.OfType<RequiredAttribute>().FirstOrDefault() != null;
+    public static bool    IsRequired(this List<Attribute>? attrs) => attrs?.OfType<RequiredAttribute>().FirstOrDefault() != null;
     public static string? Description(this List<Attribute>? attrs) => attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
     public static string? SubDescription(this List<Attribute>? attrs) => attrs?.OfType<SubDescriptionAttribute>().FirstOrDefault()?.Value;
     public static string? ToolTip(this List<Attribute>? attrs) => attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
-    public static string GetId(string? id, FieldIdentifier fieldIdentifier) => id ?? fieldIdentifier.FieldName.Replace(" ", "");
+    public static string  GetId(string? id, FieldIdentifier fieldIdentifier) => id ?? fieldIdentifier.FieldName.Replace(" ", "");
 
     // Complex
     public static (int? MinLength, int? MaxLength) GetMinAndMaxLengths(List<Attribute> attributes)
