@@ -1,6 +1,9 @@
 ﻿
+ - EditRadioEnum
+ - EditRadio?
+ - Pointer for Selects
+ - Pointer for Radio buttons
 
-EditSingleSelect - break out into radio and select
 
 
 

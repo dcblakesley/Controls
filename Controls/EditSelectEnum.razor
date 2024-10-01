@@ -12,7 +12,7 @@
         <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class=@CssClass id=@_id data-test-id=@_id>
             @foreach (var x in Enum.GetValues(Type))
             {
-                <option title=@_attributes.ToolTip() value=@x>@x.GetName()</option>
+                <option title=@_attributes.ToolTip() data-test-id=@($"{_id}-option-{x}") id=@($"{_id}-option-{x}") value=@x>@x.GetName()</option>
             }
         </select> 
     } else
@@ -73,12 +73,4 @@
         validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
         return false;
     }
-
-    // protected override bool TryParseValueFromString(string? value, out string? result, [NotNullWhen(false)] out string? validationErrorMessage)
-    // {
-    //     result = value;
-    //     validationErrorMessage = null;
-    //     return true;
-    // }
-
 }

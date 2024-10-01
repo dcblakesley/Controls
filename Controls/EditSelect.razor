@@ -6,7 +6,7 @@
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
     
-    <InputSelect @bind-Value=@CurrentValue class=@CssClass>
+    <InputSelect @bind-Value=@CurrentValue class=@CssClass >
         @ChildContent
     </InputSelect> 
 
@@ -16,7 +16,6 @@
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
-    //[Parameter] public required IEnumerable<TValue> Options { get; set; }
     [Parameter] public string? Label { get; set; }
     
     string _id = string.Empty;

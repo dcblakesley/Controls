@@ -41,18 +41,19 @@
     <!-- Controls -->
     <h5>Controls</h5>
     <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) class="standard-width" />
+        <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   class="standard-width" />
         <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width" />
-        <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) class="standard-width" />
-        <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
+        <EditNumber   @bind-Value=_model.EditNumber   Field=@(() => _model.EditNumber)   class="standard-width" />
+        <EditBool     @bind-Value=_model.EditBool     Field=@(() => _model.EditBool) />
     </div>
+
     <div class="flex-row flex-wrap">
         <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />   
         <div>
             <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect) class="standard-width">
-                @foreach (var o in _plants)
+                @foreach (var o in _plants.OrderBy(x=>x.Name))
                 {
-                    <option checked=@(()=> _model.EditSelect == o.Id) value=@o.Id>@o.Name</option>
+                    <option checked=@(()=> _model.EditSelect == o.Id) value=@o.Id data-test-id=@($"option-{o.Id}")>@o.Name</option>
                 }
             </EditSelect>
             <div>@_model.EditSelect</div>
@@ -61,6 +62,9 @@
             <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) class="standard-width" />
             @_model.EditSelectEnum
         </div>
+    </div>
+    <div class="flex-row flex-wrap">
+        <EditRadioString @bind-Value=_model.EditString Field=@(() => _model.EditString) Options=@_colorOptions />
     </div>
 
     
@@ -203,13 +207,14 @@
         [MaxLength(5)] public string Tiger { get; set; } = "abcdefghi";
 
         // Controls
-        [DisplayName("EditString")]     public string     EditString     { get; set; } = "";
-        [DisplayName("EditTextArea")]   public string     EditTextArea   { get; set; } = "";
-        [DisplayName("EditNumber")]     public double     EditNumber     { get; set; } = 2.5;
-        [DisplayName("EditBool")]       public bool       EditBool       { get; set; }
-        [DisplayName("EditDate")]       public DateTime   EditDate       { get; set; } = DateTime.UtcNow;
-        [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
-        [DisplayName("EditSelect")] public int EditSelect { get; set; }
+        [DisplayName("EditString")]      public string     EditString     { get; set; } = "";
+        [DisplayName("EditTextArea")]    public string     EditTextArea   { get; set; } = "";
+        [DisplayName("EditNumber")]      public double     EditNumber     { get; set; } = 2.5;
+        [DisplayName("EditBool")]        public bool       EditBool       { get; set; }
+        [DisplayName("EditDate")]        public DateTime   EditDate       { get; set; } = DateTime.UtcNow;
+        [DisplayName("EditSelectEnum")]  public AnimalType EditSelectEnum { get; set; }
+        [DisplayName("EditSelect")]      public int        EditSelect { get; set; }
+        [DisplayName("EditRadioString")] public int        EditRadioString { get; set; }
 
     }
 
