@@ -78,6 +78,7 @@ public static class AttributesHelper
         // Order: DisplayNameAttribute, EnumDisplayNameAttribute, PropertyName
         var displayNameAttribute = attrs?.OfType<DisplayNameAttribute>().FirstOrDefault();
         var labelText = displayNameAttribute?.DisplayName;
+
         if (displayNameAttribute == null)
         {
             var enumDisplayName = attrs?.OfType<EnumDisplayNameAttribute>().FirstOrDefault();

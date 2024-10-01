@@ -26,15 +26,11 @@
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
-    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
 
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
-    [Parameter] public Type Type { get; set; }
-    [Parameter] public TEnum Value { get; set; }
-    [Parameter] public EventCallback<TEnum> ValueChanged { get; set; }
+    [Parameter] public required Type Type { get; set; }
     [Parameter] public string? Label { get; set; }
-
-    [CascadingParameter] private EditContext? EditContext { get; set; }
     
     bool _isRequired;
     string _id = string.Empty;

@@ -5,30 +5,19 @@
 
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
-
-    <select @bind:get=Value @bind:set=SetAsync @bind:event="onchange" class="form-select @CssClass" id=@_id data-test-id=@_id >
-        @foreach (var x in Options)
-        {
-            <option value=@x>@x.Name</option>
-        }
-    </select> 
+    
+    <InputSelect @bind-Value=@CurrentValue class=@CssClass>
+        @ChildContent
+    </InputSelect> 
 
     <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
 </div>
 
 @code {
     [Parameter] public string? Id { get; set; }
-    [Parameter] public Expression<Func<IIntIdAndName>> Field { get; set; }
-    
-    /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
-    [Parameter] public Type Type { get; set; }
-    [Parameter] public IIntIdAndName Value { get; set; }
-    [Parameter] public EventCallback<IIntIdAndName> ValueChanged { get; set; }
+    [Parameter] public required Expression<Func<TValue>> Field { get; set; }
+    //[Parameter] public required IEnumerable<TValue> Options { get; set; }
     [Parameter] public string? Label { get; set; }
-
-    [CascadingParameter] EditContext? EditContext { get; set; }
-
-    [Parameter] public required List<IIntIdAndName> Options { get; set; }
     
     string _id = string.Empty;
     List<Attribute>? _attributes;
@@ -42,5 +31,4 @@
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
-    async Task SetAsync(IIntIdAndName value) => await ValueChanged.InvokeAsync(value);
 }

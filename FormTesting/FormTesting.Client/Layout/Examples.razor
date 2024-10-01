@@ -7,28 +7,65 @@
 <button @onclick=@(()=>_isEditMode =! _isEditMode)>Edit Mode</button>
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <DataAnnotationsValidator />
-@*     <ObjectGraphDataAnnotationsValidator />
- *@
+    @*     <ObjectGraphDataAnnotationsValidator />
+    *@
 
     <style>
         .standard-width {
             width: @($"{_model.EditorWidth}px")
         }
-        .w100{width: 100px}
-        .description {
-            margin: 0; padding: 0
+
+        .w100 {
+            width: 100px
         }
+
+        .description {
+            margin: 0;
+            padding: 0
+        }
+
         h5 {
             color: blueviolet;
         }
-        .fun{
+
+        .fun {
             background-color: lime;
             color: magenta;
         }
     </style>
-    
-    <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) IsEditMode=@_isEditMode />
 
+    <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) IsEditMode=@_isEditMode />
+        
+
+
+    <!-- Controls -->
+    <h5>Controls</h5>
+    <div class="flex-row flex-wrap">
+        <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) class="standard-width" />
+        <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width" />
+        <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) class="standard-width" />
+        <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
+    </div>
+    <div class="flex-row flex-wrap">
+        <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />   
+        <div>
+            <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect) class="standard-width">
+                @foreach (var o in _plants)
+                {
+                    <option checked=@(()=> _model.EditSelect == o.Id) value=@o.Id>@o.Name</option>
+                }
+            </EditSelect>
+            <div>@_model.EditSelect</div>
+        </div>
+        <div>
+            <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) class="standard-width" />
+            @_model.EditSelectEnum
+        </div>
+    </div>
+
+    
+
+    @* 
     <div class="flex-row">
         <h5>General Usage</h5>
         <ul style="margin-right: 2rem">
@@ -40,30 +77,30 @@
     <div style="margin-left: 3rem">
         <EditString @bind-Value=_model.Label Field=@(() => _model.Label) class="standard-width" Placeholder="Input/Control with placeholder text" IsEditMode=@_isEditMode />
     </div>
-        
+
     <div class="flex-row">
-    <h5>Labels</h5>
-    <ul>
-        <li>Default behavior - Automatically generated from the Property Name</li>
-        <li>Spaces are added based on PascalCasing</li>
-        <li>Override the Label by using the [DisplayName] Attribute</li>
-        <li>Can also be set directly in the markup</li>
-        <li>markup can be embedded in the DisplayName attribute or set in markup</li>
+        <h5>Labels</h5>
+        <ul>
+            <li>Default behavior - Automatically generated from the Property Name</li>
+            <li>Spaces are added based on PascalCasing</li>
+            <li>Override the Label by using the [DisplayName] Attribute</li>
+            <li>Can also be set directly in the markup</li>
+            <li>markup can be embedded in the DisplayName attribute or set in markup</li>
         </ul>
     </div>
     <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       class="standard-width" IsEditMode=false Url="https://www.google.com" />
-        <EditString @bind-Value=_model.Name       Field=@(() => _model.Name)       class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.Name Field=@(() => _model.Name) class="standard-width" IsEditMode=false Url="https://www.google.com" />
+        <EditString @bind-Value=_model.Name Field=@(() => _model.Name) class="standard-width" IsEditMode=@_isEditMode />
         <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) class="standard-width" IsEditMode=@_isEditMode />
-        <EditString @bind-Value=_model.LastName   Field=@(() => _model.LastName)   class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.LastName Field=@(() => _model.LastName) class="standard-width" IsEditMode=@_isEditMode />
     </div>
-    
+
     <div class="flex-row">
-    <h5>Descriptions</h5>
-    <ul>
-        <li>Optional</li>
-        <li>Appear under the label</li>
-        <li>Support markup</li>
+        <h5>Descriptions</h5>
+        <ul>
+            <li>Optional</li>
+            <li>Appear under the label</li>
+            <li>Support markup</li>
         </ul>
     </div>
     <div class="flex-row flex-wrap">
@@ -71,6 +108,7 @@
         <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) class="standard-width" />
     </div>
     
+    <!-- Validation -->
     <div class="flex-row">
         <h5>Validation</h5>
         <ul>
@@ -78,36 +116,24 @@
             <li>Allows displaying Markup</li>
         </ul>
     </div>
+    <div class="flex-row flex-wrap">
+        <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.Lion Field=@(() => _model.Lion) class="standard-width" IsEditMode=@_isEditMode />
+        <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" IsEditMode=@_isEditMode />
+    </div> *@
+@*     
 
-    <div class="flex-row flex-wrap">
-        <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" IsEditMode=@_isEditMode/>
-        <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) class="standard-width" IsEditMode=@_isEditMode/>
-        <EditString @bind-Value=_model.Lion  Field=@(() => _model.Lion)  class="standard-width" IsEditMode=@_isEditMode/>
-        <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" IsEditMode=@_isEditMode/>
-    </div>
-
-    <h5>Controls</h5>
-    <div class="flex-row flex-wrap">
-        <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   class="standard-width"/>
-        <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width"/>
-        <EditNumber   @bind-Value=_model.EditNumber   Field=@(() => _model.EditNumber)   class="standard-width"/>
-        <EditBool     @bind-Value=_model.EditBool     Field=@(() => _model.EditBool)     class="standard-width"/>
-    </div>
-    <div class="flex-row flex-wrap">
-        <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />
-@*          <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model!.EditSelectEnum Field=@(() => @_model.EditSelectEnum) class="standard-width" />
- *@         <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model!.EditSelectString Field=@(() => _model!.EditSelectString) />
-    </div> 
-    
     <h5>EditSelectString</h5>
     <p>Binds to a string, with an input List of strings for the options </p>
     <div class="flex-row">
         <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true />
         <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true HasHorizontalRadioButtons=true />
         <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true class="w100" />
-        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true /> 
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true />
     </div>
-    <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5>
+    <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5> *@
+
 
 </EditForm>
 
@@ -115,19 +141,37 @@
     readonly Person _model = new();
     bool _isEditMode = true;
     EditForm editForm; // Set by @ref during Render
-    List<string> _colorOptions = new() { "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White" };
+    readonly List<string> _colorOptions = ["Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
+    List<Plant> _plants = Plant.GetTestData();
+
 
     // Forces validation to show up immediately, it typically only shows up after a field has been touched
     protected override void OnAfterRender(bool firstRender) => editForm!.EditContext!.Validate();
 
-    class Animal
+    public class Plant
     {
-        [Required]
-        public string Name { get; set; } = ""; 
+        public string Name { get; set; } = "";
+        public  int Id { get; set; }
+        public override string ToString() => Name;
+
+        public static List<Plant> GetTestData()
+        {
+            return
+            [
+                new() { Id = 1, Name = "Rose" },
+                new() { Id = 2, Name = "Daisy" },
+                new() { Id = 3, Name = "Tulip" },
+                new() { Id = 4, Name = "Daffodil" },
+                new() { Id = 5, Name = "Lily" },
+                new() { Id = 6, Name = "Orchid" },
+                new() { Id = 7, Name = "Sunflower" },
+            ];
+        }
     }
 
     class Person
     {
+        
         [ValidateComplexType]
         public Animal Animal { get; set; } = new();
 
@@ -137,8 +181,8 @@
         public string? Label { get; set; } 
 
         // Labels
-        public string Name { get; set; } = "abcdefghijklmnopqrstuvwxyz";
-        public string FirstName { get; set; } = "";
+        public string Name { get; set; } = "Green";
+        public string FirstName { get; set; } = "Green";
         [DisplayName("MiddleName modified with [DisplayNameAttribute]")]
         public string MiddleName { get; set; } = "";
         [DisplayName("<span style='color: cyan'>Last </span><span style='color: lime'>Name</span><span style='color: magenta'> with embedded html</span>")]
@@ -159,13 +203,13 @@
         [MaxLength(5)] public string Tiger { get; set; } = "abcdefghi";
 
         // Controls
-        [DisplayName("EditString")]       public string     EditString       { get; set; } = "";
-        [DisplayName("EditTextArea")]     public string     EditTextArea     { get; set; } = "";
-        [DisplayName("EditNumber")]       public double     EditNumber       { get; set; } = 2.5;
-        [DisplayName("EditBool")]         public bool       EditBool         { get; set; }
-        [DisplayName("EditDate")]         public DateTime   EditDate         { get; set; } = DateTime.UtcNow;
-        [DisplayName("EditSelectEnum")]   public AnimalType EditSelectEnum   { get; set; }
-        [DisplayName("EditSelectString")] public string     EditSelectString { get; set; } = "Orange";
+        [DisplayName("EditString")]     public string     EditString     { get; set; } = "";
+        [DisplayName("EditTextArea")]   public string     EditTextArea   { get; set; } = "";
+        [DisplayName("EditNumber")]     public double     EditNumber     { get; set; } = 2.5;
+        [DisplayName("EditBool")]       public bool       EditBool       { get; set; }
+        [DisplayName("EditDate")]       public DateTime   EditDate       { get; set; } = DateTime.UtcNow;
+        [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
+        [DisplayName("EditSelect")] public int EditSelect { get; set; }
 
     }
 
@@ -182,4 +226,10 @@
         [EnumDisplayName("Gold Fish")]
         Fish = 3
     }
+    class Animal
+    {
+        [Required]
+        public string Name { get; set; } = ""; 
+    }
+
 }

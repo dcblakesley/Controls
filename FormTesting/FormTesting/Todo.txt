@@ -1,14 +1,6 @@
 ﻿
 
-Set Labels
-
-
- - Excel Import and Export
-
- - Modify EditSelect to support Select or radio buttons
-
-
-
+EditSingleSelect - break out into radio and select
 
 
 
