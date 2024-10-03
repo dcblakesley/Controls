@@ -23,7 +23,7 @@ namespace Controls;
 // MaxLength Attribute
 // The field Id must be a string or array type with a maximum length of '16'.
 
-
+/// <summary> Validation shown under the input field when it doesn't meet the requirements based on DataAnnotations. </summary>
 public partial class FieldValidationDisplay
 {
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
@@ -74,8 +74,6 @@ public partial class FieldValidationDisplay
         }
 
         // MaxLength
-        // 
-        // 
         if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
         {
             return MaxLengthString(_maxCharacters);
