@@ -4,8 +4,8 @@
  - Pointer for Selects
  - Pointer for Radio buttons
 
- - Pass in IsEditMode as a 
-
+ - Cleanup EditText, move out the Icons
+ - Create a generic EditCustomControl that wraps the label and the valiation?
 
 
 

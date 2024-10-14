@@ -2,13 +2,6 @@
 @using Microsoft.AspNetCore.Components.Forms
 @inherits InputText
 
-<style>
-    .form-text-link {
-        color: lime;
-        text-decoration: none;
-    }
-</style>
-
 <div class="form-group">
     <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />    
 
@@ -25,7 +18,7 @@
     {
         @if (!string.IsNullOrWhiteSpace(MaskText))
         {
-            <!-- Masks with eye icons to show/hide masked text.  -->
+            <!-- Masks with eye icons to show/hide masked text in EditMode  -->
             @if (!_showMaskedValue)
             {
                 <div>

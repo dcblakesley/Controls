@@ -1,0 +1,100 @@
+﻿@using System.Globalization
+@using System.Linq.Expressions
+@using Microsoft.AspNetCore.Components.Forms
+@typeparam TEnum
+@inherits InputBase<TEnum>
+
+<div class="form-group" >
+       
+    <legend>
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+    </legend>
+
+    @if (IsEditMode)
+    {
+            <fieldset>
+                <InputRadioGroup @bind-Value=@CurrentValue id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass>
+                    @foreach (var option in GetOptions())
+                    {
+                        @if(!HasHorizontalRadioButtons)
+                        {
+                            <div>
+                            </div>
+                        }
+                        <label>
+                            <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
+                            @((MarkupString)option.ToString())
+                        </label>
+                    }
+
+                </InputRadioGroup>
+            </fieldset>
+    }
+    else
+    {
+        <div class="form-text">@Value</div>
+    }
+
+    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+</div>
+
+
+@code {
+
+    // Get validation messages for FieldName
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public string? Label { get; set; }
+
+    [Parameter] public bool HasHorizontalRadioButtons { get; set; }
+    [Parameter] public bool SortByName { get; set; }
+    /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
+    [Parameter]
+    public required Type Type { get; set; }
+
+    List<TEnum> GetOptions() => SortByName ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList() : Enum.GetValues(Type).Cast<TEnum>().ToList();
+
+    
+    string _id = string.Empty;
+    List<Attribute>? _attributes;
+    FieldIdentifier _fieldIdentifier;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _fieldIdentifier = FieldIdentifier.Create(Field);
+        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
+        _id = AttributesHelper.GetId(Id, _fieldIdentifier);
+    }
+
+
+    protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
+    {
+        // Lets Blazor convert the value for us
+        if (BindConverter.TryConvertTo(value, CultureInfo.CurrentCulture, out TEnum parsedValue))
+        {
+            result = parsedValue;
+            validationErrorMessage = null;
+            return true;
+        }
+
+        // Map null/empty value to null if the bound object is nullable
+        if (string.IsNullOrEmpty(value))
+        {
+            var nullableType = Nullable.GetUnderlyingType(typeof(TEnum));
+            if (nullableType != null)
+            {
+                result = default;
+                validationErrorMessage = null;
+                return true;
+            }
+        }
+
+        // The value is invalid => set the error message
+        result = default;
+        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
+        return false;
+    }
+}

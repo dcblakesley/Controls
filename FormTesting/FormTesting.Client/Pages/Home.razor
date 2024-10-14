@@ -189,18 +189,4 @@
         [EnumDisplayName("Gold Fish")]
         Fish = 3
     }
-
-    public class Person : IIntIdAndName
-    {
-        // Constructors
-        public Person() { }
-        public Person(int id, string name)
-        {
-            Id = id;
-            Name = name;
-        }
-
-        public int Id { get; set; }
-        public string? Name { get; set; }
-    }
 }
