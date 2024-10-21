@@ -33,6 +33,8 @@
             color: magenta;
         }
     </style>
+    
+    <EditSelectString @bind-Value=_model.StringSelect Field=@(() => _model.StringSelect) Options=_colorOptions />
 
     <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) IsEditMode=@_isEditMode />
 
@@ -47,6 +49,7 @@
 
     <div class="flex-row flex-wrap">
         <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />   
+        
         <div>
             <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect) class="standard-width">
                 @foreach (var o in _plants.OrderBy(x=>x.Name))
@@ -147,7 +150,7 @@
     readonly Person _model = new();
     bool _isEditMode = true;
     EditForm editForm; // Set by @ref during Render
-    readonly List<string> _colorOptions = ["Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
+    readonly List<string> _colorOptions = ["", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
     List<Plant> _plants = Plant.GetTestData();
 
 
@@ -165,19 +168,20 @@
             return
             [
                 new() { Id = 1, Name = "Rose" },
-                new() { Id = 2, Name = "Daisy" },
-                new() { Id = 3, Name = "Tulip" },
-                new() { Id = 4, Name = "Daffodil" },
-                new() { Id = 5, Name = "Lily" },
-                new() { Id = 6, Name = "Orchid" },
-                new() { Id = 7, Name = "Sunflower" },
-            ];
+            new() { Id = 2, Name = "Daisy" },
+            new() { Id = 3, Name = "Tulip" },
+            new() { Id = 4, Name = "Daffodil" },
+            new() { Id = 5, Name = "Lily" },
+            new() { Id = 6, Name = "Orchid" },
+            new() { Id = 7, Name = "Sunflower" },
+        ];
         }
     }
 
     class Person
     {
-        
+        [Required] public string StringSelect { get; set; } = "";
+
         [ValidateComplexType]
         public Animal Animal { get; set; } = new();
 
