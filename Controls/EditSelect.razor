@@ -3,24 +3,39 @@
 @inherits InputSelect<TValue>
 @typeparam TValue
 
-<div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
-    
-    <InputSelect @bind-Value=@CurrentValue class=@CssClass >
-        @ChildContent
-    </InputSelect> 
+@if (ShouldShowComponent)
+{
+    <div class="form-group">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
-    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
-</div>
+        @if (ShowEditor)
+        {
+            <InputSelect @bind-Value=@CurrentValue class=@CssClass>
+                @ChildContent
+            </InputSelect>
+        }
+        else
+        {
+            <div class="form-text @CssClass">@CurrentValueAsString</div>
+        }
+
+        <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+    </div>
+}
 
 @code {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
     [Parameter] public string? Label { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
     
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldShowComponent => true;
+
 
     // Get validation messages for FieldName
     protected override void OnInitialized()

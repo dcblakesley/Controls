@@ -4,9 +4,14 @@
 
 @page "/"
 
-<button @onclick=@(()=>_isEditMode =! _isEditMode)>Edit Mode</button>
+<button @onclick=@(()=>IsEditMode =! IsEditMode)>Edit Mode</button>
+
+<button class="btn btn-info" @onclick=@(()=>FormOptions.IsEditMode =! FormOptions.IsEditMode)>Form Edit Mode</button>
+
+
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <DataAnnotationsValidator />
+    <CascadingValue Value=@FormOptions>
     @*     <ObjectGraphDataAnnotationsValidator />
     *@
 
@@ -36,16 +41,17 @@
     
     <EditSelectString @bind-Value=_model.StringSelect Field=@(() => _model.StringSelect) Options=_colorOptions />
 
-    <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) IsEditMode=@_isEditMode />
+    <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) IsEditMode=@IsEditMode />
 
     <!-- Controls -->
     <h5>Controls</h5>
-    <div class="flex-row flex-wrap">
-        <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   class="standard-width" />
-        <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width" />
-        <EditNumber   @bind-Value=_model.EditNumber   Field=@(() => _model.EditNumber)   class="standard-width" />
-        <EditBool     @bind-Value=_model.EditBool     Field=@(() => _model.EditBool) />
-    </div>
+
+        <div class="flex-row flex-wrap">
+            <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   class="standard-width" />
+            <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width" />
+            <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) class="standard-width" />
+            <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool)  />
+            </div>
 
     <div class="flex-row flex-wrap">
         <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />   
@@ -144,11 +150,16 @@
     <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5> *@
 
 
+    </CascadingValue>
 </EditForm>
 
 @code {
     readonly Person _model = new();
-    bool _isEditMode = true;
+    [Parameter]
+    public bool IsEditMode { get; set; }= true;
+
+    public FormOptions FormOptions { get; set; } = new ();
+
     EditForm editForm; // Set by @ref during Render
     readonly List<string> _colorOptions = ["", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
     List<Plant> _plants = Plant.GetTestData();

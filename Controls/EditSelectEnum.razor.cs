@@ -21,6 +21,9 @@ public partial class EditSelectEnum<TEnum>
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+
 
     protected override void OnInitialized()
     {
@@ -34,6 +37,7 @@ public partial class EditSelectEnum<TEnum>
 
     async Task SetAsync(TEnum value) => await ValueChanged.InvokeAsync(value);
 
+    bool ShouldShowComponent => true;
     protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
     {
         // Lets Blazor convert the value for us 

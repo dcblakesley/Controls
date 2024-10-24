@@ -4,23 +4,26 @@
 @typeparam TEnum
 @inherits InputBase<TEnum>
 
-<div class="form-group" >
-       
-    <legend>
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
-    </legend>
+@if (ShouldShowComponent)
+{
+    <div class="form-group">
 
-    @if (IsEditMode)
-    {
-            <fieldset>
+        <fieldset>
+            <legend>
+                <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+            </legend>
+
+            @if (ShowEditor)
+            {
                 <InputRadioGroup @bind-Value=@CurrentValue id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass>
                     @foreach (var option in GetOptions())
                     {
-                        @if(!HasHorizontalRadioButtons)
+                        @if (!HasHorizontalRadioButtons)
                         {
                             <div>
                             </div>
                         }
+
                         <label>
                             <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
                             @((MarkupString)option.ToString())
@@ -28,16 +31,16 @@
                     }
 
                 </InputRadioGroup>
-            </fieldset>
-    }
-    else
-    {
-        <div class="form-text">@Value</div>
-    }
+            }
+            else
+            {
+                <div class="form-text">@Value</div>
+            }
 
-    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
-</div>
-
+            <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+        </fieldset>
+    </div>
+}
 
 @code {
 
@@ -54,8 +57,11 @@
     [Parameter]
     public required Type Type { get; set; }
 
+    bool ShouldShowComponent => true;
     List<TEnum> GetOptions() => SortByName ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList() : Enum.GetValues(Type).Cast<TEnum>().ToList();
 
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     
     string _id = string.Empty;
     List<Attribute>? _attributes;
@@ -68,8 +74,7 @@
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, _fieldIdentifier);
     }
-
-
+    
     protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
     {
         // Lets Blazor convert the value for us

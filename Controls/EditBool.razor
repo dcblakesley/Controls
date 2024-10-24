@@ -1,29 +1,29 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @inherits InputCheckbox
 
-<div class="form-group">
-    
-    <div class="form-check">
-@*         <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
- *@        
-        @if (IsEditMode)
-        {
-            <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" disabled=@IsDisabled />
-        }
-        else
-        {
-            <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" />
-        }
+@if (ShouldShowComponent)
+{
+    <div class="form-group">
 
-        <label class="form-check-label pointer" for=@_id>
-            @((MarkupString)DisplayLabel())
-        </label>
+        <div class="form-check">
+
+            @if (ShowEditor)
+            {
+                <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" disabled=@IsDisabled/>
+            }
+            else
+            {
+                <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass"/>
+            }
+
+            <label class="form-check-label pointer" for=@_id>
+                @((MarkupString)DisplayLabel())
+            </label>
+        </div>
+
+        <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
     </div>
-
-    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
-</div>
-
-
+}
 
 @code {
     [Parameter] public string? Id { get; set; }
@@ -32,12 +32,18 @@
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
+
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? _attributes.Description();
+    bool ShouldShowComponent => true;
 
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
+
 
     // Get validation messages for FieldName
     protected override void OnInitialized()

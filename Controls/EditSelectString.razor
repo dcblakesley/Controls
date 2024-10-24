@@ -3,20 +3,25 @@
 @inherits InputSelect<TValue>
 @typeparam TValue
 
-<div class="form-group">
-    <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
-    
-    <InputSelect @bind-Value=@CurrentValue class=@CssClass>
-        @foreach (var o in Options)
+@if (ShouldShowComponent)
+{
+    <div class="form-group">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+
+        @if (ShowEditor)
         {
-            <option checked=@(() => CurrentValueAsString == o) value=@o data-test-id=@($"option-{o}")>@o</option>
+            <InputSelect @bind-Value=@CurrentValue class=@CssClass>
+                @foreach (var o in Options)
+                {
+                    <option checked=@(() => CurrentValueAsString == o) value=@o data-test-id=@($"option-{o}")>@o</option>
+                }
+            </InputSelect>
         }
-    </InputSelect> 
+        else
+        {
+            <div class="form-text @CssClass">@CurrentValueAsString</div>
+        }
 
-    <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes />
-</div>
-
-@code {
-
-    // Get validation messages for FieldName
+        <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+    </div>
 }
