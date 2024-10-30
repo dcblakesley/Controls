@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Xml;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -29,6 +30,7 @@ public partial class FieldValidationDisplay
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
     [Parameter] public required List<Attribute> Attributes { get; set; }
     [CascadingParameter] EditContext? EditContext { get; set; }
+    [CascadingParameter] FormOptions? FormOptions { get; set; }
 
     bool _isRequired;
     int? _minCharacters;
@@ -42,6 +44,11 @@ public partial class FieldValidationDisplay
         _minCharacters = minAndMax.MinLength;
         _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
+        if (FormOptions != null)
+        {
+            FormOptions.FieldIdentifiers.Add(FieldIdentifier);
+            Console.WriteLine($"Registered {_fieldName}");
+        }
     }
 
     /// <summary> Overrides the default validation messages. </summary>

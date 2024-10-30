@@ -1,9 +1,12 @@
-﻿namespace Controls;
+﻿using Microsoft.AspNetCore.Components.Forms;
+
+namespace Controls;
 
 public class FormOptions
 {
     public bool IsEditMode { get; set; } = true;
     public bool IsReadOnly { get; set; }
+    public List<FieldIdentifier> FieldIdentifiers { get; private set; } = [];
 
     /// <summary>
     /// Feature to quickly allow users to see only what has been entered or modified from default values. <br/>
