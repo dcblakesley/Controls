@@ -4,19 +4,6 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Controls;
 
-public class ToolTipAttribute(string value) : Attribute
-{
-    public string Value { get; protected set; } = value;
-}
-public class EnumDisplayNameAttribute(string value) : Attribute
-{
-    public string Value { get; protected set; } = value;
-}
-public class SubDescriptionAttribute(string value) : Attribute
-{
-    public string Value { get; protected set; } = value;
-}
-
 public static class AttributesHelper
 {
     public static MemberInfo GetExpressionMember<T>(Expression<Func<T>> accessor)
@@ -96,4 +83,19 @@ public static class AttributesHelper
 
         return labelText;
     }
+}
+
+
+// Custom Attributes
+public class ToolTipAttribute(string value) : Attribute
+{
+    public string Value { get; protected set; } = value;
+}
+public class EnumDisplayNameAttribute(string value) : Attribute
+{
+    public string Value { get; protected set; } = value;
+}
+public class SubDescriptionAttribute(string value) : Attribute
+{
+    public string Value { get; protected set; } = value;
 }

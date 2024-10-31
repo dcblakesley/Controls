@@ -1,0 +1,68 @@
+﻿@using Controls
+
+@* <button @onclick=@(()=>IsEditMode =! IsEditMode)>Edit Mode</button>
+ *@
+<button class="btn btn-info" @onclick=@(()=>FormOptions.IsEditMode =! FormOptions.IsEditMode)>Form Edit Mode</button>
+
+<style>
+    .standard-width {
+        width: 300px;
+    }
+</style>
+
+<EditForm Model=_model FormName="MyAmazingFormName" @ref="_editForm">
+    <CascadingValue Value=@FormOptions>
+        <ObjectGraphDataAnnotationsValidator />
+
+        <h5>General Usage</h5>
+        <ul style="margin-right: 2rem">
+            <li>The controls are all setup to provide a consistent look and feel with minimal markup.</li>
+            <li>They each provide a Label, Description, Input/Control and Validation</li>
+        </ul>
+
+        <div style="margin-left: 3rem">
+            <EditString @bind-Value=_model.Label Field=@(() => _model.Label) class="standard-width" Placeholder="Input/Control with placeholder text" />
+        </div>
+        
+        <!-- Labels -->
+        <h5>Labels</h5>
+            <ul>
+                <li>Default behavior - Automatically generated from the Property Name</li>
+                <li>Spaces are added based on PascalCasing</li>
+                <li>Override the Label by using the [DisplayName] Attribute</li>
+                <li>Can also be set directly in the markup</li>
+                <li>markup can be embedded in the DisplayName attribute or set in markup</li>
+            </ul>
+        <div class="flex-row flex-wrap">
+            <EditString @bind-Value=_model.Name Field=@(() => _model.Name) class="standard-width" IsEditMode=false Url="https://www.google.com" />
+            <EditString @bind-Value=_model.Name Field=@(() => _model.Name) class="standard-width" />
+            <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) class="standard-width" />
+            <EditString @bind-Value=_model.LastName Field=@(() => _model.LastName) class="standard-width" />
+        </div>
+        
+        <!-- Descriptions -->
+        <h5>Descriptions</h5>
+            <ul>
+                <li>Optional</li>
+                <li>Appear under the label</li>
+                <li>Support markup</li>
+            </ul>
+        <div class="flex-row flex-wrap">
+            <EditString @bind-Value=_model.Dog Field=@(() => _model.Dog) class="standard-width" />
+            <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) class="standard-width" />
+        </div>
+
+        <!-- Validation -->
+            <h5>Validation</h5>
+            <ul>
+                <li>Utilizes DataAnnotations</li>
+                <li>Allows displaying Markup</li>
+            </ul>
+        <div class="flex-row flex-wrap">
+            <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" />
+            <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) class="standard-width" />
+            <EditString @bind-Value=_model.Lion Field=@(() => _model.Lion) class="standard-width" />
+            <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" />
+        </div>
+    </CascadingValue>
+</EditForm>

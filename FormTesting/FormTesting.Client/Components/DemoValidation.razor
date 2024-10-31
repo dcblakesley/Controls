@@ -1,0 +1,9 @@
+﻿<h3>DemoValidation</h3>
+
+@code {
+
+    EditForm editForm; // Set by @ref during Render
+
+    // Forces validation to show up immediately, it typically only shows up after a field has been touched
+    protected override void OnAfterRender(bool firstRender) => editForm!.EditContext!.Validate();
+}

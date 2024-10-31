@@ -1,0 +1,47 @@
+﻿@using Controls
+<EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <CascadingValue Value=@FormOptions>
+        <div class="flex-row flex-wrap">
+            <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   class="standard-width" />
+            <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width" />
+            <EditNumber   @bind-Value=_model.EditNumber   Field=@(() => _model.EditNumber)   class="standard-width" />
+            <EditBool     @bind-Value=_model.EditBool     Field=@(() => _model.EditBool)  />
+        </div>
+
+        <div class="flex-row flex-wrap">
+            <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />   
+        
+            <div>
+                <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect) class="standard-width">
+                    @foreach (var o in _plants.OrderBy(x=>x.Name))
+                    {
+                        <option checked=@(()=> _model.EditSelect == o.Id) value=@o.Id data-test-id=@($"option-{o.Id}")>@o.Name</option>
+                    }
+                </EditSelect>
+                <div>@_model.EditSelect</div>
+            </div>
+            <div>
+                <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) class="standard-width" />
+                @_model.EditSelectEnum
+            </div>
+        </div>
+        <div class="flex-row flex-wrap">
+            <EditRadioString @bind-Value=_model.EditRadioString Field=@(() => _model.EditRadioString) Options=@_colorOptions HasOther=true />
+            <div>
+                <EditRadioEnum Type=typeof(AnimalType) @bind-Value=_model.EditRadioEnum Field=@(() => _model.EditRadioEnum) />
+                @_model.EditRadioEnum
+            </div>
+        </div>
+    </CascadingValue>
+</EditForm>
+
+
+@code {
+    readonly Person _model = new();
+    EditForm editForm; // Set by @ref during Render
+    public FormOptions FormOptions { get; set; } = new();
+    readonly List<string> _colorOptions = ["", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
+    List<Plant> _plants = Plant.GetTestData();
+}

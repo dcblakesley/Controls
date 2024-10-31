@@ -1,0 +1,15 @@
+﻿<h3>DemoEditSelectString</h3>
+
+@* 
+    <h5>EditSelectString</h5>
+    <p>Binds to a string, with an input List of strings for the options </p>
+    <div class="flex-row">
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true HasRadioButtons=true HasHorizontalRadioButtons=true />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true class="w100" />
+        <EditSingleStringSelect Options=@_colorOptions @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) HasOther=true />
+    </div>
+    <h5 style="color: @_model.EditSelectString">@_model.EditSelectString</h5> *@
+@code {
+
+}
