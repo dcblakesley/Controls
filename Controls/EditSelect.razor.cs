@@ -4,13 +4,11 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Controls;
 
-/// <summary> Select a string from Options (List of strings) </summary>
-public partial class EditSelectString<TValue>
+public partial class EditSelect<TValue>
 {
     [Parameter] public string? Id { get; set; }
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
     [Parameter] public string? Label { get; set; }
-    [Parameter] public required List<string> Options { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     string _id = string.Empty;
     List<Attribute>? _attributes;

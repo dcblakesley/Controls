@@ -1,4 +1,4 @@
-﻿namespace Controls;
+﻿namespace Controls.Helpers;
 
 public static class EnumHelpers
 {
@@ -10,7 +10,7 @@ public static class EnumHelpers
         {
             return attributes.First().Value;
         }
-        
+
         var text = value.ToString();
         if (text != null)
         {

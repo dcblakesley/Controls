@@ -1,4 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
+@using Controls.Helpers
+@using Microsoft.AspNetCore.Components.Forms
 @inherits InputCheckbox
 
 @if (ShouldShowComponent)
@@ -26,30 +28,7 @@
 }
 
 @code {
-    [Parameter] public string? Id { get; set; }
-    [Parameter] public required Expression<Func<bool>> Field { get; set; }
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    [Parameter] public bool IsDisabled { get; set; }
-    [Parameter] public string? Label { get; set; }
-    [Parameter] public string? Description { get; set; }
-
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-
-    string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
-    string? DisplayDescription() => Description ?? _attributes.Description();
-    bool ShouldShowComponent => true;
-
-    string _id = string.Empty;
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
 
 
     // Get validation messages for FieldName
-    protected override void OnInitialized()
-    {
-        _fieldIdentifier = FieldIdentifier.Create(Field);
-        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FieldIdentifier);
-    }
 }

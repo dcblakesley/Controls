@@ -1,28 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Xml;
+using Controls.Helpers;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace Controls;
-
-// Default validation messages
-
-// String Validations
-
-// Required Attribute
-// The Id field is required.
-// 
-// StringLength Attribute
-// The field Id must be a string with a maximum length of 16.
-// The field Id must be a string with a minimum length of 3 and a maximum length of 16.
-// 
-// MinLength Attribute
-// The field Id must be a string or array type with a minimum length of '3'.
-// The field Id must be a string or array type with a minimum length of '3'.
-// 
-//
-// MaxLength Attribute
-// The field Id must be a string or array type with a maximum length of '16'.
 
 /// <summary> Validation shown under the input field when it doesn't meet the requirements based on DataAnnotations. </summary>
 public partial class FieldValidationDisplay
@@ -46,47 +28,13 @@ public partial class FieldValidationDisplay
         _fieldName = FieldIdentifier.FieldName;
         if (FormOptions != null)
         {
+            // Register the field identifier with the form options so we can have a validation summary that provides links to the field that is invalid.
             FormOptions.FieldIdentifiers.Add(FieldIdentifier);
-            Console.WriteLine($"Registered {_fieldName}");
+            //Console.WriteLine($"Registered {_fieldName}");
         }
     }
 
     /// <summary> Overrides the default validation messages. </summary>
-    string GetValidationMessage(string message, string fieldName)
-    {
-        var output = message;
-        
-        // Required
-        if (string.Equals(message, $"The {_fieldName} field is required."))
-            return RequiredString();
-        
-        // StringLength with only max
-        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
-            return MaxLengthString(_maxCharacters);
-        
-        // StringLength with Min
-        if (string.Equals(message, $"The field {_fieldName} must be a string with a minimum length of {_minCharacters} and a maximum length of {_maxCharacters}."))
-            return RangeString(_minCharacters, _maxCharacters);
-        
-        // MinLength
-        if (string.Equals(message, $"The field {_fieldName} must be a string or array type with a minimum length of '{_minCharacters}'."))
-            return MinLengthString(_minCharacters);
-        
-        // MaxLength
-        if (string.Equals(message, $"The field {_fieldName} must be a string with a maximum length of {_maxCharacters}."))
-            return MaxLengthString(_maxCharacters);
-        
-        if (string.Equals(message, $"The field {_fieldName} must be a string or array type with a maximum length of '{_maxCharacters}'."))
-        {
-            return MaxLengthString(_maxCharacters);
-        }
-
-        return output;
-    }
-
-    // New default validation messages
-    public static string RequiredString() => "Required";
-    public static string MinLengthString(int? min) => $"Must contain at least {min} characters";
-    public static string MaxLengthString(int? max) => $"Cannot contain more than {max} characters";
-    public static string RangeString(int? min, int? max) => $"Must be between {min} and {max} characters";
+    string GetValidationMessage(string message) =>
+        ValidationHelper.GetValidationMessage(message, _fieldName, _maxCharacters, _minCharacters);
 }

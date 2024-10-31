@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components.Forms;
 
-namespace Controls;
+namespace Controls.Helpers;
 
 public static class AttributesHelper
 {
@@ -27,13 +27,13 @@ public static class AttributesHelper
     }
 
     public static List<Attribute> GetExpressionCustomAttributes<T>(Expression<Func<T>> accessor) => GetExpressionMember(accessor).GetCustomAttributes().ToList();
-    
+
     // Basic Attributes
-    public static bool    IsRequired(this List<Attribute>? attrs) => attrs?.OfType<RequiredAttribute>().FirstOrDefault() != null;
+    public static bool IsRequired(this List<Attribute>? attrs) => attrs?.OfType<RequiredAttribute>().FirstOrDefault() != null;
     public static string? Description(this List<Attribute>? attrs) => attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
     public static string? SubDescription(this List<Attribute>? attrs) => attrs?.OfType<SubDescriptionAttribute>().FirstOrDefault()?.Value;
     public static string? ToolTip(this List<Attribute>? attrs) => attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
-    public static string  GetId(string? id, FieldIdentifier fieldIdentifier) => id ?? fieldIdentifier.FieldName.Replace(" ", "");
+    public static string GetId(string? id, FieldIdentifier fieldIdentifier) => id ?? fieldIdentifier.FieldName.Replace(" ", "");
 
     // Complex
     public static (int? MinLength, int? MaxLength) GetMinAndMaxLengths(List<Attribute> attributes)
@@ -48,7 +48,7 @@ public static class AttributesHelper
         }
 
         var minLengthAttribute = attributes.OfType<MinLengthAttribute>().FirstOrDefault();
-        if(minLengthAttribute != null)
+        if (minLengthAttribute != null)
         {
             min = Math.Max(min, minLengthAttribute.Length);
         }
@@ -69,7 +69,7 @@ public static class AttributesHelper
         if (displayNameAttribute == null)
         {
             var enumDisplayName = attrs?.OfType<EnumDisplayNameAttribute>().FirstOrDefault();
-            if(enumDisplayName != null)
+            if (enumDisplayName != null)
             {
                 labelText = enumDisplayName.Value;
             }

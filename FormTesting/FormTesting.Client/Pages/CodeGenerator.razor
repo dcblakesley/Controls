@@ -14,8 +14,7 @@
     private void Generate()
     {
         CreatePropertiesFromInputText();
-
-
+        
         // Create the output
         _output = "";
         _output = CreateRazorOutput();
@@ -29,7 +28,6 @@
         {
             try
             {
-
                 var parts = line.Split("\t");
 
                 // ClassName /t Type /t PropertyName
