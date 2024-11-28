@@ -15,3 +15,8 @@ public class FormOptions
     /// </summary>
     public bool HideNonEditModeUnusedValues { get; set; } = true;
 }
+
+public class FormGroupOptions
+{
+    public string? Name { get; set; }
+}

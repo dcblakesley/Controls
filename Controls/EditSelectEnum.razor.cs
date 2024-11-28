@@ -8,7 +8,7 @@ namespace Controls;
 /// <summary> Uses an enum as the options. Defaults to sorted by Id, can be sorted by name using the SortByName parameter  </summary>
 public partial class EditSelectEnum<TEnum>
 {
-    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Id { get; set; } [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool SortByName { get; set; } = true;
@@ -22,16 +22,16 @@ public partial class EditSelectEnum<TEnum>
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-
-
+    
     protected override void OnInitialized()
     {
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, _fieldIdentifier);
+        _id = AttributesHelper.GetId(Id, IdPrefix, _fieldIdentifier);
     }
 
     List<TEnum> GetOptions() => SortByName ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList() : Enum.GetValues(Type).Cast<TEnum>().ToList();

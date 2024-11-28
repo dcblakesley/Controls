@@ -33,7 +33,25 @@ public static class AttributesHelper
     public static string? Description(this List<Attribute>? attrs) => attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
     public static string? SubDescription(this List<Attribute>? attrs) => attrs?.OfType<SubDescriptionAttribute>().FirstOrDefault()?.Value;
     public static string? ToolTip(this List<Attribute>? attrs) => attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
-    public static string GetId(string? id, FieldIdentifier fieldIdentifier) => id ?? fieldIdentifier.FieldName.Replace(" ", "");
+    public static string GetId(string? id, string? idPrefix, FieldIdentifier fieldIdentifier)
+    {
+        // If an Id is provided, use it
+        if (!string.IsNullOrEmpty(id))
+        {
+            return id;
+        }
+        
+        var fieldName = fieldIdentifier.FieldName;
+        var fn = fieldIdentifier.Model.GetName();
+        Console.WriteLine(fn);
+        var a = fieldIdentifier.Model.GetType().GetProperties().ToList();
+        if (idPrefix != null)
+        {
+            fieldName = idPrefix + "-" + fieldName;
+        }
+
+        return id ?? fieldName.Replace(" ", "");
+    }
 
     // Complex
     public static (int? MinLength, int? MaxLength) GetMinAndMaxLengths(List<Attribute> attributes)
@@ -84,7 +102,6 @@ public static class AttributesHelper
         return labelText;
     }
 }
-
 
 // Custom Attributes
 public class ToolTipAttribute(string value) : Attribute

@@ -1,0 +1,19 @@
+﻿@using Controls
+<EditString @bind-Value=Address.Line1 Field=@(() => Address.Line1)  />
+
+<div class="flex-row">
+    <EditString @bind-Value=Address.City Field=@(() => Address.City)  />
+    <EditSelectString @bind-Value=Address.State Field=@(() => Address.State) IsEditMode=IsEditMode Options=_stateOptions />
+    <EditString @bind-Value=Address.ZipCode Field=@(() => Address.ZipCode)  />
+</div>
+
+
+@code {
+    [Parameter] public required Address Address { get; set; }
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public bool IsInternationalAddress { get; set; }
+
+    List<string> _stateOptions = ["", "AK", "AL", "AR", "AS", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "GU", "HI",
+        "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MP", "MS", "MT", "NC", "ND", "NE", "NH", "NJ",
+        "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UM", "UT", "VA", "VI", "VT", "WA", "WI", "WV", "WY"];
+}

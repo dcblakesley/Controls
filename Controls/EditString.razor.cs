@@ -7,7 +7,11 @@ namespace Controls;
 public partial class EditString
 {
     [Parameter] public required Expression<Func<string>> Field { get; set; }
-    [Parameter] public string? Id { get; set; }
+
+    /// <summary> IDs are used for the label and input. If not provided, the Id will be automatically generated based on the name of the Property. </summary>
+    [Parameter] public string? Id { get; set; }  [Parameter] public string? IdPrefix { get; set; }
+
+    /// <summary> Optional, can be used to distinguish between multiple forms on the same page. </summary>
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
@@ -29,6 +33,7 @@ public partial class EditString
 
     bool ShouldShowComponent => true;
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 
     string? GetMaskValue()
@@ -58,6 +63,6 @@ public partial class EditString
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, _fieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions?.Name, _fieldIdentifier);
     }
 }

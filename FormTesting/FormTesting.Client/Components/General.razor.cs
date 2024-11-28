@@ -10,14 +10,18 @@ public partial class General
     readonly Person _model = new(); 
     EditForm? _editForm; // Set by @ref during Render
     public FormOptions FormOptions { get; set; } = new();
+    public FormGroupOptions FormGroupOptions { get; set; } = new() { Name = "Blah" };
+    public FormGroupOptions Address2 { get; set; } = new() { Name = "Address2" };
 
     public bool IsEditMode { get; set; } = true;
+
+    protected override void OnAfterRender(bool firstRender) => _editForm!.EditContext!.Validate();
 
     class Person
     {
         // Width
         public int EditorWidth { get; set; } = 400;
-        [MinLength(1)]
+        [Required, MinLength(1)]
         public string? Label { get; set; }
 
         // Labels
@@ -40,5 +44,19 @@ public partial class General
         public string Zebra { get; set; } = "";
         [MinLength(3)] public string Lion { get; set; } = "a";
         [MaxLength(5)] public string Tiger { get; set; } = "abcdefghi";
+
+        public Address HomeAddress { get; set; } = new();
+        public Address WorkAddress { get; set; } = new();
     }
+}
+
+public class Address
+{
+    [DisplayName("Address")]
+    [Required]
+    public string Line1 { get; set; } = string.Empty;
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? ZipCode { get; set; }
+    public string? Country { get; set; }
 }

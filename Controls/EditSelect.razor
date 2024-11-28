@@ -9,7 +9,7 @@
 
         @if (ShowEditor)
         {
-            <InputSelect @bind-Value=@CurrentValue class=@CssClass>
+            <InputSelect @bind-Value=@CurrentValue class=@CssClass  id=@_id data-test-id=@_id>
                 @ChildContent
             </InputSelect>
         }
