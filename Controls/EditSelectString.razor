@@ -13,7 +13,7 @@
             <InputSelect @bind-Value=@CurrentValue class=@CssClass id=@_id data-test-id=@_id>
                 @foreach (var o in Options)
                 {
-                    <option checked=@(() => CurrentValueAsString == o) value=@o data-test-id=@($"option-{o}")>@o</option>
+                    <option checked=@(() => CurrentValueAsString == o) value=@o data-test-id=@($"option-{_id}-{o}")>@o</option>
                 }
             </InputSelect>
         }
@@ -21,6 +21,7 @@
         {
             <div class="form-text @CssClass">@CurrentValueAsString</div>
         }
+
 
         <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
     </div>
