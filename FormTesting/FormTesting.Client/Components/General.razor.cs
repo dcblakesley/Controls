@@ -17,8 +17,13 @@ public partial class General
 
     protected override void OnAfterRender(bool firstRender) => _editForm!.EditContext!.Validate();
 
+    public List<string> _options = ["Green", "Blue", "Red", "Yellow", "Orange", "Purple", "Black", "White"];
+    public string _selectedOption = "Green";
+
     class Person
     {
+
+
         // Width
         public int EditorWidth { get; set; } = 400;
         [Required, MinLength(1)]

@@ -14,7 +14,12 @@
     <CascadingValue Value=@FormOptions>
         <ObjectGraphDataAnnotationsValidator />
 
-@*         <h5>General Usage</h5>
+        <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=false />
+        <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=true />
+            
+        <div>@_selectedOption</div>
+
+        @*         <h5>General Usage</h5>
         <ul style="margin-right: 2rem">
             <li>The controls are all setup to provide a consistent look and feel with minimal markup.</li>
             <li>They each provide a Label, Description, Input/Control and Validation</li>
@@ -64,13 +69,14 @@
             <EditString @bind-Value=_model.Lion Field=@(() => _model.Lion) class="standard-width" />
             <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" />
         </div> *@
-        <CascadingValue Value=@(new FormGroupOptions() {Name = "HelloThere"})>
+
+@*         <CascadingValue Value=@(new FormGroupOptions() {Name = "HelloThere"})>
             <AddressEditor Address=@_model.WorkAddress />
         </CascadingValue>
 
         <CascadingValue Value=@Address2>
             <AddressEditor Address=@_model.HomeAddress />
-        </CascadingValue>
+        </CascadingValue> *@
 
 
     </CascadingValue>

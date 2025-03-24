@@ -1,5 +1,6 @@
 ﻿@using System.Globalization
 @using System.Linq.Expressions
+@using Controls.Helpers
 @using Microsoft.AspNetCore.Components.Forms
 @typeparam TEnum
 @inherits InputBase<TEnum>
@@ -26,7 +27,7 @@
 
                         <label>
                             <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
-                            @((MarkupString)option.ToString())
+                            @((MarkupString)option.GetName())
                         </label>
                     }
 
