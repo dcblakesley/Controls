@@ -6,7 +6,8 @@ namespace Controls;
 
 public partial class EditSelect<TValue>
 {
-    [Parameter] public string? Id { get; set; } [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public string? Id { get; set; } 
+    [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;

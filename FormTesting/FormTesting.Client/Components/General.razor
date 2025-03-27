@@ -10,16 +10,22 @@
     }
 </style>
 
+
+
+<SelectEnum Type=typeof(AnimalType) @bind-Value=@SelectedAnimalType Field=@(() => SelectedAnimalType) />
+<p>@SelectedAnimalType</p>
+
+
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="_editForm">
     <CascadingValue Value=@FormOptions>
         <ObjectGraphDataAnnotationsValidator />
-
+        @* 
         <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=false />
         <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=true />
             
         <div>@_selectedOption</div>
 
-        @*         <h5>General Usage</h5>
+             <h5>General Usage</h5>
         <ul style="margin-right: 2rem">
             <li>The controls are all setup to provide a consistent look and feel with minimal markup.</li>
             <li>They each provide a Label, Description, Input/Control and Validation</li>

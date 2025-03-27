@@ -7,6 +7,9 @@ namespace FormTesting.Client.Components;
 
 public partial class General
 {
+
+    public AnimalType SelectedAnimalType { get; set; } = AnimalType.Dog;
+
     readonly Person _model = new(); 
     EditForm? _editForm; // Set by @ref during Render
     public FormOptions FormOptions { get; set; } = new();

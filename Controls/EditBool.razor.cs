@@ -6,7 +6,8 @@ namespace Controls;
 
 public partial class EditBool
 {
-    [Parameter] public string? Id { get; set; } [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public string? Id { get; set; } 
+    [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }

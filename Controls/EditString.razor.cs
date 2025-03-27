@@ -9,7 +9,8 @@ public partial class EditString
     [Parameter] public required Expression<Func<string>> Field { get; set; }
 
     /// <summary> IDs are used for the label and input. If not provided, the Id will be automatically generated based on the name of the Property. </summary>
-    [Parameter] public string? Id { get; set; }  [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public string? Id { get; set; }  
+    [Parameter] public string? IdPrefix { get; set; }
 
     /// <summary> Optional, can be used to distinguish between multiple forms on the same page. </summary>
     [Parameter] public bool IsEditMode { get; set; } = true;

@@ -1,6 +1,4 @@
-﻿@using System.Globalization
-@using System.Linq.Expressions
-@using Controls.Helpers
+﻿@using Controls.Helpers
 @using Microsoft.AspNetCore.Components.Forms
 @typeparam TEnum
 @inherits InputBase<TEnum>
@@ -35,16 +33,10 @@
             }
             else
             {
-                <div class="form-text">@Value</div>
+                <div class="form-text">@Value?.GetName()</div>
             }
 
             <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
         </fieldset>
     </div>
-}
-
-@code {
-
-    // Get validation messages for FieldName
-
 }

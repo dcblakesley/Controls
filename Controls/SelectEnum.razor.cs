@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Components.Forms;
 
 namespace Controls;
 
-/// <summary> Uses an enum as the options. Defaults to sorted by Id, can be sorted by name using the SortByName parameter  </summary>
-public partial class EditSelectEnum<TEnum>
+/// <summary> No label or validation, doesn't have to be within an EditForm  </summary>
+public partial class SelectEnum<TEnum>
 {
     [Parameter] public string? Id { get; set; } 
     [Parameter] public string? IdPrefix { get; set; }
@@ -17,14 +17,12 @@ public partial class EditSelectEnum<TEnum>
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public required Type Type { get; set; }
 
-    [Parameter] public string? Label { get; set; }
     bool _isRequired;
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     [CascadingParameter] public FormOptions? FormOptions { get; set; } 
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     
     protected override void OnInitialized()
     {
@@ -38,7 +36,6 @@ public partial class EditSelectEnum<TEnum>
 
     async Task SetAsync(TEnum value) => await ValueChanged.InvokeAsync(value);
 
-    bool ShouldShowComponent => true;
     protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
     {
         // Lets Blazor convert the value for us 

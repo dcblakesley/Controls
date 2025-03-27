@@ -13,7 +13,8 @@ public partial class EditTextArea
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public int Rows { get; set; } = 2;
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldShowComponent => true;
     string _id = string.Empty;
