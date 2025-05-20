@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public class FormOptions
 {

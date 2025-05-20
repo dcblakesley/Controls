@@ -1,8 +1,4 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public partial class EditTextArea
 {
@@ -13,6 +9,7 @@ public partial class EditTextArea
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public int Rows { get; set; } = 2;
+    [Parameter] public string? OuterClass { get; set; }
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);

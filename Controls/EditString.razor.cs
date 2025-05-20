@@ -1,6 +1,6 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
+﻿
+
+// ReSharper disable SimplifyConditionalTernaryExpression
 
 namespace Controls;
 
@@ -18,6 +18,10 @@ public partial class EditString
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool HideWhenNull { get; set; }
+
+    [Parameter] public string? OuterClass { get; set; }
+
 
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
     /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>
@@ -32,7 +36,7 @@ public partial class EditString
     [Parameter]
     public string? UrlTarget { get; set; }
 
-    bool ShouldShowComponent => true;
+    bool ShouldShowComponent => HideWhenNull && CurrentValue == null ? false : true;
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);

@@ -1,6 +1,4 @@
-﻿@using System.ComponentModel
-@using System.ComponentModel.DataAnnotations
-@using Controls
+﻿@using Controls
 @using Components
 @using FormTesting.Client.Components
 
@@ -9,8 +7,29 @@
 
 <div class="flex-row">
     <div class="flex-column">
+
     </div>
     <div class="flex-column">
+        @switch (_view)
+        {
+            case "General":
+                <General/>
+                break;
+            case "Bool":
+                break;
+            case "Date":
+                break;
+            case "Number":
+                break;
+            case "Radio":
+                break;
+            case "Select":
+                break;
+            case "TextArea":
+                break;
+            case "String":
+                break;
+        }
         <General/>
     </div>
 
@@ -25,4 +44,7 @@
 
     readonly List<string> _colorOptions = ["", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
     List<Plant> _plants = Plant.GetTestData();
+
+    List<string> _viewOptions = ["General", "Bool", "Date", "Number", "Radio", "Select", "TextArea", "String"];
+    string _view = "General";
 }

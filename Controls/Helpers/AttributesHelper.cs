@@ -1,8 +1,4 @@
-﻿using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls.Helpers;
+﻿namespace Controls.Helpers;
 
 public static class AttributesHelper
 {

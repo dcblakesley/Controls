@@ -25,11 +25,9 @@ public partial class General
 
     class Person
     {
-
-
         // Width
         public int EditorWidth { get; set; } = 400;
-        [Required, MinLength(1)]
+        [Required, MinLength(1), Description("My amazing description")]
         public string? Label { get; set; }
 
         // Labels

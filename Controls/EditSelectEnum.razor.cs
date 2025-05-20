@@ -1,9 +1,4 @@
-﻿using System.Globalization;
-using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 /// <summary> Uses an enum as the options. Defaults to sorted by Id, can be sorted by name using the SortByName parameter  </summary>
 public partial class EditSelectEnum<TEnum>
@@ -13,6 +8,7 @@ public partial class EditSelectEnum<TEnum>
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool SortByName { get; set; } = true;
+    [Parameter] public string? OuterClass { get; set; }
 
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public required Type Type { get; set; }

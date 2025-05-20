@@ -1,8 +1,4 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public partial class EditSelect<TValue>
 {
@@ -10,7 +6,9 @@ public partial class EditSelect<TValue>
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
     [Parameter] public string? Label { get; set; }
-    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsEditMode { get; set; } = true; 
+    [Parameter] public string? OuterClass { get; set; }
+
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;

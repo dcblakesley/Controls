@@ -1,8 +1,4 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 /// <summary> Select a string from Options (List of strings) </summary>
 public partial class EditSelectString<TValue>
@@ -13,6 +9,7 @@ public partial class EditSelectString<TValue>
     [Parameter] public string? Label { get; set; }
     [Parameter] public required List<string> Options { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public string? OuterClass { get; set; }
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;

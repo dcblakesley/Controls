@@ -1,10 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Xml;
-using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 /// <summary> Validation shown under the input field when it doesn't meet the requirements based on DataAnnotations. </summary>
 public partial class FieldValidationDisplay

@@ -1,24 +1,22 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
-@using Controls.Helpers
-@using Microsoft.AspNetCore.Components.Forms
 @inherits InputCheckbox
 
 @if (ShouldShowComponent)
 {
-    <div class="form-group">
+    <div class="form-group @OuterClass">
 
         <div class="form-check">
 
             @if (ShowEditor)
             {
-                <input type="checkbox" id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" disabled=@IsDisabled/>
+                <input type="checkbox" id=@($"cbx-{_id}") data-test-id=@($"cbx-{_id}") @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" disabled=@IsDisabled />
             }
             else
             {
-                <input type="checkbox" disabled id=@_id data-test-id=@_id @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass"/>
+                <input type="checkbox" disabled id=@($"cbx-{_id}") data-test-id=@($"cbx-{_id}") @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" />
             }
 
-            <label class="form-check-label pointer" for=@_id>
+            <label class="form-check-label pointer" for=@($"cbx-{_id}")>
                 @((MarkupString)DisplayLabel())
             </label>
         </div>

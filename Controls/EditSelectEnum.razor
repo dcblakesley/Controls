@@ -6,7 +6,7 @@
 
 @if (ShouldShowComponent)
 {
-    <div class="form-group">
+    <div class="form-group @OuterClass">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
         @if (ShowEditor)

@@ -1,9 +1,4 @@
-﻿using System.Globalization;
-using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public partial class EditRadioEnum<TEnum>
 {
@@ -15,6 +10,8 @@ public partial class EditRadioEnum<TEnum>
     [Parameter] public string? Label { get; set; }
     [Parameter] public bool HasHorizontalRadioButtons { get; set; }
     [Parameter] public bool SortByName { get; set; }
+    [Parameter] public string? OuterClass { get; set; }
+
 
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter]

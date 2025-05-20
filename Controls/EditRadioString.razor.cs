@@ -1,8 +1,4 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public partial class EditRadioString
 {
@@ -15,6 +11,7 @@ public partial class EditRadioString
     [Parameter] public required List<string> Options { get; set; }
     [Parameter] public bool HasHorizontalRadioButtons { get; set; }
     [Parameter] public bool HasOther { get; set; }
+    [Parameter] public string? OuterClass { get; set; }
     [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldShowComponent => true;

@@ -1,8 +1,4 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public partial class EditNumber<T>
 {
@@ -15,6 +11,8 @@ public partial class EditNumber<T>
     [Parameter] public string? Label { get; set; }
     [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    [Parameter] public string? OuterClass { get; set; }
+
     bool ShouldShowComponent => true;
     string _id = string.Empty;
     List<Attribute>? _attributes;

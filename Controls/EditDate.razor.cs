@@ -1,8 +1,4 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public partial class EditDate<T>
 {
@@ -12,7 +8,9 @@ public partial class EditDate<T>
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
-    [Parameter] public string DateFormat { get; set; } = "MM/dd/yyyy";
+    [Parameter] public string DateFormat { get; set; } = "MM-dd-yyyy";
+    [Parameter] public string? OuterClass { get; set; }
+
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;

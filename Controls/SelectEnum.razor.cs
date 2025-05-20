@@ -1,9 +1,4 @@
-﻿using System.Globalization;
-using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 /// <summary> No label or validation, doesn't have to be within an EditForm  </summary>
 public partial class SelectEnum<TEnum>

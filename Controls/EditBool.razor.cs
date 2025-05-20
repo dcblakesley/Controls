@@ -1,8 +1,4 @@
-﻿using Controls.Helpers;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
-
-namespace Controls;
+﻿namespace Controls;
 
 public partial class EditBool
 {
@@ -13,7 +9,9 @@ public partial class EditBool
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [Parameter] public string? OuterClass { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? _attributes.Description();
