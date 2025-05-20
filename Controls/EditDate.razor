@@ -13,9 +13,16 @@
         }
         else
         {
-            <div class="form-text @CssClass">
-                @DateTime.Parse(CurrentValueAsString).ToString(DateFormat)
-            </div>
+            @if (ShowTime)
+            {
+                @DateTime.Parse(CurrentValueAsString).ToLocalTime().ToString("MM-dd-yyyy hh:mm tt")
+            }
+            else
+            {
+                <div class="form-text @CssClass">
+                    @DateTime.Parse(CurrentValueAsString).ToString(DateFormat)
+                </div>
+            }
         }
 
         <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>

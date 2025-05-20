@@ -10,6 +10,7 @@ public partial class EditDate<T>
     [Parameter] public string? Label { get; set; }
     [Parameter] public string DateFormat { get; set; } = "MM-dd-yyyy";
     [Parameter] public string? OuterClass { get; set; }
+    [Parameter] public bool ShowTime { get; set; }
 
     string _id = string.Empty;
     List<Attribute>? _attributes;
