@@ -11,3 +11,7 @@
 
 
  - Move svgs to their own css file?
+
+ - Scott has a few usages where he has an empty setter to work with the <Edit controls.
+   Using a method to supply the text. Create a control that either takes a method as an input or doesn't bind?
+   Check out Minumums.cs in Hatch

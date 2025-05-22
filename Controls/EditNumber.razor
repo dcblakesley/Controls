@@ -1,27 +1,62 @@
-﻿@inherits InputNumber<T>
-@using Microsoft.AspNetCore.Components.Forms
-@typeparam T
+﻿@inherits InputNumber<T>  
+@using Microsoft.AspNetCore.Components.Forms  
+@typeparam T  
 
-@if (ShouldShowComponent)
-{
-    <div class="form-group @OuterClass">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+@if (ShouldShowComponent)  
+{  
+    <div class="form-group @OuterClass">  
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>  
 
-        @if (ShowEditor)
-        {
-            <input type="number" disabled=@IsDisabled id=@_id data-test-id=@_id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@CssClass/>
-        }
-        else
-        {
-            <div class="form-text @CssClass">@Value</div>
-        }
+        @if (ShowEditor)  
+        {  
+            <input type="number" disabled=@IsDisabled id=@_id data-test-id=@_id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@CssClass/>  
+        }  
+        else  
+        {  
+            @if (Format == "")  
+            {  
+                <div class="form-text @CssClass">@Value</div>  
+            }  
+            else  
+            {  
+                <div class="form-text @CssClass">@GetFormattedNumber()</div>  
+            }  
+        }  
 
-        <FieldValidationDisplay FieldIdentifier=@_fieldIdentifier Attributes=@_attributes/>
-    </div>
-}
+        <FieldValidationDisplay FieldIdentifier=@_fieldIdentifier Attributes=@_attributes/>  
+    </div>  
+}  
 
 @code {
 
+    string? GetFormattedNumber()
+    {
+        try
+        {
+            if (Value != null)
+            {
+                return Value switch
+                {
+                    decimal d => d.ToString(Format),
+                    float f => f.ToString(Format),
+                    double d => d.ToString(Format),
+                    int i => i.ToString(Format),
+                    long l => l.ToString(Format),
+                    short s => s.ToString(Format),
+                    byte b => b.ToString(Format),
+                    sbyte sb => sb.ToString(Format),
+                    uint ui => ui.ToString(Format),
+                    ulong ul => ul.ToString(Format),
+                    ushort us => us.ToString(Format),
+                    _ => Value.ToString()
+                };
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
 
-    // Get validation messages for FieldName
+        return string.Empty;
+    }
 }

@@ -25,6 +25,12 @@ public partial class General
 
     class Person
     {
+
+        public string TestMethod() => "Hello";
+
+        public decimal Age { get; set; } = 18.51111m;
+
+
         // Width
         public int EditorWidth { get; set; } = 400;
         [Required, MinLength(1), Description("My amazing description")]

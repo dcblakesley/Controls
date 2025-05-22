@@ -1,0 +1,11 @@
+@if (ShouldShowComponent)
+{
+    <div class="form-group @OuterClass">
+        <FormLabel Id=@Id Label=@Label Description=@Description/>
+
+        <div class="form-text @Class" id=@Id data-test-id=@Id>
+            @Text
+        </div>
+        
+  </div>
+}

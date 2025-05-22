@@ -9,7 +9,9 @@ public partial class EditNumber<T>
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public decimal Step { get; set; }
     [Parameter] public string? Label { get; set; }
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [Parameter] public string Format { get; set; }
+    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     [Parameter] public string? OuterClass { get; set; }
 

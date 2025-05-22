@@ -13,6 +13,8 @@
             }
             else
             {
+                <!-- Different values - Allow for Yes/No, True/False-->
+
                 <input type="checkbox" disabled id=@($"cbx-{_id}") data-test-id=@($"cbx-{_id}") @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" />
             }
 
@@ -23,10 +25,4 @@
 
         <FieldValidationDisplay FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
     </div>
-}
-
-@code {
-
-
-    // Get validation messages for FieldName
 }

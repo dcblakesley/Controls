@@ -21,7 +21,11 @@
     <CascadingValue Value=@FormOptions>
         <ObjectGraphDataAnnotationsValidator />
         
-@*      <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=false />
+        <EditNumber @bind-Value=_model.Age Field=@(() => _model.Age) Format="C" class="standard-width" IsEditMode=false />
+        <EditDisplay  Text="Blah"/> 
+
+
+        @*      <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=false />
         <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=true />
         <div>@_selectedOption</div> *@
 
