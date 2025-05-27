@@ -8,6 +8,11 @@
     .standard-width {
         width: 300px;
     }
+    .pre code {
+        color: white;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
 </style>
 
 
@@ -21,8 +26,8 @@
     <CascadingValue Value=@FormOptions>
         <ObjectGraphDataAnnotationsValidator />
         
-        <EditNumber @bind-Value=_model.Age Field=@(() => _model.Age) Format="C" class="standard-width" IsEditMode=false />
-        <EditDisplay  Text="Blah"/> 
+        @*         <EditNumber @bind-Value=_model.Age Field=@(() => _model.Age) Format="C" class="standard-width" IsEditMode=false />
+        <EditDisplay  Text="Blah"/>  *@
 
 
         @*      <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=false />
@@ -36,9 +41,19 @@
         </ul>
 
         <div style="margin-left: 3rem">
-            <EditString @bind-Value=_model.Label Field=@(() => _model.Label) class="standard-width" Placeholder="Input/Control with placeholder text" />
+            <EditString @bind-Value=_model.BasicExample Field=@(() => _model.BasicExample) />
+        </div>
+
+        <div><pre><code>@_example1</code></pre></div>
+        <div>
+            <pre><code>
+[Required, MinLength(1), Description("My amazing description")]
+public string? BasicExample { get; set; }
+        </code></pre>
         </div>
         
+
+
         <!-- Labels -->
         <h5>Labels</h5>
         <ul>
@@ -80,7 +95,7 @@
             <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" />
         </div> 
 
-@*         <CascadingValue Value=@(new FormGroupOptions() {Name = "HelloThere"})>
+        @*         <CascadingValue Value=@(new FormGroupOptions() {Name = "HelloThere"})>
             <AddressEditor Address=@_model.WorkAddress />
         </CascadingValue>
 
@@ -91,3 +106,8 @@
 
     </CascadingValue>
 </EditForm>
+
+@code
+{
+    string _example1 = "<EditString @bind-Value=_model.BasicExample Field=@(() => _model.BasicExample) />";
+}

@@ -33,8 +33,9 @@ public partial class General
 
         // Width
         public int EditorWidth { get; set; } = 400;
+
         [Required, MinLength(1), Description("My amazing description")]
-        public string? Label { get; set; }
+        public string? BasicExample { get; set; }
 
         // Labels
         public string Name { get; set; } = "Green";

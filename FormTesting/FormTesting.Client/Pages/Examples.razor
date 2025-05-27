@@ -4,11 +4,11 @@
 
 @page "/"
 
-<h3>Minor Update</h3>
 
 <div class="flex-row">
-    <div class="flex-column">
-
+    <div class="flex-column" style="margin-right: 2rem">
+        <button class="btn btn-primary" @onclick=@(() => _view = "General")>General</button>
+        <button class="btn btn-primary" @onclick=@(() => _view = "All Controls")>All Controls</button>
     </div>
     <div class="flex-column">
         @switch (_view)
@@ -16,7 +16,8 @@
             case "General":
                 <General/>
                 break;
-            case "Bool":
+            case "All Controls":
+                <AllControls />
                 break;
             case "Date":
                 break;
