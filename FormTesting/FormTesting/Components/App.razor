@@ -5,9 +5,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base target="_blank" href="/" />
-     <link rel="stylesheet" target="_blank" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.3.3/cyborg/bootstrap.min.css" />
+    <link rel="stylesheet" target="_blank" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/5.3.3/cyborg/bootstrap.min.css" />
+
+    <link rel="stylesheet" target="_blank" href="clark-light.css" />
     <link rel="stylesheet" target="_blank" href="app.css" /> 
-    <link rel="stylesheet" target="_blank" href="FormTesting.styles.css" />
     <link rel="icon" type="image/png" target="_blank" href="favicon.png" />
     <HeadOutlet @rendermode="InteractiveWebAssembly" />
 </head>
@@ -18,3 +19,19 @@
 </body>
 
 </html>
+
+
+<div class="form-group" >
+    <label class="form-label" for="BasicExample" id="lbl-BasicExample">Basic Example</label>
+    <br aria-hidden="true">
+    <p class="form-description" id="desc-BasicExample" aria-hidden="true">My amazing description</p>
+    <input style="padding-right: 2rem" id="BasicExample" data-test-id="BasicExample" class="invalid" aria-describedby="desc-BasicExample" aria-errormessage="error-msg-BasicExample" aria-invalid="true">
+    <i class="icon-invalid"></i>
+    <div class="validation-message" id="error-msg-BasicExample">Required</div>
+</div>
+
+<div class="form-group">
+    <label class="form-label" for="EditString" id="lbl-EditString">EditString</label>
+    <br aria-hidden="true">
+    <input aria-describedby="desc-EditString" id="EditString" data-test-id="EditString" class="valid">
+</div>
