@@ -1,14 +1,14 @@
 ﻿@using Controls.Helpers
-<div>
-    <label class="form-label" title=@Attributes.ToolTip() for=@Id id="lbl-@Id">
-        @((MarkupString)DisplayLabel())
-    </label>
-</div>
+
+<label class="form-label" title=@Attributes.ToolTip() for=@Id id="lbl-@Id" >
+    @((MarkupString)DisplayLabel())
+</label>
+<br aria-hidden="true" />
 @if (Attributes.Description() != null)
 {
     @if(DisplayDescription() != null)
     {
-        <p class="form-description">
+        <p class="form-description" id="desc-@Id" aria-hidden="true">
             @((MarkupString)DisplayDescription())
         </p>
     }

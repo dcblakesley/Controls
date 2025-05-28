@@ -12,6 +12,10 @@
 	  <Version>$(AssemblyVersion)</Version>
   </PropertyGroup>
 
+  <ItemGroup>
+    <None Include="wwwroot\styles.css" />
+  </ItemGroup>
+
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />

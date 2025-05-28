@@ -26,8 +26,13 @@
     <CascadingValue Value=@FormOptions>
         <ObjectGraphDataAnnotationsValidator />
         
-        @*         <EditNumber @bind-Value=_model.Age Field=@(() => _model.Age) Format="C" class="standard-width" IsEditMode=false />
-        <EditDisplay  Text="Blah"/>  *@
+        <fieldset class="flex-column">
+            <legend>Zyx32</legend>
+        
+
+        
+        @* <EditNumber @bind-Value=_model.Age Field=@(() => _model.Age) Format="C" class="standard-width" IsEditMode=false />
+        <EditDisplay Text="Blah"/>  *@
 
 
         @*      <EditRadioString @bind-Value=_selectedOption Field=@(() => _selectedOption) Options=_options HasHorizontalRadioButtons=false />
@@ -53,6 +58,7 @@ public string? BasicExample { get; set; }
         </div>
         
 
+        </fieldset>
 
         <!-- Labels -->
         <h5>Labels</h5>
@@ -64,10 +70,10 @@ public string? BasicExample { get; set; }
             <li>markup can be embedded in the DisplayName attribute or set in markup</li>
         </ul>
         <div class="flex-row flex-wrap">
-            <EditString @bind-Value=_model.Name Field=@(() => _model.Name) class="standard-width" IsEditMode=false Url="https://www.google.com" />
-            <EditString @bind-Value=_model.Name Field=@(() => _model.Name) class="standard-width" />
-            <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) class="standard-width" />
-            <EditString @bind-Value=_model.LastName Field=@(() => _model.LastName) class="standard-width" />
+            <EditString @bind-Value=_model.Name Field=@(() => _model.Name) OuterClass="standard-width" IsEditMode=false Url="https://www.google.com" />
+            <EditString @bind-Value=_model.Name Field=@(() => _model.Name) OuterClass="standard-width" />
+            <EditString @bind-Value=_model.MiddleName Field=@(() => _model.MiddleName) OuterClass="standard-width" />
+            <EditString @bind-Value=_model.LastName Field=@(() => _model.LastName) OuterClass="standard-width" />
         </div>
         
         <!-- Descriptions -->
@@ -78,8 +84,8 @@ public string? BasicExample { get; set; }
             <li>Support markup</li>
         </ul>
         <div class="flex-row flex-wrap">
-            <EditString @bind-Value=_model.Dog Field=@(() => _model.Dog) class="standard-width" />
-            <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) class="standard-width" />
+            <EditString @bind-Value=_model.Dog Field=@(() => _model.Dog) OuterClass="standard-width" />
+            <EditString @bind-Value=_model.Cat Field=@(() => _model.Cat) OuterClass="standard-width" />
         </div>
 
         <!-- Validation -->
@@ -89,10 +95,10 @@ public string? BasicExample { get; set; }
             <li>Allows displaying Markup</li>
         </ul>
         <div class="flex-row flex-wrap">
-            <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) class="standard-width" />
-            <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) class="standard-width" />
-            <EditString @bind-Value=_model.Lion Field=@(() => _model.Lion) class="standard-width" />
-            <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) class="standard-width" />
+            <EditString @bind-Value=_model.Horse Field=@(() => _model.Horse) OuterClass="standard-width" />
+            <EditString @bind-Value=_model.Zebra Field=@(() => _model.Zebra) OuterClass="standard-width" />
+            <EditString @bind-Value=_model.Lion Field=@(() => _model.Lion) OuterClass="standard-width" />
+            <EditString @bind-Value=_model.Tiger Field=@(() => _model.Tiger) OuterClass="standard-width" />
         </div> 
 
         @*         <CascadingValue Value=@(new FormGroupOptions() {Name = "HelloThere"})>

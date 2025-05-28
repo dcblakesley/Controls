@@ -2,7 +2,7 @@
 {
     @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
     {
-        <div class="validation-message">
+        <div class="validation-message" id="error-msg-@Id">
             @((MarkupString)GetValidationMessage(x))
         </div>
     }

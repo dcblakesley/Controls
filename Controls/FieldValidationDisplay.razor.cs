@@ -7,6 +7,8 @@ public partial class FieldValidationDisplay
     [Parameter] public required List<Attribute> Attributes { get; set; }
     [CascadingParameter] EditContext? EditContext { get; set; }
     [CascadingParameter] FormOptions? FormOptions { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? IdPrefix { get; set; }
 
     bool _isRequired;
     int? _minCharacters;
