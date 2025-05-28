@@ -46,6 +46,7 @@ public class Person
     [DisplayName("EditDate")] public DateTime EditDate { get; set; } = DateTime.UtcNow;
     [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
     [DisplayName("EditSelect")] public int EditSelect { get; set; }
+    [DisplayName("EditSelectString")] public string EditSelectString { get; set; }
     [DisplayName("EditRadioString")] public string EditRadioString { get; set; } = "";
     [DisplayName("EditRadioEnum")] public AnimalType EditRadioEnum { get; set; } = AnimalType.Fish;
 

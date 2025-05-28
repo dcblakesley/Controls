@@ -10,10 +10,13 @@ public partial class EditSelectString<TValue>
     [Parameter] public required List<string> Options { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public string? OuterClass { get; set; }
+    
+
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldShowComponent => true;
 

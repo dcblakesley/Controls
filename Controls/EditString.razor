@@ -63,5 +63,9 @@
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
-    </div>
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@CurrentValueAsString</div>
+        }
+    </div>  
 }

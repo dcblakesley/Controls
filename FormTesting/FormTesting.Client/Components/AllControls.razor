@@ -1,38 +1,34 @@
 ﻿@using Controls
+
+<div class="flex-row">
+    <button class="btn btn-info" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues)>Display bound values</button>
+</div>
+
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
-    <ObjectGraphDataAnnotationsValidator />
+    <ObjectGraphDataAnnotationsValidator/>
 
     <CascadingValue Value=@FormOptions>
         <div class="flex-row flex-wrap">
-            <EditString   @bind-Value=_model.EditString   Field=@(() => _model.EditString)   class="standard-width" />
-            <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) class="standard-width" />
-            <EditNumber   @bind-Value=_model.EditNumber   Field=@(() => _model.EditNumber)   class="standard-width" />
-            <EditBool     @bind-Value=_model.EditBool     Field=@(() => _model.EditBool)  />
+            <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool)/>
+            <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) />
+            <EditDisplay Label="Edit Display" Text="My text"/>
+            <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) />
+
+            <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) />
+            <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea)  />
+            <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum)  />
+            <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions" />
+            <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect)>
+                @foreach (var o in _plants.OrderBy(x => x.Name))
+                {
+                    <option checked=@(() => _model.EditSelect == o.Id) value=@o.Id data-test-id=@($"option-{o.Id}")>@o.Name</option>
+                }
+            </EditSelect>
         </div>
 
         <div class="flex-row flex-wrap">
-            <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) class="standard-width" />   
-        
-            <div>
-                <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect) class="standard-width">
-                    @foreach (var o in _plants.OrderBy(x=>x.Name))
-                    {
-                        <option checked=@(()=> _model.EditSelect == o.Id) value=@o.Id data-test-id=@($"option-{o.Id}")>@o.Name</option>
-                    }
-                </EditSelect>
-                <div>@_model.EditSelect</div>
-            </div>
-            <div>
-                <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) class="standard-width" />
-                @_model.EditSelectEnum
-            </div>
-        </div>
-        <div class="flex-row flex-wrap">
-            <EditRadioString @bind-Value=_model.EditRadioString Field=@(() => _model.EditRadioString) Options=@_colorOptions HasOther=true />
-            <div>
-                <EditRadioEnum Type=typeof(AnimalType) @bind-Value=_model.EditRadioEnum Field=@(() => _model.EditRadioEnum) />
-                @_model.EditRadioEnum
-            </div>
+            <EditRadioString @bind-Value=_model.EditRadioString Field=@(() => _model.EditRadioString) Options=@_colorOptions HasOther=true/>
+            <EditRadioEnum Type=typeof(AnimalType) @bind-Value=_model.EditRadioEnum Field=@(() => _model.EditRadioEnum)/>
         </div>
     </CascadingValue>
 </EditForm>

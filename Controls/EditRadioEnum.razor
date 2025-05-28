@@ -36,7 +36,11 @@
                 <div class="form-text">@Value?.GetName()</div>
             }
 
-            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+            @if (FormOptions != null && FormOptions.ShowBoundValues)
+            {
+                <div class="bound-value">@CurrentValueAsString</div>
+            }
         </fieldset>
-    </div>
+    </div>  
 }

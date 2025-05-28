@@ -17,8 +17,7 @@
                     {
                         @if (!HasHorizontalRadioButtons)
                         {
-                            <div>
-                            </div>
+                            <br/>
                         }
 
                         <label>
@@ -46,7 +45,11 @@
                 <div class="form-text">@Value</div>
             }
 
-            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+            @if (FormOptions != null && FormOptions.ShowBoundValues)
+            {
+                <div class="bound-value">@CurrentValueAsString</div>
+            }
         </fieldset>
-    </div>
+    </div>   
 }

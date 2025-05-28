@@ -1,31 +1,34 @@
 ﻿@inherits InputNumber<T>  
-@using Microsoft.AspNetCore.Components.Forms  
 @typeparam T  
 
-@if (ShouldShowComponent)  
-{  
-    <div class="form-group @OuterClass">  
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>  
+@if (ShouldShowComponent)
+{
+    <div class="form-group @OuterClass">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
-        @if (ShowEditor)  
-        {  
-            <input type="number" disabled=@IsDisabled id=@_id data-test-id=@_id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@CssClass/>  
-        }  
-        else  
-        {  
-            @if (Format == "")  
-            {  
-                <div class="form-text @CssClass">@Value</div>  
-            }  
-            else  
-            {  
-                <div class="form-text @CssClass">@GetFormattedNumber()</div>  
-            }  
-        }  
+        @if (ShowEditor)
+        {
+            <input type="number" disabled=@IsDisabled id=@_id data-test-id=@_id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@CssClass/>
+        }
+        else
+        {
+            @if (Format == "")
+            {
+                <div class="form-text @CssClass">@Value</div>
+            }
+            else
+            {
+                <div class="form-text @CssClass">@GetFormattedNumber()</div>
+            }
+        }
 
-        <FieldValidationDisplay Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes/>  
-    </div>  
-}  
+        <FieldValidationDisplay Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes/>
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@CurrentValueAsString</div>
+        }
+    </div>
+}
 
 @code {
 
@@ -59,4 +62,5 @@
 
         return string.Empty;
     }
+
 }

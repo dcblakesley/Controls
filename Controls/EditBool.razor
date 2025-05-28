@@ -24,5 +24,9 @@
         </div>
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+    @if (FormOptions != null && FormOptions.ShowBoundValues)
+    {
+        <div class="bound-value">@CurrentValueAsString</div>
+    }
     </div>
 }

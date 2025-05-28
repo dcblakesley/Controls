@@ -4,6 +4,7 @@ public class FormOptions
 {
     public bool IsEditMode { get; set; } = true;
     public bool IsReadOnly { get; set; }
+    public bool ShowBoundValues { get; set; }
     public List<FieldIdentifier> FieldIdentifiers { get; private set; } = [];
 
     /// <summary>
