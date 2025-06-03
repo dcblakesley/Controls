@@ -1,0 +1,69 @@
+﻿@page "/clickup"
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using Controls
+@using RestSharp
+
+
+
+<EditForm Model=_model FormName="Abacaaaaa" @ref="editForm">
+    <ObjectGraphDataAnnotationsValidator />
+
+        <div class="flex-column">
+            <EditString @bind-Value=_model.Name Field=@(() => _model.Name) />
+            <EditTextArea @bind-Value=_model.Description Field=@(() => _model.Description) />
+            <EditSelectString @bind-Value=@_model.Status Field=@(() => _model.Status) Options="_options" />
+            <EditString @bind-Value=_model.TagsCsv Field=@(() => _model.TagsCsv) />
+        </div>
+        <button @onclick=Send>Create</button>
+</EditForm>
+
+
+@code {
+    readonly ClickupTask _model = new();
+    EditForm editForm; // Set by @ref during Render
+    //public FormOptions FormOptions { get; set; } = new();
+    readonly List<string> _options = ["To Do", "In Progress", "Complete"];
+    JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
+    };
+    string tag = "Blue";
+
+    public class ClickupTask
+    {
+        // name, description, status, and tags
+        public string Name { get; set; } = "Unnamed";
+
+        public string Description { get; set; } = "";
+        public string Status { get; set; } = "Open";
+        public List<string> Tags => TagsCsv.Split(',').Select(x => x.Trim()).Where(x => !string.IsNullOrEmpty(x)).ToList();
+
+        [JsonIgnore]
+        public string TagsCsv { get; set; } = "Blue";
+    }
+
+    async Task Send()
+    {
+        var options = new RestClientOptions("https://api.clickup.com/api/v2/list/901313513227/task?custom_task_ids=true&team_id=90131569530");
+        var client = new RestClient(options);
+        var request = new RestRequest("");
+        request.AddHeader("accept", "application/json");
+        request.AddHeader("Authorization", "pk_144184267_GM5QFPUZUU5JYZLN76JWA8BLCWHUQJW9");
+        var json = JsonSerializer.Serialize(_model, _jsonOptions);
+        Console.WriteLine(json);
+        //request.AddJsonBody("{\"name\":\"Colors\",\"tags\":[\"Blue\",\"Red\"]}", false);
+
+        request.AddJsonBody(json, false);
+        var response = await client.PostAsync(request);
+
+        // Clear the form after submission
+        _model.Name = "Unnamed";
+        _model.Description = "";
+        _model.Status = "Open";
+        _model.TagsCsv = "Neon Yellow";
+
+        Console.WriteLine("{0}", response.Content);
+    }
+}
