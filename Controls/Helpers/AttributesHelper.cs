@@ -39,7 +39,6 @@ public static class AttributesHelper
         
         var fieldName = fieldIdentifier.FieldName;
         var fn = fieldIdentifier.Model.GetName();
-        Console.WriteLine(fn);
         var a = fieldIdentifier.Model.GetType().GetProperties().ToList();
         if (formGroupOptions != null && !string.IsNullOrEmpty(formGroupOptions.Name))
         {
