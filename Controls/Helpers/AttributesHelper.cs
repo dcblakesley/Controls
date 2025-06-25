@@ -29,7 +29,7 @@ public static class AttributesHelper
     public static string? Description(this List<Attribute>? attrs) => attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
     public static string? SubDescription(this List<Attribute>? attrs) => attrs?.OfType<SubDescriptionAttribute>().FirstOrDefault()?.Value;
     public static string? ToolTip(this List<Attribute>? attrs) => attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
-    public static string GetId(string? id, string? idPrefix, FieldIdentifier fieldIdentifier)
+    public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix, FieldIdentifier fieldIdentifier)
     {
         // If an Id is provided, use it
         if (!string.IsNullOrEmpty(id))
@@ -41,6 +41,10 @@ public static class AttributesHelper
         var fn = fieldIdentifier.Model.GetName();
         Console.WriteLine(fn);
         var a = fieldIdentifier.Model.GetType().GetProperties().ToList();
+        if (formGroupOptions != null && !string.IsNullOrEmpty(formGroupOptions.Name))
+        {
+            fieldName = formGroupOptions.Name + "-" + fieldName;
+        }
         if (idPrefix != null)
         {
             fieldName = idPrefix + "-" + fieldName;

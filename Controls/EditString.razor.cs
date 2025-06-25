@@ -19,22 +19,17 @@ public partial class EditString
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Placeholder { get; set; }
     [Parameter] public bool HideWhenNull { get; set; }
-
     [Parameter] public string? OuterClass { get; set; }
-
 
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
     /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>
-    [Parameter]
-    public string? MaskText { get; set; }
+    [Parameter] public string? MaskText { get; set; }
 
     /// <summary> Non-Edit mode will be a link </summary>
-    [Parameter]
-    public string? Url { get; set; }
+    [Parameter] public string? Url { get; set; }
 
     /// <summary> Only used with Urls, Sets target="UrlTarget" in the link </summary>
-    [Parameter]
-    public string? UrlTarget { get; set; }
+    [Parameter] public string? UrlTarget { get; set; }
 
     bool ShouldShowComponent => HideWhenNull && CurrentValue == null ? false : true;
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
@@ -68,6 +63,6 @@ public partial class EditString
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FormGroupOptions?.Name, _fieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
     }
 }
