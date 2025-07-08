@@ -9,25 +9,21 @@
 
         <fieldset>
             <legend>
-                <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+                <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
             </legend>
 
             @if (ShowEditor)
             {
-                <InputRadioGroup @bind-Value=@CurrentValue id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass>
-                    @foreach (var option in GetOptions())
-                    {
-                        @if (!HasHorizontalRadioButtons)
+                <InputRadioGroup @bind-Value=@CurrentValue id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass aria-errormessage=@($"error-msg-{_id}")>
+                    <div class=@(HasHorizontalRadioButtons ? "flex-row flex-wrap" : "flex-column") style="row-gap: 0">
+                        @foreach (var option in GetOptions())
                         {
-                            <br/>
+                            <label class=@LabelClass>
+                                <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
+                                @((MarkupString)option.GetName())
+                            </label>
                         }
-
-                        <label>
-                            <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
-                            @((MarkupString)option.GetName())
-                        </label>
-                    }
-
+                    </div>
                 </InputRadioGroup>
             }
             else

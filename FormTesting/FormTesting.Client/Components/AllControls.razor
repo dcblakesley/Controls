@@ -5,12 +5,20 @@
     <button class="btn btn-info" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues)>Display bound values</button>
 </div>
 
+<style>
+    .myWidth {
+        width: 80px;
+    }
+</style>
+
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <ObjectGraphDataAnnotationsValidator/>
     
     <fieldset id="blah">
         <CascadingValue Value=@FormOptions>
-            <legend class="visually-hidden">Stuff</legend>
+            <legend>
+                <h1>Stuff</h1>
+            </legend>
 
             <div class="flex-row flex-wrap">
                 <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool)/>
@@ -31,7 +39,16 @@
             </div>
 
             <div class="flex-row flex-wrap">
-                <EditRadioString @bind-Value=_model.EditRadioString Field=@(() => _model.EditRadioString) Options=@_colorOptions HasOther=true/>
+                <button class="btn btn-info" @onclick=@(()=>_isHorizontal = !_isHorizontal)>Toggle Horizontal</button>
+                <div style="max-width: 400px">
+                    <EditRadioString @bind-Value=_model.EditRadioString 
+                                     LabelClass="myWidth"
+                                     Field=@(() => _model.EditRadioString) 
+                                     Options=@_colorOptions 
+                                     HasOther=true 
+                                     HasHorizontalRadioButtons=@_isHorizontal />
+
+                </div>
                 <EditRadioEnum Type=typeof(AnimalType) @bind-Value=_model.EditRadioEnum Field=@(() => _model.EditRadioEnum)/>
             </div>
         </CascadingValue>
@@ -43,6 +60,7 @@
     readonly Person _model = new();
     EditForm editForm; // Set by @ref during Render
     public FormOptions FormOptions { get; set; } = new();
-    readonly List<string> _colorOptions = ["", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
+    readonly List<string> _colorOptions = ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
     List<Plant> _plants = Plant.GetTestData();
+    bool _isHorizontal = false;
 }

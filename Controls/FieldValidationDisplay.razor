@@ -1,9 +1,9 @@
 ﻿@if (EditContext!.GetValidationMessages().Any())
 {
-    @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
-    {
-        <div class="validation-message" id="error-msg-@Id">
+    <div class="validation-message" id="error-msg-@Id" aria-live="polite">
+        @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
+        {
             @((MarkupString)GetValidationMessage(x))
-        </div>
-    }
+        }
+    </div>
 }

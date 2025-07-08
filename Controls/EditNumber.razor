@@ -8,7 +8,7 @@
 
         @if (ShowEditor)
         {
-            <input type="number" disabled=@IsDisabled id=@_id data-test-id=@_id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@CssClass/>
+            <input type="number" disabled=@IsDisabled id=@_id data-test-id=@_id step=@Step @bind-value=@CurrentValueAsString @bind-value:event="oninput" class=@CssClass aria-errormessage=@($"error-msg-{_id}") />
         }
         else
         {

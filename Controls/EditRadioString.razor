@@ -12,21 +12,17 @@
 
             @if (ShowEditor)
             {
-                <InputRadioGroup @bind-Value=@SelectedOption id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass>
-                    @foreach (var option in Options)
-                    {
-                        @if (!HasHorizontalRadioButtons)
+                <InputRadioGroup @bind-Value=@SelectedOption id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass aria-errormessage=@($"error-msg-{_id}")>
+                    <div class=@(HasHorizontalRadioButtons ? "flex-row flex-wrap" : "flex-column") style="row-gap: 0">
+                        @foreach (var option in Options)
                         {
-                            <br/>
+                            <label class=@LabelClass>
+                                <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
+                                @((MarkupString)option)
+                            </label>
                         }
-
-                        <label>
-                            <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
-                            @((MarkupString)option)
-                        </label>
-                    }
-
-                    <!-- Other -->
+                    </div>
+                    <!-- Other - Always on its own line -->
                     @if (HasOther)
                     {
                         <div>
@@ -34,7 +30,11 @@
                                 <InputRadio Value=@OtherName id=@($"rb_{_id}_other") data-test-id=@($"rb_{_id}_other")/>
                                 Other
                             </label>
-                            <input disabled="@(_selectedOption != "Other")" type="text" @bind:get=@_otherText @bind:set=SetOtherTextAsync @bind:event="oninput"/>
+                            <input disabled="@(_selectedOption != "Other")"
+                                   type="text"
+                                   id=@($"txt-{_id}-custom-value")
+                                   aria-label="Custom text value input"
+                                   @bind:get=@_otherText @bind:set=SetOtherTextAsync @bind:event="oninput"/>
                         </div>
                     }
 

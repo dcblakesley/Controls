@@ -8,7 +8,7 @@
 
         @if (ShowEditor)
         {
-            <textarea @bind=@CurrentValue disabled=@IsDisabled id=@_id data-test-id=@_id class=@CssClass rows=@Rows></textarea>
+            <textarea @bind=@CurrentValue disabled=@IsDisabled id=@_id data-test-id=@_id class=@CssClass rows=@Rows aria-errormessage=@($"error-msg-{_id}")></textarea>
         }
         else
         {

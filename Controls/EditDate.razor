@@ -9,7 +9,7 @@
 
         @if (ShowEditor)
         {
-            <InputDate @bind-Value="CurrentValue" id=@_id data-test-id=@_id Type=Type class=@CssClass disabled=@IsDisabled/>
+            <InputDate @bind-Value="CurrentValue" id=@_id data-test-id=@_id Type=Type class=@CssClass disabled=@IsDisabled aria-errormessage=@($"error-msg-{_id}") />
         }
         else
         {

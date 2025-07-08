@@ -11,11 +11,13 @@ public partial class EditRadioEnum<TEnum>
     [Parameter] public bool HasHorizontalRadioButtons { get; set; }
     [Parameter] public bool SortByName { get; set; }
     [Parameter] public string? OuterClass { get; set; }
-
-
+    [Parameter] public string? LabelClass { get; set; }
+    
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
-    [Parameter]
-    public required Type Type { get; set; }
+    [Parameter] public required Type Type { get; set; }
+
+    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
     bool ShouldShowComponent => true;
 
@@ -23,7 +25,6 @@ public partial class EditRadioEnum<TEnum>
         ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList()
         : Enum.GetValues(Type).Cast<TEnum>().ToList();
 
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     string _id = string.Empty;
     List<Attribute>? _attributes;

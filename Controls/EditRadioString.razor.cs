@@ -12,7 +12,11 @@ public partial class EditRadioString
     [Parameter] public bool HasHorizontalRadioButtons { get; set; }
     [Parameter] public bool HasOther { get; set; }
     [Parameter] public string? OuterClass { get; set; }
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [Parameter] public string? LabelClass { get; set; }
+
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldShowComponent => true;
     string _otherText = "";

@@ -13,12 +13,12 @@
 
             @if (CssClass.Contains("invalid"))
             {
-                <input style="padding-right: 2rem" @bind="CurrentValue" disabled=@IsDisabled id=@_id data-test-id=@_id class=@CssClass placeholder=@Placeholder aria-describedby="desc-@_id" aria-errormessage="error-msg-@_id" aria-invalid="true" />
-                <i class="icon-invalid"></i>
+                <input style="padding-right: 2rem" @bind="CurrentValue" disabled=@IsDisabled id=@_id data-test-id=@_id class="required @CssClass" placeholder=@Placeholder aria-describedby="desc-@_id" aria-errormessage=@($"error-msg-{_id}") />
+                <i class="icon-invalid" aria-hidden="true"></i>
             }
             else
             {
-                <input @bind="CurrentValue" aria-describedby="desc-@_id" disabled=@IsDisabled id=@_id data-test-id=@_id class=@CssClass placeholder=@Placeholder />
+                <input @bind="CurrentValue" aria-describedby="desc-@_id" disabled=@IsDisabled id=@_id data-test-id=@_id class="required @CssClass" placeholder=@Placeholder aria-errormessage=@($"error-msg-{_id}") aria-required="" />
             }
         }
         else
