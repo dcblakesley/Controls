@@ -27,7 +27,7 @@
                 <EditDisplay Label="EditDisplay" Text="My text"/>
                 <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber)/>
                     
-                <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) Placeholder="Hello world!" />
+                <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) Placeholder="Hello world!"  />
                 <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea)/>
                 <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum)/>
                 <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions"/>
