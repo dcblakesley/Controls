@@ -17,7 +17,7 @@
                                  data-test-id=@_id
                                  disabled=@IsDisabled
                                  class=@CssClass
-                                 aria-required=@_isRequired
+                                 required=@_isRequired
                                  aria-describedby=@($"desc-{_id}")
                                  aria-errormessage=@($"error-msg-{_id}")>
 
@@ -52,7 +52,7 @@
             }
             else
             {
-                <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value />
+                <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@Value />
             }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />

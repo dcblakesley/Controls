@@ -30,7 +30,7 @@
                 <input @bind="CurrentValue" 
                        id=@_id
                        data-test-id=@_id
-                       aria-required=@_isRequired
+                       required=@_isRequired
                        class="@CssClass"
                        placeholder=@Placeholder
                        aria-describedby=@($"desc-{_id}")
@@ -84,7 +84,7 @@
                 }
                 else
                 {
-                    <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value />
+                    <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@Value />
                 }
             }
         }
