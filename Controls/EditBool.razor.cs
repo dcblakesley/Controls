@@ -2,6 +2,9 @@
 
 public partial class EditBool
 {
+    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+
     [Parameter] public string? Id { get; set; } 
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
@@ -9,9 +12,8 @@ public partial class EditBool
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     [Parameter] public string? OuterClass { get; set; }
+
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? _attributes.Description();
@@ -26,6 +28,6 @@ public partial class EditBool
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
-                _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 }

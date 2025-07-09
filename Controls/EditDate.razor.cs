@@ -2,6 +2,9 @@
 
 public partial class EditDate<T>
 {
+    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    
     [Parameter] public string? Id { get; set; } 
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public required Expression<Func<T>> Field { get; set; }
@@ -16,14 +19,11 @@ public partial class EditDate<T>
     string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldShowComponent => true;
 
     string GetDisplayValue() => DateTime.Parse(CurrentValueAsString).ToLocalTime().ToString(ShowTime ? "MM-dd-yyyy hh:mm tt" : "MM-dd-yyyy");
-
-
+    
     protected override void OnInitialized()
     {
         base.OnInitialized();
