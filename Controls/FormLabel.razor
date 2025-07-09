@@ -2,6 +2,11 @@
 
 <label class="form-label" title=@Attributes.ToolTip() for=@Id id="lbl-@Id" >
     @((MarkupString)DisplayLabel())
+    
+    @if (_isRequired.ToLower() == "true")
+    {
+        <span class="required-star" aria-hidden="true">*</span>
+    }
 </label>
 <br aria-hidden='true'>
 @if (Attributes.Description() != null)

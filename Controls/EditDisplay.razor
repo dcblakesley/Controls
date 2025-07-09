@@ -3,7 +3,14 @@
     <div class="form-group @OuterClass">
         <FormLabel Id=@Id Label=@Label Description=@Description/>
 
-        <div class="form-text @Class" id=@Id data-test-id=@Id>
+        <div class="form-text"
+             role="textbox"
+             id=@Id
+             data-test-id=@Id
+             aria-readonly="true"
+             aria-labelledby=@($"lbl-{Id}")
+             aria-describedby=@($"desc-{Id}")>	 
+
             @Text
         </div>
         

@@ -12,7 +12,15 @@
 
             @if (ShowEditor)
             {
-                <InputRadioGroup @bind-Value=@SelectedOption id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass aria-errormessage=@($"error-msg-{_id}")>
+                <InputRadioGroup @bind-Value=@SelectedOption
+                                 id=@_id
+                                 data-test-id=@_id
+                                 disabled=@IsDisabled
+                                 class=@CssClass
+                                 aria-required=@_isRequired
+                                 aria-describedby=@($"desc-{_id}")
+                                 aria-errormessage=@($"error-msg-{_id}")>
+
                     <div class=@(HasHorizontalRadioButtons ? "flex-row flex-wrap" : "flex-column") style="row-gap: 0">
                         @foreach (var option in Options)
                         {
@@ -34,7 +42,9 @@
                                    type="text"
                                    id=@($"txt-{_id}-custom-value")
                                    aria-label="Custom text value input"
-                                   @bind:get=@_otherText @bind:set=SetOtherTextAsync @bind:event="oninput"/>
+                                   @bind:get=@_otherText 
+                                   @bind:set=SetOtherTextAsync 
+                                   @bind:event="oninput"/>
                         </div>
                     }
 
@@ -42,7 +52,7 @@
             }
             else
             {
-                <div class="form-text">@Value</div>
+                <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value />
             }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />

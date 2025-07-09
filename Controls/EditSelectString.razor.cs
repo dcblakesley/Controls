@@ -11,8 +11,8 @@ public partial class EditSelectString<TValue>
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public string? OuterClass { get; set; }
     
-
     string _id = string.Empty;
+    string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
@@ -25,6 +25,7 @@ public partial class EditSelectString<TValue>
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-                _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+                _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 }

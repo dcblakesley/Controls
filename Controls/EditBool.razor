@@ -7,26 +7,27 @@
 
         <div class="form-check">
 
-            @if (ShowEditor)
-            {
-                <input type="checkbox" id=@($"cbx-{_id}") data-test-id=@($"cbx-{_id}") @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" disabled=@IsDisabled aria-errormessage=@($"error-msg-{_id}") />
-            }
-            else
-            {
-                <!-- Different values - Allow for Yes/No, True/False-->
+            <input type="checkbox" 
+                   id=@_id
+                   data-test-id=@_id
+                   @bind-value=@CurrentValue 
+                   @bind-value:event="oninput" 
+                   checked=@CurrentValue
+                   class="form-check-input pointer @CssClass"
+                   disabled=@IsDisabled
+                   aria-required=@_isRequired
+                   aria-describedby=@($"desc-{_id}")
+                   aria-errormessage=@($"error-msg-{_id}")/>
 
-                <input type="checkbox" disabled id=@($"cbx-{_id}") data-test-id=@($"cbx-{_id}") @bind-value=@CurrentValue @bind-value:event="oninput" checked=@CurrentValue class="form-check-input pointer @CssClass" aria-errormessage=@($"error-msg-{_id}") />
-            }
-
-            <label class="form-check-label pointer" for=@($"cbx-{_id}")>
+            <label class="form-check-label pointer" for=@_id>
                 @((MarkupString)DisplayLabel())
             </label>
         </div>
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
-    @if (FormOptions != null && FormOptions.ShowBoundValues)
-    {
-        <div class="bound-value">@CurrentValueAsString</div>
-    }
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@CurrentValueAsString</div>
+        }
     </div>
 }

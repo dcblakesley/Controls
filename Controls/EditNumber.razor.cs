@@ -17,6 +17,7 @@ public partial class EditNumber<T>
 
     bool ShouldShowComponent => true;
     string _id = string.Empty;
+    string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
@@ -24,6 +25,38 @@ public partial class EditNumber<T>
     {
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-                _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+    }
+
+    string? GetFormattedNumber()
+    {
+        try
+        {
+            if (Value != null)
+            {
+                return Value switch
+                {
+                    decimal d => d.ToString(Format),
+                    float f => f.ToString(Format),
+                    double d => d.ToString(Format),
+                    int i => i.ToString(Format),
+                    long l => l.ToString(Format),
+                    short s => s.ToString(Format),
+                    byte b => b.ToString(Format),
+                    sbyte sb => sb.ToString(Format),
+                    uint ui => ui.ToString(Format),
+                    ulong ul => ul.ToString(Format),
+                    ushort us => us.ToString(Format),
+                    _ => Value.ToString()
+                };
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+
+        return string.Empty;
     }
 }

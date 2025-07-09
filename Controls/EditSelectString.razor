@@ -9,7 +9,14 @@
 
         @if (ShowEditor)
         {
-            <InputSelect @bind-Value=@CurrentValue class=@CssClass id=@_id data-test-id=@_id aria-errormessage=@($"error-msg-{_id}")>
+            <InputSelect @bind-Value=@CurrentValue
+                         class=@CssClass
+                         id=@_id
+                         data-test-id=@_id
+                         aria-required=@_isRequired
+                         aria-errormessage=@($"error-msg-{_id}")
+                         aria-describedby=@($"desc-{_id}")>
+
                 @foreach (var o in Options)
                 {
                     <option checked=@(() => CurrentValueAsString == o) value=@o data-test-id=@($"option-{_id}-{o}")>@o</option>
@@ -18,7 +25,7 @@
         }
         else
         {
-            <div class="form-text @CssClass">@CurrentValueAsString</div>
+            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@CurrentValueAsString />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />

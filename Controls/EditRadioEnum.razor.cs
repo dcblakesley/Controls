@@ -27,6 +27,7 @@ public partial class EditRadioEnum<TEnum>
 
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     string _id = string.Empty;
+    string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
@@ -35,7 +36,8 @@ public partial class EditRadioEnum<TEnum>
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-                _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+                _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 
     protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)

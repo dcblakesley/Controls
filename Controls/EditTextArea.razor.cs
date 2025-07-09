@@ -15,6 +15,7 @@ public partial class EditTextArea
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldShowComponent => true;
     string _id = string.Empty;
+    string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
@@ -23,6 +24,7 @@ public partial class EditTextArea
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-                _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+                _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 }

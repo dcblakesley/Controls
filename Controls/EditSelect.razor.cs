@@ -10,6 +10,7 @@ public partial class EditSelect<TValue>
     [Parameter] public string? OuterClass { get; set; }
 
     string _id = string.Empty;
+    string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
@@ -21,6 +22,7 @@ public partial class EditSelect<TValue>
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-                _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+                _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 }

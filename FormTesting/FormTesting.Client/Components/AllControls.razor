@@ -3,6 +3,7 @@
 
 <div class="flex-row">
     <button class="btn btn-info" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues)>Display bound values</button>
+    <button class="btn btn-info" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode)>Edit Mode</button>
 </div>
 
 <style>
@@ -22,11 +23,11 @@
 
             <div class="flex-row flex-wrap">
                 <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool)/>
-                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate)/>
+                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) ShowTime=true/>
                 <EditDisplay Label="EditDisplay" Text="My text"/>
                 <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber)/>
-
-                <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString)/>
+                    
+                <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) Placeholder="Hello world!" />
                 <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea)/>
                 <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum)/>
                 <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions"/>

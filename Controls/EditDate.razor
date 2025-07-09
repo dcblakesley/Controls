@@ -9,22 +9,19 @@
 
         @if (ShowEditor)
         {
-            <InputDate @bind-Value="CurrentValue" id=@_id data-test-id=@_id Type=Type class=@CssClass disabled=@IsDisabled aria-errormessage=@($"error-msg-{_id}") />
+            <InputDate @bind-Value="CurrentValue"
+                       Type=Type
+                       id=@_id 
+                       data-test-id=@_id
+                       class=@CssClass
+                       disabled=@IsDisabled
+                       aria-required=@_isRequired
+                       aria-describedby=@($"desc-{_id}")
+                       aria-errormessage=@($"error-msg-{_id}") />
         }
         else
         {
-            @if (ShowTime)
-            {
-                <div class="form-text @CssClass">
-                    @DateTime.Parse(CurrentValueAsString).ToLocalTime().ToString("MM-dd-yyyy hh:mm tt")
-                </div>
-            }
-            else
-            {
-                <div class="form-text @CssClass">
-                    @DateTime.Parse(CurrentValueAsString).ToLocalTime().ToString("MM-dd-yyyy")
-                </div>
-            }
+            <ReadOnlyValue Id=_id IsRequired=_isRequired CssClass=@CssClass Text=@GetDisplayValue() />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />

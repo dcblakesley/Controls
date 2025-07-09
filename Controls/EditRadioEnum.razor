@@ -14,12 +14,26 @@
 
             @if (ShowEditor)
             {
-                <InputRadioGroup @bind-Value=@CurrentValue id=@($"rbg_{_id}") data-test-id=@($"rbg_{_id}") disabled=@IsDisabled class=@CssClass aria-errormessage=@($"error-msg-{_id}")>
+                <InputRadioGroup
+                    @bind-Value=@CurrentValue
+                    id=@_id
+                    data-test-id=@_id
+                    disabled=@IsDisabled
+                    class=@CssClass
+                    aria-required=@_isRequired
+                    aria-describedby=@($"desc-{_id}")
+                    aria-errormessage=@($"error-msg-{_id}")>
+
                     <div class=@(HasHorizontalRadioButtons ? "flex-row flex-wrap" : "flex-column") style="row-gap: 0">
                         @foreach (var option in GetOptions())
                         {
                             <label class=@LabelClass>
-                                <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
+                                <InputRadio
+                                    Value=@option 
+                                    class=@CssClass
+                                    id=@($"rb_{_id}_{option}")
+                                    data-test-id=@($"rb_{_id}_{option}")/>
+
                                 @((MarkupString)option.GetName())
                             </label>
                         }
@@ -28,7 +42,7 @@
             }
             else
             {
-                <div class="form-text">@Value?.GetName()</div>
+                <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value?.GetName() />
             }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />

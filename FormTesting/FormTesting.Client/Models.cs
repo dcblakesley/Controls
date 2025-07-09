@@ -39,16 +39,17 @@ public class Person
     [MaxLength(5)] public string Tiger { get; set; } = "abcdefghi";
 
     // Controls
-    [DisplayName("EditString")] public string EditString { get; set; } = "";
+
+    [Required, DisplayName("EditString")] public string? EditString { get; set; } = "hello";
     [DisplayName("EditTextArea")] public string EditTextArea { get; set; } = "";
     [DisplayName("EditNumber")] public double EditNumber { get; set; } = 2.5;
     [DisplayName("EditBool")] public bool EditBool { get; set; }
     [DisplayName("EditDate")] public DateTime EditDate { get; set; } = DateTime.UtcNow;
     [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
     [DisplayName("EditSelect")] public int EditSelect { get; set; }
-    [DisplayName("EditSelectString")] public string EditSelectString { get; set; }
+    [DisplayName("EditSelectString")] public string? EditSelectString { get; set; }
     [DisplayName("EditRadioString")] public string EditRadioString { get; set; } = "";
-    [DisplayName("EditRadioEnum")] public AnimalType EditRadioEnum { get; set; } = AnimalType.Fish;
+    [Required, DisplayName("EditRadioEnum")] public AnimalType EditRadioEnum { get; set; } = AnimalType.Fish;
 
 }
 

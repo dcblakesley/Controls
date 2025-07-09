@@ -14,7 +14,7 @@ public partial class EditSelectEnum<TEnum>
     [Parameter] public required Type Type { get; set; }
 
     [Parameter] public string? Label { get; set; }
-    bool _isRequired;
+    string _isRequired = "false";
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
@@ -27,7 +27,8 @@ public partial class EditSelectEnum<TEnum>
         base.OnInitialized();
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-                _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+                _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 
     List<TEnum> GetOptions() => SortByName ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList() : Enum.GetValues(Type).Cast<TEnum>().ToList();

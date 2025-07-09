@@ -10,15 +10,31 @@
 
         @if (ShowEditor)
         {
-
             @if (CssClass.Contains("invalid"))
             {
-                <input style="padding-right: 2rem" @bind="CurrentValue" disabled=@IsDisabled id=@_id data-test-id=@_id class="required @CssClass" placeholder=@Placeholder aria-describedby="desc-@_id" aria-errormessage=@($"error-msg-{_id}") />
-                <i class="icon-invalid" aria-hidden="true"></i>
+                <input @bind="CurrentValue"
+                       style="padding-right: 2rem" 
+                       disabled=@IsDisabled
+                       id=@_id
+                       data-test-id=@_id
+                       aria-required=true
+                       class="@CssClass"
+                       placeholder=@Placeholder
+                       aria-describedby=@($"desc-{_id}")
+                       aria-errormessage=@($"error-msg-{_id}") />
+
+                <i class="icon-invalid" aria-hidden="true" ></i>
             }
             else
             {
-                <input @bind="CurrentValue" aria-describedby="desc-@_id" disabled=@IsDisabled id=@_id data-test-id=@_id class="required @CssClass" placeholder=@Placeholder aria-errormessage=@($"error-msg-{_id}") aria-required="" />
+                <input @bind="CurrentValue" 
+                       id=@_id
+                       data-test-id=@_id
+                       aria-required=@_isRequired
+                       class="@CssClass"
+                       placeholder=@Placeholder
+                       aria-describedby=@($"desc-{_id}")
+                       aria-errormessage=@($"error-msg-{_id}")/>
             }
         }
         else
@@ -53,11 +69,22 @@
             {
                 @if (Url != null)
                 {
-                    <a href=@Url target=@UrlTarget class="form-text-link @CssClass" style="display: block" aria-describedby="desc-@_id">@Value</a>
+                    <a role="textbox"
+                       class="form-text-link @CssClass"
+                       id=@_id
+                       data-test-id=@_id
+                       aria-describedby="desc-@_id"
+                       aria-labelledby=@($"lbl-{_id}")
+                       style="display: block"
+                       href=@Url
+                       target=@UrlTarget>
+                        
+                       @Value
+                    </a>
                 }
                 else
                 {
-                    <div class="form-text @CssClass" aria-describedby="desc-@_id">@Value</div>
+                    <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value />
                 }
             }
         }

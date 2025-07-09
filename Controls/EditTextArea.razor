@@ -8,12 +8,19 @@
 
         @if (ShowEditor)
         {
-            <textarea @bind=@CurrentValue disabled=@IsDisabled id=@_id data-test-id=@_id class=@CssClass rows=@Rows aria-errormessage=@($"error-msg-{_id}")></textarea>
+            <textarea @bind=@CurrentValue 
+                disabled=@IsDisabled
+                id=@_id
+                data-test-id=@_id 
+                class=@CssClass
+                rows=@Rows
+                aria-required=@_isRequired
+                aria-describedby=@($"desc-{_id}")
+                aria-errormessage=@($"error-msg-{_id}")></textarea>
         }
         else
         {
-            <div class="form-text @CssClass">@((MarkupString)Value)</div>
-
+            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
@@ -22,9 +29,4 @@
             <div class="bound-value">@CurrentValueAsString</div>
         }
     </div>
-}
-
-@code {
-
-    // Get validation messages for FieldName
 }
