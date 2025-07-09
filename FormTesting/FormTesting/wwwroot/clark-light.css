@@ -4,6 +4,7 @@
 :root {
     --black: #000000;
     --border-color: #B7B7B7;
+    --table-border-color: #e9ede9;
     --card-background-color: #FFFFFF;
     --clark-blue: #1890FF;
     --clark-green: #277C6C;
@@ -24,10 +25,8 @@
     --page-background: #F5F5F5;
     --white: #FFFFFF;
     --form-text-color: #595959;
-
-    --row-gap-small: 8px;
-    --row-gap-medium: 16px;
-    --row-gap-large: 32px;
+    --margin-medium: 16px;
+    --row-gap-lg: 32px;
 }
 
 /********************************************************************* Custom Controls ***********************************************************************************/
@@ -36,8 +35,14 @@
 .form-text { font-family: Inter; font-weight: 600; font-size: 14px; line-height: 22px; color: var(--form-text-color); }
 label, .form-label { font-family: Inter; font-weight: 400; font-size: 14px; line-height: 22px; color: var(--heading-color); margin-bottom: 8px }
 
+.margin-medium { padding: var(--margin-medium)}
+
 /* Daybreak Blue 1890FF */
 ant-select-selection-item-content { font-family: Inter; font-weight: 400; font-size: 12px; line-height: 20px; }
+/********************************************************************* Table ***********************************************************************************/
+.tbody-sm > tr > td { padding: 8px !important; }
+.table-nested {border: 8px solid var(--clark-lightgrey); margin: 0px; outline: 1px solid var(--table-border-color);}
+
 /********************************************************************* Layout ***********************************************************************************/
 /********************************************************************* Text ***********************************************************************************/
 a {
@@ -54,10 +59,12 @@ a:not([href]):not([tabindex]):hover { color: var(--clark-lightblue); }
     background-color: var(--clark-offwhite);
     padding: 24px 16px;
     border: 1px solid var(--clark-grey);
-    display: flex;
-    flex-direction: column;
-    row-gap: 32px;
 }
+
+.group-color {
+    background-color: var(--clark-offwhite);
+}
+
 /* Typical Text  */
 .regular-text {
     font-family: Inter;
@@ -76,19 +83,25 @@ a:not([href]):not([tabindex]):hover { color: var(--clark-lightblue); }
     color: var(--label-color);
     line-height: 22px;
     margin: -16px;
-    height: calc(100vh - 118px);
+    height: calc(100vh - 118px)
 }
 .page { background-color: var(--page-background); /* Auto layout */display: flex; flex-direction: column; align-items: center; padding: 24px 24px; gap: 24px; }
 .card { margin-top: 24px; padding: 24px 32px; width: 1075px; background: var(--card-background-color); border: none; border-radius: 8px; }
-
+fieldset { /* Auto layout */display: flex; flex-direction: column; align-items: flex-start; gap: 24px; /* Inside auto layout */flex: none; align-self: stretch; flex-grow: 0; }
+fieldset .flex-row { column-gap: 16px; }
+fieldset .flex-row .form-group { margin-bottom: 0; }
 .description { min-height: 22px; opacity: 0.65; }
 legend { height: 22px; }
 .button-primary { background-color: var(--clark-green); color: var(--white); }
 button { align-items: center; background: var(--white); border: 1px solid var(--clark-grey); color: var(--heading-color); border-radius: 2px; padding-top: 5px; padding-bottom: 5px; padding-left: 16px; padding-right: 16px; max-height: fit-content; }
 button:hover { color: var(--clark-lightblue); cursor: pointer;}
 button:focus { outline: none !important;}
-.b-primary { background: var(--clark-blue); color: var(--white); border: none;}
+.b-primary { background: var(--clark-blue); color: var(--white); border: solid 1px transparent;}
 .b-primary:hover { background: var(--clark-lightblue); color: var(--white);}
+.b-disabled { border: solid 1px var(--border-color); color: var(--clark-placeholder); background: var(--clark-grey);}
+.b-disabled:hover { border: solid 1px var(--border-color); color: var(--clark-placeholder); background: var(--clark-lightgrey);}
+.b-danger { background: var(--danger); color: var(--white); border: none;}
+.b-danger:hover { background: var(--danger); color: var(--white);}
 .b-outline { background: var(--white); color: var(--clark-blue); border: 1px solid var(--clark-blue); }
 .b-outline:hover { background: var(--white); border: 1px solid var(--clark-lightblue); color: var(--clark-lightblue); }
 .b-sm { padding-top: 1px; padding-bottom: 1px; padding-left: 8px; padding-right: 8px; }
@@ -119,7 +132,7 @@ select { box-sizing: border-box; /* Auto layout */padding: 0px 12px; gap: 10px; 
 .flex-row { display: flex; flex-direction: row; column-gap: 16px;}
 .flow-row-right { display: flex; align-content: right; padding-top: 10px; }
 .flex-row-center { display: flex; flex: 1; flex-direction: row; justify-content: center; text-align: center; }
-.flex-column { display: flex; flex-direction: column; row-gap: var(--row-gap-medium); }
+.flex-column { display: flex; flex-direction: column; row-gap: var(--row-gap-lg); }
 .flex-column-center { display: flex; flex: 1; flex-direction: column; justify-content: center; text-align: center; }
 .full-height { height: 100% }
 .full-width { width: 100% }
@@ -129,10 +142,15 @@ select { box-sizing: border-box; /* Auto layout */padding: 0px 12px; gap: 10px; 
 .arrow { cursor: default }
 .not-allowed { cursor: not-allowed }
 .nowrap { white-space: nowrap }
+.nogap { gap: 0px }
 .push-right {margin-left: auto; margin-right: 10px;}
+.overflow-auto {overflow: auto}
+.ul-no-indent { margin-left: -16px; padding-top: 16px; }
 
 .w100p {width: 100%}
 .w50p {width: calc(50% - 16px)}
+
+.text-center {text-align: center;}
 
 /********************************************************************* Ant Blazor ***********************************************************************************/
 
@@ -156,6 +174,9 @@ h1.ant-typography .icon-external-link { margin-top: 4px; }
 .ant-drawer-footer { padding: 10px 16px; display: flex; flex-direction: row; column-gap: 8px; }
 
 .ant-table-row-expand-icon-cell .ant-table-row-expand-icon { max-height: inherit;}
+
+.ant-collapse-header-text {font-weight: 600;}
+.ant-collapse {border: 1px solid var(--clark-grey);}
 /********************************************************************* Icons ***********************************************************************************/
 .clark-icon {
     width: 65px;
@@ -174,3 +195,11 @@ h1.ant-typography .icon-external-link { margin-top: 4px; }
 .icon-close { width: 10px; height: 12px; display: inline-block; background-image: url('data:image/svg+xml,<svg width="10" height="12" viewBox="0 0 10 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.8095 6L9.91106 1.11094C9.97981 1.02969 9.922 0.90625 9.81575 0.90625H8.56888C8.49544 0.90625 8.42512 0.939062 8.37669 0.995312L4.99388 5.02813L1.61106 0.995312C1.56419 0.939062 1.49388 0.90625 1.41888 0.90625H0.172C0.0657503 0.90625 0.00793765 1.02969 0.0766877 1.11094L4.17825 6L0.0766877 10.8891C0.061287 10.9072 0.0514069 10.9293 0.04822 10.9529C0.0450331 10.9764 0.0486732 11.0004 0.0587085 11.022C0.0687439 11.0435 0.0847529 11.0617 0.104835 11.0745C0.124916 11.0872 0.148227 11.0939 0.172 11.0938H1.41888C1.49231 11.0938 1.56263 11.0609 1.61106 11.0047L4.99388 6.97188L8.37669 11.0047C8.42356 11.0609 8.49388 11.0938 8.56888 11.0938H9.81575C9.922 11.0938 9.97981 10.9703 9.91106 10.8891L5.8095 6Z" fill="%23262626"/></svg>');}
 .icon-delete { width: 22px; height: 22px; display: inline-block; background-image: url('data:image/svg+xml,<svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.92188 2.51562H4.8125C4.87266 2.51562 4.92188 2.46641 4.92188 2.40625V2.51562H9.07812V2.40625C9.07812 2.46641 9.12734 2.51562 9.1875 2.51562H9.07812V3.5H10.0625V2.40625C10.0625 1.92363 9.67012 1.53125 9.1875 1.53125H4.8125C4.32988 1.53125 3.9375 1.92363 3.9375 2.40625V3.5H4.92188V2.51562ZM11.8125 3.5H2.1875C1.94551 3.5 1.75 3.69551 1.75 3.9375V4.375C1.75 4.43516 1.79922 4.48438 1.85938 4.48438H2.68516L3.02285 11.6348C3.04473 12.101 3.43027 12.4688 3.89648 12.4688H10.1035C10.5711 12.4688 10.9553 12.1023 10.9771 11.6348L11.3148 4.48438H12.1406C12.2008 4.48438 12.25 4.43516 12.25 4.375V3.9375C12.25 3.69551 12.0545 3.5 11.8125 3.5ZM9.99824 11.4844H4.00176L3.6709 4.48438H10.3291L9.99824 11.4844Z" fill="%23F5222D"/></svg>');}
 .icon-paperclip { height: 14px; width: 14px; display: inline-block; background-image: url('data:image/svg+xml,<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.6535 2.68857C9.36564 1.40068 7.26837 1.40068 5.98185 2.68857L2.41349 6.2542C2.39025 6.27744 2.37794 6.30889 2.37794 6.3417C2.37794 6.37451 2.39025 6.40596 2.41349 6.4292L2.91798 6.93369C2.94104 6.95665 2.97226 6.96954 3.0048 6.96954C3.03734 6.96954 3.06855 6.95665 3.09161 6.93369L6.65997 3.36807C7.10294 2.9251 7.6922 2.68174 8.31837 2.68174C8.94454 2.68174 9.5338 2.9251 9.9754 3.36807C10.4184 3.81104 10.6617 4.40029 10.6617 5.0251C10.6617 5.65127 10.4184 6.23916 9.9754 6.68213L6.33868 10.3175L5.74943 10.9067C5.19845 11.4577 4.30294 11.4577 3.75197 10.9067C3.48536 10.6401 3.33908 10.286 3.33908 9.90869C3.33908 9.53135 3.48536 9.17725 3.75197 8.91064L7.35997 5.304C7.45157 5.21377 7.57189 5.16318 7.7004 5.16318H7.70177C7.83029 5.16318 7.94923 5.21377 8.03946 5.304C8.13107 5.39561 8.18029 5.51592 8.18029 5.64443C8.18029 5.77158 8.1297 5.89189 8.03946 5.98213L5.09044 8.92842C5.0672 8.95166 5.0549 8.98311 5.0549 9.01592C5.0549 9.04873 5.0672 9.08018 5.09044 9.10342L5.59493 9.60791C5.61799 9.63087 5.64921 9.64376 5.68175 9.64376C5.71429 9.64376 5.74551 9.63087 5.76857 9.60791L8.71622 6.66025C8.98829 6.38818 9.13732 6.02725 9.13732 5.64307C9.13732 5.25889 8.98693 4.89658 8.71622 4.62588C8.15431 4.06396 7.24103 4.06533 6.67911 4.62588L6.32911 4.97725L3.07247 8.23252C2.85144 8.45225 2.67623 8.71369 2.55701 9.00165C2.43779 9.28962 2.37692 9.59839 2.37794 9.91006C2.37794 10.5431 2.6254 11.1378 3.07247 11.5849C3.53595 12.047 4.14298 12.278 4.75001 12.278C5.35704 12.278 5.96407 12.047 6.42618 11.5849L10.6535 7.36025C11.2756 6.73682 11.6201 5.90693 11.6201 5.0251C11.6215 4.14189 11.277 3.31201 10.6535 2.68857Z" fill="%238C8C8C"/></svg>');}
+.icon-plus { height: 18px; width: 18px; display: inline-block; background-image: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="17" height="17" rx="1.5" fill="white"/><rect x="0.5" y="0.5" width="17" height="17" rx="1.5" stroke="%23F0F0F0"/><path d="M8.53125 3.375H9.46875C9.55208 3.375 9.59375 3.41667 9.59375 3.5V14.5C9.59375 14.5833 9.55208 14.625 9.46875 14.625H8.53125C8.44792 14.625 8.40625 14.5833 8.40625 14.5V3.5C8.40625 3.41667 8.44792 3.375 8.53125 3.375Z" fill="%23262626"/><path d="M3.75 8.40625H14.25C14.3333 8.40625 14.375 8.44792 14.375 8.53125V9.46875C14.375 9.55208 14.3333 9.59375 14.25 9.59375H3.75C3.66667 9.59375 3.625 9.55208 3.625 9.46875V8.53125C3.625 8.44792 3.66667 8.40625 3.75 8.40625Z" fill="%23262626"/></svg>');}
+.icon-up-carrot { height: 6px; width: 8px; display: inline-block; background-image: url('data:image/svg+xml,<svg width="8" height="6" viewBox="0 0 8 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.38784 4.72827L4.1808 1.00952C4.08901 0.903076 3.91225 0.903076 3.81948 1.00952L0.612445 4.72827C0.493304 4.86694 0.600726 5.07007 0.793109 5.07007H7.20717C7.39955 5.07007 7.50698 4.86694 7.38784 4.72827Z" fill="%238C8C8C"/></svg>'); }
+.icon-down-carrot { height: 6px; width: 8px; display: inline-block; background-image: url('data:image/svg+xml,<svg width="8" height="6" viewBox="0 0 8 6" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.20717 0.929688H0.793109C0.600726 0.929688 0.493304 1.13281 0.612445 1.27148L3.81948 4.99023C3.91127 5.09668 4.08803 5.09668 4.1808 4.99023L7.38784 1.27148C7.50698 1.13281 7.39955 0.929688 7.20717 0.929688Z" fill="%238C8C8C"/></svg>'); }
+.icon-hamburger { height: 16px; width: 16px; display: inline-block; background-image: url('data:image/svg+xml,<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><defs><style> .cls-1 { fill: %23000000; } </style></defs><rect class="cls-1" x="0" width="16" height="4"/><rect class="cls-1" y="6" width="16" height="4"/><rect class="cls-1" y="12" width="16" height="4"/></svg>'); }
+
+
+
+
