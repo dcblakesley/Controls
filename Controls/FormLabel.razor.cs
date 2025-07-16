@@ -9,6 +9,8 @@ public partial class FormLabel
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
+    [Parameter] public bool IsLegend { get; set; }
+
     string DisplayLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? Attributes.Description();
     string _isRequired = "false";

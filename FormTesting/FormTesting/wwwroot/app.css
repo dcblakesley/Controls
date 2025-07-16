@@ -16,7 +16,7 @@ dioxide .valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
 .flex-fill { flex: 1 }
 .flex-row { display: flex; flex-direction: row; column-gap: 16px }
 .flex-row-center { display: flex; flex: 1; flex-direction: row; justify-content: center; text-align: center; }
-.flex-column { display: flex; flex-direction: column; row-gap: 16px}
+.flex-column { display: flex; flex-direction: column; row-gap: 0px}
 .flex-column-center { display: flex; flex: 1; flex-direction: column; justify-content: center; text-align: center; }
 .full-height { height: 100% }
 .full-width { width: 100% }
@@ -38,7 +38,9 @@ dioxide .valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
 .w900 { width: 900px; }
 .w1000 { width: 1000px; }
 .w1100 { width: 1100px; }
-.form-group {  }
+.edit-control-wrapper {  }
+
+
 
 
 .bound-value { color: lime;}

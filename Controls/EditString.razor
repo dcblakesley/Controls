@@ -10,9 +10,9 @@
     }
 </style>
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
-    <div class="form-group @OuterClass">
+    <div class="edit-control-wrapper @OuterClass">
 
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
@@ -26,7 +26,7 @@
                        id=@_id
                        data-test-id=@_id
                        aria-required=true
-                       class="@CssClass"
+                       class="edit-string-input @CssClass"
                        placeholder=@Placeholder
                        aria-describedby=@($"desc-{_id}")
                        aria-errormessage=@($"error-msg-{_id}") />
@@ -41,7 +41,7 @@
                        id=@_id
                        data-test-id=@_id
                        required=@_isRequired
-                       class="@CssClass"
+                       class="edit-string-input @CssClass"
                        placeholder=@Placeholder
                        aria-describedby=@($"desc-{_id}")
                        aria-errormessage=@($"error-msg-{_id}")/>
@@ -81,12 +81,11 @@
                 @if (Url != null)
                 {
                     <a role="textbox"
-                       class="form-text-link @CssClass"
+                       class="edit-string-link @CssClass"
                        id=@_id
                        data-test-id=@_id
                        aria-describedby="desc-@_id"
                        aria-labelledby=@($"lbl-{_id}")
-                       style="display: block"
                        href=@Url
                        target=@UrlTarget>
                         

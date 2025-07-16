@@ -1,0 +1,37 @@
+﻿<div class="edit-control-wrapper @OuterClass">
+    <fieldset class="form-fieldset">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend="true" />
+
+        @if (ShowEditor)
+        {
+            <div class="flex-column checkbox-group@(hasError ? " invalid" : "")">
+                @foreach (var option in Options)
+                {
+                    <label class=@($"edit-checkedList-labels {LabelClass}") >
+                        <input type="checkbox" 
+                               value=@option 
+                               checked="@(Value.Contains(option))" 
+                               @onchange="() => SetAsync(option)"
+                               id=@($"cbx-{_id}-{option}")
+                               data-test-id=@($"cbx-{_id}-{option}")/>
+                        
+                        @option
+                    </label>
+                }
+            </div>
+        }
+        else
+        {
+            @foreach (var option in Value)
+            {
+                <ReadOnlyValue Id=@_id IsRequired=_isRequired Text=@option />
+            }
+        }
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@string.Join(", ", Value)</div>
+        }
+
+    </fieldset>
+</div>

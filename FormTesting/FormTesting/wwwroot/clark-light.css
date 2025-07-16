@@ -1,4 +1,75 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+/**/
+legend { all: unset; }
+fieldset { all: unset }
+p { all: unset }
+label { all: unset }
+span { all: unset }
+
+
+/************************************************ General ************************************************/
+.edit-control-wrapper { /* Wraper/group around each edit control */}
+.edit-validation-message{ /* The validation message for each of the "Edit" Controls */ }
+
+/************************************************ FormLabel **********************************************/
+.edit-label { /* The label for each of the "Edit" Controls */}
+.edit-label-required-star { /* The star that shows up after the Label when a property is marked as [Required] */ }
+.edit-label-description { /* The description for each of the "Edit" Controls */ }
+
+/************************************************ ReadOnlyValue and EditDisplay **************************/
+.edit-readonly-value { /* The text that is displayed when IsEditMode=false*/ }
+
+
+/************************************************ EditString *********************************************/
+.edit-string-link { /* <a style when IsReadOnly and Url!=null */}
+.edit-string-input{ /* The input for the "EditString" control */}
+
+
+/************************************************ EditRadio(String and Enum) *****************************/
+.edit-radio-fieldset { gap: 0; }
+.edit-radiobuttons-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; }
+.edit-radiobuttons-container-horizontal { /* HasHorizontalRadioButtons=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+input[type='radio'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--clark-green); display: inline-block; vertical-align: middle; cursor: pointer }
+.edit-radio-other-option-container{}
+.edit-radio-aaa{}
+
+/************************************************ EditCheckedList(String and Enum) *****************************/
+.edit-checkbox-fieldset {
+    gap: 0;
+}
+.edit-checkedList-labels { /* The labels around checkboxes in the CheckedList(String and Enum in the future) */}
+
+
+.edit-control-textarea { /* The textarea for each of the "Edit" Controls */
+}
+.edit-control-input    { /* The input for each of the "Edit" Controls */ }
+.edit-control-select   { /* The select for each of the "Edit" Controls */ }
+.edit-string-input  { /* The input for  */ }
+.edit-radio-labels {
+    cursor: pointer;
+}
+
+
+
+/* */
+
+
+
+input[type="checkbox"] { width: 12px; height: 12px; }
+label.checkbox { vertical-align: top; line-height: 24px; margin: 2px 0; display: block; }
+.checkbox-group { gap: 0 }
+input[type='radio'],
+input[type='checkbox']
+{
+    height: 16px;
+    width: 16px;
+    margin-right: 8px;
+    accent-color: var(--clark-green);
+    display: inline-block;
+    vertical-align: middle;
+    cursor: pointer
+} 
+
 
 /********************************************************************* Colors ***********************************************************************************/
 :root {
@@ -29,11 +100,15 @@
     --row-gap-lg: 32px;
 }
 
+
+
+
 /********************************************************************* Custom Controls ***********************************************************************************/
-.form-group { margin: 0; }
+.edit-control-wrapper { margin: 0; }
 .form-description { color: var(--black); min-height: 22px; margin-bottom: 8px; opacity: 0.65; }
 .form-text { font-family: Inter; font-weight: 600; font-size: 14px; line-height: 22px; color: var(--form-text-color); }
-label, .form-label { font-family: Inter; font-weight: 400; font-size: 14px; line-height: 22px; color: var(--heading-color); margin-bottom: 8px }
+label { font-family: Inter; font-weight: 400; font-size: 14px; line-height: 22px; color: var(--heading-color);}
+.form-label { margin-bottom: 8px }
 
 .margin-medium { padding: var(--margin-medium)}
 
@@ -85,13 +160,13 @@ a:not([href]):not([tabindex]):hover { color: var(--clark-lightblue); }
     margin: -16px;
     height: calc(100vh - 118px)
 }
+
 .page { background-color: var(--page-background); /* Auto layout */display: flex; flex-direction: column; align-items: center; padding: 24px 24px; gap: 24px; }
 .card { margin-top: 24px; padding: 24px 32px; width: 1075px; background: var(--card-background-color); border: none; border-radius: 8px; }
 fieldset { /* Auto layout */display: flex; flex-direction: column; align-items: flex-start; gap: 24px; /* Inside auto layout */flex: none; align-self: stretch; flex-grow: 0; }
 fieldset .flex-row { column-gap: 16px; }
-fieldset .flex-row .form-group { margin-bottom: 0; }
+fieldset .flex-row .edit-control-wrapper { margin-bottom: 0; }
 .description { min-height: 22px; opacity: 0.65; }
-legend { height: 22px; }
 .button-primary { background-color: var(--clark-green); color: var(--white); }
 button { align-items: center; background: var(--white); border: 1px solid var(--clark-grey); color: var(--heading-color); border-radius: 2px; padding-top: 5px; padding-bottom: 5px; padding-left: 16px; padding-right: 16px; max-height: fit-content; }
 button:hover { color: var(--clark-lightblue); cursor: pointer;}
@@ -114,7 +189,7 @@ h2, .h2 { height: 28px; font-weight: 700; font-size: 20px; line-height: 28px; co
 h3, .h3 { height: 22px; font-weight: 700; font-size: 14px; line-height: 22px; color: var(--heading-color); margin: 0; }
 textarea { box-sizing: border-box; padding: 0px 12px; gap: 10px; height: 64px; width: 25rem; background: var(--white); border: 1px solid; border-color: var(--border-color); border-radius: 6px; flex: none; order: 2; flex-grow: 1; }
 input { box-sizing: border-box; padding: 5px 8px; gap: 10px; height: 32px; background: var(--white); border: 1px solid var(--clark-grey); border-radius: 2px; flex: none; order: 2; flex-grow: 1; }
-input[type='radio'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--clark-green); display: inline-block; vertical-align: middle; }
+input[type='radio'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--clark-green); display: inline-block; vertical-align: middle; cursor: pointer }
 .form-check-label { margin-left: 8px; margin-top: 9px; }
 .form-check-input { padding: 8px; margin-left: 0; margin-right: 8px; display: inline-block; vertical-align: middle; border: 1px solid; border-color: var(--border-color); height: 35px; }
 .form-check-input:checked { background-color: var(--clark-green); }

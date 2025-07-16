@@ -3,12 +3,10 @@
 
 @if (ShouldShowComponent)
 {
-    <div class="form-group @OuterClass">
+    <div class="edit-control-wrapper @OuterClass">
 
-        <fieldset>
-            <legend>
-                <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
-            </legend>
+        <fieldset class="edit-radio-fieldset">
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend=true />
 
             @if (ShowEditor)
             {
@@ -21,32 +19,42 @@
                                  aria-describedby=@($"desc-{_id}")
                                  aria-errormessage=@($"error-msg-{_id}")>
 
-                    <div class=@(HasHorizontalRadioButtons ? "flex-row flex-wrap" : "flex-column") style="row-gap: 0">
+                    <div class=@(HasHorizontalRadioButtons
+                                   ? "edit-radiobuttons-container-horizontal" 
+                                   : "edit-radiobuttons-container-vertical")>
+
                         @foreach (var option in Options)
                         {
-                            <label class=@LabelClass>
-                                <InputRadio Value=@option id=@($"rb_{_id}_{option}") data-test-id=@($"rb_{_id}_{option}")/>
+                            <label class=@($"{LabelClass} edit-label")>
+                                <InputRadio Value=@option 
+                                            id=@($"rb_{_id}_{option}") 
+                                            data-test-id=@($"rb_{_id}_{option}")/>
+
                                 @((MarkupString)option)
                             </label>
                         }
+
+                        <!-- Other - Always on its own line -->
+                        @if (HasOther)
+                        {
+                            <div class="edit-radio-other-option-container">
+                                <label class=@($"edit-label {LabelClass}")>
+                                    <InputRadio Value=@OtherName 
+                                                id=@($"rb-{_id}-other")
+                                                data-test-id=@($"rb-{_id}-other")/>
+                                    Other
+                                </label>
+                                <input disabled="@(_selectedOption != "Other")"
+                                       type="text"
+                                       id=@($"txt-{_id}-custom-value")
+                                       aria-label="Custom text value input"
+                                       class="edit-string-input"
+                                       @bind:get=@_otherText                                    
+                                       @bind:set=SetOtherTextAsync
+                                       @bind:event="oninput"/>
+                            </div>
+                        }
                     </div>
-                    <!-- Other - Always on its own line -->
-                    @if (HasOther)
-                    {
-                        <div>
-                            <label>
-                                <InputRadio Value=@OtherName id=@($"rb_{_id}_other") data-test-id=@($"rb_{_id}_other")/>
-                                Other
-                            </label>
-                            <input disabled="@(_selectedOption != "Other")"
-                                   type="text"
-                                   id=@($"txt-{_id}-custom-value")
-                                   aria-label="Custom text value input"
-                                   @bind:get=@_otherText 
-                                   @bind:set=SetOtherTextAsync 
-                                   @bind:event="oninput"/>
-                        </div>
-                    }
 
                 </InputRadioGroup>
             }

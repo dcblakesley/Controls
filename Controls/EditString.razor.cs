@@ -2,21 +2,22 @@
 
 namespace Controls;
 
-public partial class EditString
+public partial class EditString : IEditControl
 {
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+
     [Parameter] public required Expression<Func<string>> Field { get; set; }
 
-    /// <summary> IDs are used for the label and input. If not provided, the Id will be automatically generated based on the name of the Property. </summary>
     [Parameter] public string? Id { get; set; }  
     [Parameter] public string? IdPrefix { get; set; }
 
-    /// <summary> Optional, can be used to distinguish between multiple forms on the same page. </summary>
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Placeholder { get; set; }
-    [Parameter] public bool HideWhenNull { get; set; }
+    [Parameter] public HidingMode? Hiding { get; set; }
     [Parameter] public string? OuterClass { get; set; }
 
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
@@ -29,9 +30,37 @@ public partial class EditString
     /// <summary> Only used with Urls, Sets target="UrlTarget" in the link </summary>
     [Parameter] public string? UrlTarget { get; set; }
 
-    bool ShouldShowComponent => HideWhenNull && CurrentValue == null ? false : true;
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    bool ShouldShowComponent()
+    {
+        switch (Hiding)
+        {
+            // Look at direct settings first, these override FormOptions
+            case HidingMode.None:
+                return true;
+            case HidingMode.WhenNull:
+                return CurrentValue != null;
+            case HidingMode.WhenNullOrEmpty:
+                return !string.IsNullOrEmpty(CurrentValue);
+            case HidingMode.WhenReadOnlyAndNull:
+                return !IsEditMode || CurrentValue != null;
+            case HidingMode.WhenReadOnlyAndNullOrEmpty:
+                return !IsEditMode || !string.IsNullOrEmpty(CurrentValue);
+
+            // No direct setting, check FormOptions
+            default:
+                if (FormOptions == null)
+                    return true;
+                return FormOptions.Hiding switch
+                {
+                    null or HidingMode.None => true,
+                    HidingMode.WhenNull => CurrentValue != null,
+                    HidingMode.WhenNullOrEmpty => !string.IsNullOrEmpty(CurrentValue),
+                    HidingMode.WhenReadOnlyAndNull => !IsEditMode || CurrentValue != null,
+                    _ => true
+                };
+        }
+    }
+
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 
     string? GetMaskValue()

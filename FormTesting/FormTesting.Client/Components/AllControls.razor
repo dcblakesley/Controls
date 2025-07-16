@@ -1,11 +1,5 @@
 ﻿@using Controls
 
-
-<div class="flex-row">
-    <button class="b-primary" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues)>Display bound values</button>
-    <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode)>Edit Mode</button>
-</div>
-
 <style>
     .myWidth {
         width: 80px;
@@ -14,23 +8,26 @@
 
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <ObjectGraphDataAnnotationsValidator/>
-    
+
+    <div class="flex-row">
+        <button class="b-primary" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
+        <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
+        <button class="b-secondary" @onclick=@(() => FormOptions.IsReadOnly = !FormOptions.IsReadOnly) type="button">Read Only</button>
+        <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
+    </div>
+
     <fieldset id="blah">
         <CascadingValue Value=@FormOptions>
-            <legend>
-                <h1>Stuff</h1>
-            </legend>
+            <legend class="h2">Controls</legend>
 
             <div class="flex-row flex-wrap">
-                <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
-                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) ShowTime=true/>
-                <EditDisplay Label="EditDisplay" Text="My text"/>
+                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) DateFormat="D" />
+                <EditDisplay Label="EditDisplay" Text="My text" IsHidden=false/>
                 <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber)/>
-                    
-                <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString) Placeholder="Hello world!"  />
-                <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea)/>
+                <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString!) Placeholder="Hello world!" />
+                <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) />
                 <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum)/>
-                <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions"/>
+                <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions" />
                 <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect)>
                     @foreach (var o in _plants.OrderBy(x => x.Name))
                     {
@@ -41,16 +38,15 @@
 
             <div class="flex-row flex-wrap">
                 <button class="btn btn-info" @onclick=@(()=>_isHorizontal = !_isHorizontal)>Toggle Horizontal</button>
-                <div style="max-width: 400px">
-                    <EditRadioString @bind-Value=_model.EditRadioString 
-                                     LabelClass="myWidth"
-                                     Field=@(() => _model.EditRadioString) 
-                                     Options=@_colorOptions 
-                                     HasOther=true 
-                                     HasHorizontalRadioButtons=@_isHorizontal />
+                <EditRadioString @bind-Value=_model.EditRadioString 
+                                 Field=@(() => _model.EditRadioString) 
+                                 Options=@_colorOptions 
+                                 HasOther=true 
+                                 HasHorizontalRadioButtons=@_isHorizontal />
 
-                </div>
                 <EditRadioEnum Type=typeof(AnimalType) @bind-Value=_model.EditRadioEnum Field=@(() => _model.EditRadioEnum)/>
+                
+                <EditCheckedStringList @bind-Value=_model.EditCheckedStringList Field=@(() => _model.EditCheckedStringList!) Options=@_editCheckedStringListOptions />
             </div>
         </CascadingValue>
     </fieldset>
@@ -62,6 +58,11 @@
     EditForm editForm; // Set by @ref during Render
     public FormOptions FormOptions { get; set; } = new();
     readonly List<string> _colorOptions = ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
+    readonly List<string> _editCheckedStringListOptions = ["Azathoth", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep", "Cthulhu", "Hastur", "Dagon", "Ithaqua", "Tsathoggua" ];
+
     List<Plant> _plants = Plant.GetTestData();
     bool _isHorizontal = false;
+
+    
+    public HidingMode HidingMode { get; set; }
 }

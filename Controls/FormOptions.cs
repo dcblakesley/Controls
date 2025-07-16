@@ -7,12 +7,8 @@ public class FormOptions
     public bool ShowBoundValues { get; set; }
     public List<FieldIdentifier> FieldIdentifiers { get; private set; } = [];
 
-    /// <summary>
-    /// Feature to quickly allow users to see only what has been entered or modified from default values. <br/>
-    /// Useful for large forms where most values are default. <br/>
-    /// When not editing, if the value is the same as the default value, the label and the output will be hidden.
-    /// </summary>
-    public bool HideNonEditModeUnusedValues { get; set; } = true;
+    /// <summary> Allows you to set the hiding mode for the entire form. </summary>
+    public HidingMode? Hiding { get; set; }
 }
 
 public class FormGroupOptions

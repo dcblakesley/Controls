@@ -1,7 +1,10 @@
 ﻿namespace Controls;
 
-public partial class EditRadioEnum<TEnum>
+public partial class EditRadioEnum<TEnum> : IEditControl
 {
+    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+
     [Parameter] public string? Id { get; set; } 
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
@@ -12,14 +15,53 @@ public partial class EditRadioEnum<TEnum>
     [Parameter] public bool SortByName { get; set; }
     [Parameter] public string? OuterClass { get; set; }
     [Parameter] public string? LabelClass { get; set; }
+
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public HidingMode? Hiding { get; set; }
     
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public required Type Type { get; set; }
 
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    // bool ShouldShowComponent => true;
+    bool ShouldShowComponent()
+    {
+        switch (Hiding)
+        {
+            // Look at direct settings first, these override FormOptions
+            case HidingMode.None:
+                return true;
+            case HidingMode.WhenNull:
+            case HidingMode.WhenNullOrEmpty:
+                return CurrentValue != null;
 
-    bool ShouldShowComponent => true;
+            case HidingMode.WhenReadOnlyAndNull:
+            case HidingMode.WhenReadOnlyAndNullOrEmpty:
+                return !IsEditMode || CurrentValue != null;
+
+            // No direct setting, check FormOptions
+            default:
+                if (FormOptions == null)
+                    return true;
+                switch (FormOptions.Hiding)
+                {
+                    case HidingMode.WhenNull:
+                    case HidingMode.WhenNullOrEmpty:
+                        return CurrentValue != null;
+
+                    case HidingMode.WhenReadOnlyAndNull:
+                    case HidingMode.WhenReadOnlyAndNullOrEmpty:
+                        return !IsEditMode || CurrentValue != null;
+
+                    case null or HidingMode.None:
+                    default:
+                        return true;
+                }
+        }
+    }
+
+
+
 
     List<TEnum> GetOptions() => SortByName
         ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList()
@@ -37,7 +79,7 @@ public partial class EditRadioEnum<TEnum>
         _fieldIdentifier = FieldIdentifier.Create(Field);
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
-                _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 
     protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)

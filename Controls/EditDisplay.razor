@@ -1,9 +1,9 @@
-@if (ShouldShowComponent)
+@if (IsHidden)
 {
-    <div class="form-group @OuterClass">
+    <div class="edit-control-wrapper @OuterClass">
         <FormLabel Id=@Id Label=@Label Description=@Description/>
 
-        <div class="form-text"
+        <div class="edit-control-readonly-text"
              role="textbox"
              id=@Id
              data-test-id=@Id

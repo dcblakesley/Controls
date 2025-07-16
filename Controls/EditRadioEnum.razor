@@ -3,14 +3,12 @@
 @typeparam TEnum
 @inherits InputBase<TEnum>
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
-    <div class="form-group @OuterClass">
+    <div class="edit-control-wrapper @OuterClass">
 
-        <fieldset>
-            <legend>
-                <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
-            </legend>
+        <fieldset class="radio-fieldset">
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend=true />
 
             @if (ShowEditor)
             {
@@ -19,7 +17,7 @@
                     id=@_id
                     data-test-id=@_id
                     disabled=@IsDisabled
-                    class=@CssClass
+                    class=@($"radio-group {CssClass}")
                     required=@_isRequired
                     aria-describedby=@($"desc-{_id}")
                     aria-errormessage=@($"error-msg-{_id}")>
@@ -27,12 +25,12 @@
                     <div class=@(HasHorizontalRadioButtons ? "flex-row flex-wrap" : "flex-column") style="row-gap: 0">
                         @foreach (var option in GetOptions())
                         {
-                            <label class=@LabelClass>
+                            <label class=@($"edit-radio-labels {LabelClass}")>
                                 <InputRadio
-                                    Value=@option 
-                                    class=@CssClass
-                                    id=@($"rb_{_id}_{option}")
-                                    data-test-id=@($"rb_{_id}_{option}")/>
+                                    Value=@option
+                                    class=@($"{CssClass}")
+                                    id=@($"rb-{_id}-{option}")
+                                    data-test-id=@($"rb-{_id}-{option}")/>
 
                                 @((MarkupString)option.GetName())
                             </label>

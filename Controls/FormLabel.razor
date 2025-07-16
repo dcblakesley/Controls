@@ -1,20 +1,42 @@
 ﻿@using Controls.Helpers
 
-<label class="form-label" title=@Attributes.ToolTip() for=@Id id="lbl-@Id" >
-    @((MarkupString)DisplayLabel())
-    
-    @if (_isRequired.ToLower() == "true")
-    {
-        <span class="required-star" aria-hidden="true">*</span>
-    }
-</label>
-<br aria-hidden='true'>
-@if (Attributes.Description() != null)
+
+@if (IsLegend)
 {
-    @if(DisplayDescription() != null)
+    <!-- Wrap only the 'label' within the legend -->
+    <legend class="edit-label" title=@Attributes.ToolTip()>
+        @((MarkupString)DisplayLabel())
+
+        @if (_isRequired.ToLower() == "true")
+        {
+            <span class="edit-label-required-star" aria-hidden="true">*</span>
+        }
+    </legend>
+
+    @if (DisplayDescription() != null)
     {
-        <p class="form-description" id="desc-@Id" aria-hidden="true">
-            @((MarkupString)DisplayDescription())
+        <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+            @((MarkupString)DisplayDescription()!)
         </p>
     }
+
+}else
+{
+    <!-- Typical Label -->
+    <label class="edit-label" title=@Attributes.ToolTip() for=@Id id="lbl-@Id" >
+        @((MarkupString)DisplayLabel())
+    
+        @if (_isRequired.ToLower() == "true")
+        {
+            <span class="edit-label-required-star" aria-hidden="true">*</span>
+        }
+    </label>
+    <div></div>
+    @if(DisplayDescription() != null)
+    {
+        <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+            @((MarkupString)DisplayDescription()!)
+        </p>
+    }
+    
 }

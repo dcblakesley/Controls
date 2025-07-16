@@ -40,17 +40,18 @@ public class Person
 
     // Controls
 
-    [Required, DisplayName("EditString")] public string? EditString { get; set; } = "hello";
+    [Required, DisplayName("EditString")] public string? EditString { get; set; }
     [DisplayName("EditTextArea")] public string EditTextArea { get; set; } = "";
     [DisplayName("EditNumber")] public double EditNumber { get; set; } = 2.5;
     [DisplayName("EditBool")] public bool EditBool { get; set; }
     [DisplayName("EditDate")] public DateTime EditDate { get; set; } = DateTime.UtcNow;
     [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
     [DisplayName("EditSelect")] public int EditSelect { get; set; }
-    [DisplayName("EditSelectString")] public string? EditSelectString { get; set; }
-    [DisplayName("EditRadioString")] public string EditRadioString { get; set; } = "";
+    [Required, DisplayName("EditSelectString")] public string EditSelectString { get; set; } = "";
+    [DisplayName("EditRadioString"), Description("Hello, does this work?")] public string EditRadioString { get; set; } = "";
     [Required, DisplayName("EditRadioEnum")] public AnimalType EditRadioEnum { get; set; } = AnimalType.Fish;
 
+    [DisplayName("EditCheckedStringList"), Description("Blah blah blah")] public List<string> EditCheckedStringList { get; set; } = [];
 }
 
 public enum AnimalType
