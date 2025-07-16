@@ -21,6 +21,7 @@ public partial class EditCheckedStringList : IEditControl
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool IsHorizontal { get; set; }
 
     /// <summary> Not supported yet </summary>
     [Parameter] public HidingMode? Hiding { get; set; }

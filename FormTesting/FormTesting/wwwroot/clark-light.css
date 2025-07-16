@@ -6,7 +6,13 @@ fieldset { all: unset }
 p { all: unset }
 label { all: unset }
 span { all: unset }
-button { all: unset; }
+button { all: unset }
+select { all: unset }
+/* html, head, title, body, h1-6, a, img, form, input, button,
+    ul, ol, li, table, tr, th, td, br, bold, header, footer,
+    main, details, summary, article, address, img, nav, form, 
+    strong, b, em, i, small, sub, sup, code, pre
+*/
 
 /* Set default styles for basic controls */
 label { font-family: Inter; font-weight: 400; font-size: 14px; line-height: 22px; color: var(--heading-color); }
@@ -35,13 +41,14 @@ button:focus { outline: none !important; }
 /************************************************ EditBool ***********************************************/
 /************************************************ EditCheckedList(String and Enum) ***********************/
 .edit-checkedList-fieldset {  }
+.edit-checkedList-checkboxes-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
+.edit-checkedList-checkboxes-container-horizontal { /* HasHorizontalCheckboxes=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
 .edit-checkedList-labels { /* The labels around checkboxes in the CheckedList(String and Enum in the future) */}
 /************************************************ EditDate ***********************************************/
 .edit-date-input { }
 /************************************************ EditNumber *********************************************/
 .edit-number-input{}
 /************************************************ EditRadio(String and Enum) *****************************/
-.edit-radio-group { }
 .edit-radio-fieldset {  }
 .edit-radio-buttons-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
 .edit-radio-buttons-container-horizontal { /* HasHorizontalRadioButtons=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
@@ -50,8 +57,7 @@ button:focus { outline: none !important; }
 .edit-select-select{}
 .edit-select-option { /* The options within the select control */ }
 /************************************************ EditString *********************************************/
-.edit-string-link { /* <a style when IsReadOnly and Url!=null */
-}
+.edit-string-link { /* <a style when IsReadOnly and Url!=null */}
 .edit-string-input { /* The input for the "EditString" control */}
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input { /* The textarea for each of the "Edit" Controls */}

@@ -10,21 +10,20 @@
         @if (ShowEditor)
         {
             <InputSelect @bind-Value=@CurrentValue
-                         class=@($"edit-select-select {CssClass}")
                          id=@_id
                          data-test-id=@_id
+                         class=@($"edit-select-select {CssClass}")
                          required=@_isRequired
                          aria-errormessage=@($"error-msg-{_id}")
                          aria-describedby=@($"desc-{_id}")>
 
                 @foreach (var o in Options)
                 {
-                    <option checked=@(() => CurrentValueAsString == o)
-                            title=@_attributes.ToolTip()
-                            class="edit-select-option"
-                            value=@o
+                    <option value=@o
+                            checked=@(() => CurrentValueAsString == o)
                             id=@($"{_id}-option-{o}")
-                            data-test-id=@($"{_id}-option-{o}")>
+                            data-test-id=@($"{_id}-option-{o}")
+                            class="edit-select-option">
                         @o
                     </option>
                 }

@@ -12,9 +12,9 @@
         {
             <InputDate @bind-Value="CurrentValue"
                        Type=Type
+                       class=@($"edit-date-input {CssClass}")
                        id=@_id 
                        data-test-id=@_id
-                       class=@($"edit-date-input {CssClass}")
                        disabled=@IsDisabled
                        required=@_isRequired
                        aria-describedby=@($"desc-{_id}")

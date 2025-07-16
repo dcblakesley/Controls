@@ -4,7 +4,7 @@
 
         @if (ShowEditor)
         {
-            <div class="flex-column checkbox-group@(hasError ? " invalid" : "")">
+            <div class="flex-column checkbox-group @(hasError ? " invalid" : "")">
                 @foreach (var option in Options)
                 {
                     <label class=@($"edit-checkedList-labels {LabelClass}") >
@@ -13,8 +13,9 @@
                                checked="@(Value.Contains(option))" 
                                @onchange="() => SetAsync(option)"
                                id=@($"cbx-{_id}-{option}")
-                               data-test-id=@($"cbx-{_id}-{option}")/>
-                        
+                               data-test-id=@($"cbx-{_id}-{option}")
+                               class="edit-checkedList-checkbox" />
+                                        
                         @option
                     </label>
                 }

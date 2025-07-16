@@ -13,8 +13,8 @@
                 <InputRadioGroup @bind-Value=@SelectedOption
                                  id=@_id
                                  data-test-id=@_id
-                                 disabled=@IsDisabled
                                  class=@CssClass
+                                 disabled=@IsDisabled
                                  required=@_isRequired
                                  aria-describedby=@($"desc-{_id}")
                                  aria-errormessage=@($"error-msg-{_id}")>
@@ -27,9 +27,9 @@
                         {
                             <label class=@($"{LabelClass} edit-label")>
                                 <InputRadio Value=@option
-                                            class=@($"{CssClass}")
-                                            id=@($"rb-{_id}-{option}") 
-                                            data-test-id=@($"rb-{_id}-{option}")/>
+                                            id=@($"rb-{_id}-{option}")
+                                            data-test-id=@($"rb-{_id}-{option}")
+                                            class=@($"{CssClass}") />
 
                                 @((MarkupString)option)
                             </label>
@@ -40,9 +40,9 @@
                         {
                             <div class="edit-radio-other-option-container">
                                 <label class=@($"edit-radio-labels {LabelClass}")>
-                                    <InputRadio Value=@OtherName 
+                                    <InputRadio Value=@OtherName
                                                 id=@($"rb-{_id}-other")
-                                                data-test-id=@($"rb-{_id}-other")/>
+                                                data-test-id=@($"rb-{_id}-other") />
                                     Other
                                 </label>
                                 <input disabled="@(_selectedOption != "Other")"

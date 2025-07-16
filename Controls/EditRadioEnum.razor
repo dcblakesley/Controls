@@ -22,9 +22,9 @@
                     aria-describedby=@($"desc-{_id}")
                     aria-errormessage=@($"error-msg-{_id}")>
 
-                    <div class=@(HasHorizontalRadioButtons
-                                   ? "edit-radio-buttons-container-horizontal"
-                                   : "edit-radio-buttons-container-vertical")>
+                        <div class=@(HasHorizontalRadioButtons
+                                       ? "edit-radio-buttons-container-horizontal"
+                                       : "edit-radio-buttons-container-vertical")>
                         @foreach (var option in GetOptions())
                         {
                             <label class=@($"edit-radio-labels {LabelClass}")>
