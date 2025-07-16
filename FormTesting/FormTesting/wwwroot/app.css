@@ -1,4 +1,4 @@
-html, body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+/*html, body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 a, .btn-link { color: #006bb7; }
 .btn-primary { color: #fff; background-color: #1b6ec2; border-color: #1861ac; }
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus { box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb; }
@@ -38,7 +38,7 @@ dioxide .valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
 .w900 { width: 900px; }
 .w1000 { width: 1000px; }
 .w1100 { width: 1100px; }
-.edit-control-wrapper {  }
+
 
 
 
@@ -50,3 +50,4 @@ dioxide .valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
     margin-left: 5px;
 }
 
+*/
