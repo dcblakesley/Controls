@@ -2,7 +2,7 @@
 
 @inherits InputBase<TEnum>
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @OuterClass">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
