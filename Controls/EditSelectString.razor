@@ -10,7 +10,7 @@
         @if (ShowEditor)
         {
             <InputSelect @bind-Value=@CurrentValue
-                         class=@CssClass
+                         class=@($"edit-select-select {CssClass}")
                          id=@_id
                          data-test-id=@_id
                          required=@_isRequired
@@ -19,13 +19,20 @@
 
                 @foreach (var o in Options)
                 {
-                    <option checked=@(() => CurrentValueAsString == o) value=@o data-test-id=@($"option-{_id}-{o}")>@o</option>
+                    <option checked=@(() => CurrentValueAsString == o)
+                            title=@_attributes.ToolTip()
+                            class="edit-select-option"
+                            value=@o
+                            id=@($"{_id}-option-{o}")
+                            data-test-id=@($"{_id}-option-{o}")>
+                        @o
+                    </option>
                 }
             </InputSelect>
         }
         else
         {
-            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@CurrentValueAsString />
+            <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@CurrentValueAsString />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />

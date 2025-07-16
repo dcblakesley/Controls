@@ -28,8 +28,8 @@
                             <label class=@($"{LabelClass} edit-label")>
                                 <InputRadio Value=@option
                                             class=@($"{CssClass}")
-                                            id=@($"rb_{_id}_{option}") 
-                                            data-test-id=@($"rb_{_id}_{option}")/>
+                                            id=@($"rb-{_id}-{option}") 
+                                            data-test-id=@($"rb-{_id}-{option}")/>
 
                                 @((MarkupString)option)
                             </label>

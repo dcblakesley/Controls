@@ -24,7 +24,7 @@
         {
             @foreach (var option in Value)
             {
-                <ReadOnlyValue Id=@_id IsRequired=_isRequired Text=@option />
+                <ReadOnlyValue Id=@($"{_id}-option-{option}") IsRequired=@_isRequired Text=@option />
             }
         }
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />

@@ -7,13 +7,14 @@
     <div class="edit-control-wrapper @OuterClass">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
+         
         @if (ShowEditor)
         {
             <InputDate @bind-Value="CurrentValue"
                        Type=Type
                        id=@_id 
                        data-test-id=@_id
-                       class=@CssClass
+                       class=@($"edit-date-input {CssClass}")
                        disabled=@IsDisabled
                        required=@_isRequired
                        aria-describedby=@($"desc-{_id}")

@@ -21,6 +21,7 @@ button { align-items: center; background: var(--white); border: 1px solid var(--
 button:hover { color: var(--clark-lightblue); cursor: pointer; }
 button:focus { outline: none !important; }
 
+
 /************************************************ General ************************************************/
 .edit-control-wrapper { /* Wraper/group around each edit control (label, description, input and validation messages */}
 .edit-validation-message{ /* The validation message for each of the "Edit" Controls */ }
@@ -29,33 +30,32 @@ button:focus { outline: none !important; }
 .edit-label { /* The label for each of the "Edit" Controls */}
 .edit-label-required-star { /* The star that shows up after the Label when a property is marked as [Required] */ }
 .edit-label-description { /* The description for each of the "Edit" Controls */ }
+.edit-readonly-value { /* The text that is displayed when IsEditMode=false and within EditDisplay*/ }
 
-/************************************************ ReadOnlyValue and EditDisplay **************************/
-.edit-readonly-value { /* The text that is displayed when IsEditMode=false*/ }
-
-/************************************************ EditString *********************************************/
-.edit-string-link  { /* <a style when IsReadOnly and Url!=null */}
-.edit-string-input { /* The input for the "EditString" control */}
-
-/************************************************ EditTextArea *********************************************/
-.edit-textarea { /* The textarea for each of the "Edit" Controls */}
-
+/************************************************ EditBool ***********************************************/
+/************************************************ EditCheckedList(String and Enum) ***********************/
+.edit-checkedList-fieldset {  }
+.edit-checkedList-labels { /* The labels around checkboxes in the CheckedList(String and Enum in the future) */}
+/************************************************ EditDate ***********************************************/
+.edit-date-input { }
+/************************************************ EditNumber *********************************************/
+.edit-number-input{}
 /************************************************ EditRadio(String and Enum) *****************************/
+.edit-radio-group { }
 .edit-radio-fieldset {  }
 .edit-radio-buttons-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
 .edit-radio-buttons-container-horizontal { /* HasHorizontalRadioButtons=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
 .edit-radio-labels { cursor: pointer; }
+/************************************************ EditSelect(String and Enum) *********************************************/
+.edit-select-select{}
+.edit-select-option { /* The options within the select control */ }
+/************************************************ EditString *********************************************/
+.edit-string-link { /* <a style when IsReadOnly and Url!=null */
+}
+.edit-string-input { /* The input for the "EditString" control */}
+/************************************************ EditTextArea *******************************************/
+.edit-textarea-input { /* The textarea for each of the "Edit" Controls */}
 
-/************************************************ EditCheckedList(String and Enum) *****************************/
-.edit-checkedList-fieldset {  }
-.edit-checkedList-labels { /* The labels around checkboxes in the CheckedList(String and Enum in the future) */}
-
-
-
-
-.edit-control-input    { /* The input for each of the "Edit" Controls */ }
-.edit-control-select   { /* The select for each of the "Edit" Controls */ }
-.edit-string-input  { /* The input for  */ }
 
 
 /********************************************************************* Colors ***********************************************************************************/

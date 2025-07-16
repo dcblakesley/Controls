@@ -64,4 +64,7 @@ public partial class EditCheckedStringList : IEditControl
     bool ShouldShowComponent() => true;
 
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+
+    
+
 }

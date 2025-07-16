@@ -12,29 +12,29 @@
             <select @bind:get=Value
                     @bind:set=SetAsync
                     @bind:event="onchange"
-                    class=@CssClass
+                    class=@($"edit-select-select {CssClass}")
                     id=@_id
                     data-test-id=@_id
                     required=@_isRequired
                     aria-errormessage=@($"error-msg-{_id}")
                     aria-describedby=@($"desc-{_id}")>
 
-                @foreach (var x in GetOptions())
+                @foreach (var o in GetOptions())
                 {
                     <option title=@_attributes.ToolTip()
-                            id=@($"{_id}-option-{x}")
-                            data-test-id=@($"{_id}-option-{x}")
                             class=@CssClass
-                            value=@x>
+                            value=@o
+                            id=@($"{_id}-option-{o}")
+                            data-test-id=@($"{_id}-option-{o}")>
                         
-                        @x?.GetName()
+                        @o?.GetName()
                     </option>
                 }
             </select>
         }
         else
         {
-            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value?.GetName() />
+            <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@Value?.GetName() />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>

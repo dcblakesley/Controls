@@ -14,8 +14,8 @@
                    data-test-id=@_id 
                    step=@Step 
                    @bind-value=@CurrentValueAsString
-                   @bind-value:event="oninput" 
-                   class=@CssClass 
+                   @bind-value:event="oninput"
+                   class=@($"edit-number-input {CssClass}")
                    required=@_isRequired
                    aria-describedby=@($"desc-{_id}")
                    aria-errormessage=@($"error-msg-{_id}") />
