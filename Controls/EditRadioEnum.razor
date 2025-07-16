@@ -7,7 +7,7 @@
 {
     <div class="edit-control-wrapper @OuterClass">
 
-        <fieldset class="radio-fieldset">
+        <fieldset class="edit-radio-fieldset">
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend=true />
 
             @if (ShowEditor)
@@ -22,15 +22,16 @@
                     aria-describedby=@($"desc-{_id}")
                     aria-errormessage=@($"error-msg-{_id}")>
 
-                    <div class=@(HasHorizontalRadioButtons ? "flex-row flex-wrap" : "flex-column") style="row-gap: 0">
+                    <div class=@(HasHorizontalRadioButtons
+                                   ? "edit-radio-buttons-container-horizontal"
+                                   : "edit-radio-buttons-container-vertical")>
                         @foreach (var option in GetOptions())
                         {
                             <label class=@($"edit-radio-labels {LabelClass}")>
-                                <InputRadio
-                                    Value=@option
-                                    class=@($"{CssClass}")
-                                    id=@($"rb-{_id}-{option}")
-                                    data-test-id=@($"rb-{_id}-{option}")/>
+                                <InputRadio Value=@option
+                                            class=@($"{CssClass}")
+                                            id=@($"rb-{_id}-{option}")
+                                            data-test-id=@($"rb-{_id}-{option}")/>
 
                                 @((MarkupString)option.GetName())
                             </label>

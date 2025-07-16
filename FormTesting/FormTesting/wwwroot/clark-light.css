@@ -8,7 +8,7 @@ span { all: unset }
 
 
 /************************************************ General ************************************************/
-.edit-control-wrapper { /* Wraper/group around each edit control */}
+.edit-control-wrapper { /* Wraper/group around each edit control (label, description, input and validation messages */}
 .edit-validation-message{ /* The validation message for each of the "Edit" Controls */ }
 
 /************************************************ FormLabel **********************************************/
@@ -19,35 +19,32 @@ span { all: unset }
 /************************************************ ReadOnlyValue and EditDisplay **************************/
 .edit-readonly-value { /* The text that is displayed when IsEditMode=false*/ }
 
-
 /************************************************ EditString *********************************************/
-.edit-string-link { /* <a style when IsReadOnly and Url!=null */}
-.edit-string-input{ /* The input for the "EditString" control */}
+.edit-string-link  { /* <a style when IsReadOnly and Url!=null */}
+.edit-string-input { /* The input for the "EditString" control */}
 
+/************************************************ EditTextArea *********************************************/
+.edit-textarea { /* The textarea for each of the "Edit" Controls */}
 
 /************************************************ EditRadio(String and Enum) *****************************/
-.edit-radio-fieldset { gap: 0; }
-.edit-radiobuttons-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; }
-.edit-radiobuttons-container-horizontal { /* HasHorizontalRadioButtons=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
+.edit-radio-fieldset {  }
+.edit-radio-buttons-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
+.edit-radio-buttons-container-horizontal { /* HasHorizontalRadioButtons=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
+.edit-radio-labels { cursor: pointer; }
 input[type='radio'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--clark-green); display: inline-block; vertical-align: middle; cursor: pointer }
-.edit-radio-other-option-container{}
-.edit-radio-aaa{}
 
 /************************************************ EditCheckedList(String and Enum) *****************************/
-.edit-checkbox-fieldset {
-    gap: 0;
-}
+.edit-checkedList-fieldset {  }
 .edit-checkedList-labels { /* The labels around checkboxes in the CheckedList(String and Enum in the future) */}
 
+input[type='checkbox'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--clark-green); display: inline-block; vertical-align: middle; cursor: pointer } 
 
-.edit-control-textarea { /* The textarea for each of the "Edit" Controls */
-}
+
+
 .edit-control-input    { /* The input for each of the "Edit" Controls */ }
 .edit-control-select   { /* The select for each of the "Edit" Controls */ }
 .edit-string-input  { /* The input for  */ }
-.edit-radio-labels {
-    cursor: pointer;
-}
+
 
 
 
@@ -58,17 +55,7 @@ input[type='radio'] { height: 16px; width: 16px; margin-right: 8px; accent-color
 input[type="checkbox"] { width: 12px; height: 12px; }
 label.checkbox { vertical-align: top; line-height: 24px; margin: 2px 0; display: block; }
 .checkbox-group { gap: 0 }
-input[type='radio'],
-input[type='checkbox']
-{
-    height: 16px;
-    width: 16px;
-    margin-right: 8px;
-    accent-color: var(--clark-green);
-    display: inline-block;
-    vertical-align: middle;
-    cursor: pointer
-} 
+
 
 
 /********************************************************************* Colors ***********************************************************************************/

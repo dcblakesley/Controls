@@ -20,13 +20,14 @@
                                  aria-errormessage=@($"error-msg-{_id}")>
 
                     <div class=@(HasHorizontalRadioButtons
-                                   ? "edit-radiobuttons-container-horizontal" 
-                                   : "edit-radiobuttons-container-vertical")>
+                                   ? "edit-radio-buttons-container-horizontal" 
+                                   : "edit-radio-buttons-container-vertical")>
 
                         @foreach (var option in Options)
                         {
                             <label class=@($"{LabelClass} edit-label")>
-                                <InputRadio Value=@option 
+                                <InputRadio Value=@option
+                                            class=@($"{CssClass}")
                                             id=@($"rb_{_id}_{option}") 
                                             data-test-id=@($"rb_{_id}_{option}")/>
 
@@ -34,7 +35,7 @@
                             </label>
                         }
 
-                        <!-- Other - Always on its own line -->
+                        <!-- Other -->
                         @if (HasOther)
                         {
                             <div class="edit-radio-other-option-container">
