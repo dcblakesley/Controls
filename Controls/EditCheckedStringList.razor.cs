@@ -25,7 +25,7 @@ public partial class EditCheckedStringList : IEditControl
 
     /// <summary> Not supported yet </summary>
     [Parameter] public HidingMode? Hiding { get; set; }
-    [Parameter] public string? OuterClass { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
 
     string _id = string.Empty;
     string _isRequired = "false";
@@ -61,8 +61,20 @@ public partial class EditCheckedStringList : IEditControl
         await ValueChanged.InvokeAsync(Value);
     }
 
-    /// <summary> Not supported yet </summary>
-    bool ShouldShowComponent() => true;
+    bool ShouldShowComponent()
+    {
+        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        return Value != null && hidingMode switch
+        {
+            HidingMode.None => true,
+            HidingMode.WhenNull => Value.Count == 0,
+            HidingMode.WhenNullOrDefault => Value.Count == 0,
+            HidingMode.WhenReadOnlyAndNull => IsEditMode || Value.Count == 0,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || Value.Count == 0,
+            _ => true
+        };
+    }
 
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 

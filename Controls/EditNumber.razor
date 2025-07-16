@@ -1,9 +1,9 @@
 ﻿@inherits InputNumber<T>  
 @typeparam T  
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @OuterClass">
+    <div class="edit-control-wrapper @ContainerClass">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
         @if (ShowEditor)

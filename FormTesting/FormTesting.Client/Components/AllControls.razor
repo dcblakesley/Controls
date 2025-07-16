@@ -12,8 +12,7 @@
     <div class="flex-row">
         <button class="b-primary" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
         <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
-        <button class="b-secondary" @onclick=@(() => FormOptions.IsReadOnly = !FormOptions.IsReadOnly) type="button">Read Only</button>
-        <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
+        <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding)  />
     </div>
 
     <fieldset>
@@ -46,7 +45,7 @@
                                  Field=@(() => _model.EditRadioString) 
                                  Options=@_colorOptions 
                                  HasOther=true 
-                                 HasHorizontalRadioButtons=@_isHorizontal />
+                                 IsHorizontal=@_isHorizontal />
 
                 <EditRadioEnum Type=typeof(AnimalType) @bind-Value=_model.EditRadioEnum Field=@(() => _model.EditRadioEnum)/>
                 

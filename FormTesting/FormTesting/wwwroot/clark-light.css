@@ -57,7 +57,7 @@ button:focus { outline: none !important; }
 .edit-select-select{}
 .edit-select-option { /* The options within the select control */ }
 /************************************************ EditString *********************************************/
-.edit-string-link { /* <a style when IsReadOnly and Url!=null */}
+.edit-string-link { /* <a style when IsEditMode=false and Url!=null */}
 .edit-string-input { /* The input for the "EditString" control */}
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input { /* The textarea for each of the "Edit" Controls */}

@@ -49,7 +49,7 @@ public class Person
     [DisplayName("EditSelect")] public int EditSelect { get; set; }
     [Required, DisplayName("EditSelectString")] public string EditSelectString { get; set; } = "";
     [DisplayName("EditRadioString"), Description("Hello, does this work?")] public string EditRadioString { get; set; } = "";
-    [Required, DisplayName("EditRadioEnum")] public AnimalType EditRadioEnum { get; set; } = AnimalType.Fish;
+    [Required, DisplayName("EditRadioEnum")] public AnimalType EditRadioEnum { get; set; } = AnimalType.Cat;
 
     [DisplayName("EditCheckedStringList"), Description("Blah blah blah")] public List<string> EditCheckedStringList { get; set; } = [];
 }

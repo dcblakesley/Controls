@@ -1,19 +1,19 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @inherits InputCheckbox
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @OuterClass">
+    <div class="edit-control-wrapper @ContainerClass">
 
         <div class="form-check">
 
-            <input type="checkbox" 
+            <input type="checkbox"
+                   @bind-value=@CurrentValue
+                   @bind-value:event="oninput" 
+                   class="form-check-input pointer @CssClass"
                    id=@_id
                    data-test-id=@_id
-                   @bind-value=@CurrentValue 
-                   @bind-value:event="oninput" 
                    checked=@CurrentValue
-                   class="form-check-input pointer @CssClass"
                    disabled=@IsDisabled
                    required=@_isRequired
                    aria-describedby=@($"desc-{_id}")

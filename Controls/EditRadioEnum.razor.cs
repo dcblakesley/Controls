@@ -5,15 +5,19 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     [CascadingParameter] public FormOptions? FormOptions { get; set; } 
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
+    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public string? Id { get; set; } 
     [Parameter] public string? IdPrefix { get; set; }
-    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    [Parameter] public bool IsDisabled { get; set; }
+
     [Parameter] public string? Label { get; set; }
     [Parameter] public bool HasHorizontalRadioButtons { get; set; }
-    [Parameter] public bool SortByName { get; set; }
-    [Parameter] public string? OuterClass { get; set; }
+    [Parameter] public bool Sort { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
+
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary> The labels around each radio button </summary>
     [Parameter] public string? LabelClass { get; set; }
 
     [Parameter] public string? Description { get; set; }
@@ -23,47 +27,23 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public required Type Type { get; set; }
 
-    // bool ShouldShowComponent => true;
     bool ShouldShowComponent()
     {
-        switch (Hiding)
+        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        var value = Value;
+
+        return hidingMode switch
         {
-            // Look at direct settings first, these override FormOptions
-            case HidingMode.None:
-                return true;
-            case HidingMode.WhenNull:
-            case HidingMode.WhenNullOrEmpty:
-                return CurrentValue != null;
-
-            case HidingMode.WhenReadOnlyAndNull:
-            case HidingMode.WhenReadOnlyAndNullOrEmpty:
-                return !IsEditMode || CurrentValue != null;
-
-            // No direct setting, check FormOptions
-            default:
-                if (FormOptions == null)
-                    return true;
-                switch (FormOptions.Hiding)
-                {
-                    case HidingMode.WhenNull:
-                    case HidingMode.WhenNullOrEmpty:
-                        return CurrentValue != null;
-
-                    case HidingMode.WhenReadOnlyAndNull:
-                    case HidingMode.WhenReadOnlyAndNullOrEmpty:
-                        return !IsEditMode || CurrentValue != null;
-
-                    case null or HidingMode.None:
-                    default:
-                        return true;
-                }
-        }
+            HidingMode.None => true,
+            HidingMode.WhenNull => value != null,
+            HidingMode.WhenNullOrDefault => value != null && !value.Equals(default(TEnum)),
+            HidingMode.WhenReadOnlyAndNull => IsEditMode || value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || (value != null && !value.Equals(default(TEnum))),
+            _ => true
+        };
     }
 
-
-
-
-    List<TEnum> GetOptions() => SortByName
+    List<TEnum> GetOptions() => Sort
         ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList()
         : Enum.GetValues(Type).Cast<TEnum>().ToList();
 

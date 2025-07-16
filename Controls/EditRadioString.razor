@@ -1,9 +1,9 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @inherits InputText
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @OuterClass">
+    <div class="edit-control-wrapper @ContainerClass">
 
         <fieldset class="edit-radio-fieldset">
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend=true />
@@ -19,7 +19,7 @@
                                  aria-describedby=@($"desc-{_id}")
                                  aria-errormessage=@($"error-msg-{_id}")>
 
-                    <div class=@(HasHorizontalRadioButtons
+                    <div class=@(IsHorizontal
                                    ? "edit-radio-buttons-container-horizontal" 
                                    : "edit-radio-buttons-container-vertical")>
 

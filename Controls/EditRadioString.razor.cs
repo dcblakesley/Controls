@@ -1,24 +1,28 @@
 ﻿namespace Controls;
 
-public partial class EditRadioString
+public partial class EditRadioString : IEditControl
 {
-    [Parameter] public string? Id { get; set; } 
-    [Parameter] public string? IdPrefix { get; set; }
-    [Parameter] public required Expression<Func<string>> Field { get; set; }
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    [Parameter] public bool IsDisabled { get; set; }
-    [Parameter] public string? Label { get; set; }
-    [Parameter] public required List<string> Options { get; set; }
-    [Parameter] public bool HasHorizontalRadioButtons { get; set; }
-    [Parameter] public bool HasOther { get; set; }
-    [Parameter] public string? OuterClass { get; set; }
-    [Parameter] public string? LabelClass { get; set; }
-
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
+    [Parameter] public required Expression<Func<string>> Field { get; set; }
+    [Parameter] public required List<string> Options { get; set; }
+    [Parameter] public string? Id { get; set; } 
+    [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public HidingMode? Hiding { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
+
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsHorizontal { get; set; }
+    [Parameter] public bool HasOther { get; set; }
+
+    /// <summary> The labels around each radio button </summary>
+    [Parameter] public string? LabelClass { get; set; }
+
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-    bool ShouldShowComponent => true;
     string _otherText = "";
     const string OtherName = "Other";
     string? _selectedOption;
@@ -43,6 +47,19 @@ public partial class EditRadioString
         }
     }
 
+    bool ShouldShowComponent()
+    {
+        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        return hidingMode switch
+        {
+            HidingMode.None => true,
+            HidingMode.WhenNull => Value != null,
+            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(Value),
+            HidingMode.WhenReadOnlyAndNull => IsEditMode || Value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || !string.IsNullOrEmpty(Value),
+            _ => true
+        };
+    }
     string _id = string.Empty;
     string _isRequired = "false";
     List<Attribute>? _attributes;

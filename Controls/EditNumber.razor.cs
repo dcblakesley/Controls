@@ -1,25 +1,50 @@
 ﻿namespace Controls;
 
-public partial class EditNumber<T>
+public partial class EditNumber<T> : IEditControl
 {
-    [Parameter] public string? Id { get; set; } 
-    [Parameter] public string? IdPrefix { get; set; }
-    [Parameter] public required Expression<Func<T>> Field { get; set; }
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    [Parameter] public bool IsDisabled { get; set; }
-    [Parameter] public decimal Step { get; set; }
-    [Parameter] public string? Label { get; set; }
-    [Parameter] public string Format { get; set; }
     [CascadingParameter] public FormOptions? FormOptions { get; set; } 
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-    [Parameter] public string? OuterClass { get; set; }
 
-    bool ShouldShowComponent => true;
+    [Parameter] public required Expression<Func<T>> Field { get; set; }
+    [Parameter] public string? Id { get; set; } 
+    [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Description { get; set; }
+
+    [Parameter] public decimal Step { get; set; }
+    [Parameter] public string? Format { get; set; }
+
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public HidingMode? Hiding { get; set; }
+
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    [Parameter] public string? ContainerClass { get; set; }
+
     string _id = string.Empty;
     string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
+
+    bool ShouldShowComponent()
+    {
+        var hidingMode = FormOptions?.Hiding ?? Hiding ?? HidingMode.None;
+
+        if (hidingMode == HidingMode.None)
+            return true;
+
+        var isReadOnly = !((IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode));
+        var value = Field.Compile().Invoke();
+
+        return hidingMode switch
+        {
+            HidingMode.WhenReadOnlyAndNull => !isReadOnly || value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => !isReadOnly || (value != null && !EqualityComparer<T>.Default.Equals(value, default)),
+            HidingMode.WhenNull => value != null,
+            HidingMode.WhenNullOrDefault => value != null && !EqualityComparer<T>.Default.Equals(value, default),
+            _ => true
+        };
+    }
 
     protected override void OnInitialized()
     {

@@ -12,13 +12,14 @@ public partial class EditString : IEditControl
     [Parameter] public string? Id { get; set; }  
     [Parameter] public string? IdPrefix { get; set; }
 
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
+    
     [Parameter] public HidingMode? Hiding { get; set; }
-    [Parameter] public string? OuterClass { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
 
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
     /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>
@@ -32,52 +33,31 @@ public partial class EditString : IEditControl
 
     bool ShouldShowComponent()
     {
-        switch (Hiding)
+        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        
+        return hidingMode switch
         {
-            // Look at direct settings first, these override FormOptions
-            case HidingMode.None:
-                return true;
-            case HidingMode.WhenNull:
-                return CurrentValue != null;
-            case HidingMode.WhenNullOrEmpty:
-                return !string.IsNullOrEmpty(CurrentValue);
-            case HidingMode.WhenReadOnlyAndNull:
-                return !IsEditMode || CurrentValue != null;
-            case HidingMode.WhenReadOnlyAndNullOrEmpty:
-                return !IsEditMode || !string.IsNullOrEmpty(CurrentValue);
-
-            // No direct setting, check FormOptions
-            default:
-                if (FormOptions == null)
-                    return true;
-                return FormOptions.Hiding switch
-                {
-                    null or HidingMode.None => true,
-                    HidingMode.WhenNull => CurrentValue != null,
-                    HidingMode.WhenNullOrEmpty => !string.IsNullOrEmpty(CurrentValue),
-                    HidingMode.WhenReadOnlyAndNull => !IsEditMode || CurrentValue != null,
-                    _ => true
-                };
-        }
+            HidingMode.None => true,
+            HidingMode.WhenNull => CurrentValue != null,
+            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(CurrentValue),
+            HidingMode.WhenReadOnlyAndNull => IsEditMode || CurrentValue != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || !string.IsNullOrEmpty(CurrentValue),
+            _ => true
+        };
     }
 
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 
     string? GetMaskValue()
     {
-        if (MaskText == null || CurrentValue == null)
+        if (string.IsNullOrEmpty(MaskText) || CurrentValue == null)
         {
             return CurrentValue;
         }
 
-        // If the mask is longer than the current value, return the mask
-        if (MaskText.Length > CurrentValue.Length)
-        {
-            return MaskText;
-        }
-
-        var output = MaskText + CurrentValue.Substring(MaskText.Length);
-        return output;
+        return MaskText.Length > CurrentValue.Length 
+            ? MaskText 
+            : MaskText + CurrentValue[MaskText.Length..];
     }
 
     string _id = string.Empty;
