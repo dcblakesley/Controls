@@ -18,11 +18,11 @@
                     data-test-id=@_id
                     disabled=@IsDisabled
                     class=@CssClass
-                    required=@_isRequired
+                    aria-required=@_isRequired
                     aria-describedby=@($"desc-{_id}")
                     aria-errormessage=@($"error-msg-{_id}")>
 
-                        <div class=@(HasHorizontalRadioButtons
+                        <div class=@(IsHorizontal
                                        ? "edit-radio-buttons-container-horizontal"
                                        : "edit-radio-buttons-container-vertical")>
                         @foreach (var option in GetOptions())

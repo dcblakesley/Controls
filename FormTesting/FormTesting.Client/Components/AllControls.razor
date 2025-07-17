@@ -12,7 +12,8 @@
     <div class="flex-row">
         <button class="b-primary" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
         <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
-        <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding)  />
+        <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
+        <button class="btn btn-info" @onclick=@(() => _isHorizontal = !_isHorizontal)>Toggle Horizontal</button>
     </div>
 
     <fieldset>
@@ -25,7 +26,7 @@
                 <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber)/>
                 <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString!) Placeholder="Hello world!" />
                 <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) />
-                <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum)/>
+                <EditSelectEnum Type=typeof(AnimalType) @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) />
                 <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions" />
                 <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect)>
                     @foreach (var o in _plants.OrderBy(x => x.Name))
@@ -40,16 +41,21 @@
             </div>
 
             <div class="flex-row flex-wrap">
-                <button class="btn btn-info" @onclick=@(()=>_isHorizontal = !_isHorizontal)>Toggle Horizontal</button>
                 <EditRadioString @bind-Value=_model.EditRadioString 
                                  Field=@(() => _model.EditRadioString) 
                                  Options=@_colorOptions 
                                  HasOther=true 
                                  IsHorizontal=@_isHorizontal />
 
-                <EditRadioEnum Type=typeof(AnimalType) @bind-Value=_model.EditRadioEnum Field=@(() => _model.EditRadioEnum)/>
+                <EditRadioEnum Type=typeof(AnimalType) 
+                               @bind-Value=_model.EditRadioEnum
+                               Field=@(() => _model.EditRadioEnum)
+                               IsHorizontal=@_isHorizontal />
                 
-                <EditCheckedStringList @bind-Value=_model.EditCheckedStringList Field=@(() => _model.EditCheckedStringList!) Options=@_editCheckedStringListOptions />
+                <EditCheckedStringList @bind-Value=_model.EditCheckedStringList
+                                       Field=@(() => _model.EditCheckedStringList!)
+                                       Options=@_editCheckedStringListOptions 
+                                       IsHorizontal=@_isHorizontal />
             </div>
         </CascadingValue>
     </fieldset>

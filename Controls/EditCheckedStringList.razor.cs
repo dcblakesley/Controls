@@ -63,15 +63,25 @@ public partial class EditCheckedStringList : IEditControl
 
     bool ShouldShowComponent()
     {
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        return Value != null && hidingMode switch
+        // Get effective hiding mode (component's setting overrides form's setting)
+        var effectiveHidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+
+        if (effectiveHidingMode == HidingMode.None)
+            return true;
+
+        // Check if list is null or empty
+        var isNull = Value == null;
+        var isDefault = isNull || Value.Count == 0;
+
+        // Determine if we're in read-only mode
+        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
+
+        return effectiveHidingMode switch
         {
-            HidingMode.None => true,
-            HidingMode.WhenNull => Value.Count == 0,
-            HidingMode.WhenNullOrDefault => Value.Count == 0,
-            HidingMode.WhenReadOnlyAndNull => IsEditMode || Value.Count == 0,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || Value.Count == 0,
+            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
+            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
+            HidingMode.WhenNull => !isNull,
+            HidingMode.WhenNullOrDefault => !isDefault,
             _ => true
         };
     }

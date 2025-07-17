@@ -25,26 +25,6 @@ public partial class EditDate<T> : IEditControl
     FieldIdentifier _fieldIdentifier;
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 
-    string GetDisplayValue() => DateTime.Parse(CurrentValueAsString!).ToUniversalTime().ToLocalTime().ToString(DateFormat);
-    bool ShouldShowComponent()
-    {
-        // Determine the effective hiding mode: direct parameter overrides FormOptions
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-
-        // Get the current value as string (null if not set)
-        var value = CurrentValueAsString;
-
-        // Apply hiding logic
-        return hidingMode switch
-        {
-            HidingMode.None => true,
-            HidingMode.WhenNull => value != null,
-            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(value),
-            HidingMode.WhenReadOnlyAndNull => !IsEditMode || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => !IsEditMode || !string.IsNullOrEmpty(value),
-            _ => true
-        };
-    }
     protected override void OnInitialized()
     {
         base.OnInitialized();
@@ -52,5 +32,41 @@ public partial class EditDate<T> : IEditControl
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+    }
+    string GetDisplayValue() => DateTime.Parse(CurrentValueAsString!).ToUniversalTime().ToLocalTime().ToString(DateFormat);
+    bool ShouldShowComponent()
+    {
+        // Get effective hiding mode (component's setting overrides form's setting)
+        var effectiveHidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+
+        if (effectiveHidingMode == HidingMode.None)
+            return true;
+
+        // Use the Field expression to get the current value
+        var value = Field.Compile()();
+
+        // Check if value is null
+        var isNull = value == null;
+
+        // For date types, check if it's default (DateTime.MinValue, etc.)
+        var isDefault = isNull || EqualityComparer<T>.Default.Equals(value, default);
+
+        // Special handling for DateTime and DateTimeOffset
+        if (!isNull && value is DateTime dateTime)
+            isDefault = dateTime == default;
+        else if (!isNull && value is DateTimeOffset dateTimeOffset)
+            isDefault = dateTimeOffset == default;
+
+        // Determine if we're in read-only mode
+        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
+
+        return effectiveHidingMode switch
+        {
+            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
+            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
+            HidingMode.WhenNull => !isNull,
+            HidingMode.WhenNullOrDefault => !isDefault,
+            _ => true
+        };
     }
 }

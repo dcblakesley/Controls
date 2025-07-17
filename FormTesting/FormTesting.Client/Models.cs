@@ -42,9 +42,9 @@ public class Person
 
     [Required, DisplayName("EditString")] public string? EditString { get; set; }
     [DisplayName("EditTextArea")] public string EditTextArea { get; set; } = "";
-    [DisplayName("EditNumber")] public double EditNumber { get; set; } = 2.5;
+    [DisplayName("EditNumber")] public double EditNumber { get; set; } = 0;
     [DisplayName("EditBool")] public bool EditBool { get; set; }
-    [DisplayName("EditDate")] public DateTime EditDate { get; set; } = DateTime.UtcNow;
+    [DisplayName("EditDate")] public DateTime EditDate { get; set; }
     [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
     [DisplayName("EditSelect")] public int EditSelect { get; set; }
     [Required, DisplayName("EditSelectString")] public string EditSelectString { get; set; } = "";

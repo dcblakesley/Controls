@@ -2,28 +2,33 @@
 
 public partial class EditRadioEnum<TEnum> : IEditControl
 {
+    // Cascading parameters
     [CascadingParameter] public FormOptions? FormOptions { get; set; } 
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
-    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
+    // IEditControl interface properties
     [Parameter] public string? Id { get; set; } 
     [Parameter] public string? IdPrefix { get; set; }
 
     [Parameter] public string? Label { get; set; }
-    [Parameter] public bool HasHorizontalRadioButtons { get; set; }
-    [Parameter] public bool Sort { get; set; }
     [Parameter] public string? ContainerClass { get; set; }
 
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    [Parameter] public bool IsDisabled { get; set; }
 
     /// <summary> The labels around each radio button </summary>
     [Parameter] public string? LabelClass { get; set; }
 
     [Parameter] public string? Description { get; set; }
-    [Parameter] public string? Placeholder { get; set; }
+
     [Parameter] public HidingMode? Hiding { get; set; }
-    
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
+
+    // Component specific parameters
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
+    [Parameter] public bool IsHorizontal { get; set; }
+    [Parameter] public bool Sort { get; set; }
+
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public required Type Type { get; set; }
 

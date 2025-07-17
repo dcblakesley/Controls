@@ -2,9 +2,9 @@
 @inherits InputSelect<TValue>
 @typeparam TValue
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @OuterClass">
+    <div class="edit-control-wrapper @ContainerClass">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
         @if (ShowEditor)
@@ -13,7 +13,7 @@
                          id=@_id
                          data-test-id=@_id
                          class=@($"edit-select-select {CssClass}")
-                         required=@_isRequired
+                         aria-required=@_isRequired
                          aria-errormessage=@($"error-msg-{_id}")
                          aria-describedby=@($"desc-{_id}")>
 

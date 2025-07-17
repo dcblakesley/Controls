@@ -1,9 +1,9 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @inherits InputTextArea
 
-@if (ShouldShowComponent)
+@if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @OuterClass">
+    <div class="edit-control-wrapper @ContainerClass">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
 
         @if (ShowEditor)
@@ -14,7 +14,7 @@
                 data-test-id=@_id 
                 class=@($"edit-textarea-input {CssClass}")
                 rows=@Rows
-                required=@_isRequired
+                aria-required=@_isRequired
                 aria-describedby=@($"desc-{_id}")
                 aria-errormessage=@($"error-msg-{_id}")></textarea>
         }
