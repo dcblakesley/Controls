@@ -27,7 +27,7 @@
                                        : "edit-radio-buttons-container-vertical")>
                         @foreach (var option in GetOptions())
                         {
-                            <label class=@($"edit-radio-labels {LabelClass}")>
+                            <label class=@($"edit-radio-label {LabelClass}")>
                                 <InputRadio Value=@option
                                             class=@($"{CssClass}")
                                             id=@($"rb-{_id}-{option}")

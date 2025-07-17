@@ -25,7 +25,7 @@
 
                         @foreach (var option in Options)
                         {
-                            <label class=@($"{LabelClass} edit-label")>
+                            <label class=@($"{LabelClass} edit-radio-label")>
                                 <InputRadio Value=@option
                                             id=@($"rb-{_id}-{option}")
                                             data-test-id=@($"rb-{_id}-{option}")

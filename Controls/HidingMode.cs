@@ -13,10 +13,21 @@ public enum HidingMode
     WhenNullOrDefault = 5
 }
 
-public static class ExtensionMethods
+internal static class ExtensionMethods
 {
     /// <summary> Removes all non-alphanumeric characters from the input string to create a valid ID within html. </summary>
-    public static string ToId(this string input) => string.IsNullOrEmpty(input)
+    internal static string ToId(this string input) => string.IsNullOrEmpty(input)
             ? string.Empty
             : new(input.Where(char.IsLetterOrDigit).ToArray());
 }
+
+
+public record ContentInternalFields
+(
+    string? VendorName = null,
+    bool? IsLogoUploaded = null,
+    bool? ShouldShowName = null,
+    bool? ShouldShowItemNumber = null,
+    bool? ShouldShowWarranty = null,
+    bool? IsPlBrand = null
+);

@@ -13,7 +13,7 @@
         <button class="b-primary" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
         <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
         <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
-        <button class="btn btn-info" @onclick=@(() => _isHorizontal = !_isHorizontal)>Toggle Horizontal</button>
+        <button class="" @onclick=@(() => _isHorizontal = !_isHorizontal)>Toggle Horizontal</button>
     </div>
 
     <fieldset>
