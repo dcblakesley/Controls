@@ -7,7 +7,7 @@ internal class Person
     [DisplayName("EditTextArea")] internal string EditTextArea { get; set; } = "";
     [DisplayName("EditNumber")] internal double EditNumber { get; set; } = 0;
     [DisplayName("EditBool")] internal bool EditBool { get; set; }
-    [DisplayName("EditDate")] public DateTime EditDate { get; set; } = DateTime.UtcNow;
+    [DisplayName("EditDate")] public DateTime EditDate { get; set; }
     [DisplayName("EditSelectEnum")] internal AnimalType EditSelectEnum { get; set; }
     [DisplayName("EditSelect")] internal int EditSelect { get; set; }
     [Required, DisplayName("EditSelectString")] internal string? EditSelectString { get; set; } = "";

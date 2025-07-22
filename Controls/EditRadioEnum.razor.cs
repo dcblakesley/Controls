@@ -42,8 +42,8 @@ public partial class EditRadioEnum<TEnum> : IEditControl
             HidingMode.None => true,
             HidingMode.WhenNull => value != null,
             HidingMode.WhenNullOrDefault => value != null && !value.Equals(default(TEnum)),
-            HidingMode.WhenReadOnlyAndNull => IsEditMode || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || (value != null && !value.Equals(default(TEnum))),
+            HidingMode.WhenReadOnlyAndNull => IsEditMode && value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode && (value != null && !value.Equals(default(TEnum))),
             _ => true
         };
     }

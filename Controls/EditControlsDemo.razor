@@ -78,7 +78,7 @@
 @code {
     readonly Person _model = new();
     EditForm editForm; // Set by @ref during Render
-    public FormOptions FormOptions { get; set; } = new() {IsEditMode = false};
+    public FormOptions FormOptions { get; set; } = new() {IsEditMode = false, Hiding = HidingMode.WhenReadOnlyAndNullOrDefault};
     readonly List<string> _colorOptions = ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
     readonly List<string> _editCheckedStringListOptions = ["Azathoth", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep", "Cthulhu", "Hastur", "Dagon", "Ithaqua", "Tsathoggua" ];
 

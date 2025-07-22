@@ -36,7 +36,6 @@ public partial class EditDate<T> : IEditControl
     string GetDisplayValue() => DateTime.Parse(CurrentValueAsString!).ToUniversalTime().ToLocalTime().ToString(DateFormat);
     bool ShouldShowComponent()
     {
-        return true;
         // Get effective hiding mode (component's setting overrides form's setting)
         var effectiveHidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 

@@ -40,8 +40,8 @@ public partial class EditString : IEditControl
             HidingMode.None => true,
             HidingMode.WhenNull => CurrentValue != null,
             HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(CurrentValue),
-            HidingMode.WhenReadOnlyAndNull => IsEditMode || CurrentValue != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || !string.IsNullOrEmpty(CurrentValue),
+            HidingMode.WhenReadOnlyAndNull => IsEditMode && CurrentValue != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode && !string.IsNullOrEmpty(CurrentValue),
             _ => true
         };
     }
