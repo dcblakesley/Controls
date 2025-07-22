@@ -24,26 +24,20 @@ public partial class EditSelectString<TValue> : IEditControl
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-   
+
     bool ShouldShowComponent()
     {
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        var effectiveHiding = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        var value = Field.Compile().Invoke();
+        var isEditMode = (FormOptions == null) || FormOptions.IsEditMode;
 
-        if (hidingMode == HidingMode.None)
-            return true;
-
-        // Use the Field expression to get the current value
-        var value = Field.Compile()();
-        var isNull = value == null;
-        var isDefault = isNull || EqualityComparer<TValue>.Default.Equals(value, default);
-        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
-
-        return hidingMode switch
+        return effectiveHiding switch
         {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
+            HidingMode.None => true,
+            HidingMode.WhenReadOnlyAndNull => isEditMode || value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => isEditMode || (value != null && value.ToString() != ""),
+            HidingMode.WhenNull => value != null,
+            HidingMode.WhenNullOrDefault => value != null && value.ToString() != "",
             _ => true
         };
     }

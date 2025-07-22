@@ -3,10 +3,11 @@
 /// <summary> Validation shown under the input field when it doesn't meet the requirements based on DataAnnotations. </summary>
 public partial class FieldValidationDisplay
 {
-    [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
-    [Parameter] public required List<Attribute> Attributes { get; set; }
     [CascadingParameter] EditContext? EditContext { get; set; }
     [CascadingParameter] FormOptions? FormOptions { get; set; }
+
+    [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
+    [Parameter] public required List<Attribute> Attributes { get; set; }
     [Parameter] public string? Id { get; set; }
     [Parameter] public string? IdPrefix { get; set; }
 

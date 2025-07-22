@@ -15,13 +15,12 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
-    [Parameter] public string? OuterClass { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
 
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public bool Sort { get; set; }
     [Parameter] public HidingMode? Hiding { get; set; }
-    [Parameter] public string? ContainerClass { get; set; }
     
     string _isRequired = "false";
     string _id = string.Empty;

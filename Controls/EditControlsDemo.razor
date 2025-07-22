@@ -1,27 +1,40 @@
 ﻿@using Controls
+@using Microsoft.AspNetCore.Components.Forms
 
 <style>
     .myWidth {
         width: 80px;
     }
+/*     fieldset {
+        border: 2px solid white;
+    } */
+
 </style>
+
+
+<EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
+    <fieldset style="padding-bottom: 2rem">
+        <ObjectGraphDataAnnotationsValidator/> 
+        <legend class="h2">Actions and FormOptions</legend>
+
+        <div class="flex-row">
+            <button class="b-primary" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
+            <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
+            <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
+            <button class="btn-info" @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Toggle Horizontal</button>
+        </div>
+    </fieldset>
+</EditForm>
 
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
     <ObjectGraphDataAnnotationsValidator/>
-
-    <div class="flex-row">
-        <button class="b-primary" @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
-        <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
-        <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
-        <button class="" @onclick=@(() => _isHorizontal = !_isHorizontal)>Toggle Horizontal</button>
-    </div>
-
+    
     <fieldset>
         <CascadingValue Value=@FormOptions>
             <legend class="h2">Controls</legend>
 
             <div class="flex-row flex-wrap">
-                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) DateFormat="D" />
+                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) DateFormat="MM-dd-yyyy hh:mm tt" />
                 <EditDisplay Label="EditDisplay" Text="My text" IsHidden=false/>
                 <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber)/>
                 <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString!) Placeholder="Hello world!" />
@@ -65,13 +78,13 @@
 @code {
     readonly Person _model = new();
     EditForm editForm; // Set by @ref during Render
-    public FormOptions FormOptions { get; set; } = new();
+    public FormOptions FormOptions { get; set; } = new() {IsEditMode = false};
     readonly List<string> _colorOptions = ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
     readonly List<string> _editCheckedStringListOptions = ["Azathoth", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep", "Cthulhu", "Hastur", "Dagon", "Ithaqua", "Tsathoggua" ];
 
     List<Plant> _plants = Plant.GetTestData();
     bool _isHorizontal = false;
 
-    
+
     public HidingMode HidingMode { get; set; }
 }

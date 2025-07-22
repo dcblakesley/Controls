@@ -1,13 +1,13 @@
 ﻿using Controls;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel;
+using Controls.Helpers;
 using Microsoft.AspNetCore.Components.Forms;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 
 namespace FormTesting.Client.Components;
 
 public partial class General
 {
-
     public AnimalType SelectedAnimalType { get; set; } = AnimalType.Dog;
 
     readonly Person _model = new(); 
@@ -60,6 +60,19 @@ public partial class General
 
         public Address HomeAddress { get; set; } = new();
         public Address WorkAddress { get; set; } = new();
+    }
+    public enum AnimalType
+    {
+        Cat = 0,
+
+        [EnumDisplayName("Puppy Dog")]
+        Dog = 1,
+
+        [EnumDisplayName("Tweety Bird")]
+        Bird = 2,
+
+        [EnumDisplayName("Gold Fish")]
+        Fish = 3
     }
 }
 

@@ -39,18 +39,19 @@
                         @if (HasOther)
                         {
                             <div class="edit-radio-other-option-container">
-                                <label class=@($"edit-radio-labels {LabelClass}")>
-                                    <InputRadio Value=@OtherName
-                                                id=@($"rb-{_id}-other")
-                                                data-test-id=@($"rb-{_id}-other") />
-                                    Other
-                                </label>
+
+                                    <label class=@($"edit-radio-labels {LabelClass}")>
+                                        <InputRadio Value=@OtherName
+                                                    id=@($"rb-{_id}-other")
+                                                    data-test-id=@($"rb-{_id}-other")/>
+                                        Other
+                                    </label>
                                 <input disabled="@(_selectedOption != "Other")"
                                        type="text"
                                        id=@($"txt-{_id}-custom-value")
                                        aria-label="Custom text value input"
                                        class="edit-string-input"
-                                       @bind:get=@_otherText                                    
+                                       @bind:get=@_otherText    
                                        @bind:set=SetOtherTextAsync
                                        @bind:event="oninput"/>
                             </div>

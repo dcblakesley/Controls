@@ -4,7 +4,7 @@
 
 @page "/"
 
-
+<EditControlsDemo/>@* 
 <div class="flex-row">
     <div class="flex-column" style="margin-right: 2rem">
         <button class="btn btn-primary" @onclick=@(() => _view = "General")>General</button>
@@ -17,7 +17,7 @@
                 <General/>
                 break;
             case "All Controls":
-                <AllControls />
+                <EditControlsDemo/>
                 break;
             case "Date":
                 break;
@@ -48,4 +48,6 @@
 
     List<string> _viewOptions = ["General", "Bool", "Date", "Number", "Radio", "Select", "TextArea", "String"];
     string _view = "All Controls";
+
 }
+ *@
