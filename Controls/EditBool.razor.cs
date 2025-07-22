@@ -14,8 +14,16 @@ public partial class EditBool : IEditControl
 
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Used when hiding is based on the value of the field, typically
+    /// used for hiding controls that have a null backing field/property
+    /// </summary>
     [Parameter] public HidingMode? Hiding { get; set; }
-    
+
+    /// <summary> Used when hiding is based on some other condition, such as "IsControlXyzAvailable" </summary>
+    [Parameter] public bool IsHidden { get; set; }
+
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
     string _id = string.Empty;
     string _isRequired = "false";
@@ -32,6 +40,9 @@ public partial class EditBool : IEditControl
 
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+        
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         return hidingMode switch
         {

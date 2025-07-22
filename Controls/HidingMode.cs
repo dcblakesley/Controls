@@ -20,14 +20,3 @@ internal static class ExtensionMethods
             ? string.Empty
             : new(input.Where(char.IsLetterOrDigit).ToArray());
 }
-
-
-public record ContentInternalFields
-(
-    string? VendorName = null,
-    bool? IsLogoUploaded = null,
-    bool? ShouldShowName = null,
-    bool? ShouldShowItemNumber = null,
-    bool? ShouldShowWarranty = null,
-    bool? IsPlBrand = null
-);

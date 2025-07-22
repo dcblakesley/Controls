@@ -1,5 +1,9 @@
 ﻿namespace Controls;
 
+/// <summary>
+/// Common options for a group of EditControls, intended to be as
+/// a cascading parameter. To effect many controls at once.
+/// </summary>
 public class FormOptions
 {
     public bool IsEditMode { get; set; } = true;
@@ -13,6 +17,10 @@ public class FormOptions
     public bool ShowBoundValues { get; set; }
 }
 
+/// <summary>
+/// Provides a name for the group of controls, for the purpose of creating a unique ID for each
+/// control when using multiple instances of the same class.
+/// </summary>
 public class FormGroupOptions
 {
     public string? Name { get; set; }
