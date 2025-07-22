@@ -46,17 +46,19 @@ public partial class EditRadioString : IEditControl
             }
         }
     }
-
     bool ShouldShowComponent()
     {
+        var value = CurrentValue;
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        var isEditMode = (FormOptions?.IsEditMode ?? true) && IsEditMode;
+
         return hidingMode switch
         {
             HidingMode.None => true,
-            HidingMode.WhenNull => Value != null,
-            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(Value),
-            HidingMode.WhenReadOnlyAndNull => IsEditMode && Value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode && !string.IsNullOrEmpty(Value),
+            HidingMode.WhenReadOnlyAndNull => isEditMode || value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => isEditMode || !string.IsNullOrEmpty(value),
+            HidingMode.WhenNull => value != null,
+            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(value),
             _ => true
         };
     }

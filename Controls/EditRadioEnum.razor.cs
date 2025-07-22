@@ -9,16 +9,13 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     // IEditControl interface properties
     [Parameter] public string? Id { get; set; } 
     [Parameter] public string? IdPrefix { get; set; }
-
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? ContainerClass { get; set; }
-
-
+    [Parameter] public string? Description { get; set; }
+    
     /// <summary> The labels around each radio button </summary>
     [Parameter] public string? LabelClass { get; set; }
-
-    [Parameter] public string? Description { get; set; }
-
+    
     [Parameter] public HidingMode? Hiding { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
@@ -42,8 +39,8 @@ public partial class EditRadioEnum<TEnum> : IEditControl
             HidingMode.None => true,
             HidingMode.WhenNull => value != null,
             HidingMode.WhenNullOrDefault => value != null && !value.Equals(default(TEnum)),
-            HidingMode.WhenReadOnlyAndNull => IsEditMode && value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode && (value != null && !value.Equals(default(TEnum))),
+            HidingMode.WhenReadOnlyAndNull => IsEditMode || value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || (value != null && !value.Equals(default(TEnum))),
             _ => true
         };
     }

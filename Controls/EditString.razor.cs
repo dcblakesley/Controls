@@ -33,19 +33,20 @@ public partial class EditString : IEditControl
 
     bool ShouldShowComponent()
     {
+        var value = CurrentValue;
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        
+        var isEditMode = (FormOptions?.IsEditMode ?? true) && IsEditMode;
+
         return hidingMode switch
         {
             HidingMode.None => true,
-            HidingMode.WhenNull => CurrentValue != null,
-            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(CurrentValue),
-            HidingMode.WhenReadOnlyAndNull => IsEditMode && CurrentValue != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode && !string.IsNullOrEmpty(CurrentValue),
+            HidingMode.WhenReadOnlyAndNull => isEditMode || value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => isEditMode || !string.IsNullOrEmpty(value),
+            HidingMode.WhenNull => value != null,
+            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(value),
             _ => true
         };
     }
-
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 
     string? GetMaskValue()

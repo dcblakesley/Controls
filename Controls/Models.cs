@@ -12,7 +12,7 @@ internal class Person
     [DisplayName("EditSelect")] internal int EditSelect { get; set; }
     [Required, DisplayName("EditSelectString")] internal string? EditSelectString { get; set; } = "";
     [DisplayName("EditRadioString"), Description("Hello, does this work?")] internal string EditRadioString { get; set; } = "";
-    [Required, DisplayName("EditRadioEnum")] internal AnimalType EditRadioEnum { get; set; } = AnimalType.Cat;
+    [Required, DisplayName("EditRadioEnum")] internal AnimalType? EditRadioEnum { get; set; } = AnimalType.Cat;
     [DisplayName("EditCheckedStringList"), Description("I'm a little description, short and stout")]
     internal List<string> EditCheckedStringList { get; set; } = [];
 }
