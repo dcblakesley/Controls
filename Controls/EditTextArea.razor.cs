@@ -15,10 +15,11 @@ public partial class EditTextArea : IEditControl
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
+    [Parameter] public bool IsHidden { get; set;  }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
 
-    // Component specific parameters
+    // EditTextArea specific parameters
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public int Rows { get; set; } = 2;
 
@@ -38,7 +39,6 @@ public partial class EditTextArea : IEditControl
         _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
-
     bool ShouldShowComponent()
     {
         // Get effective hiding mode (component's setting overrides form's setting)

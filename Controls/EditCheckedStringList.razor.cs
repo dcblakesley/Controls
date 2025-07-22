@@ -3,36 +3,45 @@
 public partial class EditCheckedStringList : IEditControl
 {
     [CascadingParameter] EditContext EditContext { get; set; } = null!;
+
+    // Cascading parameters
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    
+    // IEditControl interface properties
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
 
+    // IEditControl state properties
+    [Parameter] public HidingMode? Hiding { get; set; }
+    [Parameter] public bool IsHidden { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
+    
+    // EditCheckedStringList specific
     [Parameter] public required List<string> Value { get; set; }
     [Parameter] public EventCallback<List<string>> ValueChanged { get; set; }
     [Parameter] public required Expression<Func<List<string>>> Field { get; set; }
-    [Parameter] public string Css { get; set; } = "";
-    [Parameter] public string? Id { get; set; }
-    [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public List<string> Options { get; set; } = [];
+    [Parameter] public string Css { get; set; } = "";
 
+    /// <summary> Labels for the checkboxes. </summary>
     [Parameter] public string? LabelClass { get; set; }
 
-    [Parameter] public string? IdPrefix { get; set; }
-    [Parameter] public bool IsDisabled { get; set; }
-    [Parameter] public string? Label { get; set; }
-    [Parameter] public string? Description { get; set; }
-    [Parameter] public string? Placeholder { get; set; }
+    /// <summary> If true, the checkboxes will be displayed horizontally. </summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
-    /// <summary> Not supported yet </summary>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    [Parameter] public string? ContainerClass { get; set; }
-
+    // Fields
     string _id = string.Empty;
     string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     bool hasError;
 
+    // Methods
     protected override void OnInitialized()
     {
         _fieldIdentifier = FieldIdentifier.Create(Field);
@@ -40,27 +49,20 @@ public partial class EditCheckedStringList : IEditControl
         _id = AttributesHelper.GetId(Id, FormGroupOptions, null, _fieldIdentifier);
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
-
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
         hasError = EditContext.GetValidationMessages(_fieldIdentifier).Any();
     }
-
     async Task SetAsync(string str)
     {
         if (Value.Contains(str))
-        {
             Value.Remove(str);
-        }
         else
-        {
             Value.Add(str);
-        }
-
+        
         await ValueChanged.InvokeAsync(Value);
     }
-
     bool ShouldShowComponent()
     {
         // Get effective hiding mode (component's setting overrides form's setting)
@@ -85,9 +87,5 @@ public partial class EditCheckedStringList : IEditControl
             _ => true
         };
     }
-
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-
-    
-
 }

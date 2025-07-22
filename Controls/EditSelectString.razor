@@ -21,8 +21,8 @@
                 {
                     <option value=@o
                             checked=@(() => CurrentValueAsString == o)
-                            id=@($"{_id}-option-{o}")
-                            data-test-id=@($"{_id}-option-{o}")
+                            id=@($"{_id}-option-{o.ToId()}")
+                            data-test-id=@($"{_id}-option-{o.ToId()}")
                             class="edit-select-option">
                         @o
                     </option>

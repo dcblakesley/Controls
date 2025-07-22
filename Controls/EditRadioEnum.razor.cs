@@ -7,16 +7,15 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
     // IEditControl interface properties
-    [Parameter] public string? Id { get; set; } 
+    [Parameter] public string? Id { get; set; }
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
-    [Parameter] public string? ContainerClass { get; set; }
     [Parameter] public string? Description { get; set; }
-    
-    /// <summary> The labels around each radio button </summary>
-    [Parameter] public string? LabelClass { get; set; }
-    
+    [Parameter] public string? ContainerClass { get; set; }
+
+    // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
+    [Parameter] public bool IsHidden { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
 
@@ -25,10 +24,28 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public bool IsHorizontal { get; set; }
     [Parameter] public bool Sort { get; set; }
+    
+    /// <summary> The labels around each radio button </summary>
+    [Parameter] public string? LabelClass { get; set; }
 
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
     [Parameter] public required Type Type { get; set; }
 
+    // Fields
+    string _id = string.Empty;
+    string _isRequired = "false";
+    List<Attribute>? _attributes;
+    FieldIdentifier _fieldIdentifier;
+
+    // Methods
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        _fieldIdentifier = FieldIdentifier.Create(Field);
+        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+    }
     bool ShouldShowComponent()
     {
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
@@ -44,26 +61,9 @@ public partial class EditRadioEnum<TEnum> : IEditControl
             _ => true
         };
     }
-
     List<TEnum> GetOptions() => Sort
         ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList()
         : Enum.GetValues(Type).Cast<TEnum>().ToList();
-
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        _fieldIdentifier = FieldIdentifier.Create(Field);
-        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
-        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
-    }
-
     protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
     {
         // Lets Blazor convert the value for us
@@ -91,4 +91,5 @@ public partial class EditRadioEnum<TEnum> : IEditControl
         validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
         return false;
     }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 }

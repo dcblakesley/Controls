@@ -10,3 +10,15 @@
 
  - Move svgs to their own css file?
 
+ - Look into when EditContext is used/necessary
+ - new control bool? radio buttons
+
+
+Changes in 1.0.12.x
+ * changed from utilizing bootstrap css classes such as form-group to using classes that start with edit- to avoid conflicts with other libraries
+ * New Features
+   - IsHidden to hide controls withough wrapping them in an if statement
+   - Hiding allows hiding controls based on their own property for [Never, WhenReadonlyAndNull, WhenReadonly, etc.]
+     -- This also exists within FormOptions, so the hiding can be controlled over a large group of controls.
+
+

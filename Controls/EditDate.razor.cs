@@ -2,29 +2,35 @@
 
 public partial class EditDate<T> : IEditControl
 {
+    // Cascading parameters
     [CascadingParameter] public FormOptions? FormOptions { get; set; } 
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
-    // IEditControl properties
-    [Parameter] public string? Id { get; set; } 
+    // IEditControl interface properties
+    [Parameter] public string? Id { get; set; }
     [Parameter] public string? IdPrefix { get; set; }
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
-    [Parameter] public HidingMode? Hiding { get; set; }
     [Parameter] public string? ContainerClass { get; set; }
+
+    // IEditControl state properties
+    [Parameter] public HidingMode? Hiding { get; set; }
+    [Parameter] public bool IsHidden { get; set; }
+    [Parameter] public bool IsEditMode { get; set; } = true;
+    [Parameter] public bool IsDisabled { get; set; }
 
     // Component-specific properties
     [Parameter] public required Expression<Func<T>> Field { get; set; }
     [Parameter] public string DateFormat { get; set; } = "MM-dd-yyyy";
 
+    // Fields
     string _id = string.Empty;
     string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 
+    // Methods
     protected override void OnInitialized()
     {
         base.OnInitialized();

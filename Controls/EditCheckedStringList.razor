@@ -16,8 +16,8 @@
                                    value=@option
                                    checked="@(Value.Contains(option))"
                                    @onchange="() => SetAsync(option)"
-                                   id=@($"cbx-{_id}-{option}")
-                                   data-test-id=@($"cbx-{_id}-{option}")
+                                   id=@($"cbx-{_id}-{option.ToId()}")
+                                   data-test-id=@($"cbx-{_id}-{option.ToId()}")
                                    class="edit-checkedList-checkbox"/>
                             @option
                         </label>

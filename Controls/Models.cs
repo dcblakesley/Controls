@@ -5,7 +5,7 @@ internal class Person
     // Controls
     [Required, DisplayName("EditString")] internal string? EditString { get; set; } = "";
     [DisplayName("EditTextArea")] internal string EditTextArea { get; set; } = "";
-    [DisplayName("EditNumber")] internal double EditNumber { get; set; } = 0;
+    [DisplayName("EditNumber")] internal double? EditNumber { get; set; } = 0;
     [DisplayName("EditBool")] internal bool EditBool { get; set; }
     [DisplayName("EditDate")] public DateTime EditDate { get; set; }
     [DisplayName("EditSelectEnum")] internal AnimalType EditSelectEnum { get; set; }
