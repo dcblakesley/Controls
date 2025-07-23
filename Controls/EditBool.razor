@@ -5,12 +5,12 @@
 {
     <div class="edit-control-wrapper @ContainerClass">
 
-        <div class="form-check">
 
+        <label class="edit-label edit-checkbox-label" for=@_id>
             <input type="checkbox"
                    @bind-value=@CurrentValue
                    @bind-value:event="oninput" 
-                   class="form-check-input pointer @CssClass"
+                   class="@CssClass"
                    id=@_id
                    data-test-id=@_id
                    checked=@CurrentValue
@@ -19,10 +19,8 @@
                    aria-describedby=@($"desc-{_id}")
                    aria-errormessage=@($"error-msg-{_id}")/>
 
-            <label class="form-check-label pointer" for=@_id>
-                @((MarkupString)DisplayLabel())
-            </label>
-        </div>
+            @((MarkupString)DisplayLabel())
+        </label>
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
         @if (FormOptions != null && FormOptions.ShowBoundValues)

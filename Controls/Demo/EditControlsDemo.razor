@@ -1,0 +1,60 @@
+﻿@using Controls
+@using Microsoft.AspNetCore.Components.Forms
+
+<style>
+    .myWidth {
+        width: 80px;
+    }
+    /*     fieldset {
+            boallControlsMder: 2px solid white;
+        } */
+    .active {
+        background: green;
+    }
+    .inactive {
+        background: grey;
+    }
+</style>
+
+
+<CascadingValue Value=@FormOptions>
+    
+
+    <div class="flex-row">
+    <!-- Sidebar -->
+    <div class="flex-column" style="gap: 4px">
+        <button @onclick=@(() => _currentView = CurrentView.AllControls) >All Controls</button>
+        <button @onclick=@(() => _currentView = CurrentView.EditBoolNullRadio)>EditBoolNullRadio</button>
+    </div>
+
+    <div class="flex-column">
+        
+        <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="editForm">
+            <ObjectGraphDataAnnotationsValidator />
+
+            <!-- Actions -->
+            <fieldset style="padding-bottom: 2rem">
+                <legend class="h2">Actions and FormOptions</legend>
+
+                <div class="flex-row">
+                    <button class=@(FormOptions.ShowBoundValues ? "active" : "inactive")  @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
+                    <button class=@(FormOptions.IsEditMode ? "active" : "inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
+                    <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding)/>
+                </div>
+            </fieldset>
+        </EditForm>
+
+    <!-- All Controls -->
+    @switch (_currentView)
+    {
+        case CurrentView.AllControls:
+            <DemoAllControls />
+            break;
+        case CurrentView.EditBoolNullRadio:
+            <DemoEditBoolNullRadio />
+            break;
+        }
+    </div>
+</div>
+
+</CascadingValue>

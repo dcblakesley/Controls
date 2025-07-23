@@ -7,7 +7,7 @@
         <fieldset class="edit-radio-fieldset">
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend="true"/>
 
-            @if (IsEditMode)
+            @if (ShowEditor)
             {
                 <div class=@(IsHorizontal
                             ? "edit-radio-buttons-container-horizontal"

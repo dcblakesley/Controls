@@ -1,9 +1,9 @@
-﻿namespace Controls;
+namespace Controls;
 
-public partial class EditBool : IEditControl
+public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
 {
     // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
     // IEditControl interface properties
@@ -18,17 +18,16 @@ public partial class EditBool : IEditControl
     [Parameter] public bool IsHidden { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
-    
-    // EditBool specific properties
-    [Parameter] public required Expression<Func<bool>> Field { get; set; }
 
-    // Fields
+    // Component specific parameters
+    [Parameter] public Expression<Func<TValue>>? Field { get; set; }
+    [Parameter] public bool IsHorizontal { get; set; }
+
     string _id = string.Empty;
     string _isRequired = "false";
-    List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
+    List<Attribute>? _attributes;
 
-    // Methods
     protected override void OnInitialized()
     {
         _fieldIdentifier = FieldIdentifier.Create(Field);
@@ -36,21 +35,28 @@ public partial class EditBool : IEditControl
         _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
 
-    string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
-    bool ShouldShowComponent()
+    protected bool ShouldShowComponent()
     {
         if (IsHidden)
             return false;
+
+        var effectiveHiding = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        return hidingMode switch
+        if (effectiveHiding == HidingMode.None)
+            return true;
+
+        var value = Value;
+        var isNull = value == null;
+        var isDefault = isNull || EqualityComparer<TValue>.Default.Equals(value, default);
+
+        return effectiveHiding switch
         {
-            HidingMode.None => true,
-            HidingMode.WhenNull => true,
-            HidingMode.WhenNullOrDefault => CurrentValue, 
-            HidingMode.WhenReadOnlyAndNull => true,
-            HidingMode.WhenReadOnlyAndNullOrDefault => !IsEditMode && CurrentValue,
+            HidingMode.WhenReadOnlyAndNull => IsEditMode || !isNull,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || !isDefault,
+            HidingMode.WhenNull => !isNull,
+            HidingMode.WhenNullOrDefault => !isDefault,
             _ => true
         };
     }

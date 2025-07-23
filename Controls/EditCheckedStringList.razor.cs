@@ -1,5 +1,6 @@
 ﻿namespace Controls;
 
+/// <summary> Provides checkboxes for each input string (in Options), binds to a List of selected strings. </summary>
 public partial class EditCheckedStringList : IEditControl
 {
     [CascadingParameter] EditContext EditContext { get; set; } = null!;

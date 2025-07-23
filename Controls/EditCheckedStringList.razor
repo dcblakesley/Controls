@@ -11,7 +11,7 @@
                                : "edit-checkedList-checkboxes-container-vertical")>
                     @foreach (var option in Options)
                     {
-                        <label class=@($"edit-checkedList-labels {LabelClass}")>
+                        <label class=@($"edit-label edit-checkbox-label {LabelClass}")>
                             <input type="checkbox"
                                    value=@option
                                    checked="@(Value.Contains(option))"

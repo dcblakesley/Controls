@@ -1,53 +1,5 @@
-﻿@using Controls
-@using Components
-@using FormTesting.Client.Components
+﻿@using Controls.Demo
 
 @page "/"
 
-<EditControlsDemo/>@* 
-<div class="flex-row">
-    <div class="flex-column" style="margin-right: 2rem">
-        <button class="btn btn-primary" @onclick=@(() => _view = "General")>General</button>
-        <button class="btn btn-primary" @onclick=@(() => _view = "All Controls")>All Controls</button>
-    </div>
-    <div class="flex-column">
-        @switch (_view)
-        {
-            case "General":
-                <General/>
-                break;
-            case "All Controls":
-                <EditControlsDemo/>
-                break;
-            case "Date":
-                break;
-            case "Number":
-                break;
-            case "Radio":
-                break;
-            case "Select":
-                break;
-            case "TextArea":
-                break;
-            case "String":
-                break;
-        }
-    </div>
-
-</div>
-
-@code {
-    readonly Person _model = new();
-    [Parameter]
-    public bool IsEditMode { get; set; } = true;
-
-    public FormOptions FormOptions { get; set; } = new ();
-
-    readonly List<string> _colorOptions = ["", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
-    List<Plant> _plants = Plant.GetTestData();
-
-    List<string> _viewOptions = ["General", "Bool", "Date", "Number", "Radio", "Select", "TextArea", "String"];
-    string _view = "All Controls";
-
-}
- *@
+<EditControlsDemo />

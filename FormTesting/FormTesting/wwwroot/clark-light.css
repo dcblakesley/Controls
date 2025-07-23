@@ -8,12 +8,11 @@ label { all: unset }
 span { all: unset }
 button { all: unset }
 /*select { all: unset }
-*//* html, head, title, body, h1-6, a, img, form, input, button,
+*/ /* html, head, title, body, h1-6, a, img, form, input, button,
     ul, ol, li, table, tr, th, td, br, bold, header, footer,
     main, details, summary, article, address, img, nav, form, 
     strong, b, em, i, small, sub, sup, code, pre
 */
-
 button {
     box-sizing: border-box;
     /* Auto layout */
@@ -26,8 +25,11 @@ button {
     border: 1px solid #B7B7B7;
     border-radius: 6px;
 }
+.edit-validation-message{ color: red}
 
-
+.bound-value {
+    color: green
+}
 /* Set default styles for basic controls */
 label {
     font-family: Inter;
@@ -38,7 +40,16 @@ label {
 }
 button[type=submit] { background: var(--clark-green); border: 1px solid; border-color: var(--clark-green); color: var(--white); border-radius: 6px; padding-top: 0.3rem; padding-bottom: 0.3rem; padding-left: 1rem; padding-right: 1rem; }
 button[disabled] { cursor: not-allowed; }
-input[type='checkbox'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--clark-green); display: inline-block; vertical-align: middle; cursor: pointer }
+input[type='checkbox'] {
+    height: 16px;
+    width: 16px;
+    margin-right: 8px;
+    accent-color: var(--color-primary);
+    display: inline-block;
+    vertical-align: middle;
+    cursor: pointer
+}
+
 textarea { box-sizing: border-box; padding: 0px 12px; gap: 10px; height: 64px; width: 25rem; background: var(--white); border: 1px solid; border-color: var(--border-color); border-radius: 6px; flex: none; order: 2; flex-grow: 1; }
 input { box-sizing: border-box; padding: 5px 8px; gap: 10px; height: 32px; background: var(--white); border: 1px solid var(--clark-grey); border-radius: 2px; flex: none; order: 2; flex-grow: 1; }
 
@@ -49,7 +60,16 @@ input[type='radio'] {
     height: 16px;
     width: 16px;
     margin-right: 8px;
-    accent-color: var(--clark-green);
+    accent-color: var(--color-primary);
+    display: inline-block;
+    vertical-align: middle;
+    cursor: pointer;
+}
+.form-check-input {
+    height: 16px;
+    width: 16px;
+    margin-right: 8px;
+    accent-color: var(--color-primary);
     display: inline-block;
     vertical-align: middle;
     cursor: pointer;
@@ -96,11 +116,12 @@ input[type="radio"]:hover {
 .edit-readonly-value { /* The text that is displayed when IsEditMode=false and within EditDisplay*/ }
 
 /************************************************ EditBool ***********************************************/
+.edit-checkbox-label { cursor: pointer; }
 /************************************************ EditCheckedList(String and Enum) ***********************/
-.edit-checkedList-fieldset {  }
+.edit-checkedList-fieldset {
+}
 .edit-checkedList-checkboxes-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
 .edit-checkedList-checkboxes-container-horizontal { /* HasHorizontalCheckboxes=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
-.edit-checkedList-labels { /* The labels around checkboxes in the CheckedList(String and Enum in the future) */}
 /************************************************ EditDate ***********************************************/
 .edit-date-input { }
 /************************************************ EditNumber *********************************************/
@@ -111,9 +132,7 @@ input[type="radio"]:hover {
      /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer;
 }
 .edit-radio-buttons-container-horizontal { /* HasHorizontalRadioButtons=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
-.edit-radio-labels {
-    cursor: pointer;
-}
+.edit-radio-label { cursor: pointer; }
 /************************************************ EditSelect(String and Enum) *********************************************/
 .edit-select-select{}
 .edit-select-option { /* The options within the select control */ }

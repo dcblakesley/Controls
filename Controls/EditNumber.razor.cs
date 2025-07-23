@@ -51,9 +51,9 @@ public partial class EditNumber<T> : IEditControl
         return hidingMode switch
         {
             HidingMode.WhenReadOnlyAndNull => !isReadOnly || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => !isReadOnly || (value != null && !EqualityComparer<T>.Default.Equals(value, default)),
+            HidingMode.WhenReadOnlyAndNullOrDefault => !isReadOnly || value != null && Convert.ToDouble(value) != 0,
             HidingMode.WhenNull => value != null,
-            HidingMode.WhenNullOrDefault => value != null && !EqualityComparer<T>.Default.Equals(value, default),
+            HidingMode.WhenNullOrDefault => value != null && Convert.ToDouble(value) != 0,
             _ => true
         };
     }

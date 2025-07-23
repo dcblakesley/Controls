@@ -1,0 +1,41 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inherits InputRadioGroup<TValue>
+@typeparam TValue
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+
+        @if (ShowEditor)
+        {
+            <InputRadioGroup 
+                @bind-Value=@CurrentValue
+                             id=@_id
+                             data-test-id=@_id
+                             class=@CssClass
+                             disabled=@IsDisabled
+                             aria-required=@_isRequired
+                             aria-describedby=@($"desc-{_id}")
+                             aria-errormessage=@($"error-msg-{_id}")>
+
+                <div class=@(IsHorizontal
+                    ? "edit-radio-buttons-container-horizontal" 
+                    : "edit-radio-buttons-container-vertical")>
+
+                    @ChildContent
+                    </div>
+            </InputRadioGroup>
+        }
+        else
+        {
+            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@CurrentValueAsString />
+        }
+
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@CurrentValueAsString</div>
+        }
+    </div>
+}

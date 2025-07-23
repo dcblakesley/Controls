@@ -1,6 +1,6 @@
 namespace Controls;
 
-public partial class EditNullableBool : IEditControl
+public partial class EditBoolNullRadio : IEditControl
 {
     // Cascading parameters
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
@@ -47,6 +47,8 @@ public partial class EditNullableBool : IEditControl
     {
         CurrentValue = value;
     }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+
     protected override bool TryParseValueFromString(string? value, out bool? result, out string? validationErrorMessage)
     {
         if (string.IsNullOrEmpty(value))

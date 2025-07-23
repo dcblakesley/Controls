@@ -1,8 +1,8 @@
-﻿namespace Controls;
+﻿namespace Controls.Demo;
 
-public partial class EditControlsDemo
+public partial class DemoAllControls
 {
-    readonly Person _model = new();
+    readonly DemoModelForEditControls _model = new();
     EditForm editForm; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
@@ -13,7 +13,7 @@ public partial class EditControlsDemo
 
     readonly List<string> _editCheckedStringListOptions =
     [
-        "Aza tho th", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep", 
+        "Aza tho th", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep",
         "Cthulhu", "Hastur", "Dagon", "Ithaqua", "Tsathoggua"
     ];
 
@@ -22,7 +22,7 @@ public partial class EditControlsDemo
     public HidingMode HidingMode { get; set; }
 
     void ForceValidation()
-    { 
-        editForm!.EditContext!.Validate(); }
-
+    {
+        editForm!.EditContext!.Validate();
+    }
 }

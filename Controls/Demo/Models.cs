@@ -1,24 +1,25 @@
-﻿namespace Controls;
+﻿namespace Controls.Demo;
 
-public class Person
+internal class DemoModelForEditControls
 {
     // Controls
     [Required, DisplayName("EditString")] public string? EditString { get; set; } = "";
     [DisplayName("EditTextArea")] public string EditTextArea { get; set; } = "";
     [DisplayName("EditNumber")] public double? EditNumber { get; set; } = 0;
     [DisplayName("EditBool")] public bool EditBool { get; set; }
-    [Required, DisplayName("EditNullableBool")] public bool? EditNullableBool { get; set; }
+    [Required, DisplayName("EditBoolNullRadio")] public bool? EditBoolNullRadio { get; set; }
     [DisplayName("EditDate")] public DateTime EditDate { get; set; }
-    [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
+    [DisplayName("EditSelectEnum")] public Animal EditSelectEnum { get; set; }
     [DisplayName("EditSelect")] public int EditSelect { get; set; }
     [Required, DisplayName("EditSelectString")] public string? EditSelectString { get; set; } = "";
     [DisplayName("EditRadioString"), Description("Hello, does this work?")] public string EditRadioString { get; set; } = "";
-    [Required, DisplayName("EditRadioEnum")] public AnimalType? EditRadioEnum { get; set; } = AnimalType.Cat;
+    [Required, DisplayName("EditRadioEnum")] public Animal? EditRadioEnum { get; set; } = Animal.Cat;
+    [DisplayName("EditRadio")] public int EditRadio { get; set; } = 0;
     [DisplayName("EditCheckedStringList"), Description("I'm a little description, short and stout")]
     public List<string> EditCheckedStringList { get; set; } = [];
 }
 
-public enum AnimalType
+internal enum Animal
 {
     Cat = 0,
 
@@ -31,13 +32,8 @@ public enum AnimalType
     [EnumDisplayName("Gold Fish")]
     Fish = 3
 }
-public class Animal
-{
-    [Required]
-    public string Name { get; set; } = "";
-}
 
-public class Plant
+internal class Plant
 {
     public string Name { get; set; } = "";
     public int Id { get; set; }

@@ -1,0 +1,89 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditBoolNullRadio Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <h2>Basic Usage</h2>
+        <EditBoolNullRadio @bind-Value="_model.BasicOption" 
+                         Label="Basic Example"
+                         Field="@(() => _model.BasicOption)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Layout Options</h2>
+        <EditBoolNullRadio @bind-Value="_model.HorizontalLayout" 
+                         Label="Horizontal Layout (Default)" 
+                         IsHorizontal="true"
+                         Field="@(() => _model.HorizontalLayout)" />
+        <EditBoolNullRadio @bind-Value="_model.VerticalLayout" 
+                         Label="Vertical Layout" 
+                         IsHorizontal="false"
+                         Field="@(() => _model.VerticalLayout)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Text Options</h2>
+        <EditBoolNullRadio @bind-Value="_model.CustomText" 
+                         Label="Custom Text Labels"
+                         TrueText="Absolutely!"
+                         FalseText="No way!"
+                         NullText="Haven't decided..."
+                         Field="@(() => _model.CustomText)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Validation</h2>
+        <EditBoolNullRadio @bind-Value="_model.RequiredField" 
+                         Label="Required Field"
+                         Field="@(() => _model.RequiredField)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditBoolNullRadio @bind-Value="_model.DisabledField" 
+                         Label="Disabled State"
+                         IsDisabled="true"
+                         Field="@(() => _model.DisabledField)" />
+        
+        <EditBoolNullRadio @bind-Value="_model.ReadOnlyField" 
+                         Label="Read-only Mode"
+                         IsEditMode="false"
+                         Field="@(() => _model.ReadOnlyField)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Null Option Behavior</h2>
+        <EditBoolNullRadio @bind-Value="_model.NoNullOption" 
+                         Label="Without Null Option"
+                         ShowNullOption="false"
+                         Field="@(() => _model.NoNullOption)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Hiding Modes</h2>
+        <EditBoolNullRadio @bind-Value="_model.HiddenWhenNull" 
+                         Label="Hidden When Null"
+                         Hiding="HidingMode.WhenNull"
+                         Field="@(() => _model.HiddenWhenNull)" />
+                         
+        <EditBoolNullRadio @bind-Value="_model.HiddenWhenNullOrDefault" 
+                         Label="Hidden When Null or False"
+                         Hiding="HidingMode.WhenNullOrDefault"
+                         Field="@(() => _model.HiddenWhenNullOrDefault)" />
+    </div>
+</EditForm>
+
+<style>
+    .demo-section {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }    
+    .edit-radio-fieldset {
+        margin-top: 2rem;
+    }
+</style>
