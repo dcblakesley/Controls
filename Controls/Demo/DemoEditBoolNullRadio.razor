@@ -46,12 +46,7 @@
         <EditBoolNullRadio @bind-Value="_model.DisabledField" 
                          Label="Disabled State"
                          IsDisabled="true"
-                         Field="@(() => _model.DisabledField)" />
-        
-        <EditBoolNullRadio @bind-Value="_model.ReadOnlyField" 
-                         Label="Read-only Mode"
-                         IsEditMode="false"
-                         Field="@(() => _model.ReadOnlyField)" />
+                         Field="@(() => _model.DisabledField)" />        
     </div>
 
     <div class="demo-section">
@@ -62,28 +57,5 @@
                          Field="@(() => _model.NoNullOption)" />
     </div>
 
-    <div class="demo-section">
-        <h2>Hiding Modes</h2>
-        <EditBoolNullRadio @bind-Value="_model.HiddenWhenNull" 
-                         Label="Hidden When Null"
-                         Hiding="HidingMode.WhenNull"
-                         Field="@(() => _model.HiddenWhenNull)" />
-                         
-        <EditBoolNullRadio @bind-Value="_model.HiddenWhenNullOrDefault" 
-                         Label="Hidden When Null or False"
-                         Hiding="HidingMode.WhenNullOrDefault"
-                         Field="@(() => _model.HiddenWhenNullOrDefault)" />
-    </div>
 </EditForm>
 
-<style>
-    .demo-section {
-        margin-bottom: 2rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }    
-    .edit-radio-fieldset {
-        margin-top: 2rem;
-    }
-</style>

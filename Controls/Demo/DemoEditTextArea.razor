@@ -1,0 +1,79 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditTextArea Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <h2>Basic Usage</h2>
+        <EditTextArea @bind-Value="_model.BasicTextArea"
+                     Field="@(() => _model.BasicTextArea)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Rows</h2>
+        <EditTextArea @bind-Value="_model.LargerTextArea"
+                     Rows="5"
+                     Field="@(() => _model.LargerTextArea)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Styling</h2>
+        <EditTextArea @bind-Value="_model.CustomClass"
+                     ContainerClass="my-custom-container"
+                     CssClass="my-custom-textarea"
+                     Field="@(() => _model.CustomClass)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditTextArea @bind-Value="_model.DisabledField"
+                     IsDisabled="true"
+                     Field="@(() => _model.DisabledField)" />
+
+        <EditTextArea @bind-Value="_model.RequiredField"
+                     Field="@(() => _model.RequiredField)" />
+    </div>
+</EditForm>
+
+@code {
+    private DemoEditTextAreaModel _model = new();
+
+    public class DemoEditTextAreaModel
+    {
+        public string BasicTextArea { get; set; } = "";
+        public string LargerTextArea { get; set; } = "";
+        public string CustomClass { get; set; } = "";
+
+        [Required]
+        public string RequiredField { get; set; } = "";
+        
+        public string DisabledField { get; set; } = "This textarea is disabled";
+    }
+}
+
+<style>
+    .demo-section {
+        margin: 1rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 300px;
+    }
+
+    .my-custom-container {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .my-custom-textarea {
+        border: 2px solid #0066cc;
+        border-radius: 4px;
+        padding: 8px;
+        width: 100%;
+        min-height: 100px;
+        font-family: 'Courier New', monospace;
+    }
+</style>

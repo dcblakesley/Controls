@@ -1,0 +1,90 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditRadioEnum Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <h2>Basic Usage</h2>
+        <EditRadioEnum TEnum="Animal"
+                      @bind-Value="_model.BasicEnum"
+                      Label="Basic Example"
+                      Field="@(() => _model.BasicEnum)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Layout Options</h2>
+        <EditRadioEnum TEnum="Animal"
+                      @bind-Value="_model.HorizontalLayout"
+                      Label="Horizontal Layout"
+                      IsHorizontal="true"
+                      Field="@(() => _model.HorizontalLayout)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Styling</h2>
+        <EditRadioEnum TEnum="Animal"
+                      @bind-Value="_model.CustomClass"
+                      Label="With Custom CSS Class"
+                      ContainerClass="my-custom-container"
+                      CssClass="my-custom-radio"
+                      LabelClass="my-custom-label"
+                      Field="@(() => _model.CustomClass)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditRadioEnum TEnum="Animal"
+                      @bind-Value="_model.DisabledField"
+                      Label="Disabled State"
+                      IsDisabled="true"
+                      Field="@(() => _model.DisabledField)" />
+
+        <EditRadioEnum TEnum="Animal"
+                      @bind-Value="_model.RequiredField"
+                      Label="Required Field"
+                      Field="@(() => _model.RequiredField)" />
+    </div>
+</EditForm>
+
+@code {
+    private DemoEditRadioEnumModel _model = new();
+
+    public class DemoEditRadioEnumModel
+    {
+        public Animal BasicEnum { get; set; }
+        public Animal HorizontalLayout { get; set; }
+        public Animal CustomClass { get; set; }
+
+        [Required(ErrorMessage = "Please select an option")]
+        public Animal RequiredField { get; set; }
+        
+        public Animal DisabledField { get; set; }
+    }
+}
+
+<style>
+    .demo-section {
+        margin: 1rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 300px;
+    }
+
+    .my-custom-container {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .my-custom-radio {
+        accent-color: #0066cc;
+    }
+
+    .my-custom-label {
+        font-weight: bold;
+        color: #0066cc;
+    }
+</style>

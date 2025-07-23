@@ -1,0 +1,94 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditString Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <h2>Basic Usage</h2>
+        <EditString @bind-Value="_model.BasicString"
+                   Field="@(() => _model.BasicString)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>With Placeholder</h2>
+        <EditString @bind-Value="_model.WithPlaceholder"
+                   Placeholder="Enter some text..."
+                   Field="@(() => _model.WithPlaceholder)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Masked Input</h2>
+        <EditString @bind-Value="_model.MaskedText"
+                   MaskText="*"
+                   Field="@(() => _model.MaskedText)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>URL Link</h2>
+        <EditString @bind-Value="_model.UrlField"
+                   Url="https://example.com"
+                   UrlTarget="_blank"
+                   Field="@(() => _model.UrlField)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Styling</h2>
+        <EditString @bind-Value="_model.CustomClass"
+                   ContainerClass="my-custom-container"
+                   CssClass="my-custom-input"
+                   Field="@(() => _model.CustomClass)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditString @bind-Value="_model.DisabledField"
+                   IsDisabled="true"
+                   Field="@(() => _model.DisabledField)" />
+                    
+        <EditString @bind-Value="_model.RequiredField"
+                   Field="@(() => _model.RequiredField)" />
+    </div>
+</EditForm>
+
+@code {
+    private DemoEditStringModel _model = new();
+
+    public class DemoEditStringModel
+    {
+        public string BasicString { get; set; } = "";
+        public string WithPlaceholder { get; set; } = "";
+        public string MaskedText { get; set; } = "";
+        public string UrlField { get; set; } = "Example Website";
+        public string CustomClass { get; set; } = "";
+
+        [Required]
+        public string RequiredField { get; set; } = "";
+        
+        public string DisabledField { get; set; } = "";
+    }
+}
+
+<style>
+    .demo-section {
+        margin: 1rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 300px;
+    }
+
+    .my-custom-container {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .my-custom-input {
+        border: 2px solid #0066cc;
+        border-radius: 4px;
+        padding: 4px;
+        width: 100%;
+    }
+</style>

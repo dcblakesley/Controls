@@ -25,15 +25,20 @@ public partial class EditControlsDemo
     
 }
 
-internal enum CurrentView
+public enum CurrentView
 {
     AllControls,
-    EditString,
-    EditCheckedStringList,
-    EditBoolNullRadio,
-    EditDateTime,
-    EditColor,
-    EditNumber,
-    EditSelect,
-    EditTextArea
+    Bool,
+    BoolNullRadio,
+    CheckedStringList,
+    Date,
+    Number,
+    Radio,
+    RadioEnum,
+    RadioString,
+    Select,
+    SelectEnum,
+    SelectString,
+    String,
+    TextArea
 }

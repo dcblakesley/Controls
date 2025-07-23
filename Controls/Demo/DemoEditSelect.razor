@@ -1,0 +1,118 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditSelect Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <h2>Basic Usage</h2>
+        <EditSelect TValue="int" 
+                   @bind-Value="_model.BasicSelect"
+                   Label="Basic Example"
+                   Field="@(() => _model.BasicSelect)">
+            <option value="">Select a number...</option>
+            @foreach (var number in Enumerable.Range(1, 5))
+            {
+                <option value="@number">Number @number</option>
+            }
+        </EditSelect>
+    </div>
+
+    <div class="demo-section">
+        <h2>With Objects</h2>
+        <EditSelect TValue="Plant" 
+                   @bind-Value="_model.PlantSelect"
+                   Label="Select a Plant"
+                   Field="@(() => _model.PlantSelect)">
+            <option value="">Choose a plant...</option>
+            @foreach (var plant in _plants)
+            {
+                <option value="@plant">@plant.Name</option>
+            }
+        </EditSelect>
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Styling</h2>
+        <EditSelect TValue="string"
+                   @bind-Value="_model.CustomClass"
+                   Label="With Custom CSS Class"
+                   ContainerClass="my-custom-container"
+                   CssClass="my-custom-select"
+                   Field="@(() => _model.CustomClass)">
+            <option value="">Select a color...</option>
+            @foreach (var color in _colors)
+            {
+                <option value="@color">@color</option>
+            }
+        </EditSelect>
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditSelect TValue="string"
+                   @bind-Value="_model.DisabledField"
+                   Label="Disabled State"
+                   IsDisabled="true"
+                   Field="@(() => _model.DisabledField)">
+            <option value="">Select a color...</option>
+            @foreach (var color in _colors)
+            {
+                <option value="@color">@color</option>
+            }
+        </EditSelect>
+
+        <EditSelect TValue="string"
+                   @bind-Value="_model.RequiredField"
+                   Label="Required Field"
+                   Field="@(() => _model.RequiredField)">
+            <option value="">Select a color...</option>
+            @foreach (var color in _colors)
+            {
+                <option value="@color">@color</option>
+            }
+        </EditSelect>
+    </div>
+</EditForm>
+
+@code {
+    private DemoEditSelectModel _model = new();
+    private List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Purple" };
+    private List<Plant> _plants = Plant.GetTestData();
+
+    public class DemoEditSelectModel
+    {
+        public int BasicSelect { get; set; }
+        public Plant PlantSelect { get; set; } = null!;
+        public string CustomClass { get; set; } = "";
+
+        [Required(ErrorMessage = "Please select a color")]
+        public string RequiredField { get; set; } = "";
+        
+        public string DisabledField { get; set; } = "";
+    }
+}
+
+<style>
+    .demo-section {
+        margin: 1rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 300px;
+    }
+
+    .my-custom-container {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .my-custom-select {
+        border: 2px solid #0066cc;
+        border-radius: 4px;
+        padding: 4px;
+        min-width: 200px;
+    }
+</style>

@@ -1,0 +1,101 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditRadioString Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <h2>Basic Usage</h2>
+        <EditRadioString @bind-Value="_model.BasicOption"
+                        Label="Basic Example"
+                        Options="@_basicOptions"
+                        Field="@(() => _model.BasicOption)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Layout Options</h2>
+        <EditRadioString @bind-Value="_model.HorizontalLayout"
+                        Label="Horizontal Layout"
+                        Options="@_basicOptions"
+                        IsHorizontal="true"
+                        Field="@(() => _model.HorizontalLayout)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>With Other Option</h2>
+        <EditRadioString @bind-Value="_model.WithOther"
+                        Label="Including Other Option"
+                        Options="@_basicOptions"
+                        HasOther="true"
+                        Field="@(() => _model.WithOther)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Styling</h2>
+        <EditRadioString @bind-Value="_model.CustomClass"
+                        Label="With Custom CSS Class"
+                        Options="@_basicOptions"
+                        ContainerClass="my-custom-container"
+                        CssClass="my-custom-radio"
+                        LabelClass="my-custom-label"
+                        Field="@(() => _model.CustomClass)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditRadioString @bind-Value="_model.DisabledField"
+                        Label="Disabled State"
+                        Options="@_basicOptions"
+                        IsDisabled="true"
+                        Field="@(() => _model.DisabledField)" />
+
+        <EditRadioString @bind-Value="_model.RequiredField"
+                        Label="Required Field"
+                        Options="@_basicOptions"
+                        Field="@(() => _model.RequiredField)" />
+    </div>
+</EditForm>
+
+@code {
+    private DemoEditRadioStringModel _model = new();
+    private List<string> _basicOptions = new() { "Red", "Green", "Blue", "Yellow" };
+
+    public class DemoEditRadioStringModel
+    {
+        public string BasicOption { get; set; } = "";
+        public string HorizontalLayout { get; set; } = "";
+        public string WithOther { get; set; } = "";
+        public string CustomClass { get; set; } = "";
+
+        [Required(ErrorMessage = "Please select an option")]
+        public string RequiredField { get; set; } = "";
+        
+        public string DisabledField { get; set; } = "";
+    }
+}
+
+<style>
+    .demo-section {
+        margin: 1rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 300px;
+    }
+
+    .my-custom-container {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .my-custom-radio {
+        accent-color: #0066cc;
+    }
+
+    .my-custom-label {
+        font-weight: bold;
+        color: #0066cc;
+    }
+</style>

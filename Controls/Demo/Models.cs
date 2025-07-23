@@ -19,7 +19,7 @@ internal class DemoModelForEditControls
     public List<string> EditCheckedStringList { get; set; } = [];
 }
 
-internal enum Animal
+public enum Animal
 {
     Cat = 0,
 
@@ -33,7 +33,7 @@ internal enum Animal
     Fish = 3
 }
 
-internal class Plant
+public class Plant
 {
     public string Name { get; set; } = "";
     public int Id { get; set; }

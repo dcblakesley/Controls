@@ -1,0 +1,87 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditDate Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <h2>Basic Usage</h2>
+        <EditDate 
+                 @bind-Value="_model.BasicDate"
+                 Field="@(() => _model.BasicDate)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Date Types</h2>
+        <EditDate 
+                 @bind-Value="_model.DateWithTime"
+                 Type="InputDateType.DateTimeLocal"
+                 Field="@(() => _model.DateWithTime)" />
+
+        <EditDate 
+                 @bind-Value="_model.TimeOnly"
+                 Type="InputDateType.Time"
+                 Field="@(() => _model.TimeOnly)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Styling</h2>
+        <EditDate
+                 @bind-Value="_model.CustomClass"
+                 ContainerClass="my-custom-container"
+                 CssClass="my-custom-date"
+                 Field="@(() => _model.CustomClass)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditDate
+                 @bind-Value="_model.DisabledField"
+                 IsDisabled="true"
+                 Field="@(() => _model.DisabledField)" />
+
+        <EditDate
+                 @bind-Value="_model.RequiredField"
+                 Field="@(() => _model.RequiredField)" />
+    </div>
+</EditForm>
+
+@code {
+    private DemoEditDateModel _model = new();
+
+    public class DemoEditDateModel
+    {
+        public DateTime BasicDate { get; set; } = DateTime.Today;
+        public DateTime DateWithTime { get; set; } = DateTime.Now;
+        public DateTime TimeOnly { get; set; } = DateTime.Now;
+        public DateTime CustomClass { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "Please select a date")]
+        public DateTime RequiredField { get; set; } = DateTime.Today;
+        
+        public DateTime DisabledField { get; set; } = DateTime.Today;
+    }
+}
+
+<style>
+    .demo-section {
+        margin: 1rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-width: 300px;
+    }
+
+    .my-custom-container {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+    }
+
+    .my-custom-date {
+        border: 2px solid #0066cc;
+        border-radius: 4px;
+        padding: 4px;
+    }
+</style>

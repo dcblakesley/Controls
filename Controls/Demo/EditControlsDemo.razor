@@ -2,33 +2,31 @@
 @using Microsoft.AspNetCore.Components.Forms
 
 <style>
-    .myWidth {
-        width: 80px;
-    }
-    /*     fieldset {
-            boallControlsMder: 2px solid white;
-        } */
-    .active {
-        background: green;
-    }
-    .inactive {
-        background: grey;
-    }
+    .myWidth { width: 80px; }
+    .active { background: green; }
+    .inactive { background: grey; }
+    .demo-section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; }
+    .edit-radio-fieldset { margin-top: 1rem; }
+    .edit-radio-fieldset { margin-top: 1rem; }
+    .edit-checkedList-fieldset { margin-top: 1rem; }
 </style>
 
 
-<CascadingValue Value=@FormOptions>
-    
 
-    <div class="flex-row">
+
+<div class="flex-row">
     <!-- Sidebar -->
     <div class="flex-column" style="gap: 4px">
-        <button @onclick=@(() => _currentView = CurrentView.AllControls) >All Controls</button>
-        <button @onclick=@(() => _currentView = CurrentView.EditBoolNullRadio)>EditBoolNullRadio</button>
+        @foreach (CurrentView view in Enum.GetValues<CurrentView>())
+        {
+            <button class=@(_currentView == view ? "active" : "inactive") @onclick=@(() => _currentView = view)>
+                @(view)
+            </button>
+        }
     </div>
 
     <div class="flex-column">
-        
+
         <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="editForm">
             <ObjectGraphDataAnnotationsValidator />
 
@@ -37,24 +35,63 @@
                 <legend class="h2">Actions and FormOptions</legend>
 
                 <div class="flex-row">
-                    <button class=@(FormOptions.ShowBoundValues ? "active" : "inactive")  @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
+                    <button class=@(FormOptions.ShowBoundValues ? "active" : "inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
                     <button class=@(FormOptions.IsEditMode ? "active" : "inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
-                    <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding)/>
+                    <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
                 </div>
             </fieldset>
         </EditForm>
 
-    <!-- All Controls -->
-    @switch (_currentView)
-    {
-        case CurrentView.AllControls:
-            <DemoAllControls />
-            break;
-        case CurrentView.EditBoolNullRadio:
-            <DemoEditBoolNullRadio />
-            break;
-        }
+        <CascadingValue Value=@FormOptions>
+            <!-- All Controls -->
+            @switch (_currentView)
+            {
+                case CurrentView.AllControls:
+                    <DemoAllControls />
+                    break;
+                case CurrentView.BoolNullRadio:
+                    <DemoEditBoolNullRadio />
+                    break;
+                case CurrentView.Bool:
+                    <DemoEditBool />
+                    break;
+                case CurrentView.CheckedStringList:
+                    <DemoEditCheckedStringList />
+                    break;
+                case CurrentView.Date:
+                    <DemoEditDate />
+                    break;
+                case CurrentView.Number:
+                    <DemoEditNumber />
+                    break;
+                case CurrentView.Radio:
+                    <DemoEditRadio />
+                    break;
+                case CurrentView.RadioEnum:
+                    <DemoEditRadioEnum />
+                    break;
+                case CurrentView.RadioString:
+                    <DemoEditRadioString />
+                    break;
+                case CurrentView.Select:
+                    <DemoEditSelect />
+                    break;
+                case CurrentView.SelectEnum:
+                    <DemoEditSelectEnum />
+                    break;
+                case CurrentView.SelectString:
+                    <DemoEditSelectString />
+                    break;
+                case CurrentView.String:
+                    <DemoEditString />
+                    break;
+                case CurrentView.TextArea:
+                    <DemoEditTextArea />
+                    break;
+                default:
+                    <p>Select a control demo from the sidebar</p>
+                    break;
+            }
+        </CascadingValue>
     </div>
 </div>
-
-</CascadingValue>

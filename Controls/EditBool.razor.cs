@@ -38,6 +38,8 @@ public partial class EditBool : IEditControl
     }
 
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+
     bool ShouldShowComponent()
     {
         if (IsHidden)

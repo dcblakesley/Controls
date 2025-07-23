@@ -5,7 +5,8 @@
 {
     <div class="edit-control-wrapper @ContainerClass">
 
-
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
+           
         <label class="edit-label edit-checkbox-label" for=@_id>
             <input type="checkbox"
                    @bind-value=@CurrentValue
@@ -14,7 +15,7 @@
                    id=@_id
                    data-test-id=@_id
                    checked=@CurrentValue
-                   disabled=@IsDisabled
+                   disabled=@(!ShowEditor || IsDisabled)
                    aria-required=@_isRequired
                    aria-describedby=@($"desc-{_id}")
                    aria-errormessage=@($"error-msg-{_id}")/>
