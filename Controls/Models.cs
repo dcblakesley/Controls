@@ -1,23 +1,24 @@
 ﻿namespace Controls;
 
-internal class Person
+public class Person
 {
     // Controls
-    [Required, DisplayName("EditString")] internal string? EditString { get; set; } = "";
-    [DisplayName("EditTextArea")] internal string EditTextArea { get; set; } = "";
-    [DisplayName("EditNumber")] internal double? EditNumber { get; set; } = 0;
-    [DisplayName("EditBool")] internal bool EditBool { get; set; }
+    [Required, DisplayName("EditString")] public string? EditString { get; set; } = "";
+    [DisplayName("EditTextArea")] public string EditTextArea { get; set; } = "";
+    [DisplayName("EditNumber")] public double? EditNumber { get; set; } = 0;
+    [DisplayName("EditBool")] public bool EditBool { get; set; }
+    [Required, DisplayName("EditNullableBool")] public bool? EditNullableBool { get; set; }
     [DisplayName("EditDate")] public DateTime EditDate { get; set; }
-    [DisplayName("EditSelectEnum")] internal AnimalType EditSelectEnum { get; set; }
-    [DisplayName("EditSelect")] internal int EditSelect { get; set; }
-    [Required, DisplayName("EditSelectString")] internal string? EditSelectString { get; set; } = "";
-    [DisplayName("EditRadioString"), Description("Hello, does this work?")] internal string EditRadioString { get; set; } = "";
-    [Required, DisplayName("EditRadioEnum")] internal AnimalType? EditRadioEnum { get; set; } = AnimalType.Cat;
+    [DisplayName("EditSelectEnum")] public AnimalType EditSelectEnum { get; set; }
+    [DisplayName("EditSelect")] public int EditSelect { get; set; }
+    [Required, DisplayName("EditSelectString")] public string? EditSelectString { get; set; } = "";
+    [DisplayName("EditRadioString"), Description("Hello, does this work?")] public string EditRadioString { get; set; } = "";
+    [Required, DisplayName("EditRadioEnum")] public AnimalType? EditRadioEnum { get; set; } = AnimalType.Cat;
     [DisplayName("EditCheckedStringList"), Description("I'm a little description, short and stout")]
-    internal List<string> EditCheckedStringList { get; set; } = [];
+    public List<string> EditCheckedStringList { get; set; } = [];
 }
 
-internal enum AnimalType
+public enum AnimalType
 {
     Cat = 0,
 
@@ -30,19 +31,19 @@ internal enum AnimalType
     [EnumDisplayName("Gold Fish")]
     Fish = 3
 }
-internal class Animal
+public class Animal
 {
     [Required]
-    internal string Name { get; set; } = "";
+    public string Name { get; set; } = "";
 }
 
-internal class Plant
+public class Plant
 {
-    internal string Name { get; set; } = "";
-    internal int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int Id { get; set; }
     public override string ToString() => Name;
 
-    internal static List<Plant> GetTestData()
+    public static List<Plant> GetTestData()
     {
         return
         [

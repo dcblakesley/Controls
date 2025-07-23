@@ -20,5 +20,8 @@ Changes in 1.0.12.x
    - IsHidden to hide controls withough wrapping them in an if statement
    - Hiding allows hiding controls based on their own property for [Never, WhenReadonlyAndNull, WhenReadonly, etc.]
      -- This also exists within FormOptions, so the hiding can be controlled over a large group of controls.
-
-
+ * Control Changes
+   - EditRadio and EditCheckedList
+     -- Change parameter from HasHorizontalButtons -> IsHorizontal
+ * New Controls
+   - EditRadioBool

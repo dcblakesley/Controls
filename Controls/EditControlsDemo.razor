@@ -13,8 +13,14 @@
 
 
 <EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
+
+</EditForm>
+
+<EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
+    <ObjectGraphDataAnnotationsValidator/>
+
+    <!-- Actions -->
     <fieldset style="padding-bottom: 2rem">
-        <ObjectGraphDataAnnotationsValidator/> 
         <legend class="h2">Actions and FormOptions</legend>
 
         <div class="flex-row">
@@ -22,20 +28,18 @@
             <button class="b-danger" @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
             <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
             <button class="btn-info" @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Toggle Horizontal</button>
+            <button class="btn-info" @onclick=ForceValidation>Validate</button>
         </div>
     </fieldset>
-</EditForm>
 
-<EditForm Model=_model FormName="MyAmazingFormName" @ref="editForm">
-    <ObjectGraphDataAnnotationsValidator/>
-    
+    <!-- Controls -->
     <fieldset>
         <CascadingValue Value=@FormOptions>
             <legend class="h2">Controls</legend>
 
             <div class="flex-row flex-wrap">
                 <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
-
+                <EditNullableBool @bind-Value=_model.EditNullableBool Field=@(() => _model.EditNullableBool) />
                 <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) DateFormat="MM-dd-yyyy hh:mm tt" />
                 <EditDisplay Label="EditDisplay" Text="My text" IsHidden=false/>
                 <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber)/>

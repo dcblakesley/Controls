@@ -1,0 +1,71 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inherits InputBase<bool?>
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <fieldset class="edit-radio-fieldset">
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend="true"/>
+
+            @if (IsEditMode)
+            {
+                <div class=@(IsHorizontal
+                            ? "edit-radio-buttons-container-horizontal"
+                            : "edit-radio-buttons-container-vertical")>
+                    <label class="edit-radio-label">
+                        <input type="radio"
+                               name=@_id
+                               value="false"
+                               checked="@(CurrentValue == false)"
+                               @onchange="@(() => OnValueChanged(false))"
+                               id=@($"rb-{_id}-false")
+                               data-test-id=@($"rb-{_id}-false")
+                               class="edit-radio-input"
+                               disabled=@IsDisabled />
+                        @FalseText
+                    </label>
+                    <label class="edit-radio-label">
+                        <input type="radio"
+                               name=@_id
+                               value="true"
+                               checked="@(CurrentValue == true)"
+                               @onchange="@(() => OnValueChanged(true))"
+                               id=@($"rb-{_id}-true")
+                               data-test-id=@($"rb-{_id}-true")
+                               class="edit-radio-input"
+                               disabled=@IsDisabled />
+                        @TrueText
+                    </label>
+                    @if (ShowNullOption)
+                    {
+                        <label class="edit-radio-label">
+                            <input type="radio"
+                                   name=@_id
+                                   value=""
+                                   checked="@(!CurrentValue.HasValue)"
+                                   @onchange="@(() => OnValueChanged(null))"
+                                   id=@($"rb-{_id}-none")
+                                   data-test-id=@($"rb-{_id}-none")
+                                   class="edit-radio-input"
+                                   disabled=@IsDisabled/>
+                            @NullText
+                        </label>
+                    }
+                </div>
+            }
+            else
+            {
+                <ReadOnlyValue Id=@_id 
+                              IsRequired=@_isRequired 
+                              CssClass=@CssClass 
+                              Text=@GetDisplayText(CurrentValue) />
+            }
+
+            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+            @if (FormOptions?.ShowBoundValues == true)
+            {
+                <div class="bound-value">@CurrentValueAsString</div>
+            }
+        </fieldset>
+    </div>
+}

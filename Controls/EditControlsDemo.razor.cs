@@ -6,7 +6,7 @@ public partial class EditControlsDemo
     EditForm editForm; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
-        new() { IsEditMode = true, Hiding = HidingMode.WhenReadOnlyAndNullOrDefault };
+        new() { IsEditMode = true, Hiding = HidingMode.None };
 
     readonly List<string> _colorOptions =
         ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
@@ -20,4 +20,9 @@ public partial class EditControlsDemo
     List<Plant> _plants = Plant.GetTestData();
     bool _isHorizontal = false;
     public HidingMode HidingMode { get; set; }
+
+    void ForceValidation()
+    { 
+        editForm!.EditContext!.Validate(); }
+
 }
