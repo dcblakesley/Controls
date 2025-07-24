@@ -77,9 +77,9 @@
 </EditForm>
 
 @code {
-    private DemoEditSelectModel _model = new();
-    private List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Purple" };
-    private List<Plant> _plants = Plant.GetTestData();
+    private readonly DemoEditSelectModel _model = new();
+    private readonly List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Purple" };
+    private readonly List<Plant> _plants = Plant.GetTestData();
 
     public class DemoEditSelectModel
     {

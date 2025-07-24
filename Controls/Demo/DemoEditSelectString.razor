@@ -2,7 +2,7 @@
 
 <h1>EditSelectString Demo</h1>
 
-<EditForm Model="@_model" class="flex-row flex-wrap">
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
@@ -52,9 +52,13 @@
 </EditForm>
 
 @code {
-    private DemoEditSelectStringModel _model = new();
-    private List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Purple" };
-    private List<string> _htmlOptions = new() 
+
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+
+    private readonly DemoEditSelectStringModel _model = new();
+    private readonly List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Purple" };
+    private readonly List<string> _htmlOptions = new() 
     { 
         "<span style='color: red'>Red Text</span>",
         "<span style='color: green'>Green Text</span>",

@@ -10,10 +10,10 @@
         <legend class="h2">Controls</legend>
 
         <div class="flex-row flex-wrap">
-            <EditBool          @bind-Value=_model.EditBool          Field=@(() => _model.EditBool)/>
+            <EditBool          @bind-Value=_model.EditBool  Field=@(() => _model.EditBool)/>
             <EditBoolNullRadio @bind-Value=_model.EditBoolNullRadio Field=@(() => _model.EditBoolNullRadio)/>
             <EditDate          @bind-Value=_model.EditDate          Field=@(() => _model.EditDate)         DateFormat="MM-dd-yyyy hh:mm tt"/>
-            <EditDisplay Label="EditDisplay" Text="My text" IsHidden=false/>
+            <EditDisplay Label="EditDisplay" Text="My text" />
             <EditNumber        @bind-Value=_model.EditNumber        Field=@(() => _model.EditNumber)/>
             <EditString        @bind-Value=_model.EditString        Field=@(() => _model.EditString!)      Placeholder="Hello world!"/>
             <EditTextArea      @bind-Value=_model.EditTextArea      Field=@(() => _model.EditTextArea)/>

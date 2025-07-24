@@ -25,3 +25,6 @@ Changes in 1.0.12.x
      -- Change parameter from HasHorizontalButtons -> IsHorizontal
  * New Controls
    - EditRadioBool
+
+
+   EditDisplay isn't working.

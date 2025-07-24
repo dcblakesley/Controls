@@ -17,7 +17,7 @@ public partial class DemoAllControls
         "Cthulhu", "Hastur", "Dagon", "Ithaqua", "Tsathoggua"
     ];
 
-    List<Plant> _plants = Plant.GetTestData();
+    readonly List<Plant> _plants = Plant.GetTestData();
     bool _isHorizontal = false;
     public HidingMode HidingMode { get; set; }
 
