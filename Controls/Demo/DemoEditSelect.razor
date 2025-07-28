@@ -2,15 +2,24 @@
 
 <h1>EditSelect Demo</h1>
 
-<EditForm Model="@_model" class="flex-row flex-wrap">
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
         <h2>Basic Usage</h2>
-        <EditSelect TValue="int" 
-                   @bind-Value="_model.BasicSelect"
-                   Label="Basic Example"
-                   Field="@(() => _model.BasicSelect)">
+        <EditSelect @bind-Value="_model.BasicSelect"
+                    Field="@(() => _model.BasicSelect)">
+            <option value="">Select a number...</option>
+            @foreach (var number in Enumerable.Range(1, 5))
+            {
+                <option value="@number">Number @number</option>
+            }
+        </EditSelect>      
+        
+        <h2>Read-only</h2>
+        <EditSelect @bind-Value="_model.BasicSelect"
+                    Field="@(() => _model.BasicSelect)" 
+                    IsEditMode=false>
             <option value="">Select a number...</option>
             @foreach (var number in Enumerable.Range(1, 5))
             {
@@ -21,9 +30,7 @@
 
     <div class="demo-section">
         <h2>With Objects</h2>
-        <EditSelect TValue="Plant" 
-                   @bind-Value="_model.PlantSelect"
-                   Label="Select a Plant"
+        <EditSelect @bind-Value="_model.PlantSelect"
                    Field="@(() => _model.PlantSelect)">
             <option value="">Choose a plant...</option>
             @foreach (var plant in _plants)
@@ -35,12 +42,10 @@
 
     <div class="demo-section">
         <h2>Custom Styling</h2>
-        <EditSelect TValue="string"
-                   @bind-Value="_model.CustomClass"
-                   Label="With Custom CSS Class"
-                   ContainerClass="my-custom-container"
-                   CssClass="my-custom-select"
-                   Field="@(() => _model.CustomClass)">
+        <EditSelect @bind-Value="_model.CustomClass" 
+                    Field="@(() => _model.CustomClass)" 
+                    ContainerClass="my-custom-container" 
+                    class="my-custom-select">
             <option value="">Select a color...</option>
             @foreach (var color in _colors)
             {
@@ -51,11 +56,9 @@
 
     <div class="demo-section">
         <h2>State Options</h2>
-        <EditSelect TValue="string"
-                   @bind-Value="_model.DisabledField"
-                   Label="Disabled State"
-                   IsDisabled="true"
-                   Field="@(() => _model.DisabledField)">
+        <EditSelect @bind-Value="_model.DisabledField"
+                    Field="@(() => _model.DisabledField)"
+                    IsDisabled="true">
             <option value="">Select a color...</option>
             @foreach (var color in _colors)
             {
@@ -63,10 +66,8 @@
             }
         </EditSelect>
 
-        <EditSelect TValue="string"
-                   @bind-Value="_model.RequiredField"
-                   Label="Required Field"
-                   Field="@(() => _model.RequiredField)">
+        <EditSelect @bind-Value="_model.RequiredField" 
+                    Field="@(() => _model.RequiredField)">
             <option value="">Select a color...</option>
             @foreach (var color in _colors)
             {
@@ -80,6 +81,10 @@
     private readonly DemoEditSelectModel _model = new();
     private readonly List<string> _colors = new() { "Red", "Green", "Blue", "Yellow", "Purple" };
     private readonly List<Plant> _plants = Plant.GetTestData();
+
+
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
 
     public class DemoEditSelectModel
     {
@@ -95,22 +100,15 @@
 }
 
 <style>
-    .demo-section {
-        margin: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 300px;
-    }
-
     .my-custom-container {
-        background-color: #f5f5f5;
+        background-color: orange;
         padding: 10px;
         border-radius: 4px;
     }
 
     .my-custom-select {
-        border: 2px solid #0066cc;
+        border: 2px solid black;
+
         border-radius: 4px;
         padding: 4px;
         min-width: 200px;

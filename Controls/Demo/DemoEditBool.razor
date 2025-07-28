@@ -2,7 +2,7 @@
 
 <h1>EditBool Demo</h1>
 
-<EditForm Model="@_model" class="flex-row flex-wrap">
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
@@ -16,6 +16,11 @@
     </div>
 
     <div class="demo-section">
+        <style>
+            .my-custom-container { background-color: #f5f5f5; padding: 10px; border-radius: 4px; }
+            .my-custom-checkbox { transform: scale(1.2); }
+        </style>
+
         <h2>Custom Styling</h2>
         <EditBool @bind-Value="_model.CustomClass"
                  ContainerClass="my-custom-container"
@@ -35,6 +40,8 @@
 @code {
     private readonly DemoEditBoolModel _model = new();
 
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
     public class DemoEditBoolModel
     {
         public bool BasicCheckbox { get; set; }
@@ -49,23 +56,3 @@
         public bool ShowBoundValue { get; set; }
     }
 }
-
-<style>
-    .demo-section {
-        margin: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 300px;
-    }
-
-    .my-custom-container {
-        background-color: #f5f5f5;
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .my-custom-checkbox {
-        transform: scale(1.2);
-    }
-</style>

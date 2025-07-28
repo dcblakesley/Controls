@@ -25,8 +25,8 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     [Parameter] public bool Sort { get; set; }
 
     /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
-    [Parameter] public required Type Type { get; set; }
-    
+    [Parameter] public required Type Type { get; set; } = typeof(TEnum);
+
     //  Fields
     string _isRequired = "false";
     string _id = string.Empty;

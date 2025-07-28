@@ -74,6 +74,12 @@ public partial class EditString : IEditControl
             return CurrentValue;
         }
 
+        if(MaskText.Length == 1)
+        {
+            // If MaskText is a single character, return it as a mask for the entire value
+            return new string(MaskText[0], CurrentValue.Length);
+        }
+
         return MaskText.Length > CurrentValue.Length 
             ? MaskText 
             : MaskText + CurrentValue[MaskText.Length..];

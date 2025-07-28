@@ -3,27 +3,62 @@
 <h1>EditString Demo</h1>
 
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref="_form">
-    <ObjectGraphDataAnnotationsValidator />
+    <ObjectGraphDataAnnotationsValidator/>
 
     <div class="demo-section">
-        <h2>Basic Usage</h2>
-        <EditString @bind-Value="_model.BasicString"
-                   Field="@(() => _model.BasicString)" />
+        <EditString @bind-Value="_model.BasicString" Field="@(() => _model.BasicString)"/>
+
+        <h2>Read-only</h2>
+        <EditString @bind-Value="_model.BasicString" Field="@(() => _model.BasicString)" IsEditMode=false/>
     </div>
 
     <div class="demo-section">
         <h2>With Placeholder</h2>
         <EditString @bind-Value="_model.WithPlaceholder"
-                   Placeholder="Enter some text..."
-                   Field="@(() => _model.WithPlaceholder)" />
+                    Placeholder="Enter some text..."
+                    Field="@(() => _model.WithPlaceholder)"/>
     </div>
 
     <div class="demo-section">
         <h2>Masked Input</h2>
         <p>Effects the read-only view</p>
         <EditString @bind-Value="_model.MaskedText"
-                   MaskText="*"
-                   Field="@(() => _model.MaskedText)" />
+                    MaskText="*"
+                    Field="@(() => _model.MaskedText)"/>
+
+        <EditString Description="MaskText = *"
+                    @bind-Value="_model.MaskedText"
+                    IsEditMode="false"
+                    MaskText="*"
+                    Field="@(() => _model.MaskedText)"/>
+
+        <EditString Description="MaskText = ***-**-"
+                    @bind-Value="_model.MaskedText"
+                    IsEditMode="false"
+                    MaskText="***-**-"
+                    Field="@(() => _model.MaskedText)"/>
+    </div>
+
+    <div class="demo-section">
+        <style>
+            .my-custom-container { background-color: purple; padding: 10px; border-radius: 4px; }
+            .my-custom-input { border: 2px solid #0066cc; color: green; border-radius: 4px; padding: 4px; width: 100%; }
+        </style>
+        <h2>Custom Styling</h2>
+        <EditString @bind-Value="_model.CustomClass"
+                    ContainerClass="my-custom-container"
+                    class="my-custom-input"
+                    Field="@(() => _model.CustomClass)"/>
+    </div>
+
+    <div class="demo-section">
+        <h2>State Options</h2>
+        <EditString @bind-Value="_model.DisabledField"
+                    IsDisabled="true"
+                    Field="@(() => _model.DisabledField)"/>
+
+        <EditString @bind-Value="_model.RequiredField"
+                    Field="@(() => _model.RequiredField)"/>
     </div>
 
     <div class="demo-section">
@@ -32,51 +67,32 @@
         <EditString @bind-Value="_model.UrlField"
                     Url="https://example.com"
                     UrlTarget="_blank"
+                    Field="@(() => _model.UrlField)"/>
+        <EditString @bind-Value="_model.UrlField"
+                    Url="https://example.com"
+                    UrlTarget="_blank"
                     IsEditMode=false
-                    Field="@(() => _model.UrlField)" />
-    </div>
-
-    <div class="demo-section">
-        <style>
-            .my-custom-container { background-color: red; padding: 10px; border-radius: 4px; }
-            .my-custom-input { border: 2px solid #0066cc; color: green; border-radius: 4px; padding: 4px; width: 100%; }
-        </style>
-        <h2>Custom Styling</h2>
-        <EditString @bind-Value="_model.CustomClass"
-                   ContainerClass="my-custom-container"
-                   class="my-custom-input"
-                   Field="@(() => _model.CustomClass)" />
-    </div>
-
-    <div class="demo-section">
-        <h2>State Options</h2>
-        <EditString @bind-Value="_model.DisabledField"
-                   IsDisabled="true"
-                   Field="@(() => _model.DisabledField)" />
-                    
-        <EditString @bind-Value="_model.RequiredField"
-                   Field="@(() => _model.RequiredField)" />
+                    Field="@(() => _model.UrlField)"/>
     </div>
 </EditForm>
 
 @code {
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
-    
+
     readonly DemoEditStringModel _model = new();
 
     public class DemoEditStringModel
     {
         public string BasicString { get; set; } = "";
         public string WithPlaceholder { get; set; } = "";
-        public string MaskedText { get; set; } = "";
+        public string MaskedText { get; set; } = "123-45-6789";
         public string UrlField { get; set; } = "Friendly name for a website";
         public string CustomClass { get; set; } = "";
 
-        [Required]
-        public string RequiredField { get; set; } = "";
-        
+        [Required] public string RequiredField { get; set; } = "";
+
         public string DisabledField { get; set; } = "";
     }
-}
 
+}

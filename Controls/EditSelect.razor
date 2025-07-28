@@ -5,13 +5,14 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label Description=@Description/>
 
         @if (ShowEditor)
         {
             <InputSelect
                 @bind-Value=@CurrentValue
-                class=@CssClass
+                class=@($"edit-select-select {CssClass}")
+                disabled=@IsDisabled
                 id=@_id
                 data-test-id=@_id
                 aria-required=@_isRequired

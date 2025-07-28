@@ -2,7 +2,7 @@
 
 <h1>EditRadioString Demo</h1>
 
-<EditForm Model="@_model" class="flex-row flex-wrap">
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
@@ -60,6 +60,9 @@
 @code {
     private readonly DemoEditRadioStringModel _model = new();
     private readonly List<string> _basicOptions = new() { "Red", "Green", "Blue", "Yellow" };
+
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
 
     public class DemoEditRadioStringModel
     {

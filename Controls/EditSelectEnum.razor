@@ -5,13 +5,14 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label/>
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label Description=@Description/>
 
         @if (ShowEditor)
         {
             <select @bind:get=Value
                     @bind:set=SetAsync
                     @bind:event="onchange"
+                    disabled=@IsDisabled
                     class=@($"edit-select-select {CssClass}")
                     id=@_id
                     data-test-id=@_id
@@ -22,7 +23,7 @@
                 @foreach (var o in GetOptions())
                 {
                     <option title=@_attributes.ToolTip()
-                            class=@CssClass
+                            class=@($"edit-select-option {CssClass}")
                             value=@o
                             id=@($"{_id}-option-{o}")
                             data-test-id=@($"{_id}-option-{o}")>

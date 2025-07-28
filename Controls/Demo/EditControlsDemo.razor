@@ -5,7 +5,7 @@
     .myWidth { width: 80px; }
     .active { background: green; }
     .inactive { background: grey; }
-    .demo-section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; }
+    .demo-section { margin-bottom: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; display: flex; flex-direction: column; gap: 1rem }
     .edit-radio-fieldset { margin-top: 1rem; }
     .edit-radio-fieldset { margin-top: 1rem; }
     .edit-checkedList-fieldset { margin-top: 1rem; }
@@ -17,7 +17,7 @@
 <div class="flex-row">
     <!-- Sidebar -->
     <div class="flex-column" style="gap: 4px">
-        @foreach (CurrentView view in Enum.GetValues<CurrentView>())
+        @foreach (var view in Enum.GetValues<CurrentView>())
         {
             <button class=@(_currentView == view ? "active" : "inactive") @onclick=@(() => _currentView = view)>
                 @(view)
@@ -31,7 +31,7 @@
             <ObjectGraphDataAnnotationsValidator />
 
             <!-- Actions -->
-            <fieldset style="padding-bottom: 2rem">
+            <fieldset style="padding-bottom: 1rem">
                 <legend class="h2">Actions and FormOptions</legend>
 
                 <div class="flex-row">

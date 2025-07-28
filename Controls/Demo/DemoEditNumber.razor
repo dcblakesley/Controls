@@ -2,7 +2,7 @@
 
 <h1>EditNumber Demo</h1>
 
-<EditForm Model="@_model" class="flex-row flex-wrap">
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
@@ -31,6 +31,8 @@
 @code {
     private readonly DemoEditNumberModel _model = new();
 
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
     public class DemoEditNumberModel
     {
         public int BasicNumber { get; set; }

@@ -186,6 +186,8 @@ input[type="radio"]:hover {
     --form-text-color: #595959;
     --margin-medium: 16px;
     --row-gap-lg: 32px;
+    --row-gap-md: 16px;
+    --row-gap-sm: 8px;
 }
 
 /********************************************************************* Layout ***********************************************************************************/
@@ -248,7 +250,7 @@ h3, .h3 { height: 22px; font-weight: 700; font-size: 14px; line-height: 22px; co
 .flex-row { display: flex; flex-direction: row; column-gap: 16px;}
 .flow-row-right { display: flex; align-content: right; padding-top: 10px; }
 .flex-row-center { display: flex; flex: 1; flex-direction: row; justify-content: center; text-align: center; }
-.flex-column { display: flex; flex-direction: column; row-gap: var(--row-gap-lg); }
+.flex-column { display: flex; flex-direction: column; row-gap: var(--row-gap-md); }
 .flex-column-center { display: flex; flex: 1; flex-direction: column; justify-content: center; text-align: center; }
 .full-height { height: 100% }
 .full-width { width: 100% }

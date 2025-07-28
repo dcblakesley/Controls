@@ -2,6 +2,9 @@ namespace Controls.Demo;
 
 public partial class DemoEditBoolNullRadio
 {
+
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
     class DemoModel
     {
         public bool? BasicOption { get; set; }

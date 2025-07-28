@@ -2,7 +2,7 @@
 
 <h1>EditCheckedStringList Demo</h1>
 
-<EditForm Model="@_model" class="flex-row flex-wrap">
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
@@ -54,6 +54,8 @@
     private readonly DemoEditCheckedStringListModel _model = new();
     private readonly List<string> _basicItems = new() { "Apple", "Banana", "Orange", "Grape", "Mango" };
 
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
     public class DemoEditCheckedStringListModel
     {
         public List<string> BasicList { get; set; } = [];

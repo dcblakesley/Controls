@@ -2,7 +2,7 @@
 
 public partial class EditControlsDemo
 {
-    CurrentView _currentView = CurrentView.AllControls;
+    CurrentView _currentView = CurrentView.SelectEnum;
 
     readonly DemoModelForEditControls _allControlsModel = new();
     EditForm editForm; // Set by @ref during Render

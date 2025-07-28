@@ -2,79 +2,67 @@
 
 <h1>EditSelectEnum Demo</h1>
 
-<EditForm Model="@_model" class="flex-row flex-wrap">
-    <ObjectGraphDataAnnotationsValidator />
+<EditForm Model="@_model" class="flex-row flex-wrap" ref=_form>
+    <ObjectGraphDataAnnotationsValidator/>
 
     <div class="demo-section">
         <h2>Basic Usage</h2>
-        <EditSelectEnum TEnum="Animal"
-                       @bind-Value="_model.BasicEnum"
-                       Field="@(() => _model.BasicEnum)" />
+        <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" />
+
+        <h2>Read-only mode</h2>
+        <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" IsEditMode="false" />
     </div>
 
-    <div class="demo-section">
-        <h2>With Custom Type</h2>
-        <EditSelectEnum TEnum="HidingMode"
-                       @bind-Value="_model.HidingMode"
-                       Field="@(() => _model.HidingMode)" />
-    </div>
 
     <div class="demo-section">
+
+        <style>
+            .my-custom-container {
+                background-color: lime;
+                padding: 10px;
+                border-radius: 4px;
+            }
+            .my-custom-select {
+                border: 2px solid black;
+                color: green;
+                border-radius: 4px;
+                padding: 4px;
+                min-width: 200px;
+            }
+        </style>
+
         <h2>Custom Styling</h2>
-        <EditSelectEnum TEnum="Animal"
-                       @bind-Value="_model.CustomClass"
-                       ContainerClass="my-custom-container"
-                       CssClass="my-custom-select"
-                       Field="@(() => _model.CustomClass)" />
+        <EditSelectEnum @bind-Value="_model.CustomClass"
+                        Field="@(() => _model.CustomClass)"
+                        ContainerClass="my-custom-container"
+                        class="my-custom-select"/>
     </div>
 
     <div class="demo-section">
         <h2>State Options</h2>
-        <EditSelectEnum TEnum="Animal"
-                       @bind-Value="_model.DisabledField"
-                       IsDisabled="true"
-                       Field="@(() => _model.DisabledField)" />
+        <EditSelectEnum @bind-Value="_model.DisabledField"
+                        Field="@(() => _model.DisabledField)"
+                        IsDisabled="true"/>
 
-        <EditSelectEnum TEnum="Animal"
-                       @bind-Value="_model.RequiredField"
-                       Field="@(() => _model.RequiredField)" />
+        <EditSelectEnum @bind-Value="_model.RequiredField"
+                        Field="@(() => _model.RequiredField)"/>
     </div>
 </EditForm>
 
 @code {
+
+    EditForm _form;
+    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+
     private readonly DemoEditSelectEnumModel _model = new();
 
     public class DemoEditSelectEnumModel
     {
         public Animal BasicEnum { get; set; }
-        public HidingMode HidingMode { get; set; }
         public Animal CustomClass { get; set; }
 
-        [Required]
-        public Animal RequiredField { get; set; }
+        [Required] public Animal RequiredField { get; set; }
         public Animal DisabledField { get; set; }
     }
+
 }
-
-<style>
-    .demo-section {
-        margin: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 300px;
-    }
-
-    .my-custom-container {
-        background-color: #f5f5f5;
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .my-custom-select {
-        border: 2px solid #0066cc;
-        border-radius: 4px;
-        padding: 4px;
-        min-width: 200px;
-    }
-</style>

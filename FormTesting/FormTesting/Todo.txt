@@ -13,9 +13,11 @@
  - Look into when EditContext is used/necessary
  - new control bool? radio buttons
 
+Textbox Mask - style the icon to have a pointer
+
 
 Changes in 1.0.12.x
- * changed from utilizing bootstrap css classes such as form-group to using classes that start with edit- to avoid conflicts with other libraries
+ * moved away from utilizing bootstrap css classes such as form-group to using classes that start with edit- to avoid conflicts with other libraries
  * New Features
    - IsHidden to hide controls withough wrapping them in an if statement
    - Hiding allows hiding controls based on their own property for [Never, WhenReadonlyAndNull, WhenReadonly, etc.]
