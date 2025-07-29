@@ -25,10 +25,17 @@ public static class ValidationHelper
     static string MinLengthString(int? min) => $"Must contain at least {min} characters";
     static string MaxLengthString(int? max) => $"Cannot contain more than {max} characters";
     static string RangeString(int? min, int? max) => $"Must be between {min} and {max} characters";
+    static string MustBeANumberString() => "Must be a number";
+    static string MinValueString(string min) => $"Must be at least {min}";
+    static string MaxValueString(string max) => $"Cannot exceed {max}";
+
+    static string NumberRangeString(string min, string max) => $"Must be between {min} and {max}";
 
     /// <summary> Overrides the default validation messages. </summary>
-    public static string GetValidationMessage(string message, string fieldName, int? maxCharacters = null, int? minCharacters = null)
+    public static string GetValidationMessage(string message, string fieldName, int? max = null, int? min = null)
     {
+        Console.WriteLine(fieldName + " -> " + message);
+
         var output = message;
 
         // Required
@@ -36,25 +43,79 @@ public static class ValidationHelper
             return RequiredString();
 
         // StringLength with only max
-        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {maxCharacters}."))
-            return MaxLengthString(maxCharacters);
+        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
+            return MaxLengthString(max);
 
         // StringLength with Min
-        if (string.Equals(message, $"The field {fieldName} must be a string with a minimum length of {minCharacters} and a maximum length of {maxCharacters}."))
-            return RangeString(minCharacters, maxCharacters);
+        if (string.Equals(message, $"The field {fieldName} must be a string with a minimum length of {min} and a maximum length of {max}."))
+            return RangeString(min, max);
 
         // MinLength
-        if (string.Equals(message, $"The field {fieldName} must be a string or array type with a minimum length of '{minCharacters}'."))
-            return MinLengthString(minCharacters);
+        if (string.Equals(message, $"The field {fieldName} must be a string or array type with a minimum length of '{min}'."))
+            return MinLengthString(min);
 
         // MaxLength
-        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {maxCharacters}."))
-            return MaxLengthString(maxCharacters);
+        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
+            return MaxLengthString(max);
+        if (string.Equals(message, $"The field {fieldName} must be a string or array type with a maximum length of '{max}'."))
+            return MaxLengthString(max);
 
-        if (string.Equals(message, $"The field {fieldName} must be a string or array type with a maximum length of '{maxCharacters}'."))
+        // Replace numeric validation message 
+        if (string.Equals(message, $"The {fieldName} field must be a number."))
+            return MustBeANumberString();
+
+        // Numeric
+        if (min != null && max != null && string.Equals(message, $"The field {fieldName} must be a number between {min} and {max}."))
+            return RangeString(min, max);
+
+        Console.WriteLine("Processing numeric range validation...");
+        // Numeric range
+        // The field Min must be between -2 and 55.
+        if (message.Contains($"The field {fieldName} must be between"))
         {
-            return MaxLengthString(maxCharacters);
+            Console.WriteLine("Numeric range validation detected.");
+            // The message is in the format "The field Min must be between -2 and 55."
+            var parts = message.Split(' ');
+
+            Console.WriteLine("Extracting numeric range from message.");
+
+            // The field Min must be between -2 and 55.
+            var minValue = parts[6];
+            var maxValue = parts[8].TrimEnd('.');
+            var isMinimumForType = false;
+            var isMaximumForType = false;
+
+            // Determine if the min is the min for it's datatype, which can be any numeric type.
+            if (minValue == int.MinValue.ToString() || minValue == double.MinValue.ToString() || minValue == "-3.4028234663852886E+38" ||
+               minValue == long.MinValue.ToString() || minValue == short.MinValue.ToString() || minValue == byte.MinValue.ToString() ||
+               minValue == sbyte.MinValue.ToString() || minValue == uint.MinValue.ToString() || minValue == ulong.MinValue.ToString() ||
+               minValue == ushort.MinValue.ToString() || minValue == decimal.MinValue.ToString())
+            {
+                isMinimumForType = true;
+            }
+
+            // Determine if the max is the max for it's datatype, which can be any numeric type.
+            if (maxValue == int.MaxValue.ToString() || maxValue == double.MaxValue.ToString() || maxValue == float.MaxValue.ToString() ||
+               maxValue == long.MaxValue.ToString() || maxValue == short.MaxValue.ToString() || maxValue == byte.MaxValue.ToString() ||
+               maxValue == sbyte.MaxValue.ToString() || maxValue == uint.MaxValue.ToString() || maxValue == ulong.MaxValue.ToString() ||
+               maxValue == ushort.MaxValue.ToString() || maxValue == decimal.MaxValue.ToString())
+            {
+                isMaximumForType = true;
+            }
+
+            if (isMinimumForType && !isMaximumForType)
+                return MaxValueString(maxValue);
+            if (!isMinimumForType && isMaximumForType)
+                return MinValueString(minValue);
+            if (!isMinimumForType && !isMaximumForType)
+                return NumberRangeString(minValue, maxValue);
+
+            Console.WriteLine("No specific numeric range message found, returning original message.");
+
+
         }
+
+
 
         return output;
     }

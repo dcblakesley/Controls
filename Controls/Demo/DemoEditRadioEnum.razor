@@ -9,11 +9,15 @@
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)" />
 
+    </div>
+    <div class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)"
                        Label="Read-only"
                        IsEditMode="false" />
-    </div>   
+
+
+    </div>
     <div class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)" 
@@ -26,6 +30,8 @@
                        HasOtherOption="true"
                        @bind-OtherValue="_model.OtherValue" />
 
+    </div>
+    <div class="demo-section">
         <EditRadioEnum @bind-Value=@_model.Other
                        Field="@(() => _model.Other)"
                        HasOtherOption="true"
@@ -52,7 +58,6 @@
             }
         </style>
 
-        <h2>Custom Styling</h2>
         <EditRadioEnum @bind-Value="_model.CustomClass"
                        Field="@(() => _model.CustomClass)"
                        class="my-custom-radio"
@@ -61,17 +66,17 @@
     </div>
 
     <div class="demo-section">
-        <h2>State Options</h2>
         <EditRadioEnum @bind-Value="_model.DisabledField"
                        Field="@(() => _model.DisabledField)"
                        IsDisabled="true" />
 
+    </div>
+    <div class="demo-section">
         <EditRadioEnum @bind-Value="_model.RequiredField"
                        Field="@(() => _model.RequiredField)" />
     </div>
 
     <div class="demo-section">
-        <h2>Layout Options</h2>
         <EditRadioEnum @bind-Value="_model.HorizontalLayout"
                        Field="@(() => _model.HorizontalLayout)"
                        IsHorizontal="true" />

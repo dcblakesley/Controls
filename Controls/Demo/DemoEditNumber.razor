@@ -1,30 +1,30 @@
 @using Microsoft.AspNetCore.Components.Forms
 
-<h1>EditNumber Demo</h1>
-
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
-        <h2>Basic Usage</h2>
-        <EditNumber @bind-Value="_model.BasicNumber" Field="@(() => _model.BasicNumber)" />
+        <EditNumber @bind-Value="_model.Int" Field="@(() => _model.Int)" />
+        <EditNumber @bind-Value="_model.Decimal" Field="@(() => _model.Decimal)" />
+        <EditNumber @bind-Value="_model.Float" Field="@(() => _model.Float)" />
+        <EditNumber @bind-Value="_model.SteppedNumber" Step="5" Field="@(() => _model.SteppedNumber)" />
     </div>
 
     <div class="demo-section">
-        <h2>Number Types</h2>
-        <EditNumber @bind-Value="_model.DecimalNumber" Field="@(() => _model.DecimalNumber)" />
-                    <EditNumber @bind-Value="_model.SteppedNumber" Step="5" Field="@(() => _model.SteppedNumber)" />
+        <EditNumber @bind-Value="_model.Disabled" IsDisabled="true" Field="@(() => _model.Disabled)" />
+        <EditNumber @bind-Value="_model.CustomStyle" ContainerClass="my-custom-container" class="my-custom-number" Field="@(() => _model.CustomStyle)" />
+        <style>
+            .my-custom-container { background-color: darkgreen; padding: 10px; border-radius: 400px; }
+            .my-custom-number { border: 2px solid black; border-radius: 4px; padding: 4px; width: 120px; }
+        </style>
     </div>
 
+    
     <div class="demo-section">
-        <h2>Custom Styling</h2>
-        <EditNumber @bind-Value="_model.CustomClass" ContainerClass="my-custom-container" CssClass="my-custom-number" Field="@(() => _model.CustomClass)" />
-    </div>
-
-    <div class="demo-section">
-        <h2>State Options</h2>
-        <EditNumber @bind-Value="_model.DisabledField" IsDisabled="true" Field="@(() => _model.DisabledField)" />
-        <EditNumber @bind-Value="_model.RequiredField" Field="@(() => _model.RequiredField)" />
+        <EditNumber @bind-Value="_model.Required" Field="@(() => _model.Required)" />
+        <EditNumber @bind-Value="_model.MinValue" Field="@(() => _model.MinValue)" />
+        <EditNumber @bind-Value="_model.MaxValue" Field="@(() => _model.MaxValue)" />
+        <EditNumber @bind-Value="_model.RangeValue" Field="@(() => _model.RangeValue)" />
     </div>
 </EditForm>
 
@@ -35,37 +35,26 @@
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
     public class DemoEditNumberModel
     {
-        public int BasicNumber { get; set; }
-        public double DecimalNumber { get; set; }
+        public int Int { get; set; }
+        public double Decimal { get; set; } = 1.12345678901;
+        public float Float { get; set; } = 1.1234567f;
+
+        [DisplayName("Step by 5")]
         public int SteppedNumber { get; set; }
-        public int CustomClass { get; set; }
+        public int CustomStyle { get; set; }
 
         [Required]
-        public int RequiredField { get; set; }
+        public int? Required { get; set; }
+        public int Disabled { get; set; }
 
-        public int DisabledField { get; set; }
+        [Range(2, int.MaxValue)]
+        public int MinValue { get; set; }
+
+        [Range(float.MinValue, 3.14159)]
+        public float MaxValue { get; set; } = 6;
+
+        [Range(100.5, 110.85)]
+        public double RangeValue { get; set; } = 33;
     }
 }
 
-<style>
-    .demo-section {
-        margin: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 300px;
-    }
-
-    .my-custom-container {
-        background-color: #f5f5f5;
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .my-custom-number {
-        border: 2px solid #0066cc;
-        border-radius: 4px;
-        padding: 4px;
-        width: 120px;
-    }
-</style>

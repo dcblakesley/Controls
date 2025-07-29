@@ -3,65 +3,94 @@
 <h1>EditRadio Demo</h1>
 
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
-    <ObjectGraphDataAnnotationsValidator />
+    <ObjectGraphDataAnnotationsValidator/>
 
     <div class="demo-section">
-        <h2>Basic Usage</h2>
         <EditRadio @bind-Value="_model.BasicRadio" 
-                  Field="@(() => _model.BasicRadio)">
+                   Field="@(() => _model.BasicRadio)">
             @foreach (var option in _numberOptions)
             {
-                <InputRadio Value="@option" />
-                <label>@option</label>
+                <label>
+                    <InputRadio Value="@option"
+                                class="my-custom-radio"
+                                id=@($"rb-EditRadio-{option}")
+                                data-test-id=@($"rb-EditRadio-{option}") />
+                    @option
+                </label>
             }
         </EditRadio>
     </div>
-
+    
     <div class="demo-section">
-        <h2>Horizontal Layout</h2>
-        <EditRadio @bind-Value="_model.HorizontalLayout"
-                  IsHorizontal="true"
-                  Field="@(() => _model.HorizontalLayout)">
+        <EditRadio @bind-Value="_model.CustomStyling"
+                   Field="@(() => _model.CustomStyling)"
+                   ContainerClass="my-custom-container"
+                   class="my-custom-radio">
             @foreach (var option in _numberOptions)
             {
-                <InputRadio Value="@option" />
-                <label>@option</label>
+                <label class=@($"edit-radio-label")>
+                    <InputRadio Value=@option
+                                class="my-custom-radio"
+                                id=@($"rb-EditRadio-{option}")
+                                data-test-id=@($"rb-EditRadio-{option}")/>
+                    @option
+                </label>
             }
         </EditRadio>
+        
+        <style>
+            .my-custom-container { background-color: orange; padding: 20px; border-radius: 40px; }
+            .my-custom-radio { accent-color: #0066cc; }
+            .my-custom-radio label { margin-left: 8px; }
+        </style>
     </div>
 
     <div class="demo-section">
-        <h2>Custom Styling</h2>
-        <EditRadio @bind-Value="_model.CustomClass"
-                  ContainerClass="my-custom-container"
-                  CssClass="my-custom-radio"
-                  Field="@(() => _model.CustomClass)">
-            @foreach (var option in _numberOptions)
-            {
-                <InputRadio Value="@option" />
-                <label>@option</label>
-            }
-        </EditRadio>
-    </div>
-
-    <div class="demo-section">
-        <h2>State Options</h2>
         <EditRadio @bind-Value="_model.DisabledField"
-                  IsDisabled="true"
-                  Field="@(() => _model.DisabledField)">
+                   Field="@(() => _model.DisabledField)"
+                   IsDisabled="true">
             @foreach (var option in _numberOptions)
             {
-                <InputRadio Value="@option" />
-                <label>@option</label>
+                <label>
+                    <InputRadio Value="@option"
+                                class="my-custom-radio"
+                                id=@($"rb-EditRadio-{option}")
+                                data-test-id=@($"rb-EditRadio-{option}") />
+                    @option
+                </label>
             }
         </EditRadio>
-
+    </div>
+    
+    <div class="demo-section">
         <EditRadio @bind-Value="_model.RequiredField"
-                  Field="@(() => _model.RequiredField)">
+                   Field="@(() => _model.RequiredField)">
             @foreach (var option in _numberOptions)
             {
-                <InputRadio Value="@option" />
-                <label>@option</label>
+                <label>
+                    <InputRadio Value="@option"
+                                class="my-custom-radio"
+                                id=@($"rb-EditRadio-{option}")
+                                data-test-id=@($"rb-EditRadio-{option}") />
+                    @option
+                </label>
+            }
+        </EditRadio>
+    </div>
+
+    <div class="demo-section">
+        <EditRadio @bind-Value="_model.HorizontalLayout"
+                   Field="@(() => _model.HorizontalLayout)"
+                   IsHorizontal="true">
+            @foreach (var option in _colorOptions)
+            {
+                <label style="color: @option.ToLower()">
+                    <InputRadio Value=@option
+                                class="my-custom-radio"
+                                id=@($"rb-EditRadio-{option}")
+                                data-test-id=@($"rb-EditRadio-{option}") />
+                    @option
+                </label>
             }
         </EditRadio>
     </div>
@@ -70,43 +99,26 @@
 @code {
     readonly DemoEditRadioModel _model = new();
     readonly int[] _numberOptions = [1, 2, 3, 4, 5];
+    readonly string[] _colorOptions = ["Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Lime", "Magenta"];
 
     EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    [CascadingParameter] public bool IsForcedValidation { get; set; }
+    protected override void OnAfterRender(bool firstRender) { if(IsForcedValidation) _form.EditContext!.Validate(); } 
+
+    
+    
+    // protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
 
     public class DemoEditRadioModel
     {
         public int BasicRadio { get; set; }
-        public int HorizontalLayout { get; set; }
-        public int CustomClass { get; set; }
-        
-        [Required(ErrorMessage = "Please select an option")]
-        public int RequiredField { get; set; }
-        
+        public string HorizontalLayout { get; set; }
+        public int CustomStyling { get; set; }
+
+        [Required]
+        public int? RequiredField { get; set; }
+
         public int DisabledField { get; set; }
     }
+
 }
-
-<style>
-    .demo-section {
-        margin: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 300px;
-    }
-
-    .my-custom-container {
-        background-color: #f5f5f5;
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .my-custom-radio {
-        accent-color: #0066cc;
-    }
-
-    .my-custom-radio label {
-        margin-left: 8px;
-    }
-</style>

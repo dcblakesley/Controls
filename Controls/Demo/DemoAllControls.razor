@@ -10,7 +10,7 @@
         <legend class="h2">Controls</legend>
 
         <div class="flex-row flex-wrap">
-            <EditBool          @bind-Value=_model.EditBool  Field=@(() => _model.EditBool)/>
+            <EditBool          @bind-Value=_model.EditBool          Field=@(() => _model.EditBool)/>
             <EditBoolNullRadio @bind-Value=_model.EditBoolNullRadio Field=@(() => _model.EditBoolNullRadio)/>
             <EditDate          @bind-Value=_model.EditDate          Field=@(() => _model.EditDate)         DateFormat="MM-dd-yyyy hh:mm tt"/>
             <EditDisplay Label="EditDisplay" Text="My text" />
@@ -40,8 +40,7 @@
                              HasOther=true
                              IsHorizontal=@_isHorizontal/>
 
-            <EditRadioEnum Type=typeof(Animal)
-                           @bind-Value=_model.EditRadioEnum
+            <EditRadioEnum @bind-Value=_model.EditRadioEnum
                            Field=@(() => _model.EditRadioEnum)
                            IsHorizontal=@_isHorizontal/>
 

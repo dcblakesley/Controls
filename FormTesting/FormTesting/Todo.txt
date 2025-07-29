@@ -26,7 +26,6 @@ Changes in 1.0.12.x
    - EditRadio and EditCheckedList
      -- Change parameter from HasHorizontalButtons -> IsHorizontal
  * New Controls
-   - EditRadioBool
-
+   - EditBoolNullRadio
 
    EditDisplay isn't working.

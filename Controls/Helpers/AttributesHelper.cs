@@ -16,27 +16,32 @@ public static class AttributesHelper
 
         if (!(accessorBody is MemberExpression memberExpression))
         {
-            throw new ArgumentException($"The provided expression contains a {accessorBody.GetType().Name} which is not supported. {nameof(FieldIdentifier)} only supports simple member accessors (fields, properties) of an object.");
+            throw new ArgumentException(
+                $"The provided expression contains a {accessorBody.GetType().Name} which is not supported. {nameof(FieldIdentifier)} only supports simple member accessors (fields, properties) of an object.");
         }
 
         return memberExpression.Member;
     }
 
-    public static List<Attribute> GetExpressionCustomAttributes<T>(Expression<Func<T>> accessor) => GetExpressionMember(accessor).GetCustomAttributes().ToList();
+    public static List<Attribute> GetExpressionCustomAttributes<T>(Expression<Func<T>> accessor) =>
+        GetExpressionMember(accessor).GetCustomAttributes().ToList();
 
     // Basic Attributes
-    public static bool IsRequired(this List<Attribute>? attrs) => attrs?.OfType<RequiredAttribute>().FirstOrDefault() != null;
-    public static string? Description(this List<Attribute>? attrs) => attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
-    public static string? SubDescription(this List<Attribute>? attrs) => attrs?.OfType<SubDescriptionAttribute>().FirstOrDefault()?.Value;
-    public static string? ToolTip(this List<Attribute>? attrs) => attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
-    public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix, FieldIdentifier fieldIdentifier)
+    public static string? Description(this List<Attribute>? attrs) =>
+        attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
+
+    public static string? ToolTip(this List<Attribute>? attrs) =>
+        attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
+
+    public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
+        FieldIdentifier fieldIdentifier)
     {
         // If an Id is provided, use it
         if (!string.IsNullOrEmpty(id))
         {
             return id;
         }
-        
+
         var fieldName = fieldIdentifier.FieldName;
         var fn = fieldIdentifier.Model.GetName();
         var a = fieldIdentifier.Model.GetType().GetProperties().ToList();
@@ -44,6 +49,7 @@ public static class AttributesHelper
         {
             fieldName = formGroupOptions.Name + "-" + fieldName;
         }
+
         if (idPrefix != null)
         {
             fieldName = idPrefix + "-" + fieldName;
@@ -69,6 +75,7 @@ public static class AttributesHelper
         {
             min = Math.Max(min, minLengthAttribute.Length);
         }
+
         var maxLengthAttribute = attributes.OfType<MaxLengthAttribute>().FirstOrDefault();
         if (maxLengthAttribute != null)
         {
@@ -77,7 +84,8 @@ public static class AttributesHelper
 
         return (min, max);
     }
-    public static string GetLabelText(this List<Attribute>? attrs, FieldIdentifier fieldIdentifier)
+
+        public static string GetLabelText(this List<Attribute>? attrs, FieldIdentifier fieldIdentifier)
     {
         // Order: DisplayNameAttribute, EnumDisplayNameAttribute, PropertyName
         var displayNameAttribute = attrs?.OfType<DisplayNameAttribute>().FirstOrDefault();
@@ -91,6 +99,7 @@ public static class AttributesHelper
                 labelText = enumDisplayName.Value;
             }
         }
+
         if (string.IsNullOrEmpty(labelText))
         {
             labelText = fieldIdentifier.FieldName;
@@ -99,7 +108,7 @@ public static class AttributesHelper
         }
 
         return labelText;
-    }
+    }    
 }
 
 // Custom Attributes
@@ -108,10 +117,6 @@ public class ToolTipAttribute(string value) : Attribute
     public string Value { get; protected set; } = value;
 }
 public class EnumDisplayNameAttribute(string value) : Attribute
-{
-    public string Value { get; protected set; } = value;
-}
-public class SubDescriptionAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;
 }
