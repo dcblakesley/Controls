@@ -1,12 +1,11 @@
 ﻿@using Controls.Helpers
 @using Microsoft.AspNetCore.Components.Forms
 @typeparam TEnum
-@inherits InputBase<TEnum>
+@inherits InputBase<TEnum?>
 
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-
         <fieldset class="edit-radio-fieldset">
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsLegend=true />
 
@@ -22,26 +21,55 @@
                     aria-describedby=@($"desc-{_id}")
                     aria-errormessage=@($"error-msg-{_id}")>
 
-                        <div class=@(IsHorizontal
-                                       ? "edit-radio-buttons-container-horizontal"
-                                       : "edit-radio-buttons-container-vertical")>
-                        @foreach (var option in GetOptions())
-                        {
-                            <label class=@($"edit-radio-label {LabelClass}")>
-                                <InputRadio Value=@option
-                                            class=@($"{CssClass}")
-                                            id=@($"rb-{_id}-{option}")
-                                            data-test-id=@($"rb-{_id}-{option}")/>
+                    <div class=@(IsHorizontal
+                                   ? "edit-radio-buttons-container-horizontal"
+                                   : "edit-radio-buttons-container-vertical")>
+                        @{
+                            var options = GetOptions();
+                            for (var i = 0; i < options.Count; i++)
+                            {
+                                var option = options[i];
+                                var isLastOption = i == options.Count - 1;
+                                var showOtherInput = HasOtherOption && isLastOption;
 
-                                @((MarkupString)option.GetName())
-                            </label>
+                                <div class="edit-radio-option">
+                                    <label class=@($"edit-radio-label {LabelClass}")>
+                                        <InputRadio Value=@option
+                                                   disabled=@IsDisabled
+                                                   class=@($"{CssClass}")
+                                                   id=@($"rb-{_id}-{option}")
+                                                   data-test-id=@($"rb-{_id}-{option}") />
+
+                                        @((MarkupString)option.GetName())
+                                    </label>
+
+                                    @if (showOtherInput)
+                                    {
+                                        <input type="text"
+                                               value="@OtherValue"
+                                               @oninput="@(e => OnOtherValueChanged(e))"
+                                               disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsDisabled)"
+                                               class="edit-radio-other-input"
+                                               placeholder=@OtherPlaceholder
+                                               id=@($"other-{_id}")
+                                               data-test-id=@($"other-{_id}") />
+                                    }
+                                </div>
+                            }
                         }
                     </div>
                 </InputRadioGroup>
             }
             else
             {
-                <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@Value?.GetName() />
+                <ReadOnlyValue Id=@_id
+                               IsRequired=@_isRequired
+                               CssClass=@CssClass
+                               Text=@(
+                    HasOtherOption && Value?.Equals(GetOptions().Last()) == true 
+                        ? $"{Value?.GetName()}: {OtherValue}"
+                        : Value?.GetName()
+                )/>
             }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
@@ -50,5 +78,25 @@
                 <div class="bound-value">@CurrentValueAsString</div>
             }
         </fieldset>
-    </div>  
+    </div>
 }
+
+<style>
+    .edit-radio-option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .edit-radio-other-input {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        min-width: 150px;
+    }
+
+    .edit-radio-other-input:disabled {
+        background-color: #f5f5f5;
+        cursor: not-allowed;
+    }
+</style>

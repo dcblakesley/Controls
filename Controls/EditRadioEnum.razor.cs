@@ -24,28 +24,25 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public bool IsHorizontal { get; set; }
     [Parameter] public bool Sort { get; set; }
-    
+
     /// <summary> The labels around each radio button </summary>
     [Parameter] public string? LabelClass { get; set; }
 
-    /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
-    [Parameter] public required Type Type { get; set; }
+    // Other Option
+    [Parameter] public bool HasOtherOption { get; set; } = false;
+    [Parameter] public string OtherPlaceholder { get; set; }
+    [Parameter] public string? OtherValue { get; set; }
+    [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
     // Fields
     string _id = string.Empty;
     string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
+    Type _type;
+    Type _underlyingType;
+    bool _isNullable;
 
-    // Methods
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        _fieldIdentifier = FieldIdentifier.Create(Field);
-        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
-        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
-    }
     bool ShouldShowComponent()
     {
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
@@ -61,35 +58,112 @@ public partial class EditRadioEnum<TEnum> : IEditControl
             _ => true
         };
     }
-    List<TEnum> GetOptions() => Sort
-        ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList()
-        : Enum.GetValues(Type).Cast<TEnum>().ToList();
-    protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
+    // Methods
+    protected override void OnInitialized()
     {
-        // Lets Blazor convert the value for us
-        if (BindConverter.TryConvertTo(value, CultureInfo.CurrentCulture, out TEnum parsedValue))
+        base.OnInitialized();
+        _fieldIdentifier = FieldIdentifier.Create(Field);
+        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
+        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+
+        // Handle nullable enum types
+        _type = typeof(TEnum);
+        _isNullable = Nullable.GetUnderlyingType(_type) != null;
+        _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
+    }
+
+    List<TEnum?> GetOptions()
+    {
+        var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
+        
+        // If HasOtherOption is true, remove the last enum value to add it back later
+        TEnum? otherOption = default;
+        if (HasOtherOption && enumValues.Count > 0)
         {
-            result = parsedValue;
-            validationErrorMessage = null;
-            return true;
+            otherOption = enumValues.Last();
+            enumValues.RemoveAt(enumValues.Count - 1);
+        }
+        
+        // Sort remaining values if needed
+        if (Sort)
+        {
+            // Sort by display name that would appear in the UI
+            enumValues = enumValues.OrderBy(x => 
+            {
+                // Get display name from DisplayAttribute if present
+                var memberInfo = _underlyingType.GetMember(x.ToString());
+                if (memberInfo.Length > 0)
+                {
+                    var displayAttr = memberInfo[0].GetCustomAttribute<DisplayAttribute>();
+                    if (displayAttr != null && !string.IsNullOrEmpty(displayAttr.Name))
+                    {
+                        return displayAttr.Name;
+                    }
+                }
+                // Otherwise use enum name
+                return x.ToString();
+            }).ToList();
+        }
+        
+        // Add back the "other" option at the end if it exists
+        if (HasOtherOption && otherOption != null)
+        {
+            enumValues.Add(otherOption);
         }
 
-        // Map null/empty value to null if the bound object is nullable
+        if (_isNullable)
+        {
+            // Add null option for nullable enums if not required
+            if (!_attributes.Any(x => x is RequiredAttribute))
+            {
+                var result = new List<TEnum?>();
+                result.Add(default(TEnum?));
+                result.AddRange(enumValues.Cast<TEnum?>());
+                return result;
+            }
+        }
+
+        return enumValues.Cast<TEnum?>().ToList();
+    }
+
+    protected override bool TryParseValueFromString(string? value, out TEnum result, out string? validationErrorMessage)
+    {
+        // Handle null/empty for nullable enums
         if (string.IsNullOrEmpty(value))
         {
-            var nullableType = Nullable.GetUnderlyingType(typeof(TEnum));
-            if (nullableType != null)
+            if (_isNullable)
             {
                 result = default;
                 validationErrorMessage = null;
                 return true;
             }
+            result = default;
+            validationErrorMessage = $"The {FieldIdentifier.FieldName} field is required.";
+            return false;
         }
 
-        // The value is invalid => set the error message
+        // Try parsing the enum value
+        if (Enum.TryParse(_underlyingType, value, out object? parsedValue))
+        {
+            result = (TEnum)parsedValue;
+            validationErrorMessage = null;
+            return true;
+        }
+
         result = default;
         validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
         return false;
     }
+
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+
+    private async Task OnOtherValueChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (OtherValue != value)
+        {
+            await OtherValueChanged.InvokeAsync(value);
+        }
+    }
 }

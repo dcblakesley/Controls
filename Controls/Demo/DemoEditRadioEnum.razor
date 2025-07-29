@@ -6,45 +6,75 @@
     <ObjectGraphDataAnnotationsValidator />
 
     <div class="demo-section">
-        <h2>Basic Usage</h2>
-        <EditRadioEnum TEnum="Animal"
-                      @bind-Value="_model.BasicEnum"
-                      Label="Basic Example"
-                      Field="@(() => _model.BasicEnum)" />
+        <EditRadioEnum @bind-Value="_model.BasicEnum"
+                       Field="@(() => _model.BasicEnum)" />
+
+        <EditRadioEnum @bind-Value="_model.BasicEnum"
+                       Field="@(() => _model.BasicEnum)"
+                       Label="Read-only"
+                       IsEditMode="false" />
+    </div>   
+    <div class="demo-section">
+        <EditRadioEnum @bind-Value="_model.BasicEnum"
+                       Field="@(() => _model.BasicEnum)" 
+                       Label="Sorted"
+                       Sort=true/>
+    </div>
+    <div class="demo-section">
+        <EditRadioEnum @bind-Value=@_model.Other
+                       Field="@(() => _model.Other)"
+                       HasOtherOption="true"
+                       @bind-OtherValue="_model.OtherValue" />
+
+        <EditRadioEnum @bind-Value=@_model.Other
+                       Field="@(() => _model.Other)"
+                       HasOtherOption="true"
+                       Label="Other - Sorted"
+                       Description="The final enum value still shows up on the bottom"
+                       Sort="true"
+                       @bind-OtherValue="_model.OtherValue" />
     </div>
 
-    <div class="demo-section">
-        <h2>Layout Options</h2>
-        <EditRadioEnum TEnum="Animal"
-                      @bind-Value="_model.HorizontalLayout"
-                      Label="Horizontal Layout"
-                      IsHorizontal="true"
-                      Field="@(() => _model.HorizontalLayout)" />
-    </div>
+
 
     <div class="demo-section">
+
+        <style>
+            .my-custom-container {
+                background-color: cyan;
+                padding: 10px;
+                border-radius: 4px;
+            }
+
+            .my-custom-label {
+                font-weight: bold;
+                color: #0066cc;
+            }
+        </style>
+
         <h2>Custom Styling</h2>
-        <EditRadioEnum TEnum="Animal"
-                      @bind-Value="_model.CustomClass"
-                      Label="With Custom CSS Class"
-                      ContainerClass="my-custom-container"
-                      CssClass="my-custom-radio"
-                      LabelClass="my-custom-label"
-                      Field="@(() => _model.CustomClass)" />
+        <EditRadioEnum @bind-Value="_model.CustomClass"
+                       Field="@(() => _model.CustomClass)"
+                       class="my-custom-radio"
+                       ContainerClass="my-custom-container"
+                       LabelClass="my-custom-label" />
     </div>
 
     <div class="demo-section">
         <h2>State Options</h2>
-        <EditRadioEnum TEnum="Animal"
-                      @bind-Value="_model.DisabledField"
-                      Label="Disabled State"
-                      IsDisabled="true"
-                      Field="@(() => _model.DisabledField)" />
+        <EditRadioEnum @bind-Value="_model.DisabledField"
+                       Field="@(() => _model.DisabledField)"
+                       IsDisabled="true" />
 
-        <EditRadioEnum TEnum="Animal"
-                      @bind-Value="_model.RequiredField"
-                      Label="Required Field"
-                      Field="@(() => _model.RequiredField)" />
+        <EditRadioEnum @bind-Value="_model.RequiredField"
+                       Field="@(() => _model.RequiredField)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Layout Options</h2>
+        <EditRadioEnum @bind-Value="_model.HorizontalLayout"
+                       Field="@(() => _model.HorizontalLayout)"
+                       IsHorizontal="true" />
     </div>
 </EditForm>
 
@@ -58,35 +88,21 @@
         public Animal BasicEnum { get; set; }
         public Animal HorizontalLayout { get; set; }
         public Animal CustomClass { get; set; }
-
-        [Required(ErrorMessage = "Please select an option")]
-        public Animal RequiredField { get; set; }
-        
         public Animal DisabledField { get; set; }
+
+        [Required]
+        public Animal? RequiredField { get; set; }
+
+        [DisplayName("Other / Custom Value")]
+        public Bird Other { get; set; }
+        public string? OtherValue { get; set; }
+    }
+
+    public enum Bird
+    {
+        Sparrow,
+        Eagle,
+        Parrot,
+        Custom = 999
     }
 }
-
-<style>
-    .demo-section {
-        margin: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 300px;
-    }
-
-    .my-custom-container {
-        background-color: #f5f5f5;
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .my-custom-radio {
-        accent-color: #0066cc;
-    }
-
-    .my-custom-label {
-        font-weight: bold;
-        color: #0066cc;
-    }
-</style>
