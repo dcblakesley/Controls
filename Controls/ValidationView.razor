@@ -15,8 +15,8 @@
 @code
 {
     [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-    private EditContext? _previousEditContext;
-    private EventHandler<ValidationStateChangedEventArgs> _validationStateChangedHandler;
+    EditContext? _previousEditContext;
+    EventHandler<ValidationStateChangedEventArgs> _validationStateChangedHandler;
 
     /// <summary>
     /// Gets or sets the model to produce the list of validation messages for.
@@ -58,7 +58,7 @@
         }
     }
 
-    private void DetachValidationStateChangedListener()
+    void DetachValidationStateChangedListener()
     {
         if (_previousEditContext != null)
         {

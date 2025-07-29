@@ -2,7 +2,7 @@
 
 public partial class EditControlsDemo
 {
-    CurrentView _currentView = CurrentView.SelectEnum;
+    CurrentView _currentView = CurrentView.RadioString;
 
     readonly DemoModelForEditControls _allControlsModel = new();
     EditForm editForm; // Set by @ref during Render

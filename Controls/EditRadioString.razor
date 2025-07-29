@@ -13,7 +13,7 @@
                 <InputRadioGroup @bind-Value=@SelectedOption
                                  id=@_id
                                  data-test-id=@_id
-                                 class=@CssClass
+                                 class=@CssClass 
                                  disabled=@IsDisabled
                                  aria-required=@_isRequired
                                  aria-describedby=@($"desc-{_id}")
@@ -25,8 +25,10 @@
 
                         @foreach (var option in Options)
                         {
-                            <label class=@($"{LabelClass} edit-radio-label")>
+                            <label class=@($"{LabelClass} edit-radio-label") 
+                                   disabled=@IsDisabled>
                                 <InputRadio Value=@option
+                                            disabled=@IsDisabled
                                             id=@($"rb-{_id}-{option.ToId()}")
                                             data-test-id=@($"rb-{_id}-{option.ToId()}")
                                             class=@($"{CssClass}") />
@@ -43,6 +45,7 @@
                                     <label class=@($"edit-radio-label {LabelClass}")>
                                         <InputRadio Value=@OtherName
                                                     id=@($"rb-{_id}-other")
+                                                    disabled=@IsDisabled
                                                     data-test-id=@($"rb-{_id}-other")/>
                                         Other
                                     </label>

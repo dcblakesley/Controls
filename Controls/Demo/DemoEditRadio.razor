@@ -68,8 +68,8 @@
 </EditForm>
 
 @code {
-    private readonly DemoEditRadioModel _model = new();
-    private readonly int[] _numberOptions = { 1, 2, 3, 4, 5 };
+    readonly DemoEditRadioModel _model = new();
+    readonly int[] _numberOptions = [1, 2, 3, 4, 5];
 
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();

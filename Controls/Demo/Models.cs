@@ -37,9 +37,9 @@ public enum Animal
 }
 
 public class Plant
-{
-    public string Name { get; set; } = "";
+{  
     public int Id { get; set; }
+    public string Name { get; set; } = "";
     public override string ToString() => Name;
 
     public static List<Plant> GetTestData()

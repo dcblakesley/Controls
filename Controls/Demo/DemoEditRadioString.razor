@@ -8,24 +8,19 @@
     <div class="demo-section">
         <h2>Basic Usage</h2>
         <EditRadioString @bind-Value="_model.BasicOption"
-                        Label="Basic Example"
-                        Options="@_basicOptions"
-                        Field="@(() => _model.BasicOption)" />
-    </div>
+                         Options="@_basicOptions"
+                         Field="@(() => _model.BasicOption)" />
 
-    <div class="demo-section">
-        <h2>Layout Options</h2>
-        <EditRadioString @bind-Value="_model.HorizontalLayout"
-                        Label="Horizontal Layout"
-                        Options="@_basicOptions"
-                        IsHorizontal="true"
-                        Field="@(() => _model.HorizontalLayout)" />
+        <h2>Read-only</h2>
+        <EditRadioString @bind-Value="_model.BasicOption"
+                         Options="@_basicOptions"
+                         IsEditMode="false"
+                         Field="@(() => _model.BasicOption)" />
     </div>
 
     <div class="demo-section">
         <h2>With Other Option</h2>
         <EditRadioString @bind-Value="_model.WithOther"
-                        Label="Including Other Option"
                         Options="@_basicOptions"
                         HasOther="true"
                         Field="@(() => _model.WithOther)" />
@@ -34,10 +29,9 @@
     <div class="demo-section">
         <h2>Custom Styling</h2>
         <EditRadioString @bind-Value="_model.CustomClass"
-                        Label="With Custom CSS Class"
                         Options="@_basicOptions"
                         ContainerClass="my-custom-container"
-                        CssClass="my-custom-radio"
+                        class="my-custom-radio"
                         LabelClass="my-custom-label"
                         Field="@(() => _model.CustomClass)" />
     </div>
@@ -45,28 +39,34 @@
     <div class="demo-section">
         <h2>State Options</h2>
         <EditRadioString @bind-Value="_model.DisabledField"
-                        Label="Disabled State"
                         Options="@_basicOptions"
                         IsDisabled="true"
                         Field="@(() => _model.DisabledField)" />
 
         <EditRadioString @bind-Value="_model.RequiredField"
-                        Label="Required Field"
                         Options="@_basicOptions"
                         Field="@(() => _model.RequiredField)" />
+    </div>
+
+    <div class="demo-section">
+        <h2>Layout Options</h2>
+        <EditRadioString @bind-Value="_model.HorizontalLayout"
+                         Options="@_basicOptions"
+                         IsHorizontal="true"
+                         Field="@(() => _model.HorizontalLayout)" />
     </div>
 </EditForm>
 
 @code {
-    private readonly DemoEditRadioStringModel _model = new();
-    private readonly List<string> _basicOptions = new() { "Red", "Green", "Blue", "Yellow" };
+    readonly DemoEditRadioStringModel _model = new();
+    readonly List<string> _basicOptions = ["Red", "Green", "Blue", "Yellow"];
 
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
 
     public class DemoEditRadioStringModel
     {
-        public string BasicOption { get; set; } = "";
+        public string BasicOption { get; set; } = "Blue";
         public string HorizontalLayout { get; set; } = "";
         public string WithOther { get; set; } = "";
         public string CustomClass { get; set; } = "";
@@ -79,26 +79,14 @@
 }
 
 <style>
-    .demo-section {
-        margin: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        min-width: 300px;
-    }
-
     .my-custom-container {
-        background-color: #f5f5f5;
+        background-color: darkorchid;
         padding: 10px;
         border-radius: 4px;
     }
-
-    .my-custom-radio {
-        accent-color: #0066cc;
-    }
-
+    
     .my-custom-label {
         font-weight: bold;
-        color: #0066cc;
+        color: white;
     }
 </style>

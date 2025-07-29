@@ -48,7 +48,7 @@
 </EditForm>
 
 @code {
-    private readonly DemoEditDateModel _model = new();
+    readonly DemoEditDateModel _model = new();
 
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();

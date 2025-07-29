@@ -38,7 +38,7 @@
 </EditForm>
 
 @code {
-    private readonly DemoEditBoolModel _model = new();
+    readonly DemoEditBoolModel _model = new();
 
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();

@@ -51,22 +51,22 @@
 </EditForm>
 
 @code {
-    private readonly DemoEditCheckedStringListModel _model = new();
-    private readonly List<string> _basicItems = new() { "Apple", "Banana", "Orange", "Grape", "Mango" };
+    readonly DemoEditCheckedStringListModel _model = new();
+    readonly List<string> _basicItems = ["Apple", "Banana", "Orange", "Grape", "Mango"];
 
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
     public class DemoEditCheckedStringListModel
     {
         public List<string> BasicList { get; set; } = [];
-        public List<string> WithHtmlLabel { get; set; } = new();
-        public List<string> NoLabel { get; set; } = new();
-        public List<string> CustomClass { get; set; } = new();
+        public List<string> WithHtmlLabel { get; set; } = [];
+        public List<string> NoLabel { get; set; } = [];
+        public List<string> CustomClass { get; set; } = [];
 
         [Required(ErrorMessage = "Please select at least one item")]
-        public List<string> RequiredField { get; set; } = new();
+        public List<string> RequiredField { get; set; } = [];
 
-        public List<string> DisabledField { get; set; } = new();
+        public List<string> DisabledField { get; set; } = [];
     }
 }
 

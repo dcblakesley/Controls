@@ -8,7 +8,7 @@ public class FormOptions
 {
     public bool IsEditMode { get; set; } = true;
 
-    public List<FieldIdentifier> FieldIdentifiers { get; private set; } = [];
+    public List<FieldIdentifier> FieldIdentifiers { get; set; } = [];
 
     /// <summary> Allows you to set the hiding mode for the entire form. </summary>
     public HidingMode? Hiding { get; set; }

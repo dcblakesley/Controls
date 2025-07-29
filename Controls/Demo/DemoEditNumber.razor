@@ -29,7 +29,7 @@
 </EditForm>
 
 @code {
-    private readonly DemoEditNumberModel _model = new();
+    readonly DemoEditNumberModel _model = new();
 
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();

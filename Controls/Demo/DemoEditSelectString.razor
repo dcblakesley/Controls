@@ -70,8 +70,8 @@
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
 
-    private readonly DemoEditSelectStringModel _model = new();
-    private readonly List<string> _colors = ["Red", "Green", "Blue", "Yellow", "Neon Purple"];
+    readonly DemoEditSelectStringModel _model = new();
+    readonly List<string> _colors = ["Red", "Green", "Blue", "Yellow", "Neon Purple"];
 
     public class DemoEditSelectStringModel
     {

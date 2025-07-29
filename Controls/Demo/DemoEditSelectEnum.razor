@@ -54,7 +54,7 @@
     EditForm _form;
     protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
 
-    private readonly DemoEditSelectEnumModel _model = new();
+    readonly DemoEditSelectEnumModel _model = new();
 
     public class DemoEditSelectEnumModel
     {
