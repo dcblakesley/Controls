@@ -30,7 +30,7 @@ public partial class EditRadioEnum<TEnum> : IEditControl
 
     // Other Option
     [Parameter] public bool HasOtherOption { get; set; } = false;
-    [Parameter] public string OtherPlaceholder { get; set; }
+    [Parameter] public string? OtherPlaceholder { get; set; }
     [Parameter] public string? OtherValue { get; set; }
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
@@ -43,21 +43,6 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     Type _underlyingType;
     bool _isNullable;
 
-    bool ShouldShowComponent()
-    {
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        var value = Value;
-
-        return hidingMode switch
-        {
-            HidingMode.None => true,
-            HidingMode.WhenNull => value != null,
-            HidingMode.WhenNullOrDefault => value != null && !value.Equals(default(TEnum)),
-            HidingMode.WhenReadOnlyAndNull => IsEditMode || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || (value != null && !value.Equals(default(TEnum))),
-            _ => true
-        };
-    }
     // Methods
     protected override void OnInitialized()
     {
@@ -72,11 +57,10 @@ public partial class EditRadioEnum<TEnum> : IEditControl
         _isNullable = Nullable.GetUnderlyingType(_type) != null;
         _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
     }
-
     List<TEnum?> GetOptions()
     {
         var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
-        
+
         // If HasOtherOption is true, remove the last enum value to add it back later
         TEnum? otherOption = default;
         if (HasOtherOption && enumValues.Count > 0)
@@ -84,12 +68,12 @@ public partial class EditRadioEnum<TEnum> : IEditControl
             otherOption = enumValues.Last();
             enumValues.RemoveAt(enumValues.Count - 1);
         }
-        
+
         // Sort remaining values if needed
         if (Sort)
         {
             // Sort by display name that would appear in the UI
-            enumValues = enumValues.OrderBy(x => 
+            enumValues = enumValues.OrderBy(x =>
             {
                 // Get display name from DisplayAttribute if present
                 var memberInfo = _underlyingType.GetMember(x.ToString());
@@ -105,7 +89,7 @@ public partial class EditRadioEnum<TEnum> : IEditControl
                 return x.ToString();
             }).ToList();
         }
-        
+
         // Add back the "other" option at the end if it exists
         if (HasOtherOption && otherOption != null)
         {
@@ -115,7 +99,7 @@ public partial class EditRadioEnum<TEnum> : IEditControl
         if (_isNullable)
         {
             // Add null option for nullable enums if not required
-            if (!_attributes.Any(x => x is RequiredAttribute))
+            if (_attributes != null && !_attributes.Any(x => x is RequiredAttribute))
             {
                 var result = new List<TEnum?>();
                 result.Add(default(TEnum?));
@@ -126,19 +110,18 @@ public partial class EditRadioEnum<TEnum> : IEditControl
 
         return enumValues.Cast<TEnum?>().ToList();
     }
-
-    protected override bool TryParseValueFromString(string? value, out TEnum result, out string? validationErrorMessage)
+    protected override bool TryParseValueFromString(string? value, out TEnum result, out string validationErrorMessage)
     {
         // Handle null/empty for nullable enums
         if (string.IsNullOrEmpty(value))
         {
             if (_isNullable)
             {
-                result = default;
-                validationErrorMessage = null;
+                result = default!;
+                validationErrorMessage = null!;
                 return true;
             }
-            result = default;
+            result = default!;
             validationErrorMessage = $"The {FieldIdentifier.FieldName} field is required.";
             return false;
         }
@@ -147,23 +130,36 @@ public partial class EditRadioEnum<TEnum> : IEditControl
         if (Enum.TryParse(_underlyingType, value, out object? parsedValue))
         {
             result = (TEnum)parsedValue;
-            validationErrorMessage = null;
+            validationErrorMessage = null!;
             return true;
         }
 
-        result = default;
+        result = default!;
         validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
         return false;
     }
-
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-
-    private async Task OnOtherValueChanged(ChangeEventArgs e)
+    async Task OnOtherValueChanged(ChangeEventArgs e)
     {
         var value = e.Value?.ToString();
         if (OtherValue != value)
         {
             await OtherValueChanged.InvokeAsync(value);
         }
+    }
+    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldShowComponent()
+    {
+        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        var value = Value;
+
+        return hidingMode switch
+        {
+            HidingMode.None => true,
+            HidingMode.WhenNull => value != null,
+            HidingMode.WhenNullOrDefault => value != null && !value.Equals(default(TEnum)),
+            HidingMode.WhenReadOnlyAndNull => IsEditMode || value != null,
+            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || (value != null && !value.Equals(default(TEnum))),
+            _ => true
+        };
     }
 }

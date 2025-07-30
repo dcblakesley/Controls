@@ -8,20 +8,16 @@
     <div class="demo-section">
         <EditString @bind-Value="_model.BasicString" Field="@(() => _model.BasicString)"/>
 
-        <h2>Read-only</h2>
         <EditString @bind-Value="_model.BasicString" Field="@(() => _model.BasicString)" IsEditMode=false/>
     </div>
 
     <div class="demo-section">
-        <h2>With Placeholder</h2>
         <EditString @bind-Value="_model.WithPlaceholder"
                     Placeholder="Enter some text..."
                     Field="@(() => _model.WithPlaceholder)"/>
     </div>
 
     <div class="demo-section">
-        <h2>Masked Input</h2>
-        <p>Effects the read-only view</p>
         <EditString @bind-Value="_model.MaskedText"
                     MaskText="*"
                     Field="@(() => _model.MaskedText)"/>
@@ -44,15 +40,13 @@
             .my-custom-container { background-color: purple; padding: 10px; border-radius: 4px; }
             .my-custom-input { border: 2px solid #0066cc; color: green; border-radius: 4px; padding: 4px; width: 100%; }
         </style>
-        <h2>Custom Styling</h2>
-        <EditString @bind-Value="_model.CustomClass"
+        <EditString @bind-Value="_model.CustomStyling"
                     ContainerClass="my-custom-container"
                     class="my-custom-input"
-                    Field="@(() => _model.CustomClass)"/>
+                    Field="@(() => _model.CustomStyling)"/>
     </div>
 
     <div class="demo-section">
-        <h2>State Options</h2>
         <EditString @bind-Value="_model.Disabled"
                     IsDisabled="true"
                     Field="@(() => _model.Disabled)"/>
@@ -62,8 +56,6 @@
     </div>
 
     <div class="demo-section">
-        <h2>URL Link</h2>
-        <p>When in read-only mode, provides a hyperlink for the text within the textbox/Value</p>
         <EditString @bind-Value="_model.UrlField"
                     Url="https://example.com"
                     UrlTarget="_blank"
@@ -88,7 +80,7 @@
         public string WithPlaceholder { get; set; } = "";
         public string MaskedText { get; set; } = "123-45-6789";
         public string UrlField { get; set; } = "Friendly name for a website";
-        public string CustomClass { get; set; } = "";
+        public string CustomStyling { get; set; } = "";
 
         [Required] public string Required { get; set; } = "";
 

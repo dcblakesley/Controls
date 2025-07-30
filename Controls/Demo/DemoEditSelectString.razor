@@ -6,17 +6,11 @@
     <ObjectGraphDataAnnotationsValidator/>
 
     <div class="demo-section">
-        <h2>Basic Usage</h2>
-        <EditSelectString TValue="string"
-                          @bind-Value="_model.BasicSelect"
-                          Label="Basic Example"
+        <EditSelectString @bind-Value="_model.BasicSelect"
                           Options="_colors"
-                          Field="@(() => _model.BasicSelect)" />       
+                          Field="@(() => _model.BasicSelect)" />      
         
-        <h2>Read-only</h2>
-        <EditSelectString TValue="string"
-                          @bind-Value="_model.BasicSelect"
-                          Label="Basic Example"
+        <EditSelectString @bind-Value="_model.BasicSelect"
                           IsEditMode=false
                           Options="_colors"
                           Field="@(() => _model.BasicSelect)" />
@@ -39,27 +33,20 @@
                 min-width: 200px;
             }
         </style>
-
-
-        <h2>Custom Styling</h2>
-        <EditSelectString @bind-Value="_model.CustomClass"
-                          Label="With Custom CSS Class"
+        <EditSelectString @bind-Value="_model.CustomStyling"
                           Options="_colors"
                           ContainerClass="my-custom-container"
                           class="my-custom-select"
-                          Field="@(() => _model.CustomClass)"/>
+                          Field="@(() => _model.CustomStyling)"/>
     </div>
 
     <div class="demo-section">
-        <h2>State Options</h2>
         <EditSelectString @bind-Value="_model.Disabled"
-                          Label="Disabled State"
                           Options="_colors"
                           IsDisabled="true"
                           Field="@(() => _model.Disabled)"/>
 
         <EditSelectString @bind-Value="_model.Required"
-                          Label="Required Field"
                           Options="_colors"
                           Field="@(() => _model.Required)"/>
     </div>
@@ -77,7 +64,7 @@
     {
         public string BasicSelect { get; set; } = "";
         public string HtmlContent { get; set; } = "";
-        public string CustomClass { get; set; } = "";
+        public string CustomStyling { get; set; } = "";
 
         [Required]
         public string Required { get; set; } = "";

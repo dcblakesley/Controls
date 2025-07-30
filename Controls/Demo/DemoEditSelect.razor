@@ -6,7 +6,6 @@
     <ObjectGraphDataAnnotationsValidator/>
 
     <div class="demo-section">
-        <h2>Basic Usage</h2>
         <EditSelect @bind-Value="_model.BasicSelect"
                     Field="@(() => _model.BasicSelect)">
             <option value="">Select a number...</option>
@@ -16,7 +15,6 @@
             }
         </EditSelect>
 
-        <h2>Read-only</h2>
         <EditSelect @bind-Value="_model.BasicSelect"
                     Field="@(() => _model.BasicSelect)"
                     IsEditMode=false>
@@ -29,7 +27,6 @@
     </div>
 
     <div class="demo-section">
-        <h2>With Objects</h2>
         <EditSelect @bind-Value="_model.PlantSelect" Field="@(() => _model.PlantSelect)">
             <option value="0">Choose a plant...</option>
             @foreach (var plant in _plants)
@@ -46,9 +43,8 @@
             .my-custom-select { border: 2px solid black; border-radius: 4px; padding: 4px; min-width: 200px; color: blueviolet }
         </style>
 
-        <h2>Custom Styling</h2>
-        <EditSelect @bind-Value="_model.CustomClass"
-                    Field="@(() => _model.CustomClass)"
+        <EditSelect @bind-Value="_model.CustomStyling"
+                    Field="@(() => _model.CustomStyling)"
                     ContainerClass="my-custom-container"
                     class="my-custom-select">
             <option value="">Select a color...</option>
@@ -60,7 +56,6 @@
     </div>
 
     <div class="demo-section">
-        <h2>State Options</h2>
         <EditSelect @bind-Value="_model.Disabled"
                     Field="@(() => _model.Disabled)"
                     IsDisabled="true">
@@ -94,7 +89,7 @@
     {
         public int BasicSelect { get; set; }
         public int PlantSelect { get; set; }
-        public string CustomClass { get; set; } = "";
+        public string CustomStyling { get; set; } = "";
 
         [Required(ErrorMessage = "Please select a color")]
         public string Required { get; set; } = "";

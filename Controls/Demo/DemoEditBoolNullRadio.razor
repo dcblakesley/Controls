@@ -11,9 +11,8 @@
         <EditBoolNullRadio @bind-Value="_model.BasicOption"
                            Field="@(() => _model.BasicOption)"
                            Label="Read-only"
-                           IsEditMode=false/>
+                           IsEditMode=false />
     </div>
-
 
     <div class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.CustomText"
@@ -30,7 +29,7 @@
                            IsEditMode="false"
                            Field="@(() => _model.CustomText)" />
     </div>
-        <div class="demo-section">
+    <div class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.Required"
                            Field="@(() => _model.Required)" />
     </div>
@@ -51,13 +50,6 @@
                            Field="@(() => _model.VerticalLayout)"
                            IsHorizontal="false" />
     </div>
-
-    <div class="demo-section">
-        <EditBoolNullRadio @bind-Value="_model.NullOptionHidden"
-                           ShowNullOption="false"
-                           Field="@(() => _model.NullOptionHidden)" />
-    </div>
-
     <div class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.CustomStyle"
                            Field="@(() => _model.CustomStyle)"
@@ -81,8 +73,8 @@
 </EditForm>
 
 @code {
-    EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext?.Validate();
     class DemoModel
     {
         public bool? BasicOption { get; set; }

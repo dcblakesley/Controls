@@ -6,25 +6,21 @@
     <ObjectGraphDataAnnotationsValidator/>
     
     <div class="demo-section">
-        <h2>Basic Usage</h2>
         <EditTextArea @bind-Value="_model.BasicTextArea"
                       Field="@(() => _model.BasicTextArea)" />
 
-        <h2>Read-only</h2>
         <EditTextArea @bind-Value="_model.BasicTextArea"
                       Field="@(() => _model.BasicTextArea)" 
                       IsEditMode=false/>
     </div>
 
     <div class="demo-section">
-        <h2>Custom Rows</h2>
         <EditTextArea @bind-Value="_model.LargerTextArea"
                       Rows="5"
                       Field="@(() => _model.LargerTextArea)"/>
     </div>
 
     <div class="demo-section">
-        <h2>Custom Styling</h2>
         <style>
             .my-custom-container { background-color:cyan; padding: 10px; border-radius: 40px; }
             .my-custom-textarea { background-color: magenta; border: 2px solid #0066cc; border-radius: 40px; padding: 8px; width: 100%; min-height: 100px; font-family: 'Courier New', monospace; background:  }
@@ -36,7 +32,6 @@
     </div>
 
     <div class="demo-section">
-        <h2>State Options</h2>
         <EditTextArea @bind-Value="_model.Disabled"
                       IsDisabled="true"
                       Field="@(() => _model.Disabled)"/>

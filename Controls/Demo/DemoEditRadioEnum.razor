@@ -8,15 +8,12 @@
     <div class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)" />
-
     </div>
     <div class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)"
                        Label="Read-only"
                        IsEditMode="false" />
-
-
     </div>
     <div class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
@@ -28,8 +25,8 @@
         <EditRadioEnum @bind-Value=@_model.Other
                        Field="@(() => _model.Other)"
                        HasOtherOption="true"
+                       OtherPlaceholder="Placeholders are fun..."
                        @bind-OtherValue="_model.OtherValue" />
-
     </div>
     <div class="demo-section">
         <EditRadioEnum @bind-Value=@_model.Other
@@ -41,10 +38,7 @@
                        @bind-OtherValue="_model.OtherValue" />
     </div>
 
-
-
     <div class="demo-section">
-
         <style>
             .my-custom-container {
                 background-color: cyan;
@@ -58,8 +52,8 @@
             }
         </style>
 
-        <EditRadioEnum @bind-Value="_model.CustomClass"
-                       Field="@(() => _model.CustomClass)"
+        <EditRadioEnum @bind-Value="_model.CustomStyling"
+                       Field="@(() => _model.CustomStyling)"
                        class="my-custom-radio"
                        ContainerClass="my-custom-container"
                        LabelClass="my-custom-label" />
@@ -86,13 +80,13 @@
 @code {
     readonly DemoEditRadioEnumModel _model = new();
 
-    EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
     public class DemoEditRadioEnumModel
     {
         public Animal BasicEnum { get; set; }
         public Animal HorizontalLayout { get; set; }
-        public Animal CustomClass { get; set; }
+        public Animal CustomStyling { get; set; }
         public Animal Disabled { get; set; }
 
         [Required]
