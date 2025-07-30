@@ -20,7 +20,7 @@
                                @onchange="@(() => OnValueChanged(false))"
                                id=@($"rb-{_id}-false")
                                data-test-id=@($"rb-{_id}-false")
-                               class="edit-radio-input"
+                               class="edit-radio-input @ContainerClass"
                                disabled=@IsDisabled />
                         @FalseText
                     </label>
@@ -32,7 +32,7 @@
                                @onchange="@(() => OnValueChanged(true))"
                                id=@($"rb-{_id}-true")
                                data-test-id=@($"rb-{_id}-true")
-                               class="edit-radio-input"
+                               class="edit-radio-input @CssClass"
                                disabled=@IsDisabled />
                         @TrueText
                     </label>
@@ -46,7 +46,7 @@
                                    @onchange="@(() => OnValueChanged(null))"
                                    id=@($"rb-{_id}-none")
                                    data-test-id=@($"rb-{_id}-none")
-                                   class="edit-radio-input"
+                                   class="edit-radio-input @CssClass"
                                    disabled=@IsDisabled/>
                             @NullText
                         </label>

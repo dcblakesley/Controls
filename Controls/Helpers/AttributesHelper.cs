@@ -120,3 +120,17 @@ public class EnumDisplayNameAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;
 }
+
+[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+public class MustBeTrueAttribute : ValidationAttribute
+{
+    public MustBeTrueAttribute()
+    {
+        ErrorMessage = "This field must be checked";
+    }
+
+    public override bool IsValid(object? value)
+    {
+        return value is true;
+    }
+}
