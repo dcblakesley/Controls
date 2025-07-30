@@ -55,8 +55,8 @@
     readonly DemoEditRadioStringModel _model = new();
     readonly List<string> _basicOptions = ["Red", "Green", "Blue", "Yellow"];
 
-    EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoEditRadioStringModel
     {

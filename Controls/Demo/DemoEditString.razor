@@ -69,8 +69,8 @@
 </EditForm>
 
 @code {
-    EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     readonly DemoEditStringModel _model = new();
 

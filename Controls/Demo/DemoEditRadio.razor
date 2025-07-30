@@ -101,18 +101,18 @@
     readonly int[] _numberOptions = [1, 2, 3, 4, 5];
     readonly string[] _colorOptions = ["Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Lime", "Magenta"];
 
-    EditForm _form;
+    EditForm? _form;
     [CascadingParameter] public bool IsForcedValidation { get; set; }
     protected override void OnAfterRender(bool firstRender) { if(IsForcedValidation) _form.EditContext!.Validate(); } 
 
     
     
-    // protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    // protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoEditRadioModel
     {
         public int BasicRadio { get; set; }
-        public string HorizontalLayout { get; set; }
+        public string? HorizontalLayout { get; set; }
         public int CustomStyling { get; set; }
 
         [Required]

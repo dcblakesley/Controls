@@ -47,8 +47,8 @@
     readonly DemoEditCheckedStringListModel _model = new();
     readonly List<string> _basicItems = ["Apple", "Banana", "Orange", "Grape", "Mango"];
 
-    EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
     public class DemoEditCheckedStringListModel
     {
         public List<string> BasicList { get; set; } = [];

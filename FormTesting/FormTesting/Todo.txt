@@ -1,11 +1,8 @@
 ﻿
- - EditRadioEnum
- - EditRadio?
  - Pointer for Selects
  - Pointer for Radio buttons
 
  - Cleanup EditText, move out the Icons
- - Create a generic EditCustomControl that wraps the label and the valiation?
 
 
  - Move svgs to their own css file?
@@ -27,5 +24,3 @@ Changes in 1.0.12.x
      -- Change parameter from HasHorizontalButtons -> IsHorizontal
  * New Controls
    - EditBoolNullRadio
-
-   EditDisplay isn't working.

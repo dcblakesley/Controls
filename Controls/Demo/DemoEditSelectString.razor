@@ -54,8 +54,8 @@
 
 @code {
 
-    EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     readonly DemoEditSelectStringModel _model = new();
     readonly List<string> _colors = ["Red", "Green", "Blue", "Yellow", "Neon Purple"];

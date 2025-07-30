@@ -44,8 +44,8 @@
 @code {
     readonly DemoEditTextAreaModel _model = new();
 
-    EditForm _form;
-    protected override void OnAfterRender(bool firstRender) => _form.EditContext!.Validate();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoEditTextAreaModel
     {
