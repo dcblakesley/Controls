@@ -2,7 +2,7 @@
 
 public partial class EditControlsDemo
 {
-    CurrentView _currentView = CurrentView.Number;
+    CurrentView _currentView = CurrentView.Date;
 
     readonly DemoModelForEditControls _allControlsModel = new();
     EditForm editForm; // Set by @ref during Render
