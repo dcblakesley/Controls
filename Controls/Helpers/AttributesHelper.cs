@@ -126,7 +126,7 @@ public class MustBeTrueAttribute : ValidationAttribute
 {
     public MustBeTrueAttribute()
     {
-        ErrorMessage = "This field must be checked";
+        ErrorMessage = "Must be checked";
     }
 
     public override bool IsValid(object? value)

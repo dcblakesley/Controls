@@ -66,14 +66,14 @@
     </div>
 
     <div class="demo-section">
-        <EditRadioEnum @bind-Value="_model.DisabledField"
-                       Field="@(() => _model.DisabledField)"
+        <EditRadioEnum @bind-Value="_model.Disabled"
+                       Field="@(() => _model.Disabled)"
                        IsDisabled="true" />
 
     </div>
     <div class="demo-section">
-        <EditRadioEnum @bind-Value="_model.RequiredField"
-                       Field="@(() => _model.RequiredField)" />
+        <EditRadioEnum @bind-Value="_model.Required"
+                       Field="@(() => _model.Required)" />
     </div>
 
     <div class="demo-section">
@@ -93,10 +93,10 @@
         public Animal BasicEnum { get; set; }
         public Animal HorizontalLayout { get; set; }
         public Animal CustomClass { get; set; }
-        public Animal DisabledField { get; set; }
+        public Animal Disabled { get; set; }
 
         [Required]
-        public Animal? RequiredField { get; set; }
+        public Animal? Required { get; set; }
 
         [DisplayName("Other / Custom Value")]
         public Bird Other { get; set; }

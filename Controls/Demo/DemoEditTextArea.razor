@@ -37,12 +37,12 @@
 
     <div class="demo-section">
         <h2>State Options</h2>
-        <EditTextArea @bind-Value="_model.DisabledField"
+        <EditTextArea @bind-Value="_model.Disabled"
                       IsDisabled="true"
-                      Field="@(() => _model.DisabledField)"/>
+                      Field="@(() => _model.Disabled)"/>
 
-        <EditTextArea @bind-Value="_model.RequiredField"
-                      Field="@(() => _model.RequiredField)"/>
+        <EditTextArea @bind-Value="_model.Required"
+                      Field="@(() => _model.Required)"/>
     </div>
 </EditForm>
 
@@ -58,8 +58,8 @@
         public string LargerTextArea { get; set; } = "Rows isn't being respected in the test project right now.";
         public string CustomStyling { get; set; } = "I have custom styling";
 
-        [Required] public string RequiredField { get; set; } = "";
+        [Required] public string Required { get; set; } = "";
 
-        public string DisabledField { get; set; } = "This textarea is disabled";
+        public string Disabled { get; set; } = "This textarea is disabled";
     }
 }

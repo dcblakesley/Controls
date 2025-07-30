@@ -9,16 +9,32 @@
 
         <legend class="h2">Controls</legend>
 
-        <div class="flex-row flex-wrap">
-            <EditBool          @bind-Value=_model.EditBool          Field=@(() => _model.EditBool)/>
-            <EditBoolNullRadio @bind-Value=_model.EditBoolNullRadio Field=@(() => _model.EditBoolNullRadio)/>
-            <EditDate          @bind-Value=_model.EditDate          Field=@(() => _model.EditDate)         DateFormat="MM-dd-yyyy hh:mm tt"/>
-            <EditDisplay Label="EditDisplay" Text="My text" />
-            <EditNumber        @bind-Value=_model.EditNumber        Field=@(() => _model.EditNumber)/>
-            <EditString        @bind-Value=_model.EditString        Field=@(() => _model.EditString!)      Placeholder="Hello world!"/>
-            <EditTextArea      @bind-Value=_model.EditTextArea      Field=@(() => _model.EditTextArea)/>
-            <EditSelectEnum    @bind-Value=@_model.EditSelectEnum   Field=@(() => _model.EditSelectEnum)  />
-            <EditSelectString  @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions"/>
+        <div class="flex-row flex-wrap">   
+        <div class="demo-section">
+                <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
+            </div>
+            <div class="demo-section">
+                <EditBoolNullRadio @bind-Value=_model.EditBoolNullRadio Field=@(() => _model.EditBoolNullRadio) />
+            </div>
+            <div class="demo-section">
+                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) DateFormat="MM-dd-yyyy hh:mm tt" />
+            </div>
+            <div class="demo-section">
+                <EditDisplay Label="EditDisplay" Text="My text" />
+            </div>
+            <div class="demo-section">
+                <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) />
+            </div>
+            <div class="demo-section">
+                <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString!) Placeholder="Hello world!" />
+            </div>
+            <div class="demo-section">
+                <EditSelectEnum @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) />
+            </div>
+            <div class="demo-section">
+                <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions" />
+            </div>
+            <div class="demo-section">
             <EditSelect        @bind-Value=_model.EditSelect        Field=@(() => _model.EditSelect)>
                 @foreach (var o in _plants.OrderBy(x => x.Name))
                 {
@@ -29,21 +45,29 @@
                         @o.Name
                     </option>
                 }
-            </EditSelect>
+                </EditSelect>
+            </div>
+            <div class="demo-section">
+                <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) />
+            </div>
         </div>
 
         <div class="flex-row flex-wrap">
             <button class=@(_isHorizontal ? "active" : "inactive") @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Horizontal</button>
+
+        <div class="demo-section">
             <EditRadioString @bind-Value=_model.EditRadioString
                              Field=@(() => _model.EditRadioString)
                              Options=@_colorOptions
                              HasOther=true
                              IsHorizontal=@_isHorizontal/>
-
+            </div>
+            <div class="demo-section">
             <EditRadioEnum @bind-Value=_model.EditRadioEnum
                            Field=@(() => _model.EditRadioEnum)
                            IsHorizontal=@_isHorizontal/>
-
+            </div>
+            <div class="demo-section">
             <EditRadio @bind-Value=_model.EditRadio
                       Field=@(() => _model.EditRadio)
                       IsHorizontal=@_isHorizontal>
@@ -59,11 +83,13 @@
                 }
 
             </EditRadio>
-
+            </div>
+            <div class="demo-section">
             <EditCheckedStringList @bind-Value=_model.EditCheckedStringList
                                    Field=@(() => _model.EditCheckedStringList!)
                                    Options=@_editCheckedStringListOptions
-                                   IsHorizontal=@_isHorizontal/>
+                                       IsHorizontal=@_isHorizontal />
+            </div>
         </div>
     </fieldset>
 </EditForm>

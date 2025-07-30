@@ -36,16 +36,16 @@
 
     <div class="demo-section">
         <h2>State Options</h2>
-        <EditCheckedStringList @bind-Value="_model.DisabledField"
+        <EditCheckedStringList @bind-Value="_model.Disabled"
                                Label="Disabled State"
                                Options="@_basicItems"
                                IsDisabled="true"
-                               Field="@(() => _model.DisabledField)" />
+                               Field="@(() => _model.Disabled)" />
 
-        <EditCheckedStringList @bind-Value="_model.RequiredField"
+        <EditCheckedStringList @bind-Value="_model.Required"
                                Label="Required Field"
                                Options="@_basicItems"
-                               Field="@(() => _model.RequiredField)" />
+                               Field="@(() => _model.Required)" />
     </div>
 
 </EditForm>
@@ -64,9 +64,9 @@
         public List<string> CustomClass { get; set; } = [];
 
         [Required(ErrorMessage = "Please select at least one item")]
-        public List<string> RequiredField { get; set; } = [];
+        public List<string> Required { get; set; } = [];
 
-        public List<string> DisabledField { get; set; } = [];
+        public List<string> Disabled { get; set; } = [];
     }
 }
 

@@ -12,13 +12,12 @@
 
 
 
-
 <div class="flex-row">
     <!-- Sidebar -->
     <div class="flex-column" style="gap: 4px">
         @foreach (var view in Enum.GetValues<CurrentView>())
         {
-            <button class=@(_currentView == view ? "active" : "inactive") @onclick=@(() => _currentView = view)>
+            <button class=@(_currentView == view ? "active" : "inactive") @onclick=@(()=>GoToView(view))>
                 @(view)
             </button>
         }

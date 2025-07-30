@@ -6,11 +6,9 @@
     <ObjectGraphDataAnnotationsValidator/>
 
     <div class="demo-section">
-        <h2>Basic Usage</h2>
         <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" />
 
-        <h2>Read-only mode</h2>
-        <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" IsEditMode="false" />
+        <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" IsEditMode="false" Label="Read-only" />
     </div>
 
 
@@ -31,7 +29,6 @@
             }
         </style>
 
-        <h2>Custom Styling</h2>
         <EditSelectEnum @bind-Value="_model.CustomClass"
                         Field="@(() => _model.CustomClass)"
                         ContainerClass="my-custom-container"
@@ -39,13 +36,12 @@
     </div>
 
     <div class="demo-section">
-        <h2>State Options</h2>
-        <EditSelectEnum @bind-Value="_model.DisabledField"
-                        Field="@(() => _model.DisabledField)"
+        <EditSelectEnum @bind-Value="_model.Disabled"
+                        Field="@(() => _model.Disabled)"
                         IsDisabled="true"/>
 
-        <EditSelectEnum @bind-Value="_model.RequiredField"
-                        Field="@(() => _model.RequiredField)"/>
+        <EditSelectEnum @bind-Value="_model.Required"
+                        Field="@(() => _model.Required)"/>
     </div>
 </EditForm>
 
@@ -61,8 +57,8 @@
         public Animal BasicEnum { get; set; }
         public Animal CustomClass { get; set; }
 
-        [Required] public Animal RequiredField { get; set; }
-        public Animal DisabledField { get; set; }
+        [Required] public Animal Required { get; set; }
+        public Animal Disabled { get; set; }
     }
 
 }

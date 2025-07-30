@@ -61,8 +61,8 @@
 
     <div class="demo-section">
         <h2>State Options</h2>
-        <EditSelect @bind-Value="_model.DisabledField"
-                    Field="@(() => _model.DisabledField)"
+        <EditSelect @bind-Value="_model.Disabled"
+                    Field="@(() => _model.Disabled)"
                     IsDisabled="true">
             <option value="">Select a color...</option>
             @foreach (var color in _colors)
@@ -71,8 +71,8 @@
             }
         </EditSelect>
 
-        <EditSelect @bind-Value="_model.RequiredField"
-                    Field="@(() => _model.RequiredField)">
+        <EditSelect @bind-Value="_model.Required"
+                    Field="@(() => _model.Required)">
             <option value="">Select a color...</option>
             @foreach (var color in _colors)
             {
@@ -97,9 +97,9 @@
         public string CustomClass { get; set; } = "";
 
         [Required(ErrorMessage = "Please select a color")]
-        public string RequiredField { get; set; } = "";
+        public string Required { get; set; } = "";
 
-        public string DisabledField { get; set; } = "";
+        public string Disabled { get; set; } = "";
     }
 
 }

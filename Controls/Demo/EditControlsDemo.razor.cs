@@ -1,8 +1,18 @@
-﻿namespace Controls.Demo;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
+using System;
+using System.Collections.Generic;
 
-public partial class EditControlsDemo
+namespace Controls.Demo;
+
+public partial class EditControlsDemo : IDisposable
 {
-    CurrentView _currentView = CurrentView.Bool;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    [Parameter, SupplyParameterFromQuery(Name = "view")]
+    public string? ViewParam { get; set; }
+
+    CurrentView _currentView = CurrentView.AllControls;
 
     readonly DemoModelForEditControls _allControlsModel = new();
     EditForm editForm; // Set by @ref during Render
@@ -22,7 +32,44 @@ public partial class EditControlsDemo
     List<Plant> _plants = Plant.GetTestData();
     bool _isHorizontal = false;
     public HidingMode HidingMode { get; set; }
-    
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += HandleLocationChanged;
+        UpdateViewFromUrl();
+        base.OnInitialized();
+    }
+
+    private void UpdateViewFromUrl()
+    {
+        if (!string.IsNullOrEmpty(ViewParam) && 
+            Enum.TryParse<CurrentView>(ViewParam, true, out var view))
+        {
+            _currentView = view;
+        }
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        UpdateViewFromUrl();
+        StateHasChanged();
+    }
+
+    public void ChangeView(CurrentView view)
+    {
+        var uri = NavigationManager.GetUriWithQueryParameter("view", view.ToString());
+        NavigationManager.NavigateTo(uri);
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= HandleLocationChanged;
+    }
+    private void GoToView(CurrentView view)
+    {
+        NavigationManager.NavigateTo(
+            NavigationManager.GetUriWithQueryParameter("view", view.ToString()));
+    }
 }
 
 public enum CurrentView

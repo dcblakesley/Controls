@@ -46,8 +46,8 @@
     </div>
 
     <div class="demo-section">
-        <EditRadio @bind-Value="_model.DisabledField"
-                   Field="@(() => _model.DisabledField)"
+        <EditRadio @bind-Value="_model.Disabled"
+                   Field="@(() => _model.Disabled)"
                    IsDisabled="true">
             @foreach (var option in _numberOptions)
             {
@@ -63,8 +63,8 @@
     </div>
     
     <div class="demo-section">
-        <EditRadio @bind-Value="_model.RequiredField"
-                   Field="@(() => _model.RequiredField)">
+        <EditRadio @bind-Value="_model.Required"
+                   Field="@(() => _model.Required)">
             @foreach (var option in _numberOptions)
             {
                 <label>
@@ -116,9 +116,9 @@
         public int CustomStyling { get; set; }
 
         [Required]
-        public int? RequiredField { get; set; }
+        public int? Required { get; set; }
 
-        public int DisabledField { get; set; }
+        public int Disabled { get; set; }
     }
 
 }

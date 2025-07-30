@@ -34,8 +34,6 @@ public static class ValidationHelper
     /// <summary> Overrides the default validation messages. </summary>
     public static string GetValidationMessage(string message, string fieldName, int? max = null, int? min = null)
     {
-        Console.WriteLine(fieldName + " -> " + message);
-
         var output = message;
 
         // Required
@@ -68,16 +66,12 @@ public static class ValidationHelper
         if (min != null && max != null && string.Equals(message, $"The field {fieldName} must be a number between {min} and {max}."))
             return RangeString(min, max);
 
-        Console.WriteLine("Processing numeric range validation...");
         // Numeric range
         // The field Min must be between -2 and 55.
         if (message.Contains($"The field {fieldName} must be between"))
         {
-            Console.WriteLine("Numeric range validation detected.");
             // The message is in the format "The field Min must be between -2 and 55."
             var parts = message.Split(' ');
-
-            Console.WriteLine("Extracting numeric range from message.");
 
             // The field Min must be between -2 and 55.
             var minValue = parts[6];
@@ -109,13 +103,7 @@ public static class ValidationHelper
                 return MinValueString(minValue);
             if (!isMinimumForType && !isMaximumForType)
                 return NumberRangeString(minValue, maxValue);
-
-            Console.WriteLine("No specific numeric range message found, returning original message.");
-
-
         }
-
-
 
         return output;
     }

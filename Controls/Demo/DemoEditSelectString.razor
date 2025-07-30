@@ -52,16 +52,16 @@
 
     <div class="demo-section">
         <h2>State Options</h2>
-        <EditSelectString @bind-Value="_model.DisabledField"
+        <EditSelectString @bind-Value="_model.Disabled"
                           Label="Disabled State"
                           Options="_colors"
                           IsDisabled="true"
-                          Field="@(() => _model.DisabledField)"/>
+                          Field="@(() => _model.Disabled)"/>
 
-        <EditSelectString @bind-Value="_model.RequiredField"
+        <EditSelectString @bind-Value="_model.Required"
                           Label="Required Field"
                           Options="_colors"
-                          Field="@(() => _model.RequiredField)"/>
+                          Field="@(() => _model.Required)"/>
     </div>
 </EditForm>
 
@@ -80,9 +80,9 @@
         public string CustomClass { get; set; } = "";
 
         [Required]
-        public string RequiredField { get; set; } = "";
+        public string Required { get; set; } = "";
 
-        public string DisabledField { get; set; } = "";
+        public string Disabled { get; set; } = "";
     }
 
 }
