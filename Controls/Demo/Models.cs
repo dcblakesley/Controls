@@ -3,7 +3,7 @@
 internal class DemoModelForEditControls
 {
     // Controls
-    [Required, DisplayName("EditString"), MinLength(5)] 
+    [Required, MinLength(5), DisplayName("EditString")] 
     public string? EditString { get; set; } = "";
 
     [DisplayName("EditTextArea")]
@@ -11,7 +11,7 @@ internal class DemoModelForEditControls
     [DisplayName("EditNumber")] public double? EditNumber { get; set; } = 0;
     public bool EditBool { get; set; }
     [Required, DisplayName("EditBoolNullRadio")] public bool? EditBoolNullRadio { get; set; }
-    [DisplayName("EditDate")] public DateTime EditDate { get; set; }
+    [DisplayName("EditDate")] public DateTime EditDate { get; set; } = DateTime.Now;
     [DisplayName("EditSelectEnum")] public Animal EditSelectEnum { get; set; }
     [DisplayName("EditSelect")] public int EditSelect { get; set; }
     [Required, DisplayName("EditSelectString")] public string? EditSelectString { get; set; } = "";

@@ -148,12 +148,11 @@ input[type="radio"]:hover {
     background-color: lightgray;*/ /* Example hover color */
     /*}*/
     /************************************************ General ************************************************/
-    .edit-control-wrapper { /* Wraper/group around each edit control (label, description, input and validation messages */
-    }
+    .edit-control-wrapper { /* Wraper/group around each edit control (label, description, input and validation messages */    }
 .edit-validation-message{ /* The validation message for each of the "Edit" Controls */ }
 
 /************************************************ FormLabel **********************************************/
-.edit-label { /* The label for each of the "Edit" Controls */margin-bottom: 8px; }
+.edit-label { /* The label for each of the "Edit" Controls */}
 .edit-label-required-star {
     /* The star that shows up after the Label when a property is marked as [Required] */
     margin-left: 8px;

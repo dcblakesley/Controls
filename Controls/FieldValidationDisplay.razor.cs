@@ -1,4 +1,6 @@
-﻿namespace Controls;
+﻿using System.Reflection.Emit;
+
+namespace Controls;
 
 /// <summary> Validation shown under the input field when it doesn't meet the requirements based on DataAnnotations. </summary>
 public partial class FieldValidationDisplay
@@ -10,11 +12,13 @@ public partial class FieldValidationDisplay
     [Parameter] public required List<Attribute> Attributes { get; set; }
     [Parameter] public string? Id { get; set; }
     [Parameter] public string? IdPrefix { get; set; }
+    [Parameter] public string? Label { get; set; }
 
     bool _isRequired;
     int? _minCharacters;
     int? _maxCharacters;
     string _fieldName = string.Empty;
+    string GetLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
 
     protected override void OnInitialized()
     {
@@ -23,6 +27,8 @@ public partial class FieldValidationDisplay
         _minCharacters = minAndMax.MinLength;
         _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
+
+
         if (FormOptions != null)
         {
             // Register the field identifier with the form options so we can have a validation summary that provides links to the field that is invalid.
@@ -32,6 +38,6 @@ public partial class FieldValidationDisplay
     }
 
     /// <summary> Overrides the default validation messages. </summary>
-    string GetValidationMessage(string message) =>
-        ValidationHelper.GetValidationMessage(message, _fieldName, _maxCharacters, _minCharacters);
+    string GetValidationMessage(string message, bool showLabel = false) =>
+        ValidationHelper.GetValidationMessage(message, _fieldName, GetLabel(), _maxCharacters, _minCharacters, showLabel);
 }

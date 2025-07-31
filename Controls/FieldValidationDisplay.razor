@@ -1,9 +1,23 @@
-﻿@if (EditContext!.GetValidationMessages().Any())
-{
-    <div class="edit-validation-message" id="error-msg-@Id" aria-live="polite">
+﻿
+<!-- Screen readers -->
+<div class="edit-validation-message" id="error-msg-@Id" aria-live="assertive" aria-atomic="true"
+     style="position: absolute;left: -10000px;top: auto;width: 1px;height: 1px;overflow: hidden;">
+    @if (EditContext!.GetValidationMessages().Any())
+    {
+        @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
+        {
+            @GetValidationMessage(x, true)
+        }
+    }
+</div>
+
+<!-- non-screen readers -->
+<div class="edit-validation-message" aria-hidden="true" >
+    @if (EditContext!.GetValidationMessages().Any())
+    {
         @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
         {
             @((MarkupString)GetValidationMessage(x))
         }
-    </div>
-}
+    }
+</div>

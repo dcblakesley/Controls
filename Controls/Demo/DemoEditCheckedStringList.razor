@@ -13,16 +13,6 @@
     </div>
 
     <div class="demo-section">
-        <EditCheckedStringList @bind-Value="_model.WithHtmlLabel"
-                               Label="Label with <em style='color: magenta'>HTML</em> content"
-                               Options="@_basicItems"
-                               Field="@(() => _model.WithHtmlLabel)" />
-        <EditCheckedStringList @bind-Value="_model.NoLabel"
-                               Options="@_basicItems"
-                               Field="@(() => _model.NoLabel)" />
-    </div>
-
-    <div class="demo-section">
         <EditCheckedStringList @bind-Value="_model.CustomStyling"
                                Options="@_basicItems"
                                ContainerClass="my-custom-container"
@@ -65,7 +55,7 @@
 
 <style>
     .my-custom-container {
-        background-color: ;
+        background-color: teal;
         padding: 10px;
         border-radius: 4px;
     }

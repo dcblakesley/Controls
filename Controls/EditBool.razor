@@ -4,11 +4,10 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
-           
+                   
         <label class="edit-label edit-checkbox-label" for=@_id>
             <input type="checkbox"
+                style="margin-top: -3px"
                    @bind-value=@CurrentValue
                    @bind-value:event="oninput" 
                    class="@CssClass"
@@ -18,7 +17,8 @@
                    disabled=@(!ShowEditor || IsDisabled)
                    aria-required=@_isRequired
                    aria-describedby=@($"desc-{_id}")
-                   aria-errormessage=@($"error-msg-{_id}")/>
+                   aria-errormessage=@($"error-msg-{_id}")
+                   tabindex="0" />
 
             @((MarkupString)DisplayLabel())
         </label>

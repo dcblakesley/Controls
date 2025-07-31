@@ -6,7 +6,8 @@
      aria-required=@IsRequired
      aria-labelledby=@($"lbl-{Id}")
      aria-describedby=@($"desc-{Id}")
-     aria-errormessage=@($"error-msg-{Id}")>
+     aria-errormessage=@($"error-msg-{Id}")
+     tabindex="0">
 
     @((MarkupString)Text)
 </div>

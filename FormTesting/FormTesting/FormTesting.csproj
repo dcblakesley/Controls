@@ -7,14 +7,6 @@
     <UserSecretsId>28bf1a57-e83b-49a3-9274-70a01885656b</UserSecretsId>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Remove="wwwroot\clark-light.css" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="wwwroot\clark-light.css" />
-  </ItemGroup>
-
 
   <ItemGroup>
     <ProjectReference Include="..\FormTesting.Client\FormTesting.Client.csproj" />

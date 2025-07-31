@@ -22,49 +22,59 @@ public static class ValidationHelper
 {
     // New default validation messages
     static string RequiredString() => "Required";
+    static string RequiredString(string label) => $"{label} is required.";
+
     static string MinLengthString(int? min) => $"Must contain at least {min} characters";
+    static string MinLengthString(int? min, string label) => $"{label} must contain at least {min} characters";
+
     static string MaxLengthString(int? max) => $"Cannot contain more than {max} characters";
+    static string MaxLengthString(int? max, string label) => $"{label} cannot contain more than {max} characters";
+
     static string RangeString(int? min, int? max) => $"Must be between {min} and {max} characters";
+    static string RangeString(int? min, int? max, string label) => $"{label} must be between {min} and {max} characters";
+
     static string MustBeANumberString() => "Must be a number";
+    static string MustBeANumberString(string label) => $"{label} must be a number.";
+
     static string MinValueString(string min) => $"Must be at least {min}";
+    static string MinValueString(string min, string label) => $"{label} must be at least {min}";
+
     static string MaxValueString(string max) => $"Cannot exceed {max}";
+    static string MaxValueString(string max, string label) => $"{label} cannot exceed {max}";
 
     static string NumberRangeString(string min, string max) => $"Must be between {min} and {max}";
+    static string NumberRangeString(string min, string max, string label) => $"{label} must be between {min} and {max}";
 
     /// <summary> Overrides the default validation messages. </summary>
-    public static string GetValidationMessage(string message, string fieldName, int? max = null, int? min = null)
+    public static string GetValidationMessage(string message, string fieldName, string label, int? max = null, int? min = null, bool includeLabel = false)
     {
         var output = message;
 
         // Required
         if (string.Equals(message, $"The {fieldName} field is required."))
-            return RequiredString();
+            return includeLabel ? RequiredString(label) : RequiredString();
 
         // StringLength with only max
         if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
-            return MaxLengthString(max);
+            return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
 
         // StringLength with Min
         if (string.Equals(message, $"The field {fieldName} must be a string with a minimum length of {min} and a maximum length of {max}."))
-            return RangeString(min, max);
+            return includeLabel ? RangeString(min, max, label) : RangeString(min, max);
 
         // MinLength
         if (string.Equals(message, $"The field {fieldName} must be a string or array type with a minimum length of '{min}'."))
-            return MinLengthString(min);
+            return includeLabel ? MinLengthString(min, label) : MinLengthString(min);
 
         // MaxLength
         if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
-            return MaxLengthString(max);
+            return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
         if (string.Equals(message, $"The field {fieldName} must be a string or array type with a maximum length of '{max}'."))
-            return MaxLengthString(max);
+            return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
 
         // Replace numeric validation message 
         if (string.Equals(message, $"The {fieldName} field must be a number."))
-            return MustBeANumberString();
-
-        // Numeric
-        if (min != null && max != null && string.Equals(message, $"The field {fieldName} must be a number between {min} and {max}."))
-            return RangeString(min, max);
+            return includeLabel ? MustBeANumberString(label) : MustBeANumberString();
 
         // Numeric range
         // The field Min must be between -2 and 55.

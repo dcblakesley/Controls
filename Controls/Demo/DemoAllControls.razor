@@ -8,29 +8,32 @@
     <fieldset>
 
         <div class="flex-row flex-wrap">
-            <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
-            <EditBoolNullRadio @bind-Value=_model.EditBoolNullRadio Field=@(() => _model.EditBoolNullRadio) />
-            <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) DateFormat="MM-dd-yyyy hh:mm tt" />
-            <EditDisplay Label="EditDisplay" Text="My text" />
-            <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) />
-            <EditString @bind-Value=_model.EditString Field=@(() => _model.EditString!) Placeholder="Hello world!" />
-            <EditSelectEnum @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) />
-            <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions" />
-            <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect)>
-                @foreach (var o in _plants.OrderBy(x => x.Name))
-                {
-                    <option checked=@(() => _model.EditSelect == o.Id)
-                            value=@o.Id
-                            id=@($"option-{o.Id}")
-                            data-test-id=@($"option-{o.Id}")>
-                        @o.Name
-                    </option>
-                }
-            </EditSelect>
-            <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) />
-        </div>
 
-        <div class="flex-row flex-wrap">
+            <div class="demo-section">
+                <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
+                <EditBoolNullRadio @bind-Value=_model.EditBoolNullRadio Field=@(() => _model.EditBoolNullRadio) />
+                <EditDate @bind-Value=_model.EditDate Field=@(() => _model.EditDate) DateFormat="MM-dd-yyyy hh:mm tt" />
+                <EditDisplay Label="EditDisplay" Text="My text" />
+                <EditNumber @bind-Value=_model.EditNumber Field=@(() => _model.EditNumber) />
+                <EditString Description="I'm a cool description'" @bind-Value=_model.EditString Field=@(() => _model.EditString!) Placeholder="Hello world!" />
+            </div>
+            <div class="demo-section">
+                <EditSelectEnum @bind-Value=@_model.EditSelectEnum Field=@(() => _model.EditSelectEnum) />
+                <EditSelectString @bind-Value=@_model.EditSelectString Field=@(() => _model.EditSelectString) Options="_colorOptions" />
+                <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect)>
+                    @foreach (var o in _plants.OrderBy(x => x.Name))
+                    {
+                        <option checked=@(() => _model.EditSelect == o.Id)
+                                value=@o.Id
+                                id=@($"option-{o.Id}")
+                                data-test-id=@($"option-{o.Id}")>
+                            @o.Name
+                        </option>
+                    }
+                </EditSelect>
+                <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) />
+            </div>
+
             <button class=@(_isHorizontal ? "active" : "inactive") @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Horizontal</button>
 
             <EditRadioString @bind-Value=_model.EditRadioString
