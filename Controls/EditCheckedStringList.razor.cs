@@ -57,7 +57,9 @@ public partial class EditCheckedStringList : IEditControl
             Value.Remove(str);
         else
             Value.Add(str);
-        
+
+        // Notify EditContext about the change
+        EditContext?.NotifyFieldChanged(_fieldIdentifier);
         await ValueChanged.InvokeAsync(Value);
     }
     bool ShouldShowComponent()
@@ -85,4 +87,8 @@ public partial class EditCheckedStringList : IEditControl
         };
     }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+
+                                
+    [Parameter] public EventCallback<IReadOnlyList<string>> FieldChanged { get; set; }
+
 }

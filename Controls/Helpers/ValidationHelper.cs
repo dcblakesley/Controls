@@ -27,8 +27,14 @@ public static class ValidationHelper
     static string MinLengthString(int? min) => $"Must contain at least {min} characters";
     static string MinLengthString(int? min, string label) => $"{label} must contain at least {min} characters";
 
+    static string MinLengthList(int? min) => $"Must select at least {min} options";
+    static string MinLengthList(int? min, string label) => $"{label} requires at least {min} options";
+
     static string MaxLengthString(int? max) => $"Cannot contain more than {max} characters";
     static string MaxLengthString(int? max, string label) => $"{label} cannot contain more than {max} characters";
+
+    static string MaxLengthList(int? max) => $"Cannot exceed {max} selections.";
+    static string MaxLengthList(int? max, string label) => $"{label} cannot exceed {max} selections";
 
     static string RangeString(int? min, int? max) => $"Must be between {min} and {max} characters";
     static string RangeString(int? min, int? max, string label) => $"{label} must be between {min} and {max} characters";
@@ -46,8 +52,10 @@ public static class ValidationHelper
     static string NumberRangeString(string min, string max, string label) => $"{label} must be between {min} and {max}";
 
     /// <summary> Overrides the default validation messages. </summary>
-    public static string GetValidationMessage(string message, string fieldName, string label, int? max = null, int? min = null, bool includeLabel = false)
+    public static string GetValidationMessage(string message, string fieldName, string label, string? valueType, int? max = null, int? min = null, bool includeLabel = false)
     {
+        Console.WriteLine($"GetValidationMessage: {message}, {fieldName}, {label}, {valueType}, {max}, {min}, {includeLabel}");
+
         var output = message;
 
         // Required
@@ -64,12 +72,20 @@ public static class ValidationHelper
 
         // MinLength
         if (string.Equals(message, $"The field {fieldName} must be a string or array type with a minimum length of '{min}'."))
-            return includeLabel ? MinLengthString(min, label) : MinLengthString(min);
+        {
+            if (valueType == "System.String")
+                return includeLabel ? MinLengthString(min, label) : MinLengthString(min);
+            return includeLabel ? MinLengthList(min, label) : MinLengthList(min);
+        }
 
-        // MaxLength
-        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
-            return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
         if (string.Equals(message, $"The field {fieldName} must be a string or array type with a maximum length of '{max}'."))
+        {
+            if (valueType == "System.String")
+                return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
+            return includeLabel ? MaxLengthList(max, label) : MaxLengthList(max);
+        }
+
+        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
             return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
 
         // Replace numeric validation message 
@@ -108,11 +124,11 @@ public static class ValidationHelper
             }
 
             if (isMinimumForType && !isMaximumForType)
-                return MaxValueString(maxValue);
+                return includeLabel ? MaxValueString(maxValue, label) : MaxValueString(maxValue);
             if (!isMinimumForType && isMaximumForType)
-                return MinValueString(minValue);
+                return includeLabel ? MinValueString(minValue, label) : MinValueString(minValue);
             if (!isMinimumForType && !isMaximumForType)
-                return NumberRangeString(minValue, maxValue);
+                return includeLabel ? NumberRangeString(minValue, maxValue, label) : NumberRangeString(minValue, maxValue);
         }
 
         return output;

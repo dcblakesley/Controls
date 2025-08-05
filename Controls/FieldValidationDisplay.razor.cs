@@ -1,4 +1,5 @@
-﻿using System.Reflection.Emit;
+﻿using System;
+using System.Reflection.Emit;
 
 namespace Controls;
 
@@ -19,6 +20,7 @@ public partial class FieldValidationDisplay
     int? _maxCharacters;
     string _fieldName = string.Empty;
     string GetLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
+    string? _valueType;
 
     protected override void OnInitialized()
     {
@@ -27,7 +29,7 @@ public partial class FieldValidationDisplay
         _minCharacters = minAndMax.MinLength;
         _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
-
+        _valueType = FieldIdentifier.Model.GetType().GetProperty(FieldIdentifier.FieldName)?.PropertyType?.ToString() ?? string.Empty;
 
         if (FormOptions != null)
         {
@@ -39,5 +41,5 @@ public partial class FieldValidationDisplay
 
     /// <summary> Overrides the default validation messages. </summary>
     string GetValidationMessage(string message, bool showLabel = false) =>
-        ValidationHelper.GetValidationMessage(message, _fieldName, GetLabel(), _maxCharacters, _minCharacters, showLabel);
+        ValidationHelper.GetValidationMessage(message, _fieldName, GetLabel(), _valueType, _maxCharacters, _minCharacters, showLabel);
 }

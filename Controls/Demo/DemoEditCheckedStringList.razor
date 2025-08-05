@@ -37,7 +37,18 @@
     readonly List<string> _basicItems = ["Apple", "Banana", "Orange", "Grape", "Mango"];
 
     EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _form?.EditContext != null)
+        {
+            // Use small delay to ensure component is fully rendered before validation
+            await Task.Delay(10);
+            _form.EditContext.Validate();
+            StateHasChanged();
+        }
+    }
+    
     public class DemoEditCheckedStringListModel
     {
         public List<string> BasicList { get; set; } = [];
@@ -45,7 +56,7 @@
         public List<string> NoLabel { get; set; } = [];
         public List<string> CustomStyling { get; set; } = [];
 
-        [Required, MinLength(1, ErrorMessage = "You must select at least one item.")]
+        [Required, MinLength(2)]
         public List<string> Required { get; set; } = [];
 
         public List<string> Disabled { get; set; } = [];

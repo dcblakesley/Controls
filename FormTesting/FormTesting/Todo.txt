@@ -22,5 +22,8 @@ Changes in 1.0.12.x
  * Control Changes
    - EditRadio and EditCheckedList
      -- Change parameter from HasHorizontalButtons -> IsHorizontal
+     -- Removed the need for "Type" parameter, now uses the type of the value passed in.
+   - EditSelectEnum
+     -- Removed the need for "Type" parameter, now uses the type of the value passed in.
  * New Controls
    - EditBoolNullRadio

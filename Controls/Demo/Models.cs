@@ -47,6 +47,8 @@ internal class DemoModelForEditControls
 
     [DisplayName("EditCheckedStringList")]
     [Description("I'm a little description, short and stout")]
+    [Required]
+    [MinLength(2)]
     public List<string> EditCheckedStringList { get; set; } = [];
 }
 

@@ -11,15 +11,14 @@
                                : "edit-checkedList-checkboxes-container-vertical")>
                     @foreach (var option in Options)
                     {
-                        <label class=@($"edit-label edit-checkbox-label {LabelClass}")>
+                        <label class=@($"edit-checkbox-label {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
                             <input type="checkbox"
                                    value=@option
-                                   checked="@(Value.Contains(option))"
+                                   checked="@(Value?.Contains(option) == true)"
                                    disabled=@IsDisabled
                                    aria-disabled=@IsDisabled
                                    tabindex="0"
                                    @onchange="() => SetAsync(option)"
-
                                    id=@($"cbx-{_id}-{option.ToId()}")
                                    data-test-id=@($"cbx-{_id}-{option.ToId()}")
                                    class="edit-checkedList-checkbox"/>
