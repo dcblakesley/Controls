@@ -47,7 +47,7 @@
                                     {
                                         <input type="text"
                                                value="@OtherValue"
-                                               @oninput="@(e => OnOtherValueChanged(e))"
+                                               @oninput="@(OnOtherValueChanged)"
                                                disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsDisabled)"
                                                class="edit-radio-other-input"
                                                placeholder=@OtherPlaceholder

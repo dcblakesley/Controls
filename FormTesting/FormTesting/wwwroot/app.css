@@ -70,7 +70,6 @@ button {
     border: 1px solid #B7B7B7;
     border-radius: 6px;
 }
-.edit-validation-message{ color: red}
 
 .bound-value {
     color: green
@@ -95,8 +94,16 @@ input[type='checkbox'] {
     cursor: pointer
 }
 
-textarea { box-sizing: border-box; padding: 0px 12px; gap: 10px; height: 64px; width: 25rem; background: var(--white); border: 1px solid; border-color: var(--border-color); border-radius: 6px; flex: none; order: 2; flex-grow: 1; }
-input { box-sizing: border-box; padding: 5px 8px; gap: 10px; height: 32px; background: var(--white); border: 1px solid var(--clark-grey); border-radius: 2px; flex: none; order: 2; flex-grow: 1; }
+textarea {
+    box-sizing: border-box;
+    padding: 0px 12px;
+    background: var(--white);
+    border: 1px solid;
+    border-color: var(--border-color);
+    border-radius: 6px;
+}
+
+input { box-sizing: border-box; padding: 5px 8px; gap: 10px; height: 32px; background: var(--white); border: 1px solid var(--clark-grey); border-radius: 2px; flex: none; flex-grow: 1; }
 
 button { align-items: center; background: var(--white); border: 1px solid var(--clark-grey); color: var(--heading-color); border-radius: 2px; padding-top: 5px; padding-bottom: 5px; padding-left: 16px; padding-right: 16px; max-height: fit-content; }
 button:hover { color: var(--clark-lightblue); cursor: pointer; }

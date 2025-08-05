@@ -7,6 +7,7 @@
 
 .edit-validation-message {
     /* The validation message for each of the "Edit" Controls */
+    color: var(--color-danger);
 }
 
 /************************************************ FormLabel **********************************************/
@@ -76,7 +77,7 @@
     cursor: pointer;
 }
 .edit-radio-buttons-container-horizontal { 
-    /* HasHorizontalRadioButtons=true */
+    /* IsHorizontal = true */
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;

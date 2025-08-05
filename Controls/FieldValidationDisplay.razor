@@ -1,5 +1,4 @@
-﻿
-<!-- Screen readers -->
+﻿<!-- Screen readers -->
 <div class="edit-validation-message" id="error-msg-@Id" aria-live="assertive" aria-atomic="true"
      style="position: absolute;left: -10000px;top: auto;width: 1px;height: 1px;overflow: hidden;">
     @if (EditContext!.GetValidationMessages().Any())
@@ -9,10 +8,10 @@
             @GetValidationMessage(x, true)
         }
     }
-</div>
+</div> 
 
 <!-- non-screen readers -->
-<div class="edit-validation-message" aria-hidden="true" >
+<div class="edit-validation-message" >
     @if (EditContext!.GetValidationMessages().Any())
     {
         @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))

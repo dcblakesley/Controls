@@ -11,7 +11,8 @@ internal class DemoModelForEditControls
     [DisplayName("EditTextArea")]
     public string EditTextArea { get; set; } = "";
 
-    [DisplayName("EditNumber")]
+    [Required, DisplayName("EditNumber")]
+    [Range(100.5, 110.85)]
     public double? EditNumber { get; set; } = 0;
 
     [DisplayName("EditBool")]
