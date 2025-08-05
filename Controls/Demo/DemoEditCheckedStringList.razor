@@ -7,7 +7,6 @@
 
     <div class="demo-section">
         <EditCheckedStringList @bind-Value="_model.BasicList"
-                               Label="Basic Example"
                                Options="@_basicItems"
                                Field="@(() => _model.BasicList)" />
     </div>
@@ -46,7 +45,7 @@
         public List<string> NoLabel { get; set; } = [];
         public List<string> CustomStyling { get; set; } = [];
 
-        [Required(ErrorMessage = "Please select at least one item")]
+        [Required, MinLength(1, ErrorMessage = "You must select at least one item.")]
         public List<string> Required { get; set; } = [];
 
         public List<string> Disabled { get; set; } = [];

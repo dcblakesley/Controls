@@ -3,22 +3,50 @@
 internal class DemoModelForEditControls
 {
     // Controls
-    [Required, MinLength(5), DisplayName("EditString")] 
+    [Required]
+    [MinLength(5)]
+    [DisplayName("EditString")] 
     public string? EditString { get; set; } = "";
 
     [DisplayName("EditTextArea")]
     public string EditTextArea { get; set; } = "";
-    [DisplayName("EditNumber")] public double? EditNumber { get; set; } = 0;
+
+    [DisplayName("EditNumber")]
+    public double? EditNumber { get; set; } = 0;
+
+    [DisplayName("EditBool")]
     public bool EditBool { get; set; }
-    [Required, DisplayName("EditBoolNullRadio")] public bool? EditBoolNullRadio { get; set; }
-    [DisplayName("EditDate")] public DateTime EditDate { get; set; } = DateTime.Now;
-    [DisplayName("EditSelectEnum")] public Animal EditSelectEnum { get; set; }
-    [DisplayName("EditSelect")] public int EditSelect { get; set; }
-    [Required, DisplayName("EditSelectString")] public string? EditSelectString { get; set; } = "";
-    [DisplayName("EditRadioString"), Description("Hello, does this work?")] public string EditRadioString { get; set; } = "";
-    [Required, DisplayName("EditRadioEnum")] public Animal? EditRadioEnum { get; set; } = Animal.Cat;
-    [DisplayName("EditRadio")] public int EditRadio { get; set; } = 0;
-    [DisplayName("EditCheckedStringList"), Description("I'm a little description, short and stout")]
+
+    [Required]
+    [DisplayName("EditBoolNullRadio")] 
+    public bool? EditBoolNullRadio { get; set; }
+
+    [DisplayName("EditDate")] 
+    public DateTime EditDate { get; set; } = DateTime.Now;
+
+    [DisplayName("EditSelectEnum")]
+    public Animal EditSelectEnum { get; set; }
+
+    [DisplayName("EditSelect")] 
+    public int EditSelect { get; set; }
+
+    [Required]
+    [DisplayName("EditSelectString")]
+    public string? EditSelectString { get; set; } = "";
+
+    [DisplayName("EditRadioString")]
+    [Description("Hello, does this work?")]
+    public string EditRadioString { get; set; } = "";
+
+    [Required]
+    [DisplayName("EditRadioEnum")]
+    public Animal? EditRadioEnum { get; set; } = Animal.Cat;
+
+    [DisplayName("EditRadio")]
+    public int EditRadio { get; set; } = 0;
+
+    [DisplayName("EditCheckedStringList")]
+    [Description("I'm a little description, short and stout")]
     public List<string> EditCheckedStringList { get; set; } = [];
 }
 

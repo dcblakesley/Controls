@@ -50,11 +50,7 @@ public partial class EditCheckedStringList : IEditControl
         _id = AttributesHelper.GetId(Id, FormGroupOptions, null, _fieldIdentifier);
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-        hasError = EditContext.GetValidationMessages(_fieldIdentifier).Any();
-    }
+
     async Task SetAsync(string str)
     {
         if (Value.Contains(str))

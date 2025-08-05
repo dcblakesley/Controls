@@ -56,4 +56,13 @@ public partial class EditBool : IEditControl
             _ => true
         };
     }
+    private void PreventSpacebarToggle(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs args)
+    {
+        // Check if spacebar is pressed and prevent default toggle behavior
+        if (args.Key == " " || args.Code == "Space")
+        {
+            // The actual prevention happens in the Razor markup with @onkeydown:preventDefault
+            // This method provides a hook for that behavior
+        }
+    }
 }

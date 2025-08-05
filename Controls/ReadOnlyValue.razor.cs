@@ -8,5 +8,7 @@ public partial class ReadOnlyValue
     [Parameter] public required string Id { get; set; }
     [Parameter] public required string IsRequired { get; set; }
     [Parameter] public string? CssClass { get; set; }
-    [Parameter] public required string Text { get; set; }
+    [Parameter] public string? Text { get; set; }
+
+    string _emptyValue = "-";
 }

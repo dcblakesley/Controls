@@ -1,3 +1,4 @@
+
 <div class="edit-readonly-value @CssClass"
      role="textbox"
      id=@Id
@@ -8,6 +9,14 @@
      aria-describedby=@($"desc-{Id}")
      aria-errormessage=@($"error-msg-{Id}")
      tabindex="0">
+    
+    @if (!string.IsNullOrEmpty(Text))
+    {
+        @((MarkupString)Text)
+    }
+    else
+    {
+        <span aria-hidden="false" style="visibility: hidden">No Value</span>
+    }
 
-    @((MarkupString)Text)
 </div>

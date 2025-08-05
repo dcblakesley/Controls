@@ -1,58 +1,48 @@
-/*html, body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-a, .btn-link { color: #006bb7; }
-.btn-primary { color: #fff; background-color: #1b6ec2; border-color: #1861ac; }
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus { box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb; }
-.content { padding-top: 1.1rem; }
-h1:focus { outline: none; }
-dioxide .valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
-.invalid { outline: 1px solid #e50000; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
-
-
-.validation-message { color: #e50000; }
-.blazor-error-boundary { background: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTYiIGhlaWdodD0iNDkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIG92ZXJmbG93PSJoaWRkZW4iPjxkZWZzPjxjbGlwUGF0aCBpZD0iY2xpcDAiPjxyZWN0IHg9IjIzNSIgeT0iNTEiIHdpZHRoPSI1NiIgaGVpZ2h0PSI0OSIvPjwvY2xpcFBhdGg+PC9kZWZzPjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMCkiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yMzUgLTUxKSI+PHBhdGggZD0iTTI2My41MDYgNTFDMjY0LjcxNyA1MSAyNjUuODEzIDUxLjQ4MzcgMjY2LjYwNiA1Mi4yNjU4TDI2Ny4wNTIgNTIuNzk4NyAyNjcuNTM5IDUzLjYyODMgMjkwLjE4NSA5Mi4xODMxIDI5MC41NDUgOTIuNzk1IDI5MC42NTYgOTIuOTk2QzI5MC44NzcgOTMuNTEzIDI5MSA5NC4wODE1IDI5MSA5NC42NzgyIDI5MSA5Ny4wNjUxIDI4OS4wMzggOTkgMjg2LjYxNyA5OUwyNDAuMzgzIDk5QzIzNy45NjMgOTkgMjM2IDk3LjA2NTEgMjM2IDk0LjY3ODIgMjM2IDk0LjM3OTkgMjM2LjAzMSA5NC4wODg2IDIzNi4wODkgOTMuODA3MkwyMzYuMzM4IDkzLjAxNjIgMjM2Ljg1OCA5Mi4xMzE0IDI1OS40NzMgNTMuNjI5NCAyNTkuOTYxIDUyLjc5ODUgMjYwLjQwNyA1Mi4yNjU4QzI2MS4yIDUxLjQ4MzcgMjYyLjI5NiA1MSAyNjMuNTA2IDUxWk0yNjMuNTg2IDY2LjAxODNDMjYwLjczNyA2Ni4wMTgzIDI1OS4zMTMgNjcuMTI0NSAyNTkuMzEzIDY5LjMzNyAyNTkuMzEzIDY5LjYxMDIgMjU5LjMzMiA2OS44NjA4IDI1OS4zNzEgNzAuMDg4N0wyNjEuNzk1IDg0LjAxNjEgMjY1LjM4IDg0LjAxNjEgMjY3LjgyMSA2OS43NDc1QzI2Ny44NiA2OS43MzA5IDI2Ny44NzkgNjkuNTg3NyAyNjcuODc5IDY5LjMxNzkgMjY3Ljg3OSA2Ny4xMTgyIDI2Ni40NDggNjYuMDE4MyAyNjMuNTg2IDY2LjAxODNaTTI2My41NzYgODYuMDU0N0MyNjEuMDQ5IDg2LjA1NDcgMjU5Ljc4NiA4Ny4zMDA1IDI1OS43ODYgODkuNzkyMSAyNTkuNzg2IDkyLjI4MzcgMjYxLjA0OSA5My41Mjk1IDI2My41NzYgOTMuNTI5NSAyNjYuMTE2IDkzLjUyOTUgMjY3LjM4NyA5Mi4yODM3IDI2Ny4zODcgODkuNzkyMSAyNjcuMzg3IDg3LjMwMDUgMjY2LjExNiA4Ni4wNTQ3IDI2My41NzYgODYuMDU0N1oiIGZpbGw9IiNGRkU1MDAiIGZpbGwtcnVsZT0iZXZlbm9kZCIvPjwvZz48L3N2Zz4=) no-repeat 1rem/1.8rem, #b32121; padding: 1rem 1rem 1rem 3.7rem; color: white; }
-.blazor-error-boundary::after { content: "An error has occurred." }
-.darker-border-checkbox.form-check-input { border-color: #929292; }
-.flex-fill { flex: 1 }
-.flex-row { display: flex; flex-direction: row; column-gap: 16px }
-.flex-row-center { display: flex; flex: 1; flex-direction: row; justify-content: center; text-align: center; }
-.flex-column { display: flex; flex-direction: column; row-gap: 0px}
-.flex-column-center { display: flex; flex: 1; flex-direction: column; justify-content: center; text-align: center; }
-.full-height { height: 100% }
-.full-width { width: 100% }
-.full-space { height: 100%; width: 100% }
-.flex-wrap { flex-wrap: wrap }
-.pointer { cursor: pointer }
-.arrow { cursor: default }
-.not-allowed { cursor: not-allowed }
-.nowrap { white-space: nowrap }
-.form-description { font-family: 'DM Sans'; font-style: normal; font-weight: 400; font-size: 14px; line-height: 22px; min-height: 22px; opacity: 0.65; }
-.w100 { width: 100px; }
-.w200 { width: 200px; }
-.w300 { width: 300px; }
-.w400 { width: 400px; }
-.w500 { width: 500px; }
-.w600 { width: 600px; }
-.w700 { width: 700px; }
-.w800 { width: 800px; }
-.w900 { width: 900px; }
-.w1000 { width: 1000px; }
-.w1100 { width: 1100px; }
-
-
-
-
-
-.bound-value { color: lime;}
-
-.required-star {
-    color: red;
-    margin-left: 5px;
+:root {
+    --color-primary: #277C6C;
+    --color-primary-light: #388F7F;
+    --color-primary-dark: #247060;
+    --color-danger: #CF1322;
+    --color-danger-light: #F5222D;
+    --color-danger-dark: #A8071A;
+    --color-text-muted: #595959;
+    --color-text: #1c1c1c;
+    --color-placeholder: #979797;
+    --color-headings: #262626;
 }
 
-*/
+:root {
+    --black: #000000;
+    --border-color: #B7B7B7;
+    --table-border-color: #e9ede9;
+    --card-background-color: #FFFFFF;
+    --clark-blue: #1890FF;
+    --clark-green: #277C6C;
+    --clark-grey: #D9D9D9;
+    --clark-lightblue: #40A9FF;
+    --clark-lightgrey: #F0F0F0;
+    --danger: #FF4D4F;
+    --danger-hover: #FF7875;
+    --clark-offwhite: #FAFAFA;
+    --clark-placeholder: #8C8C8C;
+    --clark-success: #52C41A;
+    --clark-warning: #FAAD14;
+    --drop-zone-background: #F3F3F3;
+    --font-family: 'Inter', sans-serif;
+    --header-color: #007161;
+    --heading-color: #262626;
+    --label-color: #1C1C1C;
+    --page-background: #F5F5F5;
+    --white: #FFFFFF;
+    --form-text-color: #595959;
+    --margin-medium: 16px;
+    --row-gap-lg: 32px;
+    --row-gap-md: 16px;
+    --row-gap-sm: 8px;
+}
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
 /* Get rid of inherited styling */
 legend { all: unset; }
@@ -61,15 +51,13 @@ p { all: unset }
 label { all: unset }
 span { all: unset }
 button { all: unset }
-
-
-
 /*select { all: unset }
 */ /* html, head, title, body, h1-6, a, img, form, input, button,
     ul, ol, li, table, tr, th, td, br, bold, header, footer,
     main, details, summary, article, address, img, nav, form, 
     strong, b, em, i, small, sub, sup, code, pre
 */
+
 button {
     box-sizing: border-box;
     /* Auto layout */
@@ -133,9 +121,9 @@ input[type='radio'] {
 }
 
 input[type='radio']:not(:checked):hover
-    /*input[type="radio"] {
+/*input[type="radio"] {
     appearance: none;*/ /* Hide default radio button */
-    /*width: 20px;
+/*width: 20px;
     height: 20px;
     border: 2px solid black;
     border-radius: 50%;
@@ -146,105 +134,11 @@ input[type='radio']:not(:checked):hover
 
 input[type="radio"]:hover {
     background-color: lightgray;*/ /* Example hover color */
-    /*}*/
-    /************************************************ General ************************************************/
-    .edit-control-wrapper { /* Wraper/group around each edit control (label, description, input and validation messages */    }
-.edit-validation-message{ /* The validation message for each of the "Edit" Controls */ }
-
-/************************************************ FormLabel **********************************************/
-.edit-label { /* The label for each of the "Edit" Controls */}
-.edit-label-required-star {
-    /* The star that shows up after the Label when a property is marked as [Required] */
-    margin-left: 8px;
-    color: var(--danger);
-}
-.edit-label-description {
-    /* The description for each of the "Edit" Controls */
-    font-family: 'DM Sans';
-    font-style: normal;
-    font-weight: 400;
-    font-size: 14px;
-    line-height: 22px;
-
-    opacity: 0.65;
-    color: black;
-}
-.edit-readonly-value { /* The text that is displayed when IsEditMode=false and within EditDisplay*/ }
-
-/************************************************ EditBool ***********************************************/
-.edit-checkbox-label { cursor: pointer; }
-/************************************************ EditCheckedList(String and Enum) ***********************/
-.edit-checkedList-fieldset {
-}
-.edit-checkedList-checkboxes-container-vertical { /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer; }
-.edit-checkedList-checkboxes-container-horizontal { /* HasHorizontalCheckboxes=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
-/************************************************ EditDate ***********************************************/
-.edit-date-input { }
-/************************************************ EditNumber *********************************************/
-.edit-number-input{}
-/************************************************ EditRadio(String and Enum) *****************************/
-.edit-radio-fieldset {  }
-.edit-radio-buttons-container-vertical {
-     /* default/vertical display */display: flex; flex-direction: column; gap: 8px; cursor: pointer;
-}
-.edit-radio-buttons-container-horizontal { /* HasHorizontalRadioButtons=true */display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; cursor: pointer; }
-.edit-radio-label { cursor: pointer; }
-/************************************************ EditSelect(String and Enum) *********************************************/
-.edit-select-select{}
-.edit-select-option { /* The options within the select control */ }
-/************************************************ EditString *********************************************/
-.edit-string-link { /* <a style when IsEditMode=false and Url!=null */}
-.edit-string-input { /* The input for the "EditString" control */}
-/************************************************ EditTextArea *******************************************/
-.edit-textarea-input { /* The textarea for each of the "Edit" Controls */}
-
+/*}*/
 /* Colors for EditControls */
-:root {
-
-    --color-primary: #277C6C;
-    --color-primary-light: #388F7F;
-    --color-primary-dark: #247060;
-    --color-danger: #CF1322;
-    --color-danger-light: #F5222D;
-    --color-danger-dark: #A8071A;
-    --color-text-muted: #595959;
-    --color-text: #1c1c1c;
-    --color-placeholder: #979797;
-    --color-headings: #262626;
-}
-
-
 
 /********************************************************************* Colors ***********************************************************************************/
-:root {
-    --black: #000000;
-    --border-color: #B7B7B7;
-    --table-border-color: #e9ede9;
-    --card-background-color: #FFFFFF;
-    --clark-blue: #1890FF;
-    --clark-green: #277C6C;
-    --clark-grey: #D9D9D9;
-    --clark-lightblue: #40A9FF;
-    --clark-lightgrey: #F0F0F0;
-    --danger: #FF4D4F;
-    --danger-hover: #FF7875;
-    --clark-offwhite: #FAFAFA;
-    --clark-placeholder: #8C8C8C;
-    --clark-success: #52C41A;
-    --clark-warning: #FAAD14;
-    --drop-zone-background: #F3F3F3;
-    --font-family: 'Inter', sans-serif;
-    --header-color: #007161;
-    --heading-color: #262626;
-    --label-color: #1C1C1C;
-    --page-background: #F5F5F5;
-    --white: #FFFFFF;
-    --form-text-color: #595959;
-    --margin-medium: 16px;
-    --row-gap-lg: 32px;
-    --row-gap-md: 16px;
-    --row-gap-sm: 8px;
-}
+
 
 /********************************************************************* Layout ***********************************************************************************/
 /********************************************************************* Text ***********************************************************************************/

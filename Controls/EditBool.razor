@@ -4,21 +4,25 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-                   
+
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
+           
         <label class="edit-label edit-checkbox-label" for=@_id>
             <input type="checkbox"
-                style="margin-top: -3px"
-                   @bind-value=@CurrentValue
-                   @bind-value:event="oninput" 
+                   value="@CurrentValue"
+                   @onchange="HandleCheckboxChange"
+                   @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
+                   @onkeydown="PreventSpacebarToggle"
                    class="@CssClass"
                    id=@_id
                    data-test-id=@_id
                    checked=@CurrentValue
-                   disabled=@(!ShowEditor || IsDisabled)
+                   tabindex="0"
+                   aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
+                   disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
                    aria-required=@_isRequired
                    aria-describedby=@($"desc-{_id}")
-                   aria-errormessage=@($"error-msg-{_id}")
-                   tabindex="0" />
+                   aria-errormessage=@($"error-msg-{_id}")/>
 
             @((MarkupString)DisplayLabel())
         </label>
@@ -29,4 +33,18 @@
             <div class="bound-value">@CurrentValueAsString</div>
         }
     </div>
+}
+
+@code {
+    [Parameter]
+    public bool AllowFocusWhenDisabled { get; set; } = true;
+    
+    private void HandleCheckboxChange(ChangeEventArgs args)
+    {
+        // Only update the value if the checkbox is not disabled
+        if (ShowEditor && !IsDisabled)
+        {
+            CurrentValue = (bool)args.Value;
+        }
+    }
 }
