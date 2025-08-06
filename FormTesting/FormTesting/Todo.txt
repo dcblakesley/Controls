@@ -1,4 +1,6 @@
 ﻿
+
+
  - Pointer for Selects
  - Pointer for Radio buttons
 
@@ -27,3 +29,39 @@ Changes in 1.0.12.x
      -- Removed the need for "Type" parameter, now uses the type of the value passed in.
  * New Controls
    - EditBoolNullRadio
+
+
+Add Tooltips to all controls
+
+<style>
+.tooltip-container {
+  position: relative; /* Needed for absolute positioning of tooltip */
+  display: inline-block; /* Or block, depending on element */
+}
+
+.tooltip-container[data-title]:hover::after {
+  content: attr(data-title);
+  position: absolute;
+  bottom: 100%; /* Position above the element */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: nowrap; /* Prevent text wrapping */
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  z-index: 10; /* Ensure it appears above other content */
+}
+
+.tooltip-container[data-title]::after {
+  visibility: hidden;
+  opacity: 0;
+}
+</style>
+
+<div class="tooltip-container" data-title="This is a custom tooltip!">
+  Hover over me
+</div>

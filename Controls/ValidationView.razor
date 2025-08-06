@@ -14,7 +14,9 @@
 
 @code
 {
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+
     EditContext? _previousEditContext;
     EventHandler<ValidationStateChangedEventArgs> _validationStateChangedHandler;
 

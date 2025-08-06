@@ -51,7 +51,7 @@
     cursor: pointer;
 }
 .edit-checkedList-checkboxes-container-horizontal { 
-    /* HasHorizontalCheckboxes=true */
+    /* IsHorizontal = true */
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
