@@ -11,7 +11,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
-    [Parameter] public string? ContainerClass { get; set; }
+    [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }

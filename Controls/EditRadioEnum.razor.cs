@@ -12,6 +12,9 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? ContainerClass { get; set; }
+    
+    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public EventCallback<bool> IsRequiredChanged { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }

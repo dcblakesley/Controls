@@ -1,13 +1,12 @@
 ﻿@using Controls.Helpers
 
-
 @if (IsLegend)
 {
     <!-- Wrap only the 'label' within the legend -->
     <legend class="edit-label" title=@Attributes.ToolTip()>
         @((MarkupString)DisplayLabel())
 
-        @if (_isRequired.ToLower() == "true")
+        @if (_isRequired.ToLower() == "true" || IsRequired)
         {
             <span class="edit-label-required-star" aria-hidden="true">*</span>
         }
@@ -26,7 +25,7 @@
     <label class="edit-label" title=@Attributes.ToolTip() for=@Id id="lbl-@Id" >
         @((MarkupString)DisplayLabel())
     
-        @if (_isRequired.ToLower() == "true")
+        @if (_isRequired.ToLower() == "true" || IsRequired)
         {
             <span class="edit-label-required-star" aria-hidden="true">*</span>
         }

@@ -10,6 +10,7 @@ public partial class FormLabel
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public bool IsLegend { get; set; }
+    [Parameter] public bool IsRequired { get; set; }
 
     string DisplayLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? Attributes.Description();
@@ -17,9 +18,9 @@ public partial class FormLabel
 
     protected override void OnInitialized()
     {
-        if (Attributes != null)
-        {
-            _isRequired = Attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
-        }
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        if (Attributes == null)
+            return;
+        _isRequired = Attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
 }

@@ -15,7 +15,7 @@ public partial class EditRadioString : IEditControl
     [Parameter] public string? Description { get; set; }
     [Parameter] public HidingMode? Hiding { get; set; }
     [Parameter] public bool IsHidden { get; set;  }
-    [Parameter] public string? ContainerClass { get; set; }
+    [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
 
     // EditRadioString specific
     [Parameter] public bool IsEditMode { get; set; } = true;

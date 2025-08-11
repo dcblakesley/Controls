@@ -12,7 +12,7 @@ public partial class EditDisplay
     [Parameter] public string Id { get; set; } = "NoId";
     [Parameter] public string Label { get; set; } = "";
     [Parameter] public string? Description { get; set; }
-    [Parameter] public string? ContainerClass { get; set; }
+    [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter] public string Text { get; set; } = "";
 

@@ -77,13 +77,20 @@
     </div>
     <div class="demo-section">
         <EditRadioEnum @bind-Value="_model.Nullable"
-                       Field="@(() => _model.Nullable)"
-                       NullValueLabel="Blah"/>
+                       Field="@(() => _model.Nullable)"/>
+    </div>
+    <div class="demo-section">
+        <EditBool @bind-Value="IsCurrentlyRequired"
+                   Field="@(() => IsCurrentlyRequired)"/>
+        <EditRadioEnum @bind-Value="_model.SometimesRequired"
+                       Field="@(() => _model.SometimesRequired)"
+                       IsRequired=@IsCurrentlyRequired/>
     </div>
 </EditForm>
 
 @code {
     readonly DemoEditRadioEnumModel _model = new();
+    public bool IsCurrentlyRequired { get; set; } = true;
 
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
@@ -98,6 +105,8 @@
         public Animal? Required { get; set; } = null;
 
         public Animal? Nullable { get; set; } = null;
+
+        public Animal? SometimesRequired { get; set; }
 
         [DisplayName("Other / Custom Value")]
         public Bird Other { get; set; }

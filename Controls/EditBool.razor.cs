@@ -13,12 +13,15 @@ public partial class EditBool : IEditControl
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? ContainerClass { get; set; }
 
+    /// <summary> Not supported in EditBool </summary>
+    [Parameter] public bool IsRequired { get; set; }
+
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
     [Parameter] public bool IsHidden { get; set; }
     [Parameter] public bool IsEditMode { get; set; } = true;
     [Parameter] public bool IsDisabled { get; set; }
-    
+
     // EditBool specific properties
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
 

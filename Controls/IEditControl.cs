@@ -53,4 +53,10 @@ public interface IEditControl
 
     /// <summary> Used when hiding is based on some other condition, such as "IsControlXyzAvailable" </summary>
     public bool IsHidden { get; set; }
+
+    /// <summary>
+    /// This is typically handled by the [Required] attribute on the property. 
+    /// This displays the required-star and is used when the field isn't always required such as when using RequiredIf.
+    /// </summary>
+    public bool IsRequired { get; set; }
 }
