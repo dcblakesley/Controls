@@ -20,7 +20,6 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
-    [Parameter] public string? Placeholder { get; set; }
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public bool IsHorizontal { get; set; }
     [Parameter] public bool Sort { get; set; }
@@ -96,17 +95,6 @@ public partial class EditRadioEnum<TEnum> : IEditControl
             enumValues.Add(otherOption);
         }
 
-        if (_isNullable)
-        {
-            // Add null option for nullable enums if not required
-            if (_attributes != null && !_attributes.Any(x => x is RequiredAttribute))
-            {
-                var result = new List<TEnum?>();
-                result.Add(default(TEnum?));
-                result.AddRange(enumValues.Cast<TEnum?>());
-                return result;
-            }
-        }
 
         return enumValues.Cast<TEnum?>().ToList();
     }

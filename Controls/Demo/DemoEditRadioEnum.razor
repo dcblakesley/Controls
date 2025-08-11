@@ -75,6 +75,11 @@
                        Field="@(() => _model.HorizontalLayout)"
                        IsHorizontal="true" />
     </div>
+    <div class="demo-section">
+        <EditRadioEnum @bind-Value="_model.Nullable"
+                       Field="@(() => _model.Nullable)"
+                       NullValueLabel="Blah"/>
+    </div>
 </EditForm>
 
 @code {
@@ -90,7 +95,9 @@
         public Animal Disabled { get; set; }
 
         [Required]
-        public Animal? Required { get; set; }
+        public Animal? Required { get; set; } = null;
+
+        public Animal? Nullable { get; set; } = null;
 
         [DisplayName("Other / Custom Value")]
         public Bird Other { get; set; }
