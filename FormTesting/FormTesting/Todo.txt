@@ -1,13 +1,7 @@
 ﻿
- - Cleanup duplicate styles for invalid-icon
- - Add a new parameter for each control to allow manually forcing the "required-star" to show
-
-
 
  - Pointer for Selects
  - Pointer for Radio buttons
-
- - Cleanup EditText, move out the Icons
 
 
  - Move svgs to their own css file?
