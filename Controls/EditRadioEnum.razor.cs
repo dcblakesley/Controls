@@ -140,6 +140,9 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         var value = Value;
 

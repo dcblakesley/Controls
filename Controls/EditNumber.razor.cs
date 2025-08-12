@@ -40,6 +40,9 @@ public partial class EditNumber<T> : IEditControl
     }
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+
         var hidingMode = FormOptions?.Hiding ?? Hiding ?? HidingMode.None;
 
         if (hidingMode == HidingMode.None)

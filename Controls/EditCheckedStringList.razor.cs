@@ -64,6 +64,9 @@ public partial class EditCheckedStringList : IEditControl
     }
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+        
         // Get effective hiding mode (component's setting overrides form's setting)
         var effectiveHidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 

@@ -41,6 +41,9 @@ public partial class EditSelectString<TValue> : IEditControl
     }
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+
         var effectiveHiding = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         var value = Field.Compile().Invoke();
         var isEditMode = (FormOptions == null) || FormOptions.IsEditMode;

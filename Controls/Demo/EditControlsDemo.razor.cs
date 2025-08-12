@@ -75,6 +75,7 @@ public partial class EditControlsDemo : IDisposable
 public enum CurrentView
 {
     AllControls,
+    CommonFeatures,
     Bool,
     BoolNullRadio,
     CheckedStringList,

@@ -50,6 +50,9 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     async Task SetAsync(TEnum value) => await ValueChanged.InvokeAsync(value);
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+
         // Get effective hiding mode (component's setting overrides form's setting)
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 

@@ -20,6 +20,12 @@
                   IsEditMode=false
                   Label="DateFormat = MM/dd/yy"
                   DateFormat="MM/dd/yy" />
+
+        <EditDate @bind-Value="_model.BasicDate"
+                  Field="@(() => _model.BasicDate)"
+                  IsEditMode=false
+                  Label="MM/dd/yyyy hh:mm:ss tt"
+                  DateFormat="MM/dd/yyyy hh:mm:ss tt" />
     </div>
 
     <div class="demo-section">

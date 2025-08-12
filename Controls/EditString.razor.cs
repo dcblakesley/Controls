@@ -53,6 +53,9 @@ public partial class EditString : IEditControl
     }
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+        
         var value = CurrentValue;
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         var isEditMode = (FormOptions?.IsEditMode ?? true) && IsEditMode;

@@ -1,6 +1,4 @@
-﻿
-
-/************************************************ General ************************************************/
+﻿/************************************************ General ************************************************/
 .edit-control-wrapper {
     /* Wraper/group around each edit control (label, description, input and validation messages */
 }
@@ -109,6 +107,14 @@
 
 .edit-string-input { 
     /* The input for the "EditString" control */
+}
+.invalid-icon {
+    /* The x-circle that shows up when a textbox has validation errors */
+    width: 1em;
+    height: 1em;
+    margin-left: -1.5rem;
+    margin-top: -4px;
+    pointer-events: none;
 }
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input {

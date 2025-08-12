@@ -39,9 +39,19 @@ public partial class EditDate<T> : IEditControl
         _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
-    string GetDisplayValue() => DateTime.Parse(CurrentValueAsString!).ToUniversalTime().ToLocalTime().ToString(DateFormat);
+    string GetDisplayValue()
+    {
+        string valueAsString = CurrentValueAsString ?? string.Empty;
+        if (string.IsNullOrEmpty(valueAsString))
+            return string.Empty;
+            
+        return DateTime.Parse(valueAsString).ToUniversalTime().ToLocalTime().ToString(DateFormat);
+    }
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+
         // Get effective hiding mode (component's setting overrides form's setting)
         var effectiveHidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 

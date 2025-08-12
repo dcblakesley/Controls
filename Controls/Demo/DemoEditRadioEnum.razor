@@ -81,7 +81,7 @@
     </div>
     <div class="demo-section">
         <EditBool @bind-Value="IsCurrentlyRequired"
-                   Field="@(() => IsCurrentlyRequired)"/>
+                  Field="@(() => IsCurrentlyRequired)"/>
         <EditRadioEnum @bind-Value="_model.SometimesRequired"
                        Field="@(() => _model.SometimesRequired)"
                        IsRequired=@IsCurrentlyRequired/>

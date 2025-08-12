@@ -45,6 +45,9 @@ public partial class EditSelect<TValue> : IEditControl
     }
     bool ShouldShowComponent()
     {
+        if (IsHidden)
+            return false;
+
         // Get effective hiding mode (component's setting overrides form's setting)
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 
