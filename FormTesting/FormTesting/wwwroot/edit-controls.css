@@ -108,7 +108,7 @@
 .edit-string-input { 
     /* The input for the "EditString" control */
 }
-.invalid-icon {
+.icon-invalid {
     /* The x-circle that shows up when a textbox has validation errors */
     width: 1em;
     height: 1em;
@@ -116,6 +116,8 @@
     margin-top: -4px;
     pointer-events: none;
 }
+.icon-eye{}
+.icon-eye-invisible{}
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input {
     /* The textarea for each of the "Edit" Controls */
