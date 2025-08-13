@@ -97,6 +97,7 @@
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
     public class DemoEditDateModel
     {
+        [Description("Basic Description")]
         public DateTime BasicDate { get; set; } = DateTime.Today;
         public DateTime? NullableDate { get; set; } = DateTime.Today;
         public DateTime DateWithTime { get; set; } = DateTime.Now;

@@ -36,6 +36,7 @@
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
     public class DemoEditNumberModel
     {
+        [Description("Basic Description")]
         public int Int { get; set; }
         public double Decimal { get; set; } = 1.12345678901;
         public float Float { get; set; } = 1.1234567f;

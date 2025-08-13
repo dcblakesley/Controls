@@ -36,7 +36,6 @@ internal class DemoModelForEditControls
     public string? EditSelectString { get; set; } = "";
 
     [DisplayName("EditRadioString")]
-    [Description("Hello, does this work?")]
     public string EditRadioString { get; set; } = "";
 
     [Required]
@@ -51,6 +50,7 @@ internal class DemoModelForEditControls
     [Required]
     [MinLength(2)]
     public List<string> EditCheckedStringList { get; set; } = [];
+
 }
 
 public enum Animal

@@ -1,9 +1,13 @@
-﻿namespace Controls.Demo;
+﻿using System.Runtime.InteropServices.JavaScript;
+
+namespace Controls.Demo;
 
 public partial class DemoAllControls
 {
+    [Inject] IJSRuntime JsRuntime { get; set; } = null!;
+
     readonly DemoModelForEditControls _model = new();
-    EditForm editForm; // Set by @ref during Render
+    EditForm editForm = null!; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
         new() { IsEditMode = true, Hiding = HidingMode.None };
@@ -24,5 +28,9 @@ public partial class DemoAllControls
     void ForceValidation()
     {
         editForm!.EditContext!.Validate();
+    }
+    async Task GoToFirstElement()
+    {
+        await JsInteropEc.FocusFirstInvalidField(JsRuntime);
     }
 }

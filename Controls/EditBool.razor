@@ -21,12 +21,17 @@
                    aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
                    disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
                    aria-required=@_isRequired
-                   aria-describedby=@($"desc-{_id}")
-                   aria-errormessage=@($"error-msg-{_id}")/>
+                   aria-describedby=@($"desc-{_id} error-msg-{_id}")
+                   aria-errormessage=@($"error-msg-{_id}") />
 
             @((MarkupString)DisplayLabel())
         </label>
-
+        @if (DisplayDescription() != null)
+        {
+            <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+                @((MarkupString)DisplayDescription()!)
+            </p>
+        }
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
         @if (FormOptions != null && FormOptions.ShowBoundValues)
         {
@@ -47,4 +52,6 @@
             CurrentValue = (bool)args.Value;
         }
     }
+    string? DisplayDescription() => Description ?? _attributes.Description();
+
 }

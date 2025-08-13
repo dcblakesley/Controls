@@ -18,7 +18,7 @@
                     data-test-id=@_id
                     aria-required=@_isRequired
                     aria-errormessage=@($"error-msg-{_id}")
-                    aria-describedby=@($"desc-{_id}")>
+                    aria-describedby=@($"desc-{_id} error-msg-{_id}")>
 
                 @foreach (var o in GetOptions())
                 {

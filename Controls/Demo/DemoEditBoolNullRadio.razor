@@ -77,6 +77,7 @@
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext?.Validate();
     class DemoModel
     {
+        [Description("Basic Description")]
         public bool? BasicOption { get; set; }
         public bool? VerticalLayout { get; set; }
         public bool? CustomText { get; set; }

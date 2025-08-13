@@ -1,32 +1,13 @@
-﻿
+﻿ - focus the first control that is invalid when submit is clicked
+ - Add invalid to any missing controls, it looks like EditCheckedStringList does not do this
+ - Create EditControlsForm - has these behaviors built in.
+ - Remove the Type parameter from EditSelectEnum
 
  - Pointer for Selects
  - Pointer for Radio buttons
-
-
- - Move svgs to their own css file?
-
- - Look into when EditContext is used/necessary
- - new control bool? radio buttons
-
 Textbox Mask - style the icon to have a pointer
 
-
-Changes in 1.0.12.x
- * moved away from utilizing bootstrap css classes such as form-group to using classes that start with edit- to avoid conflicts with other libraries
- * New Features
-   - IsHidden to hide controls withough wrapping them in an if statement
-   - Hiding allows hiding controls based on their own property for [Never, WhenReadonlyAndNull, WhenReadonly, etc.]
-     -- This also exists within FormOptions, so the hiding can be controlled over a large group of controls.
- * Control Changes
-   - EditRadio and EditCheckedList
-     -- Change parameter from HasHorizontalButtons -> IsHorizontal
-     -- Removed the need for "Type" parameter, now uses the type of the value passed in.
-   - EditSelectEnum
-     -- Removed the need for "Type" parameter, now uses the type of the value passed in.
- * New Controls
-   - EditBoolNullRadio
-
+ - Look into when EditContext is used/necessary
 
 Add Tooltips to all controls
 

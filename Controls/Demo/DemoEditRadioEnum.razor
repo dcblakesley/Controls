@@ -96,6 +96,7 @@
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
     public class DemoEditRadioEnumModel
     {
+        [Description("Basic Description")]
         public Animal BasicEnum { get; set; }
         public Animal HorizontalLayout { get; set; }
         public Animal CustomStyling { get; set; }

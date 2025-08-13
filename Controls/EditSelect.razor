@@ -16,8 +16,8 @@
                 id=@_id
                 data-test-id=@_id
                 aria-required=@_isRequired
-                aria-describedby=@($"desc-{_id}")
-                aria-errormessage=@($"error-msg-{_id}")>
+                         aria-describedby=@($"desc-{_id} error-msg-{_id}")
+                         aria-errormessage=@($"error-msg-{_id}")>
 
                 @ChildContent
             </InputSelect>

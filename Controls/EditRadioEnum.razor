@@ -18,8 +18,8 @@
                     disabled=@IsDisabled
                     class=@CssClass
                     aria-required=@_isRequired
-                    aria-describedby=@($"desc-{_id}")
-                    aria-errormessage=@($"error-msg-{_id}")>
+                                 aria-describedby=@($"desc-{_id} error-msg-{_id}")
+                                 aria-errormessage=@($"error-msg-{_id}")>
 
                     <div class=@(IsHorizontal
                                    ? "edit-radio-buttons-container-horizontal"

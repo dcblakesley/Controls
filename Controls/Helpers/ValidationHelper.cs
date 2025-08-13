@@ -54,7 +54,7 @@ public static class ValidationHelper
     /// <summary> Overrides the default validation messages. </summary>
     public static string GetValidationMessage(string message, string fieldName, string label, string? valueType, int? max = null, int? min = null, bool includeLabel = false)
     {
-        Console.WriteLine($"GetValidationMessage: {message}, {fieldName}, {label}, {valueType}, {max}, {min}, {includeLabel}");
+        //Console.WriteLine($"GetValidationMessage: {message}, {fieldName}, {label}, {valueType}, {max}, {min}, {includeLabel}");
 
         var output = message;
 
