@@ -22,4 +22,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.19" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="wwwroot\editControls.css">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

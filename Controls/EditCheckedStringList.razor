@@ -17,11 +17,12 @@
                                    checked="@(Value?.Contains(option) == true)"
                                    disabled=@IsDisabled
                                    aria-disabled=@IsDisabled
+                                   aria-describedby=@($"error-msg-{_id}")                                   
                                    tabindex="0"
                                    @onchange="() => SetAsync(option)"
                                    id=@($"cbx-{_id}-{option.ToId()}")
                                    data-test-id=@($"cbx-{_id}-{option.ToId()}")
-                                   class="edit-checkedList-checkbox"/>
+                                   class="edit-checkedList-checkbox @(EditContext?.GetValidationMessages(_fieldIdentifier).Any() == true ? "invalid" : "")" />
                             @option
                         </label>
                     }

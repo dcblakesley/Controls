@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices.JavaScript;
-
-namespace Controls.Demo;
+﻿namespace Controls.Demo;
 
 public partial class DemoAllControls
 {
@@ -17,7 +15,7 @@ public partial class DemoAllControls
 
     readonly List<string> _editCheckedStringListOptions =
     [
-        "Aza tho th", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep",
+        "Azathoth", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep",
         "Cthulhu", "Hastur", "Dagon", "Ithaqua", "Tsathoggua"
     ];
 
@@ -29,8 +27,7 @@ public partial class DemoAllControls
     {
         editForm!.EditContext!.Validate();
     }
-    async Task GoToFirstElement()
-    {
-        await JsInteropEc.FocusFirstInvalidField(JsRuntime);
-    }
+    async Task HandleInvalidSubmit() => await JsInteropEc.FocusFirstInvalidField(JsRuntime);
+    async Task HandleValidSubmit() => await JsInteropEc.Log(JsRuntime, "Hello there");
+
 }

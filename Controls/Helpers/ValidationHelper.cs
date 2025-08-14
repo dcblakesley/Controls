@@ -28,7 +28,7 @@ public static class ValidationHelper
     static string MinLengthString(int? min, string label) => $"{label} must contain at least {min} characters";
 
     static string MinLengthList(int? min) => $"Must select at least {min} options";
-    static string MinLengthList(int? min, string label) => $"{label} requires at least {min} options";
+    static string MinLengthList(int? min, string label) => $"{label} requires at least {min} options to be selected";
 
     static string MaxLengthString(int? max) => $"Cannot contain more than {max} characters";
     static string MaxLengthString(int? max, string label) => $"{label} cannot contain more than {max} characters";

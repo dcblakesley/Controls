@@ -3,7 +3,7 @@
 @if (IsLegend)
 {
     <!-- Wrap only the 'label' within the legend -->
-    <legend class="edit-label" title=@Attributes.ToolTip()>
+    <legend class="edit-label-legend" title=@Attributes.ToolTip()>
         @((MarkupString)DisplayLabel())
 
         @if (_isRequired.ToLower() == "true" || IsRequired)

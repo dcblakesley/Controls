@@ -17,7 +17,7 @@
     border-radius: 4px;
     display: flex;
     flex-direction: column;
-    gap: 1rem
+    gap: 4rem
 }
 
 .edit-radio-fieldset {

@@ -40,7 +40,7 @@ internal class DemoModelForEditControls
 
     [Required]
     [DisplayName("EditRadioEnum")]
-    public Animal? EditRadioEnum { get; set; } = Animal.Cat;
+    public Animal? EditRadioEnum { get; set; } = null;
 
     [DisplayName("EditRadio")]
     public int EditRadio { get; set; } = 0;

@@ -1,41 +1,12 @@
 @using Controls
 @using Microsoft.AspNetCore.Components.Forms
 
-<script>
-        window.focusFirstInvalidField = function() {
 
-        // Find the first validation message element
-        const firstInvalidElement = document.querySelector('.invalid');
 
-        // log the name of the first invalid element
-        if (firstInvalidElement) {
-            console.log("First invalid element found:", firstInvalidElement.id);
-        } else {
-            console.log("No invalid elements found.");
-        }
-
-        if (firstInvalidElement) {
-
-            firstInvalidElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            const inputId = firstInvalidElement.id;
-
-            // Find the associated input element to focus
-            if (inputId) {
-                const inputElement = document.getElementById(inputId);
-                if (inputElement) {
-
-                    console.log("Focusing on input element:", inputElement.id);
-
-                    inputElement.focus();
-                    return;
-                }
-            }
-        }
-    };
-</script>
-
-<EditForm Model=_model FormName="AllControlsForm" @ref="editForm" OnInvalidSubmit=GoToFirstElement>
+<EditForm Model=_model FormName="AllControlsForm" @ref="editForm" OnInvalidSubmit=HandleInvalidSubmit OnValidSubmit=HandleValidSubmit>
     <ObjectGraphDataAnnotationsValidator />
+
+
 
     <fieldset class="flex-column">
 
@@ -63,7 +34,6 @@
             </EditSelect>
             <EditTextArea @bind-Value=_model.EditTextArea Field=@(() => _model.EditTextArea) />
             <button class=@(_isHorizontal ? "active" : "inactive") @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Horizontal</button>
-
             <button>Submit</button>
         </div>
 

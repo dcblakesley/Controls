@@ -11,7 +11,8 @@ public partial class EditNumber<T> : IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
-    [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
+    [Parameter] public bool IsRequired { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
@@ -21,7 +22,7 @@ public partial class EditNumber<T> : IEditControl
 
     // Component-specific properties
     [Parameter] public required Expression<Func<T>> Field { get; set; }
-    [Parameter] public decimal Step { get; set; }
+    [Parameter] public decimal Step { get; set; } = 1.0m;
     [Parameter] public string? Format { get; set; }
     
     // Fields
