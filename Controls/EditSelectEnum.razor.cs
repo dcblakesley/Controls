@@ -12,7 +12,8 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
-    [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public string? ContainerClass { get; set; } 
+    [Parameter] public bool IsRequired { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
@@ -24,15 +25,15 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
     [Parameter] public bool Sort { get; set; }
 
-    /// <summary> The enum type to provide the values for, must match the Value Parameter </summary>
-    [Parameter] public required Type Type { get; set; } = typeof(TEnum);
-
     //  Fields
     string _isRequired = "false";
     string _id = string.Empty;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    Type _type;
+    Type _underlyingType;
+    bool _isNullable;
 
     // Methods
     protected override void OnInitialized()
@@ -42,11 +43,39 @@ public partial class EditSelectEnum<TEnum> : IEditControl
         _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
         _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+
+        // Handle nullable enum types
+        _type = typeof(TEnum);
+        _isNullable = Nullable.GetUnderlyingType(_type) != null;
+        _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
     }
-    List<TEnum> GetOptions() =>
-        Sort
-            ? Enum.GetValues(Type).Cast<TEnum>().OrderBy(x => x).ToList()
-            : Enum.GetValues(Type).Cast<TEnum>().ToList();
+    List<TEnum?> GetOptions()
+    {
+        var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
+
+        // Sort remaining values if needed
+        if (Sort)
+        {
+            // Sort by display name that would appear in the UI
+            enumValues = enumValues.OrderBy(x =>
+            {
+                // Get display name from DisplayAttribute if present
+                var memberInfo = _underlyingType.GetMember(x.ToString());
+                if (memberInfo.Length > 0)
+                {
+                    var displayAttr = memberInfo[0].GetCustomAttribute<DisplayAttribute>();
+                    if (displayAttr != null && !string.IsNullOrEmpty(displayAttr.Name))
+                    {
+                        return displayAttr.Name;
+                    }
+                }
+                // Otherwise use enum name
+                return x.ToString();
+            }).ToList();
+        }
+
+        return enumValues.Cast<TEnum?>().ToList();
+    }
     async Task SetAsync(TEnum value) => await ValueChanged.InvokeAsync(value);
     bool ShouldShowComponent()
     {
@@ -80,30 +109,31 @@ public partial class EditSelectEnum<TEnum> : IEditControl
             _ => true
         };
     }
-    protected override bool TryParseValueFromString(string value, out TEnum result, out string validationErrorMessage)
+    protected override bool TryParseValueFromString(string? value, out TEnum result, out string validationErrorMessage)
     {
-        // Lets Blazor convert the value for us 
-        if (BindConverter.TryConvertTo(value, CultureInfo.CurrentCulture, out TEnum parsedValue))
+        // Handle null/empty for nullable enums
+        if (string.IsNullOrEmpty(value))
         {
-            result = parsedValue;
-            validationErrorMessage = null;
+            if (_isNullable)
+            {
+                result = default!;
+                validationErrorMessage = null!;
+                return true;
+            }
+            result = default!;
+            validationErrorMessage = $"The {FieldIdentifier.FieldName} field is required.";
+            return false;
+        }
+
+        // Try parsing the enum value
+        if (Enum.TryParse(_underlyingType, value, out object? parsedValue))
+        {
+            result = (TEnum)parsedValue;
+            validationErrorMessage = null!;
             return true;
         }
 
-        // Map null/empty value to null if the bound object is nullable
-        if (string.IsNullOrEmpty(value))
-        {
-            var nullableType = Nullable.GetUnderlyingType(typeof(TEnum));
-            if (nullableType != null)
-            {
-                result = default;
-                validationErrorMessage = null;
-                return true;
-            }
-        }
-
-        // The value is invalid => set the error message
-        result = default;
+        result = default!;
         validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
         return false;
     }

@@ -24,7 +24,7 @@
                 <div class="flex-row">
                     <button class=@(FormOptions.ShowBoundValues ? "active" : "inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
                     <button class=@(FormOptions.IsEditMode ? "active" : "inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
-                    <EditSelectEnum Type=typeof(HidingMode) @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
+                    <EditSelectEnum @bind-Value=@FormOptions.Hiding Field=@(() => FormOptions.Hiding) />
                 </div>
             </fieldset>
         </EditForm>
