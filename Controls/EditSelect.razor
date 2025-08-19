@@ -16,21 +16,21 @@
                 id=@_id
                 data-test-id=@_id
                 aria-required=@_isRequired
-                         aria-describedby=@($"desc-{_id} error-msg-{_id}")
-                         aria-errormessage=@($"error-msg-{_id}")>
+                aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                aria-errormessage=@($"error-msg-{_id}")>
 
                 @ChildContent
             </InputSelect>
         }
         else
         {
-            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@CurrentValueAsString />
+            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@CurrentValueAsString/>
         }
 
-        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
         @if (FormOptions != null && FormOptions.ShowBoundValues)
         {
             <div class="bound-value">@CurrentValueAsString</div>
         }
-    </div>    
+    </div>
 }

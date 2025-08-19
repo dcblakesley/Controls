@@ -3,11 +3,6 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="tooltip-container" data-title="This is a custom tooltip!">
-        Hover over me
-    </div>
-
-
     <div class="edit-control-wrapper @ContainerClass">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description />
 
@@ -23,7 +18,7 @@
                    @bind-value:event="oninput"
                    class=@($"edit-number-input {CssClass} tooltip-container")
                    aria-required=@_isRequired
-                   aria-describedby=@($"desc-{_id} error-msg-{_id}")
+                   aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                    aria-errormessage=@($"error-msg-{_id}") />
         }
         else

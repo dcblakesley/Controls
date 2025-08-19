@@ -1,13 +1,10 @@
-﻿using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Routing;
-using System;
-using System.Collections.Generic;
+﻿using Microsoft.AspNetCore.Components.Routing;
 
 namespace Controls.Demo;
 
 public partial class EditControlsDemo : IDisposable
 {
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Inject] NavigationManager NavigationManager { get; set; } = default!;
 
     [Parameter, SupplyParameterFromQuery(Name = "view")]
     public string? ViewParam { get; set; }
@@ -40,7 +37,7 @@ public partial class EditControlsDemo : IDisposable
         base.OnInitialized();
     }
 
-    private void UpdateViewFromUrl()
+    void UpdateViewFromUrl()
     {
         if (!string.IsNullOrEmpty(ViewParam) && 
             Enum.TryParse<CurrentView>(ViewParam, true, out var view))
@@ -49,7 +46,7 @@ public partial class EditControlsDemo : IDisposable
         }
     }
 
-    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         UpdateViewFromUrl();
         StateHasChanged();
@@ -61,15 +58,11 @@ public partial class EditControlsDemo : IDisposable
         NavigationManager.NavigateTo(uri);
     }
 
-    public void Dispose()
-    {
-        NavigationManager.LocationChanged -= HandleLocationChanged;
-    }
-    private void GoToView(CurrentView view)
-    {
+    public void Dispose() => NavigationManager.LocationChanged -= HandleLocationChanged;
+
+    void GoToView(CurrentView view) =>
         NavigationManager.NavigateTo(
             NavigationManager.GetUriWithQueryParameter("view", view.ToString()));
-    }
 }
 
 public enum CurrentView

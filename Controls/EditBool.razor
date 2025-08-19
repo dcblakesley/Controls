@@ -21,10 +21,13 @@
                    aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
                    disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
                    aria-required=@_isRequired
-                   aria-describedby=@($"desc-{_id} error-msg-{_id}")
+                   aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                    aria-errormessage=@($"error-msg-{_id}") />
 
             @((MarkupString)DisplayLabel())
+
+            <LabelTooltip Id=@Id Attributes=@_attributes/>
+
         </label>
         @if (DisplayDescription() != null)
         {
@@ -44,7 +47,7 @@
     [Parameter]
     public bool AllowFocusWhenDisabled { get; set; } = true;
     
-    private void HandleCheckboxChange(ChangeEventArgs args)
+    void HandleCheckboxChange(ChangeEventArgs args)
     {
         // Only update the value if the checkbox is not disabled
         if (ShowEditor && !IsDisabled)
@@ -53,5 +56,4 @@
         }
     }
     string? DisplayDescription() => Description ?? _attributes.Description();
-
 }

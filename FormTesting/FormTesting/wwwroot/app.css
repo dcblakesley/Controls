@@ -12,8 +12,6 @@
     --clark-grey: #D9D9D9;
     --clark-lightblue: #40A9FF;
     --danger: #FF4D4F;
-    --danger-hover: #FF7875;
-    --clark-offwhite: #FAFAFA;
     --font-family: 'Inter', sans-serif;
     --heading-color: #262626;
     --white: #FFFFFF;
@@ -34,116 +32,40 @@ button { all: unset }
     main, details, summary, article, address, img, nav, form, 
     strong, b, em, i, small, sub, sup, code, pre
 */
-
-button {
-    box-sizing: border-box;
-    /* Auto layout */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    padding: 0 16px;
-    background: #FFFFFF;
-    border: 1px solid #B7B7B7;
-    border-radius: 6px;
-}
-
-.bound-value {
-    color: green
-}
 /* Set default styles for basic controls */
-label {
-    font-family: Inter;
-    font-weight: 400;
-    font-size: 14px;
-    line-height: 22px;
-    color: var(--heading-color);
-}
-
-button[type=submit] { background: var(--clark-green); border: 1px solid; border-color: var(--clark-green); color: var(--white); border-radius: 6px; padding-top: 0.3rem; padding-bottom: 0.3rem; padding-left: 1rem; padding-right: 1rem; }
-button[disabled] { cursor: not-allowed; }
-input[type='checkbox'] {
-    height: 16px;
-    width: 16px;
-    margin-right: 8px;
-    accent-color: var(--color-primary);
-    display: inline-block;
-    vertical-align: middle;
-    cursor: pointer
-}
-
-textarea {
-    box-sizing: border-box;
-    padding: 0px 12px;
-    background: var(--white);
-    border: 1px solid;
-    border-color: var(--border-color);
-    border-radius: 6px;
-}
+h1, .h1 { font-family: var(--font-family); color: var(--heading-color); font-weight: 600; font-size: 24px; line-height: 32px; margin: 0; padding: 0; }
+h2, .h2 { font-weight: 700; font-size: 20px; line-height: 28px; color: var(--heading-color); margin: 0; height: 28px; }
+h3, .h3 { font-weight: 700; font-size: 14px; line-height: 22px; color: var(--heading-color); margin: 0; height: 22px; }
+label   { font-weight: 400; font-size: 14px; line-height: 22px; color: var(--heading-color); }
 
 input { box-sizing: border-box; padding: 5px 8px; gap: 10px; height: 32px; background: var(--white); border: 1px solid var(--clark-grey); border-radius: 2px; flex: none; flex-grow: 1; }
-
-button { align-items: center; background: var(--white); border: 1px solid var(--clark-grey); color: var(--heading-color); border-radius: 2px; padding-top: 5px; padding-bottom: 5px; padding-left: 16px; padding-right: 16px; max-height: fit-content; }
-button:hover { color: var(--clark-lightblue); cursor: pointer; }
-button:focus { outline: none !important; }
-input[type='radio'] {
-    height: 16px;
-    width: 16px;
-    margin-right: 8px;
-    accent-color: var(--color-primary);
-    display: inline-block;
-    vertical-align: middle;
-    cursor: pointer;
-}
-
-
+input[type='checkbox'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--color-primary); display: inline-block; vertical-align: middle; cursor: pointer }
+input[type='radio']    { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--color-primary); display: inline-block; vertical-align: middle; cursor: pointer; }
 input[type='radio']:not(:checked):hover { }
-a {
-    color: var(--clark-blue);
-}
+textarea { box-sizing: border-box; padding: 0px 12px; background: var(--white); border: 1px solid; border-color: var(--border-color); border-radius: 6px; }
+
+button              { box-sizing: border-box; /* Auto layout */display: flex; justify-content: center; align-items: center; padding: 0 16px; background: #FFFFFF; border: 1px solid #B7B7B7; border-radius: 6px; }
+button              { align-items: center; background: var(--white); border: 1px solid var(--clark-grey); color: var(--heading-color); border-radius: 2px; padding-top: 5px; padding-bottom: 5px; padding-left: 16px; padding-right: 16px; max-height: fit-content; }
+button:hover        { color: var(--clark-lightblue); cursor: pointer; }
+button:focus        { outline: none !important; }
+button[type=submit] { background: var(--clark-green); border: 1px solid; border-color: var(--clark-green); color: var(--white); border-radius: 6px; padding-top: 0.3rem; padding-bottom: 0.3rem; padding-left: 1rem; padding-right: 1rem; }
+button[disabled]    { cursor: not-allowed; }
+
+a { color: var(--clark-blue); }
 a:hover { color: var(--clark-lightblue); }
 a:not([href]):not([tabindex]):not([rel]) { color: var(--clark-blue); }
 a:not([href]):not([tabindex]):hover { color: var(--clark-lightblue); }
-.a-danger { color: var(--danger); cursor: pointer; }
-.a-danger:hover { color: var(--danger-hover); }
 
-
-.groupbox {
-    background-color: var(--clark-offwhite);
-    padding: 24px 16px;
-    border: 1px solid var(--clark-grey);
-}
-
-.group-color {
-    background-color: var(--clark-offwhite);
-}
-
-h1, .h1 { font-family: var(--font-family); color: var(--heading-color); font-weight: 600; font-size: 24px; line-height: 32px; margin: 0; padding: 0; }
-h2, .h2 { height: 28px; font-weight: 700; font-size: 20px; line-height: 28px; color: var(--heading-color); margin: 0; }
-h3, .h3 { height: 22px; font-weight: 700; font-size: 14px; line-height: 22px; color: var(--heading-color); margin: 0; }
 .validation-message { color: var(--danger); }
 .invalid { outline: none; border-color: var(--danger) !important; }
 .invalid:focus { outline: var(--danger) auto 1px !important; }
 
-    
 .flex-fill { flex: 1 }
 .flex-row { display: flex; flex-direction: row; column-gap: 16px;}
-.flow-row-right { display: flex; align-content: right; padding-top: 10px; }
-.flex-row-center { display: flex; flex: 1; flex-direction: row; justify-content: center; text-align: center; }
 .flex-column { display: flex; flex-direction: column; row-gap: var(--row-gap-md); }
-.flex-column-center { display: flex; flex: 1; flex-direction: column; justify-content: center; text-align: center; }
 .full-height { height: 100% }
 .full-width { width: 100% }
 .full-space { height: 100%; width: 100% }
 .flex-wrap { flex-wrap: wrap }
-.pointer { cursor: pointer }
-.arrow { cursor: default }
-.not-allowed { cursor: not-allowed }
-.nowrap { white-space: nowrap }
-.nogap { gap: 0px }
-.push-right {margin-left: auto; margin-right: 10px;}
-.overflow-auto {overflow: auto}
-.ul-no-indent { margin-left: -16px; padding-top: 16px; }
 
-.w100p {width: 100%}
-.w50p {width: calc(50% - 16px)}
+.bound-value { color: green }

@@ -1,6 +1,5 @@
 ﻿ - focus the first control that is invalid when submit is clicked
  - Add invalid to any missing controls, it looks like EditCheckedStringList does not do this
- - Create EditControlsForm - has these behaviors built in.
  - Remove the Type parameter from EditSelectEnum
 
  - Pointer for Selects

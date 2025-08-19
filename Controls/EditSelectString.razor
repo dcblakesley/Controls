@@ -16,7 +16,7 @@
                          class=@($"edit-select-select {CssClass}")
                          aria-required=@_isRequired
                          aria-errormessage=@($"error-msg-{_id}")
-                         aria-describedby=@($"desc-{_id} error-msg-{_id}")>
+                         aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")>
 
                 @foreach (var o in Options)
                 {

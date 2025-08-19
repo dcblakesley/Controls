@@ -5,24 +5,30 @@ internal class DemoModelForEditControls
     // Controls
     [Required]
     [MinLength(5)]
-    [DisplayName("EditString")] 
+    [DisplayName("EditString")]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
     public string? EditString { get; set; } = "";
 
     [DisplayName("EditTextArea")]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
     public string EditTextArea { get; set; } = "";
 
     [Required, DisplayName("EditNumber")]
     [Range(100.5, 110.85)]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
     public double? EditNumber { get; set; } = 0;
 
     [DisplayName("EditBool")]
+    [ToolTip("I'm a tooltip!")]
     public bool EditBool { get; set; }
 
     [Required]
+    [ToolTip("This is a tooltip for EditBoolNull. I want to see what happens when it gets really really really really really really really really long")] 
     [DisplayName("EditBoolNullRadio")] 
     public bool? EditBoolNullRadio { get; set; }
 
-    [DisplayName("EditDate")] 
+    [DisplayName("EditDate")]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
     public DateTime EditDate { get; set; } = DateTime.Now;
 
     [DisplayName("EditSelectEnum")]

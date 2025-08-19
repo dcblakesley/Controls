@@ -11,9 +11,11 @@ public partial class FormLabel
     [Parameter] public string? Description { get; set; }
     [Parameter] public bool IsLegend { get; set; }
     [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public string? Tooltip { get; set; }
 
     string DisplayLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? Attributes.Description();
+
     string _isRequired = "false";
 
     protected override void OnInitialized()

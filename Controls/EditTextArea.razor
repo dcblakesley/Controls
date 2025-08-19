@@ -16,7 +16,7 @@
                       class=@($"edit-textarea-input {CssClass}")
                       rows=@Rows
                       aria-required=@_isRequired
-                      aria-describedby=@($"desc-{_id} error-msg-{_id}")
+                      aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                       aria-errormessage=@($"error-msg-{_id}")></textarea>
         }
         else

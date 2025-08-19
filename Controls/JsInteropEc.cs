@@ -1,6 +1,4 @@
-﻿using Microsoft.JSInterop;
-
-namespace Controls;
+﻿namespace Controls;
 
 /// <summary>
 /// JsInterop for Edit Controls. Contains common JavaScript interop methods used by edit controls.

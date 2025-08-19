@@ -1,24 +1,17 @@
 ﻿/************************************************ General ************************************************/
-.edit-control-wrapper {
-    /* Wraper/group around each edit control (label, description, input and validation messages */
-}
-
+.edit-control-wrapper { /* Wraper/group around each edit control (label, description, input and validation messages */ }
 .edit-validation-message {
     /* The validation message for each of the "Edit" Controls */
     color: var(--color-danger);
 }
 
 /************************************************ FormLabel **********************************************/
-.edit-label { 
-    /* The label for each of the "Edit" Controls */
-}
-
+.edit-label { /* The label for each of the "Edit" Controls */ }
 .edit-label-required-star {
     /* The star that shows up after the Label when a property is marked as [Required] */
     margin-left: 8px;
     color: var(--color-danger);
 }
-
 .edit-label-description {
     /* The description for each of the "Edit" Controls */
     font-family: 'DM Sans';
@@ -29,26 +22,21 @@
     opacity: 0.65;
     color: black;
 }
-
-.edit-readonly-value { 
-    /* The text that is displayed when IsEditMode=false and within EditDisplay*/
-}
+.edit-readonly-value { /* The text that is displayed when IsEditMode=false and within EditDisplay*/ }
 
 /************************************************ EditBool ***********************************************/
-.edit-checkbox-label {
-    cursor: pointer;
-}
+.edit-checkbox-label { cursor: pointer; }
 
 /************************************************ EditCheckedList(String and Enum) ***********************/
 .edit-checkedList-fieldset { }
-.edit-checkedList-checkboxes-container-vertical { 
+.edit-checkedList-checkboxes-container-vertical {
     /* default/vertical display */
     display: flex;
     flex-direction: column;
     gap: 8px;
     cursor: pointer;
 }
-.edit-checkedList-checkboxes-container-horizontal { 
+.edit-checkedList-checkboxes-container-horizontal {
     /* IsHorizontal = true */
     display: flex;
     flex-direction: row;
@@ -60,21 +48,22 @@
 .edit-checkedList-fieldset { }
 
 /************************************************ EditDate ***********************************************/
-.edit-date-input { }
+.edit-date-input {}
 
 /************************************************ EditNumber *********************************************/
-.edit-number-input { }
+.edit-number-input {}
 
 /************************************************ EditRadio(String and Enum) *****************************/
 .edit-radio-fieldset { }
 .edit-radio-buttons-container-vertical {
-    /* default/vertical display */ 
+    /* default/vertical display */
     display: flex;
     flex-direction: column;
     gap: 8px;
     cursor: pointer;
 }
-.edit-radio-buttons-container-horizontal { 
+
+.edit-radio-buttons-container-horizontal {
     /* IsHorizontal = true */
     display: flex;
     flex-direction: row;
@@ -82,32 +71,24 @@
     gap: 8px;
     cursor: pointer;
 }
+
 .edit-radio-label {
     /* edit-label is also applied to these labels, so if you want it to look the same you don't have to change this */
     cursor: pointer;
 }
-
 .edit-radio-input { }
-.edit-radio-option { 
-    /* div that surrounds the input and label for each radio button. */
-}
+.edit-radio-option { /* div that surrounds the input and label for each radio button. */ }
 .edit-radio-other-input { }
 .edit-radio-other-option-container { }
 
 /************************************************ EditSelect(String and Enum) *********************************************/
 .edit-select-select { }
-.edit-select-option { 
-    /* The options within the select control */
-}
+.edit-select-option { /* The options within the select control */ }
 
 /************************************************ EditString *********************************************/
-.edit-string-link { 
-    /* <a style when IsEditMode=false and Url!=null */
-}
+.edit-string-link { /* <a style when IsEditMode=false and Url!=null */ }
+.edit-string-input { /* The input for the "EditString" control */ }
 
-.edit-string-input { 
-    /* The input for the "EditString" control */
-}
 .edit-icon-invalid {
     /* The x-circle that shows up when a textbox has validation errors */
     width: 1em;
@@ -116,7 +97,59 @@
     margin-top: -4px;
     pointer-events: none;
 }
-.edit-icon-eye{}
-.icon-eye-invisible{}
+.edit-icon-eye { }
+.edit-icon-eye-invisible { }
+.edit-icon-info-circle {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    background-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 1C4.13438 1 1 4.13438 1 8C1 11.8656 4.13438 15 8 15C11.8656 15 15 11.8656 15 8C15 4.13438 11.8656 1 8 1ZM8 13.8125C4.79063 13.8125 2.1875 11.2094 2.1875 8C2.1875 4.79063 4.79063 2.1875 8 2.1875C11.2094 2.1875 13.8125 4.79063 13.8125 8C13.8125 11.2094 11.2094 13.8125 8 13.8125Z" fill="%23262626"/><path d="M7.25 5.25C7.25 5.44891 7.32902 5.63968 7.46967 5.78033C7.61032 5.92098 7.80109 6 8 6C8.19891 6 8.38968 5.92098 8.53033 5.78033C8.67098 5.63968 8.75 5.44891 8.75 5.25C8.75 5.05109 8.67098 4.86032 8.53033 4.71967C8.38968 4.57902 8.19891 4.5 8 4.5C7.80109 4.5 7.61032 4.57902 7.46967 4.71967C7.32902 4.86032 7.25 5.05109 7.25 5.25ZM8.375 7H7.625C7.55625 7 7.5 7.05625 7.5 7.125V11.375C7.5 11.4438 7.55625 11.5 7.625 11.5H8.375C8.44375 11.5 8.5 11.4438 8.5 11.375V7.125C8.5 7.05625 8.44375 7 8.375 7Z" fill="%23262626"/></svg>');
+}
+
 /************************************************ EditTextArea *******************************************/
-.edit-textarea-input {}
+.edit-textarea-input { }
+
+
+/************************************************ Tooltip *******************************************/
+.edit-tooltip-container {
+    position: relative;
+    display: inline-block; /* Or block, depending on layout */
+    background: lime;
+    margin-left: 6px;
+    width: 0;
+}
+.edit-tooltip-content {
+    position: absolute;
+    bottom: 110%; /* Places the bottom of the popover at the top of the trigger */
+    left: 50%;
+    transform: translateX(-42%); /* Centers the popover horizontally */
+    display: none; /* Hidden by default */
+    /* Add styling for background, padding, border, etc. */
+    color: white;
+    background: #262626;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 8px;
+    z-index: 100; /* Ensure it appears above other content */
+    width: max-content; /* Adjust width based on content */
+    max-width: 400px; /* Prevent too wide popover */
+
+    box-shadow: 0px 9px 28px 8px rgba(0, 0, 0, 0.05), 0px 3px 6px -4px rgba(0, 0, 0, 0.12);
+    filter: drop-shadow(0px 6px 16px rgba(0, 0, 0, 0.08));
+}
+.edit-tooltip-container:hover .edit-tooltip-content {
+    display: block; /* Show on hover */
+}
+
+/*
+    Structure:
+       edit-control-wrapper
+          edit-label
+          edit-label-description
+          edit-readonly-value
+          edit-validation-message
+          edit-control (input, select, textarea, etc.)
+          edit-icon-invalid (optional)
+          edit-tooltip-container (optional)
+             edit-tooltip-content (optional)
+*/

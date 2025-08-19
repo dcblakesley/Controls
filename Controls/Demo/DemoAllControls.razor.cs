@@ -23,11 +23,6 @@ public partial class DemoAllControls
     bool _isHorizontal = false;
     public HidingMode HidingMode { get; set; }
 
-    void ForceValidation()
-    {
-        editForm!.EditContext!.Validate();
-    }
     async Task HandleInvalidSubmit() => await JsInteropEc.FocusFirstInvalidField(JsRuntime);
     async Task HandleValidSubmit() => await JsInteropEc.Log(JsRuntime, "Hello there");
-
 }

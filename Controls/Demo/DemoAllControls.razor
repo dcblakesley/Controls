@@ -1,12 +1,8 @@
 @using Controls
 @using Microsoft.AspNetCore.Components.Forms
 
-
-
 <EditForm Model=_model FormName="AllControlsForm" @ref="editForm" OnInvalidSubmit=HandleInvalidSubmit OnValidSubmit=HandleValidSubmit>
     <ObjectGraphDataAnnotationsValidator />
-
-
 
     <fieldset class="flex-column">
 
@@ -37,7 +33,6 @@
             <button>Submit</button>
         </div>
 
-
         <EditRadioString @bind-Value=_model.EditRadioString
                          Field=@(() => _model.EditRadioString)
                          Options=@_colorOptions
@@ -61,7 +56,6 @@
                     @((MarkupString)option.Name)
                 </label>
             }
-
         </EditRadio>
         <EditCheckedStringList @bind-Value=_model.EditCheckedStringList
                                Field=@(() => _model.EditCheckedStringList!)

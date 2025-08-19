@@ -7,7 +7,7 @@
      aria-required=@IsRequired
      aria-labelledby=@($"lbl-{Id}")
      aria-describedby=@($"desc-{Id}")
-     aria-errormessage=@($"error-msg-{Id}")
+     aria-describedby=@($"error-msg-{Id} desc-{Id} tooltip-{Id}")
      tabindex="0">
     
     @if (!string.IsNullOrEmpty(Text))

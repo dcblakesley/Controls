@@ -30,7 +30,7 @@ public static class AttributesHelper
     public static string? Description(this List<Attribute>? attrs) =>
         attrs?.OfType<DescriptionAttribute>().FirstOrDefault()?.Description;
 
-    public static string? ToolTip(this List<Attribute>? attrs) =>
+    public static string? Tooltip(this List<Attribute>? attrs) =>
         attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
 
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
@@ -85,7 +85,7 @@ public static class AttributesHelper
         return (min, max);
     }
 
-        public static string GetLabelText(this List<Attribute>? attrs, FieldIdentifier fieldIdentifier)
+    public static string GetLabelText(this List<Attribute>? attrs, FieldIdentifier fieldIdentifier)
     {
         // Order: DisplayNameAttribute, EnumDisplayNameAttribute, PropertyName
         var displayNameAttribute = attrs?.OfType<DisplayNameAttribute>().FirstOrDefault();
@@ -108,7 +108,7 @@ public static class AttributesHelper
         }
 
         return labelText;
-    }    
+    }
 }
 
 // Custom Attributes
@@ -116,6 +116,7 @@ public class ToolTipAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;
 }
+
 public class EnumDisplayNameAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;

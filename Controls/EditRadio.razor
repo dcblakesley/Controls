@@ -16,16 +16,14 @@
                                  class=@CssClass
                                  disabled=@IsDisabled
                                  aria-required=@_isRequired
-                                 aria-describedby=@($"desc-{_id} error-msg-{_id}")
+                                 aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                                  aria-errormessage=@($"error-msg-{_id}")>
-
                     <div class=@(IsHorizontal
                                           ? "edit-radio-buttons-container-horizontal"
                                           : "edit-radio-buttons-container-vertical")>
-
-                @ChildContent
-            </div>
-        </InputRadioGroup>
+                        @ChildContent
+                    </div>
+                </InputRadioGroup>
                 }
             else
             {

@@ -21,8 +21,9 @@
                        placeholder=@Placeholder
                        aria-invalid=true
                        aria-required=true
-                       aria-describedby=@($"desc-{_id}")
-                       aria-errormessage=@($"error-msg-{_id}") />
+                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                       aria-errormessage=@($"error-msg-{_id}")
+                       autocomplete="off" />
 
                 @if (CssClass.Contains("invalid"))
                 {
@@ -71,7 +72,7 @@
                        class="edit-string-link @CssClass"
                        id=@_id
                        data-test-id=@_id
-                       aria-describedby="desc-@_id"
+                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                        aria-labelledby=@($"lbl-{_id}")
                        href=@Url
                        target=@UrlTarget>
