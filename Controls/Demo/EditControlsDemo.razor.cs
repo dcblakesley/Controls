@@ -72,6 +72,7 @@ public enum CurrentView
     Bool,
     BoolNullRadio,
     CheckedStringList,
+    CheckedEnumList,
     Date,
     Number,
     Radio,

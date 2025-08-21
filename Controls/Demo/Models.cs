@@ -57,6 +57,12 @@ internal class DemoModelForEditControls
     [MinLength(2)]
     public List<string> EditCheckedStringList { get; set; } = [];
 
+    [DisplayName("EditCheckedEnumList")]
+    [Description("Select multiple animals")]
+    [Required]
+    [MinLength(2)]
+    public List<Animal> EditCheckedEnumList { get; set; } = [];
+
 }
 
 public enum Animal

@@ -21,4 +21,24 @@ public static class EnumHelpers
 
         return "";
     }
+
+    /// <summary>
+    /// Converts a string to a valid HTML ID by removing invalid characters and spaces
+    /// </summary>
+    public static string ToId(this string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        // Replace spaces and special characters with hyphens, then remove any invalid characters
+        return System.Text.RegularExpressions.Regex.Replace(value.Replace(" ", "-"), @"[^a-zA-Z0-9\-_]", "");
+    }
+
+    /// <summary>
+    /// Converts an object (typically enum) to a valid HTML ID
+    /// </summary>
+    public static string ToId(this object value)
+    {
+        return value?.ToString()?.ToId() ?? string.Empty;
+    }
 }

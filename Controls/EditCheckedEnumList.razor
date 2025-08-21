@@ -1,0 +1,56 @@
+@using Controls.Helpers
+@typeparam TEnum
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <fieldset class="edit-checkedList-fieldset">
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description IsLegend="true" />
+
+            @if (ShowEditor)
+            {
+                <div class=@(IsHorizontal
+                               ? "edit-checkedList-checkboxes-container-horizontal"
+                               : "edit-checkedList-checkboxes-container-vertical")>
+                    @foreach (var option in GetOptions())
+                    {
+                        <label class=@($"edit-checkbox-label {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
+                            <input type="checkbox"
+                                   value=@option
+                                   checked="@(Value?.Contains(option) == true)"
+                                   disabled=@IsDisabled
+                                   aria-disabled=@IsDisabled
+                                   aria-describedby=@($"error-msg-{_id}")                               
+                                   tabindex="0"
+                                   @onchange="() => SetAsync(option)"
+                                   id=@($"cbx-{_id}-{option.ToId()}")
+                                   data-test-id=@($"cbx-{_id}-{option.ToId()}")
+                                   class="edit-checkedList-checkbox @(EditContext?.GetValidationMessages(_fieldIdentifier).Any() == true ? "invalid" : "")" />
+                            @option.GetName()
+                        </label>
+                    }
+                </div>
+            }
+            else
+            {
+                @if(!Value.Any())
+                {
+                    <ReadOnlyValue Id=@_id IsRequired=@_isRequired Text=""/>
+                }
+                else
+                {
+                    @foreach (var option in Value)
+                    {
+                        <ReadOnlyValue Id=@($"{_id}-option-{option.ToId()}") IsRequired=@_isRequired Text=@option.GetName()/>
+                    }
+                }
+            }
+            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label/>
+            @if (FormOptions != null && FormOptions.ShowBoundValues)
+            {
+                <div class="bound-value">@string.Join(", ", Value.Select(x => x.GetName()))</div>
+            }
+
+        </fieldset>
+    </div>
+}

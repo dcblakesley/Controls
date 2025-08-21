@@ -4,7 +4,7 @@
 <EditForm Model=_model FormName="AllControlsForm" @ref="editForm" OnInvalidSubmit=HandleInvalidSubmit OnValidSubmit=HandleValidSubmit>
     <ObjectGraphDataAnnotationsValidator />
 
-    <fieldset class="flex-column">
+    <fieldset class="flex-row flex-wrap">
 
         <div class="demo-section">
             <EditBool @bind-Value=_model.EditBool Field=@(() => _model.EditBool) />
@@ -32,7 +32,6 @@
             <button class=@(_isHorizontal ? "active" : "inactive") @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Horizontal</button>
             <button>Submit</button>
         </div>
-
         <EditRadioString @bind-Value=_model.EditRadioString
                          Field=@(() => _model.EditRadioString)
                          Options=@_colorOptions
@@ -57,10 +56,14 @@
                 </label>
             }
         </EditRadio>
+        
         <EditCheckedStringList @bind-Value=_model.EditCheckedStringList
                                Field=@(() => _model.EditCheckedStringList!)
                                Options=@_editCheckedStringListOptions
                                IsHorizontal=@_isHorizontal />
 
+        <EditCheckedEnumList @bind-Value=_model.EditCheckedEnumList
+                             Field=@(() => _model.EditCheckedEnumList!)
+                             IsHorizontal=@_isHorizontal />
     </fieldset>
 </EditForm>

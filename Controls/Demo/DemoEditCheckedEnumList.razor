@@ -1,0 +1,105 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditCheckedEnumList Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="demo-section">
+        <EditCheckedEnumList @bind-Value="_model.BasicEnumList"
+                             Field="@(() => _model.BasicEnumList)" />
+    </div>
+
+    <div class="demo-section">
+        <EditCheckedEnumList @bind-Value="_model.BasicEnumList"
+                             Field="@(() => _model.BasicEnumList)"
+                             Label="Read-only"
+                             IsEditMode="false" />
+    </div>
+
+    <div class="demo-section">
+        <EditCheckedEnumList @bind-Value="_model.SortedEnumList"
+                             Field="@(() => _model.SortedEnumList)"
+                             Label="Sorted"
+                             Sort="true" />
+    </div>
+
+    <div class="demo-section">
+        <EditCheckedEnumList @bind-Value="_model.HorizontalLayout"
+                             Field="@(() => _model.HorizontalLayout)"
+                             Label="Horizontal Layout"
+                             IsHorizontal="true" />
+    </div>
+
+    <div class="demo-section">
+        <style>
+            .my-custom-container {
+                background-color: lightblue;
+                padding: 10px;
+                border-radius: 4px;
+            }
+
+            .my-custom-checklist {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                font-weight: bold;
+            }
+
+                .my-custom-checklist input[type="checkbox"] {
+                    transform: scale(1.2);
+                    margin-right: 8px;
+                    accent-color: blue;
+                }
+        </style>
+
+        <EditCheckedEnumList @bind-Value="_model.CustomStyling"
+                             Field="@(() => _model.CustomStyling)"
+                             ContainerClass="my-custom-container"
+                             LabelClass="my-custom-checklist" />
+    </div>
+
+    <div class="demo-section">
+        <EditCheckedEnumList @bind-Value="_model.Disabled"
+                             Field="@(() => _model.Disabled)"
+                             IsDisabled="true" />
+
+        <EditCheckedEnumList @bind-Value="_model.Required"
+                             Field="@(() => _model.Required)" />
+    </div>
+
+</EditForm>
+
+@code {
+    readonly DemoEditCheckedEnumListModel _model = new();
+
+    EditForm? _form;
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _form?.EditContext != null)
+        {
+            // Use small delay to ensure component is fully rendered before validation
+            await Task.Delay(10);
+            _form.EditContext.Validate();
+            StateHasChanged();
+        }
+    }
+    
+    public class DemoEditCheckedEnumListModel
+    {
+        [Description("Basic Description")]
+        public List<Animal> BasicEnumList { get; set; } = [];
+        
+        public List<Animal> SortedEnumList { get; set; } = [];
+        
+        public List<Animal> HorizontalLayout { get; set; } = [];
+        
+        public List<Animal> CustomStyling { get; set; } = [];
+
+        [Required, MinLength(2)]
+        public List<Animal> Required { get; set; } = [];
+
+        public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];
+    }
+}
