@@ -1,5 +1,10 @@
 ﻿/************************************************ General ************************************************/
-.edit-control-wrapper { /* Wraper/group around each edit control (label, description, input and validation messages */ }
+.edit-control-wrapper {
+    /* Wraper/group around each edit control (label, description, input and validation messages */
+    display: flex;
+    flex-direction: column;
+    row-gap: 8px;
+}
 .edit-validation-message {
     /* The validation message for each of the "Edit" Controls */
     color: var(--color-danger);

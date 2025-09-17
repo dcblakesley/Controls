@@ -1,5 +1,4 @@
-﻿
-/************************************************ General ************************************************/
+﻿/************************************************ General ************************************************/
 .edit-control-wrapper {
     /* Wraper/group around each edit control (label, description, input and validation messages */
 }
@@ -101,7 +100,9 @@
 .edit-radio-other-option-container {}
 
 /************************************************ EditSelect(String and Enum) *********************************************/
-.edit-select-select {}
+.edit-select-select {
+    cursor: pointer;
+}
 .edit-select-option {
     /* The options within the select control */
 }
@@ -124,8 +125,12 @@
     pointer-events: none;
 }
 
-.edit-icon-eye { }
-.edit-icon-eye-invisible { }
+.edit-icon-eye { 
+    cursor: pointer;
+}
+.edit-icon-eye-invisible { 
+    cursor: pointer;
+}
 
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input { }

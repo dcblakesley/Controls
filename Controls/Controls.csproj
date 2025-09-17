@@ -7,7 +7,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>1.0.13.1</AssemblyVersion>
+	  <AssemblyVersion>1.0.13.2</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
   </PropertyGroup>
@@ -26,6 +26,10 @@
     <Content Update="wwwroot\editControls.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="ai-docs\" />
   </ItemGroup>
 
 </Project>
