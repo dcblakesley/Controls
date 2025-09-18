@@ -10,8 +10,26 @@
 	  <AssemblyVersion>1.0.13.3</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
+    
+    <!-- Package Metadata -->
+    <PackageDescription>A comprehensive library of form controls for Blazor applications providing consistent, feature-rich input components with built-in validation, accessibility support, and flexible styling options.</PackageDescription>
+    <PackageProjectUrl>https://github.com/dcblakesley/Controls</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
+    <PackageReleaseNotes>Full feature set with comprehensive validation support and accessibility features.</PackageReleaseNotes>
+    <Authors>dcblakesley</Authors>
+    <Company>WSS</Company>
+    <Copyright>Copyright (c) 2024 WssBlazorControls</Copyright>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Include README and LICENSE in the package -->
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
