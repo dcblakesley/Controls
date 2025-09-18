@@ -19,13 +19,7 @@
 }
 .edit-label-description {
     /* The description for each of the "Edit" Controls */
-    font-family: 'DM Sans';
-    font-style: normal;
-    font-weight: 400;
-    font-size: 14px;
-    line-height: 22px;
-    opacity: 0.65;
-    color: black;
+
 }
 .edit-readonly-value { /* The text that is displayed when IsEditMode=false and within EditDisplay*/ }
 
