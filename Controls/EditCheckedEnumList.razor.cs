@@ -19,6 +19,7 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? ContainerClass { get; set; }
     [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsLabelHidden { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
@@ -123,7 +124,7 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
 
         return effectiveHidingMode switch
         {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
+            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isDefault),
             HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
             HidingMode.WhenNull => !isNull,
             HidingMode.WhenNullOrDefault => !isDefault,
@@ -132,4 +133,5 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
     }
 
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
 }

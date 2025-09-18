@@ -15,6 +15,7 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     
     [Parameter] public bool IsRequired { get; set; }
     [Parameter] public EventCallback<bool> IsRequiredChanged { get; set; }
+    [Parameter] public bool IsLabelHidden { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
@@ -138,6 +139,7 @@ public partial class EditRadioEnum<TEnum> : IEditControl
         }
     }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
     bool ShouldShowComponent()
     {
         if (IsHidden)

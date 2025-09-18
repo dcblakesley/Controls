@@ -13,6 +13,7 @@ public partial class EditDate<T> : IEditControl
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? ContainerClass { get; set; } 
     [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsLabelHidden { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
@@ -30,6 +31,7 @@ public partial class EditDate<T> : IEditControl
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
 
     // Methods
     protected override void OnInitialized()

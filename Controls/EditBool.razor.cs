@@ -15,6 +15,7 @@ public partial class EditBool : IEditControl
 
     /// <summary> Not supported in EditBool </summary>
     [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsLabelHidden { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
@@ -42,6 +43,7 @@ public partial class EditBool : IEditControl
 
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
 
     bool ShouldShowComponent()
     {

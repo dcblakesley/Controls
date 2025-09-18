@@ -1,41 +1,44 @@
-﻿@if (IsLegend)
+﻿@if (!IsLabelHidden)
 {
-    <!-- Wrap only the 'label' within the legend -->
-    <legend class="edit-label-legend">
-        @((MarkupString)DisplayLabel())
-
-        @if (_isRequired.ToLower() == "true" || IsRequired)
-        {
-            <span class="edit-label-required-star" aria-hidden="true">*</span>
-        }
-        <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes/>
-    </legend>
-
-    @if (DisplayDescription() != null)
+    @if (IsLegend)
     {
-        <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
-            @((MarkupString)DisplayDescription()!)
-        </p>
+        <!-- Wrap only the 'label' within the legend -->
+        <legend class="edit-label-legend">
+            @((MarkupString)DisplayLabel())
+
+            @if (_isRequired.ToLower() == "true" || IsRequired)
+            {
+                <span class="edit-label-required-star" aria-hidden="true">*</span>
+            }
+            <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes/>
+        </legend>
+
+        @if (DisplayDescription() != null)
+        {
+            <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+                @((MarkupString)DisplayDescription()!)
+            </p>
+        }
     }
-}
-else
-{
-    <!-- Typical Label -->
-    <label class="edit-label" for=@Id id="lbl-@Id">
-        @((MarkupString)DisplayLabel())
-
-        @if (_isRequired.ToLower() == "true" || IsRequired)
-        {
-            <span class="edit-label-required-star" aria-hidden="true">*</span>
-        }
-        <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes />
-    </label>
-
-    <div></div>
-    @if (DisplayDescription() != null)
+    else
     {
-        <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
-            @((MarkupString)DisplayDescription()!)
-        </p>
+        <!-- Typical Label -->
+        <label class="edit-label" for=@Id id="lbl-@Id">
+            @((MarkupString)DisplayLabel())
+
+            @if (_isRequired.ToLower() == "true" || IsRequired)
+            {
+                <span class="edit-label-required-star" aria-hidden="true">*</span>
+            }
+            <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes />
+        </label>
+
+        <div></div>
+        @if (DisplayDescription() != null)
+        {
+            <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+                @((MarkupString)DisplayDescription()!)
+            </p>
+        }
     }
 }

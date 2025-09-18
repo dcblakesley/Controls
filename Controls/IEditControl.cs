@@ -59,4 +59,11 @@ public interface IEditControl
     /// This displays the required-star and is used when the field isn't always required such as when using RequiredIf.
     /// </summary>
     public bool IsRequired { get; set; }
+
+    /// <summary>
+    /// When true, hides the label for the control. The label element and description will not be rendered.
+    /// Useful for controls where you want to provide a custom label or for space-constrained layouts.
+    /// </summary>
+    /// <remarks>This is also available within <seealso cref="FormOptions"/> for applying it to a group of controls at the same time. </remarks>
+    public bool IsLabelHidden { get; set; }
 }

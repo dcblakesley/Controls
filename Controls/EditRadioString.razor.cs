@@ -15,7 +15,9 @@ public partial class EditRadioString : IEditControl
     [Parameter] public string? Description { get; set; }
     [Parameter] public HidingMode? Hiding { get; set; }
     [Parameter] public bool IsHidden { get; set;  }
-    [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public string? ContainerClass { get; set; }
+    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsLabelHidden { get; set; }
 
     // EditRadioString specific
     [Parameter] public bool IsEditMode { get; set; } = true;
@@ -46,6 +48,7 @@ public partial class EditRadioString : IEditControl
         _selectedOption = Value;
     }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
     string? SelectedOption
     {
         get => _selectedOption;

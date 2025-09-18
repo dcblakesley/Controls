@@ -12,6 +12,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool IsLabelHidden { get; set; }
 
     // IEditControl state properties
     [Parameter] public HidingMode? Hiding { get; set; }
@@ -36,6 +37,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
         _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
     }
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
+    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
 
     protected bool ShouldShowComponent()
     {

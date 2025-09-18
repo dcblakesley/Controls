@@ -307,6 +307,44 @@ All controls implement the `IEditControl` interface, providing these common prop
            Description="Additional help text" />
 ```
 
+### Label Visibility Control
+```razor
+<!-- Hide labels for individual controls -->
+<EditString @bind-Value="model.Name" 
+           Field="@(() => model.Name)"
+           IsLabelHidden="true" />
+
+<!-- Hide labels for all controls using FormOptions -->
+<CascadingValue Value="@(new FormOptions { IsLabelHidden = true })">
+    <EditString @bind-Value="model.FirstName" Field="@(() => model.FirstName)" />
+    <EditString @bind-Value="model.LastName" Field="@(() => model.LastName)" />
+    <EditString @bind-Value="model.Email" Field="@(() => model.Email)" />
+</CascadingValue>
+
+<!-- Useful for custom form layouts -->
+<div class="form-grid">
+    <div class="form-labels">
+        <label for="first-name">First Name:</label>
+        <label for="last-name">Last Name:</label>
+        <label for="email">Email:</label>
+    </div>
+    <div class="form-inputs">
+        <EditString @bind-Value="model.FirstName" 
+                   Field="@(() => model.FirstName)" 
+                   IsLabelHidden="true" 
+                   Id="first-name" />
+        <EditString @bind-Value="model.LastName" 
+                   Field="@(() => model.LastName)" 
+                   IsLabelHidden="true" 
+                   Id="last-name" />
+        <EditString @bind-Value="model.Email" 
+                   Field="@(() => model.Email)" 
+                   IsLabelHidden="true" 
+                   Id="email" />
+    </div>
+</div>
+```
+
 ### Styling
 ```razor
 <!-- Add custom CSS classes -->
@@ -373,6 +411,11 @@ Use `FormOptions` to control multiple controls at once:
             @(formOptions.IsEditMode ? "View Mode" : "Edit Mode")
         </button>
         
+        <!-- Toggle for hiding all labels -->
+        <button type="button" @onclick="ToggleLabelVisibility">
+            @(formOptions.IsLabelHidden ? "Show Labels" : "Hide Labels")
+        </button>
+        
         <EditString @bind-Value="model.Name" Field="@(() => model.Name)" />
         <EditString @bind-Value="model.Email" Field="@(() => model.Email)" />
         <EditNumber @bind-Value="model.Age" Field="@(() => model.Age)" />
@@ -394,11 +437,13 @@ Use `FormOptions` to control multiple controls at once:
     FormOptions formOptions = new() 
     { 
         IsEditMode = true,
+        IsLabelHidden = false,
         ShowBoundValues = false,
         Hiding = HidingMode.WhenReadOnlyAndNull
     };
     
     void ToggleEditMode() => formOptions.IsEditMode = !formOptions.IsEditMode;
+    void ToggleLabelVisibility() => formOptions.IsLabelHidden = !formOptions.IsLabelHidden;
 }
 ```
 
@@ -438,6 +483,74 @@ public enum HidingMode
            Hiding="HidingMode.WhenReadOnlyAndNullOrDefault" />
 ```
 
+## Label Hiding Use Cases
+
+The `IsLabelHidden` property is useful in several scenarios:
+
+### Custom Form Layouts
+```razor
+<!-- Grid layout with external labels -->
+<div class="form-grid">
+    <label for="fname" class="form-label">First Name</label>
+    <EditString @bind-Value="model.FirstName" 
+               Field="@(() => model.FirstName)" 
+               IsLabelHidden="true" 
+               Id="fname" />
+    
+    <label for="lname" class="form-label">Last Name</label>
+    <EditString @bind-Value="model.LastName" 
+               Field="@(() => model.LastName)" 
+               IsLabelHidden="true" 
+               Id="lname" />
+</div>
+
+<style>
+.form-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1rem;
+    align-items: center;
+}
+</style>
+```
+
+### Card-Based Forms
+```razor
+<div class="form-card">
+    <h3>Personal Information</h3>
+    <p class="card-description">Please provide your basic details</p>
+    
+    <!-- Hide labels when card title provides context -->
+    <CascadingValue Value="@(new FormOptions { IsLabelHidden = true })">
+        <EditString @bind-Value="model.FirstName" 
+                   Field="@(() => model.FirstName)" 
+                   Placeholder="First Name" />
+        <EditString @bind-Value="model.LastName" 
+                   Field="@(() => model.LastName)" 
+                   Placeholder="Last Name" />
+        <EditString @bind-Value="model.Email" 
+                   Field="@(() => model.Email)" 
+                   Placeholder="Email Address" />
+    </CascadingValue>
+</div>
+```
+
+### Inline Forms
+```razor
+<!-- Search form with hidden labels -->
+<div class="search-form">
+    <EditString @bind-Value="searchCriteria.Query" 
+               Field="@(() => searchCriteria.Query)" 
+               IsLabelHidden="true" 
+               Placeholder="Search..." />
+    <EditSelectString @bind-Value="searchCriteria.Category" 
+                      Field="@(() => searchCriteria.Category)" 
+                      IsLabelHidden="true" 
+                      Options="@categories" />
+    <button type="submit">Search</button>
+</div>
+```
+
 ## Accessibility Features
 
 The controls include comprehensive accessibility support:
@@ -447,11 +560,22 @@ The controls include comprehensive accessibility support:
 - **Keyboard Navigation**: Full keyboard accessibility
 - **Focus Management**: Appropriate focus indicators
 
+When using `IsLabelHidden="true"`, ensure you provide alternative labeling methods:
+
 ```razor
-<!-- All accessibility attributes are added automatically -->
+<!-- Use aria-label when hiding visual labels -->
 <EditString @bind-Value="model.Name" 
            Field="@(() => model.Name)"
-           Description="This description will be linked via aria-describedby" />
+           IsLabelHidden="true"
+           aria-label="Full Name" />
+
+<!-- Or reference external labels -->
+<label id="external-label" for="name-input">Full Name</label>
+<EditString @bind-Value="model.Name" 
+           Field="@(() => model.Name)"
+           IsLabelHidden="true"
+           Id="name-input"
+           aria-labelledby="external-label" />
 ```
 
 ## Custom Styling
@@ -624,7 +748,30 @@ public class WellDesignedModel
 </style>
 ```
 
-### 3. Error Handling
+### 3. Label Hiding Guidelines
+```razor
+<!-- Good: Hide labels when using placeholders that provide clear context -->
+<EditString @bind-Value="model.Email" 
+           Field="@(() => model.Email)" 
+           IsLabelHidden="true" 
+           Placeholder="Enter your email address" />
+
+<!-- Good: Hide labels in forms with external labeling -->
+<fieldset>
+    <legend>Contact Information</legend>
+    <EditString @bind-Value="model.Phone" 
+               Field="@(() => model.Phone)" 
+               IsLabelHidden="true" 
+               Placeholder="Phone Number" />
+</fieldset>
+
+<!-- Avoid: Hiding labels without alternative labeling -->
+<EditString @bind-Value="model.SecretField" 
+           Field="@(() => model.SecretField)" 
+           IsLabelHidden="true" />
+```
+
+### 4. Error Handling
 ```razor
 <EditForm Model="@model" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit">
     <DataAnnotationsValidator />
@@ -676,11 +823,13 @@ public class WellDesignedModel
 1. **Missing CSS Styles**: Ensure you've included the CSS reference
 2. **Validation Not Working**: Make sure you have `<DataAnnotationsValidator />` in your EditForm
 3. **IDs Not Unique**: Use `IdPrefix` or `FormGroupOptions` for multiple instances
-4. **Accessibility Issues**: The controls handle ARIA attributes automatically
+4. **Accessibility Issues**: The controls handle ARIA attributes automatically, but when using `IsLabelHidden`, provide alternative labeling
+5. **Hidden Labels Not Working**: Ensure you're setting `IsLabelHidden="true"` on individual controls or `IsLabelHidden = true` in FormOptions
 
 ### Performance Tips
 
 1. Use `@bind-Value:event="oninput"` for real-time validation
 2. Consider using `ObjectGraphDataAnnotationsValidator` for complex objects
 3. Use `IsHidden` instead of conditional rendering for better performance
+4. When hiding labels globally, use FormOptions cascading parameter instead of setting `IsLabelHidden` on each control
 

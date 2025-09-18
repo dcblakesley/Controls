@@ -15,6 +15,9 @@ public class FormOptions
 
     /// <summary> This is only for debugging purposes. </summary>
     public bool ShowBoundValues { get; set; }
+
+    /// <summary> When true, hides labels for all controls in the form. </summary>
+    public bool IsLabelHidden { get; set; }
 }
 
 /// <summary>

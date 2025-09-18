@@ -5,9 +5,39 @@
 {
     <div class="edit-control-wrapper @ContainerClass">
 
-@*         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
- *@           
-        <label class="edit-label edit-checkbox-label" for=@_id>
+        @if (!ShouldHideLabel)
+        {           
+            <label class="edit-checkbox-label" for=@_id>
+                <input type="checkbox"
+                       value="@CurrentValue"
+                       @onchange="HandleCheckboxChange"
+                       @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
+                       @onkeydown="PreventSpacebarToggle"
+                       class="@CssClass"
+                       id=@_id
+                       data-test-id=@_id
+                       checked=@CurrentValue
+                       tabindex="0"
+                       aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
+                       disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
+                       aria-required=@_isRequired
+                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                       aria-errormessage=@($"error-msg-{_id}") />
+
+                @((MarkupString)DisplayLabel())
+
+                <LabelTooltip Id=@Id Attributes=@_attributes/>
+
+            </label>
+            @if (DisplayDescription() != null)
+            {
+                <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+                    @((MarkupString)DisplayDescription()!)
+                </p>
+            }
+        }
+        else
+        {
             <input type="checkbox"
                    value="@CurrentValue"
                    @onchange="HandleCheckboxChange"
@@ -23,18 +53,8 @@
                    aria-required=@_isRequired
                    aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                    aria-errormessage=@($"error-msg-{_id}") />
-
-            @((MarkupString)DisplayLabel())
-
-            <LabelTooltip Id=@Id Attributes=@_attributes/>
-
-        </label>
-        @if (DisplayDescription() != null)
-        {
-            <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
-                @((MarkupString)DisplayDescription()!)
-            </p>
         }
+
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
         @if (FormOptions != null && FormOptions.ShowBoundValues)
         {
