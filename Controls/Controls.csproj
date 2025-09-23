@@ -46,8 +46,4 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="ai-docs\" />
-  </ItemGroup>
-
 </Project>
