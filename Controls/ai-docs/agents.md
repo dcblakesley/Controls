@@ -14,14 +14,10 @@ Provides guidance for developing in the system.
 
 - **cSharp.md** - For ALL C# files (.cs)
 - **blazor.md** - For ALL Blazor/Razor files (.razor, .razor.cs)
-- **react.md** - For ALL React/TypeScript files (.tsx, .ts)
-- **unique-objects-pattern.md** - For UniqueObjectBase implementations
-- **integration-tests-setup-guide.md** - For ALL integration test classes
 
 ## Project Guidelines
 **UI Components:**
 - **Blazor** for external-facing features
-- **React TypeScript** for internal Hatch.Web features
 
 **Backend:**
 - **Hatch.Core** - Business logic and services
@@ -46,7 +42,7 @@ Provides guidance for developing in the system.
 2. **Always Reference Coding Standards** - Use appropriate .md file
 3. **Async/Await Consistently** - All I/O operations
 4. **Comprehensive Testing** - Unit and integration tests
+6. omit the private keyword
 
 ## Dependencies
-- .NET 8 SDK, Docker Desktop, Node.js/Yarn
-- SQL Server, MongoDB, Redis (local or containerized)
+- .NET 10 SDK,
