@@ -22,6 +22,7 @@ public partial class EditTextArea : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // EditTextArea specific parameters
+    [Parameter] public string? Placeholder { get; set; }
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     [Parameter] public int Rows { get; set; } = 2;
 

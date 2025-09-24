@@ -21,6 +21,20 @@
     </div>
 
     <div class="demo-section">
+        <EditTextArea @bind-Value="_model.WithPlaceholder"
+                      Placeholder="Enter your detailed comments here..."
+                      Rows="4"
+                      Field="@(() => _model.WithPlaceholder)"/>
+    </div>
+
+    <div class="demo-section">
+        <EditTextArea @bind-Value="_model.MultilinePlaceholder"
+                      Placeholder="Describe your experience, thoughts, or feedback. Feel free to be as detailed as you'd like."
+                      Rows="3"
+                      Field="@(() => _model.MultilinePlaceholder)"/>
+    </div>
+
+    <div class="demo-section">
         <style>
             .my-custom-container { background-color:cyan; padding: 10px; border-radius: 40px; }
             .my-custom-textarea { background-color: magenta; border: 2px solid #0066cc; border-radius: 40px; padding: 8px; width: 100%; min-height: 100px; font-family: 'Courier New', monospace; background:  }
@@ -52,6 +66,13 @@
         [Description("Basic Description")]
         public string BasicTextArea { get; set; } = "";
         public string LargerTextArea { get; set; } = "Rows isn't being respected in the test project right now.";
+        
+        [Description("Example with placeholder text")]
+        public string WithPlaceholder { get; set; } = "";
+        
+        [Description("Another placeholder example")]
+        public string MultilinePlaceholder { get; set; } = "";
+        
         public string CustomStyling { get; set; } = "I have custom styling";
 
         [Required] public string Required { get; set; } = "";
