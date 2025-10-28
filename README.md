@@ -241,12 +241,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+
+
 ### 1.13.5
-- IsRequired parameter on all controls. When set forces the “edit-label-required-star” to show up without being required in the DataAnnotations.
-- Accessibility updates for EditCheckedStringList
+- Enable tooltips through markup
+- Move the required star to the left of the label
 
 ### 1.13.4
 - EditDate and other controls. Add a null value string to display when the value is null, such as a dash instead of blank space.
+- IsRequired parameter on all controls. When set forces the “edit-label-required-star” to show up without being required in the DataAnnotations.
+- Accessibility updates for EditCheckedStringList
 
 ### 1.13.3
 - Current stable release
