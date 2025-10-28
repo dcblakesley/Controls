@@ -18,6 +18,21 @@
     </div>
 
     <div class="demo-section">
+        <h3>Tooltip Examples</h3>
+    
+        <EditString @bind-Value="_model.WithTooltipFromAttribute"
+                    Field="@(() => _model.WithTooltipFromAttribute)"/>
+
+        <EditString @bind-Value="_model.WithTooltipInHtml"
+                    Tooltip="This tooltip was set directly in the HTML markup, not from a model attribute!"
+                    Field="@(() => _model.WithTooltipInHtml)"/>
+
+        <EditString @bind-Value="_model.WithTooltipOverride"
+                    Tooltip="This HTML tooltip overrides the attribute tooltip"
+                    Field="@(() => _model.WithTooltipOverride)"/>
+    </div>
+
+    <div class="demo-section">
         <EditString @bind-Value="_model.MaskedText"
                     MaskText="*"
                     Field="@(() => _model.MaskedText)"/>
@@ -79,6 +94,18 @@
         [Description("Basic Description")]
         public string BasicString { get; set; } = "";
         public string WithPlaceholder { get; set; } = "";
+   
+        [ToolTip("This tooltip comes from the [ToolTip] attribute on the model property")]
+        [DisplayName("With Tooltip From Attribute")]
+     public string WithTooltipFromAttribute { get; set; } = "";
+      
+        [DisplayName("With Tooltip In HTML")]
+        public string WithTooltipInHtml { get; set; } = "";
+        
+     [ToolTip("This is the attribute tooltip (will be overridden)")]
+  [DisplayName("With Tooltip Override")]
+        public string WithTooltipOverride { get; set; } = "";
+      
         public string MaskedText { get; set; } = "123-45-6789";
         public string UrlField { get; set; } = "Friendly name for a website";
         public string CustomStyling { get; set; } = "";

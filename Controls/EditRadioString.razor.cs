@@ -13,6 +13,7 @@ public partial class EditRadioString : IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Tooltip { get; set; }
     [Parameter] public HidingMode? Hiding { get; set; }
     [Parameter] public bool IsHidden { get; set;  }
     [Parameter] public string? ContainerClass { get; set; }

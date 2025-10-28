@@ -11,6 +11,7 @@ public partial class EditBool : IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Tooltip { get; set; }
     [Parameter] public string? ContainerClass { get; set; }
 
     /// <summary> Not supported in EditBool </summary>

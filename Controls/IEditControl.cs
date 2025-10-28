@@ -40,6 +40,12 @@ public interface IEditControl
     public string? Description { get; set; }
 
     /// <summary>
+    /// Set the Tooltip text for the control, which is displayed in a popover when hovering over the info icon. <br/>
+    /// The Tooltip can also be set using the properties' ToolTip Attribute.
+    /// </summary>
+    public string? Tooltip { get; set; }
+
+    /// <summary>
     /// Each control contains a container element 'edit-control-wrapper' this allows adding additional classes to that container.
     /// </summary>
     public string? ContainerClass { get; set; }

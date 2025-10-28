@@ -12,6 +12,7 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
     [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Tooltip { get; set; }
     [Parameter] public string? ContainerClass { get; set; } 
     [Parameter] public bool IsRequired { get; set; }
     [Parameter] public bool IsLabelHidden { get; set; }
