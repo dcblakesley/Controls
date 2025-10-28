@@ -3,13 +3,13 @@
     @if (IsLegend)
     {
         <!-- Wrap only the 'label' within the legend -->
-        <legend class="edit-label-legend">
+		<legend class="edit-label-legend">
+			@if (_isRequired.ToLower() == "true" || IsRequired)
+			{
+				<span class="edit-label-required-star" aria-hidden="true">*</span>
+			}
             @((MarkupString)DisplayLabel())
 
-            @if (_isRequired.ToLower() == "true" || IsRequired)
-            {
-                <span class="edit-label-required-star" aria-hidden="true">*</span>
-            }
             <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes/>
         </legend>
 
