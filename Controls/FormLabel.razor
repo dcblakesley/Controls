@@ -23,13 +23,13 @@
     else
     {
         <!-- Typical Label -->
-        <label class="edit-label" for=@Id id="lbl-@Id">
+		<label class="edit-label" for=@Id id="lbl-@Id">
+			@if (_isRequired.ToLower() == "true" || IsRequired)
+			{
+				<span class="edit-label-required-star" aria-hidden="true">*</span>
+			}
             @((MarkupString)DisplayLabel())
 
-            @if (_isRequired.ToLower() == "true" || IsRequired)
-            {
-                <span class="edit-label-required-star" aria-hidden="true">*</span>
-            }
             <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes />
         </label>
 

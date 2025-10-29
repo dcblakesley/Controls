@@ -243,6 +243,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 
 
+### 1.13.6
+- Move the star for non-legends to the left.
+
 ### 1.13.5
 - Enable tooltips through markup
 - Move the required star to the left of the label
