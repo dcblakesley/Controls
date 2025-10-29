@@ -22,7 +22,7 @@
     <PackageReleaseNotes>Full feature set with comprehensive validation support and accessibility features.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
-    <Copyright>Copyright (c) 2024 WssBlazorControls</Copyright>
+    <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
