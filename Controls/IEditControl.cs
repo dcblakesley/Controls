@@ -4,8 +4,9 @@
 public interface IEditControl
 {
     /// <summary> 
-    /// IDs are used for the label and input. If not provided, the Id will be
-    /// automatically generated based on the name of the Property.
+    /// IDs are used for the label and input.<br/>
+    /// They are automatically generated based on the name of the Property.<br/>
+    /// They can be manually set here if needed. <br/> 
     /// </summary>
     public string? Id { get; set; }
 
@@ -21,7 +22,7 @@ public interface IEditControl
     /// Defaults to true, which shows the editors/inputs. When false, inputs are not shown,
     /// but the values are still displayed as a sort of review look.
     /// </summary>
-    /// <remarks>This is also available within <seealso cref="FormOptions"/> for applying it to a group of controls at the same time. </remarks>
+    /// <remarks> This is also available within <seealso cref="FormOptions"/> for applying it to a group of controls at the same time. </remarks>
     public bool IsEditMode { get; set; }
 
     /// <summary> Not used </summary>
@@ -34,14 +35,14 @@ public interface IEditControl
     public string? Label { get; set; }
 
     /// <summary> 
-    /// Set the Description for the control, which is typically displayed below the label as a <p></p> tag. <br/>
-    /// The Description can also be set using the properties' Description Attribute.
+    /// The Description for the control, which is typically displayed below the label as a <p></p> tag. <br/>
+    /// It uses the Description attribute on of the Property, but can be overriden in the markup.
     /// </summary>
     public string? Description { get; set; }
 
     /// <summary> 
-    /// Set the Tooltip text for the control, which is displayed in a popover when hovering over the info icon. <br/>
-    /// The Tooltip can also be set using the properties' ToolTip Attribute.
+    /// Displayed in a popover when hovering over the info icon. <br/>
+    /// Uses the [ToolTip] attribute on the Property by default. Can be overriden here.
     /// </summary>
     public string? Tooltip { get; set; }
 
