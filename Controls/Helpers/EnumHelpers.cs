@@ -22,7 +22,7 @@ public static class EnumHelpers
         return "";
     }
 
-    /// <summary>
+    /// <summary> 
     /// Converts a string to a valid HTML ID by removing invalid characters and spaces
     /// </summary>
     public static string ToId(this string value)
@@ -34,7 +34,7 @@ public static class EnumHelpers
         return System.Text.RegularExpressions.Regex.Replace(value.Replace(" ", "-"), @"[^a-zA-Z0-9\-_]", "");
     }
 
-    /// <summary>
+    /// <summary> 
     /// Converts an object (typically enum) to a valid HTML ID
     /// </summary>
     public static string ToId(this object value)

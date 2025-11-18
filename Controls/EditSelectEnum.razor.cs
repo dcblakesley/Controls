@@ -1,6 +1,6 @@
 ﻿namespace Controls;
 
-/// <summary> Uses an enum as the options. Defaults to sorted by Id, can be sorted by name using the SortByName parameter  </summary>
+/// <summary> Uses an enum as the options. Defaults to sorted by Id, can be sorted by name using the SortByName parameter</summary>
 public partial class EditSelectEnum<TEnum> : IEditControl
 {
     // Cascading parameters
@@ -46,7 +46,10 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
+    /// <summary> Expression that binds to the enum property in the model.</summary>
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
+    
+    /// <summary> When true, sorts the enum options alphabetically by their display name. When false, uses the enum's numeric order.</summary>
     [Parameter] public bool Sort { get; set; }
 
     //  Fields

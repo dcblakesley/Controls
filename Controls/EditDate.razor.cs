@@ -1,5 +1,6 @@
 ﻿namespace Controls;
 
+/// <summary> Edit control for date and date/time values, displays as a date input with customizable format.</summary>
 public partial class EditDate<T> : IEditControl
 {
     // Cascading parameters
@@ -24,7 +25,6 @@ public partial class EditDate<T> : IEditControl
     
     /// <inheritdoc/>
     [Parameter] public string? ContainerClass { get; set; } 
-    
     /// <inheritdoc/>
     [Parameter] public bool IsRequired { get; set; }
     
@@ -45,7 +45,10 @@ public partial class EditDate<T> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component-specific properties
+    /// <summary> Expression that binds to the date/datetime property in the model.</summary>
     [Parameter] public required Expression<Func<T>> Field { get; set; }
+    
+    /// <summary> Format string for displaying the date in read-only mode. Defaults to "MM-dd-yyyy".</summary>
     [Parameter] public string DateFormat { get; set; } = "MM-dd-yyyy";
 
     // Fields

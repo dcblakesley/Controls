@@ -1,5 +1,6 @@
 ﻿namespace Controls;
 
+/// <summary> Edit control for boolean values, displays as a checkbox.</summary>
 public partial class EditBool : IEditControl
 {
     // Cascading parameters
@@ -45,7 +46,11 @@ public partial class EditBool : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // EditBool specific properties
+    /// <summary> Expression that binds to the boolean property in the model.</summary>
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
+    
+    /// <summary> When true, allows the checkbox to receive focus even when disabled. Defaults to true.</summary>
+    [Parameter] public bool AllowFocusWhenDisabled { get; set; } = true;
 
     // Fields
     string _id = string.Empty;
@@ -92,10 +97,7 @@ public partial class EditBool : IEditControl
             // This method provides a hook for that behavior
         }
     }
-
-    [Parameter]
-    public bool AllowFocusWhenDisabled { get; set; } = true;
-
+    
     void HandleCheckboxChange(ChangeEventArgs args)
     {
         // Only update the value if the checkbox is not disabled

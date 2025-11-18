@@ -1,5 +1,6 @@
 namespace Controls;
 
+/// <summary> Edit control for nullable boolean values, displays as radio buttons (Yes/No/Not Set).</summary>
 public partial class EditBoolNullRadio : IEditControl
 {
     // Cascading parameters
@@ -45,13 +46,23 @@ public partial class EditBoolNullRadio : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Control-specific properties
+    /// <summary> When true, displays radio buttons horizontally. Defaults to true.</summary>
     [Parameter] public bool IsHorizontal { get; set; } = true;
+    
+    /// <summary> Expression that binds to the nullable boolean property in the model.</summary>
     [Parameter] public required Expression<Func<bool?>> Field { get; set; }
+    
+    /// <summary> When true, displays the null/not set option. Defaults to true.</summary>
     [Parameter] public bool ShowNullOption { get; set; } = true;
 
     // Text customization parameters
+    /// <summary> Text to display for the true option. Defaults to "Yes".</summary>
     [Parameter] public string TrueText { get; set; } = "Yes";
+    
+    /// <summary> Text to display for the false option. Defaults to "No".</summary>
     [Parameter] public string FalseText { get; set; } = "No";
+    
+    /// <summary> Text to display for the null option. Defaults to "Not Set".</summary>
     [Parameter] public string NullText { get; set; } = "Not Set";
 
     // Fields

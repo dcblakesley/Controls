@@ -1,6 +1,6 @@
 ﻿namespace Controls;
 
-/// <summary> Provides checkboxes for each input string (in Options), binds to a List of selected strings. </summary>
+/// <summary> Provides checkboxes for each input string (in Options), binds to a List of selected strings.</summary>
 public partial class EditCheckedStringList : IEditControl
 {
     [CascadingParameter] EditContext EditContext { get; set; } = null!;
@@ -48,16 +48,22 @@ public partial class EditCheckedStringList : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
     
     // EditCheckedStringList specific
+    /// <summary> The current list of selected string values.</summary>
     [Parameter] public required List<string> Value { get; set; }
+    
+    /// <summary> Event callback that fires when the Value list changes.</summary>
     [Parameter] public EventCallback<List<string>> ValueChanged { get; set; }
+    
+    /// <summary> Expression that binds to the list of strings property in the model.</summary>
     [Parameter] public required Expression<Func<List<string>>> Field { get; set; }
+    
+    /// <summary> List of string options to display as checkboxes.</summary>
     [Parameter] public List<string> Options { get; set; } = [];
-    [Parameter] public string Css { get; set; } = "";
 
-    /// <summary> Labels for the checkboxes. </summary>
+    /// <summary> Labels for the checkboxes.</summary>
     [Parameter] public string? LabelClass { get; set; }
 
-    /// <summary> If true, the checkboxes will be displayed horizontally. </summary>
+    /// <summary> If true, the checkboxes will be displayed horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
     // Fields
@@ -117,7 +123,7 @@ public partial class EditCheckedStringList : IEditControl
     bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
     bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
 
-                                
+    /// <summary> Event callback that fires when the Field value changes.</summary>
     [Parameter] public EventCallback<IReadOnlyList<string>> FieldChanged { get; set; }
 
 }

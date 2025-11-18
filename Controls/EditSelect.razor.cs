@@ -1,6 +1,6 @@
 ﻿namespace Controls;
 
-/// <summary>
+/// <summary> 
 /// Select component where you create the options within the markup yourself. <br/>
 /// If you want an Enum to back the select, use <see cref="EditSelectEnum{TValue}"/> instead. <br/>
 /// If you want to use a list of strings to back the select, use <see cref="EditSelectString{TValue}"/> instead.
@@ -50,6 +50,7 @@ public partial class EditSelect<TValue> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
+    /// <summary> Expression that binds to the property in the model.</summary>
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
 
     // Fields

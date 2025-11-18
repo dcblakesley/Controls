@@ -1,5 +1,6 @@
 ﻿namespace Controls;
 
+/// <summary> Edit control for selecting an enum value using radio buttons. Supports sorting and an optional "Other" option with text input.</summary>
 public partial class EditRadioEnum<TEnum> : IEditControl
 {
     // Cascading parameters
@@ -27,6 +28,8 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     
     /// <inheritdoc/>
     [Parameter] public bool IsRequired { get; set; }
+    
+    /// <summary> Event callback that fires when IsRequired changes.</summary>
     [Parameter] public EventCallback<bool> IsRequiredChanged { get; set; }
     
     /// <inheritdoc/>
@@ -46,17 +49,29 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
+    /// <summary> Expression that binds to the enum property in the model.</summary>
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
+    
+    /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
+    
+    /// <summary> When true, sorts the enum options alphabetically by their display name. When false, uses the enum's numeric order.</summary>
     [Parameter] public bool Sort { get; set; }
 
-    /// <summary> The labels around each radio button </summary>
+    /// <summary> The labels around each radio button</summary>
     [Parameter] public string? LabelClass { get; set; }
 
     // Other Option
+    /// <summary> When true, includes an "Other" option with a text input field. The last enum value is treated as the "Other" option.</summary>
     [Parameter] public bool HasOtherOption { get; set; } = false;
+    
+    /// <summary> Placeholder text for the "Other" option text input.</summary>
     [Parameter] public string? OtherPlaceholder { get; set; }
+    
+    /// <summary> The text value entered in the "Other" option text input.</summary>
     [Parameter] public string? OtherValue { get; set; }
+    
+    /// <summary> Event callback that fires when the OtherValue changes.</summary>
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
     // Fields

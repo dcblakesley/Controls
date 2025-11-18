@@ -1,6 +1,6 @@
 namespace Controls;
 
-/// <summary>
+/// <summary> 
 /// Provides checkboxes for each enum value, binds to a List of selected enum values.
 /// Combines enum handling from EditSelectEnum/EditRadioEnum with checkbox functionality from EditCheckedStringList.
 /// </summary>
@@ -51,17 +51,22 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
     
     // EditCheckedEnumList specific
+    /// <summary> The current list of selected enum values.</summary>
     [Parameter] public required List<TEnum> Value { get; set; }
+    
+    /// <summary> Event callback that fires when the Value list changes.</summary>
     [Parameter] public EventCallback<List<TEnum>> ValueChanged { get; set; }
+    
+    /// <summary> Expression that binds to the list of enum values property in the model.</summary>
     [Parameter] public required Expression<Func<List<TEnum>>> Field { get; set; }
 
-    /// <summary> If true, the enum values will be sorted by their display names. </summary>
+    /// <summary> If true, the enum values will be sorted by their display names.</summary>
     [Parameter] public bool Sort { get; set; }
 
-    /// <summary> Labels for the checkboxes. </summary>
+    /// <summary> Labels for the checkboxes.</summary>
     [Parameter] public string? LabelClass { get; set; }
 
-    /// <summary> If true, the checkboxes will be displayed horizontally. </summary>
+    /// <summary> If true, the checkboxes will be displayed horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
     // Fields

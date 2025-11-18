@@ -2,6 +2,7 @@
 
 namespace Controls;
 
+/// <summary> Edit control for string values, displays as a text input. Supports masking and URL display in read-only mode.</summary>
 public partial class EditString : IEditControl
 {
     // Cascading parameters
@@ -47,7 +48,10 @@ public partial class EditString : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
+    /// <summary> Placeholder text to display in the input when empty.</summary>
     [Parameter] public string? Placeholder { get; set; }
+    
+    /// <summary> Expression that binds to the string property in the model.</summary>
     [Parameter] public required Expression<Func<string>> Field { get; set; }
     
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>

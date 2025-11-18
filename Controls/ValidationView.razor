@@ -20,14 +20,13 @@
     EditContext? _previousEditContext;
     EventHandler<ValidationStateChangedEventArgs> _validationStateChangedHandler;
 
-    /// <summary>
+    /// <summary> 
     /// Gets or sets the model to produce the list of validation messages for.
     /// When specified, this lists all errors that are associated with the model instance.
     /// </summary>
-    [Parameter]
-    public object? Model { get; set; }
+    [Parameter] public object? Model { get; set; }
 
-    /// <summary>
+    /// <summary> 
     /// Gets or sets a collection of additional attributes that will be applied to the created <c>ul</c> element.
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)]

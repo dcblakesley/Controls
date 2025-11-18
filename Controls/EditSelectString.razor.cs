@@ -1,6 +1,6 @@
 ﻿namespace Controls;
 
-/// <summary> Select a string from Options (List of strings) </summary>
+/// <summary> Select a string from Options (List of strings)</summary>
 public partial class EditSelectString<TValue> : IEditControl
 {
     // Cascading parameters
@@ -25,7 +25,6 @@ public partial class EditSelectString<TValue> : IEditControl
     
     /// <inheritdoc/>
     [Parameter] public string? ContainerClass { get; set; } 
-    
     /// <inheritdoc/>
     [Parameter] public bool IsRequired { get; set; }
     
@@ -46,7 +45,10 @@ public partial class EditSelectString<TValue> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
+    /// <summary> Expression that binds to the property in the model.</summary>
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
+    
+    /// <summary> List of string options to display in the select dropdown.</summary>
     [Parameter] public required List<string> Options { get; set; }
 
     // Fields

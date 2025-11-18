@@ -1,5 +1,6 @@
 ﻿namespace Controls;
 
+/// <summary> Edit control for selecting a string value from a list using radio buttons. Supports custom "Other" option.</summary>
 public partial class EditRadioString : IEditControl
 {
     // Cascading parameters
@@ -7,7 +8,10 @@ public partial class EditRadioString : IEditControl
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
     // EditControl
+    /// <summary> Expression that binds to the string property in the model.</summary>
     [Parameter] public required Expression<Func<string>> Field { get; set; }
+    
+    /// <summary> List of string options to display as radio buttons.</summary>
     [Parameter] public required List<string> Options { get; set; }
     
     /// <inheritdoc/>
@@ -47,10 +51,13 @@ public partial class EditRadioString : IEditControl
     /// <inheritdoc/>
     [Parameter] public bool IsDisabled { get; set; }
     
+    /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
+    
+    /// <summary> When true, includes an "Other" option with a text input field.</summary>
     [Parameter] public bool HasOther { get; set; }
 
-    /// <summary> The labels around each radio button </summary>
+    /// <summary> The labels around each radio button</summary>
     [Parameter] public string? LabelClass { get; set; }
 
     // Fields

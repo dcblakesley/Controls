@@ -1,6 +1,6 @@
 ﻿namespace Controls;
 
-/// <summary>
+/// <summary> 
 /// Used within other edit controls to display the value when EditMode is false.
 /// </summary>
 public partial class ReadOnlyValue

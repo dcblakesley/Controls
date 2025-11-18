@@ -1,5 +1,6 @@
 namespace Controls;
 
+/// <summary> Edit control for selecting a value using radio buttons. Create options within the markup using InputRadio components.</summary>
 public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
 {
     // Cascading parameters
@@ -24,7 +25,6 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     
     /// <inheritdoc/>
     [Parameter] public string? ContainerClass { get; set; } 
-    
     /// <inheritdoc/>
     [Parameter] public bool IsRequired { get; set; }
     
@@ -45,7 +45,10 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
+    /// <summary> Expression that binds to the property in the model.</summary>
     [Parameter] public Expression<Func<TValue>>? Field { get; set; }
+    
+    /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
     string _id = string.Empty;

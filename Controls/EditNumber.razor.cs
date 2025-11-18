@@ -1,5 +1,6 @@
 ﻿namespace Controls;
 
+/// <summary> Edit control for numeric values, displays as a number input. Supports custom formatting and step values.</summary>
 public partial class EditNumber<T> : IEditControl
 {
     // Cascading parameters
@@ -45,8 +46,13 @@ public partial class EditNumber<T> : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component-specific properties
+    /// <summary> Expression that binds to the numeric property in the model.</summary>
     [Parameter] public required Expression<Func<T>> Field { get; set; }
+    
+    /// <summary> The increment/decrement step for the number input. Defaults to 1.0.</summary>
     [Parameter] public decimal Step { get; set; } = 1.0m;
+    
+    /// <summary> Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal places).</summary>
     [Parameter] public string? Format { get; set; }
     
     // Fields

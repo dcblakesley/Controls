@@ -1,5 +1,6 @@
 ﻿namespace Controls;
 
+/// <summary> Edit control for multi-line string values, displays as a textarea with configurable row count.</summary>
 public partial class EditTextArea : IEditControl
 {
     // Cascading parameters
@@ -24,7 +25,7 @@ public partial class EditTextArea : IEditControl
     
     /// <inheritdoc/>
     [Parameter] public string? ContainerClass { get; set; } 
-    
+            
     /// <inheritdoc/>
     [Parameter] public bool IsRequired { get; set; }
     
@@ -45,8 +46,13 @@ public partial class EditTextArea : IEditControl
     [Parameter] public bool IsDisabled { get; set; }
 
     // EditTextArea specific parameters
+    /// <summary> Placeholder text to display in the textarea when empty.</summary>
     [Parameter] public string? Placeholder { get; set; }
+    
+    /// <summary> Expression that binds to the string property in the model.</summary>
     [Parameter] public required Expression<Func<string>> Field { get; set; }
+    
+    /// <summary> Number of visible text rows in the textarea. Defaults to 2.</summary>
     [Parameter] public int Rows { get; set; } = 2;
 
     // Private fields
