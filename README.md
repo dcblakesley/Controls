@@ -242,6 +242,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Changelog
 
 
+### 1.13.8
+- Exposed xmldoc comments
+
+### 1.13.7
+- refactoring
 
 ### 1.13.6
 - Move the star for non-legends to the left.
