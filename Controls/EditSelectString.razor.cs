@@ -8,18 +8,41 @@ public partial class EditSelectString<TValue> : IEditControl
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
     // IEditControl interface properties
+    /// <inheritdoc/>
     [Parameter] public string? Id { get; set; }
+    
+    /// <inheritdoc/>
     [Parameter] public string? IdPrefix { get; set; }
+    
+    /// <inheritdoc/>
     [Parameter] public string? Label { get; set; }
+    
+    /// <inheritdoc/>
     [Parameter] public string? Description { get; set; }
+    
+    /// <inheritdoc/>
     [Parameter] public string? Tooltip { get; set; }
-    [Parameter] public string? ContainerClass { get; set; } [Parameter] public bool IsRequired { get; set; }
+    
+    /// <inheritdoc/>
+    [Parameter] public string? ContainerClass { get; set; } 
+    
+    /// <inheritdoc/>
+    [Parameter] public bool IsRequired { get; set; }
+    
+    /// <inheritdoc/>
     [Parameter] public bool IsLabelHidden { get; set; }
 
     // IEditControl state properties
+    /// <inheritdoc/>
     [Parameter] public HidingMode? Hiding { get; set; }
+    
+    /// <inheritdoc/>
     [Parameter] public bool IsHidden { get; set; }
+    
+    /// <inheritdoc/>
     [Parameter] public bool IsEditMode { get; set; } = true;
+    
+    /// <inheritdoc/>
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters

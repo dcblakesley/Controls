@@ -62,18 +62,3 @@
         }
     </div>
 }
-
-@code {
-    [Parameter]
-    public bool AllowFocusWhenDisabled { get; set; } = true;
-    
-    void HandleCheckboxChange(ChangeEventArgs args)
-    {
-        // Only update the value if the checkbox is not disabled
-        if (ShowEditor && !IsDisabled)
-        {
-            CurrentValue = (bool)args.Value;
-        }
-    }
-    string? DisplayDescription() => Description ?? _attributes.Description();
-}

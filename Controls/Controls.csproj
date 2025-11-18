@@ -7,12 +7,12 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>1.13.6</AssemblyVersion>
+	  <AssemblyVersion>1.13.7</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
     
     <!-- Package Metadata -->
-    <PackageDescription>A comprehensive library of form controls for Blazor applications providing consistent, feature-rich input components with built-in validation, accessibility support, and flexible styling options.</PackageDescription>
+    <PackageDescription>A comprehensive library of form controls for Blazor applications HierarchyAndEmployeeRecordproviding consistent, feature-rich input components with built-in validation, accessibility support, and flexible styling options.</PackageDescription>
     <PackageProjectUrl>https://github.com/dcblakesley/Controls</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
