@@ -117,10 +117,26 @@
 .edit-tooltip-container {
     position: relative;
     display: inline-block; /* Or block, depending on layout */
-    margin-left: 0px;
-    width: 0;
-    margin-top: -7px
+    background: transparent;
+    margin-left: 4px;
+    margin-top: -8px;
+    width: auto;
+    vertical-align: middle;
+    border: none;
+    padding: 0;
+    cursor: pointer;
 }
+
+.edit-tooltip-container:focus {
+    outline: none;
+}
+
+.edit-tooltip-container:focus-visible {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
 .edit-tooltip-content {
     position: absolute;
     bottom: 110%; /* Places the bottom of the popover at the top of the trigger */
@@ -140,8 +156,14 @@
     box-shadow: 0px 9px 28px 8px rgba(0, 0, 0, 0.05), 0px 3px 6px -4px rgba(0, 0, 0, 0.12);
     filter: drop-shadow(0px 6px 16px rgba(0, 0, 0, 0.08));
 }
-.edit-tooltip-container:hover .edit-tooltip-content {
-    display: block; /* Show on hover */
+
+.edit-tooltip-content[aria-hidden="false"] {
+    display: block; /* Show when aria-hidden is false */
+}
+
+.edit-tooltip-container:hover .edit-tooltip-content,
+.edit-tooltip-container:focus .edit-tooltip-content {
+    display: block; /* Show on hover or focus */
 }
 
 /*

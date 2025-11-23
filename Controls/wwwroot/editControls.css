@@ -135,30 +135,54 @@
 /************************************************ EditTextArea *******************************************/
 /*.edit-textarea-input { }*/
 
-/************************************************ Tooltips **********************************************/
-/*.tooltip-container {
-    position: relative;*/ /* Needed for absolute positioning of tooltip */
-    /*display: inline-block;*/ /* Or block, depending on element */
-/*}
+/************************************************ Tooltip **********************************************/
+.edit-tooltip-container {
+    position: relative;
+    display: inline-block; /* Or block, depending on layout */
+    background: transparent;
+    margin-left: 6px;
+    width: auto;
+    vertical-align: middle;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+}
 
-.tooltip-container[data-title]:hover::after {
-    content: attr(data-title);
+.edit-tooltip-container:focus {
+    outline: none;
+}
+
+.edit-tooltip-container:focus-visible {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+.edit-tooltip-content {
     position: absolute;
-    bottom: 100%;*/ /* Position above the element */
-    /*left: 50%;
-    transform: translateX(-50%);
-    background-color: #333;
-    color: #fff;
-    padding: 8px 12px;
+    bottom: 110%; /* Places the bottom of the popover at the top of the trigger */
+    left: 50%;
+    transform: translateX(-42%); /* Centers the popover horizontally */
+    display: none; /* Hidden by default */
+    /* Add styling for background, padding, border, etc. */
+    color: white;
+    background: #262626;
+    border: 1px solid #ccc;
     border-radius: 4px;
-    white-space: nowrap;*/ /* Prevent text wrapping */
-    /*visibility: visible;
-    opacity: 1;
-    transition: opacity 0.3s ease;
-    z-index: 10;*/ /* Ensure it appears above other content */
-/*}
+    padding: 4px 8px;
+    z-index: 100; /* Ensure it appears above other content */
+    width: max-content; /* Adjust width based on content */
+    max-width: 400px; /* Prevent too wide popover */
 
-.tooltip-container[data-title]::after {
-    visibility: hidden;
-    opacity: 0;
-}*/
+    box-shadow: 0px 9px 28px 8px rgba(0, 0, 0, 0.05), 0px 3px 6px -4px rgba(0, 0, 0, 0.12);
+    filter: drop-shadow(0px 6px 16px rgba(0, 0, 0, 0.08));
+}
+
+.edit-tooltip-content[aria-hidden="false"] {
+    display: block; /* Show when aria-hidden is false */
+}
+
+.edit-tooltip-container:hover .edit-tooltip-content,
+.edit-tooltip-container:focus .edit-tooltip-content {
+    display: block; /* Show on hover or focus */
+}
