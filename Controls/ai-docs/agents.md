@@ -6,19 +6,16 @@ Provides guidance for developing in the system.
 ## Technology Stack
 - **.NET 10** - Backend framework
 - **Blazor WebAssembly** - UI
-- **SQL Server + MongoDB** - Data storage
-- **Redis, RabbitMQ, MinIO** - Infrastructure
+- **Azure Storage** - Data storage
 
 ## Mandatory Coding Standards
 **ALWAYS reference these documents before code modifications:**
-
 - **cSharp.md** - For ALL C# files (.cs)
 - **blazor.md** - For ALL Blazor/Razor files (.razor, .razor.cs)
 
 ## Project Guidelines
 **UI Components:**
-- **Blazor** for external-facing features
-
+- **Blazor** 
 **Backend:**
 - **Hatch.Core** - Business logic and services
 - **Hatch.Web** - API controllers
@@ -32,17 +29,14 @@ Provides guidance for developing in the system.
 - **Dependency injection** for services
 
 ## Development Workflow
-1. Determine frontend (React internal vs Blazor external)
-2. **Reference appropriate coding standards document**
-3. Create feature folder structure
-4. Implement: models → services → controllers → UI → tests
+1. **Reference appropriate coding standards document**
+2. Create feature folder structure
+3. Implement: models → services → controllers → UI → tests
 
 ## Best Practices
-1. **Domain-Driven Design** - Group by business domain
-2. **Always Reference Coding Standards** - Use appropriate .md file
-3. **Async/Await Consistently** - All I/O operations
-4. **Comprehensive Testing** - Unit and integration tests
-6. omit the private keyword
+1. **Always Reference Coding Standards** - Use appropriate .md file
+2. **Async/Await Consistently** - All I/O operations
+3. omit the private keyword
 
 ## Dependencies
 - .NET 10 SDK,
