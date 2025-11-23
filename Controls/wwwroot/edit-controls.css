@@ -127,14 +127,30 @@
     cursor: pointer;
 }
 
+/* Remove default focus outline */
 .edit-tooltip-container:focus {
     outline: none;
 }
 
+/* Show outline only for keyboard navigation */
 .edit-tooltip-container:focus-visible {
     outline: 2px solid #0066cc;
     outline-offset: 2px;
     border-radius: 2px;
+}
+
+/* Fallback for browsers that don't support :focus-visible */
+.edit-tooltip-container:focus:not(:hover) {
+    outline: 2px solid #0066cc;
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* Override the fallback when :focus-visible is supported */
+@supports selector(:focus-visible) {
+    .edit-tooltip-container:focus:not(:hover) {
+        outline: none;
+    }
 }
 
 .edit-tooltip-content {

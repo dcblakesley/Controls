@@ -244,6 +244,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### 10.0.1
 - Upgrade to .net 10
 - Add the ability to hide the required star within FormOptions
+- Changed editControls.js to edit-controls.js
 
 ### 1.13.8
 - Exposed xmldoc comments
