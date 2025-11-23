@@ -7,13 +7,13 @@ A comprehensive library of form controls for Blazor applications providing consi
 
 ## Features
 
-- **?? Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
-- **? Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
-- **? Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
-- **?? Flexible Display Modes**: Edit mode and read-only views for all controls
-- **?? Consistent Styling**: CSS classes and customizable appearance
-- **? TypeScript/JavaScript Interop**: Enhanced client-side functionality
-- **?? Cross-Platform**: Works with both Blazor Server and Blazor WebAssembly
+- Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
+- Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
+- Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
+- Flexible Display Modes**: Edit mode and read-only views for all controls
+- Consistent Styling**: CSS classes and customizable appearance
+- TypeScript/JavaScript Interop**: Enhanced client-side functionality
+- Cross-Platform**: Works with both Blazor Server and Blazor WebAssembly
 
 ## Installation
 
@@ -40,7 +40,7 @@ Install-Package WssBlazorControls
 2. **Include the CSS** in your `App.razor` or `index.html`:
 
 ```html
-<link href="_content/WssBlazorControls/editControls.css" rel="stylesheet" />
+<link href="_content/WssBlazorControls/edit-controls.css" rel="stylesheet" />
 ```
 
 3. **Use the controls** in your Blazor components:
@@ -240,6 +240,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.0.2
+- Support .net 8,9,10
 
 ### 10.0.1
 - Upgrade to .net 10
