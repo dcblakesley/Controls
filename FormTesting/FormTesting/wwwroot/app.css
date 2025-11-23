@@ -39,12 +39,12 @@ h3, .h3 { font-weight: 700; font-size: 14px; line-height: 22px; color: var(--hea
 label   { font-weight: 400; font-size: 14px; line-height: 22px; color: var(--heading-color); }
 
 input { box-sizing: border-box; padding: 5px 8px; gap: 10px; height: 32px; background: var(--white); border: 1px solid var(--clark-grey); border-radius: 2px; flex: none; flex-grow: 1; }
-input[type='checkbox'] { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--color-primary); display: inline-block; vertical-align: middle; cursor: pointer }
-input[type='radio']    { height: 16px; width: 16px; margin-right: 8px; accent-color: var(--color-primary); display: inline-block; vertical-align: middle; cursor: pointer; }
+input[type='checkbox'] { height: 16px; width: 16px; margin-top: -3px; margin-right: 0; accent-color: var(--color-primary); display: inline-block; vertical-align: middle; cursor: pointer }
+input[type='radio']    { height: 16px; width: 16px; margin-top: -3px; margin-right: 0; accent-color: var(--color-primary); display: inline-block; vertical-align: middle; cursor: pointer; }
 input[type='radio']:not(:checked):hover { }
 textarea { box-sizing: border-box; padding: 0px 12px; background: var(--white); border: 1px solid; border-color: var(--border-color); border-radius: 6px; }
 
-button              { box-sizing: border-box; /* Auto layout */display: flex; justify-content: center; align-items: center; padding: 0 16px; background: #FFFFFF; border: 1px solid #B7B7B7; border-radius: 6px; }
+button              { box-sizing: border-box; }
 button              { align-items: center; background: var(--white); border: 1px solid var(--clark-grey); color: var(--heading-color); border-radius: 2px; padding-top: 5px; padding-bottom: 5px; padding-left: 16px; padding-right: 16px; max-height: fit-content; }
 button:hover        { color: var(--clark-lightblue); cursor: pointer; }
 button:focus        { outline: none !important; }
