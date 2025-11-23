@@ -3,6 +3,8 @@
 /// <summary> The Label and Description for a form field that shows up over the input.</summary>
 public partial class FormLabel
 {
+    [CascadingParameter] public FormOptions? FormOptions { get; set; }
+
     /// <inheritdoc cref="IEditControl.Id"/>
     [Parameter] public string? Id { get; set; }
     

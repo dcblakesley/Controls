@@ -241,6 +241,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.0.1
+- Upgrade to .net 10
+- Add the ability to hide the required star within FormOptions
 
 ### 1.13.8
 - Exposed xmldoc comments

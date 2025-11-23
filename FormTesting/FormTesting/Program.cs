@@ -28,6 +28,7 @@ public class Program
 
         app.UseHttpsRedirection();
 
+        app.MapStaticAssets();
         app.UseStaticFiles();
         app.UseAntiforgery();
 

@@ -15,7 +15,7 @@ public partial class EditControlsDemo : IDisposable
     EditForm editForm; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
-        new() { IsEditMode = true, Hiding = HidingMode.None };
+        new() { IsEditMode = true, Hiding = HidingMode.None, IsRequiredStarHidden = true};
 
     readonly List<string> _colorOptions =
         ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];

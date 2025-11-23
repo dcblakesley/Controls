@@ -12,9 +12,13 @@
 
 /************************************************ FormLabel **********************************************/
 .edit-label { /* The label for each of the "Edit" Controls */ }
+.edit-label-legend {
+    /* Instead of a label, a legend is used in controls that require a fieldset such as EditRadioEnum */
+    /* This should be styled the same as the combination of label and .edit-label */
+}
 .edit-label-required-star {
     /* The star that shows up after the Label when a property is marked as [Required] */
-    margin-left: 8px;
+    margin-right: 8px;
     color: var(--color-danger);
 }
 .edit-label-description {
@@ -113,9 +117,9 @@
 .edit-tooltip-container {
     position: relative;
     display: inline-block; /* Or block, depending on layout */
-    background: lime;
-    margin-left: 6px;
+    margin-left: 0px;
     width: 0;
+    margin-top: -7px
 }
 .edit-tooltip-content {
     position: absolute;

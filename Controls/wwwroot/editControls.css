@@ -1,30 +1,30 @@
 ﻿/************************************************ General ************************************************/
-.edit-control-wrapper {
+/*.edit-control-wrapper {*/
     /* Wraper/group around each edit control (label, description, input and validation messages */
-}
+/*}
 
-.edit-validation-message {
+.edit-validation-message {*/
     /* The validation message for each of the "Edit" Controls */
-}
+/*}*/
 
 /************************************************ FormLabel **********************************************/
-.edit-label {
+/*.edit-label {*/
     /* The label for each of the "Edit" Controls */
-}
-.edit-label-legend {
+/*}
+.edit-label-legend {*/
     /* Instead of a label, a legend is used in controls that require a fieldset such as EditRadioEnum */
     /* This should be styled the same as the combination of label and .edit-label */
-}
+/*}
 
-.edit-label-required-star {
+.edit-label-required-star {*/
     /* The star that shows up after the Label when a property is marked as [Required] */
-    margin-left: 8px;
+    /*margin-right: 8px;
     color: var(--color-danger);
 }
 
-.edit-label-description {
+.edit-label-description {*/
     /* The description for each of the "Edit" Controls */
-    font-family: 'DM Sans';
+    /*font-family: 'DM Sans';
     font-style: normal;
     font-weight: 400;
     font-size: 14px;
@@ -33,29 +33,29 @@
     color: black;
 }
 
-.edit-readonly-value {
+.edit-readonly-value {*/
     /* The text that is displayed when IsEditMode=false and within EditDisplay*/
-}
+/*}*/
 
 /************************************************ EditBool ***********************************************/
-.edit-checkbox-label {
+/*.edit-checkbox-label {
     cursor: pointer;
-}
+}*/
 
 /************************************************ EditCheckedList(String and Enum) ***********************/
-.edit-checkedList-fieldset {}
+/*.edit-checkedList-fieldset {}
 
-.edit-checkedList-checkboxes-container-vertical {
+.edit-checkedList-checkboxes-container-vertical {*/
     /* default/vertical display */
-    display: flex;
+    /*display: flex;
     flex-direction: column;
     gap: 8px;
     cursor: pointer;
 }
 
-.edit-checkedList-checkboxes-container-horizontal {
+.edit-checkedList-checkboxes-container-horizontal {*/
     /* IsHorizontal = true */
-    display: flex;
+    /*display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px;
@@ -63,62 +63,62 @@
 }
 
 .edit-checkedList-checkbox {}
-.edit-checkedList-fieldset {}
+.edit-checkedList-fieldset {}*/
 
 /************************************************ EditDate ***********************************************/
-.edit-date-input {}
+/*.edit-date-input {}*/
 
 /************************************************ EditNumber *********************************************/
-.edit-number-input {}
+/*.edit-number-input {}*/
 
 /************************************************ EditRadio(String and Enum) *****************************/
-.edit-radio-fieldset {}
-.edit-radio-buttons-container-vertical {
+/*.edit-radio-fieldset {}
+.edit-radio-buttons-container-vertical {*/
     /* default/vertical display */
-    display: flex;
+    /*display: flex;
     flex-direction: column;
     gap: 8px;
     cursor: pointer;
 }
-.edit-radio-buttons-container-horizontal {
+.edit-radio-buttons-container-horizontal {*/
     /* IsHorizontal = true */
-    display: flex;
+    /*display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px;
     cursor: pointer;
 }
-.edit-radio-label {
+.edit-radio-label {*/
     /* edit-label is also applied to these labels, so if you want it to look the same you don't have to change this */
-    cursor: pointer;
+    /*cursor: pointer;
 }
 .edit-radio-input {}
-.edit-radio-option {
+.edit-radio-option {*/
     /* div that surrounds the input and label for each radio button. */
-}
+/*}
 .edit-radio-other-input {}
-.edit-radio-other-option-container {}
+.edit-radio-other-option-container {}*/
 
 /************************************************ EditSelect(String and Enum) *********************************************/
-.edit-select-select {
+/*.edit-select-select {
     cursor: pointer;
 }
-.edit-select-option {
+.edit-select-option {*/
     /* The options within the select control */
-}
+/*}*/
 
 /************************************************ EditString *********************************************/
-.edit-string-link {
+/*.edit-string-link {*/
     /* <a style when IsEditMode=false and Url!=null */
-}
+/*}
 
-.edit-string-input {
+.edit-string-input {*/
     /* The input for the "EditString" control */
-}
+/*}
 
-.edit-icon-invalid {
+.edit-icon-invalid {*/
     /* The x-circle that shows up when a textbox has validation errors */
-    width: 1em;
+    /*width: 1em;
     height: 1em;
     margin-left: -1.5rem;
     margin-top: -4px;
@@ -130,35 +130,35 @@
 }
 .edit-icon-eye-invisible { 
     cursor: pointer;
-}
+}*/
 
 /************************************************ EditTextArea *******************************************/
-.edit-textarea-input { }
+/*.edit-textarea-input { }*/
 
 /************************************************ Tooltips **********************************************/
-.tooltip-container {
-    position: relative; /* Needed for absolute positioning of tooltip */
-    display: inline-block; /* Or block, depending on element */
-}
+/*.tooltip-container {
+    position: relative;*/ /* Needed for absolute positioning of tooltip */
+    /*display: inline-block;*/ /* Or block, depending on element */
+/*}
 
 .tooltip-container[data-title]:hover::after {
     content: attr(data-title);
     position: absolute;
-    bottom: 100%; /* Position above the element */
-    left: 50%;
+    bottom: 100%;*/ /* Position above the element */
+    /*left: 50%;
     transform: translateX(-50%);
     background-color: #333;
     color: #fff;
     padding: 8px 12px;
     border-radius: 4px;
-    white-space: nowrap; /* Prevent text wrapping */
-    visibility: visible;
+    white-space: nowrap;*/ /* Prevent text wrapping */
+    /*visibility: visible;
     opacity: 1;
     transition: opacity 0.3s ease;
-    z-index: 10; /* Ensure it appears above other content */
-}
+    z-index: 10;*/ /* Ensure it appears above other content */
+/*}
 
 .tooltip-container[data-title]::after {
     visibility: hidden;
     opacity: 0;
-}
+}*/

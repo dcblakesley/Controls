@@ -19,6 +19,9 @@ public class FormOptions
 
     /// <summary> When true, hides labels for all controls in the form. </summary>
     public bool IsLabelHidden { get; set; }
+
+    /// <summary> When true, hides the required star indicator for all controls in the form. </summary>
+    public bool IsRequiredStarHidden { get; set; }
 }
 
 /// <summary> 
