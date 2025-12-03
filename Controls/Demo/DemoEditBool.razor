@@ -5,12 +5,35 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
-    <div class="demo-section">
-        <EditBool @bind-Value="_model.BasicCheckbox" Field="@(() => _model.BasicCheckbox)" Description="Description for Basic Checkbox." />        
-    </div>
-
-    <div class="demo-section">
-        <style>
+    <section class="demo-section">
+        <EditBool @bind-Value="_model.BasicCheckbox" Field="@(() => _model.BasicCheckbox)" Description="Description for Basic Checkbox." />
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+	
+    <section class="demo-section">
+        <EditBool @bind-Value="_model.Disabled"
+                  Field="@(() => _model.Disabled)"
+                  IsDisabled="true" />
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_disabledExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
+	    <EditBool @bind-Value="_model.MustBeTrue"
+	              Field="@(() => _model.MustBeTrue)" />
+        
+	    <h3>Markup</h3>
+	    <pre class="code-block"><code>@_validationExample</code></pre>
+        
+	    <h3>Model</h3>
+	    <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+    
+    <section class="demo-section">
+	    <style>
             .my-custom-container {
                 background-color: purple;
                 padding: 20px;
@@ -22,29 +45,56 @@
             }
         </style>
 
-        <EditBool @bind-Value="_model.CustomStyle"
-                  Field="@(() => _model.CustomStyle)"
-                  ContainerClass="my-custom-container"
-                  class="my-custom-checkbox" />
-    </div>
-    
-    <div class="demo-section">
-        <EditBool @bind-Value="_model.Disabled"
-                  Field="@(() => _model.Disabled)"
-                  IsDisabled="true" />
-    </div>
-    <div class="demo-section">
-        <EditBool @bind-Value="_model.MustBeTrue"
-                  Field="@(() => _model.MustBeTrue)" />
-    </div>
+	    <EditBool @bind-Value="_model.CustomStyle"
+	              Field="@(() => _model.CustomStyle)"
+	              ContainerClass="my-custom-container"
+	              class="my-custom-checkbox" />
+        
+	    <h3>Markup</h3>
+	    <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+	    <h3>CSS</h3>
+	    <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
 </EditForm>
+
 
 @code {
     readonly DemoEditBoolModel _model = new();
 
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    readonly string _basicExample = @"<EditBool @bind-Value=""_model.BasicCheckbox"" 
+          Field=""@(() => _model.BasicCheckbox)"" 
+          Description=""Description for Basic Checkbox."" />";
+
+    readonly string _customStyleExample = @"<EditBool @bind-Value=""_model.CustomStyle""
+          Field=""@(() => _model.CustomStyle)""
+          ContainerClass=""my-custom-container""
+          class=""my-custom-checkbox"" />";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: purple;
+    padding: 20px;
+    border-radius: 30px;
+}
+
+.my-custom-checkbox {
+    transform: scale(1.2);
+}";
+
+    readonly string _disabledExample = @"<EditBool @bind-Value=""_model.Disabled""
+          Field=""@(() => _model.Disabled)""
+          IsDisabled=""true"" />";
+
+    readonly string _validationExample = @"<EditBool @bind-Value=""_model.MustBeTrue""
+          Field=""@(() => _model.MustBeTrue)"" />";
+
+    readonly string _validationModel = @"[MustBeTrue(ErrorMessage = ""Hello"")]
+public bool MustBeTrue { get; set; }";
+
     public class DemoEditBoolModel
     {
         public bool BasicCheckbox { get; set; }
