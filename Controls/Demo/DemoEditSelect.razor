@@ -5,7 +5,7 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator/>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditSelect @bind-Value="_model.BasicSelect"
                     Field="@(() => _model.BasicSelect)">
             <option value="">Select a number...</option>
@@ -24,9 +24,12 @@
                 <option value="@number">Number @number</option>
             }
         </EditSelect>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditSelect @bind-Value="_model.PlantSelect" Field="@(() => _model.PlantSelect)">
             <option value="0">Choose a plant...</option>
             @foreach (var plant in _plants)
@@ -34,9 +37,12 @@
                 <option value="@plant.Id">@plant.Name</option>
             }
         </EditSelect>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_plantExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         
         <style>
             .my-custom-container { background-color: orange; padding: 10px; border-radius: 4px; }
@@ -53,9 +59,15 @@
                 <option value="@color">@color</option>
             }
         </EditSelect>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditSelect @bind-Value="_model.Disabled"
                     Field="@(() => _model.Disabled)"
                     IsDisabled="true">
@@ -74,7 +86,13 @@
                 <option value="@color">@color</option>
             }
         </EditSelect>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -98,4 +116,61 @@
         public string Disabled { get; set; } = "";
     }
 
+    readonly string _basicExample = @"<EditSelect @bind-Value=""_model.BasicSelect""
+           Field=""@(() => _model.BasicSelect)"">
+    <option value="""">Select a number...</option>
+    @foreach (var number in Enumerable.Range(1, 5))
+    {
+        <option value=""@number"">Number @number</option>
+    }
+</EditSelect>";
+
+    readonly string _plantExample = @"<EditSelect @bind-Value=""_model.PlantSelect"" Field=""@(() => _model.PlantSelect)"">
+    <option value=""0"">Choose a plant...</option>
+    @foreach (var plant in _plants)
+    {
+        <option value=""@plant.Id"">@plant.Name</option>
+    }
+</EditSelect>";
+
+    readonly string _customStyleExample = @"<EditSelect @bind-Value=""_model.CustomStyling""
+           Field=""@(() => _model.CustomStyling)""
+           ContainerClass=""my-custom-container""
+           class=""my-custom-select"">
+    <option value="""">Select a color...</option>
+    @foreach (var color in _colors)
+    {
+        <option value=""@color"">@color</option>
+    }
+</EditSelect>";
+
+    readonly string _customStyleCss = @".my-custom-container { 
+    background-color: orange; 
+    padding: 10px; 
+    border-radius: 4px; 
+}
+
+.my-custom-select { 
+    border: 2px solid black; 
+    border-radius: 4px; 
+    padding: 4px; 
+    min-width: 200px; 
+    color: blueviolet 
+}";
+
+    readonly string _validationExample = @"<EditSelect @bind-Value=""_model.Disabled""
+           Field=""@(() => _model.Disabled)""
+           IsDisabled=""true"">
+    ...
+</EditSelect>
+
+<EditSelect @bind-Value=""_model.Required""
+           Field=""@(() => _model.Required)"">
+    ...
+</EditSelect>";
+
+    readonly string _validationModel = @"[Required(ErrorMessage = ""Please select a color"")]
+public string Required { get; set; } = """";
+
+public string Disabled { get; set; } = """";";
 }

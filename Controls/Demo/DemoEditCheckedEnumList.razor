@@ -5,33 +5,45 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.BasicEnumList"
                              Field="@(() => _model.BasicEnumList)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.BasicEnumList"
                              Field="@(() => _model.BasicEnumList)"
                              Label="Read-only"
                              IsEditMode="false" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_readOnlyExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.SortedEnumList"
                              Field="@(() => _model.SortedEnumList)"
                              Label="Sorted"
                              Sort="true" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_sortedExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.HorizontalLayout"
                              Field="@(() => _model.HorizontalLayout)"
                              Label="Horizontal Layout"
                              IsHorizontal="true" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_horizontalExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <style>
             .my-custom-container {
                 background-color: lightblue;
@@ -57,16 +69,28 @@
                              Field="@(() => _model.CustomStyling)"
                              ContainerClass="my-custom-container"
                              LabelClass="my-custom-checklist" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.Disabled"
                              Field="@(() => _model.Disabled)"
                              IsDisabled="true" />
 
         <EditCheckedEnumList @bind-Value="_model.Required"
                              Field="@(() => _model.Required)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 
 </EditForm>
 
@@ -102,4 +126,58 @@
 
         public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];
     }
+
+    readonly string _basicExample = @"<EditCheckedEnumList @bind-Value=""_model.BasicEnumList""
+                    Field=""@(() => _model.BasicEnumList)"" />";
+
+    readonly string _readOnlyExample = @"<EditCheckedEnumList @bind-Value=""_model.BasicEnumList""
+                    Field=""@(() => _model.BasicEnumList)""
+                    Label=""Read-only""
+                    IsEditMode=""false"" />";
+
+    readonly string _sortedExample = @"<EditCheckedEnumList @bind-Value=""_model.SortedEnumList""
+                    Field=""@(() => _model.SortedEnumList)""
+                    Label=""Sorted""
+                    Sort=""true"" />";
+
+    readonly string _horizontalExample = @"<EditCheckedEnumList @bind-Value=""_model.HorizontalLayout""
+                    Field=""@(() => _model.HorizontalLayout)""
+                    Label=""Horizontal Layout""
+                    IsHorizontal=""true"" />";
+
+    readonly string _customStyleExample = @"<EditCheckedEnumList @bind-Value=""_model.CustomStyling""
+                    Field=""@(() => _model.CustomStyling)""
+                    ContainerClass=""my-custom-container""
+                    LabelClass=""my-custom-checklist"" />";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: lightblue;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.my-custom-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-weight: bold;
+}
+
+.my-custom-checklist input[type=""checkbox""] {
+    transform: scale(1.2);
+    margin-right: 8px;
+    accent-color: blue;
+}";
+
+    readonly string _validationExample = @"<EditCheckedEnumList @bind-Value=""_model.Disabled""
+                    Field=""@(() => _model.Disabled)""
+                    IsDisabled=""true"" />
+
+<EditCheckedEnumList @bind-Value=""_model.Required""
+                    Field=""@(() => _model.Required)"" />";
+
+    readonly string _validationModel = @"[Required, MinLength(2)]
+public List<Animal> Required { get; set; } = [];
+
+public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];";
 }

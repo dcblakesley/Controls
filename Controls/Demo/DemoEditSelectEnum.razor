@@ -5,14 +5,16 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" ref=_form>
     <ObjectGraphDataAnnotationsValidator/>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" />
 
         <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" IsEditMode="false" Label="Read-only" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-
-    <div class="demo-section">
+    <section class="demo-section">
 
         <style>
             .my-custom-container {
@@ -33,16 +35,28 @@
                         Field="@(() => _model.CustomClass)"
                         ContainerClass="my-custom-container"
                         class="my-custom-select"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditSelectEnum @bind-Value="_model.Disabled"
                         Field="@(() => _model.Disabled)"
                         IsDisabled="true"/>
 
         <EditSelectEnum @bind-Value="_model.Required"
                         Field="@(() => _model.Required)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -62,4 +76,38 @@
         public Animal Disabled { get; set; }
     }
 
+    readonly string _basicExample = @"<EditSelectEnum @bind-Value=""_model.BasicEnum"" Field=""@(() => _model.BasicEnum)"" />
+
+<EditSelectEnum @bind-Value=""_model.BasicEnum"" Field=""@(() => _model.BasicEnum)"" IsEditMode=""false"" Label=""Read-only"" />";
+
+    readonly string _customStyleExample = @"<EditSelectEnum @bind-Value=""_model.CustomClass""
+               Field=""@(() => _model.CustomClass)""
+               ContainerClass=""my-custom-container""
+               class=""my-custom-select""/>";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: lime;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.my-custom-select {
+    border: 2px solid black;
+    color: green;
+    border-radius: 4px;
+    padding: 4px;
+    min-width: 200px;
+}";
+
+    readonly string _validationExample = @"<EditSelectEnum @bind-Value=""_model.Disabled""
+               Field=""@(() => _model.Disabled)""
+               IsDisabled=""true""/>
+
+<EditSelectEnum @bind-Value=""_model.Required""
+               Field=""@(() => _model.Required)""/>";
+
+    readonly string _validationModel = @"[Required] 
+public Animal Required { get; set; }
+
+public Animal Disabled { get; set; }";
 }

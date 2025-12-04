@@ -5,19 +5,25 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref="_form">
     <ObjectGraphDataAnnotationsValidator/>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditString @bind-Value="_model.BasicString" Field="@(() => _model.BasicString)"/>
 
         <EditString @bind-Value="_model.BasicString" Field="@(() => _model.BasicString)" IsEditMode=false/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditString @bind-Value="_model.WithPlaceholder"
                     Placeholder="Enter some text..."
                     Field="@(() => _model.WithPlaceholder)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_placeholderExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <h3>Tooltip Examples</h3>
     
         <EditString @bind-Value="_model.WithTooltipFromAttribute"
@@ -30,9 +36,15 @@
         <EditString @bind-Value="_model.WithTooltipOverride"
                     Tooltip="This HTML tooltip overrides the attribute tooltip"
                     Field="@(() => _model.WithTooltipOverride)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_tooltipExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_tooltipModel</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditString @bind-Value="_model.MaskedText"
                     MaskText="*"
                     Field="@(() => _model.MaskedText)"/>
@@ -48,29 +60,45 @@
                     IsEditMode="false"
                     MaskText="***-**-"
                     Field="@(() => _model.MaskedText)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_maskedExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <style>
             .my-custom-container { background-color: purple; padding: 10px; border-radius: 4px; }
             .my-custom-input { border: 2px solid #0066cc; color: green; border-radius: 4px; padding: 4px; width: 100%; }
         </style>
+        
         <EditString @bind-Value="_model.CustomStyling"
                     ContainerClass="my-custom-container"
                     class="my-custom-input"
                     Field="@(() => _model.CustomStyling)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditString @bind-Value="_model.Disabled"
                     IsDisabled="true"
                     Field="@(() => _model.Disabled)"/>
 
         <EditString @bind-Value="_model.Required"
                     Field="@(() => _model.Required)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditString @bind-Value="_model.UrlField"
                     Url="https://example.com"
                     UrlTarget="_blank"
@@ -80,7 +108,10 @@
                     UrlTarget="_blank"
                     IsEditMode=false
                     Field="@(() => _model.UrlField)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_urlExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -115,4 +146,76 @@
         public string Disabled { get; set; } = "";
     }
 
+    readonly string _basicExample = @"<EditString @bind-Value=""_model.BasicString"" Field=""@(() => _model.BasicString)""/>
+
+<EditString @bind-Value=""_model.BasicString"" Field=""@(() => _model.BasicString)"" IsEditMode=false/>";
+
+    readonly string _placeholderExample = @"<EditString @bind-Value=""_model.WithPlaceholder""
+           Placeholder=""Enter some text...""
+           Field=""@(() => _model.WithPlaceholder)""/>";
+
+    readonly string _tooltipExample = @"<EditString @bind-Value=""_model.WithTooltipFromAttribute""
+           Field=""@(() => _model.WithTooltipFromAttribute)""/>
+
+<EditString @bind-Value=""_model.WithTooltipInHtml""
+           Tooltip=""This tooltip was set directly in the HTML markup!""
+           Field=""@(() => _model.WithTooltipInHtml)""/>
+
+<EditString @bind-Value=""_model.WithTooltipOverride""
+           Tooltip=""This HTML tooltip overrides the attribute tooltip""
+           Field=""@(() => _model.WithTooltipOverride)""/>";
+
+    readonly string _tooltipModel = @"[ToolTip(""This tooltip comes from the [ToolTip] attribute"")]
+[DisplayName(""With Tooltip From Attribute"")]
+public string WithTooltipFromAttribute { get; set; } = """";
+
+[ToolTip(""This is the attribute tooltip (will be overridden)"")]
+[DisplayName(""With Tooltip Override"")]
+public string WithTooltipOverride { get; set; } = """";";
+
+    readonly string _maskedExample = @"<EditString @bind-Value=""_model.MaskedText""
+           MaskText=""*""
+           Field=""@(() => _model.MaskedText)""/>
+
+<EditString Description=""MaskText = ***-**-""
+           @bind-Value=""_model.MaskedText""
+           IsEditMode=""false""
+           MaskText=""***-**-""
+           Field=""@(() => _model.MaskedText)""/>";
+
+    readonly string _customStyleExample = @"<EditString @bind-Value=""_model.CustomStyling""
+           ContainerClass=""my-custom-container""
+           class=""my-custom-input""
+           Field=""@(() => _model.CustomStyling)""/>";
+
+    readonly string _customStyleCss = @".my-custom-container { 
+    background-color: purple; 
+    padding: 10px; 
+    border-radius: 4px; 
+}
+
+.my-custom-input { 
+    border: 2px solid #0066cc; 
+    color: green; 
+    border-radius: 4px; 
+    padding: 4px; 
+    width: 100%; 
+}";
+
+    readonly string _validationExample = @"<EditString @bind-Value=""_model.Disabled""
+           IsDisabled=""true""
+           Field=""@(() => _model.Disabled)""/>
+
+<EditString @bind-Value=""_model.Required""
+           Field=""@(() => _model.Required)""/>";
+
+    readonly string _validationModel = @"[Required] 
+public string Required { get; set; } = """";
+
+public string Disabled { get; set; } = """";";
+
+    readonly string _urlExample = @"<EditString @bind-Value=""_model.UrlField""
+           Url=""https://example.com""
+           UrlTarget=""_blank""
+           Field=""@(() => _model.UrlField)""/>";
 }

@@ -5,7 +5,7 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditDate @bind-Value="_model.BasicDate"
                   Field="@(() => _model.BasicDate)" />
                   
@@ -26,14 +26,23 @@
                   IsEditMode=false
                   Label="MM/dd/yyyy hh:mm:ss tt"
                   DateFormat="MM/dd/yyyy hh:mm:ss tt" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditDate @bind-Value="_model.NullableDate"
                   Field="@(() => _model.NullableDate)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_nullableExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_nullableModel</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditDate @bind-Value="_model.DateWithTime"
                   Field="@(() => _model.DateWithTime)"
                   Type="InputDateType.DateTimeLocal"/>
@@ -55,14 +64,12 @@
                   IsEditMode="false"
                   Label="hh:mm:ss tt"
                   DateFormat="hh:mm:ss tt" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_dateTimeExample</code></pre>
+    </section>
 
-    <div class="demo-section">
-        <EditDate @bind-Value="_model.CustomStyle"
-                  Field="@(() => _model.CustomStyle)"
-                  ContainerClass="my-custom-container"
-                  class="my-custom-date" />
-
+    <section class="demo-section">
         <style>
             .my-custom-container {
                 background-color: cornflowerblue;
@@ -77,16 +84,33 @@
                 color: magenta;
             }
         </style>
-    </div>
+        
+        <EditDate @bind-Value="_model.CustomStyle"
+                  Field="@(() => _model.CustomStyle)"
+                  ContainerClass="my-custom-container"
+                  class="my-custom-date" />
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditDate @bind-Value="_model.Disabled"
                   Field="@(() => _model.Disabled)"
                   IsDisabled="true" />
 
         <EditDate @bind-Value="_model.Required"
                   Field="@(() => _model.Required)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 
 </EditForm>
 
@@ -95,6 +119,7 @@
 
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+    
     public class DemoEditDateModel
     {
         [Description("Basic Description")]
@@ -109,4 +134,56 @@
         public DateTime Disabled { get; set; } = DateTime.Today;
 
     }
+
+    readonly string _basicExample = @"<EditDate @bind-Value=""_model.BasicDate""
+          Field=""@(() => _model.BasicDate)"" />
+          
+<EditDate @bind-Value=""_model.BasicDate""
+          Field=""@(() => _model.BasicDate)""
+          IsEditMode=false
+          Label=""DateFormat = MM-dd-yyyy""
+          DateFormat=""MM-dd-yyyy"" />";
+
+    readonly string _nullableExample = @"<EditDate @bind-Value=""_model.NullableDate""
+          Field=""@(() => _model.NullableDate)"" />";
+
+    readonly string _nullableModel = @"public DateTime? NullableDate { get; set; } = DateTime.Today;";
+
+    readonly string _dateTimeExample = @"<EditDate @bind-Value=""_model.DateWithTime""
+          Field=""@(() => _model.DateWithTime)""
+          Type=""InputDateType.DateTimeLocal""/>
+
+<EditDate @bind-Value=""_model.TimeOnly""
+          Field=""@(() => _model.TimeOnly)""
+          Type=""InputDateType.Time"" />";
+
+    readonly string _customStyleExample = @"<EditDate @bind-Value=""_model.CustomStyle""
+          Field=""@(() => _model.CustomStyle)""
+          ContainerClass=""my-custom-container""
+          class=""my-custom-date"" />";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: cornflowerblue;
+    padding: 10px;
+    border-radius: 0px;
+}
+
+.my-custom-date {
+    border: 6px solid darkgreen;
+    border-radius: 4px;
+    padding: 4px;
+    color: magenta;
+}";
+
+    readonly string _validationExample = @"<EditDate @bind-Value=""_model.Disabled""
+          Field=""@(() => _model.Disabled)""
+          IsDisabled=""true"" />
+
+<EditDate @bind-Value=""_model.Required""
+          Field=""@(() => _model.Required)"" />";
+
+    readonly string _validationModel = @"[Required]
+public DateTime? Required { get; set; } 
+
+public DateTime Disabled { get; set; } = DateTime.Today;";
 }

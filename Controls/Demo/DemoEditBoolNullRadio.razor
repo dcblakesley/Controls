@@ -5,16 +5,19 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.BasicOption"
                            Field="@(() => _model.BasicOption)" />
         <EditBoolNullRadio @bind-Value="_model.BasicOption"
                            Field="@(() => _model.BasicOption)"
                            Label="Read-only"
                            IsEditMode=false />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.CustomText"
                            TrueText="Absolutely!"
                            FalseText="No way!"
@@ -28,33 +31,50 @@
                            Label="Read-only"
                            IsEditMode="false"
                            Field="@(() => _model.CustomText)" />
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customTextExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.Required"
                            Field="@(() => _model.Required)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_requiredExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_requiredModel</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.Disabled"
                            IsDisabled="true"
                            Field="@(() => _model.Disabled)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_disabledExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.NullOptionHidden"
                            ShowNullOption="false"
                            Field="@(() => _model.NullOptionHidden)" />
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_nullOptionHiddenExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.VerticalLayout"
                            Field="@(() => _model.VerticalLayout)"
                            IsHorizontal="false" />
-    </div>
-    <div class="demo-section">
-        <EditBoolNullRadio @bind-Value="_model.CustomStyle"
-                           Field="@(() => _model.CustomStyle)"
-                           ContainerClass="my-custom-container"
-                           class="my-custom-input" />
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_verticalLayoutExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <style>
             .my-custom-container {
                 background-color: teal;
@@ -69,12 +89,24 @@
                 width: 220px;
             }
         </style>
-    </div>
+        
+        <EditBoolNullRadio @bind-Value="_model.CustomStyle"
+                           Field="@(() => _model.CustomStyle)"
+                           ContainerClass="my-custom-container"
+                           class="my-custom-input" />
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 </EditForm>
 
 @code {
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext?.Validate();
+    
     class DemoModel
     {
         [Description("Basic Description")]
@@ -92,4 +124,54 @@
     }
 
     readonly DemoModel _model = new();
+
+    readonly string _basicExample = @"<EditBoolNullRadio @bind-Value=""_model.BasicOption""
+                  Field=""@(() => _model.BasicOption)"" />
+
+<EditBoolNullRadio @bind-Value=""_model.BasicOption""
+                  Field=""@(() => _model.BasicOption)""
+                  Label=""Read-only""
+                  IsEditMode=false />";
+
+    readonly string _customTextExample = @"<EditBoolNullRadio @bind-Value=""_model.CustomText""
+                  TrueText=""Absolutely!""
+                  FalseText=""No way!""
+                  NullText=""Haven't decided...""
+                  Field=""@(() => _model.CustomText)"" />";
+
+    readonly string _requiredExample = @"<EditBoolNullRadio @bind-Value=""_model.Required""
+                  Field=""@(() => _model.Required)"" />";
+
+    readonly string _requiredModel = @"[Required]
+public bool? Required { get; set; }";
+
+    readonly string _disabledExample = @"<EditBoolNullRadio @bind-Value=""_model.Disabled""
+                  IsDisabled=""true""
+                  Field=""@(() => _model.Disabled)"" />";
+
+    readonly string _nullOptionHiddenExample = @"<EditBoolNullRadio @bind-Value=""_model.NullOptionHidden""
+                  ShowNullOption=""false""
+                  Field=""@(() => _model.NullOptionHidden)"" />";
+
+    readonly string _verticalLayoutExample = @"<EditBoolNullRadio @bind-Value=""_model.VerticalLayout""
+                  Field=""@(() => _model.VerticalLayout)""
+                  IsHorizontal=""false"" />";
+
+    readonly string _customStyleExample = @"<EditBoolNullRadio @bind-Value=""_model.CustomStyle""
+                  Field=""@(() => _model.CustomStyle)""
+                  ContainerClass=""my-custom-container""
+                  class=""my-custom-input"" />";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: teal;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.my-custom-input {
+    border: 2px solid maroon;
+    border-radius: 4px;
+    padding: 4px;
+    width: 220px;
+}";
 }

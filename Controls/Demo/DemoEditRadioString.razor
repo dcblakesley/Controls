@@ -5,7 +5,7 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioString @bind-Value="_model.BasicOption"
                          Field="@(() => _model.BasicOption)"
                          Description="Blahhhhh"
@@ -15,25 +15,37 @@
                          Field="@(() => _model.BasicOption)"
                          Options="@_basicOptions"
                          IsEditMode="false" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioString @bind-Value="_model.WithOther"
                          Field="@(() => _model.WithOther)"
                          Options="@_basicOptions"
                          HasOther="true" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_otherExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioString @bind-Value="_model.CustomStyling"
                          Field="@(() => _model.CustomStyling)"
                          Options="@_basicOptions"
                          ContainerClass="my-custom-container"
                          class="my-custom-radio"
                          LabelClass="my-custom-label" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioString @bind-Value="_model.Disabled"
                          Field="@(() => _model.Disabled)"
                          Options="@_basicOptions"
@@ -42,14 +54,23 @@
         <EditRadioString @bind-Value="_model.Required"
                          Field="@(() => _model.Required)"
                          Options="@_basicOptions" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioString @bind-Value="_model.HorizontalLayout"
                          Field="@(() => _model.HorizontalLayout)"
                          Options="@_basicOptions"
                          IsHorizontal="true" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_horizontalExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -72,6 +93,57 @@
 
         public string Disabled { get; set; } = "";
     }
+
+    readonly string _basicExample = @"<EditRadioString @bind-Value=""_model.BasicOption""
+                Field=""@(() => _model.BasicOption)""
+                Options=""@_basicOptions"" />
+
+<EditRadioString @bind-Value=""_model.BasicOption""
+                Field=""@(() => _model.BasicOption)""
+                Options=""@_basicOptions""
+                IsEditMode=""false"" />";
+
+    readonly string _otherExample = @"<EditRadioString @bind-Value=""_model.WithOther""
+                Field=""@(() => _model.WithOther)""
+                Options=""@_basicOptions""
+                HasOther=""true"" />";
+
+    readonly string _customStyleExample = @"<EditRadioString @bind-Value=""_model.CustomStyling""
+                Field=""@(() => _model.CustomStyling)""
+                Options=""@_basicOptions""
+                ContainerClass=""my-custom-container""
+                class=""my-custom-radio""
+                LabelClass=""my-custom-label"" />";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: darkorchid;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.my-custom-label {
+    font-weight: bold;
+    color: white;
+}";
+
+    readonly string _validationExample = @"<EditRadioString @bind-Value=""_model.Disabled""
+                Field=""@(() => _model.Disabled)""
+                Options=""@_basicOptions""
+                IsDisabled=""true"" />
+
+<EditRadioString @bind-Value=""_model.Required""
+                Field=""@(() => _model.Required)""
+                Options=""@_basicOptions"" />";
+
+    readonly string _validationModel = @"[Required(ErrorMessage = ""Please select an option"")]
+public string Required { get; set; } = """";
+
+public string Disabled { get; set; } = """";";
+
+    readonly string _horizontalExample = @"<EditRadioString @bind-Value=""_model.HorizontalLayout""
+                Field=""@(() => _model.HorizontalLayout)""
+                Options=""@_basicOptions""
+                IsHorizontal=""true"" />";
 }
 
 <style>

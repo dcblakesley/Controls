@@ -5,7 +5,7 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator/>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditSelectString @bind-Value="_model.BasicSelect"
                           Options="_colors"
                           Field="@(() => _model.BasicSelect)" />      
@@ -14,9 +14,12 @@
                           IsEditMode=false
                           Options="_colors"
                           Field="@(() => _model.BasicSelect)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
 
         <style>
             .my-custom-container {
@@ -33,14 +36,21 @@
                 min-width: 200px;
             }
         </style>
+        
         <EditSelectString @bind-Value="_model.CustomStyling"
                           Options="_colors"
                           ContainerClass="my-custom-container"
                           class="my-custom-select"
                           Field="@(() => _model.CustomStyling)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditSelectString @bind-Value="_model.Disabled"
                           Options="_colors"
                           IsDisabled="true"
@@ -49,7 +59,13 @@
         <EditSelectString @bind-Value="_model.Required"
                           Options="_colors"
                           Field="@(() => _model.Required)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -73,4 +89,46 @@
         public string Disabled { get; set; } = "";
     }
 
+    readonly string _basicExample = @"<EditSelectString @bind-Value=""_model.BasicSelect""
+                 Options=""_colors""
+                 Field=""@(() => _model.BasicSelect)"" />
+
+<EditSelectString @bind-Value=""_model.BasicSelect""
+                 IsEditMode=false
+                 Options=""_colors""
+                 Field=""@(() => _model.BasicSelect)"" />";
+
+    readonly string _customStyleExample = @"<EditSelectString @bind-Value=""_model.CustomStyling""
+                 Options=""_colors""
+                 ContainerClass=""my-custom-container""
+                 class=""my-custom-select""
+                 Field=""@(() => _model.CustomStyling)""/>";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: yellow;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.my-custom-select {
+    border: 2px solid #0066cc;
+    color: purple;
+    border-radius: 4px;
+    padding: 4px;
+    min-width: 200px;
+}";
+
+    readonly string _validationExample = @"<EditSelectString @bind-Value=""_model.Disabled""
+                 Options=""_colors""
+                 IsDisabled=""true""
+                 Field=""@(() => _model.Disabled)""/>
+
+<EditSelectString @bind-Value=""_model.Required""
+                 Options=""_colors""
+                 Field=""@(() => _model.Required)""/>";
+
+    readonly string _validationModel = @"[Required]
+public string Required { get; set; } = """";
+
+public string Disabled { get; set; } = """";";
 }

@@ -5,54 +5,79 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form >
     <ObjectGraphDataAnnotationsValidator/>
     
-    <div class="demo-section">
+    <section class="demo-section">
         <EditTextArea @bind-Value="_model.BasicTextArea"
                       Field="@(() => _model.BasicTextArea)" />
 
         <EditTextArea @bind-Value="_model.BasicTextArea"
                       Field="@(() => _model.BasicTextArea)" 
                       IsEditMode=false/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditTextArea @bind-Value="_model.LargerTextArea"
                       Rows="5"
                       Field="@(() => _model.LargerTextArea)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_rowsExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditTextArea @bind-Value="_model.WithPlaceholder"
                       Placeholder="Enter your detailed comments here..."
                       Rows="4"
                       Field="@(() => _model.WithPlaceholder)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_placeholderExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditTextArea @bind-Value="_model.MultilinePlaceholder"
                       Placeholder="Describe your experience, thoughts, or feedback. Feel free to be as detailed as you'd like."
                       Rows="3"
                       Field="@(() => _model.MultilinePlaceholder)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_multilinePlaceholderExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <style>
             .my-custom-container { background-color:cyan; padding: 10px; border-radius: 40px; }
             .my-custom-textarea { background-color: magenta; border: 2px solid #0066cc; border-radius: 40px; padding: 8px; width: 100%; min-height: 100px; font-family: 'Courier New', monospace; background:  }
         </style>
+        
         <EditTextArea @bind-Value="_model.CustomStyling"
                       ContainerClass="my-custom-container"
                       class="my-custom-textarea"
                       Field="@(() => _model.CustomStyling)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditTextArea @bind-Value="_model.Disabled"
                       IsDisabled="true"
                       Field="@(() => _model.Disabled)"/>
 
         <EditTextArea @bind-Value="_model.Required"
                       Field="@(() => _model.Required)"/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -79,4 +104,58 @@
 
         public string Disabled { get; set; } = "This textarea is disabled";
     }
+
+    readonly string _basicExample = @"<EditTextArea @bind-Value=""_model.BasicTextArea""
+             Field=""@(() => _model.BasicTextArea)"" />
+
+<EditTextArea @bind-Value=""_model.BasicTextArea""
+             Field=""@(() => _model.BasicTextArea)"" 
+             IsEditMode=false/>";
+
+    readonly string _rowsExample = @"<EditTextArea @bind-Value=""_model.LargerTextArea""
+             Rows=""5""
+             Field=""@(() => _model.LargerTextArea)""/>";
+
+    readonly string _placeholderExample = @"<EditTextArea @bind-Value=""_model.WithPlaceholder""
+             Placeholder=""Enter your detailed comments here...""
+             Rows=""4""
+             Field=""@(() => _model.WithPlaceholder)""/>";
+
+    readonly string _multilinePlaceholderExample = @"<EditTextArea @bind-Value=""_model.MultilinePlaceholder""
+             Placeholder=""Describe your experience, thoughts, or feedback...""
+             Rows=""3""
+             Field=""@(() => _model.MultilinePlaceholder)""/>";
+
+    readonly string _customStyleExample = @"<EditTextArea @bind-Value=""_model.CustomStyling""
+             ContainerClass=""my-custom-container""
+             class=""my-custom-textarea""
+             Field=""@(() => _model.CustomStyling)""/>";
+
+    readonly string _customStyleCss = @".my-custom-container { 
+    background-color:cyan; 
+    padding: 10px; 
+    border-radius: 40px; 
+}
+
+.my-custom-textarea { 
+    background-color: magenta; 
+    border: 2px solid #0066cc; 
+    border-radius: 40px; 
+    padding: 8px; 
+    width: 100%; 
+    min-height: 100px; 
+    font-family: 'Courier New', monospace; 
+}";
+
+    readonly string _validationExample = @"<EditTextArea @bind-Value=""_model.Disabled""
+             IsDisabled=""true""
+             Field=""@(() => _model.Disabled)""/>
+
+<EditTextArea @bind-Value=""_model.Required""
+             Field=""@(() => _model.Required)""/>";
+
+    readonly string _validationModel = @"[Required] 
+public string Required { get; set; } = """";
+
+public string Disabled { get; set; } = ""This textarea is disabled"";";
 }

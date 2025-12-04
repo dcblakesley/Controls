@@ -5,30 +5,46 @@
 <EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
     <ObjectGraphDataAnnotationsValidator />
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)" />
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)"
                        Label="Read-only"
                        IsEditMode="false" />
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_readOnlyExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditRadioEnum @bind-Value="_model.BasicEnum"
                        Field="@(() => _model.BasicEnum)" 
                        Label="Sorted"
                        Sort=true/>
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_sortedExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditRadioEnum @bind-Value=@_model.Other
                        Field="@(() => _model.Other)"
                        HasOtherOption="true"
                        OtherPlaceholder="Placeholders are fun..."
                        @bind-OtherValue="_model.OtherValue" />
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_otherExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditRadioEnum @bind-Value=@_model.Other
                        Field="@(() => _model.Other)"
                        HasOtherOption="true"
@@ -36,9 +52,12 @@
                        Description="The final enum value still shows up on the bottom"
                        Sort="true"
                        @bind-OtherValue="_model.OtherValue" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_otherSortedExample</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <style>
             .my-custom-container {
                 background-color: cyan;
@@ -57,35 +76,64 @@
                        class="my-custom-radio"
                        ContainerClass="my-custom-container"
                        LabelClass="my-custom-label" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+        
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioEnum @bind-Value="_model.Disabled"
                        Field="@(() => _model.Disabled)"
                        IsDisabled="true" />
-
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_disabledExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditRadioEnum @bind-Value="_model.Required"
                        Field="@(() => _model.Required)" />
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_requiredExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_requiredModel</code></pre>
+    </section>
 
-    <div class="demo-section">
+    <section class="demo-section">
         <EditRadioEnum @bind-Value="_model.HorizontalLayout"
                        Field="@(() => _model.HorizontalLayout)"
                        IsHorizontal="true" />
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_horizontalExample</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditRadioEnum @bind-Value="_model.Nullable"
                        Field="@(() => _model.Nullable)"/>
-    </div>
-    <div class="demo-section">
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_nullableExample</code></pre>
+        
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_nullableModel</code></pre>
+    </section>
+    
+    <section class="demo-section">
         <EditBool @bind-Value="IsCurrentlyRequired"
                   Field="@(() => IsCurrentlyRequired)"/>
         <EditRadioEnum @bind-Value="_model.SometimesRequired"
                        Field="@(() => _model.SometimesRequired)"
                        IsRequired=@IsCurrentlyRequired/>
-    </div>
+        
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_dynamicRequiredExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -94,6 +142,7 @@
 
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+    
     public class DemoEditRadioEnumModel
     {
         [Description("Basic Description")]
@@ -121,4 +170,71 @@
         Parrot,
         Custom = 999
     }
+
+    readonly string _basicExample = @"<EditRadioEnum @bind-Value=""_model.BasicEnum""
+              Field=""@(() => _model.BasicEnum)"" />";
+
+    readonly string _readOnlyExample = @"<EditRadioEnum @bind-Value=""_model.BasicEnum""
+              Field=""@(() => _model.BasicEnum)""
+              Label=""Read-only""
+              IsEditMode=""false"" />";
+
+    readonly string _sortedExample = @"<EditRadioEnum @bind-Value=""_model.BasicEnum""
+              Field=""@(() => _model.BasicEnum)"" 
+              Label=""Sorted""
+              Sort=true/>";
+
+    readonly string _otherExample = @"<EditRadioEnum @bind-Value=@_model.Other
+              Field=""@(() => _model.Other)""
+              HasOtherOption=""true""
+              OtherPlaceholder=""Placeholders are fun...""
+              @bind-OtherValue=""_model.OtherValue"" />";
+
+    readonly string _otherSortedExample = @"<EditRadioEnum @bind-Value=@_model.Other
+              Field=""@(() => _model.Other)""
+              HasOtherOption=""true""
+              Sort=""true""
+              @bind-OtherValue=""_model.OtherValue"" />";
+
+    readonly string _customStyleExample = @"<EditRadioEnum @bind-Value=""_model.CustomStyling""
+              Field=""@(() => _model.CustomStyling)""
+              class=""my-custom-radio""
+              ContainerClass=""my-custom-container""
+              LabelClass=""my-custom-label"" />";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: cyan;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.my-custom-label {
+    font-weight: bold;
+    color: #0066cc;
+}";
+
+    readonly string _disabledExample = @"<EditRadioEnum @bind-Value=""_model.Disabled""
+              Field=""@(() => _model.Disabled)""
+              IsDisabled=""true"" />";
+
+    readonly string _requiredExample = @"<EditRadioEnum @bind-Value=""_model.Required""
+              Field=""@(() => _model.Required)"" />";
+
+    readonly string _requiredModel = @"[Required]
+public Animal? Required { get; set; } = null;";
+
+    readonly string _horizontalExample = @"<EditRadioEnum @bind-Value=""_model.HorizontalLayout""
+              Field=""@(() => _model.HorizontalLayout)""
+              IsHorizontal=""true"" />";
+
+    readonly string _nullableExample = @"<EditRadioEnum @bind-Value=""_model.Nullable""
+              Field=""@(() => _model.Nullable)""/>";
+    
+    readonly string _nullableModel = @"public Animal? Nullable { get; set; } = null;";
+    
+    readonly string _dynamicRequiredExample = @"<EditBool @bind-Value=""IsCurrentlyRequired""
+          Field=""@(() => IsCurrentlyRequired)""/>
+<EditRadioEnum @bind-Value=""_model.SometimesRequired""
+              Field=""@(() => _model.SometimesRequired)""
+              IsRequired=@IsCurrentlyRequired/>";
 }
