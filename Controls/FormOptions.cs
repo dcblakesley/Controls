@@ -27,6 +27,14 @@ public class FormOptions
     /// <summary> Global default for <see cref="IsRequiredStarHidden"/>.
     /// Used when an instance's IsRequiredStarHidden is null. </summary>
     public static bool DefaultIsRequiredStarHidden { get; set; } = false;
+
+    /// <summary> When true, visual validation messages include the field name (e.g., "Name is required" instead of "Required").
+    /// When null, falls back to <see cref="DefaultShowFieldNameInValidation"/>. </summary>
+    public bool? ShowFieldNameInValidation { get; set; }
+
+    /// <summary> Global default for <see cref="ShowFieldNameInValidation"/>.
+    /// Used when an instance's ShowFieldNameInValidation is null. </summary>
+    public static bool DefaultShowFieldNameInValidation { get; set; } = true;
 }
 
 /// <summary> 

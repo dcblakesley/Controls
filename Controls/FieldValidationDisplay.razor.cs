@@ -36,7 +36,14 @@ public partial class FieldValidationDisplay
         }
     }
 
+    bool ShowFieldNameInValidation =>
+        FormOptions?.ShowFieldNameInValidation ?? FormOptions.DefaultShowFieldNameInValidation;
+
     /// <summary> Overrides the default validation messages. </summary>
-    string GetValidationMessage(string message, bool showLabel = false) =>
+    string GetValidationMessage(string message, bool showLabel) =>
         ValidationHelper.GetValidationMessage(message, _fieldName, GetLabel(), _valueType, _maxCharacters, _minCharacters, showLabel);
+
+    /// <summary> Overrides the default validation messages, using the form option to determine label visibility. </summary>
+    string GetValidationMessage(string message) =>
+        GetValidationMessage(message, ShowFieldNameInValidation);
 }
