@@ -20,8 +20,13 @@ public class FormOptions
     /// <summary> When true, hides labels for all controls in the form. </summary>
     public bool IsLabelHidden { get; set; }
 
-    /// <summary> When true, hides the required star indicator for all controls in the form. </summary>
-    public bool IsRequiredStarHidden { get; set; }
+    /// <summary> When true, hides the required star indicator for all controls in the form.
+    /// When null, falls back to <see cref="DefaultIsRequiredStarHidden"/>. </summary>
+    public bool? IsRequiredStarHidden { get; set; }
+
+    /// <summary> Global default for <see cref="IsRequiredStarHidden"/>.
+    /// Used when an instance's IsRequiredStarHidden is null. </summary>
+    public static bool DefaultIsRequiredStarHidden { get; set; } = false;
 }
 
 /// <summary> 

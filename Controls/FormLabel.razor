@@ -4,7 +4,7 @@
     {
         <!-- Wrap only the 'label' within the legend -->
 		<legend class="edit-label-legend">
-			@if ((_isRequired.ToLower() == "true" || IsRequired) && !(FormOptions?.IsRequiredStarHidden ?? false))
+			@if ((_isRequired.ToLower() == "true" || IsRequired) && !(FormOptions?.IsRequiredStarHidden ?? FormOptions.DefaultIsRequiredStarHidden))
 			{
 				<span class="edit-label-required-star" aria-hidden="true">*</span>
 			}
@@ -24,7 +24,7 @@
     {
         <!-- Typical Label -->
 		<label class="edit-label" for=@Id id="lbl-@Id">
-			@if ((_isRequired.ToLower() == "true" || IsRequired) && !(FormOptions?.IsRequiredStarHidden ?? false))
+			@if ((_isRequired.ToLower() == "true" || IsRequired) && !(FormOptions?.IsRequiredStarHidden ?? FormOptions.DefaultIsRequiredStarHidden))
 			{
 				<span class="edit-label-required-star" aria-hidden="true">*</span>
 			}
