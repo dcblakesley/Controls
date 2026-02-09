@@ -87,8 +87,7 @@ public partial class EditDate<T> : IEditControl
         if (effectiveHidingMode == HidingMode.None)
             return true;
 
-        // Use the Field expression to get the current value
-        var value = Field.Compile()();
+        var value = Value;
 
         // Check if value is null
         var isNull = value == null;

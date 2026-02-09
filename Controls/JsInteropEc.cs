@@ -19,10 +19,7 @@ public static class JsInteropEc
 
     public static async Task Log(IJSRuntime jsRuntime, string text)
     {
-        await Task.Delay(1); // Allow time for validation to complete
+        await Task.Delay(1);
         await jsRuntime!.InvokeVoidAsync("log", text);
-        await jsRuntime!.InvokeVoidAsync("logError", text);
-        await jsRuntime!.InvokeVoidAsync("logWarn", text);
-        await jsRuntime!.InvokeVoidAsync("logInfo", text);
     }
 }

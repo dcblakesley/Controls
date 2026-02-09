@@ -80,8 +80,22 @@
     cursor: pointer;
 }
 .edit-radio-input { }
-.edit-radio-option { /* div that surrounds the input and label for each radio button. */ }
-.edit-radio-other-input { }
+.edit-radio-option {
+    /* div that surrounds the input and label for each radio button. */
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.edit-radio-other-input {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    min-width: 150px;
+}
+.edit-radio-other-input:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+}
 .edit-radio-other-option-container { }
 
 /************************************************ EditSelect(String and Enum) *********************************************/

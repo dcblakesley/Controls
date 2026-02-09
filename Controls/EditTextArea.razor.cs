@@ -83,8 +83,7 @@ public partial class EditTextArea : IEditControl
         if (hidingMode == HidingMode.None)
             return true;
 
-        // Use the Field expression to get the current value
-        var value = Field.Compile()();
+        var value = CurrentValue;
         var isNull = value == null;
         var isDefault = isNull || string.IsNullOrEmpty(value);
         var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);

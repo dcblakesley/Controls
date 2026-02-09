@@ -15,7 +15,7 @@
 
         @if (DisplayDescription() != null)
         {
-            <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+            <p class="edit-label-description" id="desc-@Id">
                 @((MarkupString)DisplayDescription()!)
             </p>
         }
@@ -33,10 +33,9 @@
             <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes />
         </label>
 
-        <div></div>
         @if (DisplayDescription() != null)
         {
-            <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+            <p class="edit-label-description" id="desc-@Id">
                 @((MarkupString)DisplayDescription()!)
             </p>
         }

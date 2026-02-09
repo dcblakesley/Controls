@@ -25,8 +25,7 @@
 
                         @foreach (var option in Options)
                         {
-                            <label class=@($"{LabelClass} edit-radio-label") 
-                                   disabled=@IsDisabled>
+                            <label class=@($"{LabelClass} edit-radio-label")>
                                 <InputRadio Value=@option
                                             disabled=@IsDisabled
                                             id=@($"rb-{_id}-{option.ToId()}")

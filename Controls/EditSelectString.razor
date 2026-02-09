@@ -21,7 +21,7 @@
                 @foreach (var o in Options)
                 {
                     <option value=@o
-                            checked=@(() => CurrentValueAsString == o)
+                            selected=@(CurrentValueAsString == o)
                             id=@($"{_id}-option-{o.ToId()}")
                             data-test-id=@($"{_id}-option-{o.ToId()}")
                             class=@($"edit-select-option {CssClass}")>

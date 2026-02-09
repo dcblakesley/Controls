@@ -74,13 +74,13 @@ public partial class EditNumber<T> : IEditControl
         if (IsHidden)
             return false;
 
-        var hidingMode = FormOptions?.Hiding ?? Hiding ?? HidingMode.None;
+        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 
         if (hidingMode == HidingMode.None)
             return true;
 
         var isReadOnly = !((IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode));
-        var value = Field.Compile().Invoke();
+        var value = Value;
 
         return hidingMode switch
         {

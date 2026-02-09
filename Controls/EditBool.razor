@@ -12,7 +12,7 @@
                        value="@CurrentValue"
                        @onchange="HandleCheckboxChange"
                        @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
-                       @onkeydown="PreventSpacebarToggle"
+
                        class="@CssClass"
                        id=@_id
                        data-test-id=@_id
@@ -31,7 +31,7 @@
             </label>
             @if (DisplayDescription() != null)
             {
-                <p class="edit-label-description" id="desc-@Id" aria-hidden="true">
+                <p class="edit-label-description" id="desc-@Id">
                     @((MarkupString)DisplayDescription()!)
                 </p>
             }
@@ -42,7 +42,6 @@
                    value="@CurrentValue"
                    @onchange="HandleCheckboxChange"
                    @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
-                   @onkeydown="PreventSpacebarToggle"
                    class="@CssClass"
                    id=@_id
                    data-test-id=@_id

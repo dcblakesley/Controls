@@ -62,6 +62,7 @@ public partial class EditSelectEnum<TEnum> : IEditControl
     Type _type;
     Type _underlyingType;
     bool _isNullable;
+    List<TEnum?>? _cachedOptions;
 
     // Methods
     protected override void OnInitialized()
@@ -76,8 +77,10 @@ public partial class EditSelectEnum<TEnum> : IEditControl
         _type = typeof(TEnum);
         _isNullable = Nullable.GetUnderlyingType(_type) != null;
         _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
+        _cachedOptions = BuildOptions();
     }
-    List<TEnum?> GetOptions()
+    List<TEnum?> GetOptions() => _cachedOptions!;
+    List<TEnum?> BuildOptions()
     {
         var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
 
@@ -116,8 +119,7 @@ public partial class EditSelectEnum<TEnum> : IEditControl
         if (hidingMode == HidingMode.None)
             return true;
 
-        // Use the Field expression to get the current value
-        var value = Field.Compile()();
+        var value = Value;
 
         // Check if value is null (for nullable enums)
         var isNull = value == null;

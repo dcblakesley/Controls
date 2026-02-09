@@ -72,7 +72,7 @@ public partial class EditSelectString<TValue> : IEditControl
             return false;
 
         var effectiveHiding = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        var value = Field.Compile().Invoke();
+        var value = Value;
         var isEditMode = (FormOptions == null) || FormOptions.IsEditMode;
 
         return effectiveHiding switch

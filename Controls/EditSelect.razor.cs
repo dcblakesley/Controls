@@ -81,8 +81,7 @@ public partial class EditSelect<TValue> : IEditControl
         if (hidingMode == HidingMode.None)
             return true;
 
-        // Use the Field expression to get the current value
-        var value = Field.Compile()();
+        var value = Value;
         var isNull = value == null;
         var isDefault = isNull || EqualityComparer<TValue>.Default.Equals(value, default);
         var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);

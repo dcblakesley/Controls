@@ -1,12 +1,12 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
+@implements IDisposable
 
-
-<section class="validation-summary">
+<section class="validation-summary" aria-label="Validation errors">
     @foreach (var v in FormOptions.FieldIdentifiers)
     {
         @foreach (var z in CurrentEditContext.GetValidationMessages(v).ToList())
         {
-            <a class="validation-summary-message" href="#lbl-@v.FieldName">@z</a>
+            <a class="validation-summary-message" href="#@AttributesHelper.GetId(null, FormGroupOptions, null, v)">@z</a>
         }
     }
 </section>
@@ -57,6 +57,11 @@
             CurrentEditContext.OnValidationStateChanged += _validationStateChangedHandler;
             _previousEditContext = CurrentEditContext;
         }
+    }
+
+    public void Dispose()
+    {
+        DetachValidationStateChangedListener();
     }
 
     void DetachValidationStateChangedListener()

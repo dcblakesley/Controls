@@ -2,13 +2,20 @@
 
 public static class EnumHelpers
 {
+    static readonly Dictionary<object, string> _nameCache = new();
+
     public static string GetName(this object value)
     {
+        if (_nameCache.TryGetValue(value, out var cached))
+            return cached;
+
         var fi = value.GetType().GetField(value.ToString() ?? string.Empty);
         var attributes = fi?.GetCustomAttributes(typeof(EnumDisplayNameAttribute), false) as EnumDisplayNameAttribute[];
         if (attributes != null && attributes.Any())
         {
-            return attributes.First().Value;
+            var result = attributes.First().Value;
+            _nameCache[value] = result;
+            return result;
         }
 
         var text = value.ToString();
@@ -16,9 +23,11 @@ public static class EnumHelpers
         {
             // split by camel case
             text = string.Concat(text.Select(x => char.IsUpper(x) ? " " + x : x.ToString())).TrimStart(' ');
+            _nameCache[value] = text;
             return text;
         }
 
+        _nameCache[value] = "";
         return "";
     }
 
