@@ -7,7 +7,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.0.4</AssemblyVersion>
+	  <AssemblyVersion>10.0.5</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
     
