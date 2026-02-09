@@ -1,4 +1,9 @@
-﻿namespace Controls.Demo;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using Controls;
+using Controls.Helpers;
+
+namespace Controls.Demo;
 
 internal class DemoModelForEditControls
 {

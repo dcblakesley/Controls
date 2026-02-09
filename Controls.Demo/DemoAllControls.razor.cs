@@ -1,4 +1,8 @@
-﻿namespace Controls.Demo;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.JSInterop;
+
+namespace Controls.Demo;
 
 public partial class DemoAllControls
 {

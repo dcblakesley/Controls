@@ -1,35 +1,26 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Title>Blazor Controls</Title>
-    <PackageId>WssBlazorControls</PackageId>
+    <Title>Blazor Controls Demo</Title>
+    <PackageId>WssBlazorControls.Demo</PackageId>
 	  <AssemblyVersion>10.0.3</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
-    
+
     <!-- Package Metadata -->
-    <PackageDescription>A comprehensive library of form controls for Blazor applications HierarchyAndEmployeeRecordproviding consistent, feature-rich input components with built-in validation, accessibility support, and flexible styling options.</PackageDescription>
+    <PackageDescription>Demo components for WssBlazorControls, showcasing usage of each control with interactive examples.</PackageDescription>
     <PackageProjectUrl>https://github.com/dcblakesley/Controls</PackageProjectUrl>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>Full feature set with comprehensive validation support and accessibility features.</PackageReleaseNotes>
+    <PackageTags>blazor;controls;demo;examples;ui;components</PackageTags>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
   </PropertyGroup>
-
-  <ItemGroup>
-    <!-- Include README and LICENSE in the package -->
-    <None Include="..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
-  </ItemGroup>
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
@@ -52,7 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="ai-docs\" />
+    <ProjectReference Include="..\Controls\Controls.csproj" />
   </ItemGroup>
 
 </Project>
