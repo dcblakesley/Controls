@@ -64,6 +64,9 @@ public partial class EditString : IEditControl
     /// <summary> Only used with Urls, Sets target="UrlTarget" in the link </summary>
     [Parameter] public string? UrlTarget { get; set; }
 
+    /// <summary> Sets the autocomplete attribute on the input element. Defaults to "one-time-code" to prevent browser autofill/extensions from intercepting input events.</summary>
+    [Parameter] public string Autocomplete { get; set; } = "one-time-code";
+
     // Fields
     string _id = string.Empty;
     string _isRequired;

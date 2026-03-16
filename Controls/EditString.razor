@@ -23,7 +23,7 @@
                        aria-required=true
                        aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                        aria-errormessage=@($"error-msg-{_id}")
-                       autocomplete="off" />
+                       autocomplete=@Autocomplete />
 
                 @if (CssClass.Contains("invalid"))
                 {
