@@ -1,4 +1,5 @@
 @typeparam TEnum
+@inherits EditControlListBase<TEnum>
 
 @if (ShouldShowComponent())
 {
@@ -21,7 +22,7 @@
                                    aria-disabled=@IsDisabled
                                    aria-describedby=@($"error-msg-{_id}")                               
                                    tabindex="0"
-                                   @onchange="() => SetAsync(option)"
+                                   @onchange="() => ToggleAsync(option)"
                                    id=@($"cbx-{_id}-{option.ToId()}")
                                    data-test-id=@($"cbx-{_id}-{option.ToId()}")
                                    class="edit-checkedList-checkbox @(EditContext?.GetValidationMessages(_fieldIdentifier).Any() == true ? "invalid" : "")" />

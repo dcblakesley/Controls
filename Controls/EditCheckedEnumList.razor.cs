@@ -1,62 +1,13 @@
 namespace Controls;
 
-/// <summary> 
+/// <summary>
 /// Provides checkboxes for each enum value, binds to a List of selected enum values.
 /// Combines enum handling from EditSelectEnum/EditRadioEnum with checkbox functionality from EditCheckedStringList.
 /// </summary>
-public partial class EditCheckedEnumList<TEnum> : IEditControl
+public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
 {
-    [CascadingParameter] EditContext EditContext { get; set; } = null!;
+    // Component-specific parameters
 
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-    
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-    
-    // EditCheckedEnumList specific
-    /// <summary> The current list of selected enum values.</summary>
-    [Parameter] public required List<TEnum> Value { get; set; }
-    
-    /// <summary> Event callback that fires when the Value list changes.</summary>
-    [Parameter] public EventCallback<List<TEnum>> ValueChanged { get; set; }
-    
     /// <summary> Expression that binds to the list of enum values property in the model.</summary>
     [Parameter] public required Expression<Func<List<TEnum>>> Field { get; set; }
 
@@ -69,20 +20,15 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
     /// <summary> If true, the checkboxes will be displayed horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
     Type _type = null!;
     Type _underlyingType = null!;
     bool _isNullable;
     List<TEnum>? _cachedOptions;
 
-    // Methods
     protected override void OnInitialized()
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        base.OnInitialized();
+        InitState(Field);
 
         // Handle nullable enum types
         _type = typeof(TEnum);
@@ -92,6 +38,7 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
     }
 
     List<TEnum> GetOptions() => _cachedOptions!;
+
     List<TEnum> BuildOptions()
     {
         var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
@@ -103,47 +50,4 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
 
         return enumValues;
     }
-
-    async Task SetAsync(TEnum enumValue)
-    {
-        if (Value.Contains(enumValue))
-            Value.Remove(enumValue);
-        else
-            Value.Add(enumValue);
-
-        // Notify EditContext about the change
-        EditContext?.NotifyFieldChanged(_fieldIdentifier);
-        await ValueChanged.InvokeAsync(Value);
-    }
-
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-        
-        // Get effective hiding mode (component's setting overrides form's setting)
-        var effectiveHidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-
-        if (effectiveHidingMode == HidingMode.None)
-            return true;
-
-        // Check if list is null or empty
-        var isNull = Value == null;
-        var isDefault = isNull || Value.Count == 0;
-
-        // Determine if we're in read-only mode
-        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
-
-        return effectiveHidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isDefault),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
-    }
-
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 }
