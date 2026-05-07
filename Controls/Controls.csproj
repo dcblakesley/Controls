@@ -17,6 +17,7 @@
     <PackageProjectUrl>https://github.com/dcblakesley/Controls</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIcon>icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
@@ -27,9 +28,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Include README and LICENSE in the package -->
+    <!-- Include README, LICENSE, and the package icon -->
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

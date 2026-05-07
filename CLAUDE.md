@@ -86,6 +86,8 @@ When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade it
 
 **Bump only at publish time.** Do not bump `<AssemblyVersion>` for in-progress work — accumulate changes against the current version and bump (with the README changelog entry) only when the next NuGet release is being cut. This keeps git history clean and avoids meaningless intermediate version numbers.
 
+**Never push to NuGet from an agent.** `dotnet nuget push` is the human's responsibility — agents may pack (`dotnet pack -c Release -o ./nupkg`) so the artifacts are ready, but never push. The user owns the API key and the publish decision.
+
 ### Publishing to NuGet
 
 ```bash
