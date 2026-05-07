@@ -48,7 +48,7 @@
                                                value="@OtherValue"
                                                @oninput="@(OnOtherValueChanged)"
                                                disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsDisabled)"
-                                               class="edit-radio-other-input"
+                                               class="edit-input edit-radio-other-input"
                                                placeholder=@OtherPlaceholder
                                                id=@($"other-{_id}")
                                                data-test-id=@($"other-{_id}") />

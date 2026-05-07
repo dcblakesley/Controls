@@ -27,6 +27,14 @@
 }
 .edit-readonly-value { /* The text that is displayed when IsEditMode=false and within EditDisplay*/ }
 
+/* Applied to every editable element — <input>, <textarea>, <InputSelect>, <InputDate>.
+   Consumers should style this single class instead of styling per-element-selector
+   (which has the problem that <input>, <textarea>, and <select> have very different
+   browser defaults). The bundled rule is intentionally empty so consumers fully control
+   appearance. Per-control classes (.edit-string-input, .edit-textarea-input, etc.) remain
+   available for fine-tuning. */
+.edit-input { }
+
 /************************************************ EditBool ***********************************************/
 .edit-checkbox-label { cursor: pointer; }
 

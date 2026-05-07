@@ -13,7 +13,7 @@
                          id=@_id
                          data-test-id=@_id
                          disabled=@IsDisabled
-                         class=@($"edit-select-select {CssClass}")
+                         class=@($"edit-input edit-select-select {CssClass}")
                          aria-required=@_isRequired
                          aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
                          aria-errormessage=@($"error-msg-{_id}")

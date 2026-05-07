@@ -1,4 +1,6 @@
-﻿namespace Controls.Helpers;
+﻿using System.Text.RegularExpressions;
+
+namespace Controls.Helpers;
 
 // Default validation messages
 
@@ -20,6 +22,14 @@
 
 public static class ValidationHelper
 {
+    // Matches the .NET Range attribute message: "The field {Name} must be between {min} and {max}."
+    // Captures min/max as the two whitespace-delimited tokens around "and"; tolerant of multi-word
+    // field names and an optional trailing period. Compiled because we hit it on every render that
+    // shows a Range validation error.
+    static readonly Regex _numericRangeRegex = new(
+        @"^The field .+ must be between (?<min>\S+) and (?<max>\S+?)\.?$",
+        RegexOptions.Compiled);
+
     // New default validation messages
     static string RequiredString() => "Required";
     static string RequiredString(string label) => $"{label} is required.";
@@ -92,45 +102,52 @@ public static class ValidationHelper
         if (string.Equals(message, $"The {fieldName} field must be a number."))
             return includeLabel ? MustBeANumberString(label) : MustBeANumberString();
 
-        // Numeric range
-        // The field Min must be between -2 and 55.
-        if (message.Contains($"The field {fieldName} must be between"))
+        // Numeric range — e.g. "The field Min must be between -2 and 55."
+        // Uses a regex so multi-word field names ("Order Total") and trailing-period variations don't
+        // break the parse. When one bound is the type's min/max sentinel we render a one-sided message
+        // ("Cannot exceed 100"); otherwise we render the full range.
+        if (message.Contains(" must be between "))
         {
-            // The message is in the format "The field Min must be between -2 and 55."
-            var parts = message.Split(' ');
-
-            // The field Min must be between -2 and 55.
-            var minValue = parts[6];
-            var maxValue = parts[8].TrimEnd('.');
-            var isMinimumForType = false;
-            var isMaximumForType = false;
-
-            // Determine if the min is the min for it's datatype, which can be any numeric type.
-            if (minValue == int.MinValue.ToString() || minValue == double.MinValue.ToString() || minValue == "-3.4028234663852886E+38" ||
-               minValue == long.MinValue.ToString() || minValue == short.MinValue.ToString() || minValue == byte.MinValue.ToString() ||
-               minValue == sbyte.MinValue.ToString() || minValue == uint.MinValue.ToString() || minValue == ulong.MinValue.ToString() ||
-               minValue == ushort.MinValue.ToString() || minValue == decimal.MinValue.ToString())
+            var match = _numericRangeRegex.Match(message);
+            if (match.Success)
             {
-                isMinimumForType = true;
-            }
+                var minValue = match.Groups["min"].Value;
+                var maxValue = match.Groups["max"].Value;
+                var isMinSentinel = IsTypeMinSentinel(minValue);
+                var isMaxSentinel = IsTypeMaxSentinel(maxValue);
 
-            // Determine if the max is the max for it's datatype, which can be any numeric type.
-            if (maxValue == int.MaxValue.ToString() || maxValue == double.MaxValue.ToString() || maxValue == float.MaxValue.ToString() ||
-               maxValue == long.MaxValue.ToString() || maxValue == short.MaxValue.ToString() || maxValue == byte.MaxValue.ToString() ||
-               maxValue == sbyte.MaxValue.ToString() || maxValue == uint.MaxValue.ToString() || maxValue == ulong.MaxValue.ToString() ||
-               maxValue == ushort.MaxValue.ToString() || maxValue == decimal.MaxValue.ToString())
-            {
-                isMaximumForType = true;
+                if (isMinSentinel && !isMaxSentinel)
+                    return includeLabel ? MaxValueString(maxValue, label) : MaxValueString(maxValue);
+                if (!isMinSentinel && isMaxSentinel)
+                    return includeLabel ? MinValueString(minValue, label) : MinValueString(minValue);
+                if (!isMinSentinel && !isMaxSentinel)
+                    return includeLabel ? NumberRangeString(minValue, maxValue, label) : NumberRangeString(minValue, maxValue);
             }
-
-            if (isMinimumForType && !isMaximumForType)
-                return includeLabel ? MaxValueString(maxValue, label) : MaxValueString(maxValue);
-            if (!isMinimumForType && isMaximumForType)
-                return includeLabel ? MinValueString(minValue, label) : MinValueString(minValue);
-            if (!isMinimumForType && !isMaximumForType)
-                return includeLabel ? NumberRangeString(minValue, maxValue, label) : NumberRangeString(minValue, maxValue);
         }
 
         return output;
     }
+
+    // Cached sentinel sets — covers every numeric primitive's MinValue/MaxValue ToString().
+    // The "-3.4028234663852886E+38" entry is the textual form Microsoft emits for float.MinValue,
+    // which can differ slightly from float.MinValue.ToString() depending on culture / formatter.
+    static readonly HashSet<string> _typeMinSentinels = new(StringComparer.Ordinal)
+    {
+        int.MinValue.ToString(), long.MinValue.ToString(), short.MinValue.ToString(),
+        sbyte.MinValue.ToString(), byte.MinValue.ToString(),
+        uint.MinValue.ToString(), ulong.MinValue.ToString(), ushort.MinValue.ToString(),
+        double.MinValue.ToString(), float.MinValue.ToString(), decimal.MinValue.ToString(),
+        "-3.4028234663852886E+38"
+    };
+
+    static readonly HashSet<string> _typeMaxSentinels = new(StringComparer.Ordinal)
+    {
+        int.MaxValue.ToString(), long.MaxValue.ToString(), short.MaxValue.ToString(),
+        sbyte.MaxValue.ToString(), byte.MaxValue.ToString(),
+        uint.MaxValue.ToString(), ulong.MaxValue.ToString(), ushort.MaxValue.ToString(),
+        double.MaxValue.ToString(), float.MaxValue.ToString(), decimal.MaxValue.ToString()
+    };
+
+    static bool IsTypeMinSentinel(string value) => _typeMinSentinels.Contains(value);
+    static bool IsTypeMaxSentinel(string value) => _typeMaxSentinels.Contains(value);
 }
