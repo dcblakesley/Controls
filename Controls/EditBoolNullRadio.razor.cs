@@ -1,87 +1,34 @@
 namespace Controls;
 
 /// <summary> Edit control for nullable boolean values, displays as radio buttons (Yes/No/Not Set).</summary>
-public partial class EditBoolNullRadio : IEditControl
+public partial class EditBoolNullRadio : EditControlBase<bool?>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // Control-specific properties
-    /// <summary> When true, displays radio buttons horizontally. Defaults to true.</summary>
-    [Parameter] public bool IsHorizontal { get; set; } = true;
-    
+    // Component-specific parameters
     /// <summary> Expression that binds to the nullable boolean property in the model.</summary>
     [Parameter] public required Expression<Func<bool?>> Field { get; set; }
-    
+
+    /// <summary> When true, displays radio buttons horizontally. Defaults to true.</summary>
+    [Parameter] public bool IsHorizontal { get; set; } = true;
+
     /// <summary> When true, displays the null/not set option. Defaults to true.</summary>
     [Parameter] public bool ShowNullOption { get; set; } = true;
 
-    // Text customization parameters
     /// <summary> Text to display for the true option. Defaults to "Yes".</summary>
     [Parameter] public string TrueText { get; set; } = "Yes";
-    
+
     /// <summary> Text to display for the false option. Defaults to "No".</summary>
     [Parameter] public string FalseText { get; set; } = "No";
-    
+
     /// <summary> Text to display for the null option. Defaults to "Not Set".</summary>
     [Parameter] public string NullText { get; set; } = "Not Set";
 
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
-
-    // Methods
     protected override void OnInitialized()
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        base.OnInitialized();
+        InitState(Field);
     }
-    void OnValueChanged(bool? value)
-    {
-        CurrentValue = value;
-    }
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
+
+    void OnValueChanged(bool? value) => CurrentValue = value;
 
     protected override bool TryParseValueFromString(string? value, out bool? result, out string? validationErrorMessage)
     {
@@ -103,12 +50,14 @@ public partial class EditBoolNullRadio : IEditControl
         validationErrorMessage = "The value must be either true, false, or empty.";
         return false;
     }
+
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
+
     bool ShouldShowComponent()
     {
         if (IsHidden)
             return false;
-        
+
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         return hidingMode switch
         {
@@ -120,6 +69,7 @@ public partial class EditBoolNullRadio : IEditControl
             _ => true
         };
     }
+
     string GetDisplayText(bool? value) => value switch
     {
         true => TrueText,

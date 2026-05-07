@@ -1,57 +1,19 @@
-﻿namespace Controls;
+namespace Controls;
 
 /// <summary> Edit control for selecting an enum value using radio buttons. Supports sorting and an optional "Other" option with text input.</summary>
-public partial class EditRadioEnum<TEnum> : IEditControl
+public partial class EditRadioEnum<TEnum> : EditControlBase<TEnum?>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // Component specific parameters
-    /// <summary> Expression that binds to the enum property in the model.</summary>
+    // Component-specific parameters
+    /// <summary>
+    /// Expression that binds to the enum property in the model.
+    /// Field intentionally uses <c>Expression&lt;Func&lt;TEnum&gt;&gt;</c> (non-nullable) even though
+    /// the base binds <c>TEnum?</c> — preserves the existing public API.
+    /// </summary>
     [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
-    
+
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
-    
+
     /// <summary> When true, sorts the enum options alphabetically by their display name. When false, uses the enum's numeric order.</summary>
     [Parameter] public bool Sort { get; set; }
 
@@ -61,31 +23,25 @@ public partial class EditRadioEnum<TEnum> : IEditControl
     // Other Option
     /// <summary> When true, includes an "Other" option with a text input field. The last enum value is treated as the "Other" option.</summary>
     [Parameter] public bool HasOtherOption { get; set; } = false;
-    
+
     /// <summary> Placeholder text for the "Other" option text input.</summary>
     [Parameter] public string? OtherPlaceholder { get; set; }
-    
+
     /// <summary> The text value entered in the "Other" option text input.</summary>
     [Parameter] public string? OtherValue { get; set; }
-    
+
     /// <summary> Event callback that fires when the OtherValue changes.</summary>
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
     Type _type = null!;
     Type _underlyingType = null!;
     bool _isNullable;
     List<TEnum?>? _cachedOptions;
 
-    // Methods
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        InitState(Field);
 
         // Handle nullable enum types
         _type = typeof(TEnum);
@@ -93,7 +49,9 @@ public partial class EditRadioEnum<TEnum> : IEditControl
         _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
         _cachedOptions = BuildOptions();
     }
+
     List<TEnum?> GetOptions() => _cachedOptions!;
+
     List<TEnum?> BuildOptions()
     {
         var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
@@ -113,14 +71,12 @@ public partial class EditRadioEnum<TEnum> : IEditControl
 
         // Add back the "other" option at the end if it exists
         if (HasOtherOption && otherOption != null)
-        {
             enumValues.Add(otherOption);
-        }
-
 
         return enumValues.Cast<TEnum?>().ToList();
     }
-    protected override bool TryParseValueFromString(string? value, out TEnum result, out string validationErrorMessage)
+
+    protected override bool TryParseValueFromString(string? value, out TEnum? result, out string validationErrorMessage)
     {
         // Handle null/empty for nullable enums
         if (string.IsNullOrEmpty(value))
@@ -148,16 +104,14 @@ public partial class EditRadioEnum<TEnum> : IEditControl
         validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
         return false;
     }
+
     async Task OnOtherValueChanged(ChangeEventArgs e)
     {
         var value = e.Value?.ToString();
         if (OtherValue != value)
-        {
             await OtherValueChanged.InvokeAsync(value);
-        }
     }
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
+
     bool ShouldShowComponent()
     {
         if (IsHidden)
