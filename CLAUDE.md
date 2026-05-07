@@ -84,6 +84,8 @@ Version is set via `<AssemblyVersion>` in each `.csproj`. Both Controls and Cont
 
 When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade itself — pair it with raising `<TargetFrameworks>`.
 
+**Bump only at publish time.** Do not bump `<AssemblyVersion>` for in-progress work — accumulate changes against the current version and bump (with the README changelog entry) only when the next NuGet release is being cut. This keeps git history clean and avoids meaningless intermediate version numbers.
+
 ### Publishing to NuGet
 
 ```bash

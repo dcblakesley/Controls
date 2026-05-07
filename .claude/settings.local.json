@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Skill(edit-controls)"
+      "Skill(edit-controls)",
+      "Bash(code *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Repos-Dave\\\\Controls\\\\Controls\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(head *)"
     ]
   }
 }
