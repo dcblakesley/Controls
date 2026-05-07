@@ -273,6 +273,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - `EditRadio` is the one remaining control still on Microsoft's `InputRadioGroup<T>` — it depends on the cascading-context plumbing that `<InputRadio>` children consume, and replacing the group requires also replacing the public `<InputRadio>` API. Intentional.
 - `_Imports.razor` now exposes `Microsoft.AspNetCore.Components.Forms` and `Controls.Helpers` so individual razor files no longer need per-file `@using` directives for `<InputRadioGroup>` / `<InputRadio>` / `.ToId()` / etc.
 
+**Tests**
+- `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10) — 57 tests covering the helpers (`EnumHelpers` cache + attribute precedence, `AttributesHelper.GetId` / `GetLabelText` / `GetMinAndMaxLengths`, `EditControlInit`, `ValidationHelper` regex parsing) and bUnit smoke tests for the controls (rendered DOM, ARIA attributes, edit/read-only switching, EditBool's new `RenderAsCheckboxWhenReadOnly` opt-in). Run with `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj`.
+
 ### 10.1.0
 
 **Behavioral changes** *(read before upgrading)*

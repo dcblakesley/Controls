@@ -22,7 +22,7 @@ dotnet pack Controls/Controls.csproj -c Release -o ./nupkg
 dotnet pack Controls.Demo/Controls.Demo.csproj -c Release -o ./nupkg
 ```
 
-There are no automated tests. Manual testing is done via the FormTesting app.
+Automated tests live in `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10 only). Run with `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj`. Coverage focuses on the helpers (`EnumHelpers`, `AttributesHelper`, `EditControlInit`, `ValidationHelper`) and bUnit smoke tests for the controls — particularly the parsing logic ported in the `EditControlBase` refactor. Add new tests alongside any non-trivial helper change. Manual smoke testing of layout / styling is still done via the `FormTesting` Blazor app.
 
 ## Project Structure
 
