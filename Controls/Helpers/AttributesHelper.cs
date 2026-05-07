@@ -36,24 +36,18 @@ public static class AttributesHelper
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
         FieldIdentifier fieldIdentifier)
     {
-        // If an Id is provided, use it
+        // Explicit id always wins.
         if (!string.IsNullOrEmpty(id))
-        {
             return id;
-        }
 
         var fieldName = fieldIdentifier.FieldName;
-        if (formGroupOptions != null && !string.IsNullOrEmpty(formGroupOptions.Name))
-        {
+        if (!string.IsNullOrEmpty(formGroupOptions?.Name))
             fieldName = formGroupOptions.Name + "-" + fieldName;
-        }
 
         if (idPrefix != null)
-        {
             fieldName = idPrefix + "-" + fieldName;
-        }
 
-        return id ?? fieldName.Replace(" ", "");
+        return fieldName.Replace(" ", "");
     }
 
     // Complex

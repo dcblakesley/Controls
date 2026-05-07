@@ -35,13 +35,13 @@ public partial class FormLabel
     string DisplayLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? Attributes.Description();
 
-    string _isRequired = "false";
+    bool _isRequired;
 
     protected override void OnInitialized()
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (Attributes == null)
             return;
-        _isRequired = Attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        _isRequired = Attributes.Any(x => x is RequiredAttribute);
     }
 }

@@ -25,7 +25,11 @@ public interface IEditControl
     /// <remarks> This is also available within <seealso cref="FormOptions"/> for applying it to a group of controls at the same time. </remarks>
     public bool IsEditMode { get; set; }
 
-    /// <summary> Not used </summary>
+    /// <summary>
+    /// When true, the editor input is rendered with the native <c>disabled</c> attribute (and, for some
+    /// controls, <c>aria-disabled</c>). Distinct from <see cref="IsEditMode"/>: a disabled control
+    /// still shows the editor visually, just non-interactive — read-only mode swaps in <see cref="ReadOnlyValue"/>.
+    /// </summary>
     public bool IsDisabled { get; set; }
 
     /// <summary> 

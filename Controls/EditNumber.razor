@@ -8,17 +8,22 @@
 
         @if (ShowEditor)
         {
-            <input type="number" 
-                   disabled=@IsDisabled 
-                   id=@_id 
-                   data-test-id=@_id 
-                   step=@Step
-                   @bind-value=@CurrentValueAsString
-                   @bind-value:event="oninput"
-                   class=@($"edit-number-input {CssClass} tooltip-container")
-                   aria-required=@_isRequired
-                   aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                   aria-errormessage=@($"error-msg-{_id}") />
+            <div class="edit-input-with-icon">
+                <input type="number"
+                       style="padding-right: 2rem"
+                       disabled=@IsDisabled
+                       id=@_id
+                       data-test-id=@_id
+                       step=@Step
+                       @bind-value=@CurrentValueAsString
+                       @bind-value:event="oninput"
+                       class=@($"edit-number-input {CssClass} tooltip-container")
+                       aria-required=@_isRequired
+                       aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                       aria-errormessage=@($"error-msg-{_id}") />
+                <InvalidIcon CssClass=@CssClass />
+            </div>
         }
         else
         {

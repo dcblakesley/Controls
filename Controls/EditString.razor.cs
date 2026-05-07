@@ -69,8 +69,8 @@ public partial class EditString : IEditControl
 
     // Fields
     string _id = string.Empty;
-    string _isRequired;
-    bool _showMaskedValue = false;
+    string _isRequired = "false";
+    bool _showMaskedValue;
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
 
@@ -78,10 +78,7 @@ public partial class EditString : IEditControl
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        _fieldIdentifier = FieldIdentifier.Create(Field);
-        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
-        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
     }
     bool ShouldShowComponent()
     {
@@ -119,6 +116,6 @@ public partial class EditString : IEditControl
             ? MaskText 
             : MaskText + CurrentValue[MaskText.Length..];
     }
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
+    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
+    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 }

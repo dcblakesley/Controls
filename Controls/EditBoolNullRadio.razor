@@ -20,8 +20,12 @@
                                @onchange="@(() => OnValueChanged(false))"
                                id=@($"rb-{_id}-false")
                                data-test-id=@($"rb-{_id}-false")
-                               class="edit-radio-input @ContainerClass"
-                               disabled=@IsDisabled />
+                               class="edit-radio-input @CssClass"
+                               disabled=@IsDisabled
+                               aria-required=@_isRequired
+                               aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                               aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                               aria-errormessage=@($"error-msg-{_id}") />
                         @FalseText
                     </label>
                     <label class="edit-radio-label">
@@ -33,7 +37,11 @@
                                id=@($"rb-{_id}-true")
                                data-test-id=@($"rb-{_id}-true")
                                class="edit-radio-input @CssClass"
-                               disabled=@IsDisabled />
+                               disabled=@IsDisabled
+                               aria-required=@_isRequired
+                               aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                               aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                               aria-errormessage=@($"error-msg-{_id}") />
                         @TrueText
                     </label>
                     @if (ShowNullOption)
@@ -47,7 +55,11 @@
                                    id=@($"rb-{_id}-none")
                                    data-test-id=@($"rb-{_id}-none")
                                    class="edit-radio-input @CssClass"
-                                   disabled=@IsDisabled/>
+                                   disabled=@IsDisabled
+                                   aria-required=@_isRequired
+                                   aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                                   aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                                   aria-errormessage=@($"error-msg-{_id}") />
                             @NullText
                         </label>
                     }

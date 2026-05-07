@@ -36,8 +36,8 @@
                                         <InputRadio Value=@option
                                                     disabled=@IsDisabled
                                                     class=@($"{CssClass}")
-                                                    id=@($"rb-{_id}-{option}")
-                                                    data-test-id=@($"rb-{_id}-{option}") />
+                                                    id=@($"rb-{_id}-{option.ToId()}")
+                                                    data-test-id=@($"rb-{_id}-{option.ToId()}") />
 
                                         @((MarkupString)option.GetName())
                                     </label>

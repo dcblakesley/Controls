@@ -78,6 +78,12 @@ The Controls project defines global usings in `Controls/GlobalUsings.cs`. The Co
 
 Version is set via `<AssemblyVersion>` in each `.csproj`. Both Controls and Controls.Demo should be kept in sync. `FileVersion` and `Version` derive from `AssemblyVersion`. Update the changelog in `README.md` when bumping versions.
 
+**Convention: the major version tracks the latest supported .NET version, *not* semver.** Library code currently multi-targets net8/net9/net10, so we sit on `10.x.x` until net11 ships. Within that:
+- **Minor** (`10.X.0`) — new features, behavioral changes, or anything a consumer might need to read about before upgrading. Bump even for technically-breaking changes that semver would call major.
+- **Patch** (`10.x.X`) — pure bug fixes, internal refactors, doc tweaks.
+
+When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade itself — pair it with raising `<TargetFrameworks>`.
+
 ### Publishing to NuGet
 
 ```bash

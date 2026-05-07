@@ -74,18 +74,15 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
     string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
-    Type _type;
-    Type _underlyingType;
+    Type _type = null!;
+    Type _underlyingType = null!;
     bool _isNullable;
     List<TEnum>? _cachedOptions;
 
     // Methods
     protected override void OnInitialized()
     {
-        _fieldIdentifier = FieldIdentifier.Create(Field);
-        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, _fieldIdentifier);
-        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
 
         // Handle nullable enum types
         _type = typeof(TEnum);
@@ -99,26 +96,10 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
     {
         var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
 
-        // Sort values if needed
+        // Sort by the same display name the UI shows so sort order matches what the user sees.
+        // EnumHelpers.GetName caches its lookup, so this stays cheap on subsequent renders.
         if (Sort)
-        {
-            // Sort by display name that would appear in the UI
-            enumValues = enumValues.OrderBy(x =>
-            {
-                // Get display name from DisplayAttribute if present
-                var memberInfo = _underlyingType.GetMember(x.ToString() ?? string.Empty);
-                if (memberInfo.Length > 0)
-                {
-                    var displayAttr = memberInfo[0].GetCustomAttribute<DisplayAttribute>();
-                    if (displayAttr != null && !string.IsNullOrEmpty(displayAttr.Name))
-                    {
-                        return displayAttr.Name;
-                    }
-                }
-                // Otherwise use enum name or GetName extension
-                return x.GetName();
-            }).ToList();
-        }
+            enumValues = enumValues.OrderBy(x => x!.GetName()).ToList();
 
         return enumValues;
     }
@@ -163,6 +144,6 @@ public partial class EditCheckedEnumList<TEnum> : IEditControl
         };
     }
 
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
+    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
+    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 }

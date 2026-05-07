@@ -71,15 +71,11 @@ public partial class EditCheckedStringList : IEditControl
     string _isRequired = "false";
     List<Attribute>? _attributes;
     FieldIdentifier _fieldIdentifier;
-    bool hasError;
 
     // Methods
     protected override void OnInitialized()
     {
-        _fieldIdentifier = FieldIdentifier.Create(Field);
-        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FormGroupOptions, null, _fieldIdentifier);
-        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
     }
 
     async Task SetAsync(string str)
@@ -120,8 +116,8 @@ public partial class EditCheckedStringList : IEditControl
             _ => true
         };
     }
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
+    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
+    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 
     /// <summary> Event callback that fires when the Field value changes.</summary>
     [Parameter] public EventCallback<IReadOnlyList<string>> FieldChanged { get; set; }

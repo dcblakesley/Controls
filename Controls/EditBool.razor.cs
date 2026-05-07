@@ -52,6 +52,18 @@ public partial class EditBool : IEditControl
     /// <summary> When true, allows the checkbox to receive focus even when disabled. Defaults to true.</summary>
     [Parameter] public bool AllowFocusWhenDisabled { get; set; } = true;
 
+    /// <summary> Text shown by the read-only view when the value is true. Defaults to "Yes". </summary>
+    [Parameter] public string TrueText { get; set; } = "Yes";
+
+    /// <summary> Text shown by the read-only view when the value is false. Defaults to "No". </summary>
+    [Parameter] public string FalseText { get; set; } = "No";
+
+    /// <summary>
+    /// When true, falls back to the legacy behavior of rendering a disabled checkbox in read-only mode.
+    /// Defaults to false — read-only mode now uses <see cref="ReadOnlyValue"/> with <see cref="TrueText"/>/<see cref="FalseText"/> like the other controls.
+    /// </summary>
+    [Parameter] public bool RenderAsCheckboxWhenReadOnly { get; set; }
+
     // Fields
     string _id = string.Empty;
     string _isRequired = "false";
@@ -61,15 +73,12 @@ public partial class EditBool : IEditControl
     // Methods
     protected override void OnInitialized()
     {
-        _fieldIdentifier = FieldIdentifier.Create(Field);
-        _attributes = AttributesHelper.GetExpressionCustomAttributes(Field);
-        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, FieldIdentifier);
-        _isRequired = _attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
     }
 
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
-    bool ShowEditor => (IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode);
-    bool ShouldHideLabel => IsLabelHidden || (FormOptions?.IsLabelHidden ?? false);
+    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
+    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 
     bool ShouldShowComponent()
     {

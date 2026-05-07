@@ -1,57 +1,37 @@
-﻿@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Forms
 @inherits InputCheckbox
 
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
 
-        @if (!ShouldHideLabel)
-        {           
-            <label class="edit-checkbox-label" for=@_id>
-                <input type="checkbox"
-                       value="@CurrentValue"
-                       @onchange="HandleCheckboxChange"
-                       @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
-
-                       class="@CssClass"
-                       id=@_id
-                       data-test-id=@_id
-                       checked=@CurrentValue
-                       tabindex="0"
-                       aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
-                       disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
-                       aria-required=@_isRequired
-                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                       aria-errormessage=@($"error-msg-{_id}") />
-
-                @((MarkupString)DisplayLabel())
-
-                <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@_attributes/>
-
-            </label>
-            @if (DisplayDescription() != null)
+        @if (ShowEditor || RenderAsCheckboxWhenReadOnly)
+        {
+            @* Editable (or opt-in legacy read-only) — render the checkbox *@
+            @if (!ShouldHideLabel)
             {
-                <p class="edit-label-description" id="desc-@Id">
-                    @((MarkupString)DisplayDescription()!)
-                </p>
+                <label class="edit-checkbox-label" for=@_id>
+                    @CheckboxFragment
+                    @((MarkupString)DisplayLabel())
+                    <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@_attributes/>
+                </label>
+                @if (DisplayDescription() != null)
+                {
+                    <p class="edit-label-description" id="desc-@Id">
+                        @((MarkupString)DisplayDescription()!)
+                    </p>
+                }
+            }
+            else
+            {
+                @CheckboxFragment
             }
         }
         else
         {
-            <input type="checkbox"
-                   value="@CurrentValue"
-                   @onchange="HandleCheckboxChange"
-                   @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
-                   class="@CssClass"
-                   id=@_id
-                   data-test-id=@_id
-                   checked=@CurrentValue
-                   tabindex="0"
-                   aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
-                   disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
-                   aria-required=@_isRequired
-                   aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                   aria-errormessage=@($"error-msg-{_id}") />
+            @* Read-only — use the same FormLabel + ReadOnlyValue pattern as the other controls *@
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel />
+            <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@(CurrentValue ? TrueText : FalseText) />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
@@ -60,4 +40,22 @@
             <div class="bound-value">@CurrentValueAsString</div>
         }
     </div>
+}
+
+@code {
+    RenderFragment CheckboxFragment => @<input type="checkbox"
+                                                value="@CurrentValue"
+                                                @onchange="HandleCheckboxChange"
+                                                @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
+                                                class="@CssClass"
+                                                id=@_id
+                                                data-test-id=@_id
+                                                checked=@CurrentValue
+                                                tabindex="0"
+                                                aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
+                                                disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
+                                                aria-required=@_isRequired
+                                                aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                                                aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                                                aria-errormessage=@($"error-msg-{_id}") />;
 }

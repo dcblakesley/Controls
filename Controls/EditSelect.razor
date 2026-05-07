@@ -16,6 +16,7 @@
                 id=@_id
                 data-test-id=@_id
                 aria-required=@_isRequired
+                aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
                 aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                 aria-errormessage=@($"error-msg-{_id}")>
 

@@ -8,17 +8,22 @@
 
         @if (ShowEditor)
         {
-            <textarea @bind-value=@CurrentValue
-                      @bind-value:event="oninput"
-                      disabled=@IsDisabled
-                      id=@_id
-                      data-test-id=@_id
-                      class=@($"edit-textarea-input {CssClass}")
-                      rows=@Rows
-                      placeholder=@Placeholder
-                      aria-required=@_isRequired
-                      aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                      aria-errormessage=@($"error-msg-{_id}")></textarea>
+            <div class="edit-input-with-icon">
+                <textarea @bind-value=@CurrentValue
+                          @bind-value:event="oninput"
+                          style="padding-right: 2rem"
+                          disabled=@IsDisabled
+                          id=@_id
+                          data-test-id=@_id
+                          class=@($"edit-textarea-input {CssClass}")
+                          rows=@Rows
+                          placeholder=@Placeholder
+                          aria-required=@_isRequired
+                          aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                          aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                          aria-errormessage=@($"error-msg-{_id}")></textarea>
+                <InvalidIcon CssClass=@CssClass />
+            </div>
         }
         else
         {
