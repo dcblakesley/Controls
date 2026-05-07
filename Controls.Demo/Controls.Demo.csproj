@@ -4,7 +4,8 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <!-- Only auto-pack on Release builds; otherwise dev/inner-loop builds repack on every save. -->
+    <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release'">True</GeneratePackageOnBuild>
     <Title>Blazor Controls Demo</Title>
     <PackageId>WssBlazorControls.Demo</PackageId>
 	  <AssemblyVersion>10.1.0</AssemblyVersion>

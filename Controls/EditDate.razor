@@ -26,10 +26,10 @@
         }
         else
         {
-            <ReadOnlyValue Id=_id IsRequired=_isRequired CssClass=@CssClass Text=@GetDisplayValue() />
+            <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@GetDisplayValue() />
         }
 
-        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
         @if (FormOptions != null && FormOptions.ShowBoundValues)
         {
             <div class="bound-value">@CurrentValueAsString</div>

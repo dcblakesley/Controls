@@ -21,7 +21,8 @@
 
                 @foreach (var o in Options)
                 {
-                    <option value=@o
+                    <option title=@_attributes.Tooltip()
+                            value=@o
                             selected=@(CurrentValueAsString == o)
                             id=@($"{_id}-option-{o.ToId()}")
                             data-test-id=@($"{_id}-option-{o.ToId()}")
@@ -36,7 +37,7 @@
             <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@CurrentValueAsString />
         }
 
-        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes />
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
         @if (FormOptions != null && FormOptions.ShowBoundValues)
         {
             <div class="bound-value">@CurrentValueAsString</div>

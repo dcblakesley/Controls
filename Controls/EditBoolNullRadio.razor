@@ -73,7 +73,7 @@
                               Text=@GetDisplayText(CurrentValue) />
             }
 
-            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes/>
+            <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
             @if (FormOptions?.ShowBoundValues == true)
             {
                 <div class="bound-value">@CurrentValueAsString</div>
