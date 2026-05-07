@@ -1,6 +1,5 @@
-﻿@inherits InputDate<T>
-@using Microsoft.AspNetCore.Components.Forms
 @typeparam T
+@inherits EditControlBase<T>
 
 @if (ShouldShowComponent())
 {
@@ -10,17 +9,18 @@
         @if (ShowEditor)
         {
             <div class="edit-input-with-icon">
-                <InputDate @bind-Value="CurrentValue"
-                           Type=Type
-                           class=@($"edit-input edit-date-input {CssClass}")
-                           style="padding-right: 2rem"
-                           id=@_id
-                           data-test-id=@_id
-                           disabled=@IsDisabled
-                           aria-required=@_isRequired
-                           aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                           aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                           aria-errormessage=@($"error-msg-{_id}") />
+                <input type=@HtmlInputType
+                       @bind-value=@CurrentValueAsString
+                       @bind-value:event="onchange"
+                       class=@($"edit-input edit-date-input {CssClass}")
+                       style="padding-right: 2rem"
+                       id=@_id
+                       data-test-id=@_id
+                       disabled=@IsDisabled
+                       aria-required=@_isRequired
+                       aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                       aria-errormessage=@($"error-msg-{_id}") />
                 <InvalidIcon CssClass=@CssClass />
             </div>
         }
@@ -35,4 +35,15 @@
             <div class="bound-value">@CurrentValueAsString</div>
         }
     </div>
+}
+
+@code {
+    string HtmlInputType => Type switch
+    {
+        InputDateType.Date => "date",
+        InputDateType.DateTimeLocal => "datetime-local",
+        InputDateType.Month => "month",
+        InputDateType.Time => "time",
+        _ => "date"
+    };
 }

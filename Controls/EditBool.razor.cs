@@ -1,54 +1,13 @@
-﻿namespace Controls;
+namespace Controls;
 
 /// <summary> Edit control for boolean values, displays as a checkbox.</summary>
-public partial class EditBool : IEditControl
+public partial class EditBool : EditControlBase<bool>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    // Component-specific parameters
 
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // EditBool specific properties
     /// <summary> Expression that binds to the boolean property in the model.</summary>
     [Parameter] public required Expression<Func<bool>> Field { get; set; }
-    
+
     /// <summary> When true, allows the checkbox to receive focus even when disabled. Defaults to true.</summary>
     [Parameter] public bool AllowFocusWhenDisabled { get; set; } = true;
 
@@ -64,33 +23,32 @@ public partial class EditBool : IEditControl
     /// </summary>
     [Parameter] public bool RenderAsCheckboxWhenReadOnly { get; set; }
 
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
-
-    // Methods
     protected override void OnInitialized()
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        base.OnInitialized();
+        InitState(Field);
     }
 
+    // Checkboxes don't bind via string parsing — the value is set directly through CurrentValue
+    // by HandleCheckboxChange below. This matches Microsoft's InputCheckbox behavior.
+    protected override bool TryParseValueFromString(string? value, out bool result, out string validationErrorMessage)
+        => throw new NotSupportedException(
+            $"This component does not parse string inputs. Bind to the '{nameof(CurrentValue)}' property, not '{nameof(CurrentValueAsString)}'.");
+
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
+    string? DisplayDescription() => Description ?? _attributes.Description();
 
     bool ShouldShowComponent()
     {
         if (IsHidden)
             return false;
-        
+
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         return hidingMode switch
         {
             HidingMode.None => true,
             HidingMode.WhenNull => true,
-            HidingMode.WhenNullOrDefault => CurrentValue, 
+            HidingMode.WhenNullOrDefault => CurrentValue,
             HidingMode.WhenReadOnlyAndNull => true,
             HidingMode.WhenReadOnlyAndNullOrDefault => !IsEditMode && CurrentValue,
             _ => true
@@ -101,10 +59,6 @@ public partial class EditBool : IEditControl
     {
         // Only update the value if the checkbox is not disabled
         if (ShowEditor && !IsDisabled)
-        {
-            CurrentValue = (bool)args.Value;
-        }
+            CurrentValue = (bool)args.Value!;
     }
-
-    string? DisplayDescription() => Description ?? _attributes.Description();
 }

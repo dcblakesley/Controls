@@ -1,71 +1,58 @@
-﻿namespace Controls;
+namespace Controls;
 
 /// <summary> Edit control for numeric values, displays as a number input. Supports custom formatting and step values.</summary>
-public partial class EditNumber<T> : IEditControl
+public partial class EditNumber<T> : EditControlBase<T>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    // Component-specific parameters
 
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // Component-specific properties
     /// <summary> Expression that binds to the numeric property in the model.</summary>
     [Parameter] public required Expression<Func<T>> Field { get; set; }
-    
+
     /// <summary> The increment/decrement step for the number input. Defaults to 1.0.</summary>
     [Parameter] public decimal Step { get; set; } = 1.0m;
-    
+
     /// <summary> Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal places).</summary>
     [Parameter] public string? Format { get; set; }
-    
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
 
-    // Methods
+    /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
+    [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a number.";
+
     protected override void OnInitialized()
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        base.OnInitialized();
+        InitState(Field);
     }
+
+    // Ported from Microsoft.AspNetCore.Components.Forms.InputNumber<T>:
+    // BindConverter handles every numeric primitive (int, long, short, sbyte, byte, decimal,
+    // float, double, plus their unsigned + nullable variants).
+    protected override bool TryParseValueFromString(string? value, out T result, out string validationErrorMessage)
+    {
+        if (BindConverter.TryConvertTo<T>(value, CultureInfo.InvariantCulture, out var parsedValue))
+        {
+            result = parsedValue!;
+            validationErrorMessage = null!;
+            return true;
+        }
+
+        result = default!;
+        validationErrorMessage = string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, FieldIdentifier.FieldName);
+        return false;
+    }
+
+    // Ported from InputNumber<T>: route through BindConverter so culture-aware formatting matches Microsoft's behavior.
+    protected override string? FormatValueAsString(T? value) => value switch
+    {
+        null => null,
+        int @int => BindConverter.FormatValue(@int, CultureInfo.InvariantCulture),
+        long @long => BindConverter.FormatValue(@long, CultureInfo.InvariantCulture),
+        short @short => BindConverter.FormatValue(@short, CultureInfo.InvariantCulture),
+        float @float => BindConverter.FormatValue(@float, CultureInfo.InvariantCulture),
+        double @double => BindConverter.FormatValue(@double, CultureInfo.InvariantCulture),
+        decimal @decimal => BindConverter.FormatValue(@decimal, CultureInfo.InvariantCulture),
+        _ => value.ToString()
+    };
+
     bool ShouldShowComponent()
     {
         if (IsHidden)
@@ -82,15 +69,13 @@ public partial class EditNumber<T> : IEditControl
         return hidingMode switch
         {
             HidingMode.WhenReadOnlyAndNull => !isReadOnly || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => !isReadOnly || value != null && Convert.ToDouble(value) != 0,
+            HidingMode.WhenReadOnlyAndNullOrDefault => !isReadOnly || (value != null && Convert.ToDouble(value) != 0),
             HidingMode.WhenNull => value != null,
             HidingMode.WhenNullOrDefault => value != null && Convert.ToDouble(value) != 0,
             _ => true
         };
     }
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
-    
+
     string? GetFormattedNumber()
     {
         try

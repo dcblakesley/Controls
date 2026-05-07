@@ -1,6 +1,5 @@
-﻿@using Microsoft.AspNetCore.Components.Forms
-@inherits InputSelect<TValue>
 @typeparam TValue
+@inherits EditControlBase<TValue>
 
 @if (ShouldShowComponent())
 {
@@ -9,15 +8,15 @@
 
         @if (ShowEditor)
         {
-            <InputSelect @bind-Value=@CurrentValue
-                         id=@_id
-                         data-test-id=@_id
-                         disabled=@IsDisabled
-                         class=@($"edit-input edit-select-select {CssClass}")
-                         aria-required=@_isRequired
-                         aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                         aria-errormessage=@($"error-msg-{_id}")
-                         aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")>
+            <select @bind=@CurrentValueAsString
+                    id=@_id
+                    data-test-id=@_id
+                    disabled=@IsDisabled
+                    class=@($"edit-input edit-select-select {CssClass}")
+                    aria-required=@_isRequired
+                    aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                    aria-errormessage=@($"error-msg-{_id}")
+                    aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")>
 
                 @foreach (var o in Options)
                 {
@@ -30,7 +29,7 @@
                         @o
                     </option>
                 }
-            </InputSelect>
+            </select>
         }
         else
         {

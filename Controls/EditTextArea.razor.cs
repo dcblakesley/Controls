@@ -1,80 +1,38 @@
-﻿namespace Controls;
+namespace Controls;
 
 /// <summary> Edit control for multi-line string values, displays as a textarea with configurable row count.</summary>
-public partial class EditTextArea : IEditControl
+public partial class EditTextArea : EditControlBase<string?>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    // Component-specific parameters
 
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; } 
-            
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set;  }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // EditTextArea specific parameters
     /// <summary> Placeholder text to display in the textarea when empty.</summary>
     [Parameter] public string? Placeholder { get; set; }
-    
+
     /// <summary> Expression that binds to the string property in the model.</summary>
     [Parameter] public required Expression<Func<string>> Field { get; set; }
-    
+
     /// <summary> Number of visible text rows in the textarea. Defaults to 2.</summary>
     [Parameter] public int Rows { get; set; } = 2;
 
-    // Private fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
-
-    // Methods
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        InitState(Field);
     }
+
+    // Trivial parser — same as Microsoft's InputTextArea: pass the string through.
+    protected override bool TryParseValueFromString(string? value, out string? result, out string validationErrorMessage)
+    {
+        result = value;
+        validationErrorMessage = null!;
+        return true;
+    }
+
     bool ShouldShowComponent()
     {
         if (IsHidden)
             return false;
 
-        // Get effective hiding mode (component's setting overrides form's setting)
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 
         if (hidingMode == HidingMode.None)

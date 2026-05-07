@@ -1,6 +1,5 @@
-﻿@using Microsoft.AspNetCore.Components.Forms
-@inherits InputSelect<TValue>
 @typeparam TValue
+@inherits EditControlBase<TValue>
 
 @if (ShouldShowComponent())
 {
@@ -9,23 +8,22 @@
 
         @if (ShowEditor)
         {
-            <InputSelect
-                @bind-Value=@CurrentValue
-                class=@($"edit-input edit-select-select {CssClass}")
-                disabled=@IsDisabled
-                id=@_id
-                data-test-id=@_id
-                aria-required=@_isRequired
-                aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                aria-errormessage=@($"error-msg-{_id}")>
+            <select @bind=@CurrentValueAsString
+                    class=@($"edit-input edit-select-select {CssClass}")
+                    disabled=@IsDisabled
+                    id=@_id
+                    data-test-id=@_id
+                    aria-required=@_isRequired
+                    aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                    aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                    aria-errormessage=@($"error-msg-{_id}")>
 
                 @ChildContent
-            </InputSelect>
+            </select>
         }
         else
         {
-            <ReadOnlyValue Id=@_id IsRequired=_isRequired CssClass=@CssClass Text=@CurrentValueAsString/>
+            <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@CurrentValueAsString />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

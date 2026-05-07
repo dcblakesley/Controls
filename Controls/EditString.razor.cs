@@ -1,59 +1,18 @@
-﻿// ReSharper disable SimplifyConditionalTernaryExpression
+// ReSharper disable SimplifyConditionalTernaryExpression
 
 namespace Controls;
 
 /// <summary> Edit control for string values, displays as a text input. Supports masking and URL display in read-only mode.</summary>
-public partial class EditString : IEditControl
+public partial class EditString : EditControlBase<string?>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    // Component-specific parameters
 
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; } 
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // Component specific parameters
     /// <summary> Placeholder text to display in the input when empty.</summary>
     [Parameter] public string? Placeholder { get; set; }
-    
+
     /// <summary> Expression that binds to the string property in the model.</summary>
     [Parameter] public required Expression<Func<string>> Field { get; set; }
-    
+
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
     /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>
     [Parameter] public string? MaskText { get; set; }
@@ -67,24 +26,28 @@ public partial class EditString : IEditControl
     /// <summary> Sets the autocomplete attribute on the input element. Defaults to "one-time-code" to prevent browser autofill/extensions from intercepting input events.</summary>
     [Parameter] public string Autocomplete { get; set; } = "one-time-code";
 
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
     bool _showMaskedValue;
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
 
-    // Methods
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        InitState(Field);
     }
+
+    // Trivial parser — same as Microsoft's InputText: pass the string through.
+    // `out string` (not `string?`) for net8 base-signature compat.
+    protected override bool TryParseValueFromString(string? value, out string? result, out string validationErrorMessage)
+    {
+        result = value;
+        validationErrorMessage = null!;
+        return true;
+    }
+
     bool ShouldShowComponent()
     {
         if (IsHidden)
             return false;
-        
+
         var value = CurrentValue;
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
         var isEditMode = (FormOptions?.IsEditMode ?? true) && IsEditMode;
@@ -99,23 +62,20 @@ public partial class EditString : IEditControl
             _ => true
         };
     }
+
     string? GetMaskValue()
     {
         if (string.IsNullOrEmpty(MaskText) || CurrentValue == null)
-        {
             return CurrentValue;
-        }
 
-        if(MaskText.Length == 1)
+        if (MaskText.Length == 1)
         {
             // If MaskText is a single character, return it as a mask for the entire value
             return new string(MaskText[0], CurrentValue.Length);
         }
 
-        return MaskText.Length > CurrentValue.Length 
-            ? MaskText 
+        return MaskText.Length > CurrentValue.Length
+            ? MaskText
             : MaskText + CurrentValue[MaskText.Length..];
     }
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 }

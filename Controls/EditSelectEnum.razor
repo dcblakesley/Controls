@@ -1,4 +1,3 @@
-@using Microsoft.AspNetCore.Components.Forms
 @typeparam TEnum
 @inherits EditControlBase<TEnum>
 
@@ -9,15 +8,15 @@
 
         @if (ShowEditor)
         {
-            <InputSelect @bind-Value=@CurrentValue
-                         disabled=@IsDisabled
-                         class=@($"edit-input edit-select-select {CssClass}")
-                         id=@_id
-                         data-test-id=@_id
-                         aria-required=@_isRequired
-                         aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                         aria-errormessage=@($"error-msg-{_id}")
-                         aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")>
+            <select @bind=@CurrentValueAsString
+                    disabled=@IsDisabled
+                    class=@($"edit-input edit-select-select {CssClass}")
+                    id=@_id
+                    data-test-id=@_id
+                    aria-required=@_isRequired
+                    aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                    aria-errormessage=@($"error-msg-{_id}")
+                    aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")>
 
                 @foreach (var o in GetOptions())
                 {
@@ -30,7 +29,7 @@
                         @o?.GetName()
                     </option>
                 }
-            </InputSelect>
+            </select>
         }
         else
         {

@@ -30,19 +30,19 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
 
     void OnValueChanged(bool? value) => CurrentValue = value;
 
-    protected override bool TryParseValueFromString(string? value, out bool? result, out string? validationErrorMessage)
+    protected override bool TryParseValueFromString(string? value, out bool? result, out string validationErrorMessage)
     {
         if (string.IsNullOrEmpty(value))
         {
             result = null;
-            validationErrorMessage = null;
+            validationErrorMessage = null!;
             return true;
         }
 
         if (bool.TryParse(value, out bool boolValue))
         {
             result = boolValue;
-            validationErrorMessage = null;
+            validationErrorMessage = null!;
             return true;
         }
 

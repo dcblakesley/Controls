@@ -1,78 +1,71 @@
-﻿namespace Controls;
+namespace Controls;
 
-/// <summary> 
+/// <summary>
 /// Select component where you create the options within the markup yourself. <br/>
 /// If you want an Enum to back the select, use <see cref="EditSelectEnum{TValue}"/> instead. <br/>
 /// If you want to use a list of strings to back the select, use <see cref="EditSelectString{TValue}"/> instead.
 /// </summary>
-public partial class EditSelect<TValue> : IEditControl
+public partial class EditSelect<TValue> : EditControlBase<TValue>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; } 
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-    
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
+    // Component-specific parameters
 
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // Component specific parameters
     /// <summary> Expression that binds to the property in the model.</summary>
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
 
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
+    /// <summary> The <c>&lt;option&gt;</c> elements to render inside the select.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    // Methods
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        InitState(Field);
     }
+
+    // Ported from Microsoft.AspNetCore.Components.Forms.InputSelect<TValue>:
+    // strings pass through; enums (and nullable enums) round-trip via BindConverter.
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage)
+    {
+        var typeOfValue = typeof(TValue);
+
+        if (typeOfValue == typeof(string))
+        {
+            result = (TValue)(object)value!;
+            validationErrorMessage = null!;
+            return true;
+        }
+
+        if (typeOfValue.IsEnum || (Nullable.GetUnderlyingType(typeOfValue)?.IsEnum ?? false))
+        {
+            if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
+            {
+                result = parsedValue!;
+                validationErrorMessage = null!;
+                return true;
+            }
+
+            result = default!;
+            validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
+            return false;
+        }
+
+        // Fallback to BindConverter for any other primitive value type.
+        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var fallback))
+        {
+            result = fallback!;
+            validationErrorMessage = null!;
+            return true;
+        }
+
+        result = default!;
+        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
+        return false;
+    }
+
     bool ShouldShowComponent()
     {
         if (IsHidden)
             return false;
 
-        // Get effective hiding mode (component's setting overrides form's setting)
         var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
 
         if (hidingMode == HidingMode.None)

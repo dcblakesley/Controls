@@ -1,68 +1,47 @@
-﻿namespace Controls;
+namespace Controls;
 
 /// <summary> Select a string from Options (List of strings)</summary>
-public partial class EditSelectString<TValue> : IEditControl
+public partial class EditSelectString<TValue> : EditControlBase<TValue>
 {
-    // Cascading parameters
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    // Component-specific parameters
 
-    // IEditControl interface properties
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; } 
-    /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    // IEditControl state properties
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
-    // Component specific parameters
     /// <summary> Expression that binds to the property in the model.</summary>
     [Parameter] public required Expression<Func<TValue>> Field { get; set; }
-    
+
     /// <summary> List of string options to display in the select dropdown.</summary>
     [Parameter] public required List<string> Options { get; set; }
 
-    // Fields
-    string _id = string.Empty;
-    string _isRequired = "false";
-    List<Attribute>? _attributes;
-    FieldIdentifier _fieldIdentifier;
-
-    // Methods
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        InitState(Field);
     }
+
+    // Same parser shape as EditSelect — strings pass through, enums via BindConverter, anything else
+    // via BindConverter as a fallback.
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage)
+    {
+        var typeOfValue = typeof(TValue);
+
+        if (typeOfValue == typeof(string))
+        {
+            result = (TValue)(object)value!;
+            validationErrorMessage = null!;
+            return true;
+        }
+
+        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
+        {
+            result = parsedValue!;
+            validationErrorMessage = null!;
+            return true;
+        }
+
+        result = default!;
+        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
+        return false;
+    }
+
     bool ShouldShowComponent()
     {
         if (IsHidden)
@@ -82,6 +61,4 @@ public partial class EditSelectString<TValue> : IEditControl
             _ => true
         };
     }
-    bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
-    bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 }
