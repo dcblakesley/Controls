@@ -82,7 +82,9 @@ The Controls project defines global usings in `Controls/GlobalUsings.cs`. The Co
 
 **Work directly on `master`.** This project does not use feature branches — commits land on the default branch. This overrides the Claude Code default that creates a branch first; do not run `git checkout -b` before editing.
 
-Still commit only when explicitly asked. Never push to NuGet from an agent (see Release Workflow).
+**Commit and push often.** After each logical chunk of work that builds and tests cleanly, commit it and push to origin. Don't wait to be asked — the user prefers many small focused commits over one big end-of-session dump. Group changes into meaningful commits (one phase / one feature / one fix per commit, not one mega-commit). If a chunk leaves the build or tests broken, finish it first rather than committing a broken state. This overrides the Claude Code default that says "commit or push only when the user asks."
+
+Never push to NuGet from an agent (see Release Workflow).
 
 ## Release Workflow
 
