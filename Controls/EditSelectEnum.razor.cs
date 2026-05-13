@@ -41,31 +41,8 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
         return enumValues.Cast<TEnum?>().ToList();
     }
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-
-        if (hidingMode == HidingMode.None)
-            return true;
-
-        var value = Value;
-        var isNull = value == null;
-        var isDefault = isNull || EqualityComparer<TEnum>.Default.Equals(value, default);
-        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
-
-        return hidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
-    }
-
+    // Base IsValueDefault uses EqualityComparer<TEnum>.Default — for non-nullable TEnum that
+    // matches the zero-valued enum, which is the same "default" as before.
     protected override bool TryParseValueFromString(string? value, out TEnum result, out string validationErrorMessage)
     {
         // Handle null/empty for nullable enums

@@ -121,6 +121,19 @@ Install-Package WssBlazorControls
 - **`FormLabel`** - Consistent labeling with tooltips and descriptions
 - **`FieldValidationDisplay`** - Validation message display
 - **`ReadOnlyValue`** - Read-only value presentation
+- **`EditDisplay`** - Static label+value pair (no model binding)
+
+#### `EditDisplay` vs `ReadOnlyValue`
+Both render text in the `edit-readonly-value` style, but their use cases are different:
+
+| | `EditDisplay` | `ReadOnlyValue` |
+|---|---|---|
+| **When to use** | Standalone label+value pair outside an Edit* control — e.g. a derived value like `"15.3 oz / can"` that's not bound to a model property | Always — it's rendered by the Edit* controls in read-only mode, not typically used directly by consumers |
+| **Owns its label** | Yes (`Label`, `Description`, `Tooltip` parameters) | No — sits inside an Edit* control that owns the `FormLabel` |
+| **Model binding** | None | None (reads `Text` after the parent has formatted the value) |
+| **Validation** | None | None (the parent control's `FieldValidationDisplay` handles it) |
+
+Reach for `EditDisplay` when you want the same visual treatment as a read-only `EditString` but without an `EditForm` / model property behind it.
 
 ## Component Features
 

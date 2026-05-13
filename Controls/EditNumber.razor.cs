@@ -53,28 +53,9 @@ public partial class EditNumber<T> : EditControlBase<T>
         _ => value.ToString()
     };
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-
-        if (hidingMode == HidingMode.None)
-            return true;
-
-        var isReadOnly = !((IsEditMode && FormOptions == null) || (IsEditMode && FormOptions!.IsEditMode));
-        var value = Value;
-
-        return hidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !isReadOnly || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => !isReadOnly || (value != null && Convert.ToDouble(value) != 0),
-            HidingMode.WhenNull => value != null,
-            HidingMode.WhenNullOrDefault => value != null && Convert.ToDouble(value) != 0,
-            _ => true
-        };
-    }
+    // Numeric zero (any T) counts as "default" for the NullOrDefault hiding modes.
+    // CurrentValue is guaranteed non-null here — the base method handles the null branch.
+    protected override bool IsValueDefault() => Convert.ToDouble(CurrentValue) == 0;
 
     string? GetFormattedNumber()
     {

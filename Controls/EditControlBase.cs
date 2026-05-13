@@ -57,14 +57,23 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
-    /// from the derived control's <c>Field</c> expression. Generic so it works regardless of whether
-    /// the control's Field type matches <typeparamref name="TValue"/> exactly (some controls — e.g.
-    /// <c>EditRadioEnum</c> — declare <c>Expression&lt;Func&lt;TEnum&gt;&gt;</c> while inheriting
+    /// from the derived control's <c>Field</c> expression, and registers the field with
+    /// <see cref="FormOptions.FieldIdentifiers"/> so the validation summary can link to it.
+    /// Generic so it works regardless of whether the control's Field type matches
+    /// <typeparamref name="TValue"/> exactly (some controls — e.g. <c>EditRadioEnum</c> — declare
+    /// <c>Expression&lt;Func&lt;TEnum&gt;&gt;</c> while inheriting
     /// <c>EditControlBase&lt;TEnum?&gt;</c>).
     /// </summary>
+    /// <remarks>
+    /// Registration used to live in <c>FieldValidationDisplay.OnInitialized</c>, but that
+    /// component is rendered conditionally (inside <c>@if (ShouldShowComponent())</c>) — so
+    /// hidden fields silently never registered, and the validation summary couldn't link to them.
+    /// Registering here happens once per control init and survives any HidingMode setting.
+    /// </remarks>
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        FormOptions?.FieldIdentifiers.Add(_fieldIdentifier);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>
@@ -72,4 +81,43 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
 
     /// <summary> True when the label should be suppressed. </summary>
     protected bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
+
+    /// <summary>
+    /// True when <see cref="InputBase{TValue}.CurrentValue"/> is the type's semantic "empty" —
+    /// empty string for string controls, numeric zero for number controls, <c>default(DateTime)</c>
+    /// for date controls, etc. Override in derived classes where the default semantics aren't
+    /// <c>EqualityComparer&lt;T&gt;.Default.Equals(value, default)</c>. <see cref="ShouldShowComponent"/>
+    /// already short-circuits the null check, so overrides only need to answer "is this value
+    /// semantically empty?" — the null branch is handled for them.
+    /// </summary>
+    protected virtual bool IsValueDefault() =>
+        EqualityComparer<TValue>.Default.Equals(CurrentValue, default!);
+
+    /// <summary>
+    /// Decides whether the control's wrapper renders at all, based on <see cref="IsHidden"/> and
+    /// the effective <see cref="HidingMode"/> (per-control <see cref="Hiding"/> ?? form-wide
+    /// <see cref="FormOptions.Hiding"/> ?? <see cref="HidingMode.None"/>). Centralizes the
+    /// hiding logic that every scalar control used to re-implement. Override
+    /// <see cref="IsValueDefault"/> rather than this method when only the "what counts as
+    /// default?" question changes.
+    /// </summary>
+    protected virtual bool ShouldShowComponent()
+    {
+        if (IsHidden) return false;
+
+        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        if (hidingMode == HidingMode.None) return true;
+
+        var isNull = CurrentValue is null;
+        var isDefault = isNull || IsValueDefault();
+
+        return hidingMode switch
+        {
+            HidingMode.WhenReadOnlyAndNull => !(!ShowEditor && isNull),
+            HidingMode.WhenReadOnlyAndNullOrDefault => !(!ShowEditor && isDefault),
+            HidingMode.WhenNull => !isNull,
+            HidingMode.WhenNullOrDefault => !isDefault,
+            _ => true
+        };
+    }
 }

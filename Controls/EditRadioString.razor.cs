@@ -59,25 +59,8 @@ public partial class EditRadioString : EditControlBase<string?>
         }
     }
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var value = CurrentValue;
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        var isEditMode = (FormOptions?.IsEditMode ?? true) && IsEditMode;
-
-        return hidingMode switch
-        {
-            HidingMode.None => true,
-            HidingMode.WhenReadOnlyAndNull => isEditMode || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => isEditMode || !string.IsNullOrEmpty(value),
-            HidingMode.WhenNull => value != null,
-            HidingMode.WhenNullOrDefault => !string.IsNullOrEmpty(value),
-            _ => true
-        };
-    }
+    // Empty string counts as "default" for the NullOrDefault hiding modes.
+    protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
 
     async Task SetOtherTextAsync(string value)
     {

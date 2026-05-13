@@ -32,16 +32,23 @@ public partial class FormLabel
     /// <inheritdoc cref="IEditControl.IsLabelHidden"/>
     [Parameter] public bool IsLabelHidden { get; set; }
 
-    string DisplayLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
-    string? DisplayDescription() => Description ?? Attributes.Description();
-
+    // Resolved once per parameter-change cycle; the razor binds to these instead of calling the
+    // helpers on every render path (the legend + label branches in FormLabel.razor evaluate
+    // DisplayLabel/DisplayDescription twice otherwise).
+    string _label = string.Empty;
+    string? _description;
     bool _isRequired;
 
-    protected override void OnInitialized()
+    string DisplayLabel() => _label;
+    string? DisplayDescription() => _description;
+
+    protected override void OnParametersSet()
     {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         if (Attributes == null)
             return;
+        _label = Label ?? Attributes.GetLabelText(FieldIdentifier);
+        _description = Description ?? Attributes.Description();
         _isRequired = Attributes.Any(x => x is RequiredAttribute);
     }
 }

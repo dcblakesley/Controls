@@ -1,6 +1,16 @@
 namespace Controls;
 
 /// <summary> Edit control for selecting a value using radio buttons. Create options within the markup using InputRadio components.</summary>
+/// <remarks>
+/// Inherits <see cref="InputRadioGroup{TValue}"/> directly rather than the shared
+/// <c>EditControlBase&lt;T&gt;</c> because <c>EditRadio</c>'s public API takes
+/// <see cref="InputRadio{TValue}"/> children as <c>ChildContent</c>, and those children resolve a
+/// cascading <c>InputRadioContext</c> that only <see cref="InputRadioGroup{TValue}"/> supplies.
+/// Replacing the base would require a parallel <c>&lt;InputRadio&gt;</c> API and break every
+/// consumer — see README §10.2.0 for the intentional design. The sibling controls
+/// <c>EditRadioEnum</c> and <c>EditRadioString</c> render their own <c>&lt;input type="radio"&gt;</c>
+/// markup and never see <c>InputRadio</c> children, so they inherit <c>EditControlBase</c> normally.
+/// </remarks>
 public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
 {
     // Cascading parameters
@@ -59,6 +69,9 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     protected override void OnInitialized()
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field!, Id, FormGroupOptions, IdPrefix);
+        // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
+        // field survives HidingMode and links from the validation summary always work.
+        FormOptions?.FieldIdentifiers.Add(_fieldIdentifier);
     }
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
     bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
@@ -79,8 +92,8 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
 
         return effectiveHiding switch
         {
-            HidingMode.WhenReadOnlyAndNull => IsEditMode || !isNull,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || !isDefault,
+            HidingMode.WhenReadOnlyAndNull => ShowEditor || !isNull,
+            HidingMode.WhenReadOnlyAndNullOrDefault => ShowEditor || !isDefault,
             HidingMode.WhenNull => !isNull,
             HidingMode.WhenNullOrDefault => !isDefault,
             _ => true

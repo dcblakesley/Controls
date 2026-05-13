@@ -71,35 +71,15 @@ public partial class EditDate<T> : EditControlBase<T>
         return DateTime.Parse(valueAsString).ToUniversalTime().ToLocalTime().ToString(DateFormat);
     }
 
-    bool ShouldShowComponent()
+    // Detect default DateTime / DateTimeOffset even when boxed inside a nullable T —
+    // EqualityComparer<DateTime?>.Default.Equals(default(DateTime), null) is false, but the
+    // wrapped default value is still semantically empty for hiding purposes.
+    protected override bool IsValueDefault() => CurrentValue switch
     {
-        if (IsHidden)
-            return false;
-
-        var effectiveHidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-
-        if (effectiveHidingMode == HidingMode.None)
-            return true;
-
-        var value = Value;
-        var isNull = value == null;
-        var isDefault = isNull || EqualityComparer<T>.Default.Equals(value, default);
-
-        // Special handling for DateTime / DateTimeOffset (default value isn't null)
-        if (!isNull && value is DateTime dateTime)
-            isDefault = dateTime == default;
-        else if (!isNull && value is DateTimeOffset dateTimeOffset)
-            isDefault = dateTimeOffset == default;
-
-        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
-
-        return effectiveHidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
-    }
+        DateTime dt => dt == default,
+        DateTimeOffset dto => dto == default,
+        DateOnly d => d == default,
+        TimeOnly t => t == default,
+        _ => EqualityComparer<T>.Default.Equals(CurrentValue, default!)
+    };
 }

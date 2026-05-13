@@ -61,28 +61,5 @@ public partial class EditSelect<TValue> : EditControlBase<TValue>
         return false;
     }
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-
-        if (hidingMode == HidingMode.None)
-            return true;
-
-        var value = Value;
-        var isNull = value == null;
-        var isDefault = isNull || EqualityComparer<TValue>.Default.Equals(value, default);
-        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
-
-        return hidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
-    }
+    // Base IsValueDefault covers EqualityComparer<TValue>.Default behavior — no override needed.
 }

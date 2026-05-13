@@ -112,22 +112,10 @@ public partial class EditRadioEnum<TEnum> : EditControlBase<TEnum?>
             await OtherValueChanged.InvokeAsync(value);
     }
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        var value = Value;
-
-        return hidingMode switch
-        {
-            HidingMode.None => true,
-            HidingMode.WhenNull => value != null,
-            HidingMode.WhenNullOrDefault => value != null && !value.Equals(default(TEnum)),
-            HidingMode.WhenReadOnlyAndNull => IsEditMode || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || (value != null && !value.Equals(default(TEnum))),
-            _ => true
-        };
-    }
+    // Class inherits EditControlBase<TEnum?>, so default(TValue) is null — but the prior
+    // behavior also treated the zero-valued enum as default. Preserve that here. Centralization
+    // additionally fixes a latent bug where WhenReadOnly* used bare IsEditMode and ignored
+    // form-wide FormOptions.IsEditMode.
+    protected override bool IsValueDefault() =>
+        CurrentValue == null || CurrentValue.Equals(default(TEnum));
 }

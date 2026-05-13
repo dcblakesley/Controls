@@ -42,23 +42,7 @@ public partial class EditSelectString<TValue> : EditControlBase<TValue>
         return false;
     }
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var effectiveHiding = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        var value = Value;
-        var isEditMode = (FormOptions == null) || FormOptions.IsEditMode;
-
-        return effectiveHiding switch
-        {
-            HidingMode.None => true,
-            HidingMode.WhenReadOnlyAndNull => isEditMode || value != null,
-            HidingMode.WhenReadOnlyAndNullOrDefault => isEditMode || (value != null && value.ToString() != ""),
-            HidingMode.WhenNull => value != null,
-            HidingMode.WhenNullOrDefault => value != null && value.ToString() != "",
-            _ => true
-        };
-    }
+    // Empty stringified value counts as "default" — matches the prior behavior where
+    // value.ToString() != "" gated the NullOrDefault hiding modes.
+    protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue?.ToString());
 }

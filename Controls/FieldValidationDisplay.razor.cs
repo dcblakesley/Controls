@@ -16,7 +16,7 @@ public partial class FieldValidationDisplay
     int? _minCharacters;
     int? _maxCharacters;
     string _fieldName = string.Empty;
-    string GetLabel() => Label ?? Attributes.GetLabelText(FieldIdentifier);
+    string _label = string.Empty;
     string? _valueType;
 
     protected override void OnInitialized()
@@ -26,14 +26,13 @@ public partial class FieldValidationDisplay
         _minCharacters = minAndMax.MinLength;
         _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
+        // Cache the resolved label once at init — every validation-message render used to call
+        // GetLabelText() afresh against the attribute list.
+        _label = Label ?? Attributes.GetLabelText(FieldIdentifier);
         _valueType = FieldIdentifier.Model.GetType().GetProperty(FieldIdentifier.FieldName)?.PropertyType?.ToString() ?? string.Empty;
-
-        if (FormOptions != null)
-        {
-            // Register the field identifier with the form options so we can have a validation summary that provides links to the field that is invalid.
-            FormOptions.FieldIdentifiers.Add(FieldIdentifier);
-            //Console.WriteLine($"Registered {_fieldName}");
-        }
+        // Field registration with FormOptions.FieldIdentifiers moved to EditControlBase.InitState
+        // (and the list/radio equivalents) so it runs once per control regardless of whether
+        // this validation display is conditionally rendered.
     }
 
     bool ShowFieldNameInValidation =>
@@ -41,7 +40,7 @@ public partial class FieldValidationDisplay
 
     /// <summary> Overrides the default validation messages. </summary>
     string GetValidationMessage(string message, bool showLabel) =>
-        ValidationHelper.GetValidationMessage(message, _fieldName, GetLabel(), _valueType, _maxCharacters, _minCharacters, showLabel);
+        ValidationHelper.GetValidationMessage(message, _fieldName, _label, _valueType, _maxCharacters, _minCharacters, showLabel);
 
     /// <summary> Overrides the default validation messages, using the form option to determine label visibility. </summary>
     string GetValidationMessage(string message) =>

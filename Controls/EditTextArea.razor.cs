@@ -28,28 +28,6 @@ public partial class EditTextArea : EditControlBase<string?>
         return true;
     }
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-
-        if (hidingMode == HidingMode.None)
-            return true;
-
-        var value = CurrentValue;
-        var isNull = value == null;
-        var isDefault = isNull || string.IsNullOrEmpty(value);
-        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
-
-        return hidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isNull),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
-    }
+    // Empty string counts as "default" for the NullOrDefault hiding modes.
+    protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
 }

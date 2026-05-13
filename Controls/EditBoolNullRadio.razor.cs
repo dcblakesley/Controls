@@ -53,22 +53,11 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
 
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        return hidingMode switch
-        {
-            HidingMode.None => true,
-            HidingMode.WhenNull => CurrentValue.HasValue,
-            HidingMode.WhenNullOrDefault => CurrentValue.HasValue && CurrentValue.Value,
-            HidingMode.WhenReadOnlyAndNull => IsEditMode || CurrentValue.HasValue,
-            HidingMode.WhenReadOnlyAndNullOrDefault => IsEditMode || (CurrentValue.HasValue && CurrentValue.Value),
-            _ => true
-        };
-    }
+    // For bool? the "default" is null OR false — preserves prior behavior. The base
+    // ShouldShowComponent handles the null branch; this override only addresses "false counts
+    // as default too." Centralization also fixes a pre-existing latent bug where the
+    // WhenReadOnly variants used bare IsEditMode and ignored form-wide FormOptions.IsEditMode.
+    protected override bool IsValueDefault() => CurrentValue.HasValue && !CurrentValue.Value;
 
     string GetDisplayText(bool? value) => value switch
     {

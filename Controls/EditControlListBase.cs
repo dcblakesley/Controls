@@ -59,11 +59,15 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
-    /// from the derived control's <c>Field</c> expression.
+    /// from the derived control's <c>Field</c> expression, and registers the field with
+    /// <see cref="FormOptions.FieldIdentifiers"/> so the validation summary can link to it.
+    /// See the matching remarks on <see cref="EditControlBase{TValue}.InitState{T}"/> for why
+    /// registration lives here rather than in <c>FieldValidationDisplay</c>.
     /// </summary>
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        FormOptions?.FieldIdentifiers.Add(_fieldIdentifier);
     }
 
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>
@@ -99,12 +103,11 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
 
         var isNull = Value is null;
         var isDefault = isNull || Value!.Count == 0;
-        var isReadOnly = !IsEditMode || (FormOptions != null && !FormOptions.IsEditMode);
 
         return hidingMode switch
         {
-            HidingMode.WhenReadOnlyAndNull => !(isReadOnly && isDefault),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(isReadOnly && isDefault),
+            HidingMode.WhenReadOnlyAndNull => !(!ShowEditor && isDefault),
+            HidingMode.WhenReadOnlyAndNullOrDefault => !(!ShowEditor && isDefault),
             HidingMode.WhenNull => !isNull,
             HidingMode.WhenNullOrDefault => !isDefault,
             _ => true

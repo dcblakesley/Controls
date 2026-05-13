@@ -38,22 +38,12 @@ public partial class EditBool : EditControlBase<bool>
     string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
     string? DisplayDescription() => Description ?? _attributes.Description();
 
-    bool ShouldShowComponent()
-    {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        return hidingMode switch
-        {
-            HidingMode.None => true,
-            HidingMode.WhenNull => true,
-            HidingMode.WhenNullOrDefault => CurrentValue,
-            HidingMode.WhenReadOnlyAndNull => true,
-            HidingMode.WhenReadOnlyAndNullOrDefault => !IsEditMode && CurrentValue,
-            _ => true
-        };
-    }
+    // bool default is false. The base ShouldShowComponent already knows CurrentValue is non-null
+    // here (bool is a value type), so this override only needs to flag "false == default".
+    // Note: this fixes a pre-existing bug in WhenReadOnlyAndNullOrDefault where the old logic
+    // (`!IsEditMode && CurrentValue`) showed only when read-only AND true — the centralized
+    // behavior now correctly shows except when read-only AND default-false.
+    protected override bool IsValueDefault() => !CurrentValue;
 
     void HandleCheckboxChange(ChangeEventArgs args)
     {
