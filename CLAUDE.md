@@ -72,6 +72,12 @@ All CSS classes use the `edit-` prefix (defined in `Controls/wwwroot/edit-contro
 
 The Controls project defines global usings in `Controls/GlobalUsings.cs`. The Controls.Demo project uses `_Imports.razor` for razor-file usings and explicit `using` statements in `.cs` code-behind files (since `_Imports.razor` doesn't apply to `.cs` files).
 
+## Git Workflow
+
+**Work directly on `master`.** This project does not use feature branches — commits land on the default branch. This overrides the Claude Code default that creates a branch first; do not run `git checkout -b` before editing.
+
+Still commit only when explicitly asked. Never push to NuGet from an agent (see Release Workflow).
+
 ## Release Workflow
 
 ### Versioning
