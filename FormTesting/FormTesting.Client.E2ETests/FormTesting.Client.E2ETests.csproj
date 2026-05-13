@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- Allow xUnit's async assertions to flow naturally without trimming warnings. -->
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Test runner + framework -->
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+
+    <!-- Playwright for .NET. The first build downloads the playwright.ps1 helper into the bin dir;
+         after that, run `pwsh bin/Debug/net10.0/playwright.ps1 install chromium` once locally.
+         The Target below does the install automatically on first build. -->
+    <PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
+
+    <!-- ImageSharp powers the visual-regression diff helper. Microsoft.Playwright's
+         ToHaveScreenshotAsync only ships with the NUnit/MSTest adapters, so for xUnit we
+         compare screenshots ourselves. -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Need ProjectReference to the host app so dotnet test can build it before tests run.
+         The app itself is launched out-of-process by AppFixture (not in-process via WebApplicationFactory)
+         because the demos render under InteractiveWebAssembly rendermode — they only work in a real browser. -->
+    <ProjectReference Include="..\FormTesting\FormTesting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Microsoft.Playwright" />
+    <!-- Playwright's fluent assertion entry point: `Expect(locator).ToBeVisibleAsync()`. -->
+    <Using Include="Microsoft.Playwright.Assertions" Static="True" />
+  </ItemGroup>
+
+  <!-- One-time Playwright browser install. Skipped on every build after the first via the file marker. -->
+  <Target Name="PlaywrightInstall" AfterTargets="Build"
+          Inputs="$(MSBuildThisFileDirectory)FormTesting.Client.E2ETests.csproj"
+          Outputs="$(OutputPath).playwright-installed">
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass &quot;$(OutputPath)playwright.ps1&quot; install chromium"
+          ContinueOnError="true" />
+    <Touch Files="$(OutputPath).playwright-installed" AlwaysCreate="true" />
+  </Target>
+
+</Project>

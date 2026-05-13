@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Playwright e2e failure artifacts — kept local so reviewers can inspect a failed run,
+# but never committed alongside baselines. Baselines themselves (the bare *.png in Snapshots/)
+# are tracked.
+**/Snapshots/*-actual.png
+**/Snapshots/*-diff.png
+
+# Marker file emitted by the e2e project's PlaywrightInstall MSBuild target.
+**/.playwright-installed

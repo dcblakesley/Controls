@@ -22,7 +22,11 @@ dotnet pack Controls/Controls.csproj -c Release -o ./nupkg
 dotnet pack Controls.Demo/Controls.Demo.csproj -c Release -o ./nupkg
 ```
 
-Automated tests live in `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10 only). Run with `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj`. Coverage focuses on the helpers (`EnumHelpers`, `AttributesHelper`, `EditControlInit`, `ValidationHelper`) and bUnit smoke tests for the controls — particularly the parsing logic ported in the `EditControlBase` refactor. Add new tests alongside any non-trivial helper change. Manual smoke testing of layout / styling is still done via the `FormTesting` Blazor app.
+Automated tests live in `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10 only). Run with `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj`. Coverage focuses on the helpers (`EnumHelpers`, `AttributesHelper`, `EditControlInit`, `ValidationHelper`) and bUnit smoke tests for the controls — particularly the parsing logic ported in the `EditControlBase` refactor. Add new tests alongside any non-trivial helper change.
+
+End-to-end tests live in `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Playwright .NET, net10 only). Run with `dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj`. One test class per Edit* control covers render, interaction, read-only toggle, and a visual-regression baseline screenshot per `section.demo-section`. The `AppFixture` launches the `FormTesting` Blazor Server host out-of-process on a free port for the duration of the run; the `BrowserFixture` shares one headless Chromium across all tests. Set `PWTEST_HEADED=1` to watch the browser locally.
+
+**Visual regression workflow.** Baseline PNGs live in `FormTesting/FormTesting.Client.E2ETests/Snapshots/` and are committed. After an intentional UI change, regenerate with `UPDATE_SNAPSHOTS=1 dotnet test ...E2ETests.csproj` and commit the updated PNGs. On a failure, `*-actual.png` (what the test saw) and `*-diff.png` (red highlights on differing pixels) are written next to the baseline — both are gitignored. First-time setup also requires a one-time `pwsh FormTesting/FormTesting.Client.E2ETests/bin/Debug/net10.0/playwright.ps1 install chromium` (the MSBuild target attempts this automatically after first build).
 
 ## Project Structure
 
@@ -30,6 +34,8 @@ Automated tests live in `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, 
 - **Controls.Demo/** — Demo components library (`WssBlazorControls.Demo` NuGet package). References Controls. Same multi-targeting.
 - **FormTesting/FormTesting/** — Blazor Server host (net10.0).
 - **FormTesting/FormTesting.Client/** — Blazor WebAssembly client that references both Controls and Controls.Demo.
+- **FormTesting/FormTesting.Client.Tests/** — xUnit + bUnit unit tests (net10).
+- **FormTesting/FormTesting.Client.E2ETests/** — xUnit + Playwright .NET e2e tests + visual regression baselines (net10).
 
 ## Architecture
 
