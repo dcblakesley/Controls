@@ -7,7 +7,7 @@
     @if (_open)
     {
         <div class="wss-popover-backdrop" @onclick="Close"></div>
-        <div class="wss-popover wss-popover-@PlacementName" @ref="_panelRef" role="dialog" @onclick:stopPropagation="true">
+        <div class="wss-popover wss-popover-@PlacementName @(_positioned ? null : "wss-measuring")" @ref="_panelRef" role="dialog" @onclick:stopPropagation="true">
             <div class="wss-popover-inner">
                 @if (TitleContent != null || !string.IsNullOrEmpty(Title))
                 {
@@ -46,7 +46,6 @@
     {
         if (_open && !_positioned)
         {
-            _positioned = true;
             try
             {
                 _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
@@ -56,6 +55,8 @@
             {
                 // No JS runtime / module — keep the CSS default placement.
             }
+            _positioned = true;
+            StateHasChanged(); // reveal the panel now that it's positioned (drops wss-measuring)
         }
         else if (!_open && _positioned)
         {

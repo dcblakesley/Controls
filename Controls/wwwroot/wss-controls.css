@@ -580,6 +580,12 @@
     cursor: auto;
 }
 
+/* Popover/Popconfirm panels render hidden for the one frame while wss-overlay.js measures and
+   positions them — avoids a flash/jump at the un-shifted position on first open (before the JS
+   module has loaded). The component removes this once positioned, and reveals the panel anyway
+   (at the default CSS placement) if JS is unavailable. visibility:hidden keeps it measurable. */
+.wss-measuring { visibility: hidden; }
+
 .wss-popover-title {
     padding: 5px 16px 4px;
     min-height: 32px;
