@@ -3,6 +3,13 @@
 Generated from architectural analysis on 2026-05-07. Tracks follow-up work after the
 `EditControlBase`/`EditControlListBase` refactor (commits a356e83 → 9338dca).
 
+> **Status (2026-06): implemented and shipped.** The core refactor (Phases 1–3 — centralized
+> `ShouldShowComponent`/`IsValueDefault`, field registration in `InitState`, and the bUnit
+> coverage) is in the codebase; see the "Architecture: `EditControlBase<TValue>`" entry in
+> `README.md`. This document is retained as the historical design record. (Unrelated later work —
+> the ported AntDesign-style Select + UI-kit controls — is documented in `CLAUDE.md` and `README.md`,
+> not here.)
+
 ---
 
 ## Goals

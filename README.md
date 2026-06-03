@@ -8,6 +8,8 @@ A comprehensive library of form controls for Blazor applications providing consi
 ## Features
 
 - Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
+- Searchable & Multi-Select**: AntDesign-style `EditSelectSearch` / `EditMultiSelect` — type-to-search, tags, virtualized dropdown
+- AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Tooltip, Popover, Popconfirm, Skeleton, and WASM toasts
 - Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
 - Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
 - Flexible Display Modes**: Edit mode and read-only views for all controls
