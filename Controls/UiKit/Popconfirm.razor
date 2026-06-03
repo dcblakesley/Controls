@@ -3,7 +3,9 @@
 @inject IJSRuntime JS
 
 <span class="wss-popconfirm-wrap">
-    <span class="wss-popconfirm-trigger" @ref="_triggerRef" @onclick="Toggle">@ChildContent</span>
+    <span class="wss-popconfirm-trigger" @ref="_triggerRef" tabindex="0" role="button"
+          aria-haspopup="dialog" aria-expanded="@_open"
+          @onclick="Toggle" @onkeydown="OnTriggerKeyDown">@ChildContent</span>
     @if (_open)
     {
         <div class="wss-popconfirm-backdrop" @onclick="Close"></div>
@@ -51,6 +53,12 @@
     }
 
     void Close() => _open = false;
+
+    void OnTriggerKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar") Toggle();
+        else if (e.Key == "Escape") Close();
+    }
 
     async Task ConfirmAsync()
     {

@@ -647,12 +647,18 @@
     height: 32px;
     padding: 0 6px;
     font-size: var(--wss-font-size);
+    font-family: inherit; /* <button> elements default to the system font otherwise */
     color: var(--wss-color-text);
     background: var(--wss-color-bg);
     border: 1px solid var(--wss-color-border);
     border-radius: var(--wss-radius);
     cursor: pointer;
     transition: all 0.2s;
+}
+
+.wss-pagination-prev:disabled,
+.wss-pagination-next:disabled {
+    cursor: not-allowed;
 }
 
 .wss-pagination-item:hover,

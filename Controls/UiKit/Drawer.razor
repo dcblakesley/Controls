@@ -1,12 +1,16 @@
 @namespace Controls
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 @if (Visible)
 {
     <div class="wss-drawer-root">
         <div class="wss-drawer-mask" @onclick="OnMaskClickAsync"></div>
-        <div class="wss-drawer wss-drawer-@PlacementName" style="@SizeStyle" role="dialog" aria-modal="true">
+        <div class="wss-drawer wss-drawer-@PlacementName" style="@SizeStyle" role="dialog" aria-modal="true"
+             aria-labelledby="@(HasTitle ? _titleId : null)" tabindex="-1"
+             @ref="_panelRef" @onkeydown="OnKeyDownAsync">
             <div class="wss-drawer-header">
-                <div class="wss-drawer-title">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                <div class="wss-drawer-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
                 @if (Closable)
                 {
                     <button type="button" class="wss-drawer-close" aria-label="Close" @onclick="CloseAsync">
@@ -39,6 +43,14 @@
     [Parameter] public bool MaskClosable { get; set; } = true;
     [Parameter] public EventCallback OnClose { get; set; }
 
+    readonly string _titleId = $"wss-drawer-title-{Guid.NewGuid():N}";
+    ElementReference _panelRef;
+    IJSObjectReference? _module;
+    IJSObjectReference? _focusHandle;
+    bool _active;
+
+    bool HasTitle => TitleContent != null || !string.IsNullOrEmpty(Title);
+
     string PlacementName => Placement.ToString().ToLowerInvariant();
 
     bool IsHorizontal => Placement is DrawerPlacement.Left or DrawerPlacement.Right;
@@ -54,5 +66,49 @@
     async Task OnMaskClickAsync()
     {
         if (MaskClosable) await CloseAsync();
+    }
+
+    async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && Closable) await CloseAsync();
+    }
+
+    // Focus trap + body-scroll-lock while open; restores focus to the opener on close.
+    // Degrades to no-op when JS is unavailable (prerender / tests).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Visible && !_active)
+        {
+            _active = true;
+            try
+            {
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+                _focusHandle = await _module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
+            }
+            catch { /* no JS — drawer still usable */ }
+        }
+        else if (!Visible && _active)
+        {
+            _active = false;
+            await ReleaseFocusAsync();
+        }
+    }
+
+    async Task ReleaseFocusAsync()
+    {
+        if (_focusHandle is not null)
+        {
+            try { await _focusHandle.InvokeVoidAsync("dispose"); await _focusHandle.DisposeAsync(); } catch { }
+            _focusHandle = null;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ReleaseFocusAsync();
+        if (_module is not null)
+        {
+            try { await _module.DisposeAsync(); } catch { }
+        }
     }
 }

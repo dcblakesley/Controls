@@ -50,3 +50,55 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
     }
     return place;
 }
+
+// --- Modal / Drawer focus management ---------------------------------------------------------
+// Moves focus into the panel, traps Tab within it, and locks body scroll. Returns a handle whose
+// dispose() restores body scroll and returns focus to the element that was focused before opening.
+// Degrades to a no-op when JS is unavailable (the component swallows the failure).
+const WSS_FOCUSABLE =
+    'a[href],area[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+export function activateModal(panel) {
+    if (!panel) {
+        return null;
+    }
+    const previouslyFocused = document.activeElement;
+    const prevBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const focusables = () =>
+        Array.from(panel.querySelectorAll(WSS_FOCUSABLE))
+            .filter(el => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
+
+    const initial = focusables();
+    try { (initial[0] || panel).focus(); } catch { /* element not focusable yet */ }
+
+    const onKeydown = (e) => {
+        if (e.key !== 'Tab') {
+            return;
+        }
+        const items = focusables();
+        if (items.length === 0) {
+            e.preventDefault();
+            return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    };
+    panel.addEventListener('keydown', onKeydown);
+
+    return {
+        dispose: () => {
+            panel.removeEventListener('keydown', onKeydown);
+            document.body.style.overflow = prevBodyOverflow;
+            try { if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus(); } catch { /* gone */ }
+        }
+    };
+}

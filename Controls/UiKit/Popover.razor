@@ -3,7 +3,9 @@
 @inject IJSRuntime JS
 
 <span class="wss-popover-wrap">
-    <span class="wss-popover-trigger" @ref="_triggerRef" @onclick="Toggle">@ChildContent</span>
+    <span class="wss-popover-trigger" @ref="_triggerRef" tabindex="0" role="button"
+          aria-haspopup="dialog" aria-expanded="@_open"
+          @onclick="Toggle" @onkeydown="OnTriggerKeyDown">@ChildContent</span>
     @if (_open)
     {
         <div class="wss-popover-backdrop" @onclick="Close"></div>
@@ -39,6 +41,12 @@
 
     void Toggle() => _open = !_open;
     void Close() => _open = false;
+
+    void OnTriggerKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " " or "Spacebar") Toggle();
+        else if (e.Key == "Escape") Close();
+    }
 
     // After the panel opens, nudge it to stay within the viewport (flip/shift). Degrades to the
     // default CSS placement when JS isn't available (server prerender, unit tests).
