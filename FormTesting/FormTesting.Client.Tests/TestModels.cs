@@ -22,6 +22,12 @@ public class PersonModel
 
     public bool IsActive { get; set; }
 
+    // Tri-state target for EditBoolNullRadio.
+    public bool? IsSubscribed { get; set; }
+
+    // Decimal target for culture-sensitive number formatting/parsing tests.
+    public decimal? Price { get; set; }
+
     [Required]
     public Priority? Priority { get; set; }
 
