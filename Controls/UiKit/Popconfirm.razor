@@ -11,6 +11,7 @@
         <div class="wss-popconfirm-backdrop" @onclick="Close"></div>
         <div class="wss-popconfirm wss-popconfirm-@PlacementName @(_positioned ? null : "wss-measuring")"
              @ref="_panelRef" role="dialog" aria-labelledby="@($"{_id}-title")"
+             @onkeydown="OnPanelKeyDown"
              @onclick:stopPropagation="true">
             <div class="wss-popconfirm-inner">
                 <div class="wss-popconfirm-message">
@@ -63,6 +64,13 @@
     {
         if (e.Key is "Enter" or " " or "Spacebar") Toggle();
         else if (e.Key == "Escape") Close();
+    }
+
+    // Escape from inside the panel cancels — the panel is a sibling of the trigger, so its keydown
+    // never bubbles to the trigger's handler.
+    async Task OnPanelKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") await CancelAsync();
     }
 
     async Task ConfirmAsync()

@@ -13,6 +13,7 @@
              @ref="_panelRef" role="dialog" tabindex="-1"
              aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"
              aria-describedby="@($"{_id}-content")"
+             @onkeydown="OnPanelKeyDown"
              @onclick:stopPropagation="true">
             <div class="wss-popover-inner">
                 @if (HasTitle)
@@ -54,6 +55,13 @@
     {
         if (e.Key is "Enter" or " " or "Spacebar") Toggle();
         else if (e.Key == "Escape") Close();
+    }
+
+    // Escape must also work once focus has moved into the panel — the panel is a sibling of the
+    // trigger, so a keydown there never bubbles to the trigger's handler.
+    void OnPanelKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") Close();
     }
 
     // After the panel opens, nudge it to stay within the viewport (flip/shift). Degrades to the
