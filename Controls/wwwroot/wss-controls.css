@@ -1133,3 +1133,131 @@
 .wss-table-small .wss-table-cell {
     padding: 8px 8px;
 }
+
+/* ============================================================================
+ * Message toasts (WasmMessageContainer)
+ * ============================================================================ */
+
+.wss-msg-container {
+    position: fixed;
+    top: 8px;
+    left: 0;
+    right: 0;
+    z-index: 1010;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.wss-msg {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    background: var(--wss-color-bg);
+    border-radius: var(--wss-radius);
+    box-shadow: var(--wss-shadow);
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+    pointer-events: auto;
+    animation: wss-msg-in 0.2s ease;
+}
+
+.wss-msg-icon {
+    display: inline-flex;
+    font-size: 16px;
+}
+
+.wss-msg-icon-success { color: var(--wss-color-success); }
+.wss-msg-icon-info { color: var(--wss-color-info); }
+.wss-msg-icon-warning { color: var(--wss-color-warning); }
+.wss-msg-icon-error { color: var(--wss-color-error); }
+.wss-msg-icon-loading { color: var(--wss-color-primary); animation: wss-msg-spin 1s linear infinite; }
+
+@keyframes wss-msg-in {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes wss-msg-spin {
+    100% { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+ * Notifications (WasmNotificationContainer)
+ * ============================================================================ */
+
+.wss-notification-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 1010;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.wss-notification {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 384px;
+    max-width: calc(100vw - 48px);
+    padding: 16px 24px;
+    background: var(--wss-color-bg);
+    border-radius: var(--wss-radius);
+    box-shadow: var(--wss-shadow);
+    animation: wss-notification-in 0.24s ease;
+}
+
+.wss-notification-icon {
+    display: inline-flex;
+    margin-top: 2px;
+    font-size: 20px;
+}
+
+.wss-notification-icon-success { color: var(--wss-color-success); }
+.wss-notification-icon-info { color: var(--wss-color-info); }
+.wss-notification-icon-warning { color: var(--wss-color-warning); }
+.wss-notification-icon-error { color: var(--wss-color-error); }
+
+.wss-notification-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.wss-notification-message {
+    margin-bottom: 4px;
+    color: var(--wss-color-text);
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.wss-notification-description {
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+}
+
+.wss-notification-close {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    font-size: 14px;
+    color: var(--wss-color-text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.wss-notification-close:hover {
+    color: var(--wss-color-text);
+}
+
+@keyframes wss-notification-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
