@@ -119,6 +119,17 @@
     box-shadow: 0 0 0 2px var(--wss-primary-shadow);
 }
 
+/* Real-DOM focus ring. .wss-select-focused (above) only toggles on open/close, so a keyboard user
+   who Tabs onto a *closed* Select would otherwise get no focus indicator (WCAG 2.4.7). */
+.wss-select:not(.wss-select-disabled) .wss-select-selector:focus-within {
+    border-color: var(--wss-color-primary-hover);
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow);
+}
+
+.wss-select.invalid .wss-select-selector:focus-within {
+    box-shadow: 0 0 0 2px var(--wss-error-shadow);
+}
+
 /* Validation invalid state (the form wrapper appends "invalid" via CssClass). */
 .wss-select.invalid .wss-select-selector {
     border-color: var(--wss-color-error);

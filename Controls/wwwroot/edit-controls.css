@@ -1,7 +1,9 @@
 ﻿:root {
     /* Centralized fallbacks so the danger + focus colors aren't repeated as literals throughout this
        file. Bridges to the consumer's --color-* vars where present (mirroring wss-controls.css). */
-    --edit-color-danger: var(--color-danger, #ff4d4f);
+    /* Fallback darkened from the AntDesign #ff4d4f (3.27:1 on white — fails WCAG 1.4.3 for the
+       validation message / summary text) to #cf1322 (~5.9:1). Consumers' --color-danger still wins. */
+    --edit-color-danger: var(--color-danger, #cf1322);
     --edit-focus-ring: var(--color-primary, #0066cc);
     --edit-focus-offset: 2px;
 }
