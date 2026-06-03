@@ -14,7 +14,7 @@ public partial class EditControlsDemo : IDisposable
     CurrentView _currentView = CurrentView.AllControls;
 
     readonly DemoModelForEditControls _allControlsModel = new();
-    EditForm editForm = default!; // Set by @ref during Render
+    EditForm _form = default!; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
         new() { IsEditMode = true, Hiding = HidingMode.None, IsRequiredStarHidden = true};

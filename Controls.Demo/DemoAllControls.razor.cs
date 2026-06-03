@@ -9,7 +9,7 @@ public partial class DemoAllControls
     [Inject] IJSRuntime JsRuntime { get; set; } = null!;
 
     readonly DemoModelForEditControls _model = new();
-    EditForm editForm = null!; // Set by @ref during Render
+    EditForm _form = null!; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
         new() { IsEditMode = true, Hiding = HidingMode.None };

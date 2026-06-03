@@ -1,7 +1,7 @@
 @using Controls
 @using Microsoft.AspNetCore.Components.Forms
 
-<EditForm Model=_model FormName="AllControlsForm" @ref="editForm" OnInvalidSubmit=HandleInvalidSubmit OnValidSubmit=HandleValidSubmit>
+<EditForm Model=_model FormName="AllControlsForm" @ref="_form" OnInvalidSubmit=HandleInvalidSubmit OnValidSubmit=HandleValidSubmit>
     <ObjectGraphDataAnnotationsValidator />
 
     <fieldset class="flex-row flex-wrap">

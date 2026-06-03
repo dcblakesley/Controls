@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
 
 namespace Controls;
 
@@ -22,37 +16,37 @@ namespace Controls;
 /// <typeparam name="TValue">The type of each option value.</typeparam>
 public partial class Select<TValue> : IAsyncDisposable
 {
-    private static readonly IEqualityComparer<TValue> Comparer = EqualityComparer<TValue>.Default;
+    static readonly IEqualityComparer<TValue> _comparer = EqualityComparer<TValue>.Default;
 
     // Pixel height of a dropdown row; shared by Virtualize and scroll-into-view.
-    private const float RowHeight = 32;
+    const float RowHeight = 32;
 
-    [Inject] private IJSRuntime JS { get; set; } = default!;
+    [Inject] IJSRuntime JS { get; set; } = default!;
 
-    private IJSObjectReference? _jsModule;
-    private ElementReference _inputRef;
-    private ElementReference _dropdownRef;
-    private ElementReference _wrapperRef;
-    private CancellationTokenSource? _debounceCts;
-    private bool _open;
-    private bool _dropdownPositioned;
-    private bool _focused;
-    private string _searchText = string.Empty;
-    private int _activeIndex;
+    IJSObjectReference? _jsModule;
+    ElementReference _inputRef;
+    ElementReference _dropdownRef;
+    ElementReference _wrapperRef;
+    CancellationTokenSource? _debounceCts;
+    bool _open;
+    bool _dropdownPositioned;
+    bool _focused;
+    string _searchText = string.Empty;
+    int _activeIndex;
 
     // Type-ahead state for non-searchable selects (jump-to-option by typed letters).
-    private string _typeAheadBuffer = string.Empty;
-    private DateTime _lastTypeAheadUtc;
+    string _typeAheadBuffer = string.Empty;
+    DateTime _lastTypeAheadUtc;
 
     // Working copies. For multiple/tags the bound collection is mirrored here so we
     // can add user-created tags without mutating the caller's instance.
     // _selected keeps display order; _selectedSet gives O(1) "is this selected?".
-    private readonly List<TValue> _selected = new();
-    private readonly HashSet<TValue> _selectedSet = new(Comparer);
-    private readonly List<SelectOption<TValue>> _tagOptions = new();
-    private List<SelectOption<TValue>> _filtered = new();
-    private int _hiddenTagCount;
-    private readonly List<(SelectOption<TValue> Option, int Index)> _visibleTags = new();
+    readonly List<TValue> _selected = [];
+    readonly HashSet<TValue> _selectedSet = new(_comparer);
+    readonly List<SelectOption<TValue>> _tagOptions = [];
+    List<SelectOption<TValue>> _filtered = [];
+    int _hiddenTagCount;
+    readonly List<(SelectOption<TValue> Option, int Index)> _visibleTags = [];
 
     // value -> option, rebuilt only when Options changes, so FindOption is O(1)
     // instead of scanning the (potentially huge) option list on every render.
@@ -60,15 +54,15 @@ public partial class Select<TValue> : IAsyncDisposable
     // lookup (FindOption), so the dictionary never holds a null key — suppress the
     // notnull-constraint warning to keep TValue unconstrained (e.g. nullable-enum options).
 #pragma warning disable CS8714
-    private Dictionary<TValue, SelectOption<TValue>> _lookup = new(Comparer);
+    Dictionary<TValue, SelectOption<TValue>> _lookup = new(_comparer);
 #pragma warning restore CS8714
-    private IEnumerable<SelectOption<TValue>>? _lastOptions;
+    IEnumerable<SelectOption<TValue>>? _lastOptions;
 
     // ----- Parameters -------------------------------------------------------
 
     [Parameter] public SelectMode Mode { get; set; } = SelectMode.Single;
 
-    [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = Array.Empty<SelectOption<TValue>>();
+    [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = [];
 
     /// <summary>Bound value for <see cref="SelectMode.Single"/> mode.</summary>
     [Parameter] public TValue Value { get; set; } = default!;
@@ -118,17 +112,17 @@ public partial class Select<TValue> : IAsyncDisposable
     /// <summary>Value for the search input's <c>aria-describedby</c> attribute.</summary>
     [Parameter] public string? AriaDescribedBy { get; set; }
 
-    private bool IsMultiple => Mode != SelectMode.Single;
+    bool IsMultiple => Mode != SelectMode.Single;
 
     // ----- Inline icons (no icon-font / Ant dependency) ---------------------
 
-    private static readonly MarkupString ArrowDown = new(
+    static readonly MarkupString ArrowDown = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z\"/></svg>");
 
-    private static readonly MarkupString CheckMark = new(
+    static readonly MarkupString CheckMark = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M912 190h-69.9c-9.8 0-19.1 4.5-25.1 12.2L404.7 724.5 207 474a32 32 0 00-25.1-12.2H112c-6.7 0-10.4 7.7-6.3 12.9l273.9 347c12.8 16.2 37.4 16.2 50.3 0l488.4-618.9c4.1-5.1.4-12.8-6.3-12.8z\"/></svg>");
 
-    private static readonly MarkupString CloseCross = new(
+    static readonly MarkupString CloseCross = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 00203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z\"/></svg>");
 
     // ----- Lifecycle --------------------------------------------------------
@@ -159,7 +153,7 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // ----- Display helpers (used by the .razor markup) ----------------------
 
-    private string WrapperClass
+    string WrapperClass
     {
         get
         {
@@ -175,30 +169,30 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    private string? WidthStyle => string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
+    string? WidthStyle => string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
 
     // Stable id root for ARIA wiring (the listbox + the active option). Uses the supplied Id when
     // present (the Edit* wrappers pass one), otherwise a generated one so standalone use still works.
-    private string? _generatedId;
-    private string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-select-{Guid.NewGuid():N}");
+    string? _generatedId;
+    string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-select-{Guid.NewGuid():N}");
 
-    private bool _showPlaceholder => IsMultiple
+    bool _showPlaceholder => IsMultiple
         ? _selected.Count == 0 && string.IsNullOrEmpty(_searchText)
         : !HasSingleValue && string.IsNullOrEmpty(_searchText);
 
-    private bool HasSingleValue => !Comparer.Equals(Value, default!);
+    bool HasSingleValue => !_comparer.Equals(Value, default!);
 
-    private string SelectedLabel => FindOption(Value)?.Label ?? Value?.ToString() ?? string.Empty;
+    string SelectedLabel => FindOption(Value)?.Label ?? Value?.ToString() ?? string.Empty;
 
-    private bool ShowClear => AllowClear && !Disabled &&
+    bool ShowClear => AllowClear && !Disabled &&
         (IsMultiple ? _selected.Count > 0 : HasSingleValue);
 
     // Returns the cached visible-tag list (rebuilt by RebuildVisibleTags when the selection changes).
-    private IReadOnlyList<(SelectOption<TValue> Option, int Index)> VisibleTags() => _visibleTags;
+    IReadOnlyList<(SelectOption<TValue> Option, int Index)> VisibleTags() => _visibleTags;
 
     // Rebuilt only when the selection (or MaxTagCount) changes, not on every render — caching avoids
     // per-render List/tuple/SelectOption allocations and keeps _hiddenTagCount out of a render getter.
-    private void RebuildVisibleTags()
+    void RebuildVisibleTags()
     {
         _visibleTags.Clear();
         var max = MaxTagCount is { } m && m >= 0 ? m : int.MaxValue;
@@ -213,10 +207,10 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // The keyboard-highlighted option (compared by reference so each rendered row
     // is an O(1) check rather than needing its index in the filtered list).
-    private SelectOption<TValue>? ActiveOption =>
+    SelectOption<TValue>? ActiveOption =>
         _activeIndex >= 0 && _activeIndex < _filtered.Count ? _filtered[_activeIndex] : null;
 
-    private string OptionClass(SelectOption<TValue> option)
+    string OptionClass(SelectOption<TValue> option)
     {
         var cls = "wss-select-item wss-select-item-option";
         if (option.Disabled) cls += " wss-select-item-option-disabled";
@@ -225,33 +219,33 @@ public partial class Select<TValue> : IAsyncDisposable
         return cls;
     }
 
-    private bool IsSelected(TValue value) =>
-        IsMultiple ? _selectedSet.Contains(value) : Comparer.Equals(Value, value);
+    bool IsSelected(TValue value) =>
+        IsMultiple ? _selectedSet.Contains(value) : _comparer.Equals(Value, value);
 
     // ----- Option lookup / filtering ----------------------------------------
 
-    private IEnumerable<SelectOption<TValue>> AllOptions =>
-        (Options ?? Array.Empty<SelectOption<TValue>>()).Concat(_tagOptions);
+    IEnumerable<SelectOption<TValue>> AllOptions =>
+        (Options ?? []).Concat(_tagOptions);
 
-    private SelectOption<TValue>? FindOption(TValue value) =>
-        value != null && _lookup.TryGetValue(value, out var option) ? option : null;
+    SelectOption<TValue>? FindOption(TValue value) =>
+        value is not null && _lookup.TryGetValue(value, out var option) ? option : null;
 
-    private void RebuildLookup()
+    void RebuildLookup()
     {
 #pragma warning disable CS8714
-        _lookup = new Dictionary<TValue, SelectOption<TValue>>(Comparer);
+        _lookup = new Dictionary<TValue, SelectOption<TValue>>(_comparer);
 #pragma warning restore CS8714
-        foreach (var o in Options ?? Array.Empty<SelectOption<TValue>>())
+        foreach (var o in Options ?? [])
         {
-            if (o.Value != null) _lookup[o.Value] = o;
+            if (o.Value is not null) _lookup[o.Value] = o;
         }
         foreach (var o in _tagOptions)
         {
-            if (o.Value != null) _lookup[o.Value] = o;
+            if (o.Value is not null) _lookup[o.Value] = o;
         }
     }
 
-    private void RebuildFiltered()
+    void RebuildFiltered()
     {
         IEnumerable<SelectOption<TValue>> source = AllOptions;
 
@@ -268,30 +262,30 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // ----- Selection bookkeeping (keeps _selected list and _selectedSet in sync) ----
 
-    private void SetSelected(IEnumerable<TValue>? values)
+    void SetSelected(IEnumerable<TValue>? values)
     {
         _selected.Clear();
         _selectedSet.Clear();
-        if (values == null) return;
+        if (values is null) return;
         foreach (var v in values)
         {
             if (_selectedSet.Add(v)) _selected.Add(v);
         }
     }
 
-    private void AddSelected(TValue value)
+    void AddSelected(TValue value)
     {
         if (_selectedSet.Add(value)) _selected.Add(value);
         RebuildVisibleTags();
     }
 
-    private void RemoveSelected(TValue value)
+    void RemoveSelected(TValue value)
     {
-        if (_selectedSet.Remove(value)) _selected.RemoveAll(v => Comparer.Equals(v, value));
+        if (_selectedSet.Remove(value)) _selected.RemoveAll(v => _comparer.Equals(v, value));
         RebuildVisibleTags();
     }
 
-    private void ClearSelected()
+    void ClearSelected()
     {
         _selected.Clear();
         _selectedSet.Clear();
@@ -300,7 +294,7 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // ----- Interaction ------------------------------------------------------
 
-    private async Task OnWrapperClickAsync()
+    async Task OnWrapperClickAsync()
     {
         if (Disabled) return;
 
@@ -315,7 +309,7 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    private async Task OpenAsync()
+    async Task OpenAsync()
     {
         _open = true;
         _focused = true;
@@ -324,7 +318,7 @@ public partial class Select<TValue> : IAsyncDisposable
         await FocusInputAsync();
     }
 
-    private Task CloseAsync()
+    Task CloseAsync()
     {
         _open = false;
         _focused = false;
@@ -335,7 +329,7 @@ public partial class Select<TValue> : IAsyncDisposable
         return Task.CompletedTask;
     }
 
-    private async Task OnInputAsync(ChangeEventArgs e)
+    async Task OnInputAsync(ChangeEventArgs e)
     {
         // Update the text immediately so the input stays responsive...
         _searchText = e.Value?.ToString() ?? string.Empty;
@@ -365,14 +359,14 @@ public partial class Select<TValue> : IAsyncDisposable
         StateHasChanged();
     }
 
-    private async Task ApplySearchAsync()
+    async Task ApplySearchAsync()
     {
         _activeIndex = 0;
         RebuildFiltered();
         if (OnSearch.HasDelegate) await OnSearch.InvokeAsync(_searchText);
     }
 
-    private async Task SelectAsync(SelectOption<TValue> option)
+    async Task SelectAsync(SelectOption<TValue> option)
     {
         if (option.Disabled) return;
 
@@ -400,14 +394,14 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    private async Task RemoveAsync(TValue value)
+    async Task RemoveAsync(TValue value)
     {
         if (Disabled) return;
         RemoveSelected(value);
         await ValuesChanged.InvokeAsync(_selected.ToList());
     }
 
-    private async Task ClearAsync()
+    async Task ClearAsync()
     {
         if (IsMultiple)
         {
@@ -424,13 +418,13 @@ public partial class Select<TValue> : IAsyncDisposable
         RebuildFiltered();
     }
 
-    private async Task CommitTagAsync()
+    async Task CommitTagAsync()
     {
         var text = _searchText.Trim();
         if (text.Length == 0) return;
 
         TValue value;
-        if (TagValueFactory != null)
+        if (TagValueFactory is not null)
         {
             value = TagValueFactory(text);
         }
@@ -445,11 +439,11 @@ public partial class Select<TValue> : IAsyncDisposable
             return;
         }
 
-        if (FindOption(value) == null)
+        if (FindOption(value) is null)
         {
             var tag = new SelectOption<TValue>(value, text);
             _tagOptions.Add(tag);
-            if (value != null) _lookup[value] = tag;
+            if (value is not null) _lookup[value] = tag;
         }
 
         if (!_selectedSet.Contains(value))
@@ -463,7 +457,7 @@ public partial class Select<TValue> : IAsyncDisposable
         await FocusInputAsync();
     }
 
-    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    async Task OnKeyDownAsync(KeyboardEventArgs e)
     {
         switch (e.Key)
         {
@@ -522,7 +516,7 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    private void MoveActive(int delta)
+    void MoveActive(int delta)
     {
         if (_filtered.Count == 0) return;
 
@@ -539,7 +533,7 @@ public partial class Select<TValue> : IAsyncDisposable
     }
 
     // Move the highlight to the first non-disabled option at/after `start`, stepping by `direction`.
-    private void MoveActiveTo(int start, int direction)
+    void MoveActiveTo(int start, int direction)
     {
         if (_filtered.Count == 0) return;
         var i = Math.Clamp(start, 0, _filtered.Count - 1);
@@ -550,7 +544,7 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    private void TypeAhead(string ch)
+    void TypeAhead(string ch)
     {
         var now = DateTime.UtcNow;
         // Native <select> resets the buffer after a short pause between keystrokes.
@@ -569,7 +563,7 @@ public partial class Select<TValue> : IAsyncDisposable
         if (match >= 0) _activeIndex = match;
     }
 
-    private int FindLabelPrefix(string prefix, int startFrom)
+    int FindLabelPrefix(string prefix, int startFrom)
     {
         for (var i = 0; i < _filtered.Count; i++)
         {
@@ -581,7 +575,7 @@ public partial class Select<TValue> : IAsyncDisposable
         return -1;
     }
 
-    private async Task FocusInputAsync()
+    async Task FocusInputAsync()
     {
         try
         {
@@ -596,7 +590,7 @@ public partial class Select<TValue> : IAsyncDisposable
     // Keeps the keyboard-highlighted row visible in the virtualized dropdown.
     // Uses a tiny RCL-local JS module; degrades to a no-op when JS isn't available
     // (e.g. server prerender or unit tests).
-    private async Task ScrollActiveIntoViewAsync()
+    async Task ScrollActiveIntoViewAsync()
     {
         if (_activeIndex < 0) return;
         try
