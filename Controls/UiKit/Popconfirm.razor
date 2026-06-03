@@ -9,17 +9,19 @@
     @if (_open)
     {
         <div class="wss-popconfirm-backdrop" @onclick="Close"></div>
-        <div class="wss-popconfirm wss-popconfirm-@PlacementName @(_positioned ? null : "wss-measuring")" @ref="_panelRef" role="dialog" @onclick:stopPropagation="true">
+        <div class="wss-popconfirm wss-popconfirm-@PlacementName @(_positioned ? null : "wss-measuring")"
+             @ref="_panelRef" role="dialog" aria-labelledby="@($"{_id}-title")"
+             @onclick:stopPropagation="true">
             <div class="wss-popconfirm-inner">
                 <div class="wss-popconfirm-message">
                     <span class="wss-popconfirm-icon">
                         <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm-32 232c0-4.4 3.6-8 8-8h48c4.4 0 8 3.6 8 8v272c0 4.4-3.6 8-8 8h-48c-4.4 0-8-3.6-8-8V296zm32 440a48.01 48.01 0 010-96 48.01 48.01 0 010 96z"/></svg>
                     </span>
-                    <div class="wss-popconfirm-title">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                    <div class="wss-popconfirm-title" id="@($"{_id}-title")">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
                 </div>
                 <div class="wss-popconfirm-buttons">
                     <button type="button" class="wss-dialog-btn wss-dialog-btn-sm" @onclick="CancelAsync">@CancelText</button>
-                    <button type="button" class="wss-dialog-btn wss-dialog-btn-sm wss-dialog-btn-primary" @onclick="ConfirmAsync">@OkText</button>
+                    <button type="button" @ref="_okButtonRef" class="wss-dialog-btn wss-dialog-btn-sm wss-dialog-btn-primary" @onclick="ConfirmAsync">@OkText</button>
                 </div>
             </div>
             <span class="wss-popconfirm-arrow"></span>
@@ -40,9 +42,12 @@
 
     ElementReference _triggerRef;
     ElementReference _panelRef;
+    ElementReference _okButtonRef;
     IJSObjectReference? _module;
     bool _open;
     bool _positioned;
+    bool _pendingFocus;
+    readonly string _id = $"wss-popconfirm-{Guid.NewGuid():N}";
 
     string PlacementName => Placement.ToString().ToLowerInvariant();
 
@@ -88,11 +93,19 @@
                 // No JS runtime / module — keep the CSS default placement.
             }
             _positioned = true;
+            _pendingFocus = true;
             StateHasChanged(); // reveal the panel now that it's positioned (drops wss-measuring)
+        }
+        else if (_open && _pendingFocus)
+        {
+            // Focus the primary action so keyboard / screen-reader users land inside the dialog.
+            _pendingFocus = false;
+            try { await _okButtonRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
         }
         else if (!_open && _positioned)
         {
             _positioned = false;
+            try { await _triggerRef.FocusAsync(); } catch { /* restore focus to the trigger */ }
         }
     }
 
@@ -101,6 +114,7 @@
         if (_module is not null)
         {
             try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
+            _module = null;
         }
     }
 }

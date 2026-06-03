@@ -86,4 +86,33 @@ public class UiKitDialogControlsTests : TestContext
         Assert.True(confirmed);
         Assert.Empty(cut.FindAll(".wss-popconfirm")); // closes after confirm
     }
+
+    [Fact]
+    public void Popconfirm_dialog_is_labelled_by_its_title()
+    {
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .AddChildContent("<button>del</button>"));
+
+        cut.Find(".wss-popconfirm-trigger").Click();
+        var dialog = cut.Find("[role=dialog]");
+        var labelledBy = dialog.GetAttribute("aria-labelledby");
+        Assert.False(string.IsNullOrEmpty(labelledBy));
+        Assert.Equal(labelledBy, cut.Find(".wss-popconfirm-title").Id);
+    }
+
+    [Fact]
+    public void Popover_dialog_is_labelled_by_its_title_when_present()
+    {
+        var cut = RenderComponent<Popover>(p => p
+            .Add(pv => pv.Title, "Info")
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<span>?</span>"));
+
+        cut.Find(".wss-popover-trigger").Click();
+        var dialog = cut.Find("[role=dialog]");
+        var labelledBy = dialog.GetAttribute("aria-labelledby");
+        Assert.False(string.IsNullOrEmpty(labelledBy));
+        Assert.Equal(labelledBy, cut.Find(".wss-popover-title").Id);
+    }
 }
