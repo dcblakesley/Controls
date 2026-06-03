@@ -1,14 +1,12 @@
 
+@* Display-only value (EditMode=false). Rendered as plain text, not a role="textbox": a screen
+   reader should not announce a non-editable value as an editable field, and it shouldn't be a tab
+   stop. The field name is conveyed via aria-labelledby; validation (if any) is announced by the
+   sibling FieldValidationDisplay's own live region. *@
 <div class="edit-readonly-value @CssClass"
-     role="textbox"
      id=@Id
      data-test-id=@Id
-     aria-readonly="true"
-     aria-required=@IsRequired
-     aria-labelledby=@($"lbl-{Id}")
-     aria-describedby=@($"error-msg-{Id} desc-{Id} tooltip-{Id}")
-     aria-errormessage=@($"error-msg-{Id}")
-     tabindex="0">
+     aria-labelledby=@($"lbl-{Id}")>
 
     @if (!string.IsNullOrEmpty(Text))
     {

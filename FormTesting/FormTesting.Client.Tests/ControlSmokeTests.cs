@@ -64,6 +64,27 @@ public class ControlSmokeTests : TestContext
     }
 
     [Fact]
+    public void ReadOnlyValue_is_not_announced_as_an_editable_textbox()
+    {
+        // A display-only value must not pose as an editable textbox or be a tab stop.
+        var model = new PersonModel { Name = "Alice" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        var ro = cut.Find(".edit-readonly-value");
+        Assert.False(ro.HasAttribute("role"));
+        Assert.False(ro.HasAttribute("tabindex"));
+    }
+
+    [Fact]
     public void EditString_renders_required_star_when_attribute_present()
     {
         var model = new PersonModel { Name = "x" };

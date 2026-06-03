@@ -61,4 +61,58 @@ public class ScopedToastTests : TestContext
         Assert.Contains(services, d => d.ServiceType == typeof(IMessageService) && d.Lifetime == ServiceLifetime.Scoped);
         Assert.Contains(services, d => d.ServiceType == typeof(INotificationService) && d.Lifetime == ServiceLifetime.Scoped);
     }
+
+    [Fact]
+    public void Error_message_makes_container_assertive_alert()
+    {
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<IMessageService>().Error("boom", duration: 0);
+
+        var container = RenderComponent<MessageContainer>().Find(".wss-msg-container");
+        Assert.Equal("alert", container.GetAttribute("role"));
+        Assert.Equal("assertive", container.GetAttribute("aria-live"));
+    }
+
+    [Fact]
+    public void Non_error_message_stays_polite_status()
+    {
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<IMessageService>().Info("hi", duration: 0);
+
+        var container = RenderComponent<MessageContainer>().Find(".wss-msg-container");
+        Assert.Equal("status", container.GetAttribute("role"));
+        Assert.Equal("polite", container.GetAttribute("aria-live"));
+    }
+
+    [Fact]
+    public void Loading_with_no_duration_stays_sticky()
+    {
+        var svc = new MessageService();
+        svc.Loading("working");   // duration defaults to 0 -> no auto-dismiss timer
+        Assert.Single(svc.Items);
+    }
+
+    [Fact]
+    public async Task Message_auto_removes_after_its_duration()
+    {
+        var svc = new MessageService();
+        svc.Success("bye", duration: 0.05);   // 50ms
+        Assert.Single(svc.Items);
+
+        await Task.Delay(400);
+        Assert.Empty(svc.Items);
+    }
+
+    [Fact]
+    public async Task Clear_cancels_pending_auto_dismiss()
+    {
+        var svc = new MessageService();
+        svc.Success("x", duration: 0.05);
+        svc.Clear();
+        Assert.Empty(svc.Items);
+
+        // The cancelled timer must not throw or resurrect/double-remove later.
+        await Task.Delay(250);
+        Assert.Empty(svc.Items);
+    }
 }

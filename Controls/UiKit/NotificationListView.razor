@@ -2,7 +2,7 @@
 
 @* Shared presentational view for notifications. Rendered by both WasmNotificationContainer (static)
    and NotificationContainer (scoped) so the two paths produce identical DOM. *@
-<div class="wss-notification-container" role="status" aria-live="polite" aria-atomic="false">
+<div class="wss-notification-container" role="@Role" aria-live="@AriaLive" aria-atomic="false">
     @foreach (var n in Items)
     {
         <div class="wss-notification" @key="n.Id">
@@ -26,6 +26,19 @@
 
     /// <summary>Invoked with the item id when its close button is clicked.</summary>
     [Parameter] public EventCallback<Guid> OnRemove { get; set; }
+
+    // Errors interrupt assistive tech (alert/assertive); other severities announce politely.
+    bool HasError
+    {
+        get
+        {
+            foreach (var n in Items)
+                if (n.Type == NotificationType.Error) return true;
+            return false;
+        }
+    }
+    string Role => HasError ? "alert" : "status";
+    string AriaLive => HasError ? "assertive" : "polite";
 
     static RenderFragment Icon(NotificationType type) => type switch
     {

@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace Controls;
 
 /// <summary>
@@ -6,9 +8,13 @@ namespace Controls;
 /// static <see cref="WasmNotificationService"/> facade reuses this same logic over a process-static
 /// instance.
 /// </summary>
-public sealed class NotificationService : INotificationService
+public sealed class NotificationService : INotificationService, IDisposable
 {
     private readonly List<NotificationItem> _items = new();
+
+    // One cancellation source per auto-dismissing notification, so Remove/Clear/Dispose can cancel a
+    // pending Task.Delay instead of leaving it to fire later against torn-down state.
+    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _timers = new();
 
     /// <inheritdoc/>
     public IReadOnlyList<NotificationItem> Items => _items;
@@ -28,6 +34,7 @@ public sealed class NotificationService : INotificationService
     /// <inheritdoc/>
     public void Remove(Guid id)
     {
+        CancelTimer(id);
         if (_items.RemoveAll(i => i.Id == id) > 0)
         {
             OnChange?.Invoke();
@@ -37,6 +44,7 @@ public sealed class NotificationService : INotificationService
     /// <inheritdoc/>
     public void Clear()
     {
+        CancelAllTimers();
         _items.Clear();
         OnChange?.Invoke();
     }
@@ -55,13 +63,45 @@ public sealed class NotificationService : INotificationService
 
         if (item.Duration > 0)
         {
-            _ = RemoveAfterAsync(item);
+            var cts = new CancellationTokenSource();
+            _timers[item.Id] = cts;
+            _ = RemoveAfterAsync(item, cts.Token);
         }
     }
 
-    private async Task RemoveAfterAsync(NotificationItem item)
+    private async Task RemoveAfterAsync(NotificationItem item, CancellationToken token)
     {
-        await Task.Delay(TimeSpan.FromSeconds(item.Duration));
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(item.Duration), token);
+        }
+        catch (TaskCanceledException)
+        {
+            return; // removed/cleared/disposed before the delay elapsed
+        }
+
         Remove(item.Id);
     }
+
+    private void CancelTimer(Guid id)
+    {
+        if (_timers.TryRemove(id, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+    }
+
+    private void CancelAllTimers()
+    {
+        foreach (var cts in _timers.Values)
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+        _timers.Clear();
+    }
+
+    /// <summary>Cancels any pending auto-dismiss timers (called when the DI scope is torn down).</summary>
+    public void Dispose() => CancelAllTimers();
 }
