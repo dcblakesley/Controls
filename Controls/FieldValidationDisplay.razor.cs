@@ -35,6 +35,8 @@ public partial class FieldValidationDisplay
         // this validation display is conditionally rendered.
     }
 
+    // DefaultShowFieldNameInValidation is a *static* member: in `FormOptions.X` the name binds to the
+    // type, not the (possibly-null) cascaded instance, so the ?? fallback is null-safe despite appearances.
     bool ShowFieldNameInValidation =>
         FormOptions?.ShowFieldNameInValidation ?? FormOptions.DefaultShowFieldNameInValidation;
 

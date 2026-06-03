@@ -6,10 +6,12 @@ namespace Controls.Helpers;
 /// <c>ShowEditor</c>/<c>ShouldHideLabel</c> computed properties.
 /// </summary>
 /// <remarks>
-/// A static helper rather than a base class because each edit control inherits a different
-/// Microsoft <c>Input*</c> base (<see cref="Microsoft.AspNetCore.Components.Forms.InputText"/>,
-/// <c>InputNumber&lt;T&gt;</c>, <c>InputDate&lt;T&gt;</c>, etc.) — single inheritance precludes
-/// a unified <c>EditControlBase&lt;T&gt;</c>.
+/// A static helper rather than a base class so the same logic can be shared by the control bases
+/// that can't share a common ancestor: <see cref="EditControlBase{TValue}"/> (an
+/// <see cref="Microsoft.AspNetCore.Components.Forms.InputBase{TValue}"/>),
+/// <see cref="EditControlListBase{TItem}"/> (a plain <c>ComponentBase</c> that binds a collection),
+/// and <c>EditRadio&lt;TValue&gt;</c> (which must inherit <c>InputRadioGroup&lt;TValue&gt;</c> to supply
+/// the <c>InputRadioContext</c> its child <c>InputRadio</c>s resolve).
 /// </remarks>
 public static class EditControlInit
 {
