@@ -53,8 +53,10 @@ public static class AttributesHelper
     // Complex
     public static (int? MinLength, int? MaxLength) GetMinAndMaxLengths(List<Attribute> attributes)
     {
-        var min = 0;
-        var max = 0;
+        // null means "no length constraint" rather than a misleading 0; when both a StringLength and
+        // a separate Min/MaxLength apply, take the tighter bound.
+        int? min = null;
+        int? max = null;
         var stringLengthAttribute = attributes.OfType<StringLengthAttribute>().FirstOrDefault();
         if (stringLengthAttribute != null)
         {
@@ -65,13 +67,13 @@ public static class AttributesHelper
         var minLengthAttribute = attributes.OfType<MinLengthAttribute>().FirstOrDefault();
         if (minLengthAttribute != null)
         {
-            min = Math.Max(min, minLengthAttribute.Length);
+            min = Math.Max(min ?? 0, minLengthAttribute.Length);
         }
 
         var maxLengthAttribute = attributes.OfType<MaxLengthAttribute>().FirstOrDefault();
         if (maxLengthAttribute != null)
         {
-            max = Math.Max(max, maxLengthAttribute.Length);
+            max = Math.Max(max ?? 0, maxLengthAttribute.Length);
         }
 
         return (min, max);

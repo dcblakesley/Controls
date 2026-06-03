@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @implements IDisposable
 
-<section class="validation-summary" aria-label="Validation errors">
+<section class="validation-summary" aria-label="Validation errors" @attributes="AdditionalAttributes">
     @if (FormOptions is not null)
     {
         @foreach (var v in FormOptions.FieldIdentifiers)
@@ -37,8 +37,6 @@
 
     [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
 
-    IEnumerable<string> ValidationMessages => Model is null ? CurrentEditContext.GetValidationMessages() : CurrentEditContext.GetValidationMessages(new FieldIdentifier(Model, string.Empty));
-    
     protected override Task OnInitializedAsync()
     {
         _validationStateChangedHandler = (sender, eventArgs) => StateHasChanged();
@@ -49,8 +47,8 @@
     {
         if (CurrentEditContext == null)
         {
-            throw new InvalidOperationException($"{nameof(ValidationSummary)} requires a cascading parameter " +
-                                                $"of type {nameof(EditContext)}. For example, you can use {nameof(ValidationSummary)} inside " +
+            throw new InvalidOperationException($"{nameof(ValidationView)} requires a cascading parameter " +
+                                                $"of type {nameof(EditContext)}. For example, you can use {nameof(ValidationView)} inside " +
                                                 $"an {nameof(EditForm)}.");
         }
 

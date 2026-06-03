@@ -642,6 +642,7 @@ public partial class Select<TValue> : IAsyncDisposable
             {
                 // Circuit may already be gone; nothing to clean up.
             }
+            _jsModule = null;
         }
     }
 }
