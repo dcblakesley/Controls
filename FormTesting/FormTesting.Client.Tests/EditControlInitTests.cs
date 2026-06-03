@@ -61,4 +61,44 @@ public class EditControlInitTests
         var formOptions = new FormOptions { IsLabelHidden = formHidden };
         Assert.Equal(expected, EditControlInit.ShouldHideLabel(localHidden, formOptions));
     }
+
+    [Theory]
+    // isHidden short-circuits to false regardless of everything else
+    [InlineData(true, HidingMode.None, true, false, false, false)]
+    [InlineData(true, HidingMode.WhenNull, true, true, true, false)]
+    // None always shows
+    [InlineData(false, HidingMode.None, false, true, true, true)]
+    // WhenReadOnlyAndNull: hide only when read-only (!showEditor) AND null
+    [InlineData(false, HidingMode.WhenReadOnlyAndNull, false, true, false, false)]
+    [InlineData(false, HidingMode.WhenReadOnlyAndNull, true, true, false, true)]
+    [InlineData(false, HidingMode.WhenReadOnlyAndNull, false, false, false, true)]
+    // WhenReadOnlyAndNullOrDefault: hide only when read-only AND default
+    [InlineData(false, HidingMode.WhenReadOnlyAndNullOrDefault, false, false, true, false)]
+    [InlineData(false, HidingMode.WhenReadOnlyAndNullOrDefault, true, false, true, true)]
+    // WhenNull: show iff not null
+    [InlineData(false, HidingMode.WhenNull, true, true, false, false)]
+    [InlineData(false, HidingMode.WhenNull, true, false, false, true)]
+    // WhenNullOrDefault: show iff not default
+    [InlineData(false, HidingMode.WhenNullOrDefault, true, false, true, false)]
+    [InlineData(false, HidingMode.WhenNullOrDefault, true, false, false, true)]
+    public void ShouldShow_truth_table(bool isHidden, HidingMode hiding, bool showEditor, bool isNull, bool isDefault, bool expected)
+    {
+        Assert.Equal(expected, EditControlInit.ShouldShow(isHidden, hiding, formOptions: null, showEditor, isNull, isDefault));
+    }
+
+    [Fact]
+    public void ShouldShow_per_control_hiding_overrides_form_wide()
+    {
+        var form = new FormOptions { Hiding = HidingMode.None };
+        // Per-control WhenNull wins over the form-wide None: a null value hides.
+        Assert.False(EditControlInit.ShouldShow(false, HidingMode.WhenNull, form, showEditor: true, isNull: true, isDefault: true));
+    }
+
+    [Fact]
+    public void ShouldShow_falls_back_to_form_wide_hiding_when_per_control_null()
+    {
+        var form = new FormOptions { Hiding = HidingMode.WhenNull };
+        Assert.False(EditControlInit.ShouldShow(false, null, form, showEditor: true, isNull: true, isDefault: true));
+        Assert.True(EditControlInit.ShouldShow(false, null, form, showEditor: true, isNull: false, isDefault: false));
+    }
 }
