@@ -63,4 +63,22 @@ public class UiKitTableTests : TestContext
         Assert.NotNull(selected);
         Assert.Single(selected!);
     }
+
+    [Fact]
+    public void Table_headers_have_scope_and_selection_checkboxes_are_labelled()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .Add(t => t.Caption, "People")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.All(cut.FindAll("thead th"), th => Assert.Equal("col", th.GetAttribute("scope")));
+        Assert.Equal("People", cut.Find("caption").TextContent);
+        Assert.Equal("Select all rows", cut.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+        Assert.All(cut.FindAll("tbody input.wss-table-checkbox"),
+            cb => Assert.Equal("Select row", cb.GetAttribute("aria-label")));
+    }
 }

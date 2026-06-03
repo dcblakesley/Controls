@@ -7,18 +7,22 @@
 
 <div class="wss-table-wrapper">
     <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName">
+        @if (!string.IsNullOrEmpty(Caption))
+        {
+            <caption class="wss-table-caption">@Caption</caption>
+        }
         <thead class="wss-table-thead">
             <tr>
                 @if (Selectable)
                 {
-                    <th class="wss-table-cell wss-table-selection-cell">
-                        <input type="checkbox" class="wss-table-checkbox" checked="@AllSelected"
+                    <th scope="col" class="wss-table-cell wss-table-selection-cell">
+                        <input type="checkbox" class="wss-table-checkbox" aria-label="Select all rows" checked="@AllSelected"
                                @onchange="@(e => ToggleAll(e.Value is true))" />
                     </th>
                 }
                 @foreach (var col in _columns)
                 {
-                    <th class="wss-table-cell">@col.HeaderText</th>
+                    <th scope="col" class="wss-table-cell">@col.HeaderText</th>
                 }
             </tr>
         </thead>
@@ -33,11 +37,11 @@
             {
                 @foreach (var item in PageItems)
                 {
-                    <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)">
+                    <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)" @key="item">
                         @if (Selectable)
                         {
                             <td class="wss-table-cell wss-table-selection-cell">
-                                <input type="checkbox" class="wss-table-checkbox" checked="@IsSelected(item)"
+                                <input type="checkbox" class="wss-table-checkbox" aria-label="Select row" checked="@IsSelected(item)"
                                        @onchange="@(e => ToggleRow(item, e.Value is true))" />
                             </td>
                         }
@@ -65,6 +69,9 @@
     [Parameter] public bool Bordered { get; set; }
     [Parameter] public TableSize Size { get; set; } = TableSize.Default;
     [Parameter] public string EmptyText { get; set; } = "No data";
+
+    /// <summary>Optional accessible caption rendered above the table (also names it for screen readers).</summary>
+    [Parameter] public string? Caption { get; set; }
 
     /// <summary>Rows per page; 0 (default) shows all rows without pagination.</summary>
     [Parameter] public int PageSize { get; set; }
@@ -112,11 +119,9 @@
         }
     }
 
-    void OnPageChange(int page)
-    {
-        _page = page;
-        StateHasChanged();
-    }
+    // Pagination.CurrentChanged is an EventCallback, so Blazor re-renders this component
+    // automatically once this handler returns — no explicit StateHasChanged needed.
+    void OnPageChange(int page) => _page = page;
 
     bool IsSelected(TItem item) => _selected.Contains(item);
 
