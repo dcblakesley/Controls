@@ -41,6 +41,8 @@ Install-Package WssBlazorControls
 
 ```html
 <link href="_content/WssBlazorControls/edit-controls.css" rel="stylesheet" />
+<!-- Only needed if you use the AntDesign-style UI-kit controls (Select, Alert, Modal, Table, ...) -->
+<link href="_content/WssBlazorControls/wss-controls.css" rel="stylesheet" />
 ```
 
 3. **Use the controls** in your Blazor components:
@@ -109,6 +111,8 @@ Install-Package WssBlazorControls
 - **`EditSelect`** - Dropdown selection for objects
 - **`EditSelectEnum`** - Dropdown for enum values
 - **`EditSelectString`** - Dropdown for string values
+- **`EditSelectSearch`** - Searchable single-select (AntDesign-style: type-to-search, clear, virtualized)
+- **`EditMultiSelect`** - Multiple / tags select bound to a `List<T>` (AntDesign-style)
 - **`EditRadio`** - Radio buttons for objects
 - **`EditRadioEnum`** - Radio buttons for enums
 - **`EditRadioString`** - Radio buttons for strings
@@ -134,6 +138,24 @@ Both render text in the `edit-readonly-value` style, but their use cases are dif
 | **Validation** | None | None (the parent control's `FieldValidationDisplay` handles it) |
 
 Reach for `EditDisplay` when you want the same visual treatment as a read-only `EditString` but without an `EditForm` / model property behind it.
+
+### UI Kit (non-form) controls
+
+A set of dependency-free, AntDesign-style general UI widgets (ported from `Standalone.Controls`). Unlike the `Edit*` controls these are **not** form-bound — they're plain components. They use the `wss-` CSS prefix and `--wss-*` theme tokens shipped in `wss-controls.css` (link it as shown in Quick Start). No service registration is required.
+
+- **`Select<T>`** - The dropdown engine behind `EditSelectSearch` / `EditMultiSelect`; usable standalone (single / multiple / tags, search, virtualized)
+- **`Alert`** - Contextual message banner (success / info / warning / error, closable, description)
+- **`Skeleton`** - Loading placeholder with shimmer
+- **`Tooltip`** - Pure-CSS hover tooltip (4 placements)
+- **`Popover`** - Click-triggered popover (4 placements)
+- **`Pagination`** - Controlled pager
+- **`Modal`** - Dialog with `@bind-Visible`, footer, mask-close
+- **`Drawer`** - Slide-in panel (4 placements)
+- **`Popconfirm`** - Inline confirm popover
+- **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging
+- **`WasmMessageService` / `WasmNotificationService`** (+ their `*Container` hosts) - Registration-free toasts, **WebAssembly only** (process-static state — do not use on Blazor Server)
+
+> `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
 
 ## Component Features
 
@@ -216,6 +238,8 @@ The library provides default styling through the included CSS file. You can cust
 2. **Using ContainerClass** parameter for component-specific styling
 3. **Applying custom CSS** to the `.edit-control-wrapper` class
 
+The AntDesign-style UI-kit controls (Alert, Modal, Table, Select, ...) are themed via `--wss-*` CSS custom properties in `wss-controls.css`. They default to the AntDesign 4.x look and **bridge to your existing `--color-primary` / `--color-danger` / `--border-color`** where those are defined, so they pick up your theme automatically. Override any `--wss-*` variable to re-theme.
+
 ```razor
 <EditString @bind-Value="model.Name" 
             Label="Name" 
@@ -255,6 +279,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Changelog
 
 ### Unreleased
+
+**New: AntDesign-style controls (ported from `Standalone.Controls`)**
+- **Form selects:** `EditSelectSearch<T>` (searchable single-select) and `EditMultiSelect<T>` (multiple / tags, binds `List<T>`) — full `Edit*` controls (validation, label, read-only, `FormOptions`) backed by a new dependency-free, virtualized dropdown engine (`Select<T>`). They sit **alongside** the existing `EditSelect` / `EditSelectEnum` / `EditSelectString`, which are unchanged.
+- **UI kit (non-form):** `Select<T>`, `Alert`, `Skeleton`, `Tooltip`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column` / `PropertyColumn` / `ActionColumn`), and WASM-only `WasmMessageService` / `WasmNotificationService` (+ their container components). `Icon`, `Button`, `Checkbox`, and `Tag` were intentionally excluded.
+- **New stylesheet:** these controls use the `wss-` class prefix and `--wss-*` theme tokens shipped in `wss-controls.css`. Add a second link alongside `edit-controls.css`:
+  ```html
+  <link href="_content/WssBlazorControls/wss-controls.css" rel="stylesheet" />
+  ```
+  Tokens default to the AntDesign 4.x look and bridge to your existing `--color-*` / `--border-color` where present. The Select keyboard helper ships as an RCL JS module at `_content/WssBlazorControls/wss-select.js` (auto-imported, degrades gracefully).
+- No service registration required (consistent with the rest of the library).
 
 **Breaking dependency change**
 - Removed `Microsoft.AspNetCore.Components.DataAnnotations.Validation` (3.2.0-rc1) from the `WssBlazorControls` package — the library itself never used it. Consumers who use `<ObjectGraphDataAnnotationsValidator>` or the `[ValidateComplexType]` attribute for nested-object validation must now add the package to their own project:

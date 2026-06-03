@@ -30,7 +30,7 @@ End-to-end tests live in `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Pla
 
 ## Project Structure
 
-- **Controls/** — Main Razor Class Library (`WssBlazorControls` NuGet package). Multi-targets net8.0, net9.0, net10.0.
+- **Controls/** — Main Razor Class Library (`WssBlazorControls` NuGet package). Multi-targets net8.0, net9.0, net10.0. Form `Edit*` controls live at the root; the ported AntDesign-style controls live in `Controls/Select/` (searchable selects + the `Select<T>` engine) and `Controls/UiKit/` (general widgets).
 - **Controls.Demo/** — Demo components library (`WssBlazorControls.Demo` NuGet package). References Controls. Same multi-targeting.
 - **FormTesting/FormTesting/** — Blazor Server host (net10.0).
 - **FormTesting/FormTesting.Client/** — Blazor WebAssembly client that references both Controls and Controls.Demo.
@@ -72,7 +72,22 @@ Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, Edi
 
 ### CSS Conventions
 
-All CSS classes use the `edit-` prefix (defined in `Controls/wwwroot/edit-controls.css`). Key classes: `edit-control-wrapper`, `edit-label`, `edit-label-required-star`, `edit-validation-message`, `edit-readonly-value`, `edit-tooltip-*`. Component-scoped CSS uses Blazor CSS isolation (`.razor.css` files).
+Form controls use the `edit-` prefix (in `Controls/wwwroot/edit-controls.css`). The ported UI-kit controls use the `wss-` prefix + `--wss-*` theme tokens (in `Controls/wwwroot/wss-controls.css`). Key form classes: `edit-control-wrapper`, `edit-label`, `edit-label-required-star`, `edit-validation-message`, `edit-readonly-value`, `edit-tooltip-*`.
+
+**The library styles via global stylesheets, not CSS isolation.** There is no scoped-CSS bundle link in the host/consumers (no `{App}.styles.css` reference anywhere), so `.razor.css` files do **not** load for library components. Put all control CSS in the appropriate global file (`edit-controls.css` for form controls, `wss-controls.css` for UI-kit). Consumers link both from `_content/WssBlazorControls/`. The `--wss-*` tokens default to AntDesign 4.x and bridge to the consumer's `--color-primary` / `--color-danger` / `--border-color` where present.
+
+### UI Kit controls (ported AntDesign-style — `Controls/Select/` + `Controls/UiKit/`)
+
+A second category of controls ported from `Standalone.Controls` (dependency-free AntDesign look-alikes), in two flavors:
+
+- **Form selects** (`Controls/Select/`): `EditSelectSearch<T>` (single, searchable) and `EditMultiSelect<T>` (multiple/tags) follow the standard `Edit*` pattern above but render the `Select<T>` engine instead of a native `<select>`. They sit alongside the existing `EditSelect*` (unchanged). `EditSelectSearch` rides `EditControlBase<T>`; `EditMultiSelect` rides `EditControlListBase<T>`. Both set the value via the engine's callback (no string parsing — `TryParseValueFromString` throws, like `EditBool`).
+- **General widgets** (`Controls/UiKit/`): `Select<T>` (the engine), `Alert`, `Skeleton`, `Tooltip`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column`/`PropertyColumn`/`ActionColumn`), and WASM-only `WasmMessageService`/`WasmNotificationService` (+ containers). These are plain components — **not** `IEditControl`/form-bound.
+
+Conventions for this category: namespace `Controls` (pin `@namespace Controls` on each `.razor`); `wss-` classes; `--wss-*` tokens; nullable enabled; CSS lives in the global `wss-controls.css`. The Select keyboard helper is an RCL JS module at `_content/WssBlazorControls/wss-select.js` (path tied to PackageId; imported lazily, degrades when JS is unavailable).
+
+- **`Icon`, `Button`, `Checkbox`, `Tag` are intentionally excluded.** Modal/Popconfirm footers use native `<button>`s with the shared `wss-dialog-btn` class, not a Button component.
+- **Toasts are WASM-only** — they hold process-`static` state unsafe on Blazor Server. Keep the `Wasm` prefix; don't use on Server.
+- Demoed at `/uikit` (`Controls.Demo/UiKitGallery.razor`); the searchable selects appear in the main form demo (`SelectSearch` / `MultiSelect` views).
 
 ### Global Usings
 
