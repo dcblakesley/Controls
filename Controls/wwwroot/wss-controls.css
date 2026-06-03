@@ -89,8 +89,8 @@
     box-sizing: border-box;
     min-width: 120px;
     color: var(--wss-color-text);
-    font-size: 14px;
-    line-height: 1.5715;
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
     cursor: pointer;
 }
 
@@ -147,7 +147,7 @@
     margin: 0;
     padding: 0;
     color: var(--wss-color-text);
-    font-size: 14px;
+    font-size: var(--wss-font-size);
     background: transparent;
     border: none;
     outline: none;
@@ -177,16 +177,16 @@
 
 .wss-select-single .wss-select-selector {
     width: 100%;
-    height: 32px;
-    padding: 0 11px;
+    height: var(--wss-control-height);
+    padding: 0 var(--wss-padding-h);
 }
 
 .wss-select-single .wss-select-selection-search {
     position: absolute;
     top: 0;
-    right: 11px;
+    right: var(--wss-padding-h);
     bottom: 0;
-    left: 11px;
+    left: var(--wss-padding-h);
 }
 
 .wss-select-single .wss-select-selection-search-input {
@@ -223,7 +223,7 @@
 
 .wss-select-multiple .wss-select-selector {
     flex-wrap: wrap;
-    min-height: 32px;
+    min-height: var(--wss-control-height);
     padding: 1px 4px;
 }
 
@@ -264,6 +264,13 @@
     color: var(--wss-color-text);
 }
 
+/* The "+N" overflow tag shown when MaxTagCount hides the remaining tags — muted and non-removable
+   so it reads as a count rather than a real tag. */
+.wss-select-multiple .wss-select-selection-item-rest {
+    color: var(--wss-color-text-secondary);
+    cursor: default;
+}
+
 .wss-select-multiple .wss-select-selection-search {
     position: relative;
     flex: 1;
@@ -279,7 +286,7 @@
 .wss-select-multiple .wss-select-selection-placeholder {
     position: absolute;
     top: 50%;
-    left: 11px;
+    left: var(--wss-padding-h);
     transform: translateY(-50%);
 }
 
@@ -289,7 +296,7 @@
 .wss-select-clear {
     position: absolute;
     top: 50%;
-    right: 11px;
+    right: var(--wss-padding-h);
     width: 12px;
     height: 12px;
     margin-top: -6px;
@@ -354,9 +361,9 @@
 .wss-select-item-empty {
     position: relative;
     display: block;
-    min-height: 32px;
+    min-height: var(--wss-control-height);
     padding: 5px 12px;
-    font-size: 14px;
+    font-size: var(--wss-font-size);
     line-height: 22px;
 }
 
@@ -406,7 +413,7 @@
 /* ----------------------------------------------------------- Sizes */
 
 .wss-select-sm.wss-select-single .wss-select-selector {
-    height: 24px;
+    height: var(--wss-control-height-sm);
     padding: 0 7px;
 }
 
@@ -425,12 +432,12 @@
 }
 
 .wss-select-lg {
-    font-size: 16px;
+    font-size: var(--wss-font-size-lg);
 }
 
 .wss-select-lg.wss-select-single .wss-select-selector {
-    height: 40px;
-    padding: 0 11px;
+    height: var(--wss-control-height-lg);
+    padding: 0 var(--wss-padding-h);
 }
 
 .wss-select-lg.wss-select-single .wss-select-selection-search-input {
@@ -604,10 +611,19 @@
    (at the default CSS placement) if JS is unavailable. visibility:hidden keeps it measurable. */
 .wss-measuring { visibility: hidden; }
 
+/* Structural wrapper inside the popover panel — layout/override hook, no intrinsic styling. */
+.wss-popover-inner { }
+
 .wss-popover-title {
     padding: 5px 16px 4px;
-    min-height: 32px;
+    min-height: var(--wss-control-height);
     border-bottom: 1px solid var(--wss-color-split);
+    color: var(--wss-color-text);
+    font-weight: 600;
+}
+
+/* Popconfirm title sits beside the confirm icon — match the popover title weight. */
+.wss-popconfirm-title {
     color: var(--wss-color-text);
     font-weight: 600;
 }
@@ -1012,6 +1028,14 @@
     overflow-x: auto;
 }
 
+/* <caption> for the table — left-aligned, secondary color, matching the table font. */
+.wss-table-caption {
+    padding: 8px 0;
+    color: var(--wss-color-text-secondary);
+    text-align: left;
+    font-size: var(--wss-font-size);
+}
+
 .wss-table {
     width: 100%;
     border-collapse: collapse;
@@ -1122,6 +1146,11 @@
 .wss-msg-icon {
     display: inline-flex;
     font-size: 16px;
+}
+
+/* Text content beside the message icon. */
+.wss-msg-content {
+    flex: 1;
 }
 
 .wss-msg-icon-success { color: var(--wss-color-success); }
@@ -1235,7 +1264,7 @@
 .wss-popover-trigger:focus-visible,
 .wss-popconfirm-trigger:focus-visible {
     outline: 2px solid var(--wss-color-primary);
-    outline-offset: 1px;
+    outline-offset: 2px;
 }
 
 /* Honor the OS "reduce motion" setting (WCAG 2.3.3): drop the slide-ins, the skeleton
