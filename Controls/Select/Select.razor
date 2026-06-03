@@ -7,7 +7,7 @@
     <div class="wss-select-backdrop" @onclick="CloseAsync"></div>
 }
 
-<div class="@WrapperClass" style="@WidthStyle" @onclick="OnWrapperClickAsync" @onclick:stopPropagation>
+<div class="@WrapperClass" style="@WidthStyle" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation>
 
     <div class="wss-select-selector">
 
@@ -107,7 +107,7 @@
 
     @if (_open)
     {
-        <div class="wss-select-dropdown" @ref="_dropdownRef" role="listbox" id="@($"{BaseId}-listbox")">
+        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" @ref="_dropdownRef" role="listbox" id="@($"{BaseId}-listbox")">
             @if (_filtered.Count == 0)
             {
                 <div class="wss-select-item-empty">@EmptyText</div>

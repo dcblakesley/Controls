@@ -2,11 +2,14 @@
 @implements IDisposable
 
 <section class="validation-summary" aria-label="Validation errors">
-    @foreach (var v in FormOptions.FieldIdentifiers)
+    @if (FormOptions is not null)
     {
-        @foreach (var z in CurrentEditContext.GetValidationMessages(v).ToList())
+        @foreach (var v in FormOptions.FieldIdentifiers)
         {
-            <a class="validation-summary-message" href="#@AttributesHelper.GetId(null, FormGroupOptions, null, v)">@z</a>
+            @foreach (var z in CurrentEditContext.GetValidationMessages(v).ToList())
+            {
+                <a class="validation-summary-message" href="#@AttributesHelper.GetId(null, FormGroupOptions, null, v)">@z</a>
+            }
         }
     }
 </section>
@@ -18,7 +21,7 @@
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
     EditContext? _previousEditContext;
-    EventHandler<ValidationStateChangedEventArgs> _validationStateChangedHandler;
+    EventHandler<ValidationStateChangedEventArgs> _validationStateChangedHandler = default!;
 
     /// <summary> 
     /// Gets or sets the model to produce the list of validation messages for.

@@ -80,9 +80,9 @@ public partial class EditNumber<T> : EditControlBase<T>
                 };
             }
         }
-        catch (Exception e)
+        catch (FormatException)
         {
-            Console.WriteLine(e);
+            // Invalid custom Format string — show blank in read-only mode rather than throw.
         }
 
         return string.Empty;

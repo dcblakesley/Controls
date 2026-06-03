@@ -32,8 +32,10 @@ public partial class Select<TValue> : IAsyncDisposable
     private IJSObjectReference? _jsModule;
     private ElementReference _inputRef;
     private ElementReference _dropdownRef;
+    private ElementReference _wrapperRef;
     private CancellationTokenSource? _debounceCts;
     private bool _open;
+    private bool _dropdownPositioned;
     private bool _focused;
     private string _searchText = string.Empty;
     private int _activeIndex;
@@ -529,6 +531,33 @@ public partial class Select<TValue> : IAsyncDisposable
         catch
         {
             // No JS runtime / module (prerender, tests) — highlight still works, just no auto-scroll.
+        }
+    }
+
+    // After the dropdown opens, decide whether it should flip above the control (when it would
+    // otherwise run off the bottom of the viewport), then reveal it. The panel renders hidden
+    // (wss-measuring) for one frame so the flip is never visible. Degrades to the default downward
+    // CSS placement when JS isn't available (server prerender, unit tests).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_open && !_dropdownPositioned)
+        {
+            try
+            {
+                _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
+                    "import", "./_content/WssBlazorControls/wss-select.js");
+                await _jsModule.InvokeVoidAsync("placeDropdown", _wrapperRef, _dropdownRef, 4);
+            }
+            catch
+            {
+                // No JS runtime / module — keep the CSS default (downward) placement.
+            }
+            _dropdownPositioned = true;
+            StateHasChanged(); // reveal now that it's positioned (drops wss-measuring)
+        }
+        else if (!_open && _dropdownPositioned)
+        {
+            _dropdownPositioned = false;
         }
     }
 

@@ -16,8 +16,11 @@ public static class EnumHelpers
     /// 3. The enum member name with camelCase split into spaced words (e.g. <c>InProgress</c> → <c>"In Progress"</c>).
     /// Result is cached per (enum type, member name).
     /// </summary>
-    public static string GetName(this object value)
+    public static string GetName(this object? value)
     {
+        if (value is null)
+            return string.Empty;
+
         var type = value.GetType();
         var memberName = value.ToString() ?? string.Empty;
 

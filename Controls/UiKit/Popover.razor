@@ -29,7 +29,7 @@
     [Parameter] public RenderFragment? Content { get; set; }
     /// <summary>The trigger element.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public TooltipPlacement Placement { get; set; } = TooltipPlacement.Top;
+    [Parameter] public PopupPlacement Placement { get; set; } = PopupPlacement.Top;
 
     ElementReference _triggerRef;
     ElementReference _panelRef;

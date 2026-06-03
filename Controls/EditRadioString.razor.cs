@@ -62,9 +62,9 @@ public partial class EditRadioString : EditControlBase<string?>
     // Empty string counts as "default" for the NullOrDefault hiding modes.
     protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
 
-    void SetOtherText(string value)
+    void SetOtherText(string? value)
     {
-        _otherText = value;
+        _otherText = value ?? "";
         CurrentValue = value;
     }
 }

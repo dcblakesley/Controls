@@ -35,7 +35,7 @@
     [Parameter] public string CancelText { get; set; } = "Cancel";
     [Parameter] public EventCallback OnConfirm { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
-    [Parameter] public TooltipPlacement Placement { get; set; } = TooltipPlacement.Top;
+    [Parameter] public PopupPlacement Placement { get; set; } = PopupPlacement.Top;
     [Parameter] public bool Disabled { get; set; }
 
     ElementReference _triggerRef;

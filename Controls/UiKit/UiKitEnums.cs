@@ -10,7 +10,7 @@ public enum AlertType
 }
 
 /// <summary>Placement of a <see cref="Popover"/> / <see cref="Popconfirm"/> relative to its target.</summary>
-public enum TooltipPlacement
+public enum PopupPlacement
 {
     Top,
     Bottom,
