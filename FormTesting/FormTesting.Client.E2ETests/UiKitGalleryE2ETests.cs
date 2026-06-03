@@ -88,24 +88,27 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Popover_opens_and_matches_baseline()
+    public async Task Popover_opens_and_anchors_to_trigger()
     {
         await GotoAsync();
         await _page.Locator(".wss-popover-trigger").ClickAsync();
         var popover = _page.Locator(".wss-popover");
         await Expect(popover).ToBeVisibleAsync();
         await Expect(_page.Locator(".wss-popover-content")).ToContainTextAsync("popover content");
-        await BaselineAsync(popover, "popover");
+        await AssertAnchoredAboveAsync(".wss-popover-trigger", ".wss-popover");
     }
 
     [Fact]
-    public async Task Popconfirm_opens_baselines_then_confirms()
+    public async Task Popconfirm_anchors_to_trigger_then_confirms()
     {
         await GotoAsync();
         await _page.Locator(".wss-popconfirm-trigger").ClickAsync();
         var pop = _page.Locator(".wss-popconfirm");
         await Expect(pop).ToBeVisibleAsync();
-        await BaselineAsync(pop, "popconfirm");
+
+        // Regression guard for the flex/grid stretch bug (left:50% on a full-width wrap): the panel
+        // must be centred over the trigger and sit just above it, not drift to the section centre.
+        await AssertAnchoredAboveAsync(".wss-popconfirm-trigger", ".wss-popconfirm");
 
         // The primary button confirms, closes the popover, and records the result.
         await _page.Locator(".wss-popconfirm-buttons .wss-dialog-btn-primary").ClickAsync();
@@ -141,6 +144,21 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await _page.Locator("button", new() { HasTextString = "Notification" }).ClickAsync();
         await Expect(_page.Locator(".wss-notification")).ToBeVisibleAsync();
         await Expect(_page.Locator(".wss-notification-message")).ToContainTextAsync("Notification");
+    }
+
+    // Asserts an overlay panel is centred over its trigger and sits just above it (Top placement).
+    // A precise geometric guard for anchoring — more reliable than a screenshot for an absolutely
+    // -positioned overlay that can overflow the viewport when the trigger is near an edge.
+    async Task AssertAnchoredAboveAsync(string triggerSelector, string panelSelector)
+    {
+        var t = await _page.Locator(triggerSelector).BoundingBoxAsync();
+        var p = await _page.Locator(panelSelector).BoundingBoxAsync();
+        Assert.NotNull(t);
+        Assert.NotNull(p);
+        var dx = Math.Abs((t!.X + t.Width / 2) - (p!.X + p.Width / 2));
+        var gapAbove = t.Y - (p.Y + p.Height);
+        Assert.True(dx < 24, $"Panel not horizontally centred on trigger (dx={dx:F0}px).");
+        Assert.InRange(gapAbove, -2.0, 40.0);
     }
 
     async Task BaselineAsync(ILocator locator, string name)

@@ -558,6 +558,9 @@
 .wss-popover-wrap {
     position: relative;
     display: inline-flex;
+    /* Shrink-wrap the trigger so the absolutely-positioned popover anchors to it even when the
+       wrap is a flex/grid item (those stretch it to full width by default, breaking left:50%). */
+    width: fit-content;
 }
 
 .wss-popover-backdrop {
@@ -896,6 +899,9 @@
 .wss-popconfirm-wrap {
     position: relative;
     display: inline-flex;
+    /* Shrink-wrap the trigger so the absolutely-positioned popconfirm anchors to it even when the
+       wrap is a flex/grid item (those stretch it to full width by default, breaking left:50%). */
+    width: fit-content;
 }
 
 .wss-popconfirm-backdrop {
