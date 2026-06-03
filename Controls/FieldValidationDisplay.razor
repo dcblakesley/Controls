@@ -20,7 +20,7 @@
     {
         @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
         {
-            @((MarkupString)GetValidationMessage(x))
+            @GetValidationMessage(x)
         }
     }
 </div>

@@ -73,10 +73,13 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>
     protected async Task ToggleAsync(TItem item)
     {
-        if (Value.Contains(item))
-            Value.Remove(item);
-        else
-            Value.Add(item);
+        // Build a new list rather than mutating the caller's bound instance — so a parent that
+        // compares references detects the change, and any shared/source list isn't mutated as a
+        // side effect.
+        var updated = new List<TItem>(Value);
+        if (!updated.Remove(item))
+            updated.Add(item);
+        Value = updated;
 
         EditContext?.NotifyFieldChanged(_fieldIdentifier);
         await ValueChanged.InvokeAsync(Value);
@@ -106,7 +109,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
 
         return hidingMode switch
         {
-            HidingMode.WhenReadOnlyAndNull => !(!ShowEditor && isDefault),
+            HidingMode.WhenReadOnlyAndNull => !(!ShowEditor && isNull),
             HidingMode.WhenReadOnlyAndNullOrDefault => !(!ShowEditor && isDefault),
             HidingMode.WhenNull => !isNull,
             HidingMode.WhenNullOrDefault => !isDefault,

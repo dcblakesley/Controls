@@ -62,13 +62,29 @@ public partial class EditDate<T> : EditControlBase<T>
         };
     }
 
+    // Format the bound value directly by its type with DateFormat. (The old code re-parsed the
+    // round-tripped editor string and ran ToUniversalTime().ToLocalTime(), which rendered TimeOnly
+    // as a date and could shift dates across midnight in non-UTC zones.) The try/catch falls back
+    // to the value's own ToString() if DateFormat is incompatible with the type (e.g. a date format
+    // on a TimeOnly), so a mis-set format degrades instead of throwing.
     string GetDisplayValue()
     {
-        string valueAsString = CurrentValueAsString ?? string.Empty;
-        if (string.IsNullOrEmpty(valueAsString))
-            return string.Empty;
-
-        return DateTime.Parse(valueAsString).ToUniversalTime().ToLocalTime().ToString(DateFormat);
+        try
+        {
+            return CurrentValue switch
+            {
+                null => string.Empty,
+                DateTime dt => dt.ToString(DateFormat, CultureInfo.CurrentCulture),
+                DateTimeOffset dto => dto.ToString(DateFormat, CultureInfo.CurrentCulture),
+                DateOnly d => d.ToString(DateFormat, CultureInfo.CurrentCulture),
+                TimeOnly t => t.ToString(DateFormat, CultureInfo.CurrentCulture),
+                _ => CurrentValue.ToString() ?? string.Empty
+            };
+        }
+        catch (FormatException)
+        {
+            return CurrentValue?.ToString() ?? string.Empty;
+        }
     }
 
     // Detect default DateTime / DateTimeOffset even when boxed inside a nullable T —

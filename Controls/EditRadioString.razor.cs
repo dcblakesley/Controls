@@ -45,16 +45,16 @@ public partial class EditRadioString : EditControlBase<string?>
         set
         {
             _selectedOption = value;
+            // Assign through CurrentValue (not Value) so InputBase notifies the EditContext and
+            // re-runs validation live — matches every other Edit* control.
             if (value == "Other")
             {
-                Value = _otherText;
-                ValueChanged.InvokeAsync(_otherText);
+                CurrentValue = _otherText;
             }
             else
             {
-                Value = value;
                 _otherText = "";
-                ValueChanged.InvokeAsync(value);
+                CurrentValue = value;
             }
         }
     }
@@ -62,10 +62,9 @@ public partial class EditRadioString : EditControlBase<string?>
     // Empty string counts as "default" for the NullOrDefault hiding modes.
     protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
 
-    async Task SetOtherTextAsync(string value)
+    void SetOtherText(string value)
     {
         _otherText = value;
-        Value = value;
-        await ValueChanged.InvokeAsync(value);
+        CurrentValue = value;
     }
 }
