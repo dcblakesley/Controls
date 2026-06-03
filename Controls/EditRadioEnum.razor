@@ -13,14 +13,17 @@
                                  id=@_id
                                  data-test-id=@_id
                                  disabled=@IsDisabled
-                                 class=@CssClass
-                                 aria-required=@_isRequired
-                                 aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                                 aria-errormessage=@($"error-msg-{_id}")>
+                                 class=@CssClass>
 
                     <div class=@(IsHorizontal
                                           ? "edit-radio-buttons-container-horizontal"
-                                          : "edit-radio-buttons-container-vertical")>
+                                          : "edit-radio-buttons-container-vertical")
+                         role="radiogroup"
+                         aria-labelledby="lbl-@_id"
+                         aria-required=@_isRequired
+                         aria-invalid=@(IsInvalid ? "true" : null)
+                         aria-describedby=@_describedBy
+                         aria-errormessage=@(IsInvalid ? _errorMsgId : null)>
                 @{
                             var options = GetOptions();
                             for (var i = 0; i < options.Count; i++)

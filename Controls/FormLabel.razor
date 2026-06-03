@@ -3,7 +3,7 @@
     @if (IsLegend)
     {
         <!-- Wrap only the 'label' within the legend -->
-		<legend class="edit-label-legend">
+		<legend class="edit-label-legend" id="lbl-@Id">
 			@if ((_isRequired || IsRequired) && !(FormOptions?.IsRequiredStarHidden ?? FormOptions.DefaultIsRequiredStarHidden))
 			{
 				<span class="edit-label-required-star" aria-hidden="true">*</span>

@@ -10,7 +10,13 @@
             {
                 <div class=@(IsHorizontal
                             ? "edit-radio-buttons-container-horizontal"
-                            : "edit-radio-buttons-container-vertical")>
+                            : "edit-radio-buttons-container-vertical")
+                     role="radiogroup"
+                     aria-labelledby="lbl-@_id"
+                     aria-required=@_isRequired
+                     aria-invalid=@(IsInvalid ? "true" : null)
+                     aria-describedby=@_describedBy
+                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)>
                     <label class="edit-radio-label">
                         <input type="radio"
                                name=@_id
@@ -20,11 +26,7 @@
                                id=@($"rb-{_id}-false")
                                data-test-id=@($"rb-{_id}-false")
                                class="edit-radio-input @CssClass"
-                               disabled=@IsDisabled
-                               aria-required=@_isRequired
-                               aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                               aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                               aria-errormessage=@($"error-msg-{_id}") />
+                               disabled=@IsDisabled />
                         @FalseText
                     </label>
                     <label class="edit-radio-label">
@@ -36,11 +38,7 @@
                                id=@($"rb-{_id}-true")
                                data-test-id=@($"rb-{_id}-true")
                                class="edit-radio-input @CssClass"
-                               disabled=@IsDisabled
-                               aria-required=@_isRequired
-                               aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                               aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                               aria-errormessage=@($"error-msg-{_id}") />
+                               disabled=@IsDisabled />
                         @TrueText
                     </label>
                     @if (ShowNullOption)
@@ -54,11 +52,7 @@
                                    id=@($"rb-{_id}-none")
                                    data-test-id=@($"rb-{_id}-none")
                                    class="edit-radio-input @CssClass"
-                                   disabled=@IsDisabled
-                                   aria-required=@_isRequired
-                                   aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                                   aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                                   aria-errormessage=@($"error-msg-{_id}") />
+                                   disabled=@IsDisabled />
                             @NullText
                         </label>
                     }

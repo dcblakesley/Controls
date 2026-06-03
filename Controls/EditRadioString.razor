@@ -12,15 +12,18 @@
                 <InputRadioGroup @bind-Value=@SelectedOption
                                  id=@_id
                                  data-test-id=@_id
-                                 class=@CssClass 
-                                 disabled=@IsDisabled
-                                 aria-required=@_isRequired
-                                 aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                                 aria-errormessage=@($"error-msg-{_id}")>
+                                 class=@CssClass
+                                 disabled=@IsDisabled>
 
                     <div class=@(IsHorizontal
-                                   ? "edit-radio-buttons-container-horizontal" 
-                                   : "edit-radio-buttons-container-vertical")>
+                                   ? "edit-radio-buttons-container-horizontal"
+                                   : "edit-radio-buttons-container-vertical")
+                         role="radiogroup"
+                         aria-labelledby="lbl-@_id"
+                         aria-required=@_isRequired
+                         aria-invalid=@(IsInvalid ? "true" : null)
+                         aria-describedby=@_describedBy
+                         aria-errormessage=@(IsInvalid ? _errorMsgId : null)>
 
                         @foreach (var option in Options)
                         {

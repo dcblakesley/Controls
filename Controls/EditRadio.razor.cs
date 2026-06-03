@@ -65,6 +65,11 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     string _isRequired = "false";
     FieldIdentifier _fieldIdentifier;
     List<Attribute>? _attributes;
+    string _errorMsgId = string.Empty;
+    string _describedBy = string.Empty;
+
+    /// <summary> True when this field currently has a validation error (InputBase appends "invalid"). </summary>
+    bool IsInvalid => CssClass?.Contains("invalid") == true;
 
     protected override void OnInitialized()
     {
@@ -72,6 +77,13 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
         // field survives HidingMode and links from the validation summary always work.
         FormOptions?.RegisterField(_fieldIdentifier);
+
+        // Mirror EditControlBase.InitState: cache the ARIA references once, referencing only the
+        // desc-/tooltip- ids that will actually render.
+        _errorMsgId = $"error-msg-{_id}";
+        var hasDescription = !ShouldHideLabel && !string.IsNullOrEmpty(Description ?? _attributes.Description());
+        var hasTooltip = !ShouldHideLabel && !string.IsNullOrEmpty(Tooltip ?? _attributes.Tooltip());
+        _describedBy = EditControlInit.BuildDescribedBy(_id, hasDescription, hasTooltip);
     }
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
     bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
