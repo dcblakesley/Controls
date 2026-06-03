@@ -17,10 +17,10 @@
                        data-test-id=@_id
                        class="edit-input edit-string-input @CssClass"
                        placeholder=@Placeholder
-                       aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
+                       aria-invalid=@(IsInvalid ? "true" : null)
                        aria-required=@_isRequired
-                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                       aria-errormessage=@($"error-msg-{_id}")
+                       aria-describedby=@_describedBy
+                       aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                        autocomplete=@Autocomplete />
                 <InvalidIcon CssClass=@CssClass />
             </div>
@@ -62,7 +62,7 @@
                     <a class="edit-string-link @CssClass"
                        id=@_id
                        data-test-id=@_id
-                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
+                       aria-describedby=@_describedBy
                        aria-labelledby=@($"lbl-{_id}")
                        href=@SafeUrl
                        target=@UrlTarget

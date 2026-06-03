@@ -56,6 +56,22 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
     protected string _isRequired = "false";
     protected List<Attribute>? _attributes;
     protected FieldIdentifier _fieldIdentifier;
+    // Cached ARIA references, resolved once in InitState (see EditControlInit.BuildDescribedBy).
+    protected string _errorMsgId = string.Empty;
+    protected string _describedBy = string.Empty;
+
+    /// <summary>
+    /// True when this field currently has a validation error. List controls aren't
+    /// <see cref="InputBase{TValue}"/>, so validity is read from the cascading
+    /// <see cref="EditContext"/> rather than an InputBase-provided <c>CssClass</c>.
+    /// </summary>
+    protected bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(_fieldIdentifier).Any();
+
+    /// <summary>
+    /// <c>"invalid"</c> when the field has a validation error, else empty — the list-control analogue
+    /// of the <c>CssClass</c> the scalar controls inherit from <see cref="InputBase{TValue}"/>.
+    /// </summary>
+    protected string FieldCssClass => IsInvalid ? "invalid" : string.Empty;
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
@@ -68,6 +84,13 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         FormOptions?.RegisterField(_fieldIdentifier);
+
+        // Resolve the ARIA description references once (stable for the control's lifetime, like _id).
+        // Only the IDs FormLabel will render are referenced, so aria-describedby never dangles.
+        _errorMsgId = $"error-msg-{_id}";
+        var hasDescription = !ShouldHideLabel && !string.IsNullOrEmpty(Description ?? _attributes.Description());
+        var hasTooltip = !ShouldHideLabel && !string.IsNullOrEmpty(Tooltip ?? _attributes.Tooltip());
+        _describedBy = EditControlInit.BuildDescribedBy(_id, hasDescription, hasTooltip);
     }
 
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>

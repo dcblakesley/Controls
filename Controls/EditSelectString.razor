@@ -14,9 +14,9 @@
                     disabled=@IsDisabled
                     class=@($"edit-input edit-select-select {CssClass}")
                     aria-required=@_isRequired
-                    aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                    aria-errormessage=@($"error-msg-{_id}")
-                    aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")>
+                    aria-invalid=@(IsInvalid ? "true" : null)
+                    aria-errormessage=@(IsInvalid ? _errorMsgId : null)
+                    aria-describedby=@_describedBy>
 
                 @foreach (var o in Options)
                 {

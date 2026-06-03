@@ -63,4 +63,19 @@ public static class EditControlInit
             _ => true
         };
     }
+
+    /// <summary>
+    /// Builds the space-separated <c>aria-describedby</c> token list for an edit control, including
+    /// only the IDs that will actually render: the validation message (always present) plus the
+    /// description and tooltip when they exist. Computed once at init — the result is stable for the
+    /// control's lifetime — so the markup binds a cached string instead of re-interpolating it (and
+    /// never references a missing <c>desc-</c>/<c>tooltip-</c> element).
+    /// </summary>
+    public static string BuildDescribedBy(string id, bool hasDescription, bool hasTooltip)
+    {
+        var describedBy = $"error-msg-{id}";
+        if (hasDescription) describedBy += $" desc-{id}";
+        if (hasTooltip) describedBy += $" tooltip-{id}";
+        return describedBy;
+    }
 }

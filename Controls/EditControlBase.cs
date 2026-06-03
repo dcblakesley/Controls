@@ -54,6 +54,15 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected string _isRequired = "false";
     protected List<Attribute>? _attributes;
     protected FieldIdentifier _fieldIdentifier;
+    // Cached ARIA references, resolved once in InitState (see BuildDescribedBy for why).
+    protected string _errorMsgId = string.Empty;
+    protected string _describedBy = string.Empty;
+
+    /// <summary>
+    /// True when this field currently has a validation error — Blazor's <see cref="InputBase{TValue}"/>
+    /// appends <c>invalid</c> to <see cref="InputBase{TValue}.CssClass"/> on a failed field.
+    /// </summary>
+    protected bool IsInvalid => CssClass?.Contains("invalid") == true;
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
@@ -74,6 +83,14 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         FormOptions?.RegisterField(_fieldIdentifier);
+
+        // Resolve the ARIA description references once (stable for the control's lifetime, like _id)
+        // rather than re-interpolating them on every render. Only the IDs that FormLabel will render
+        // are referenced, so aria-describedby never points at a missing desc-/tooltip- element.
+        _errorMsgId = $"error-msg-{_id}";
+        var hasDescription = !ShouldHideLabel && !string.IsNullOrEmpty(Description ?? _attributes.Description());
+        var hasTooltip = !ShouldHideLabel && !string.IsNullOrEmpty(Tooltip ?? _attributes.Tooltip());
+        _describedBy = EditControlInit.BuildDescribedBy(_id, hasDescription, hasTooltip);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

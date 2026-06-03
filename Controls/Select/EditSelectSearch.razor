@@ -26,8 +26,8 @@
                     Id="@_id"
                     CssClass="@CssClass"
                     AriaRequired="@_isRequired"
-                    AriaInvalid="@(CssClass.Contains("invalid"))"
-                    AriaDescribedBy="@($"error-msg-{_id} desc-{_id} tooltip-{_id}")" />
+                    AriaInvalid="@IsInvalid"
+                    AriaDescribedBy="@_describedBy" />
         }
         else
         {

@@ -19,9 +19,9 @@
                        @bind-value:event="oninput"
                        class=@($"edit-input edit-number-input {CssClass}")
                        aria-required=@_isRequired
-                       aria-invalid=@(CssClass.Contains("invalid") ? "true" : null)
-                       aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
-                       aria-errormessage=@($"error-msg-{_id}") />
+                       aria-invalid=@(IsInvalid ? "true" : null)
+                       aria-describedby=@_describedBy
+                       aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
                 <InvalidIcon CssClass=@CssClass />
             </div>
         }

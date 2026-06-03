@@ -53,10 +53,6 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
         InitState(Field);
     }
 
-    // The list base isn't an InputBase, so derive the validation state from the EditContext.
-    bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(_fieldIdentifier).Any();
-    string FieldCssClass => IsInvalid ? "invalid" : string.Empty;
-
     // Read-only view: comma-joined option labels (or the value's ToString when unmatched).
     string SelectedLabels =>
         string.Join(", ", (Value ?? new List<TValue>())

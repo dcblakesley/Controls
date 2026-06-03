@@ -10,7 +10,7 @@
             @if (ShowEditor)
             {
                 // Resolve the invalid state once per render instead of re-querying per checkbox.
-                var isInvalid = EditContext?.GetValidationMessages(_fieldIdentifier).Any() == true;
+                var isInvalid = IsInvalid;
                 <div class=@(IsHorizontal
                                ? "edit-checkedList-checkboxes-container-horizontal"
                                : "edit-checkedList-checkboxes-container-vertical")>
@@ -22,7 +22,7 @@
                                    checked="@(Value?.Contains(option) == true)"
                                    disabled=@IsDisabled
                                    aria-disabled=@IsDisabled
-                                   aria-describedby=@($"error-msg-{_id}")
+                                   aria-invalid=@(isInvalid ? "true" : null) aria-describedby=@_describedBy
                                    tabindex="0"
                                    @onchange="() => ToggleAsync(option)"
                                    id=@($"cbx-{_id}-{option.ToId()}")
