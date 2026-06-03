@@ -37,13 +37,13 @@
             {
                 @if(!Value.Any())
                 {
-                    <ReadOnlyValue Id=@_id IsRequired=@_isRequired Text=""/>
+                    <ReadOnlyValue Id=@_id Text=""/>
                 }
                 else
                 {
                     @foreach (var option in Value)
                     {
-                        <ReadOnlyValue Id=@($"{_id}-option-{option.ToId()}") IsRequired=@_isRequired Text=@option.GetName()/>
+                        <ReadOnlyValue Id=@($"{_id}-option-{option.ToId()}") Text=@option.GetName()/>
                     }
                 }
             }
