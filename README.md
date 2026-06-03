@@ -155,7 +155,7 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Drawer`** - Slide-in panel (4 placements)
 - **`Popconfirm`** - Inline confirm popover
 - **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging
-- **`WasmMessageService` / `WasmNotificationService`** (+ their `*Container` hosts) - Registration-free toasts, **WebAssembly only** (process-static state — do not use on Blazor Server)
+- **Toasts & notifications** - two paths with identical rendering: **scoped / Server-safe** (`IMessageService` / `INotificationService` via `builder.Services.AddWssControlsToasts()` + `<MessageContainer />` / `<NotificationContainer />`), or **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + `<WasmMessageContainer />` / `<WasmNotificationContainer />`). On Blazor Server use the scoped path — the static `Wasm*` services hold process-static state that would bleed across users.
 
 > `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
 
@@ -284,7 +284,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **New: AntDesign-style controls (ported from `Standalone.Controls`)**
 - **Form selects:** `EditSelectSearch<T>` (searchable single-select) and `EditMultiSelect<T>` (multiple / tags, binds `List<T>`) — full `Edit*` controls (validation, label, read-only, `FormOptions`) backed by a new dependency-free, virtualized dropdown engine (`Select<T>`). They sit **alongside** the existing `EditSelect` / `EditSelectEnum` / `EditSelectString`, which are unchanged.
-- **UI kit (non-form):** `Select<T>`, `Alert`, `Skeleton`, `Tooltip`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column` / `PropertyColumn` / `ActionColumn`), and WASM-only `WasmMessageService` / `WasmNotificationService` (+ their container components). `Icon`, `Button`, `Checkbox`, and `Tag` were intentionally excluded.
+- **UI kit (non-form):** `Select<T>`, `Alert`, `Skeleton`, `Tooltip`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column` / `PropertyColumn` / `ActionColumn`), and toasts/notifications in two flavors — **scoped/Server-safe** (`IMessageService` / `INotificationService` via `AddWssControlsToasts()` + `MessageContainer` / `NotificationContainer`) and **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + their containers). `Icon`, `Button`, `Checkbox`, and `Tag` were intentionally excluded.
 - **New stylesheet:** these controls use the `wss-` class prefix and `--wss-*` theme tokens shipped in `wss-controls.css`. Add a second link alongside `edit-controls.css`:
   ```html
   <link href="_content/WssBlazorControls/wss-controls.css" rel="stylesheet" />

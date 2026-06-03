@@ -1,0 +1,15 @@
+@namespace Controls
+@implements IDisposable
+@inject IMessageService Service
+
+@* Scoped (Server-safe) host. Requires builder.Services.AddWssControlsToasts() and an injected
+   IMessageService. Drop one at the app root; call IMessageService from your components. *@
+<MessageListView Items="Service.Items" />
+
+@code {
+    protected override void OnInitialized() => Service.OnChange += HandleChange;
+
+    void HandleChange() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Service.OnChange -= HandleChange;
+}

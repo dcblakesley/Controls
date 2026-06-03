@@ -86,7 +86,7 @@ A second category of controls ported from `Standalone.Controls` (dependency-free
 Conventions for this category: namespace `Controls` (pin `@namespace Controls` on each `.razor`); `wss-` classes; `--wss-*` tokens; nullable enabled; CSS lives in the global `wss-controls.css`. The Select keyboard helper is an RCL JS module at `_content/WssBlazorControls/wss-select.js` (path tied to PackageId; imported lazily, degrades when JS is unavailable).
 
 - **`Icon`, `Button`, `Checkbox`, `Tag` are intentionally excluded.** Modal/Popconfirm footers use native `<button>`s with the shared `wss-dialog-btn` class, not a Button component.
-- **Toasts are WASM-only** — they hold process-`static` state unsafe on Blazor Server. Keep the `Wasm` prefix; don't use on Server.
+- **Toasts come in two variants** (identical rendering). **Scoped / Server-safe:** `IMessageService` / `INotificationService` (register via `AddWssControlsToasts()`) + `MessageContainer` / `NotificationContainer`. **Registration-free static (WASM only):** `WasmMessageService` / `WasmNotificationService` + `WasmMessageContainer` / `WasmNotificationContainer` — process-`static` state, unsafe on Server. Logic lives in `MessageService` / `NotificationService` (the `Wasm*` services are static facades over it); all four containers render the shared `MessageListView` / `NotificationListView`.
 - Demoed at `/uikit` (`Controls.Demo/UiKitGallery.razor`); the searchable selects appear in the main form demo (`SelectSearch` / `MultiSelect` views).
 
 ### Global Usings

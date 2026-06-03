@@ -1,0 +1,15 @@
+@namespace Controls
+@implements IDisposable
+@inject INotificationService Service
+
+@* Scoped (Server-safe) host. Requires builder.Services.AddWssControlsToasts() and an injected
+   INotificationService. Drop one at the app root; call INotificationService from your components. *@
+<NotificationListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" />
+
+@code {
+    protected override void OnInitialized() => Service.OnChange += HandleChange;
+
+    void HandleChange() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Service.OnChange -= HandleChange;
+}
