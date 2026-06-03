@@ -46,6 +46,15 @@ public class EnumHelpersTests
         Assert.Equal("Type B display", TypeB.Same.GetName());
     }
 
+    [Fact]
+    public void GetName_returns_empty_for_null()
+    {
+        // GetName now tolerates null (checked-list / radio controls bind nullable enums); previously
+        // it dereferenced the argument and the call sites carried CS8604 warnings.
+        object? value = null;
+        Assert.Equal(string.Empty, value.GetName());
+    }
+
     [Theory]
     [InlineData("Hello World", "Hello-World")]
     [InlineData("Foo Bar Baz", "Foo-Bar-Baz")]

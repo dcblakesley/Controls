@@ -124,7 +124,7 @@
 
     EditForm? _form;
     [CascadingParameter] public bool IsForcedValidation { get; set; }
-    protected override void OnAfterRender(bool firstRender) { if(IsForcedValidation) _form.EditContext!.Validate(); } 
+    protected override void OnAfterRender(bool firstRender) { if(IsForcedValidation) _form?.EditContext!.Validate(); }
 
     public class DemoEditRadioModel
     {

@@ -14,7 +14,7 @@ public partial class EditControlsDemo : IDisposable
     CurrentView _currentView = CurrentView.AllControls;
 
     readonly DemoModelForEditControls _allControlsModel = new();
-    EditForm editForm; // Set by @ref during Render
+    EditForm editForm = default!; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
         new() { IsEditMode = true, Hiding = HidingMode.None, IsRequiredStarHidden = true};
@@ -29,7 +29,6 @@ public partial class EditControlsDemo : IDisposable
     ];
 
     List<Plant> _plants = Plant.GetTestData();
-    bool _isHorizontal = false;
     public HidingMode HidingMode { get; set; }
 
     protected override void OnInitialized()

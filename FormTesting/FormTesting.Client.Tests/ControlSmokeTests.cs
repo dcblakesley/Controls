@@ -157,7 +157,7 @@ public class ControlSmokeTests : TestContext
         // .ToId() yields safe ids — no spaces / punctuation.
         foreach (var opt in options)
         {
-            var id = opt.Id;
+            var id = opt.Id ?? "";
             Assert.DoesNotContain(' ', id);
             Assert.StartsWith("Priority-option-", id);
         }

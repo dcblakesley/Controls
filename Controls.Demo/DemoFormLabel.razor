@@ -135,7 +135,7 @@
         [Required(ErrorMessage = "This field is required for validation example.")]
         [MinLength(3)]
         [MaxLength(5)]
-        public string ValidationExample { get; set; }
+        public string ValidationExample { get; set; } = "";
 
         // Hiding
         public string CanBeHidden { get; set; } = "This can be hidden";

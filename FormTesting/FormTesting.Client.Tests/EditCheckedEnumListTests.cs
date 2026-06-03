@@ -88,6 +88,32 @@ public class EditCheckedEnumListTests : TestContext
     }
 
     [Fact]
+    public void Toggling_builds_a_new_list_and_does_not_mutate_the_original()
+    {
+        // Regression: ToggleAsync must build a NEW list rather than mutating the bound one in place,
+        // so change detection fires and the caller's own collection isn't altered behind its back.
+        var original = new List<Color> { Color.Red };
+        var model = new ColorListModel { Colors = original };
+        List<Color>? captured = null;
+        Expression<Func<List<Color>>> field = () => model.Colors;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedEnumList<Color>>(0);
+            b.AddAttribute(1, "Value", model.Colors);
+            b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<Color>>(this, v => captured = v));
+            b.AddAttribute(3, "Field", field);
+            b.CloseComponent();
+        }));
+
+        cut.FindAll("input[type=checkbox]").First(c => c.GetAttribute("value") == "Green").Change(true);
+
+        Assert.NotNull(captured);
+        Assert.Equal(2, captured!.Count);             // new list carries both values
+        Assert.Single(original);                       // the original list was not mutated in place
+        Assert.False(ReferenceEquals(captured, original));
+    }
+
+    [Fact]
     public void Read_only_mode_renders_ReadOnlyValue_per_selected_enum_with_display_name()
     {
         var model = new ColorListModel { Colors = [Color.Green, Color.Blue] };
