@@ -11,13 +11,13 @@
             {
                 <label class="edit-checkbox-label" for=@_id>
                     @CheckboxFragment
-                    @((MarkupString)DisplayLabel())
-                    <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@_attributes/>
+                    @DisplayLabel()
+                    <LabelTooltip Id=@_id Tooltip=@Tooltip Attributes=@_attributes/>
                 </label>
                 @if (DisplayDescription() != null)
                 {
-                    <p class="edit-label-description" id="desc-@Id">
-                        @((MarkupString)DisplayDescription()!)
+                    <p class="edit-label-description" id="desc-@_id">
+                        @DisplayDescription()
                     </p>
                 }
             }

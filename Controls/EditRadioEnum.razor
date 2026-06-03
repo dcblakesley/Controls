@@ -37,7 +37,7 @@
                                                     id=@($"rb-{_id}-{option.ToId()}")
                                                     data-test-id=@($"rb-{_id}-{option.ToId()}") />
 
-                                        @((MarkupString)option.GetName())
+                                        @option.GetName()
                                     </label>
 
                                     @if (showOtherInput)
