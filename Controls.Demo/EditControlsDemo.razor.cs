@@ -83,6 +83,8 @@ public enum CurrentView
     Select,
     SelectEnum,
     SelectString,
+    SelectSearch,
+    MultiSelect,
     String,
     TextArea
 }

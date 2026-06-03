@@ -1,0 +1,90 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditSelectSearch Demo</h1>
+<p>Searchable single-select (AntDesign-style) backed by the <code>Select</code> engine. Supports type-to-search, clear, keyboard navigation and a virtualized dropdown for large option sets.</p>
+
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref="_form">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <h3>Basic (edit + read-only)</h3>
+        <EditSelectSearch @bind-Value="_model.Country"
+                          Field="@(() => _model.Country)"
+                          Options="_countries"
+                          Placeholder="Search for a country..."
+                          Width="260px" />
+
+        <EditSelectSearch @bind-Value="_model.Country"
+                          Field="@(() => _model.Country)"
+                          Options="_countries"
+                          IsEditMode="false"
+                          Width="260px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Large option set (virtualized)</h3>
+        <p>1,000 options — search filters and only visible rows hit the DOM.</p>
+        <EditSelectSearch @bind-Value="_model.BigChoice"
+                          Field="@(() => _model.BigChoice)"
+                          Options="_bigOptions"
+                          Width="260px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Disabled &amp; required validation</h3>
+        <EditSelectSearch @bind-Value="_model.DisabledCountry"
+                          Field="@(() => _model.DisabledCountry)"
+                          Options="_countries"
+                          IsDisabled="true"
+                          Width="260px" />
+
+        <EditSelectSearch @bind-Value="_model.RequiredCountry"
+                          Field="@(() => _model.RequiredCountry)"
+                          Options="_countries"
+                          Width="260px" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_example</code></pre>
+    </section>
+</EditForm>
+
+@code {
+    readonly Model _model = new();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    readonly List<SelectOption<string?>> _countries =
+    [
+        new("us", "United States"),
+        new("ca", "Canada"),
+        new("mx", "Mexico"),
+        new("gb", "United Kingdom"),
+        new("fr", "France"),
+        new("de", "Germany"),
+        new("jp", "Japan"),
+        new("au", "Australia"),
+        new("br", "Brazil"),
+        new("in", "India")
+    ];
+
+    readonly List<SelectOption<int>> _bigOptions =
+        Enumerable.Range(1, 1000).Select(i => new SelectOption<int>(i, $"Option {i}")).ToList();
+
+    public class Model
+    {
+        [Description("Pick your country")]
+        public string? Country { get; set; } = "ca";
+
+        public int BigChoice { get; set; }
+
+        public string? DisabledCountry { get; set; } = "gb";
+
+        [Required(ErrorMessage = "Please select a country")]
+        public string? RequiredCountry { get; set; }
+    }
+
+    readonly string _example = @"<EditSelectSearch @bind-Value=""_model.Country""
+                  Field=""@(() => _model.Country)""
+                  Options=""_countries""
+                  Placeholder=""Search for a country..."" />";
+}

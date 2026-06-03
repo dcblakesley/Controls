@@ -1,0 +1,84 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditMultiSelect Demo</h1>
+<p>Multiple / tags select (AntDesign-style) backed by the <code>Select</code> engine. Binds to a <code>List&lt;T&gt;</code>; <code>Tags</code> mode lets users add values not in the option list.</p>
+
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref="_form">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <h3>Multiple (edit + read-only)</h3>
+        <EditMultiSelect @bind-Value="_model.Colors"
+                         Field="@(() => _model.Colors)"
+                         Options="_colors"
+                         Placeholder="Pick colors..."
+                         Width="320px" />
+
+        <EditMultiSelect @bind-Value="_model.Colors"
+                         Field="@(() => _model.Colors)"
+                         Options="_colors"
+                         IsEditMode="false"
+                         Width="320px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Tags (free text) with MaxTagCount</h3>
+        <EditMultiSelect @bind-Value="_model.Keywords"
+                         Field="@(() => _model.Keywords)"
+                         Options="_keywordSuggestions"
+                         Mode="SelectMode.Tags"
+                         MaxTagCount="3"
+                         Placeholder="Type and press Enter..."
+                         Width="320px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Required (min 2) validation</h3>
+        <EditMultiSelect @bind-Value="_model.RequiredColors"
+                         Field="@(() => _model.RequiredColors)"
+                         Options="_colors"
+                         Width="320px" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_example</code></pre>
+    </section>
+</EditForm>
+
+@code {
+    readonly Model _model = new();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    readonly List<SelectOption<string>> _colors =
+    [
+        new("red", "Red"),
+        new("green", "Green"),
+        new("blue", "Blue"),
+        new("yellow", "Yellow"),
+        new("purple", "Purple"),
+        new("orange", "Orange")
+    ];
+
+    readonly List<SelectOption<string>> _keywordSuggestions =
+    [
+        new("blazor", "blazor"),
+        new("dotnet", "dotnet"),
+        new("csharp", "csharp")
+    ];
+
+    public class Model
+    {
+        public List<string> Colors { get; set; } = ["green"];
+
+        public List<string> Keywords { get; set; } = [];
+
+        [Required(ErrorMessage = "Pick at least two colors")]
+        [MinLength(2, ErrorMessage = "Pick at least two colors")]
+        public List<string> RequiredColors { get; set; } = [];
+    }
+
+    readonly string _example = @"<EditMultiSelect @bind-Value=""_model.Colors""
+                 Field=""@(() => _model.Colors)""
+                 Options=""_colors""
+                 Placeholder=""Pick colors..."" />";
+}
