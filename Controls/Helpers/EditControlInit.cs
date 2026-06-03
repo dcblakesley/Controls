@@ -38,4 +38,29 @@ public static class EditControlInit
     /// <summary> True when the label/legend should be suppressed for this control. </summary>
     public static bool ShouldHideLabel(bool isLabelHidden, FormOptions? formOptions) =>
         isLabelHidden || (formOptions?.IsLabelHidden ?? false);
+
+    /// <summary>
+    /// Decides whether an edit control's wrapper renders, from <see cref="IEditControl.IsHidden"/> and
+    /// the effective <see cref="HidingMode"/> (per-control ?? form-wide ?? <see cref="HidingMode.None"/>).
+    /// Centralizes the hiding truth table that the scalar base, the list base and <c>EditRadio</c>
+    /// previously each re-implemented — they only differ in how they compute <paramref name="isNull"/>
+    /// and <paramref name="isDefault"/> for their value shape.
+    /// </summary>
+    public static bool ShouldShow(bool isHidden, HidingMode? perControlHiding, FormOptions? formOptions,
+        bool showEditor, bool isNull, bool isDefault)
+    {
+        if (isHidden) return false;
+
+        var hidingMode = perControlHiding ?? formOptions?.Hiding ?? HidingMode.None;
+        if (hidingMode == HidingMode.None) return true;
+
+        return hidingMode switch
+        {
+            HidingMode.WhenReadOnlyAndNull => !(!showEditor && isNull),
+            HidingMode.WhenReadOnlyAndNullOrDefault => !(!showEditor && isDefault),
+            HidingMode.WhenNull => !isNull,
+            HidingMode.WhenNullOrDefault => !isDefault,
+            _ => true
+        };
+    }
 }

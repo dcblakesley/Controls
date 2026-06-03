@@ -103,21 +103,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// </summary>
     protected virtual bool ShouldShowComponent()
     {
-        if (IsHidden) return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        if (hidingMode == HidingMode.None) return true;
-
         var isNull = CurrentValue is null;
-        var isDefault = isNull || IsValueDefault();
-
-        return hidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !(!ShowEditor && isNull),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(!ShowEditor && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
+        return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull || IsValueDefault());
     }
 }

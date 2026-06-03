@@ -97,23 +97,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
     /// </summary>
     protected virtual bool ShouldShowComponent()
     {
-        if (IsHidden)
-            return false;
-
-        var hidingMode = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        if (hidingMode == HidingMode.None)
-            return true;
-
         var isNull = Value is null;
-        var isDefault = isNull || Value!.Count == 0;
-
-        return hidingMode switch
-        {
-            HidingMode.WhenReadOnlyAndNull => !(!ShowEditor && isNull),
-            HidingMode.WhenReadOnlyAndNullOrDefault => !(!ShowEditor && isDefault),
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
+        return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull || Value!.Count == 0);
     }
 }

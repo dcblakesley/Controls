@@ -78,25 +78,9 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
 
     protected bool ShouldShowComponent()
     {
-        if (IsHidden)
-            return false;
-
-        var effectiveHiding = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
-        
-        if (effectiveHiding == HidingMode.None)
-            return true;
-
         var value = Value;
         var isNull = value == null;
-        var isDefault = isNull || EqualityComparer<TValue>.Default.Equals(value, default);
-
-        return effectiveHiding switch
-        {
-            HidingMode.WhenReadOnlyAndNull => ShowEditor || !isNull,
-            HidingMode.WhenReadOnlyAndNullOrDefault => ShowEditor || !isDefault,
-            HidingMode.WhenNull => !isNull,
-            HidingMode.WhenNullOrDefault => !isDefault,
-            _ => true
-        };
+        return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull,
+            isNull || EqualityComparer<TValue>.Default.Equals(value, default));
     }
 }
