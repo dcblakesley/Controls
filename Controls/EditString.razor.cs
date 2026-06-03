@@ -28,6 +28,27 @@ public partial class EditString : EditControlBase<string?>
 
     bool _showMaskedValue;
 
+    /// <summary>
+    /// The href to render in read-only link mode: the <see cref="Url"/> when it is relative or uses an
+    /// allow-listed scheme (http/https/mailto); otherwise null, so a <c>javascript:</c> / <c>data:</c>
+    /// URL (e.g. bound from model data) can't render a script-executing link. When null the control
+    /// falls back to plain read-only text.
+    /// </summary>
+    string? SafeUrl
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(Url)) return null;
+            // Absolute URLs must use an allow-listed scheme; relative URLs (no scheme) are fine.
+            if (Uri.TryCreate(Url, UriKind.Absolute, out var uri))
+                return uri.Scheme is "http" or "https" or "mailto" ? Url : null;
+            return Url;
+        }
+    }
+
+    /// <summary> rel for the read-only link; hardens <c>target="_blank"</c> against reverse tabnabbing. </summary>
+    string? UrlRel => string.Equals(UrlTarget, "_blank", StringComparison.OrdinalIgnoreCase) ? "noopener noreferrer" : null;
+
     protected override void OnInitialized()
     {
         base.OnInitialized();

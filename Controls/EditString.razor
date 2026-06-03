@@ -57,15 +57,16 @@
             }
             else
             {
-                @if (Url != null)
+                @if (SafeUrl != null)
                 {
                     <a class="edit-string-link @CssClass"
                        id=@_id
                        data-test-id=@_id
                        aria-describedby=@($"error-msg-{_id} desc-{_id} tooltip-{_id}")
                        aria-labelledby=@($"lbl-{_id}")
-                       href=@Url
-                       target=@UrlTarget>
+                       href=@SafeUrl
+                       target=@UrlTarget
+                       rel=@UrlRel>
                         @Value
                     </a>
                 }

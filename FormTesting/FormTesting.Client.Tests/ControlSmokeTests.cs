@@ -85,6 +85,48 @@ public class ControlSmokeTests : TestContext
     }
 
     [Fact]
+    public void EditString_read_only_link_blocks_javascript_scheme()
+    {
+        var model = new PersonModel { Name = "Click" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", "javascript:alert(1)");
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("a"));   // no script-executing link is rendered
+        Assert.Contains("Click", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Fact]
+    public void EditString_read_only_blank_link_gets_noopener_rel()
+    {
+        var model = new PersonModel { Name = "Home" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", "https://example.com");
+            b.AddAttribute(6, "UrlTarget", "_blank");
+            b.CloseComponent();
+        }));
+
+        var a = cut.Find("a.edit-string-link");
+        Assert.Equal("https://example.com", a.GetAttribute("href"));
+        Assert.Equal("noopener noreferrer", a.GetAttribute("rel"));
+    }
+
+    [Fact]
     public void EditString_renders_required_star_when_attribute_present()
     {
         var model = new PersonModel { Name = "x" };
