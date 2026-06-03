@@ -1,0 +1,43 @@
+@namespace Controls
+@typeparam TValue
+@inherits EditControlBase<TValue>
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel />
+
+        @if (ShowEditor)
+        {
+            <Select TValue="TValue"
+                    Value="CurrentValue"
+                    ValueChanged="OnValueChanged"
+                    Options="Options"
+                    Mode="SelectMode.Single"
+                    Placeholder="@Placeholder"
+                    Disabled="IsDisabled"
+                    AllowClear="AllowClear"
+                    ShowSearch="ShowSearch"
+                    Size="Size"
+                    Width="@Width"
+                    EmptyText="@EmptyText"
+                    DebounceMilliseconds="DebounceMilliseconds"
+                    OnSearch="OnSearch"
+                    Id="@_id"
+                    CssClass="@CssClass"
+                    AriaRequired="@_isRequired"
+                    AriaInvalid="@(CssClass.Contains("invalid"))"
+                    AriaDescribedBy="@($"error-msg-{_id} desc-{_id} tooltip-{_id}")" />
+        }
+        else
+        {
+            <ReadOnlyValue Id=@_id IsRequired=@_isRequired CssClass=@CssClass Text=@SelectedLabel />
+        }
+
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@CurrentValueAsString</div>
+        }
+    </div>
+}
