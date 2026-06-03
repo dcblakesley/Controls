@@ -273,4 +273,42 @@ public class ControlSmokeTests : TestContext
         Assert.Equal(3, checkboxes.Count);
         Assert.Single(checkboxes, c => c.HasAttribute("checked"));
     }
+
+    [Fact]
+    public void ReadOnlyValue_omits_aria_labelledby_when_the_label_is_hidden()
+    {
+        // No FormLabel renders (lbl-Name absent), so the read-only value must not dangle aria-labelledby.
+        var model = new PersonModel { Name = "Alice" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "IsLabelHidden", true);
+            b.CloseComponent();
+        }));
+
+        Assert.False(cut.Find(".edit-readonly-value").HasAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void ReadOnlyValue_keeps_aria_labelledby_when_the_label_is_shown()
+    {
+        var model = new PersonModel { Name = "Alice" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal("lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
+    }
 }

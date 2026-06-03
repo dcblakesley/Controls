@@ -151,4 +151,16 @@ public class UiKitDialogControlsTests : TestContext
 
         Assert.Empty(cut.FindAll(".wss-popover")); // closed from inside the panel
     }
+
+    [Fact]
+    public void Popconfirm_without_a_title_omits_aria_labelledby_and_the_title_element()
+    {
+        var cut = RenderComponent<Popconfirm>(p => p
+            .AddChildContent("<button>del</button>")); // no Title
+
+        cut.Find(".wss-popconfirm-trigger").Click();
+        var dialog = cut.Find("[role=dialog]");
+        Assert.False(dialog.HasAttribute("aria-labelledby")); // no title element to point at
+        Assert.Empty(cut.FindAll(".wss-popconfirm-title"));
+    }
 }

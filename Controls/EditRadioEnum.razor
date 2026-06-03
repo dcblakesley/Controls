@@ -61,6 +61,7 @@
             else
             {
                 <ReadOnlyValue Id=@_id
+                               IsLabelHidden=@ShouldHideLabel
                                CssClass=@CssClass
                                Text=@(
                                HasOtherOption && Value?.Equals(GetOptions().Last()) == true

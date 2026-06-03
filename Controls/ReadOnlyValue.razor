@@ -6,7 +6,7 @@
 <div class="edit-readonly-value @CssClass"
      id=@Id
      data-test-id=@Id
-     aria-labelledby=@($"lbl-{Id}")>
+     aria-labelledby=@(IsLabelHidden ? null : $"lbl-{Id}")>
 
     @if (!string.IsNullOrEmpty(Text))
     {

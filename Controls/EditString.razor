@@ -63,7 +63,7 @@
                        id=@_id
                        data-test-id=@_id
                        aria-describedby=@_describedBy
-                       aria-labelledby=@($"lbl-{_id}")
+                       aria-labelledby=@(ShouldHideLabel ? null : $"lbl-{_id}")
                        href=@SafeUrl
                        target=@UrlTarget
                        rel=@UrlRel>
@@ -73,7 +73,7 @@
                 else
                 {
 
-                    <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@Value />
+                    <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@CssClass Text=@Value />
                 }
             }
         }

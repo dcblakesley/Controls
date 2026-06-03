@@ -37,13 +37,13 @@
             {
                 @if(!Value.Any())
                 {
-                    <ReadOnlyValue Id=@_id Text=""/>
+                    <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel Text=""/>
                 }
                 else
                 {
                     @foreach (var option in Value)
                     {
-                        <ReadOnlyValue Id=@($"{_id}-option-{option.ToId()}") Text=@option.GetName()/>
+                        <ReadOnlyValue Id=@($"{_id}-option-{option.ToId()}") IsLabelHidden="true" Text=@option.GetName()/>
                     }
                 }
             }
