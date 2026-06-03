@@ -5,22 +5,18 @@
      aria-live="polite"
      aria-atomic="true"
      style="position: absolute;left: -10000px;top: auto;width: 1px;height: 1px;overflow: hidden;">
-    @if (EditContext!.GetValidationMessages().Any())
+    @* Enumerate this field's messages directly — the empty case renders nothing, so no guard is
+       needed, and the no-arg GetValidationMessages() (a whole-form scan) is avoided. *@
+    @foreach (var x in EditContext!.GetValidationMessages(FieldIdentifier))
     {
-        @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
-        {
-            @GetValidationMessage(x, true)
-        }
+        @GetValidationMessage(x, true)
     }
 </div>
 
 <!-- non-screen readers -->
 <div class="edit-validation-message">
-    @if (EditContext!.GetValidationMessages().Any())
+    @foreach (var x in EditContext!.GetValidationMessages(FieldIdentifier))
     {
-        @foreach (var x in EditContext.GetValidationMessages(FieldIdentifier))
-        {
-            @GetValidationMessage(x)
-        }
+        @GetValidationMessage(x)
     }
 </div>

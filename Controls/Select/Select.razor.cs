@@ -320,7 +320,8 @@ public partial class Select<TValue> : IAsyncDisposable
         _focused = false;
         _searchText = string.Empty;
         RebuildFiltered();
-        StateHasChanged();
+        // No StateHasChanged: every caller (wrapper/option/backdrop click, Escape keydown) is an
+        // event handler, after which Blazor re-renders automatically.
         return Task.CompletedTask;
     }
 

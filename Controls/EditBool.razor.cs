@@ -23,10 +23,17 @@ public partial class EditBool : EditControlBase<bool>
     /// </summary>
     [Parameter] public bool RenderAsCheckboxWhenReadOnly { get; set; }
 
+    string _displayLabel = string.Empty;
+    string? _displayDescription;
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
         InitState(Field);
+        // Resolve label/description once at init rather than per render (DisplayDescription was
+        // evaluated twice each render — once for the null-check, once to render).
+        _displayLabel = Label ?? _attributes.GetLabelText(FieldIdentifier);
+        _displayDescription = Description ?? _attributes.Description();
     }
 
     // Checkboxes don't bind via string parsing — the value is set directly through CurrentValue
@@ -35,8 +42,8 @@ public partial class EditBool : EditControlBase<bool>
         => throw new NotSupportedException(
             $"This component does not parse string inputs. Bind to the '{nameof(CurrentValue)}' property, not '{nameof(CurrentValueAsString)}'.");
 
-    string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
-    string? DisplayDescription() => Description ?? _attributes.Description();
+    string DisplayLabel() => _displayLabel;
+    string? DisplayDescription() => _displayDescription;
 
     // bool default is false. The base ShouldShowComponent already knows CurrentValue is non-null
     // here (bool is a value type), so this override only needs to flag "false == default".
