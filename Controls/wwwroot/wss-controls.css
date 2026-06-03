@@ -752,3 +752,300 @@
     color: var(--wss-color-text-disabled);
     border-color: var(--wss-color-border);
 }
+
+/* ============================================================================
+ * Dialog action buttons (Modal / Popconfirm footers)
+ * The standalone Button control is intentionally not part of this library, so
+ * these footer buttons are plain <button>s styled here.
+ * ============================================================================ */
+
+.wss-dialog-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 15px;
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+    color: var(--wss-color-text);
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wss-dialog-btn:hover {
+    color: var(--wss-color-primary);
+    border-color: var(--wss-color-primary);
+}
+
+.wss-dialog-btn-primary {
+    color: #fff;
+    background: var(--wss-color-primary);
+    border-color: var(--wss-color-primary);
+}
+
+.wss-dialog-btn-primary:hover {
+    color: #fff;
+    background: var(--wss-color-primary-hover);
+    border-color: var(--wss-color-primary-hover);
+}
+
+.wss-dialog-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.wss-dialog-btn-sm {
+    height: 24px;
+    padding: 0 7px;
+    font-size: var(--wss-font-size-sm);
+}
+
+/* ============================================================================
+ * Modal
+ * ============================================================================ */
+
+.wss-modal-wrap {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 100px 16px 16px;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.wss-modal {
+    box-sizing: border-box;
+    width: 520px;
+    max-width: 100%;
+    background: var(--wss-color-bg);
+    border-radius: var(--wss-radius);
+    box-shadow: var(--wss-shadow);
+}
+
+.wss-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--wss-color-split);
+}
+
+.wss-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--wss-color-text);
+}
+
+.wss-modal-close {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    font-size: 16px;
+    color: var(--wss-color-text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.wss-modal-close:hover {
+    color: var(--wss-color-text);
+}
+
+.wss-modal-body {
+    padding: 24px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+}
+
+.wss-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--wss-color-split);
+}
+
+/* ============================================================================
+ * Drawer
+ * ============================================================================ */
+
+.wss-drawer-root {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+}
+
+.wss-drawer-mask {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+.wss-drawer {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    max-width: 100%;
+    max-height: 100%;
+    background: var(--wss-color-bg);
+    box-shadow: var(--wss-shadow);
+}
+
+.wss-drawer-right {
+    top: 0;
+    right: 0;
+    height: 100%;
+    animation: wss-drawer-in-right 0.25s ease;
+}
+
+.wss-drawer-left {
+    top: 0;
+    left: 0;
+    height: 100%;
+    animation: wss-drawer-in-left 0.25s ease;
+}
+
+.wss-drawer-top {
+    top: 0;
+    left: 0;
+    width: 100%;
+    animation: wss-drawer-in-top 0.25s ease;
+}
+
+.wss-drawer-bottom {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    animation: wss-drawer-in-bottom 0.25s ease;
+}
+
+.wss-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--wss-color-split);
+}
+
+.wss-drawer-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--wss-color-text);
+}
+
+.wss-drawer-close {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    font-size: 16px;
+    color: var(--wss-color-text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.wss-drawer-close:hover {
+    color: var(--wss-color-text);
+}
+
+.wss-drawer-body {
+    flex: 1;
+    padding: 24px;
+    overflow: auto;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+}
+
+.wss-drawer-footer {
+    padding: 10px 16px;
+    border-top: 1px solid var(--wss-color-split);
+}
+
+@keyframes wss-drawer-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes wss-drawer-in-left { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes wss-drawer-in-top { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes wss-drawer-in-bottom { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+/* ============================================================================
+ * Popconfirm
+ * ============================================================================ */
+
+.wss-popconfirm-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.wss-popconfirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1029;
+}
+
+.wss-popconfirm {
+    position: absolute;
+    z-index: 1030;
+    min-width: 150px;
+    max-width: 280px;
+    padding: 0;
+    background: var(--wss-color-bg);
+    border-radius: var(--wss-radius);
+    box-shadow: var(--wss-shadow);
+    cursor: auto;
+}
+
+.wss-popconfirm-inner {
+    padding: 12px 16px;
+}
+
+.wss-popconfirm-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    white-space: nowrap;
+}
+
+.wss-popconfirm-icon {
+    display: inline-flex;
+    margin-top: 1px;
+    color: var(--wss-color-warning);
+    font-size: 14px;
+}
+
+.wss-popconfirm-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.wss-popconfirm-arrow {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: var(--wss-color-bg);
+    transform: rotate(45deg);
+    box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.07);
+}
+
+.wss-popconfirm-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
+.wss-popconfirm-top .wss-popconfirm-arrow { bottom: -4px; left: 50%; margin-left: -4px; }
+
+.wss-popconfirm-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
+.wss-popconfirm-bottom .wss-popconfirm-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); }
+
+.wss-popconfirm-left { right: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
+.wss-popconfirm-left .wss-popconfirm-arrow { right: -4px; top: 50%; margin-top: -4px; }
+
+.wss-popconfirm-right { left: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
+.wss-popconfirm-right .wss-popconfirm-arrow { left: -4px; top: 50%; margin-top: -4px; }

@@ -1,0 +1,60 @@
+@namespace Controls
+
+<span class="wss-popconfirm-wrap">
+    <span class="wss-popconfirm-trigger" @onclick="Toggle">@ChildContent</span>
+    @if (_open)
+    {
+        <div class="wss-popconfirm-backdrop" @onclick="Close"></div>
+        <div class="wss-popconfirm wss-popconfirm-@PlacementName" role="dialog" @onclick:stopPropagation="true">
+            <div class="wss-popconfirm-inner">
+                <div class="wss-popconfirm-message">
+                    <span class="wss-popconfirm-icon">
+                        <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm-32 232c0-4.4 3.6-8 8-8h48c4.4 0 8 3.6 8 8v272c0 4.4-3.6 8-8 8h-48c-4.4 0-8-3.6-8-8V296zm32 440a48.01 48.01 0 010-96 48.01 48.01 0 010 96z"/></svg>
+                    </span>
+                    <div class="wss-popconfirm-title">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                </div>
+                <div class="wss-popconfirm-buttons">
+                    <button type="button" class="wss-dialog-btn wss-dialog-btn-sm" @onclick="CancelAsync">@CancelText</button>
+                    <button type="button" class="wss-dialog-btn wss-dialog-btn-sm wss-dialog-btn-primary" @onclick="ConfirmAsync">@OkText</button>
+                </div>
+            </div>
+            <span class="wss-popconfirm-arrow"></span>
+        </div>
+    }
+</span>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string OkText { get; set; } = "OK";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public TooltipPlacement Placement { get; set; } = TooltipPlacement.Top;
+    [Parameter] public bool Disabled { get; set; }
+
+    bool _open;
+
+    string PlacementName => Placement.ToString().ToLowerInvariant();
+
+    void Toggle()
+    {
+        if (Disabled) return;
+        _open = !_open;
+    }
+
+    void Close() => _open = false;
+
+    async Task ConfirmAsync()
+    {
+        _open = false;
+        if (OnConfirm.HasDelegate) await OnConfirm.InvokeAsync();
+    }
+
+    async Task CancelAsync()
+    {
+        _open = false;
+        if (OnCancel.HasDelegate) await OnCancel.InvokeAsync();
+    }
+}
