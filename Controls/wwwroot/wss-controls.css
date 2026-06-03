@@ -66,3 +66,363 @@
     --wss-color-error-bg: #fff2f0;
     --wss-color-error-border: #ffccc7;
 }
+
+/* ============================================================================
+ * Select  (engine + EditSelectSearch / EditMultiSelect)
+ * Global, not CSS-isolation: this library ships a single linked stylesheet and
+ * consumers link _content/WssBlazorControls/wss-controls.css. Classes are
+ * uniquely prefixed (wss-select-*) so global scope is collision-safe.
+ * Values are the Ant Design 4.x defaults via the --wss-* tokens above.
+ * ============================================================================ */
+
+.wss-select {
+    position: relative;
+    display: inline-block;
+    box-sizing: border-box;
+    min-width: 120px;
+    color: var(--wss-color-text);
+    font-size: 14px;
+    line-height: 1.5715;
+    cursor: pointer;
+}
+
+.wss-select * {
+    box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------- Selector */
+
+.wss-select-selector {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background-color: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-radius);
+    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.wss-select:not(.wss-select-disabled):hover .wss-select-selector {
+    border-color: var(--wss-color-primary-hover);
+}
+
+.wss-select-focused:not(.wss-select-disabled) .wss-select-selector {
+    border-color: var(--wss-color-primary-hover);
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow);
+}
+
+/* Validation invalid state (the form wrapper appends "invalid" via CssClass). */
+.wss-select.invalid .wss-select-selector {
+    border-color: var(--wss-color-error);
+}
+
+.wss-select.invalid.wss-select-focused .wss-select-selector {
+    box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2);
+}
+
+.wss-select-disabled {
+    cursor: not-allowed;
+}
+
+.wss-select-disabled .wss-select-selector {
+    color: var(--wss-color-text-disabled);
+    background: var(--wss-color-bg-disabled);
+    cursor: not-allowed;
+}
+
+.wss-select-disabled .wss-select-selection-search-input {
+    cursor: not-allowed;
+}
+
+/* Search input shared reset */
+.wss-select-selection-search-input {
+    margin: 0;
+    padding: 0;
+    color: var(--wss-color-text);
+    font-size: 14px;
+    background: transparent;
+    border: none;
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.wss-select-show-search .wss-select-selection-search-input {
+    cursor: text;
+}
+
+.wss-select-selection-search-input::-webkit-search-cancel-button {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.wss-select-selection-placeholder {
+    flex: 1;
+    overflow: hidden;
+    color: var(--wss-color-placeholder);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+/* ----------------------------------------------------------- Single mode */
+
+.wss-select-single .wss-select-selector {
+    width: 100%;
+    height: 32px;
+    padding: 0 11px;
+}
+
+.wss-select-single .wss-select-selection-search {
+    position: absolute;
+    top: 0;
+    right: 11px;
+    bottom: 0;
+    left: 11px;
+}
+
+.wss-select-single .wss-select-selection-search-input {
+    width: 100%;
+    height: 30px;
+}
+
+.wss-select-single .wss-select-selection-item,
+.wss-select-single .wss-select-selection-placeholder {
+    line-height: 30px;
+    transition: all 0.3s;
+}
+
+.wss-select-single .wss-select-selection-item {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    user-select: none;
+    padding-right: 18px;
+}
+
+.wss-select-single .wss-select-selection-placeholder {
+    padding-right: 18px;
+}
+
+/* dim the shown item while the dropdown is open (matches antd) */
+.wss-select-single.wss-select-open .wss-select-selection-item {
+    color: var(--wss-color-placeholder);
+}
+
+/* ------------------------------------------------------ Multiple / Tags */
+
+.wss-select-multiple .wss-select-selector {
+    flex-wrap: wrap;
+    min-height: 32px;
+    padding: 1px 4px;
+}
+
+.wss-select-multiple .wss-select-selection-item {
+    display: inline-flex;
+    align-items: center;
+    height: 24px;
+    margin: 2px 4px 2px 0;
+    padding: 0 4px 0 8px;
+    line-height: 22px;
+    background: var(--wss-color-bg-hover);
+    border: 1px solid var(--wss-color-split);
+    border-radius: var(--wss-radius);
+    cursor: default;
+}
+
+.wss-select-multiple .wss-select-selection-item-content {
+    margin-right: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.wss-select-multiple .wss-select-selection-item-remove {
+    display: inline-flex;
+    align-items: center;
+    color: var(--wss-color-text-secondary);
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.wss-select-multiple .wss-select-selection-item-remove:hover {
+    color: var(--wss-color-text);
+}
+
+.wss-select-multiple .wss-select-selection-search {
+    position: relative;
+    flex: 1;
+    min-width: 30px;
+    margin-inline-start: 4px;
+}
+
+.wss-select-multiple .wss-select-selection-search-input {
+    width: 100%;
+    height: 26px;
+}
+
+.wss-select-multiple .wss-select-selection-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 11px;
+    transform: translateY(-50%);
+}
+
+/* ----------------------------------------------------------- Arrow / Clear */
+
+.wss-select-arrow,
+.wss-select-clear {
+    position: absolute;
+    top: 50%;
+    right: 11px;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+    color: var(--wss-color-text-disabled);
+    font-size: 12px;
+    line-height: 1;
+    text-align: center;
+    pointer-events: none;
+}
+
+.wss-select-arrow {
+    display: inline-flex;
+    align-items: center;
+    transition: transform 0.3s;
+}
+
+.wss-select-clear {
+    z-index: 1;
+    background: var(--wss-color-bg);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: auto;
+    transition: color 0.3s ease, opacity 0.15s ease;
+}
+
+.wss-select:hover .wss-select-clear {
+    opacity: 1;
+}
+
+.wss-select-clear:hover {
+    color: var(--wss-color-text-secondary);
+}
+
+/* ----------------------------------------------------------- Dropdown */
+
+.wss-select-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+}
+
+.wss-select-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 1050;
+    min-width: 100%;
+    max-height: 256px;
+    padding: 4px 0;
+    overflow-y: auto;
+    background-color: var(--wss-color-bg);
+    border-radius: var(--wss-radius);
+    outline: none;
+    box-shadow: var(--wss-shadow);
+    cursor: auto;
+}
+
+.wss-select-item,
+.wss-select-item-empty {
+    position: relative;
+    display: block;
+    min-height: 32px;
+    padding: 5px 12px;
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.wss-select-item-empty {
+    color: var(--wss-color-text-disabled);
+    text-align: center;
+    cursor: default;
+}
+
+.wss-select-item-option {
+    display: flex;
+    align-items: center;
+    color: var(--wss-color-text);
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.wss-select-item-option-content {
+    flex: auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.wss-select-item-option-state {
+    flex: none;
+    margin-left: 8px;
+    color: var(--wss-color-primary);
+}
+
+.wss-select-item-option-active:not(.wss-select-item-option-disabled),
+.wss-select-item-option:not(.wss-select-item-option-disabled):hover {
+    background-color: var(--wss-color-bg-hover);
+}
+
+.wss-select-item-option-selected:not(.wss-select-item-option-disabled) {
+    color: var(--wss-color-text);
+    font-weight: 600;
+    background-color: var(--wss-color-bg-selected);
+}
+
+.wss-select-item-option-disabled {
+    color: var(--wss-color-text-disabled);
+    cursor: not-allowed;
+}
+
+/* ----------------------------------------------------------- Sizes */
+
+.wss-select-sm.wss-select-single .wss-select-selector {
+    height: 24px;
+    padding: 0 7px;
+}
+
+.wss-select-sm.wss-select-single .wss-select-selection-search {
+    right: 7px;
+    left: 7px;
+}
+
+.wss-select-sm.wss-select-single .wss-select-selection-search-input {
+    height: 22px;
+}
+
+.wss-select-sm.wss-select-single .wss-select-selection-item,
+.wss-select-sm.wss-select-single .wss-select-selection-placeholder {
+    line-height: 22px;
+}
+
+.wss-select-lg {
+    font-size: 16px;
+}
+
+.wss-select-lg.wss-select-single .wss-select-selector {
+    height: 40px;
+    padding: 0 11px;
+}
+
+.wss-select-lg.wss-select-single .wss-select-selection-search-input {
+    height: 38px;
+}
+
+.wss-select-lg.wss-select-single .wss-select-selection-item,
+.wss-select-lg.wss-select-single .wss-select-selection-placeholder {
+    line-height: 38px;
+}
