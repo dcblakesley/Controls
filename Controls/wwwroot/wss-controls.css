@@ -604,17 +604,19 @@
     box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.07);
 }
 
-.wss-popover-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
-.wss-popover-top .wss-popover-arrow { bottom: -4px; left: 50%; margin-left: -4px; }
+/* --wss-shift (set by wss-overlay.js) keeps the panel in the viewport; the arrow counter-shifts
+   to keep pointing at the trigger. Both default to 0 when JS is unavailable. */
+.wss-popover-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-top .wss-popover-arrow { bottom: -4px; left: 50%; margin-left: -4px; transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popover-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
-.wss-popover-bottom .wss-popover-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); }
+.wss-popover-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-bottom .wss-popover-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popover-left { right: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
-.wss-popover-left .wss-popover-arrow { right: -4px; top: 50%; margin-top: -4px; }
+.wss-popover-left { right: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-left .wss-popover-arrow { right: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popover-right { left: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
-.wss-popover-right .wss-popover-arrow { left: -4px; top: 50%; margin-top: -4px; }
+.wss-popover-right { left: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-right .wss-popover-arrow { left: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
 /* ============================================================================
  * Pagination
@@ -958,17 +960,18 @@
     box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.07);
 }
 
-.wss-popconfirm-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
-.wss-popconfirm-top .wss-popconfirm-arrow { bottom: -4px; left: 50%; margin-left: -4px; }
+/* --wss-shift (set by wss-overlay.js) keeps the panel in the viewport; the arrow counter-shifts. */
+.wss-popconfirm-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popconfirm-top .wss-popconfirm-arrow { bottom: -4px; left: 50%; margin-left: -4px; transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popconfirm-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
-.wss-popconfirm-bottom .wss-popconfirm-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); }
+.wss-popconfirm-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popconfirm-bottom .wss-popconfirm-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popconfirm-left { right: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
-.wss-popconfirm-left .wss-popconfirm-arrow { right: -4px; top: 50%; margin-top: -4px; }
+.wss-popconfirm-left { right: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popconfirm-left .wss-popconfirm-arrow { right: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popconfirm-right { left: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
-.wss-popconfirm-right .wss-popconfirm-arrow { left: -4px; top: 50%; margin-top: -4px; }
+.wss-popconfirm-right { left: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popconfirm-right .wss-popconfirm-arrow { left: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
 /* ============================================================================
  * Table

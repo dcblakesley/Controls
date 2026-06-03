@@ -151,13 +151,20 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     // -positioned overlay that can overflow the viewport when the trigger is near an edge.
     async Task AssertAnchoredAboveAsync(string triggerSelector, string panelSelector)
     {
+        var panel = _page.Locator(panelSelector);
+        // Edge-aware positioning: auto-wait for the JS flip/shift to settle and assert the panel
+        // is fully within the viewport (Ratio = 1 ⇒ no part overflows the edge).
+        await Expect(panel).ToBeInViewportAsync(new() { Ratio = 1 });
+
         var t = await _page.Locator(triggerSelector).BoundingBoxAsync();
-        var p = await _page.Locator(panelSelector).BoundingBoxAsync();
+        var p = await panel.BoundingBoxAsync();
         Assert.NotNull(t);
         Assert.NotNull(p);
-        var dx = Math.Abs((t!.X + t.Width / 2) - (p!.X + p.Width / 2));
+        var triggerCenterX = t!.X + t.Width / 2;
+        // The panel still covers the trigger (so the arrow points at it) ...
+        Assert.InRange(triggerCenterX, p!.X, p.X + p.Width);
+        // ... and sits just above the trigger (Top placement, ~10px gap).
         var gapAbove = t.Y - (p.Y + p.Height);
-        Assert.True(dx < 24, $"Panel not horizontally centred on trigger (dx={dx:F0}px).");
         Assert.InRange(gapAbove, -2.0, 40.0);
     }
 
