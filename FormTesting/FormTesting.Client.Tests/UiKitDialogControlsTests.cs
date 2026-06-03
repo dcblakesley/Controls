@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
 
@@ -114,5 +115,40 @@ public class UiKitDialogControlsTests : TestContext
         var labelledBy = dialog.GetAttribute("aria-labelledby");
         Assert.False(string.IsNullOrEmpty(labelledBy));
         Assert.Equal(labelledBy, cut.Find(".wss-popover-title").Id);
+    }
+
+    [Fact]
+    public void Popconfirm_escape_inside_the_panel_cancels_and_closes()
+    {
+        var canceled = false;
+        var confirmed = false;
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .Add(pc => pc.OnCancel, EventCallback.Factory.Create(this, () => canceled = true))
+            .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, () => confirmed = true))
+            .AddChildContent("<button>del</button>"));
+
+        cut.Find(".wss-popconfirm-trigger").Click();
+        // Escape with focus inside the panel (a sibling of the trigger) must still work.
+        cut.Find("[role=dialog]").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        Assert.Empty(cut.FindAll(".wss-popconfirm")); // closed
+        Assert.True(canceled);                        // Escape maps to Cancel
+        Assert.False(confirmed);
+    }
+
+    [Fact]
+    public void Popover_escape_inside_the_panel_closes_it()
+    {
+        var cut = RenderComponent<Popover>(p => p
+            .Add(pv => pv.Title, "Info")
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<span>?</span>"));
+
+        cut.Find(".wss-popover-trigger").Click();
+        Assert.NotEmpty(cut.FindAll("[role=dialog]"));
+        cut.Find("[role=dialog]").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        Assert.Empty(cut.FindAll(".wss-popover")); // closed from inside the panel
     }
 }

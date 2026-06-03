@@ -119,4 +119,92 @@ public class RadioTextAreaAndCultureTests : TestContext
             CultureInfo.CurrentCulture = original;
         }
     }
+
+    [Fact]
+    public void EditRadioString_puts_radiogroup_role_on_the_fieldset_in_edit_mode_only()
+    {
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+
+        var edit = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.CloseComponent();
+        }));
+        var editFieldset = edit.Find("fieldset.edit-radio-fieldset");
+        Assert.Equal("radiogroup", editFieldset.GetAttribute("role"));
+        Assert.Equal("Name", editFieldset.GetAttribute("data-test-id"));
+
+        var readOnly = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(5, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+        // Gated off in read-only so it isn't a radiogroup with no radio children (axe aria-required-children).
+        Assert.False(readOnly.Find("fieldset.edit-radio-fieldset").HasAttribute("role"));
+    }
+
+    [Fact]
+    public void EditRadioString_omits_aria_labelledby_when_the_label_is_hidden()
+    {
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(5, "IsLabelHidden", true);
+            b.CloseComponent();
+        }));
+        var fieldset = cut.Find("fieldset.edit-radio-fieldset");
+        Assert.Equal("radiogroup", fieldset.GetAttribute("role"));  // still a radiogroup in edit mode
+        Assert.False(fieldset.HasAttribute("aria-labelledby"));     // but no dangling lbl- ref (no legend rendered)
+    }
+
+    [Fact]
+    public void EditBool_checkbox_carries_edit_input_class()
+    {
+        var model = new PersonModel { IsActive = true };
+        Expression<Func<bool>> field = () => model.IsActive;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditBool>(0);
+            b.AddAttribute(1, "Value", model.IsActive);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.CloseComponent();
+        }));
+        // edit-input is the hook the shipped :focus-visible ring / .invalid styles attach to.
+        Assert.Contains("edit-input", cut.Find("input[type=checkbox]").GetAttribute("class")!);
+    }
+
+    [Fact]
+    public void EditRadioString_radios_carry_edit_radio_input_class()
+    {
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.CloseComponent();
+        }));
+        Assert.All(cut.FindAll("input[type=radio]"),
+            r => Assert.Contains("edit-radio-input", r.GetAttribute("class")!));
+    }
 }
