@@ -1,12 +1,12 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @implements IDisposable
 
-<section class="validation-summary" aria-label="Validation errors" @attributes="AdditionalAttributes">
+<section @attributes="AdditionalAttributes" class="validation-summary" aria-label="Validation errors">
     @if (FormOptions is not null)
     {
         @foreach (var v in FormOptions.FieldIdentifiers)
         {
-            @foreach (var z in CurrentEditContext.GetValidationMessages(v).ToList())
+            @foreach (var z in CurrentEditContext.GetValidationMessages(v))
             {
                 <a class="validation-summary-message" href="#@AttributesHelper.GetId(null, FormGroupOptions, null, v)">@z</a>
             }
@@ -30,7 +30,7 @@
     [Parameter] public object? Model { get; set; }
 
     /// <summary> 
-    /// Gets or sets a collection of additional attributes that will be applied to the created <c>ul</c> element.
+    /// Gets or sets a collection of additional attributes that will be applied to the rendered <c>section</c> element.
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
