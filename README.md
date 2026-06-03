@@ -291,6 +291,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   Tokens default to the AntDesign 4.x look and bridge to your existing `--color-*` / `--border-color` where present. The Select keyboard helper ships as an RCL JS module at `_content/WssBlazorControls/wss-select.js` (auto-imported, degrades gracefully).
 - No service registration required (consistent with the rest of the library).
 
+**Accessibility & correctness (library audit)**
+- **Modal / Drawer:** trap focus while open, restore focus to the trigger on close, close on `Escape`, lock body scroll, and expose `role="dialog"` + `aria-modal="true"` + `aria-labelledby` (the title). OK/confirm still never auto-closes — the caller decides.
+- **Popover / Popconfirm:** the trigger is a real focusable control (`role="button"`, `tabindex="0"`, `aria-haspopup`, `aria-expanded`) operable from the keyboard — `Enter` / `Space` to open, `Escape` to close. Both flip to the opposite side and shift along the cross axis to stay within the viewport, rendering hidden for one frame so the placement is never seen to jump.
+- **`Select` / `EditSelectSearch` / `EditMultiSelect`:** full combobox ARIA (`role="combobox"` / `listbox` / `option`, `aria-expanded`, `aria-controls`, `aria-activedescendant`); the dropdown now opens **upward** when it would otherwise run off the bottom of the viewport.
+- **`Pagination`:** rewritten as a semantic `<nav aria-label="Pagination">` of `<button>`s with `aria-current="page"` on the active page and `aria-label`s on the prev/next controls (was `<ul>` / `<li>` / `<a>`).
+- **Toasts / notifications:** the live region is announced via `role="status"` + `aria-live="polite"`.
+- **`ReadOnlyValue` now HTML-encodes** the value it displays instead of rendering it as raw markup — bound user data can no longer inject markup.
+- **`EditDate` read-only** formats the bound value by its own type with `DateFormat`. The old code round-tripped through the editor string, which could shift the date across midnight in non-UTC zones and rendered a `TimeOnly` as a date; an incompatible format now degrades to the value's own `ToString` rather than throwing.
+- **`EditCheckedEnumList` / `EditCheckedStringList`** build a new list when toggling instead of mutating the caller's bound collection in place.
+- The placement enum for `Popover` / `Popconfirm` is named `PopupPlacement` (it positions popups, not tooltips). The library builds with **0 warnings** across net8 / net9 / net10.
+
 **Breaking dependency change**
 - Removed `Microsoft.AspNetCore.Components.DataAnnotations.Validation` (3.2.0-rc1) from the `WssBlazorControls` package — the library itself never used it. Consumers who use `<ObjectGraphDataAnnotationsValidator>` or the `[ValidateComplexType]` attribute for nested-object validation must now add the package to their own project:
   ```bash
@@ -322,7 +333,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - `_Imports.razor` now exposes `Microsoft.AspNetCore.Components.Forms` and `Controls.Helpers` so individual razor files no longer need per-file `@using` directives for `<InputRadioGroup>` / `<InputRadio>` / `.ToId()` / etc.
 
 **Tests**
-- `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10) — 57 tests covering the helpers (`EnumHelpers` cache + attribute precedence, `AttributesHelper.GetId` / `GetLabelText` / `GetMinAndMaxLengths`, `EditControlInit`, `ValidationHelper` regex parsing) and bUnit smoke tests for the controls (rendered DOM, ARIA attributes, edit/read-only switching, EditBool's new `RenderAsCheckboxWhenReadOnly` opt-in). Run with `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj`.
+- `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10) — 147 tests covering the helpers (`EnumHelpers` cache + attribute precedence, `AttributesHelper.GetId` / `GetLabelText` / `GetMinAndMaxLengths`, `EditControlInit`, `ValidationHelper` regex parsing), bUnit smoke tests for the form controls (rendered DOM, ARIA, edit/read-only switching), the AntDesign-style selects, and the UI-kit widgets (Table, dialogs, toasts) — plus regression tests for the audit fixes (`ReadOnlyValue` HTML-encoding, `EditDate` read-only formatting, checked-list immutability). Run with `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj`.
+- `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Playwright .NET, net10) — a 63-test end-to-end suite (one class per `Edit*` control plus the searchable selects and a driver for the `/uikit` gallery) with committed visual-regression baselines. Run with `dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj`.
 
 ### 10.1.0
 
