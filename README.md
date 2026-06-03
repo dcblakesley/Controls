@@ -7,15 +7,15 @@ A comprehensive library of form controls for Blazor applications providing consi
 
 ## Features
 
-- Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
-- Searchable & Multi-Select**: AntDesign-style `EditSelectSearch` / `EditMultiSelect` — type-to-search, tags, virtualized dropdown
-- AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, Skeleton, and toasts
-- Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
-- Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
-- Flexible Display Modes**: Edit mode and read-only views for all controls
-- Consistent Styling**: CSS classes and customizable appearance
-- TypeScript/JavaScript Interop**: Enhanced client-side functionality
-- Cross-Platform**: Works with both Blazor Server and Blazor WebAssembly
+- **Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
+- **Searchable & Multi-Select**: AntDesign-style `EditSelectSearch` / `EditMultiSelect` — type-to-search, tags, virtualized dropdown
+- **AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, Skeleton, and toasts
+- **Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
+- **Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
+- **Flexible Display Modes**: Edit mode and read-only views for all controls
+- **Consistent Styling**: CSS classes and customizable appearance
+- **TypeScript/JavaScript Interop**: Enhanced client-side functionality
+- **Cross-Platform**: Works with both Blazor Server and Blazor WebAssembly
 
 ## Installation
 
@@ -36,7 +36,7 @@ Install-Package WssBlazorControls
 1. **Add the using statement** to your `_Imports.razor`:
 
 ```razor
-@using WssBlazorControls
+@using Controls
 ```
 
 2. **Include the CSS** in your `App.razor` or `index.html`:
@@ -251,11 +251,11 @@ The AntDesign-style UI-kit controls (Alert, Modal, Table, Select, ...) are theme
 
 WssBlazorControls is built with accessibility as a priority:
 
-- ? **ARIA attributes** for screen readers
-- ?? **Keyboard navigation** support
-- ?? **Focus management** and indicators
-- ?? **Semantic HTML** structure
-- ?? **High contrast** color support
+- **ARIA attributes** for screen readers
+- **Keyboard navigation** support
+- **Focus management** and indicators
+- **Semantic HTML** structure
+- **High contrast** color support
 
 ## Browser Support
 

@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Controls", "Controls\Contro
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Controls.Demo", "Controls.Demo\Controls.Demo.csproj", "{EDFEA78F-2310-4355-8B29-897ECAC8C2E5}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FormTesting", "FormTesting", "{18E466FD-6211-F7D6-55B5-39506E1C0752}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{18E466FD-6211-F7D6-55B5-39506E1C0752}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FormTesting.Client.Tests", "FormTesting\FormTesting.Client.Tests\FormTesting.Client.Tests.csproj", "{EC5D06C0-A5BB-40BB-A304-7F53940E2DBD}"
 EndProject

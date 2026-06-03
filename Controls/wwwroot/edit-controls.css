@@ -7,7 +7,7 @@
 }
 .edit-validation-message {
     /* The validation message for each of the "Edit" Controls */
-    color: var(--color-danger);
+    color: var(--color-danger, #ff4d4f);
 }
 
 /************************************************ FormLabel **********************************************/
@@ -19,7 +19,7 @@
 .edit-label-required-star {
     /* The star that shows up after the Label when a property is marked as [Required] */
     margin-right: 8px;
-    color: var(--color-danger);
+    color: var(--color-danger, #ff4d4f);
 }
 .edit-label-description {
     /* The description for each of the "Edit" Controls */
