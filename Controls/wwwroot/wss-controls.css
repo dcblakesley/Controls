@@ -1,0 +1,68 @@
+/*
+ * WssBlazorControls UI-kit theme tokens (--wss-*).
+ *
+ * These back the ported AntDesign-look-alike controls (Select, Button, Modal,
+ * Drawer, Table, Tag, Alert, etc.). Defaults reproduce the Ant Design 4.x look,
+ * so the controls render correctly out of the box.
+ *
+ * Where a token has a clear match to a generic variable the form controls
+ * already rely on (--color-primary, --color-danger, --border-color, typically
+ * defined in the consuming app's own CSS), it bridges to that variable and
+ * falls back to the Ant default. So: works with no setup, and automatically
+ * matches a consumer's existing theme when those variables are present.
+ *
+ * Consumers link this once alongside edit-controls.css:
+ *   <link href="_content/WssBlazorControls/wss-controls.css" rel="stylesheet" />
+ * and may override any --wss-* variable to re-theme every ported control.
+ *
+ * The form-edit controls keep their own edit-* classes and conventions; this
+ * file is only for the UI-kit controls.
+ */
+
+:root {
+    /* Brand / interactive */
+    --wss-color-primary: var(--color-primary, #1890ff);
+    --wss-color-primary-hover: #40a9ff;
+    --wss-color-primary-active: #096dd9;
+    --wss-primary-shadow: rgba(24, 144, 255, 0.2);
+
+    /* Text */
+    --wss-color-text: rgba(0, 0, 0, 0.85);
+    --wss-color-text-secondary: rgba(0, 0, 0, 0.45);
+    --wss-color-text-disabled: rgba(0, 0, 0, 0.25);
+    --wss-color-placeholder: #bfbfbf;
+
+    /* Surfaces / lines */
+    --wss-color-bg: #fff;
+    --wss-color-bg-disabled: #f5f5f5;
+    --wss-color-bg-hover: #f5f5f5;
+    --wss-color-bg-selected: #e6f7ff;
+    --wss-color-border: var(--border-color, #d9d9d9);
+    --wss-color-split: #f0f0f0;
+
+    /* Metrics */
+    --wss-radius: 2px;
+    --wss-control-height: 32px;
+    --wss-control-height-sm: 24px;
+    --wss-control-height-lg: 40px;
+    --wss-font-size: 14px;
+    --wss-font-size-sm: 12px;
+    --wss-font-size-lg: 16px;
+    --wss-line-height: 1.5715;
+    --wss-padding-h: 11px;
+    --wss-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+
+    /* Status (alerts / messages / notifications) */
+    --wss-color-success: #52c41a;
+    --wss-color-success-bg: #f6ffed;
+    --wss-color-success-border: #b7eb8f;
+    --wss-color-info: #1890ff;
+    --wss-color-info-bg: #e6f7ff;
+    --wss-color-info-border: #91d5ff;
+    --wss-color-warning: #faad14;
+    --wss-color-warning-bg: #fffbe6;
+    --wss-color-warning-border: #ffe58f;
+    --wss-color-error: var(--color-danger, #ff4d4f);
+    --wss-color-error-bg: #fff2f0;
+    --wss-color-error-border: #ffccc7;
+}
