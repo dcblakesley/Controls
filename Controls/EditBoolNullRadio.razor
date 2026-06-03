@@ -3,20 +3,22 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <fieldset class="edit-radio-fieldset">
+        <fieldset class="edit-radio-fieldset"
+                  id=@_id
+                  data-test-id=@_id
+                  role=@(ShowEditor ? "radiogroup" : null)
+                  aria-labelledby=@(ShowEditor ? $"lbl-{_id}" : null)
+                  aria-required=@(ShowEditor ? _isRequired : null)
+                  aria-invalid=@(ShowEditor && IsInvalid ? "true" : null)
+                  aria-describedby=@(ShowEditor ? _describedBy : null)
+                  aria-errormessage=@(ShowEditor && IsInvalid ? _errorMsgId : null)>
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel />
 
             @if (ShowEditor)
             {
                 <div class=@(IsHorizontal
                             ? "edit-radio-buttons-container-horizontal"
-                            : "edit-radio-buttons-container-vertical")
-                     role="radiogroup"
-                     aria-labelledby="lbl-@_id"
-                     aria-required=@_isRequired
-                     aria-invalid=@(IsInvalid ? "true" : null)
-                     aria-describedby=@_describedBy
-                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)>
+                            : "edit-radio-buttons-container-vertical")>
                     <label class="edit-radio-label">
                         <input type="radio"
                                name=@_id

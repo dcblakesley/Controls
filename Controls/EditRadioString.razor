@@ -4,26 +4,24 @@
 {
     <div class="edit-control-wrapper @ContainerClass">
 
-        <fieldset class="edit-radio-fieldset">
+        <fieldset class="edit-radio-fieldset"
+                  id=@_id
+                  data-test-id=@_id
+                  role=@(ShowEditor ? "radiogroup" : null)
+                  aria-labelledby=@(ShowEditor ? $"lbl-{_id}" : null)
+                  aria-required=@(ShowEditor ? _isRequired : null)
+                  aria-invalid=@(ShowEditor && IsInvalid ? "true" : null)
+                  aria-describedby=@(ShowEditor ? _describedBy : null)
+                  aria-errormessage=@(ShowEditor && IsInvalid ? _errorMsgId : null)>
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLegend=true IsLabelHidden=@ShouldHideLabel />
 
             @if (ShowEditor)
             {
-                <InputRadioGroup @bind-Value=@SelectedOption
-                                 id=@_id
-                                 data-test-id=@_id
-                                 class=@CssClass
-                                 disabled=@IsDisabled>
+                <InputRadioGroup @bind-Value=@SelectedOption disabled=@IsDisabled>
 
                     <div class=@(IsHorizontal
                                    ? "edit-radio-buttons-container-horizontal"
-                                   : "edit-radio-buttons-container-vertical")
-                         role="radiogroup"
-                         aria-labelledby="lbl-@_id"
-                         aria-required=@_isRequired
-                         aria-invalid=@(IsInvalid ? "true" : null)
-                         aria-describedby=@_describedBy
-                         aria-errormessage=@(IsInvalid ? _errorMsgId : null)>
+                                   : "edit-radio-buttons-container-vertical")>
 
                         @foreach (var option in Options)
                         {
@@ -32,7 +30,7 @@
                                             disabled=@IsDisabled
                                             id=@($"rb-{_id}-{option.ToId()}")
                                             data-test-id=@($"rb-{_id}-{option.ToId()}")
-                                            class=@($"{CssClass}") />
+                                            class=@($"edit-radio-input {CssClass}") />
 
                                 @option
                             </label>
