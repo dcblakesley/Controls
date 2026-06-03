@@ -52,6 +52,7 @@ public partial class Select<TValue> : IAsyncDisposable
     private readonly List<SelectOption<TValue>> _tagOptions = new();
     private List<SelectOption<TValue>> _filtered = new();
     private int _hiddenTagCount;
+    private readonly List<(SelectOption<TValue> Option, int Index)> _visibleTags = new();
 
     // value -> option, rebuilt only when Options changes, so FindOption is O(1)
     // instead of scanning the (potentially huge) option list on every render.
@@ -153,6 +154,7 @@ public partial class Select<TValue> : IAsyncDisposable
         }
 
         RebuildFiltered();
+        RebuildVisibleTags();
     }
 
     // ----- Display helpers (used by the .razor markup) ----------------------
@@ -191,17 +193,22 @@ public partial class Select<TValue> : IAsyncDisposable
     private bool ShowClear => AllowClear && !Disabled &&
         (IsMultiple ? _selected.Count > 0 : HasSingleValue);
 
-    private IEnumerable<(SelectOption<TValue> Option, int Index)> VisibleTags()
-    {
-        var tags = _selected.Select((v, i) => (Option: FindOption(v) ?? new SelectOption<TValue>(v, v?.ToString()), Index: i)).ToList();
-        if (MaxTagCount is { } max && tags.Count > max)
-        {
-            _hiddenTagCount = tags.Count - max;
-            return tags.Take(max);
-        }
+    // Returns the cached visible-tag list (rebuilt by RebuildVisibleTags when the selection changes).
+    private IReadOnlyList<(SelectOption<TValue> Option, int Index)> VisibleTags() => _visibleTags;
 
-        _hiddenTagCount = 0;
-        return tags;
+    // Rebuilt only when the selection (or MaxTagCount) changes, not on every render — caching avoids
+    // per-render List/tuple/SelectOption allocations and keeps _hiddenTagCount out of a render getter.
+    private void RebuildVisibleTags()
+    {
+        _visibleTags.Clear();
+        var max = MaxTagCount is { } m && m >= 0 ? m : int.MaxValue;
+        _hiddenTagCount = _selected.Count > max ? _selected.Count - max : 0;
+        var visible = Math.Min(_selected.Count, max);
+        for (var i = 0; i < visible; i++)
+        {
+            var v = _selected[i];
+            _visibleTags.Add((FindOption(v) ?? new SelectOption<TValue>(v, v?.ToString()), i));
+        }
     }
 
     // The keyboard-highlighted option (compared by reference so each rendered row
@@ -275,17 +282,20 @@ public partial class Select<TValue> : IAsyncDisposable
     private void AddSelected(TValue value)
     {
         if (_selectedSet.Add(value)) _selected.Add(value);
+        RebuildVisibleTags();
     }
 
     private void RemoveSelected(TValue value)
     {
         if (_selectedSet.Remove(value)) _selected.RemoveAll(v => Comparer.Equals(v, value));
+        RebuildVisibleTags();
     }
 
     private void ClearSelected()
     {
         _selected.Clear();
         _selectedSet.Clear();
+        RebuildVisibleTags();
     }
 
     // ----- Interaction ------------------------------------------------------

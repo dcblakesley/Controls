@@ -35,7 +35,7 @@
             }
             else
             {
-                @foreach (var item in PageItems)
+                @foreach (var item in _pageItems)
                 {
                     <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)" @key="item">
                         @if (Selectable)
@@ -83,18 +83,30 @@
     readonly List<Column<TItem>> _columns = new();
     readonly HashSet<TItem> _selected = new();
     List<TItem> _items = new();
+    List<TItem> _pageItems = new();
+    IEnumerable<TItem>? _lastDataSource;
+    IEnumerable<TItem>? _lastSelectedItems;
     int _page = 1;
 
     string SizeName => Size.ToString().ToLowerInvariant();
 
     bool IsPaged => PageSize > 0;
 
-    IEnumerable<TItem> PageItems =>
-        IsPaged ? _items.Skip((_page - 1) * PageSize).Take(PageSize) : _items;
+    // Rebuilt only when the page / data / page-size change (OnParametersSet, OnPageChange), so the
+    // row loop and AllSelected don't each re-materialize the page on every render.
+    void RebuildPageItems() =>
+        _pageItems = IsPaged ? _items.Skip((_page - 1) * PageSize).Take(PageSize).ToList() : _items;
 
     protected override void OnParametersSet()
     {
-        _items = DataSource?.ToList() ?? new List<TItem>();
+        // Treat the collections as immutable parameters (the Blazor-idiomatic contract) and only
+        // re-copy when the reference changes, mirroring Select's Options guard. Reassign DataSource /
+        // SelectedItems (rather than mutating in place) to refresh.
+        if (!ReferenceEquals(DataSource, _lastDataSource))
+        {
+            _items = DataSource?.ToList() ?? new List<TItem>();
+            _lastDataSource = DataSource;
+        }
 
         if (IsPaged)
         {
@@ -103,11 +115,14 @@
             if (_page < 1) _page = 1;
         }
 
-        if (SelectedItems != null)
+        if (SelectedItems != null && !ReferenceEquals(SelectedItems, _lastSelectedItems))
         {
             _selected.Clear();
             foreach (var s in SelectedItems) _selected.Add(s);
+            _lastSelectedItems = SelectedItems;
         }
+
+        RebuildPageItems();
     }
 
     internal void Register(Column<TItem> column)
@@ -121,18 +136,11 @@
 
     // Pagination.CurrentChanged is an EventCallback, so Blazor re-renders this component
     // automatically once this handler returns — no explicit StateHasChanged needed.
-    void OnPageChange(int page) => _page = page;
+    void OnPageChange(int page) { _page = page; RebuildPageItems(); }
 
     bool IsSelected(TItem item) => _selected.Contains(item);
 
-    bool AllSelected
-    {
-        get
-        {
-            var page = PageItems.ToList();
-            return page.Count > 0 && page.All(_selected.Contains);
-        }
-    }
+    bool AllSelected => _pageItems.Count > 0 && _pageItems.All(_selected.Contains);
 
     async Task ToggleRow(TItem item, bool on)
     {
@@ -143,7 +151,7 @@
     // Select-all toggles the current page's rows (matching Ant Design behaviour).
     async Task ToggleAll(bool on)
     {
-        foreach (var i in PageItems)
+        foreach (var i in _pageItems)
         {
             if (on) _selected.Add(i); else _selected.Remove(i);
         }
