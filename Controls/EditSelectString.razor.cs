@@ -17,30 +17,9 @@ public partial class EditSelectString<TValue> : EditControlBase<TValue>
         InitState(Field);
     }
 
-    // Same parser shape as EditSelect — strings pass through, enums via BindConverter, anything else
-    // via BindConverter as a fallback.
-    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage)
-    {
-        var typeOfValue = typeof(TValue);
-
-        if (typeOfValue == typeof(string))
-        {
-            result = (TValue)(object)value!;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
-        {
-            result = parsedValue!;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        result = default!;
-        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
-        return false;
-    }
+    // Strings pass through; anything else round-trips via BindConverter (shared with EditSelect).
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
+        SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
     // Empty stringified value counts as "default" — matches the prior behavior where
     // value.ToString() != "" gated the NullOrDefault hiding modes.

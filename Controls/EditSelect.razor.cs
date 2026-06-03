@@ -21,45 +21,9 @@ public partial class EditSelect<TValue> : EditControlBase<TValue>
         InitState(Field);
     }
 
-    // Ported from Microsoft.AspNetCore.Components.Forms.InputSelect<TValue>:
-    // strings pass through; enums (and nullable enums) round-trip via BindConverter.
-    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage)
-    {
-        var typeOfValue = typeof(TValue);
-
-        if (typeOfValue == typeof(string))
-        {
-            result = (TValue)(object)value!;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        if (typeOfValue.IsEnum || (Nullable.GetUnderlyingType(typeOfValue)?.IsEnum ?? false))
-        {
-            if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsedValue))
-            {
-                result = parsedValue!;
-                validationErrorMessage = null!;
-                return true;
-            }
-
-            result = default!;
-            validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
-            return false;
-        }
-
-        // Fallback to BindConverter for any other primitive value type.
-        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var fallback))
-        {
-            result = fallback!;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        result = default!;
-        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
-        return false;
-    }
+    // Strings pass through; enums and other value types round-trip via BindConverter.
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
+        SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
     // Base IsValueDefault covers EqualityComparer<TValue>.Default behavior — no override needed.
 }

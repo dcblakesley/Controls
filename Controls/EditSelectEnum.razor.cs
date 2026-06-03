@@ -43,32 +43,6 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
 
     // Base IsValueDefault uses EqualityComparer<TEnum>.Default — for non-nullable TEnum that
     // matches the zero-valued enum, which is the same "default" as before.
-    protected override bool TryParseValueFromString(string? value, out TEnum result, out string validationErrorMessage)
-    {
-        // Handle null/empty for nullable enums
-        if (string.IsNullOrEmpty(value))
-        {
-            if (_isNullable)
-            {
-                result = default!;
-                validationErrorMessage = null!;
-                return true;
-            }
-            result = default!;
-            validationErrorMessage = $"The {FieldIdentifier.FieldName} field is required.";
-            return false;
-        }
-
-        // Try parsing the enum value
-        if (Enum.TryParse(_underlyingType, value, out object? parsedValue))
-        {
-            result = (TEnum)parsedValue;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        result = default!;
-        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
-        return false;
-    }
+    protected override bool TryParseValueFromString(string? value, out TEnum result, out string validationErrorMessage) =>
+        SelectParsing.TryParseEnum(value, _underlyingType, _isNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 }

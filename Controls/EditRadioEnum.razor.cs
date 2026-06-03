@@ -76,34 +76,8 @@ public partial class EditRadioEnum<TEnum> : EditControlBase<TEnum?>
         return enumValues.Cast<TEnum?>().ToList();
     }
 
-    protected override bool TryParseValueFromString(string? value, out TEnum? result, out string validationErrorMessage)
-    {
-        // Handle null/empty for nullable enums
-        if (string.IsNullOrEmpty(value))
-        {
-            if (_isNullable)
-            {
-                result = default!;
-                validationErrorMessage = null!;
-                return true;
-            }
-            result = default!;
-            validationErrorMessage = $"The {FieldIdentifier.FieldName} field is required.";
-            return false;
-        }
-
-        // Try parsing the enum value
-        if (Enum.TryParse(_underlyingType, value, out object? parsedValue))
-        {
-            result = (TEnum)parsedValue;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        result = default!;
-        validationErrorMessage = $"The {FieldIdentifier.FieldName} field is not valid.";
-        return false;
-    }
+    protected override bool TryParseValueFromString(string? value, out TEnum? result, out string validationErrorMessage) =>
+        SelectParsing.TryParseEnum(value, _underlyingType, _isNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
     async Task OnOtherValueChanged(ChangeEventArgs e)
     {
