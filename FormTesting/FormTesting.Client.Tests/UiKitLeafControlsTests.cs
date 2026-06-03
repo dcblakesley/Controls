@@ -52,17 +52,6 @@ public class UiKitLeafControlsTests : TestContext
     }
 
     [Fact]
-    public void Tooltip_renders_child_and_title()
-    {
-        var cut = RenderComponent<Tooltip>(p => p
-            .Add(t => t.Title, "Hello tip")
-            .AddChildContent("<button>hover me</button>"));
-
-        Assert.NotNull(cut.Find("button"));
-        Assert.Contains("Hello tip", cut.Find(".wss-tooltip").TextContent);
-    }
-
-    [Fact]
     public void Popover_shows_content_after_trigger_click()
     {
         var cut = RenderComponent<Popover>(p => p

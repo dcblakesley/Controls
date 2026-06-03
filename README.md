@@ -9,7 +9,7 @@ A comprehensive library of form controls for Blazor applications providing consi
 
 - Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
 - Searchable & Multi-Select**: AntDesign-style `EditSelectSearch` / `EditMultiSelect` — type-to-search, tags, virtualized dropdown
-- AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Tooltip, Popover, Popconfirm, Skeleton, and WASM toasts
+- AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, Skeleton, and toasts
 - Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
 - Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
 - Flexible Display Modes**: Edit mode and read-only views for all controls
@@ -148,7 +148,6 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Select<T>`** - The dropdown engine behind `EditSelectSearch` / `EditMultiSelect`; usable standalone (single / multiple / tags, search, virtualized)
 - **`Alert`** - Contextual message banner (success / info / warning / error, closable, description)
 - **`Skeleton`** - Loading placeholder with shimmer
-- **`Tooltip`** - Pure-CSS hover tooltip (4 placements)
 - **`Popover`** - Click-triggered popover (4 placements)
 - **`Pagination`** - Controlled pager
 - **`Modal`** - Dialog with `@bind-Visible`, footer, mask-close
@@ -284,7 +283,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **New: AntDesign-style controls (ported from `Standalone.Controls`)**
 - **Form selects:** `EditSelectSearch<T>` (searchable single-select) and `EditMultiSelect<T>` (multiple / tags, binds `List<T>`) — full `Edit*` controls (validation, label, read-only, `FormOptions`) backed by a new dependency-free, virtualized dropdown engine (`Select<T>`). They sit **alongside** the existing `EditSelect` / `EditSelectEnum` / `EditSelectString`, which are unchanged.
-- **UI kit (non-form):** `Select<T>`, `Alert`, `Skeleton`, `Tooltip`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column` / `PropertyColumn` / `ActionColumn`), and toasts/notifications in two flavors — **scoped/Server-safe** (`IMessageService` / `INotificationService` via `AddWssControlsToasts()` + `MessageContainer` / `NotificationContainer`) and **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + their containers). `Icon`, `Button`, `Checkbox`, and `Tag` were intentionally excluded.
+- **UI kit (non-form):** `Select<T>`, `Alert`, `Skeleton`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column` / `PropertyColumn` / `ActionColumn`), and toasts/notifications in two flavors — **scoped/Server-safe** (`IMessageService` / `INotificationService` via `AddWssControlsToasts()` + `MessageContainer` / `NotificationContainer`) and **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + their containers). `Icon`, `Button`, `Checkbox`, and `Tag` were intentionally excluded.
 - **New stylesheet:** these controls use the `wss-` class prefix and `--wss-*` theme tokens shipped in `wss-controls.css`. Add a second link alongside `edit-controls.css`:
   ```html
   <link href="_content/WssBlazorControls/wss-controls.css" rel="stylesheet" />
