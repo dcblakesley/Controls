@@ -281,6 +281,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Unreleased
 
+**Accessibility, theming & performance (audit follow-up)**
+- **Grouped controls now expose `aria-invalid` and group-level ARIA.** The radio controls (`EditRadio`, `EditRadioEnum`, `EditRadioString`, `EditBoolNullRadio`) and the checkbox lists (`EditCheckedStringList`, `EditCheckedEnumList`) now carry `aria-invalid` / `aria-required` / `aria-describedby` on a real `role="radiogroup"` container labelled by the legend, instead of splatting them onto `<InputRadioGroup>` (where they didn't reliably render) or omitting them entirely. This completes "`aria-invalid` on every editable control" — the grouped controls were the gap.
+- **`aria-describedby` no longer dangles** — it references only the `desc-` / `tooltip-` ids that actually render, and is resolved once per control rather than re-interpolated on every render. `aria-errormessage` is emitted only while the field is invalid (per the ARIA spec).
+- **Form controls are self-sufficient out of the box.** `edit-controls.css` now ships a `:focus-visible` ring for the editable elements (WCAG 2.4.7 — no longer dependent on the browser default the consumer may have reset) and an `.invalid` border, so keyboard focus and the validation error state are visible without the consumer supplying their own styles. The validation X icon and the tooltip info icon use `currentColor` driven by `--color-danger` / `--color-text`, so they follow the consumer theme.
+- **`wss-controls.css`:** the `Select` sizing now uses the existing `--wss-*` tokens (overriding a token rescales the control as intended), and the classes the markup referenced but the stylesheet never defined (`wss-popconfirm-title`, `wss-table-caption`, `wss-select-selection-item-rest`, …) are now declared.
+- **Fewer per-render allocations.** `Select` caches its visible tags and `Table` caches the current page (it was materializing the page twice per render). `Table` now treats `DataSource` / `SelectedItems` as immutable parameters (reference-guarded) — reassign them to refresh rather than mutating in place.
+- **Removed the unused `ReadOnlyValue.IsRequired` parameter** (it was `required` but never rendered).
+
 **New: AntDesign-style controls (ported from `Standalone.Controls`)**
 - **Form selects:** `EditSelectSearch<T>` (searchable single-select) and `EditMultiSelect<T>` (multiple / tags, binds `List<T>`) — full `Edit*` controls (validation, label, read-only, `FormOptions`) backed by a new dependency-free, virtualized dropdown engine (`Select<T>`). They sit **alongside** the existing `EditSelect` / `EditSelectEnum` / `EditSelectString`, which are unchanged.
 - **UI kit (non-form):** `Select<T>`, `Alert`, `Skeleton`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column` / `PropertyColumn` / `ActionColumn`), and toasts/notifications in two flavors — **scoped/Server-safe** (`IMessageService` / `INotificationService` via `AddWssControlsToasts()` + `MessageContainer` / `NotificationContainer`) and **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + their containers). `Icon`, `Button`, `Checkbox`, and `Tag` were intentionally excluded.
@@ -356,8 +364,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Markup consistency**
 - `EditSelectEnum` switched from `@bind:get` / `@bind:set` to `<InputSelect @bind-Value=...>` so it matches `EditSelect` / `EditSelectString`.
-- `EditBoolNullRadio` radio inputs now carry `aria-required`, `aria-invalid`, `aria-describedby`, and `aria-errormessage`.
-- `aria-invalid` is now rendered consistently on every editable control.
+- `EditBoolNullRadio` radio inputs now carry `aria-required`, `aria-invalid`, `aria-describedby`, and `aria-errormessage`. *(Moved to a group-level `role="radiogroup"` container in the next release — see Unreleased.)*
+- `aria-invalid` is now rendered on every **scalar** editable control. *(The grouped radio / checkbox-list controls are brought to parity in the next release — see Unreleased.)*
 - `.ToId()` is now applied to enum option `id`s in `EditSelectEnum` and `EditRadioEnum` — fixes invalid HTML ids when an enum's display name contains spaces or punctuation.
 - The red-X invalid icon (previously only on `EditString`) now appears on `EditNumber`, `EditDate`, and `EditTextArea` as well.
 
