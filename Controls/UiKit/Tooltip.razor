@@ -1,0 +1,27 @@
+@namespace Controls
+
+@* Pure-CSS tooltip: shows on hover/focus of the wrapped content. No JS. *@
+<span class="wss-tooltip-wrap">
+    @ChildContent
+    <span class="wss-tooltip wss-tooltip-@PlacementName" role="tooltip">
+        @if (TitleContent != null)
+        {
+            @TitleContent
+        }
+        else
+        {
+            @Title
+        }
+        <span class="wss-tooltip-arrow"></span>
+    </span>
+</span>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    /// <summary>Optional rich tooltip content; overrides <see cref="Title"/> when set.</summary>
+    [Parameter] public RenderFragment? TitleContent { get; set; }
+    [Parameter] public TooltipPlacement Placement { get; set; } = TooltipPlacement.Top;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    string PlacementName => Placement.ToString().ToLowerInvariant();
+}

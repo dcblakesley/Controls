@@ -1,0 +1,36 @@
+@namespace Controls
+
+<span class="wss-popover-wrap">
+    <span class="wss-popover-trigger" @onclick="Toggle">@ChildContent</span>
+    @if (_open)
+    {
+        <div class="wss-popover-backdrop" @onclick="Close"></div>
+        <div class="wss-popover wss-popover-@PlacementName" role="dialog" @onclick:stopPropagation="true">
+            <div class="wss-popover-inner">
+                @if (TitleContent != null || !string.IsNullOrEmpty(Title))
+                {
+                    <div class="wss-popover-title">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                }
+                <div class="wss-popover-content">@Content</div>
+            </div>
+            <span class="wss-popover-arrow"></span>
+        </div>
+    }
+</span>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? TitleContent { get; set; }
+    /// <summary>The popover body.</summary>
+    [Parameter] public RenderFragment? Content { get; set; }
+    /// <summary>The trigger element.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public TooltipPlacement Placement { get; set; } = TooltipPlacement.Top;
+
+    bool _open;
+
+    string PlacementName => Placement.ToString().ToLowerInvariant();
+
+    void Toggle() => _open = !_open;
+    void Close() => _open = false;
+}

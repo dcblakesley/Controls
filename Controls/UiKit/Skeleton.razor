@@ -1,0 +1,37 @@
+@namespace Controls
+
+@if (Loading)
+{
+    <div class="wss-skeleton @(Active ? "wss-skeleton-active" : null)">
+        @if (Title)
+        {
+            <div class="wss-skeleton-title"></div>
+        }
+        <ul class="wss-skeleton-paragraph">
+            @for (var i = 0; i < Rows; i++)
+            {
+                <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
+            }
+        </ul>
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>When true (default) show the placeholder; when false render <see cref="ChildContent"/>.</summary>
+    [Parameter] public bool Loading { get; set; } = true;
+
+    /// <summary>Show the shimmer animation.</summary>
+    [Parameter] public bool Active { get; set; } = true;
+
+    /// <summary>Render a title bar above the paragraph lines.</summary>
+    [Parameter] public bool Title { get; set; } = true;
+
+    /// <summary>Number of paragraph lines.</summary>
+    [Parameter] public int Rows { get; set; } = 3;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
