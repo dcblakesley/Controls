@@ -1,4 +1,22 @@
-﻿/************************************************ General ************************************************/
+﻿:root {
+    /* Centralized fallbacks so the danger + focus colors aren't repeated as literals throughout this
+       file. Bridges to the consumer's --color-* vars where present (mirroring wss-controls.css). */
+    --edit-color-danger: var(--color-danger, #ff4d4f);
+    --edit-focus-ring: var(--color-primary, #0066cc);
+    --edit-focus-offset: 2px;
+}
+
+/* Visually hidden but available to screen readers (sr-only). */
+.edit-sr-only {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/************************************************ General ************************************************/
 .edit-control-wrapper {
     /* Wraper/group around each edit control (label, description, input and validation messages */
     display: flex;
@@ -7,7 +25,26 @@
 }
 .edit-validation-message {
     /* The validation message for each of the "Edit" Controls */
-    color: var(--color-danger, #ff4d4f);
+    color: var(--edit-color-danger);
+}
+
+/************************************************ ValidationView *****************************************/
+.validation-summary {
+    /* The <ValidationView> summary container. */
+    display: flex;
+    flex-direction: column;
+    row-gap: 4px;
+}
+.validation-summary-message {
+    /* Each anchor link in the validation summary. */
+    color: var(--edit-color-danger);
+}
+
+/************************************************ Bound value (debug) ************************************/
+.bound-value {
+    /* Shown only when FormOptions.ShowBoundValues is true — a debug echo of the raw bound value. */
+    font-size: 0.85em;
+    color: var(--color-text-secondary, #8c8c8c);
 }
 
 /************************************************ FormLabel **********************************************/
@@ -19,7 +56,7 @@
 .edit-label-required-star {
     /* The star that shows up after the Label when a property is marked as [Required] */
     margin-right: 8px;
-    color: var(--color-danger, #ff4d4f);
+    color: var(--edit-color-danger);
 }
 .edit-label-description {
     /* The description for each of the "Edit" Controls */
@@ -34,6 +71,29 @@
    appearance. Per-control classes (.edit-string-input, .edit-textarea-input, etc.) remain
    available for fine-tuning. */
 .edit-input { }
+
+/* Keyboard-focus indicator for the editable elements. The library can't rely on the browser default
+   outline — consumers commonly reset it — so a visible :focus-visible ring is shipped as a baseline
+   a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. */
+.edit-input:focus-visible,
+.edit-radio-input:focus-visible,
+.edit-checkedList-checkbox:focus-visible {
+    outline: 2px solid var(--edit-focus-ring);
+    outline-offset: var(--edit-focus-offset);
+    border-radius: 2px;
+}
+
+/* Invalid state. Blazor's InputBase appends "invalid" to the element class on validation failure.
+   Native inputs/selects/textareas carry a default border, so coloring it makes the error state
+   visible out of the box — consumers no longer have to define ".invalid" themselves. */
+.edit-input.invalid,
+.edit-radio-input.invalid,
+.edit-checkedList-checkbox.invalid {
+    border-color: var(--edit-color-danger);
+}
+.edit-input.invalid:focus-visible {
+    outline-color: var(--edit-color-danger);
+}
 
 /************************************************ EditBool ***********************************************/
 .edit-checkbox-label { cursor: pointer; }
@@ -124,19 +184,27 @@
 }
 
 .edit-icon-invalid {
-    /* The x-circle that shows up when a textbox has validation errors */
+    /* The x-circle that shows up when a textbox has validation errors. The SVG uses
+       fill="currentColor", so this color drives it — keeping it in sync with the consumer's danger. */
     width: 1em;
     height: 1em;
     margin-left: -1.5rem;
     margin-top: -4px;
     pointer-events: none;
+    color: var(--edit-color-danger);
 }
-.edit-icon-eye { /* EditString mask "show value" toggle button */ }
-.edit-icon-eye-invisible { /* EditString mask "hide value" toggle button */ }
+.edit-icon-eye,
+.edit-icon-eye-invisible {
+    /* EditString mask show/hide toggle buttons — reset the native <button> chrome. */
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
 .edit-icon-eye:focus-visible,
 .edit-icon-eye-invisible:focus-visible {
-    outline: 2px solid var(--color-primary, #0066cc);
-    outline-offset: 2px;
+    outline: 2px solid var(--edit-focus-ring);
+    outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
 }
 .edit-icon-info-circle {
@@ -162,6 +230,8 @@
     border: none;
     padding: 0;
     cursor: pointer;
+    /* Drives the info-icon SVG (fill="currentColor"). */
+    color: var(--color-text, #262626);
 }
 
 /* Remove default focus outline */
@@ -171,15 +241,15 @@
 
 /* Show outline only for keyboard navigation */
 .edit-tooltip-container:focus-visible {
-    outline: 2px solid var(--color-primary, #0066cc);
-    outline-offset: 2px;
+    outline: 2px solid var(--edit-focus-ring);
+    outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
 }
 
 /* Fallback for browsers that don't support :focus-visible */
 .edit-tooltip-container:focus:not(:hover) {
-    outline: 2px solid var(--color-primary, #0066cc);
-    outline-offset: 2px;
+    outline: 2px solid var(--edit-focus-ring);
+    outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
 }
 

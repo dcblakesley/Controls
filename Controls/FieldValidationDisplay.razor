@@ -1,10 +1,9 @@
 ﻿<!-- Screen readers -->
-<div class="edit-validation-message"
+<div class="edit-validation-message edit-sr-only"
      id="error-msg-@Id"
      data-test-id="error-msg-@Id"
      aria-live="polite"
-     aria-atomic="true"
-     style="position: absolute;left: -10000px;top: auto;width: 1px;height: 1px;overflow: hidden;">
+     aria-atomic="true">
     @* Enumerate this field's messages directly — the empty case renders nothing, so no guard is
        needed, and the no-arg GetValidationMessages() (a whole-form scan) is avoided. *@
     @foreach (var x in EditContext!.GetValidationMessages(FieldIdentifier))
