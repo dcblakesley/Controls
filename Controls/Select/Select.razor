@@ -1,0 +1,125 @@
+@namespace Controls
+@typeparam TValue
+
+@* Backdrop: closes the dropdown on any outside click without needing JS interop. *@
+@if (_open)
+{
+    <div class="wss-select-backdrop" @onclick="CloseAsync"></div>
+}
+
+<div class="@WrapperClass" style="@WidthStyle" @onclick="OnWrapperClickAsync" @onclick:stopPropagation>
+
+    <div class="wss-select-selector">
+
+        @if (Mode == SelectMode.Single)
+        {
+            <span class="wss-select-selection-search">
+                <input @ref="_inputRef"
+                       class="wss-select-selection-search-input"
+                       id="@Id"
+                       data-test-id="@Id"
+                       type="search"
+                       autocomplete="off"
+                       role="combobox"
+                       aria-expanded="@_open"
+                       aria-required="@AriaRequired"
+                       aria-invalid="@(AriaInvalid ? "true" : null)"
+                       aria-describedby="@AriaDescribedBy"
+                       readonly="@(!ShowSearch)"
+                       disabled="@Disabled"
+                       value="@_searchText"
+                       @oninput="OnInputAsync"
+                       @onkeydown="OnKeyDownAsync" />
+            </span>
+
+            @if (_showPlaceholder)
+            {
+                <span class="wss-select-selection-placeholder">@Placeholder</span>
+            }
+            else if (!(_open && !string.IsNullOrEmpty(_searchText)))
+            {
+                <span class="wss-select-selection-item" title="@SelectedLabel">@SelectedLabel</span>
+            }
+        }
+        else
+        {
+            @* Multiple / Tags: render each selected value as a removable tag. *@
+            @foreach (var (option, index) in VisibleTags())
+            {
+                <span class="wss-select-selection-item">
+                    <span class="wss-select-selection-item-content">@option.Label</span>
+                    <span class="wss-select-selection-item-remove"
+                          @onclick="@(e => RemoveAsync(option.Value))"
+                          @onclick:stopPropagation>
+                        @CloseCross
+                    </span>
+                </span>
+            }
+
+            @if (_hiddenTagCount > 0)
+            {
+                <span class="wss-select-selection-item wss-select-selection-item-rest">
+                    <span class="wss-select-selection-item-content">+ @_hiddenTagCount ...</span>
+                </span>
+            }
+
+            <span class="wss-select-selection-search">
+                <input @ref="_inputRef"
+                       class="wss-select-selection-search-input"
+                       id="@Id"
+                       data-test-id="@Id"
+                       type="search"
+                       autocomplete="off"
+                       role="combobox"
+                       aria-expanded="@_open"
+                       aria-required="@AriaRequired"
+                       aria-invalid="@(AriaInvalid ? "true" : null)"
+                       aria-describedby="@AriaDescribedBy"
+                       readonly="@(!ShowSearch)"
+                       disabled="@Disabled"
+                       value="@_searchText"
+                       @oninput="OnInputAsync"
+                       @onkeydown="OnKeyDownAsync" />
+            </span>
+
+            @if (_showPlaceholder)
+            {
+                <span class="wss-select-selection-placeholder">@Placeholder</span>
+            }
+        }
+    </div>
+
+    @* Clear button (only when there is a value and the pointer is over the control). *@
+    @if (ShowClear)
+    {
+        <span class="wss-select-clear" @onclick="ClearAsync" @onclick:stopPropagation>@CloseCross</span>
+    }
+
+    <span class="wss-select-arrow">@ArrowDown</span>
+
+    @if (_open)
+    {
+        <div class="wss-select-dropdown" @ref="_dropdownRef">
+            @if (_filtered.Count == 0)
+            {
+                <div class="wss-select-item-empty">@EmptyText</div>
+            }
+            else
+            {
+                @* Virtualized: only the rows in view are added to the DOM, so the
+                   dropdown stays fast even with tens of thousands of options. *@
+                <Virtualize Items="_filtered" Context="option" ItemSize="RowHeight" OverscanCount="4">
+                    <div class="@OptionClass(option)"
+                         @onclick="@(e => SelectAsync(option))"
+                         @onclick:stopPropagation>
+                        <span class="wss-select-item-option-content">@option.Label</span>
+                        @if (IsSelected(option.Value))
+                        {
+                            <span class="wss-select-item-option-state">@CheckMark</span>
+                        }
+                    </div>
+                </Virtualize>
+            }
+        </div>
+    }
+</div>
