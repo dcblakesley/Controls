@@ -20,11 +20,14 @@
  */
 
 :root {
-    /* Brand / interactive */
+    /* Brand / interactive. Hover/active/shadow derive from --wss-color-primary, so a consumer who
+       sets --color-primary gets matching interaction states for free (previously these stayed
+       Ant-blue). A consumer may still override --color-primary-hover / --color-primary-active. */
     --wss-color-primary: var(--color-primary, #1890ff);
-    --wss-color-primary-hover: #40a9ff;
-    --wss-color-primary-active: #096dd9;
-    --wss-primary-shadow: rgba(24, 144, 255, 0.2);
+    --wss-color-primary-hover: var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff));
+    --wss-color-primary-active: var(--color-primary-active, color-mix(in srgb, var(--wss-color-primary) 75%, #000));
+    --wss-primary-shadow: color-mix(in srgb, var(--wss-color-primary) 20%, transparent);
+    --wss-color-on-primary: #fff;
 
     /* Text */
     --wss-color-text: rgba(0, 0, 0, 0.85);
@@ -39,6 +42,10 @@
     --wss-color-bg-selected: #e6f7ff;
     --wss-color-border: var(--border-color, #d9d9d9);
     --wss-color-split: #f0f0f0;
+    --wss-color-mask: rgba(0, 0, 0, 0.45);
+    --wss-color-thead-bg: #fafafa;
+    --wss-skeleton-base: rgba(0, 0, 0, 0.06);
+    --wss-skeleton-shine: rgba(0, 0, 0, 0.12);
 
     /* Metrics */
     --wss-radius: 2px;
@@ -65,6 +72,7 @@
     --wss-color-error: var(--color-danger, #ff4d4f);
     --wss-color-error-bg: #fff2f0;
     --wss-color-error-border: #ffccc7;
+    --wss-error-shadow: color-mix(in srgb, var(--wss-color-error) 20%, transparent);
 }
 
 /* ============================================================================
@@ -117,7 +125,7 @@
 }
 
 .wss-select.invalid.wss-select-focused .wss-select-selector {
-    box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2);
+    box-shadow: 0 0 0 2px var(--wss-error-shadow);
 }
 
 .wss-select-disabled {
@@ -524,7 +532,7 @@
     width: 38%;
     height: 16px;
     margin-bottom: 16px;
-    background: rgba(0, 0, 0, 0.06);
+    background: var(--wss-skeleton-base);
     border-radius: var(--wss-radius);
 }
 
@@ -537,7 +545,7 @@
 .wss-skeleton-paragraph > li {
     width: 100%;
     height: 16px;
-    background: rgba(0, 0, 0, 0.06);
+    background: var(--wss-skeleton-base);
     border-radius: var(--wss-radius);
 }
 
@@ -548,7 +556,7 @@
 /* Shimmer */
 .wss-skeleton-active .wss-skeleton-title,
 .wss-skeleton-active .wss-skeleton-paragraph > li {
-    background: linear-gradient(90deg, rgba(0, 0, 0, 0.06) 25%, rgba(0, 0, 0, 0.12) 37%, rgba(0, 0, 0, 0.06) 63%);
+    background: linear-gradient(90deg, var(--wss-skeleton-base) 25%, var(--wss-skeleton-shine) 37%, var(--wss-skeleton-base) 63%);
     background-size: 400% 100%;
     animation: wss-skeleton-loading 1.4s ease infinite;
 }
@@ -722,13 +730,13 @@
 }
 
 .wss-dialog-btn-primary {
-    color: #fff;
+    color: var(--wss-color-on-primary);
     background: var(--wss-color-primary);
     border-color: var(--wss-color-primary);
 }
 
 .wss-dialog-btn-primary:hover {
-    color: #fff;
+    color: var(--wss-color-on-primary);
     background: var(--wss-color-primary-hover);
     border-color: var(--wss-color-primary-hover);
 }
@@ -757,7 +765,7 @@
     justify-content: center;
     padding: 100px 16px 16px;
     overflow: auto;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--wss-color-mask);
 }
 
 .wss-modal {
@@ -827,7 +835,7 @@
 .wss-drawer-mask {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--wss-color-mask);
 }
 
 .wss-drawer {
@@ -1019,14 +1027,14 @@
 }
 
 .wss-table-thead .wss-table-cell {
-    background: #fafafa;
+    background: var(--wss-color-thead-bg);
     font-weight: 600;
     color: var(--wss-color-text);
     white-space: nowrap;
 }
 
 .wss-table-tbody .wss-table-row:hover .wss-table-cell {
-    background: #fafafa;
+    background: var(--wss-color-thead-bg);
 }
 
 .wss-table-bordered .wss-table-cell {
