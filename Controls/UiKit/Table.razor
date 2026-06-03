@@ -1,0 +1,147 @@
+@namespace Controls
+@typeparam TItem
+
+<CascadingValue Value="this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+<div class="wss-table-wrapper">
+    <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName">
+        <thead class="wss-table-thead">
+            <tr>
+                @if (Selectable)
+                {
+                    <th class="wss-table-cell wss-table-selection-cell">
+                        <input type="checkbox" class="wss-table-checkbox" checked="@AllSelected"
+                               @onchange="@(e => ToggleAll(e.Value is true))" />
+                    </th>
+                }
+                @foreach (var col in _columns)
+                {
+                    <th class="wss-table-cell">@col.HeaderText</th>
+                }
+            </tr>
+        </thead>
+        <tbody class="wss-table-tbody">
+            @if (_items.Count == 0)
+            {
+                <tr class="wss-table-row wss-table-placeholder">
+                    <td class="wss-table-cell" colspan="@(_columns.Count + (Selectable ? 1 : 0))">@EmptyText</td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var item in PageItems)
+                {
+                    <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)">
+                        @if (Selectable)
+                        {
+                            <td class="wss-table-cell wss-table-selection-cell">
+                                <input type="checkbox" class="wss-table-checkbox" checked="@IsSelected(item)"
+                                       @onchange="@(e => ToggleRow(item, e.Value is true))" />
+                            </td>
+                        }
+                        @foreach (var col in _columns)
+                        {
+                            <td class="wss-table-cell">@col.CellFor(item)</td>
+                        }
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (IsPaged && _items.Count > 0)
+{
+    <div class="wss-table-pagination">
+        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange" />
+    </div>
+}
+
+@code {
+    [Parameter] public IEnumerable<TItem>? DataSource { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Bordered { get; set; }
+    [Parameter] public TableSize Size { get; set; } = TableSize.Default;
+    [Parameter] public string EmptyText { get; set; } = "No data";
+
+    /// <summary>Rows per page; 0 (default) shows all rows without pagination.</summary>
+    [Parameter] public int PageSize { get; set; }
+
+    [Parameter] public bool Selectable { get; set; }
+    [Parameter] public IEnumerable<TItem>? SelectedItems { get; set; }
+    [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+
+    readonly List<Column<TItem>> _columns = new();
+    readonly HashSet<TItem> _selected = new();
+    List<TItem> _items = new();
+    int _page = 1;
+
+    string SizeName => Size.ToString().ToLowerInvariant();
+
+    bool IsPaged => PageSize > 0;
+
+    IEnumerable<TItem> PageItems =>
+        IsPaged ? _items.Skip((_page - 1) * PageSize).Take(PageSize) : _items;
+
+    protected override void OnParametersSet()
+    {
+        _items = DataSource?.ToList() ?? new List<TItem>();
+
+        if (IsPaged)
+        {
+            var pageCount = Math.Max(1, (int)Math.Ceiling((double)_items.Count / PageSize));
+            if (_page > pageCount) _page = pageCount;
+            if (_page < 1) _page = 1;
+        }
+
+        if (SelectedItems != null)
+        {
+            _selected.Clear();
+            foreach (var s in SelectedItems) _selected.Add(s);
+        }
+    }
+
+    internal void Register(Column<TItem> column)
+    {
+        if (!_columns.Contains(column))
+        {
+            _columns.Add(column);
+            StateHasChanged();
+        }
+    }
+
+    void OnPageChange(int page)
+    {
+        _page = page;
+        StateHasChanged();
+    }
+
+    bool IsSelected(TItem item) => _selected.Contains(item);
+
+    bool AllSelected
+    {
+        get
+        {
+            var page = PageItems.ToList();
+            return page.Count > 0 && page.All(_selected.Contains);
+        }
+    }
+
+    async Task ToggleRow(TItem item, bool on)
+    {
+        if (on) _selected.Add(item); else _selected.Remove(item);
+        await SelectedItemsChanged.InvokeAsync(_selected.ToList());
+    }
+
+    // Select-all toggles the current page's rows (matching Ant Design behaviour).
+    async Task ToggleAll(bool on)
+    {
+        foreach (var i in PageItems)
+        {
+            if (on) _selected.Add(i); else _selected.Remove(i);
+        }
+        await SelectedItemsChanged.InvokeAsync(_selected.ToList());
+    }
+}
