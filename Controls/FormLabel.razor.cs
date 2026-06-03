@@ -44,11 +44,11 @@ public partial class FormLabel
 
     protected override void OnParametersSet()
     {
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        if (Attributes == null)
-            return;
-        _label = Label ?? Attributes.GetLabelText(FieldIdentifier);
-        _description = Description ?? Attributes.Description();
-        _isRequired = Attributes.Any(x => x is RequiredAttribute);
+        // Attributes can be null when FormLabel is used outside the Edit* controls (EditDisplay supplies
+        // no attribute list). Fall back to the explicit Label/Description rather than dropping them, and
+        // never call GetLabelText with the default FieldIdentifier (its FieldName would be null).
+        _label = Label ?? Attributes?.GetLabelText(FieldIdentifier) ?? string.Empty;
+        _description = Description ?? Attributes?.Description();
+        _isRequired = Attributes?.Any(x => x is RequiredAttribute) ?? false;
     }
 }
