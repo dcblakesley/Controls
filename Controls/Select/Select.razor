@@ -52,11 +52,13 @@
             {
                 <span class="wss-select-selection-item">
                     <span class="wss-select-selection-item-content">@option.Label</span>
-                    <span class="wss-select-selection-item-remove"
-                          @onclick="@(e => RemoveAsync(option.Value))"
-                          @onclick:stopPropagation>
+                    <button type="button"
+                            class="wss-select-selection-item-remove"
+                            aria-label="@($"Remove {option.Label}")"
+                            @onclick="@(e => RemoveAsync(option.Value))"
+                            @onclick:stopPropagation>
                         @CloseCross
-                    </span>
+                    </button>
                 </span>
             }
 
@@ -100,14 +102,16 @@
     @* Clear button (only when there is a value and the pointer is over the control). *@
     @if (ShowClear)
     {
-        <span class="wss-select-clear" @onclick="ClearAsync" @onclick:stopPropagation>@CloseCross</span>
+        <button type="button" class="wss-select-clear"
+                aria-label="@(IsMultiple ? "Clear all selections" : "Clear selection")"
+                @onclick="ClearAsync" @onclick:stopPropagation>@CloseCross</button>
     }
 
     <span class="wss-select-arrow">@ArrowDown</span>
 
     @if (_open)
     {
-        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" @ref="_dropdownRef" role="listbox" id="@($"{BaseId}-listbox")">
+        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" @ref="_dropdownRef" role="listbox" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
             @if (_filtered.Count == 0)
             {
                 <div class="wss-select-item-empty">@EmptyText</div>
@@ -118,6 +122,7 @@
                    dropdown stays fast even with tens of thousands of options. *@
                 <Virtualize Items="_filtered" Context="option" ItemSize="RowHeight" OverscanCount="4">
                     <div class="@OptionClass(option)"
+                         @key="option"
                          role="option"
                          id="@(ReferenceEquals(option, ActiveOption) ? $"{BaseId}-active" : null)"
                          aria-selected="@(IsSelected(option.Value) ? "true" : "false")"

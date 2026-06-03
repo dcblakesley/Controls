@@ -40,6 +40,10 @@ public partial class Select<TValue> : IAsyncDisposable
     private string _searchText = string.Empty;
     private int _activeIndex;
 
+    // Type-ahead state for non-searchable selects (jump-to-option by typed letters).
+    private string _typeAheadBuffer = string.Empty;
+    private DateTime _lastTypeAheadUtc;
+
     // Working copies. For multiple/tags the bound collection is mirrored here so we
     // can add user-created tags without mutating the caller's instance.
     // _selected keeps display order; _selectedSet gives O(1) "is this selected?".
@@ -485,6 +489,25 @@ public partial class Select<TValue> : IAsyncDisposable
                     await RemoveAsync(_selected[^1]);
                 }
                 break;
+
+            case "Home":
+                if (_open) { MoveActiveTo(0, 1); await ScrollActiveIntoViewAsync(); }
+                break;
+
+            case "End":
+                if (_open) { MoveActiveTo(_filtered.Count - 1, -1); await ScrollActiveIntoViewAsync(); }
+                break;
+
+            default:
+                // Type-ahead for non-searchable selects: jump to an option by typed letters.
+                // (When ShowSearch is on, the same keystrokes filter the list through the input.)
+                if (!ShowSearch && e.Key.Length == 1 && char.IsLetterOrDigit(e.Key[0]))
+                {
+                    if (!_open) await OpenAsync();
+                    TypeAhead(e.Key);
+                    await ScrollActiveIntoViewAsync();
+                }
+                break;
         }
     }
 
@@ -502,6 +525,49 @@ public partial class Select<TValue> : IAsyncDisposable
                 return;
             }
         }
+    }
+
+    // Move the highlight to the first non-disabled option at/after `start`, stepping by `direction`.
+    private void MoveActiveTo(int start, int direction)
+    {
+        if (_filtered.Count == 0) return;
+        var i = Math.Clamp(start, 0, _filtered.Count - 1);
+        while (i >= 0 && i < _filtered.Count)
+        {
+            if (!_filtered[i].Disabled) { _activeIndex = i; return; }
+            i += direction;
+        }
+    }
+
+    private void TypeAhead(string ch)
+    {
+        var now = DateTime.UtcNow;
+        // Native <select> resets the buffer after a short pause between keystrokes.
+        if ((now - _lastTypeAheadUtc).TotalMilliseconds > 1000) _typeAheadBuffer = string.Empty;
+        _lastTypeAheadUtc = now;
+        _typeAheadBuffer += ch;
+
+        var firstChar = char.ToUpperInvariant(_typeAheadBuffer[0]);
+        var allSame = _typeAheadBuffer.All(c => char.ToUpperInvariant(c) == firstChar);
+
+        // Repeating the same key cycles through the options that start with that letter; any other
+        // sequence matches the accumulated prefix from the top of the list.
+        var match = _typeAheadBuffer.Length > 1 && allSame
+            ? FindLabelPrefix(ch, _activeIndex + 1)
+            : FindLabelPrefix(_typeAheadBuffer, 0);
+        if (match >= 0) _activeIndex = match;
+    }
+
+    private int FindLabelPrefix(string prefix, int startFrom)
+    {
+        for (var i = 0; i < _filtered.Count; i++)
+        {
+            var idx = (startFrom + i) % _filtered.Count;
+            var o = _filtered[idx];
+            if (!o.Disabled && (o.Label ?? string.Empty).StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return idx;
+        }
+        return -1;
     }
 
     private async Task FocusInputAsync()

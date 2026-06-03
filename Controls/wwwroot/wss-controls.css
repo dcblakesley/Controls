@@ -242,6 +242,10 @@
 .wss-select-multiple .wss-select-selection-item-remove {
     display: inline-flex;
     align-items: center;
+    appearance: none;
+    background: none;
+    border: 0;
+    padding: 0;
     color: var(--wss-color-text-secondary);
     font-size: 10px;
     line-height: 1;
@@ -296,6 +300,9 @@
 
 .wss-select-clear {
     z-index: 1;
+    appearance: none;
+    border: 0;
+    padding: 0;
     background: var(--wss-color-bg);
     cursor: pointer;
     opacity: 0;

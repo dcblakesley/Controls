@@ -113,6 +113,48 @@ public class EditSelectControlsTests : TestContext
     }
 
     [Fact]
+    public void EditMultiSelect_tag_remove_and_clear_are_labelled_buttons()
+    {
+        // Tag-remove and clear must be real buttons (keyboard-operable) with accessible names.
+        var model = new PersonModel { FavoriteColors = [Color.Green] };
+        Expression<Func<List<Color>>> field = () => model.FavoriteColors;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditMultiSelect<Color>>(0);
+            b.AddAttribute(1, "Value", model.FavoriteColors);
+            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(3, "Options", ColorOptions());
+            b.CloseComponent();
+        }));
+
+        var remove = cut.Find("button.wss-select-selection-item-remove");
+        Assert.Equal("Remove Green", remove.GetAttribute("aria-label"));
+
+        var clear = cut.Find("button.wss-select-clear");
+        Assert.Equal("Clear all selections", clear.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void EditMultiSelect_open_listbox_is_marked_multiselectable()
+    {
+        JSInterop.Mode = Bunit.JSRuntimeMode.Loose;   // tolerate the scroll/position JS module imports
+        var model = new PersonModel { FavoriteColors = [Color.Green] };
+        Expression<Func<List<Color>>> field = () => model.FavoriteColors;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditMultiSelect<Color>>(0);
+            b.AddAttribute(1, "Value", model.FavoriteColors);
+            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(3, "Options", ColorOptions());
+            b.CloseComponent();
+        }));
+
+        cut.Find(".wss-select").Click();   // open the dropdown
+        var listbox = cut.Find("[role=listbox]");
+        Assert.Equal("true", listbox.GetAttribute("aria-multiselectable"));
+    }
+
+    [Fact]
     public void EditMultiSelect_read_only_renders_joined_labels()
     {
         var model = new PersonModel { FavoriteColors = [Color.Green, Color.Blue] };
