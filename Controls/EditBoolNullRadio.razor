@@ -7,7 +7,7 @@
                   id=@_id
                   data-test-id=@_id
                   role=@(ShowEditor ? "radiogroup" : null)
-                  aria-labelledby=@(ShowEditor ? $"lbl-{_id}" : null)
+                  aria-labelledby=@(ShowEditor && !ShouldHideLabel ? $"lbl-{_id}" : null)
                   aria-required=@(ShowEditor ? _isRequired : null)
                   aria-invalid=@(ShowEditor && IsInvalid ? "true" : null)
                   aria-describedby=@(ShowEditor ? _describedBy : null)

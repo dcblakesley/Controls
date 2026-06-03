@@ -91,7 +91,10 @@
 .edit-input.invalid,
 .edit-radio-input.invalid,
 .edit-checkedList-checkbox.invalid {
+    /* border-color covers text inputs/selects/textarea; accent-color tints the native
+       checkbox/radio widgets (which ignore border-color) so the invalid state is visible there too. */
     border-color: var(--edit-color-danger);
+    accent-color: var(--edit-color-danger);
 }
 .edit-input.invalid:focus-visible {
     outline-color: var(--edit-color-danger);
