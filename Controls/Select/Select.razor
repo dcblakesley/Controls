@@ -21,7 +21,11 @@
                        type="search"
                        autocomplete="off"
                        role="combobox"
+                       aria-haspopup="listbox"
+                       aria-autocomplete="list"
                        aria-expanded="@_open"
+                       aria-controls="@($"{BaseId}-listbox")"
+                       aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
                        aria-required="@AriaRequired"
                        aria-invalid="@(AriaInvalid ? "true" : null)"
                        aria-describedby="@AriaDescribedBy"
@@ -71,7 +75,11 @@
                        type="search"
                        autocomplete="off"
                        role="combobox"
+                       aria-haspopup="listbox"
+                       aria-autocomplete="list"
                        aria-expanded="@_open"
+                       aria-controls="@($"{BaseId}-listbox")"
+                       aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
                        aria-required="@AriaRequired"
                        aria-invalid="@(AriaInvalid ? "true" : null)"
                        aria-describedby="@AriaDescribedBy"
@@ -99,7 +107,7 @@
 
     @if (_open)
     {
-        <div class="wss-select-dropdown" @ref="_dropdownRef">
+        <div class="wss-select-dropdown" @ref="_dropdownRef" role="listbox" id="@($"{BaseId}-listbox")">
             @if (_filtered.Count == 0)
             {
                 <div class="wss-select-item-empty">@EmptyText</div>
@@ -110,6 +118,10 @@
                    dropdown stays fast even with tens of thousands of options. *@
                 <Virtualize Items="_filtered" Context="option" ItemSize="RowHeight" OverscanCount="4">
                     <div class="@OptionClass(option)"
+                         role="option"
+                         id="@(ReferenceEquals(option, ActiveOption) ? $"{BaseId}-active" : null)"
+                         aria-selected="@(IsSelected(option.Value) ? "true" : "false")"
+                         aria-disabled="@(option.Disabled ? "true" : null)"
                          @onclick="@(e => SelectAsync(option))"
                          @onclick:stopPropagation>
                         <span class="wss-select-item-option-content">@option.Label</span>

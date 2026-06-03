@@ -2,7 +2,7 @@
 
 @* Shared presentational view for notifications. Rendered by both WasmNotificationContainer (static)
    and NotificationContainer (scoped) so the two paths produce identical DOM. *@
-<div class="wss-notification-container">
+<div class="wss-notification-container" role="status" aria-live="polite" aria-atomic="false">
     @foreach (var n in Items)
     {
         <div class="wss-notification" @key="n.Id">

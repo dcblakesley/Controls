@@ -2,7 +2,7 @@
 
 @* Shared presentational view for toast messages. Rendered by both WasmMessageContainer (static)
    and MessageContainer (scoped) so the two paths produce identical DOM. *@
-<div class="wss-msg-container">
+<div class="wss-msg-container" role="status" aria-live="polite" aria-atomic="false">
     @foreach (var m in Items)
     {
         <div class="wss-msg" @key="m.Id">

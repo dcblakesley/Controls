@@ -169,6 +169,11 @@ public partial class Select<TValue> : IAsyncDisposable
 
     private string? WidthStyle => string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
 
+    // Stable id root for ARIA wiring (the listbox + the active option). Uses the supplied Id when
+    // present (the Edit* wrappers pass one), otherwise a generated one so standalone use still works.
+    private string? _generatedId;
+    private string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-select-{Guid.NewGuid():N}");
+
     private bool _showPlaceholder => IsMultiple
         ? _selected.Count == 0 && string.IsNullOrEmpty(_searchText)
         : !HasSingleValue && string.IsNullOrEmpty(_searchText);
@@ -327,6 +332,7 @@ public partial class Select<TValue> : IAsyncDisposable
 
         // ...but defer the (potentially expensive) filtering until typing pauses.
         _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
         try
@@ -406,9 +412,21 @@ public partial class Select<TValue> : IAsyncDisposable
         var text = _searchText.Trim();
         if (text.Length == 0) return;
 
-        var value = TagValueFactory != null
-            ? TagValueFactory(text)
-            : (TValue)(object)text;
+        TValue value;
+        if (TagValueFactory != null)
+        {
+            value = TagValueFactory(text);
+        }
+        else if (typeof(TValue) == typeof(string))
+        {
+            value = (TValue)(object)text;
+        }
+        else
+        {
+            // Can't turn free text into a non-string TValue without a TagValueFactory — ignore the
+            // keystroke rather than throw an InvalidCastException.
+            return;
+        }
 
         if (FindOption(value) == null)
         {
