@@ -115,7 +115,7 @@
             if (_page < 1) _page = 1;
         }
 
-        if (SelectedItems != null && !ReferenceEquals(SelectedItems, _lastSelectedItems))
+        if (SelectedItems is not null && !ReferenceEquals(SelectedItems, _lastSelectedItems))
         {
             _selected.Clear();
             foreach (var s in SelectedItems) _selected.Add(s);

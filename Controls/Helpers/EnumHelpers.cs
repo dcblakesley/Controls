@@ -44,6 +44,10 @@ public static class EnumHelpers
         });
     }
 
+    // Cache the sanitized ids — ToId is called 2-3x per option per render in the enum/string
+    // checkbox/radio/select loops, and the regex + intermediate string would otherwise run every time.
+    static readonly ConcurrentDictionary<string, string> _idCache = new();
+
     /// <summary>
     /// Converts a string to a valid HTML ID by removing invalid characters and spaces.
     /// </summary>
@@ -53,7 +57,8 @@ public static class EnumHelpers
             return string.Empty;
 
         // Replace spaces with hyphens, then drop anything that isn't alphanumeric / hyphen / underscore.
-        return System.Text.RegularExpressions.Regex.Replace(value.Replace(" ", "-"), @"[^a-zA-Z0-9\-_]", "");
+        return _idCache.GetOrAdd(value, static v =>
+            System.Text.RegularExpressions.Regex.Replace(v.Replace(" ", "-"), @"[^a-zA-Z0-9\-_]", ""));
     }
 
     /// <summary>
