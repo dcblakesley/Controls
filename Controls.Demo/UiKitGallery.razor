@@ -1,0 +1,130 @@
+@using Microsoft.AspNetCore.Components.Web
+
+<h1>UI Kit Gallery</h1>
+<p>Dependency-free AntDesign-style controls ported into WssBlazorControls. These are general UI
+   widgets (not form Edit* controls). Icon / Button / Checkbox / Tag are intentionally not included.</p>
+
+<div class="gallery">
+
+    <section class="demo-section">
+        <h3>Alert</h3>
+        <Alert Type="AlertType.Success" Message="Success — saved." />
+        <Alert Type="AlertType.Info" Message="Info — heads up." />
+        <Alert Type="AlertType.Warning" Message="Warning — check this." />
+        <Alert Type="AlertType.Error" Message="Error — something failed." Closable="true" />
+        <Alert Type="AlertType.Info" Message="With description" Description="A longer explanation under the message." />
+    </section>
+
+    <section class="demo-section">
+        <h3>Skeleton</h3>
+        <Skeleton Loading="_skeletonLoading" Rows="3">
+            <p>Loaded content goes here.</p>
+        </Skeleton>
+        <button class="wss-dialog-btn" @onclick="@(() => _skeletonLoading = !_skeletonLoading)">
+            Toggle loading (@(_skeletonLoading ? "on" : "off"))
+        </button>
+    </section>
+
+    <section class="demo-section">
+        <h3>Tooltip &amp; Popover</h3>
+        <div style="display:flex; gap:2rem; align-items:center;">
+            <Tooltip Title="I'm a tooltip">
+                <span style="text-decoration:underline dotted; cursor:help;">Hover me</span>
+            </Tooltip>
+
+            <Popover Title="Popover title">
+                <ChildContent>
+                    <button class="wss-dialog-btn">Click me</button>
+                </ChildContent>
+                <Content>
+                    <div>Some popover content.</div>
+                </Content>
+            </Popover>
+        </div>
+    </section>
+
+    <section class="demo-section">
+        <h3>Pagination</h3>
+        <Pagination Total="95" PageSize="10" Current="_page" CurrentChanged="@(p => _page = p)" />
+        <p>Current page: @_page</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Modal &amp; Drawer</h3>
+        <div style="display:flex; gap:1rem;">
+            <button class="wss-dialog-btn wss-dialog-btn-primary" @onclick="@(() => _modalVisible = true)">Open Modal</button>
+            <button class="wss-dialog-btn" @onclick="@(() => _drawerVisible = true)">Open Drawer</button>
+        </div>
+
+        <Modal @bind-Visible="_modalVisible" Title="A modal" OnOk="@(() => _modalVisible = false)">
+            <p>Modal body content. Click OK or Cancel.</p>
+        </Modal>
+
+        <Drawer @bind-Visible="_drawerVisible" Title="A drawer" Placement="DrawerPlacement.Right">
+            <p>Drawer body content.</p>
+        </Drawer>
+    </section>
+
+    <section class="demo-section">
+        <h3>Popconfirm</h3>
+        <Popconfirm Title="Delete this item?" OnConfirm="@(() => _confirmResult = "confirmed")" OnCancel="@(() => _confirmResult = "cancelled")">
+            <button class="wss-dialog-btn">Delete</button>
+        </Popconfirm>
+        <p>Last action: @_confirmResult</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table (selectable, paged)</h3>
+        <Table TItem="Row" DataSource="_rows" Selectable="true" PageSize="5" Bordered="true"
+               SelectedItems="_selectedRows" SelectedItemsChanged="@(s => _selectedRows = s.ToList())">
+            <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" />
+            <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+            <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" />
+            <ActionColumn TItem="Row">
+                <button class="wss-dialog-btn wss-dialog-btn-sm">Edit</button>
+            </ActionColumn>
+        </Table>
+        <p>Selected: @_selectedRows.Count</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Toasts (WASM only)</h3>
+        <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+            <button class="wss-dialog-btn" @onclick="@(() => WasmMessageService.Success("Saved!"))">Message</button>
+            <button class="wss-dialog-btn" @onclick="@(() => WasmNotificationService.Info("Notification", "With a description."))">Notification</button>
+        </div>
+    </section>
+</div>
+
+@* WASM-only static-state toast hosts. *@
+<WasmMessageContainer />
+<WasmNotificationContainer />
+
+<style>
+    .gallery { display: flex; flex-direction: column; gap: 1rem; max-width: 760px; }
+    .gallery .demo-section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .gallery .demo-section > h3 { margin: 0; }
+</style>
+
+@code {
+    bool _skeletonLoading = true;
+    int _page = 1;
+    bool _modalVisible;
+    bool _drawerVisible;
+    string _confirmResult = "(none)";
+
+    readonly List<Row> _rows = Enumerable.Range(1, 13)
+        .Select(i => new Row(i, $"Item {i}", i * 4.5m))
+        .ToList();
+
+    List<Row> _selectedRows = new();
+
+    public record Row(int Id, string Name, decimal Price);
+}
