@@ -11,6 +11,15 @@ public class FormOptions
     /// <summary> Do not use, this is used by the framework to keep track of which fields are in the form. </summary>
     public List<FieldIdentifier> FieldIdentifiers { get; set; } = [];
 
+    /// <summary> Registers a field for the validation summary, ignoring duplicates. Without this a
+    /// control that re-initializes (or two controls bound to the same property) would keep appending
+    /// to <see cref="FieldIdentifiers"/>, growing it unboundedly in long-lived/dynamic forms. </summary>
+    public void RegisterField(FieldIdentifier field)
+    {
+        if (!FieldIdentifiers.Contains(field))
+            FieldIdentifiers.Add(field);
+    }
+
     /// <summary> Allows you to set the hiding mode for the entire form. </summary>
     public HidingMode? Hiding { get; set; }
 

@@ -71,7 +71,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field!, Id, FormGroupOptions, IdPrefix);
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
         // field survives HidingMode and links from the validation summary always work.
-        FormOptions?.FieldIdentifiers.Add(_fieldIdentifier);
+        FormOptions?.RegisterField(_fieldIdentifier);
     }
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
     bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);

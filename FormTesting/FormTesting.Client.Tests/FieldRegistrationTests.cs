@@ -127,4 +127,29 @@ public class FieldRegistrationTests : TestContext
 
         Assert.Contains(formOptions.FieldIdentifiers, fi => fi.FieldName == "Priority");
     }
+
+    [Fact]
+    public void Registering_the_same_field_twice_does_not_duplicate()
+    {
+        // Two controls bound to the same property (or one re-created) must not grow FieldIdentifiers.
+        var model = new PersonModel { Name = "Alice" };
+        var formOptions = new FormOptions();
+        Expression<Func<string>> field = () => model.Name;
+        _ = Render(WithFormAndOptions(model, formOptions, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.CloseComponent();
+
+            b.OpenComponent<EditString>(4);
+            b.AddAttribute(5, "Value", model.Name);
+            b.AddAttribute(6, "ValueExpression", field);
+            b.AddAttribute(7, "Field", field);
+            b.CloseComponent();
+        }));
+
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name");
+    }
 }

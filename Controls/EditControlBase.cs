@@ -73,7 +73,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        FormOptions?.FieldIdentifiers.Add(_fieldIdentifier);
+        FormOptions?.RegisterField(_fieldIdentifier);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

@@ -67,7 +67,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        FormOptions?.FieldIdentifiers.Add(_fieldIdentifier);
+        FormOptions?.RegisterField(_fieldIdentifier);
     }
 
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>

@@ -9,23 +9,25 @@
 
             @if (ShowEditor)
             {
+                // Resolve the invalid state once per render instead of re-querying per checkbox.
+                var isInvalid = EditContext?.GetValidationMessages(_fieldIdentifier).Any() == true;
                 <div class=@(IsHorizontal
                                ? "edit-checkedList-checkboxes-container-horizontal"
                                : "edit-checkedList-checkboxes-container-vertical")>
                     @foreach (var option in GetOptions())
                     {
-                        <label class=@($"edit-checkbox-label {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
+                        <label @key="option" class=@($"edit-checkbox-label {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
                             <input type="checkbox"
                                    value=@option
                                    checked="@(Value?.Contains(option) == true)"
                                    disabled=@IsDisabled
                                    aria-disabled=@IsDisabled
-                                   aria-describedby=@($"error-msg-{_id}")                               
+                                   aria-describedby=@($"error-msg-{_id}")
                                    tabindex="0"
                                    @onchange="() => ToggleAsync(option)"
                                    id=@($"cbx-{_id}-{option.ToId()}")
                                    data-test-id=@($"cbx-{_id}-{option.ToId()}")
-                                   class="edit-checkedList-checkbox @(EditContext?.GetValidationMessages(_fieldIdentifier).Any() == true ? "invalid" : "")" />
+                                   class="edit-checkedList-checkbox @(isInvalid ? "invalid" : "")" />
                             @option.GetName()
                         </label>
                     }
