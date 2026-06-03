@@ -14,7 +14,7 @@ namespace Controls;
 /// <see cref="EditControlBase{TValue}.InitState{T}"/>'s sibling <see cref="InitState{T}"/>
 /// in its <c>OnInitialized</c>.
 /// </remarks>
-public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
+public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, IDisposable
 {
     [CascadingParameter] protected EditContext? EditContext { get; set; }
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
@@ -59,6 +59,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
     // Cached ARIA references, resolved once in InitState (see EditControlInit.BuildDescribedBy).
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
+    EditContext? _subscribedEditContext;
 
     /// <summary>
     /// True when this field currently has a validation error. List controls aren't
@@ -122,5 +123,30 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl
     {
         var isNull = Value is null;
         return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull || Value!.Count == 0);
+    }
+
+    /// <summary>
+    /// List controls are <c>ComponentBase</c>, not <see cref="InputBase{TValue}"/>, so they don't
+    /// re-render automatically when validation state changes. Subscribe to the cascading
+    /// <see cref="EditContext"/> so <see cref="IsInvalid"/> / <c>aria-invalid</c> update live (e.g.
+    /// after a form submit) the way the scalar controls do.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(EditContext, _subscribedEditContext)) return;
+        if (_subscribedEditContext is not null)
+            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
+        if (EditContext is not null)
+            EditContext.OnValidationStateChanged += OnValidationStateChanged;
+        _subscribedEditContext = EditContext;
+    }
+
+    void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => StateHasChanged();
+
+    /// <summary> Detaches the validation-state listener. </summary>
+    public void Dispose()
+    {
+        if (_subscribedEditContext is not null)
+            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
     }
 }

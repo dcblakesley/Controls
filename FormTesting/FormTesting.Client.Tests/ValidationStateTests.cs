@@ -104,16 +104,10 @@ public class ValidationStateTests : TestContext
     }
 
     [Fact]
-    public void Checkbox_list_marks_each_checkbox_aria_invalid_when_the_field_has_errors()
+    public void Checkbox_list_reactively_marks_each_checkbox_aria_invalid_when_validation_fails()
     {
         var model = new PersonModel { Tags = [] };
         var editContext = new EditContext(model);
-        // List controls are ComponentBase (not InputBase), so they don't subscribe to
-        // OnValidationStateChanged — seed the error before the first render rather than expecting a
-        // reactive update. (Tags has no DataAnnotation, so the message is pushed directly.)
-        var store = new ValidationMessageStore(editContext);
-        store.Add(editContext.Field(nameof(PersonModel.Tags)), "Pick at least one");
-
         Expression<Func<List<string>>> field = () => model.Tags;
         var cut = Render(b =>
         {
@@ -128,6 +122,19 @@ public class ValidationStateTests : TestContext
                 content.CloseComponent();
             }));
             b.CloseComponent();
+        });
+
+        // Initially valid — no aria-invalid.
+        Assert.All(cut.FindAll("input[type=checkbox]"), c => Assert.Null(c.GetAttribute("aria-invalid")));
+
+        // Push an error AFTER the first render and notify. List controls are ComponentBase (not
+        // InputBase), so this only updates if the base subscribes to OnValidationStateChanged.
+        // (Tags has no DataAnnotation, so the message is pushed via a store directly.)
+        var store = new ValidationMessageStore(editContext);
+        cut.InvokeAsync(() =>
+        {
+            store.Add(editContext.Field(nameof(PersonModel.Tags)), "Pick at least one");
+            editContext.NotifyValidationStateChanged();
         });
 
         var checkboxes = cut.FindAll("input[type=checkbox]");
