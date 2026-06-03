@@ -585,6 +585,9 @@
     border-radius: var(--wss-radius);
     box-shadow: var(--wss-shadow);
     cursor: auto;
+    /* The panel is focused programmatically on open (tabindex=-1) to move SR focus in; don't
+       paint a focus ring on the container itself — the focusable controls inside get one. */
+    outline: none;
 }
 
 /* Popover/Popconfirm panels render hidden for the one frame while wss-overlay.js measures and
@@ -1202,4 +1205,60 @@
 @keyframes wss-notification-in {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
+}
+
+/* ============================================================================
+ * Accessibility
+ * ============================================================================ */
+
+/* Keyboard focus ring for every interactive UI-kit control. :focus-visible means a
+   mouse click does not paint it, only keyboard focus (and programmatic focus on
+   buttons), matching native expectations. */
+.wss-dialog-btn:focus-visible,
+.wss-pagination-item:focus-visible,
+.wss-pagination-prev:focus-visible,
+.wss-pagination-next:focus-visible,
+.wss-modal-close:focus-visible,
+.wss-drawer-close:focus-visible,
+.wss-alert-close:focus-visible,
+.wss-notification-close:focus-visible,
+.wss-select-clear:focus-visible,
+.wss-select-selection-item-remove:focus-visible,
+.wss-popover-trigger:focus-visible,
+.wss-popconfirm-trigger:focus-visible {
+    outline: 2px solid var(--wss-color-primary);
+    outline-offset: 1px;
+}
+
+/* Honor the OS "reduce motion" setting (WCAG 2.3.3): drop the slide-ins, the skeleton
+   shimmer and the continuously-spinning loading icon, and shorten interaction transitions. */
+@media (prefers-reduced-motion: reduce) {
+    .wss-select-selector,
+    .wss-select-single .wss-select-selection-item,
+    .wss-select-single .wss-select-selection-placeholder,
+    .wss-select-arrow,
+    .wss-select-clear,
+    .wss-select-item-option,
+    .wss-pagination-item,
+    .wss-pagination-prev,
+    .wss-pagination-next,
+    .wss-dialog-btn,
+    .wss-alert-close,
+    .wss-modal-close,
+    .wss-drawer-close,
+    .wss-notification-close {
+        transition: none;
+    }
+
+    .wss-drawer-right,
+    .wss-drawer-left,
+    .wss-drawer-top,
+    .wss-drawer-bottom,
+    .wss-msg,
+    .wss-notification,
+    .wss-skeleton-active .wss-skeleton-title,
+    .wss-skeleton-active .wss-skeleton-paragraph > li,
+    .wss-msg-icon-loading {
+        animation: none;
+    }
 }
