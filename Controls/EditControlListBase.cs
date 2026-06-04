@@ -86,12 +86,10 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         FormOptions?.RegisterField(_fieldIdentifier, _id);
 
-        // Resolve the ARIA description references once (stable for the control's lifetime, like _id).
-        // Only the IDs FormLabel will render are referenced, so aria-describedby never dangles.
-        _errorMsgId = $"error-msg-{_id}";
-        var hasDescription = !ShouldHideLabel && !string.IsNullOrEmpty(Description ?? _attributes.Description());
-        var hasTooltip = !ShouldHideLabel && !string.IsNullOrEmpty(Tooltip ?? _attributes.Tooltip());
-        _describedBy = EditControlInit.BuildDescribedBy(_id, hasDescription, hasTooltip);
+        // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
+        // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and
+        // aria-describedby never dangles.
+        (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
     }
 
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>
@@ -133,6 +131,11 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     /// </summary>
     protected override void OnParametersSet()
     {
+        // Keep the cached ARIA references current when parameters change (runtime Description/Tooltip
+        // or label-hidden toggle). No-op until InitState has run (_attributes is null before then).
+        if (_attributes is not null)
+            (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+
         if (ReferenceEquals(EditContext, _subscribedEditContext)) return;
         if (_subscribedEditContext is not null)
             _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;

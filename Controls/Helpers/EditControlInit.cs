@@ -80,4 +80,22 @@ public static class EditControlInit
         if (hasTooltip) describedBy += $" tooltip-{id}";
         return describedBy;
     }
+
+    /// <summary>
+    /// Resolves the cached ARIA reference strings — the <c>error-msg-</c> id and the full
+    /// <c>aria-describedby</c> token list — for an edit control. Centralizes the block that
+    /// <see cref="EditControlBase{TValue}"/>, <see cref="EditControlListBase{TItem}"/> and
+    /// <c>EditRadio</c> previously each duplicated. Called from <c>InitState</c> and again on
+    /// parameter changes, so a runtime <paramref name="description"/>/<paramref name="tooltip"/> or
+    /// label-hidden change is reflected and <c>aria-describedby</c> never points at a missing
+    /// <c>desc-</c>/<c>tooltip-</c> element.
+    /// </summary>
+    public static (string ErrorMsgId, string DescribedBy) ResolveAriaRefs(
+        string id, bool shouldHideLabel, string? description, string? tooltip, List<Attribute>? attributes)
+    {
+        var errorMsgId = $"error-msg-{id}";
+        var hasDescription = !shouldHideLabel && !string.IsNullOrEmpty(description ?? attributes.Description());
+        var hasTooltip = !shouldHideLabel && !string.IsNullOrEmpty(tooltip ?? attributes.Tooltip());
+        return (errorMsgId, BuildDescribedBy(id, hasDescription, hasTooltip));
+    }
 }

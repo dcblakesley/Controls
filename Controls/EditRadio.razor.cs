@@ -78,13 +78,19 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
         // field survives HidingMode and links from the validation summary always work.
         FormOptions?.RegisterField(_fieldIdentifier, _id);
 
-        // Mirror EditControlBase.InitState: cache the ARIA references once, referencing only the
-        // desc-/tooltip- ids that will actually render.
-        _errorMsgId = $"error-msg-{_id}";
-        var hasDescription = !ShouldHideLabel && !string.IsNullOrEmpty(Description ?? _attributes.Description());
-        var hasTooltip = !ShouldHideLabel && !string.IsNullOrEmpty(Tooltip ?? _attributes.Tooltip());
-        _describedBy = EditControlInit.BuildDescribedBy(_id, hasDescription, hasTooltip);
+        // Mirror EditControlBase: resolve the ARIA references (recomputed in OnParametersSet too).
+        (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
     }
+
+    // InputRadioGroup uses OnParametersSet to set up the group name/context — call base first, then
+    // refresh the cached ARIA references so a runtime Description/Tooltip/label change is reflected.
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (_attributes is not null)
+            (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+    }
+
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);
     bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 

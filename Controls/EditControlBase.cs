@@ -84,13 +84,21 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         FormOptions?.RegisterField(_fieldIdentifier, _id);
 
-        // Resolve the ARIA description references once (stable for the control's lifetime, like _id)
-        // rather than re-interpolating them on every render. Only the IDs that FormLabel will render
-        // are referenced, so aria-describedby never points at a missing desc-/tooltip- element.
-        _errorMsgId = $"error-msg-{_id}";
-        var hasDescription = !ShouldHideLabel && !string.IsNullOrEmpty(Description ?? _attributes.Description());
-        var hasTooltip = !ShouldHideLabel && !string.IsNullOrEmpty(Tooltip ?? _attributes.Tooltip());
-        _describedBy = EditControlInit.BuildDescribedBy(_id, hasDescription, hasTooltip);
+        // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
+        // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and
+        // aria-describedby never points at a missing desc-/tooltip- element.
+        (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+    }
+
+    /// <summary>
+    /// Re-resolves the cached ARIA references on parameter change (e.g. a runtime Description/Tooltip
+    /// or label-hidden toggle) so aria-describedby stays accurate and never dangles. No-op until
+    /// InitState has run (_attributes is null before then).
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (_attributes is not null)
+            (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>
