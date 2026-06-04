@@ -21,6 +21,19 @@ public class UiKitLeafControlsTests : TestContext
     }
 
     [Fact]
+    public void Alert_role_and_aria_live_match_severity()
+    {
+        // Error interrupts (assertive); non-error severities announce politely — matching the toast views.
+        var error = RenderComponent<Alert>(p => p.Add(a => a.Type, AlertType.Error).Add(a => a.Message, "x"));
+        Assert.Equal("alert", error.Find(".wss-alert").GetAttribute("role"));
+        Assert.Equal("assertive", error.Find(".wss-alert").GetAttribute("aria-live"));
+
+        var info = RenderComponent<Alert>(p => p.Add(a => a.Type, AlertType.Info).Add(a => a.Message, "x"));
+        Assert.Equal("status", info.Find(".wss-alert").GetAttribute("role"));
+        Assert.Equal("polite", info.Find(".wss-alert").GetAttribute("aria-live"));
+    }
+
+    [Fact]
     public void Alert_closable_invokes_OnClose()
     {
         var closed = false;

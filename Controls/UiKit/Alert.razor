@@ -1,6 +1,8 @@
 @namespace Controls
 
-<div class="wss-alert wss-alert-@TypeName @(HasDescription ? "wss-alert-with-description" : null)" role="alert">
+<div class="wss-alert wss-alert-@TypeName @(HasDescription ? "wss-alert-with-description" : null)"
+     role="@(Type == AlertType.Error ? "alert" : "status")"
+     aria-live="@(Type == AlertType.Error ? "assertive" : "polite")">
     @if (ShowIcon)
     {
         <span class="wss-alert-icon">@Icon</span>
