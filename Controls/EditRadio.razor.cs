@@ -76,7 +76,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field!, Id, FormGroupOptions, IdPrefix);
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
         // field survives HidingMode and links from the validation summary always work.
-        FormOptions?.RegisterField(_fieldIdentifier);
+        FormOptions?.RegisterField(_fieldIdentifier, _id);
 
         // Mirror EditControlBase.InitState: cache the ARIA references once, referencing only the
         // desc-/tooltip- ids that will actually render.

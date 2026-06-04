@@ -11,13 +11,20 @@ public class FormOptions
     /// <summary> Do not use, this is used by the framework to keep track of which fields are in the form. </summary>
     public List<FieldIdentifier> FieldIdentifiers { get; set; } = [];
 
-    /// <summary> Registers a field for the validation summary, ignoring duplicates. Without this a
-    /// control that re-initializes (or two controls bound to the same property) would keep appending
-    /// to <see cref="FieldIdentifiers"/>, growing it unboundedly in long-lived/dynamic forms. </summary>
-    public void RegisterField(FieldIdentifier field)
+    /// <summary> Resolved DOM id per registered field, so <see cref="ValidationView"/> can link to the
+    /// control's actual element id (honoring <c>IdPrefix</c> / an explicit <c>Id</c>) instead of
+    /// recomputing a guess that misses those. </summary>
+    public Dictionary<FieldIdentifier, string> FieldIds { get; } = new();
+
+    /// <summary> Registers a field (and its resolved element id) for the validation summary, ignoring
+    /// duplicates. Without this a control that re-initializes (or two controls bound to the same
+    /// property) would keep appending to <see cref="FieldIdentifiers"/>, growing it unboundedly. </summary>
+    public void RegisterField(FieldIdentifier field, string? id = null)
     {
         if (!FieldIdentifiers.Contains(field))
             FieldIdentifiers.Add(field);
+        if (id is not null)
+            FieldIds[field] = id;
     }
 
     /// <summary> Allows you to set the hiding mode for the entire form. </summary>

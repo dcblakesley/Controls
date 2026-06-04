@@ -84,7 +84,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        FormOptions?.RegisterField(_fieldIdentifier);
+        FormOptions?.RegisterField(_fieldIdentifier, _id);
 
         // Resolve the ARIA description references once (stable for the control's lifetime, like _id).
         // Only the IDs FormLabel will render are referenced, so aria-describedby never dangles.

@@ -82,7 +82,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        FormOptions?.RegisterField(_fieldIdentifier);
+        FormOptions?.RegisterField(_fieldIdentifier, _id);
 
         // Resolve the ARIA description references once (stable for the control's lifetime, like _id)
         // rather than re-interpolating them on every render. Only the IDs that FormLabel will render

@@ -8,7 +8,7 @@
         {
             @foreach (var z in CurrentEditContext.GetValidationMessages(v))
             {
-                <a class="validation-summary-message" href="#@AttributesHelper.GetId(null, FormGroupOptions, null, v)">@z</a>
+                <a class="validation-summary-message" href="#@(FormOptions.FieldIds.TryGetValue(v, out var fid) ? fid : AttributesHelper.GetId(null, FormGroupOptions, null, v))">@z</a>
             }
         }
     }

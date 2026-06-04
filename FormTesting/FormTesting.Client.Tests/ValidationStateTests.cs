@@ -172,4 +172,30 @@ public class ValidationStateTests : TestContext
         var ex = Assert.Throws<InvalidOperationException>(() => RenderComponent<ValidationView>());
         Assert.Contains(nameof(EditContext), ex.Message);
     }
+
+    [Fact]
+    public void ValidationView_links_use_the_resolved_id_including_IdPrefix()
+    {
+        var model = new PersonModel(); // Name [Required] empty
+        var editContext = new EditContext(model);
+        Expression<Func<string>> field = () => model.Name;
+        var cut = RenderForm(editContext, new FormOptions(), content =>
+        {
+            content.OpenComponent<EditString>(0);
+            content.AddAttribute(1, "Value", model.Name);
+            content.AddAttribute(2, "ValueExpression", field);
+            content.AddAttribute(3, "Field", field);
+            content.AddAttribute(4, "IdPrefix", "foo");
+            content.CloseComponent();
+            content.OpenComponent<ValidationView>(5);
+            content.CloseComponent();
+        });
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        // The summary link must target the control's actual id (foo-Name), not a recomputed "#Name".
+        var link = cut.Find("a.validation-summary-message");
+        Assert.Equal("#foo-Name", link.GetAttribute("href"));
+        Assert.Single(cut.FindAll("#foo-Name")); // ...and the control really renders that id
+    }
 }
