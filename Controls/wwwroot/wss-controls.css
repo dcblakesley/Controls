@@ -127,6 +127,9 @@
 }
 
 .wss-select.invalid .wss-select-selector:focus-within {
+    /* Keep the error-red border on focus: the primary :focus-within rule above has the same
+       specificity (0,4,0) and would otherwise win the border-color (red glow, blue border). */
+    border-color: var(--wss-color-error);
     box-shadow: 0 0 0 2px var(--wss-error-shadow);
 }
 
