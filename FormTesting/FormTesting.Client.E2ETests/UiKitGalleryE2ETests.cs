@@ -63,6 +63,29 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Modal_traps_focus_when_shift_tabbing_from_the_panel()
+    {
+        await GotoAsync();
+        await _page.Locator("button", new() { HasTextString = "Open Modal" }).ClickAsync();
+        var panel = _page.Locator(".wss-modal[role=dialog]");
+        await Expect(panel).ToBeVisibleAsync();
+
+        // Wait until the focus trap has activated (it moves focus into the panel on open).
+        await _page.WaitForFunctionAsync(
+            "() => { const d = document.querySelector('.wss-modal[role=dialog]'); return !!d && d.contains(document.activeElement); }");
+
+        // Focus the panel itself (tabindex=-1, as if the user clicked an empty area of the body),
+        // then Shift+Tab. The old trap only caught Tab on the first/last item, so focus on the panel
+        // escaped backwards to the page behind the overlay.
+        await panel.EvaluateAsync("el => el.focus()");
+        await _page.Keyboard.PressAsync("Shift+Tab");
+
+        var trapped = await _page.EvaluateAsync<bool>(
+            "() => { const d = document.querySelector('.wss-modal[role=dialog]'); return !!d && d.contains(document.activeElement); }");
+        Assert.True(trapped);
+    }
+
+    [Fact]
     public async Task Alert_section_visual_baseline()
     {
         await GotoAsync();

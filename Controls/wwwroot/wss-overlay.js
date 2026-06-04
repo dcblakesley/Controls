@@ -58,13 +58,30 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
 const WSS_FOCUSABLE =
     'a[href],area[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
+// Body-scroll lock is ref-counted so stacked overlays (e.g. a Modal that opens a Drawer) don't
+// unlock the page when the first-opened one closes — only the last dispose restores the original.
+let wssScrollLocks = 0;
+let wssSavedBodyOverflow = '';
+function wssLockScroll() {
+    if (wssScrollLocks === 0) {
+        wssSavedBodyOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+    }
+    wssScrollLocks++;
+}
+function wssUnlockScroll() {
+    wssScrollLocks = Math.max(0, wssScrollLocks - 1);
+    if (wssScrollLocks === 0) {
+        document.body.style.overflow = wssSavedBodyOverflow;
+    }
+}
+
 export function activateModal(panel) {
     if (!panel) {
         return null;
     }
     const previouslyFocused = document.activeElement;
-    const prevBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    wssLockScroll();
 
     const focusables = () =>
         Array.from(panel.querySelectorAll(WSS_FOCUSABLE))
@@ -84,20 +101,31 @@ export function activateModal(panel) {
         }
         const first = items[0];
         const last = items[items.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+        // indexOf is -1 when focus is on the panel itself (tabindex=-1, e.g. after clicking the
+        // body) or otherwise outside the cycle — pull it back so Tab can't escape the trap, not
+        // only when focus sits exactly on the first/last item.
+        const idx = items.indexOf(document.activeElement);
+        if (e.shiftKey) {
+            if (idx <= 0) {
+                e.preventDefault();
+                last.focus();
+            }
+        } else if (idx === -1 || idx === items.length - 1) {
             e.preventDefault();
             first.focus();
         }
     };
     panel.addEventListener('keydown', onKeydown);
 
+    let disposed = false;
     return {
         dispose: () => {
+            if (disposed) {
+                return; // idempotent — a double dispose must not over-decrement the scroll-lock count
+            }
+            disposed = true;
             panel.removeEventListener('keydown', onKeydown);
-            document.body.style.overflow = prevBodyOverflow;
+            wssUnlockScroll();
             try { if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus(); } catch { /* gone */ }
         }
     };
