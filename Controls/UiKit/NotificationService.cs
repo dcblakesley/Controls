@@ -16,8 +16,18 @@ public sealed class NotificationService : INotificationService, IDisposable
     // pending Task.Delay instead of leaving it to fire later against torn-down state.
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _timers = new();
 
+    // Guards _items. The auto-dismiss Task.Delay continuation (RemoveAfterAsync) resumes on a
+    // threadpool thread and would otherwise mutate the list while the renderer enumerates Items on
+    // the circuit thread (Blazor Server) — a "collection modified"/torn-read race. The Items getter
+    // returns a snapshot so callers always enumerate a stable copy. OnChange is raised outside the
+    // lock to avoid re-entrancy if a handler reads Items.
+    private readonly object _gate = new();
+
     /// <inheritdoc/>
-    public IReadOnlyList<NotificationItem> Items => _items;
+    public IReadOnlyList<NotificationItem> Items
+    {
+        get { lock (_gate) { return _items.ToArray(); } }
+    }
 
     /// <inheritdoc/>
     public event Action? OnChange;
@@ -35,7 +45,9 @@ public sealed class NotificationService : INotificationService, IDisposable
     public void Remove(Guid id)
     {
         CancelTimer(id);
-        if (_items.RemoveAll(i => i.Id == id) > 0)
+        bool removed;
+        lock (_gate) { removed = _items.RemoveAll(i => i.Id == id) > 0; }
+        if (removed)
         {
             OnChange?.Invoke();
         }
@@ -45,7 +57,7 @@ public sealed class NotificationService : INotificationService, IDisposable
     public void Clear()
     {
         CancelAllTimers();
-        _items.Clear();
+        lock (_gate) { _items.Clear(); }
         OnChange?.Invoke();
     }
 
@@ -58,7 +70,7 @@ public sealed class NotificationService : INotificationService, IDisposable
             Description = description,
             Duration = duration ?? 4.5
         };
-        _items.Add(item);
+        lock (_gate) { _items.Add(item); }
         OnChange?.Invoke();
 
         if (item.Duration > 0)
