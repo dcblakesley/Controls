@@ -152,4 +152,18 @@ public class SelectEngineTests : TestContext
 
         Assert.Null(selected);
     }
+
+    [Fact]
+    public void Select_shows_label_and_clear_when_single_value_is_the_type_default()
+    {
+        var cut = RenderComponent<Select<int>>(p => p
+            .Add(s => s.Options, new List<SelectOption<int>> { new(0, "Zero"), new(1, "One") })
+            .Add(s => s.Value, 0)            // default(int) — but a real option
+            .Add(s => s.AllowClear, true));
+
+        // The default value resolves to a real option, so its label shows (not the placeholder) and
+        // the clear button is offered — previously HasSingleValue == "!= default" hid both.
+        Assert.Contains("Zero", cut.Find(".wss-select-selection-item").TextContent);
+        Assert.NotEmpty(cut.FindAll("button.wss-select-clear"));
+    }
 }

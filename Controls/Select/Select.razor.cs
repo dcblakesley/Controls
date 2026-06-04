@@ -180,7 +180,10 @@ public partial class Select<TValue> : IAsyncDisposable
         ? _selected.Count == 0 && string.IsNullOrEmpty(_searchText)
         : !HasSingleValue && string.IsNullOrEmpty(_searchText);
 
-    bool HasSingleValue => !_comparer.Equals(Value, default!);
+    // "A value is selected" = it resolves to an option, OR it's a non-default value. The FindOption
+    // arm matters for value types whose default is a real option (e.g. a non-nullable enum's 0 member
+    // or int 0) — without it the default would mis-render as the empty placeholder with no clear button.
+    bool HasSingleValue => FindOption(Value) is not null || !_comparer.Equals(Value, default!);
 
     string SelectedLabel => FindOption(Value)?.Label ?? Value?.ToString() ?? string.Empty;
 
