@@ -35,7 +35,7 @@
             }
             else
             {
-                @if(!Value.Any())
+                @if (Value is null || Value.Count == 0)
                 {
                     <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel Text=""/>
                 }

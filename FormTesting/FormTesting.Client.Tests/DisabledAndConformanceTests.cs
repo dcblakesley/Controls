@@ -98,4 +98,41 @@ public class DisabledAndConformanceTests : TestContext
         Assert.True(missing.Count == 0,
             $"EditRadio<T> is missing [Parameter] declarations for IEditControl members: {string.Join(", ", missing)}");
     }
+
+    [Fact]
+    public void EditCheckedStringList_read_only_with_null_value_does_not_throw()
+    {
+        var model = new PersonModel { Tags = null! }; // required only guarantees set, not non-null
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("input[type=checkbox]")); // read-only renders without an NRE on null Value
+    }
+
+    [Fact]
+    public void EditCheckedStringList_read_only_option_id_is_sanitized()
+    {
+        var model = new PersonModel { Tags = new() { "New York" } };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(3, "Options", new List<string> { "New York" });
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        // The per-option read-only id must be sanitized via ToId() — no raw space (invalid/duplicate id).
+        Assert.DoesNotContain(' ', cut.Find(".edit-readonly-value").Id ?? "");
+    }
 }
