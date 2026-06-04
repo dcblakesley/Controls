@@ -32,15 +32,15 @@ public sealed class MessageService : IMessageService, IDisposable
     public event Action? OnChange;
 
     /// <inheritdoc/>
-    public void Success(string content, double? duration = null) => Add(MessageType.Success, content, duration);
+    public Guid Success(string content, double? duration = null) => Add(MessageType.Success, content, duration);
     /// <inheritdoc/>
-    public void Info(string content, double? duration = null) => Add(MessageType.Info, content, duration);
+    public Guid Info(string content, double? duration = null) => Add(MessageType.Info, content, duration);
     /// <inheritdoc/>
-    public void Warning(string content, double? duration = null) => Add(MessageType.Warning, content, duration);
+    public Guid Warning(string content, double? duration = null) => Add(MessageType.Warning, content, duration);
     /// <inheritdoc/>
-    public void Error(string content, double? duration = null) => Add(MessageType.Error, content, duration);
+    public Guid Error(string content, double? duration = null) => Add(MessageType.Error, content, duration);
     /// <inheritdoc/>
-    public void Loading(string content, double? duration = null) => Add(MessageType.Loading, content, duration ?? 0);
+    public Guid Loading(string content, double? duration = null) => Add(MessageType.Loading, content, duration ?? 0);
 
     /// <inheritdoc/>
     public void Remove(Guid id)
@@ -62,7 +62,7 @@ public sealed class MessageService : IMessageService, IDisposable
         OnChange?.Invoke();
     }
 
-    private void Add(MessageType type, string content, double? duration)
+    private Guid Add(MessageType type, string content, double? duration)
     {
         var item = new MessageItem { Type = type, Content = content, Duration = duration ?? 3 };
         lock (_gate) { _items.Add(item); }
@@ -74,6 +74,8 @@ public sealed class MessageService : IMessageService, IDisposable
             _timers[item.Id] = cts;
             _ = RemoveAfterAsync(item, cts.Token);
         }
+
+        return item.Id;
     }
 
     private async Task RemoveAfterAsync(MessageItem item, CancellationToken token)

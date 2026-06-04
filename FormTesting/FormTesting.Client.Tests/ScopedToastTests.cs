@@ -53,6 +53,24 @@ public class ScopedToastTests : TestContext
     }
 
     [Fact]
+    public void Loading_returns_an_id_that_dismisses_the_sticky_toast()
+    {
+        // A loading toast is sticky (duration 0) and has no close button, so the only way to
+        // dismiss just it (rather than Clear()-ing everything) is the id returned from Loading.
+        var svc = new MessageService();
+        svc.Success("other", duration: 0);
+        var loadingId = svc.Loading("Saving...");
+
+        Assert.Equal(2, svc.Items.Count);
+
+        svc.Remove(loadingId);
+
+        Assert.Single(svc.Items);                                 // only the loading toast went away
+        Assert.DoesNotContain(svc.Items, m => m.Id == loadingId);
+        Assert.Contains(svc.Items, m => m.Content == "other");    // the other toast survived
+    }
+
+    [Fact]
     public void AddWssControlsToasts_registers_both_services_as_scoped()
     {
         var services = new ServiceCollection();

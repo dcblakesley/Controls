@@ -33,11 +33,19 @@ public interface IMessageService
     /// <summary>Raised whenever <see cref="Items"/> changes so a container can re-render.</summary>
     event Action? OnChange;
 
-    void Success(string content, double? duration = null);
-    void Info(string content, double? duration = null);
-    void Warning(string content, double? duration = null);
-    void Error(string content, double? duration = null);
-    void Loading(string content, double? duration = null);
+    /// <summary>Shows a toast and returns its id, which can be passed to <see cref="Remove"/>.</summary>
+    Guid Success(string content, double? duration = null);
+    /// <inheritdoc cref="Success"/>
+    Guid Info(string content, double? duration = null);
+    /// <inheritdoc cref="Success"/>
+    Guid Warning(string content, double? duration = null);
+    /// <inheritdoc cref="Success"/>
+    Guid Error(string content, double? duration = null);
+    /// <summary>
+    /// Shows a (by default sticky, <c>duration: 0</c>) loading toast and returns its id. Keep the id
+    /// and pass it to <see cref="Remove"/> to dismiss the spinner when the work completes.
+    /// </summary>
+    Guid Loading(string content, double? duration = null);
     void Remove(Guid id);
     void Clear();
 }

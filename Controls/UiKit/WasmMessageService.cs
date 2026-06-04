@@ -24,11 +24,11 @@ public static class WasmMessageService
         remove => Instance.OnChange -= value;
     }
 
-    public static void Success(string content, double? duration = null) => Instance.Success(content, duration);
-    public static void Info(string content, double? duration = null) => Instance.Info(content, duration);
-    public static void Warning(string content, double? duration = null) => Instance.Warning(content, duration);
-    public static void Error(string content, double? duration = null) => Instance.Error(content, duration);
-    public static void Loading(string content, double? duration = null) => Instance.Loading(content, duration);
+    public static Guid Success(string content, double? duration = null) => Instance.Success(content, duration);
+    public static Guid Info(string content, double? duration = null) => Instance.Info(content, duration);
+    public static Guid Warning(string content, double? duration = null) => Instance.Warning(content, duration);
+    public static Guid Error(string content, double? duration = null) => Instance.Error(content, duration);
+    public static Guid Loading(string content, double? duration = null) => Instance.Loading(content, duration);
 
     public static void Remove(Guid id) => Instance.Remove(id);
 
