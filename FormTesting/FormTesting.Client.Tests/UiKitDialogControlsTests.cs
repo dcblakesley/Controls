@@ -179,6 +179,49 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
+    public void Popconfirm_without_a_title_falls_back_to_aria_label_for_its_accessible_name()
+    {
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.AriaLabel, "Confirm deletion")
+            .AddChildContent("<button>del</button>")); // no Title
+
+        cut.Find(".wss-popconfirm-trigger").Click();
+        var dialog = cut.Find("[role=dialog]");
+        Assert.False(dialog.HasAttribute("aria-labelledby")); // still no title element
+        Assert.Equal("Confirm deletion", dialog.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Popover_without_a_title_falls_back_to_aria_label_for_its_accessible_name()
+    {
+        var cut = RenderComponent<Popover>(p => p
+            .Add(pv => pv.AriaLabel, "More info")
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<span>?</span>")); // no Title
+
+        cut.Find(".wss-popover-trigger").Click();
+        var dialog = cut.Find("[role=dialog]");
+        Assert.False(dialog.HasAttribute("aria-labelledby"));
+        Assert.Equal("More info", dialog.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Titled_dialog_does_not_also_emit_aria_label()
+    {
+        var cut = RenderComponent<Popover>(p => p
+            .Add(pv => pv.Title, "Info")
+            .Add(pv => pv.AriaLabel, "ignored when titled")
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<span>?</span>"));
+
+        cut.Find(".wss-popover-trigger").Click();
+        var dialog = cut.Find("[role=dialog]");
+        // A title wins; we don't double up the accessible name with a redundant aria-label.
+        Assert.False(dialog.HasAttribute("aria-label"));
+        Assert.False(string.IsNullOrEmpty(dialog.GetAttribute("aria-labelledby")));
+    }
+
+    [Fact]
     public void Popconfirm_disabled_trigger_is_aria_disabled_and_out_of_the_tab_order()
     {
         var cut = RenderComponent<Popconfirm>(p => p

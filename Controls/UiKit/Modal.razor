@@ -6,7 +6,7 @@
 {
     <div class="wss-modal-wrap" @onclick="OnMaskClickAsync">
         <div class="wss-modal" style="width:@Width" role="dialog" aria-modal="true"
-             aria-labelledby="@(HasTitle ? _titleId : null)" tabindex="-1"
+             aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel)" tabindex="-1"
              @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onclick:stopPropagation="true">
             <div class="wss-modal-header">
                 <div class="wss-modal-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
@@ -52,6 +52,8 @@
     [Parameter] public bool Closable { get; set; } = true;
     [Parameter] public bool MaskClosable { get; set; } = true;
     [Parameter] public bool ConfirmLoading { get; set; }
+    /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
 
     readonly string _titleId = $"wss-modal-title-{Guid.NewGuid():N}";
     ElementReference _panelRef;

@@ -7,7 +7,7 @@
     <div class="wss-drawer-root">
         <div class="wss-drawer-mask" @onclick="OnMaskClickAsync"></div>
         <div class="wss-drawer wss-drawer-@PlacementName" style="@SizeStyle" role="dialog" aria-modal="true"
-             aria-labelledby="@(HasTitle ? _titleId : null)" tabindex="-1"
+             aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel)" tabindex="-1"
              @ref="_panelRef" @onkeydown="OnKeyDownAsync">
             <div class="wss-drawer-header">
                 <div class="wss-drawer-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
@@ -42,6 +42,8 @@
     [Parameter] public bool Closable { get; set; } = true;
     [Parameter] public bool MaskClosable { get; set; } = true;
     [Parameter] public EventCallback OnClose { get; set; }
+    /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
 
     readonly string _titleId = $"wss-drawer-title-{Guid.NewGuid():N}";
     ElementReference _panelRef;
