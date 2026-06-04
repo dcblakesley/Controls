@@ -111,7 +111,7 @@
 
     @if (_open)
     {
-        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" @ref="_dropdownRef" role="listbox" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
+        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" @ref="_dropdownRef" role="listbox" aria-label="Options" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
             @if (_filtered.Count == 0)
             {
                 <div class="wss-select-item-empty">@EmptyText</div>
