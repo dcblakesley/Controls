@@ -34,6 +34,16 @@ public static class EditControlInit
         return (resolvedId, isRequired, attributes, fieldIdentifier);
     }
 
+    /// <summary>
+    /// The <c>aria-required</c> value (<c>"true"</c> or <c>null</c> so the attribute is omitted)
+    /// combining a <see cref="RequiredAttribute"/> on the model property with the control's
+    /// <see cref="IEditControl.IsRequired"/> parameter (the conditional-requiredness escape hatch,
+    /// e.g. RequiredIf). Mirrors the FormLabel required-star — which shows for either source — so the
+    /// visible star and <c>aria-required</c> always agree.
+    /// </summary>
+    public static string? AriaRequired(List<Attribute>? attributes, bool isRequiredParam) =>
+        isRequiredParam || (attributes?.Any(x => x is RequiredAttribute) ?? false) ? "true" : null;
+
     /// <summary> True when the editor input should render. False renders the read-only view instead. </summary>
     public static bool ShowEditor(bool isEditMode, FormOptions? formOptions) =>
         isEditMode && (formOptions?.IsEditMode ?? true);

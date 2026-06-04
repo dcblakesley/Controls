@@ -74,6 +74,9 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     protected override void OnInitialized()
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field!, Id, FormGroupOptions, IdPrefix);
+        // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
+        // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
+        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
         // field survives HidingMode and links from the validation summary always work.
         FormOptions?.RegisterField(_fieldIdentifier, _id);
@@ -88,7 +91,10 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     {
         base.OnParametersSet();
         if (_attributes is not null)
+        {
+            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+        }
     }
 
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);

@@ -84,6 +84,9 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
+        // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
+        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
         FormOptions?.RegisterField(_fieldIdentifier, _id);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
@@ -134,7 +137,10 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
         // Keep the cached ARIA references current when parameters change (runtime Description/Tooltip
         // or label-hidden toggle). No-op until InitState has run (_attributes is null before then).
         if (_attributes is not null)
+        {
+            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+        }
 
         if (ReferenceEquals(EditContext, _subscribedEditContext)) return;
         if (_subscribedEditContext is not null)

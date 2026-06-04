@@ -82,6 +82,9 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
+        // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
+        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
         FormOptions?.RegisterField(_fieldIdentifier, _id);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
@@ -99,7 +102,10 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     {
         base.OnParametersSet();
         if (_attributes is not null)
+        {
+            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+        }
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

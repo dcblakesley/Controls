@@ -63,6 +63,28 @@ public class ControlSmokeTests : TestContext
     }
 
     [Fact]
+    public void EditString_emits_aria_required_when_IsRequired_parameter_is_set_without_the_attribute()
+    {
+        // The IsRequired parameter is the conditional-requiredness escape hatch (e.g. RequiredIf).
+        // It must drive aria-required, not just the visible star, so the two signals agree.
+        var model = new PersonModel { Username = "bob" };
+        Expression<Func<string>> field = () => model.Username; // no [Required] attribute
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Username);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsRequired", true);
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input.edit-string-input");
+        Assert.Equal("true", input.GetAttribute("aria-required"));
+        Assert.NotNull(cut.Find(".edit-label-required-star")); // and the visible star, in agreement
+    }
+
+    [Fact]
     public void EditString_in_read_only_mode_renders_ReadOnlyValue_instead_of_input()
     {
         var model = new PersonModel { Name = "Alice" };
