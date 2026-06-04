@@ -91,4 +91,24 @@ public class UiKitLeafControlsTests : TestContext
         cut.FindAll(".wss-pagination-item")[2].Click(); // third page
         Assert.Equal(3, page);
     }
+
+    [Fact]
+    public void Pagination_clamps_an_out_of_range_current_so_prev_works_and_next_is_disabled()
+    {
+        var page = 0;
+        var cut = RenderComponent<Pagination>(p => p
+            .Add(pg => pg.Total, 25)    // 25 / 10 => 3 pages
+            .Add(pg => pg.PageSize, 10)
+            .Add(pg => pg.Current, 5)   // past the last page (the parent hasn't clamped it)
+            .Add(pg => pg.CurrentChanged, EventCallback.Factory.Create<int>(this, v => page = v)));
+
+        var prev = cut.Find(".wss-pagination-prev");
+        var next = cut.Find(".wss-pagination-next");
+        Assert.False(prev.HasAttribute("disabled")); // treated as the last page, so Previous is live...
+        Assert.True(next.HasAttribute("disabled"));   // ...and Next is disabled (already at the end)
+        Assert.Equal("3", cut.Find(".wss-pagination-item-active").TextContent); // clamped 3, not raw 5
+
+        prev.Click();
+        Assert.Equal(2, page); // Previous navigates from the clamped 3 to 2, not an inert no-op
+    }
 }
