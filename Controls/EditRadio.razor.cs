@@ -62,7 +62,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     [Parameter] public bool IsHorizontal { get; set; }
 
     string _id = string.Empty;
-    string _isRequired = "false";
+    string? _isRequired;
     FieldIdentifier _fieldIdentifier;
     List<Attribute>? _attributes;
     string _errorMsgId = string.Empty;

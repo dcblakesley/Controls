@@ -53,7 +53,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
 
     // Standard derived state — populated by InitState in derived class's OnInitialized.
     protected string _id = string.Empty;
-    protected string _isRequired = "false";
+    protected string? _isRequired;
     protected List<Attribute>? _attributes;
     protected FieldIdentifier _fieldIdentifier;
     // Cached ARIA references, resolved once in InitState (see EditControlInit.BuildDescribedBy).

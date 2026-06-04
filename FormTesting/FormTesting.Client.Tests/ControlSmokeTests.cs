@@ -44,6 +44,25 @@ public class ControlSmokeTests : TestContext
     }
 
     [Fact]
+    public void EditString_omits_aria_required_when_field_is_not_required()
+    {
+        var model = new PersonModel { Username = "bob" };
+        Expression<Func<string>> field = () => model.Username; // no [Required]
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Username);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.CloseComponent();
+        }));
+
+        // Optional fields omit aria-required entirely rather than emitting the noisy "false".
+        var input = cut.Find("input.edit-string-input");
+        Assert.False(input.HasAttribute("aria-required"));
+    }
+
+    [Fact]
     public void EditString_in_read_only_mode_renders_ReadOnlyValue_instead_of_input()
     {
         var model = new PersonModel { Name = "Alice" };

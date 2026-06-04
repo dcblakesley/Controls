@@ -18,11 +18,12 @@ public class EditControlInitTests
     }
 
     [Fact]
-    public void Init_isRequired_is_false_string_when_no_Required_attribute()
+    public void Init_isRequired_is_null_when_no_Required_attribute()
     {
+        // Null (not "false") so the binding omits aria-required for optional fields.
         var (_, isRequired, _, _) = EditControlInit.Init(
             () => _model.IsActive, null, null, null);
-        Assert.Equal("false", isRequired);
+        Assert.Null(isRequired);
     }
 
     [Fact]

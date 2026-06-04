@@ -18,9 +18,10 @@ public static class EditControlInit
     /// <summary>
     /// Resolves the four standard derived values every edit control needs:
     /// the FieldIdentifier, the attribute list from the model property, the rendered HTML id,
-    /// and the <c>"true"</c>/<c>"false"</c> string used for <c>aria-required</c>.
+    /// and the <c>aria-required</c> value (<c>"true"</c> when required, else <c>null</c> so the
+    /// attribute is omitted rather than rendered as a noisy <c>"false"</c>).
     /// </summary>
-    public static (string Id, string IsRequired, List<Attribute> Attributes, FieldIdentifier FieldIdentifier) Init<T>(
+    public static (string Id, string? IsRequired, List<Attribute> Attributes, FieldIdentifier FieldIdentifier) Init<T>(
         Expression<Func<T>> field,
         string? id,
         FormGroupOptions? formGroupOptions,
@@ -29,7 +30,7 @@ public static class EditControlInit
         var fieldIdentifier = FieldIdentifier.Create(field);
         var attributes = AttributesHelper.GetExpressionCustomAttributes(field);
         var resolvedId = AttributesHelper.GetId(id, formGroupOptions, idPrefix, fieldIdentifier);
-        var isRequired = attributes.Any(x => x is RequiredAttribute) ? "true" : "false";
+        var isRequired = attributes.Any(x => x is RequiredAttribute) ? "true" : null;
         return (resolvedId, isRequired, attributes, fieldIdentifier);
     }
 
