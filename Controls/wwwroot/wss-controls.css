@@ -461,6 +461,15 @@
     line-height: 38px;
 }
 
+/* Multiple/tags mode is sized via the selector's min-height (tags keep their own height). */
+.wss-select-sm.wss-select-multiple .wss-select-selector {
+    min-height: var(--wss-control-height-sm);
+}
+
+.wss-select-lg.wss-select-multiple .wss-select-selector {
+    min-height: var(--wss-control-height-lg);
+}
+
 /* ============================================================================
  * Alert
  * ============================================================================ */
@@ -753,6 +762,7 @@
     height: 32px;
     padding: 0 15px;
     font-size: var(--wss-font-size);
+    font-family: inherit; /* <button> elements default to the system font otherwise */
     line-height: var(--wss-line-height);
     color: var(--wss-color-text);
     background: var(--wss-color-bg);
