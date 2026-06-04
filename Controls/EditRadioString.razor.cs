@@ -28,7 +28,47 @@ public partial class EditRadioString : EditControlBase<string?>
     {
         base.OnInitialized();
         InitState(Field);
-        _selectedOption = Value;
+        DeriveSelectionFromValue();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        // Re-sync the radio selection with an externally-changed value (form reset, async-loaded
+        // model, programmatic set). Skip when the current selection already implies CurrentValue,
+        // so this never clobbers in-progress "Other" typing (where CurrentValue == _otherText).
+        var implied = _selectedOption == OtherName ? _otherText : _selectedOption;
+        if (CurrentValue != implied)
+        {
+            DeriveSelectionFromValue();
+        }
+    }
+
+    // Maps the bound value back onto the radio selection: a value equal to an option checks that
+    // option; any other non-empty value (when HasOther) selects "Other" and fills the text box.
+    void DeriveSelectionFromValue()
+    {
+        var current = CurrentValue;
+        if (string.IsNullOrEmpty(current))
+        {
+            _selectedOption = current;
+            _otherText = "";
+        }
+        else if (Options.Contains(current))
+        {
+            _selectedOption = current;
+            _otherText = "";
+        }
+        else if (HasOther)
+        {
+            _selectedOption = OtherName;
+            _otherText = current;
+        }
+        else
+        {
+            _selectedOption = current; // no Other option to fall back on; renders as no selection
+            _otherText = "";
+        }
     }
 
     // Trivial parser — string passes through (matches Microsoft's InputText).

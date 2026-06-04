@@ -211,4 +211,72 @@ public class RadioTextAreaAndCultureTests : TestContext
         Assert.All(cut.FindAll("input[type=radio]"),
             r => Assert.Contains("edit-radio-input", r.GetAttribute("class")!));
     }
+
+    [Fact]
+    public void EditRadioString_reflects_an_externally_changed_value()
+    {
+        var model = new PersonModel { Name = "a" };
+        var editContext = new EditContext(model);
+        Expression<Func<string?>> valueExpr = () => model.Name;
+        Expression<Func<string>> fieldExpr = () => model.Name;
+
+        var cut = RenderComponent<EditRadioString>(ps => ps
+            .AddCascadingValue(editContext)
+            .Add(c => c.Value, "a")
+            .Add(c => c.ValueExpression, valueExpr)
+            .Add(c => c.Field, fieldExpr)
+            .Add(c => c.Options, new List<string> { "a", "b", "c" }));
+
+        Assert.True(cut.Find("#rb-Name-a").HasAttribute("checked"));
+        Assert.False(cut.Find("#rb-Name-b").HasAttribute("checked"));
+
+        // The parent supplies a new value (form reset / async load / programmatic set). The radio
+        // selection used to be cached once in OnInitialized and so ignored this; it must now follow.
+        cut.SetParametersAndRender(ps => ps.Add(c => c.Value, "b"));
+
+        Assert.False(cut.Find("#rb-Name-a").HasAttribute("checked"));
+        Assert.True(cut.Find("#rb-Name-b").HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void EditRadioString_with_a_custom_initial_value_selects_Other_and_fills_the_text_box()
+    {
+        var model = new PersonModel { Name = "bespoke" }; // not one of the options
+        var editContext = new EditContext(model);
+        Expression<Func<string?>> valueExpr = () => model.Name;
+        Expression<Func<string>> fieldExpr = () => model.Name;
+
+        var cut = RenderComponent<EditRadioString>(ps => ps
+            .AddCascadingValue(editContext)
+            .Add(c => c.Value, "bespoke")
+            .Add(c => c.ValueExpression, valueExpr)
+            .Add(c => c.Field, fieldExpr)
+            .Add(c => c.HasOther, true)
+            .Add(c => c.Options, new List<string> { "a", "b" }));
+
+        // A value matching no option resolves to the "Other" radio, with the text box pre-filled.
+        Assert.True(cut.Find("#rb-Name-other").HasAttribute("checked"));
+        Assert.Equal("bespoke", cut.Find("#txt-Name-custom-value").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void EditRadioEnum_other_text_input_has_an_accessible_name()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "HasOtherOption", true);
+            b.CloseComponent();
+        }));
+
+        // The "Other" free-text input needs an accessible name (a placeholder is not one), matching
+        // the EditRadioString sibling. It previously carried only an optional placeholder.
+        var other = cut.Find("input.edit-radio-other-input");
+        Assert.Equal("Custom text value input", other.GetAttribute("aria-label"));
+    }
 }

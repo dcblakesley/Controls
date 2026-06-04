@@ -48,6 +48,7 @@
                                                @oninput="@(OnOtherValueChanged)"
                                                disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsDisabled)"
                                                class="edit-input edit-radio-other-input"
+                                               aria-label="Custom text value input"
                                                placeholder=@OtherPlaceholder
                                                id=@($"other-{_id}")
                                                data-test-id=@($"other-{_id}") />
