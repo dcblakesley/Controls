@@ -152,6 +152,36 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Table_select_all_checkbox_reaches_the_indeterminate_state()
+    {
+        await GotoAsync();
+        const string headerSelector = ".wss-table-thead .wss-table-checkbox";
+        var header = _page.Locator(headerSelector);
+        var rows = _page.Locator(".wss-table-tbody .wss-table-checkbox");
+        await Expect(header).ToBeVisibleAsync();
+
+        // Start: neither checked nor indeterminate.
+        Assert.False(await header.IsCheckedAsync());
+        Assert.False(await header.EvaluateAsync<bool>("el => el.indeterminate"));
+
+        // Select one row → header reaches the mixed state (a DOM property with no HTML attribute,
+        // set from C# via wss-table.js). WaitForFunction tolerates the post-render interop gap.
+        await rows.First.ClickAsync();
+        await _page.WaitForFunctionAsync(
+            $"() => {{ const cb = document.querySelector('{headerSelector}'); return !!cb && cb.indeterminate === true && cb.checked === false; }}");
+
+        // Select all → fully checked, no longer indeterminate.
+        await header.ClickAsync();
+        await _page.WaitForFunctionAsync(
+            $"() => {{ const cb = document.querySelector('{headerSelector}'); return !!cb && cb.indeterminate === false && cb.checked === true; }}");
+
+        // Clear all → neither.
+        await header.ClickAsync();
+        await _page.WaitForFunctionAsync(
+            $"() => {{ const cb = document.querySelector('{headerSelector}'); return !!cb && cb.indeterminate === false && cb.checked === false; }}");
+    }
+
+    [Fact]
     public async Task Message_toast_appears_on_click()
     {
         await GotoAsync();
