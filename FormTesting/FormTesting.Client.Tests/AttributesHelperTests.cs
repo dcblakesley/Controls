@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace FormTesting.Client.Tests;
@@ -81,6 +82,24 @@ public class AttributesHelperTests
         var (min, max) = AttributesHelper.GetMinAndMaxLengths(attrs);
         Assert.Equal(2, min);
         Assert.Equal(10, max);
+    }
+
+    [Fact]
+    public void GetMinAndMaxLengths_takes_the_tighter_max_when_StringLength_and_MaxLength_overlap()
+    {
+        // Both validators run, so the effective max is the SMALLER of the two (5). Math.Max would
+        // report the looser 10 and break FieldValidationDisplay's MaxLength message rewrite.
+        var attrs = new List<Attribute> { new StringLengthAttribute(10), new MaxLengthAttribute(5) };
+        var (_, max) = AttributesHelper.GetMinAndMaxLengths(attrs);
+        Assert.Equal(5, max);
+    }
+
+    [Fact]
+    public void GetMinAndMaxLengths_takes_the_tighter_max_regardless_of_which_attribute_is_smaller()
+    {
+        var attrs = new List<Attribute> { new StringLengthAttribute(5), new MaxLengthAttribute(10) };
+        var (_, max) = AttributesHelper.GetMinAndMaxLengths(attrs);
+        Assert.Equal(5, max);
     }
 
     [Fact]

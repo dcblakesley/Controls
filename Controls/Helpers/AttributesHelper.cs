@@ -73,7 +73,10 @@ public static class AttributesHelper
         var maxLengthAttribute = attributes.OfType<MaxLengthAttribute>().FirstOrDefault();
         if (maxLengthAttribute != null)
         {
-            max = Math.Max(max ?? 0, maxLengthAttribute.Length);
+            // Upper bound: the tighter constraint is the SMALLER of the two (both validators run,
+            // so the effective max is whichever rejects first). Math.Max here would report the
+            // looser bound and break the MaxLength message rewrite.
+            max = max is null ? maxLengthAttribute.Length : Math.Min(max.Value, maxLengthAttribute.Length);
         }
 
         return (min, max);
