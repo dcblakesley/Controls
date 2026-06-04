@@ -20,8 +20,7 @@
             <EditSelect @bind-Value=_model.EditSelect Field=@(() => _model.EditSelect)>
                 @foreach (var o in _plants.OrderBy(x => x.Name))
                 {
-                    <option checked=@(() => _model.EditSelect == o.Id)
-                            value=@o.Id
+                    <option value=@o.Id
                             id=@($"option-{o.Id}")
                             data-test-id=@($"option-{o.Id}")>
                         @o.Name
