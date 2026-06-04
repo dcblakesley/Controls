@@ -33,10 +33,14 @@ public partial class EditDisplay
     /// <inheritdoc cref="IEditControl.IsHidden"/>
     [Parameter] public bool IsHidden { get; set; }
 
-    // Resolved id used by the markup: explicit Id wins, otherwise derive from Label.
-    // Replaces the legacy "NoId" sentinel that ended up baked into rendered output.
+    // Resolved id used by the markup: explicit Id wins, then a Label-derived id, else a unique
+    // fallback so label-less displays don't collide on an empty id (and the markup can omit
+    // aria-labelledby rather than point it at an empty label).
     string _id = string.Empty;
+    readonly string _fallbackId = $"ed-{Guid.NewGuid():N}";
 
     protected override void OnParametersSet() =>
-        _id = !string.IsNullOrEmpty(Id) ? Id : Label.ToId();
+        _id = !string.IsNullOrEmpty(Id) ? Id
+            : !string.IsNullOrEmpty(Label) ? Label.ToId()
+            : _fallbackId;
 }

@@ -6,7 +6,7 @@
         <div id=@_id
              data-test-id=@_id
              class="edit-readonly-value"
-             aria-labelledby=@($"lbl-{_id}")>
+             aria-labelledby=@(string.IsNullOrEmpty(Label) ? null : $"lbl-{_id}")>
 
             @Text
         </div>
