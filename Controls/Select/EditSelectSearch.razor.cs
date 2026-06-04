@@ -45,10 +45,29 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     }
 
     // Label for the read-only view: the matching option's label, else the value's own ToString.
-    string SelectedLabel =>
-        Options?.FirstOrDefault(o => EqualityComparer<TValue>.Default.Equals(o.Value, CurrentValue))?.Label
-        ?? CurrentValue?.ToString()
-        ?? string.Empty;
+    // Cached and recomputed only when the value or Options change, not on every render.
+    string _selectedLabel = "";
+    TValue? _labelValue;
+    IEnumerable<SelectOption<TValue>>? _labelOptions;
+    bool _labelInit;
+
+    string SelectedLabel => _selectedLabel;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (_labelInit
+            && ReferenceEquals(Options, _labelOptions)
+            && EqualityComparer<TValue>.Default.Equals(CurrentValue, _labelValue))
+            return;
+        _labelInit = true;
+        _labelOptions = Options;
+        _labelValue = CurrentValue;
+        _selectedLabel =
+            Options?.FirstOrDefault(o => EqualityComparer<TValue>.Default.Equals(o.Value, CurrentValue))?.Label
+            ?? CurrentValue?.ToString()
+            ?? string.Empty;
+    }
 
     // Setting CurrentValue runs the InputBase machinery: NotifyFieldChanged + validation + ValueChanged.
     void OnValueChanged(TValue value) => CurrentValue = value;

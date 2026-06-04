@@ -53,12 +53,27 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
         InitState(Field);
     }
 
-    // Read-only view: comma-joined option labels (or the value's ToString when unmatched).
-    string SelectedLabels =>
-        string.Join(", ", (Value ?? new List<TValue>())
+    // Read-only view: comma-joined option labels (or the value's ToString when unmatched). Cached
+    // and recomputed only when the bound list or Options change by reference — the editable engine
+    // builds its own O(1) lookup, so without this the read-only path would re-scan Options for every
+    // selected value on every render.
+    string _selectedLabels = "";
+    List<TValue>? _labelValue;
+    IEnumerable<SelectOption<TValue>>? _labelOptions;
+
+    string SelectedLabels => _selectedLabels;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (ReferenceEquals(Value, _labelValue) && ReferenceEquals(Options, _labelOptions)) return;
+        _labelValue = Value;
+        _labelOptions = Options;
+        _selectedLabels = string.Join(", ", (Value ?? new List<TValue>())
             .Select(v => Options?.FirstOrDefault(o => EqualityComparer<TValue>.Default.Equals(o.Value, v))?.Label
                          ?? v?.ToString()
                          ?? string.Empty));
+    }
 
     async Task OnValuesChanged(IEnumerable<TValue> values)
     {
