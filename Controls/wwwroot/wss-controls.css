@@ -993,7 +993,6 @@
     margin-bottom: 8px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
-    white-space: nowrap;
 }
 
 .wss-popconfirm-icon {
@@ -1309,5 +1308,12 @@
     .wss-skeleton-active .wss-skeleton-paragraph > li,
     .wss-msg-icon-loading {
         animation: none;
+    }
+
+    /* Halting the shimmer alone freezes the gradient mid-sweep; restore the flat base fill so
+       reduced-motion users see a solid skeleton rather than a frozen off-centre shine band. */
+    .wss-skeleton-active .wss-skeleton-title,
+    .wss-skeleton-active .wss-skeleton-paragraph > li {
+        background: var(--wss-skeleton-base);
     }
 }
