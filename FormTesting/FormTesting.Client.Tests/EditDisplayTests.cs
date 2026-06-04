@@ -28,6 +28,30 @@ public class EditDisplayTests : TestContext
     }
 
     [Fact]
+    public void EditDisplay_renders_the_tooltip_when_set()
+    {
+        // Tooltip is a documented EditDisplay parameter; it must reach the label, not be discarded.
+        var cut = RenderComponent<EditDisplay>(p => p
+            .Add(d => d.Label, "Volume")
+            .Add(d => d.Tooltip, "ounces per can")
+            .Add(d => d.Text, "15.3 oz"));
+
+        Assert.NotNull(cut.Find(".edit-tooltip-container"));
+        Assert.Contains("ounces per can", cut.Find("[role=tooltip]").TextContent);
+    }
+
+    [Fact]
+    public void EditDisplay_renders_the_required_star_when_IsRequired()
+    {
+        var cut = RenderComponent<EditDisplay>(p => p
+            .Add(d => d.Label, "Volume")
+            .Add(d => d.IsRequired, true)
+            .Add(d => d.Text, "15.3 oz"));
+
+        Assert.NotNull(cut.Find(".edit-label-required-star"));
+    }
+
+    [Fact]
     public void EditDisplay_value_is_not_an_editable_textbox()
     {
         var cut = RenderComponent<EditDisplay>(p => p
