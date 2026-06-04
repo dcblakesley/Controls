@@ -4,7 +4,7 @@
 
 <span class="wss-popover-wrap">
     <span class="wss-popover-trigger" @ref="_triggerRef" tabindex="0" role="button"
-          aria-haspopup="dialog" aria-expanded="@_open"
+          aria-haspopup="dialog" aria-expanded=@(_open ? "true" : "false")
           @onclick="Toggle" @onkeydown="OnTriggerKeyDown">@ChildContent</span>
     @if (_open)
     {

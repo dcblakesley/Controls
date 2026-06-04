@@ -149,8 +149,12 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.AddAttribute(5, "IsEditMode", false);
             b.CloseComponent();
         }));
-        // Gated off in read-only so it isn't a radiogroup with no radio children (axe aria-required-children).
-        Assert.False(readOnly.Find("fieldset.edit-radio-fieldset").HasAttribute("role"));
+        // Gated off in read-only so it isn't a radiogroup with no radio children (axe aria-required-children),
+        // and the fieldset id is dropped so it doesn't collide with the read-only ReadOnlyValue's id=Name.
+        var roFieldset = readOnly.Find("fieldset.edit-radio-fieldset");
+        Assert.False(roFieldset.HasAttribute("role"));
+        Assert.False(roFieldset.HasAttribute("id"));
+        Assert.Single(readOnly.FindAll("#Name")); // only the ReadOnlyValue carries id=Name in read-only
     }
 
     [Fact]

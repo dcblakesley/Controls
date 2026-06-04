@@ -23,7 +23,7 @@
                        role="combobox"
                        aria-haspopup="listbox"
                        aria-autocomplete="list"
-                       aria-expanded="@_open"
+                       aria-expanded=@(_open ? "true" : "false")
                        aria-controls="@($"{BaseId}-listbox")"
                        aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
                        aria-required="@AriaRequired"
@@ -79,7 +79,7 @@
                        role="combobox"
                        aria-haspopup="listbox"
                        aria-autocomplete="list"
-                       aria-expanded="@_open"
+                       aria-expanded=@(_open ? "true" : "false")
                        aria-controls="@($"{BaseId}-listbox")"
                        aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
                        aria-required="@AriaRequired"

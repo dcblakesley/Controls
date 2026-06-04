@@ -153,6 +153,20 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
+    public void Popover_trigger_aria_expanded_is_lowercase_and_toggles_on_open()
+    {
+        var cut = RenderComponent<Popover>(p => p
+            .Add(pv => pv.Title, "Info")
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<span>?</span>"));
+
+        // Lowercase ARIA boolean, not Blazor's bool ToString ("False"/"True").
+        Assert.Equal("false", cut.Find(".wss-popover-trigger").GetAttribute("aria-expanded"));
+        cut.Find(".wss-popover-trigger").Click();
+        Assert.Equal("true", cut.Find(".wss-popover-trigger").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void Popconfirm_without_a_title_omits_aria_labelledby_and_the_title_element()
     {
         var cut = RenderComponent<Popconfirm>(p => p

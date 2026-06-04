@@ -57,6 +57,25 @@ public class EditSelectControlsTests : TestContext
     }
 
     [Fact]
+    public void EditSelectSearch_combobox_aria_expanded_is_lowercase_false_when_closed()
+    {
+        var model = new PersonModel { Priority = Priority.Medium };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectSearch<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", PriorityOptions());
+            b.CloseComponent();
+        }));
+
+        // Must be a lowercase ARIA boolean ("false"), not Blazor's bool ToString ("False").
+        Assert.Equal("false", cut.Find("input.wss-select-selection-search-input").GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
     public void EditSelectSearch_shows_selected_option_label()
     {
         var model = new PersonModel { Priority = Priority.High };

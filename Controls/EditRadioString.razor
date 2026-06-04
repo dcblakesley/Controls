@@ -5,8 +5,8 @@
     <div class="edit-control-wrapper @ContainerClass">
 
         <fieldset class="edit-radio-fieldset"
-                  id=@_id
-                  data-test-id=@_id
+                  id=@(ShowEditor ? _id : null)
+                  data-test-id=@(ShowEditor ? _id : null)
                   role=@(ShowEditor ? "radiogroup" : null)
                   aria-labelledby=@(ShowEditor && !ShouldHideLabel ? $"lbl-{_id}" : null)
                   aria-required=@(ShowEditor ? _isRequired : null)
