@@ -3,8 +3,11 @@
 @inject IJSRuntime JS
 
 <span class="wss-popconfirm-wrap">
-    <span class="wss-popconfirm-trigger" @ref="_triggerRef" tabindex="0" role="button"
-          aria-haspopup="dialog" aria-expanded=@(_open ? "true" : "false")
+    <span class="wss-popconfirm-trigger" @ref="_triggerRef" role="button"
+          tabindex=@(Disabled ? null : "0")
+          aria-haspopup=@(Disabled ? null : "dialog")
+          aria-disabled=@(Disabled ? "true" : null)
+          aria-expanded=@(Disabled ? null : (_open ? "true" : "false"))
           @onclick="Toggle" @onkeydown="OnTriggerKeyDown">@ChildContent</span>
     @if (_open)
     {

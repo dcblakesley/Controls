@@ -177,4 +177,20 @@ public class UiKitDialogControlsTests : TestContext
         Assert.False(dialog.HasAttribute("aria-labelledby")); // no title element to point at
         Assert.Empty(cut.FindAll(".wss-popconfirm-title"));
     }
+
+    [Fact]
+    public void Popconfirm_disabled_trigger_is_aria_disabled_and_out_of_the_tab_order()
+    {
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .Add(pc => pc.Disabled, true)
+            .AddChildContent("<button>del</button>"));
+
+        var trigger = cut.Find(".wss-popconfirm-trigger");
+        Assert.Equal("true", trigger.GetAttribute("aria-disabled"));
+        Assert.False(trigger.HasAttribute("tabindex"));      // removed from the tab order
+        Assert.False(trigger.HasAttribute("aria-haspopup")); // not announced as opening a dialog
+        cut.Find(".wss-popconfirm-trigger").Click();
+        Assert.Empty(cut.FindAll(".wss-popconfirm"));        // disabled → never opens
+    }
 }
