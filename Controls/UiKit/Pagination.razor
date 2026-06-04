@@ -5,11 +5,18 @@
             disabled="@(Clamped <= 1)" aria-label="Previous page" @onclick="@(() => GoAsync(Clamped - 1))">
         <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z"/></svg>
     </button>
-    @foreach (var p in Pages)
+    @foreach (var (p, idx) in PageItems.Select((p, i) => (p, i)))
     {
-        <button type="button" class="wss-pagination-item @(p == Clamped ? "wss-pagination-item-active" : null)"
-                aria-label="@($"Page {p}")" aria-current="@(p == Clamped ? "page" : null)"
-                @onclick="@(() => GoAsync(p))">@p</button>
+        @if (p == Ellipsis)
+        {
+            <span class="wss-pagination-ellipsis" aria-hidden="true" @key="idx">&#8230;</span>
+        }
+        else
+        {
+            <button type="button" class="wss-pagination-item @(p == Clamped ? "wss-pagination-item-active" : null)"
+                    aria-label="@($"Page {p}")" aria-current="@(p == Clamped ? "page" : null)" @key="idx"
+                    @onclick="@(() => GoAsync(p))">@p</button>
+        }
     }
     <button type="button" class="wss-pagination-next @(Clamped >= PageCount ? "wss-pagination-disabled" : null)"
             disabled="@(Clamped >= PageCount)" aria-label="Next page" @onclick="@(() => GoAsync(Clamped + 1))">
@@ -23,13 +30,63 @@
     [Parameter] public int Current { get; set; } = 1;
     [Parameter] public EventCallback<int> CurrentChanged { get; set; }
 
+    /// <summary> Pages to show either side of the current page before collapsing the rest behind an ellipsis. </summary>
+    [Parameter] public int SiblingCount { get; set; } = 1;
+
+    // Sentinel in PageItems marking a collapsed range (rendered as "…").
+    const int Ellipsis = 0;
+
     int PageCount => Math.Max(1, (int)Math.Ceiling((double)Total / Math.Max(1, PageSize)));
 
     // Treat an out-of-range Current (e.g. the parent didn't clamp after the item count shrank) as the
     // nearest valid page, so Previous/Next enable correctly instead of looking clickable but doing nothing.
     int Clamped => Math.Clamp(Current, 1, PageCount);
 
-    IEnumerable<int> Pages => Enumerable.Range(1, PageCount);
+    // Page buttons to render; Ellipsis marks a collapsed gap. Always shows the first and last page plus
+    // a window of SiblingCount pages around the current page, so a large PageCount renders a bounded set
+    // of buttons (AntD-style) instead of one per page. Collapses to a flat 1..N range when it all fits.
+    IReadOnlyList<int> PageItems
+    {
+        get
+        {
+            var count = PageCount;
+            var siblings = Math.Max(0, SiblingCount);
+
+            // first + last + current + 2*siblings window + 2 ellipses; at/under this every page fits.
+            var maxButtons = 2 * siblings + 5;
+            if (count <= maxButtons)
+                return Enumerable.Range(1, count).ToList();
+
+            var current = Clamped;
+            var left = Math.Max(current - siblings, 1);
+            var right = Math.Min(current + siblings, count);
+            var showLeftGap = left > 2;
+            var showRightGap = right < count - 1;
+
+            var items = new List<int>();
+            if (!showLeftGap && showRightGap)
+            {
+                items.AddRange(Enumerable.Range(1, 2 * siblings + 3));
+                items.Add(Ellipsis);
+                items.Add(count);
+            }
+            else if (showLeftGap && !showRightGap)
+            {
+                items.Add(1);
+                items.Add(Ellipsis);
+                items.AddRange(Enumerable.Range(count - (2 * siblings + 2), 2 * siblings + 3));
+            }
+            else
+            {
+                items.Add(1);
+                items.Add(Ellipsis);
+                items.AddRange(Enumerable.Range(left, right - left + 1));
+                items.Add(Ellipsis);
+                items.Add(count);
+            }
+            return items;
+        }
+    }
 
     async Task GoAsync(int page)
     {

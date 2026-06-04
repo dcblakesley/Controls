@@ -730,6 +730,16 @@
     border-color: var(--wss-color-border);
 }
 
+.wss-pagination-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    color: var(--wss-color-text);
+    user-select: none;
+}
+
 /* ============================================================================
  * Dialog action buttons (Modal / Popconfirm footers)
  * The standalone Button control is intentionally not part of this library, so

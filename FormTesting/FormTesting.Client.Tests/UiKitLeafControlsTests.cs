@@ -111,4 +111,35 @@ public class UiKitLeafControlsTests : TestContext
         prev.Click();
         Assert.Equal(2, page); // Previous navigates from the clamped 3 to 2, not an inert no-op
     }
+
+    [Fact]
+    public void Pagination_windows_large_page_counts_with_ellipsis()
+    {
+        var cut = RenderComponent<Pagination>(p => p
+            .Add(pg => pg.Total, 200)   // 200 / 10 => 20 pages
+            .Add(pg => pg.PageSize, 10)
+            .Add(pg => pg.Current, 10));
+
+        // Far more pages than fit: the middle collapses behind ellipses instead of 20 buttons.
+        var items = cut.FindAll(".wss-pagination-item");
+        Assert.True(items.Count < 20, $"expected a windowed set, got {items.Count} page buttons");
+        Assert.NotEmpty(cut.FindAll(".wss-pagination-ellipsis"));
+
+        // First and last page stay reachable, and the current page is marked.
+        Assert.Contains(items, i => i.TextContent == "1");
+        Assert.Contains(items, i => i.TextContent == "20");
+        Assert.Equal("10", cut.Find(".wss-pagination-item-active").TextContent);
+    }
+
+    [Fact]
+    public void Pagination_shows_every_page_when_they_all_fit()
+    {
+        var cut = RenderComponent<Pagination>(p => p
+            .Add(pg => pg.Total, 70)    // 70 / 10 => 7 pages (the no-ellipsis threshold)
+            .Add(pg => pg.PageSize, 10)
+            .Add(pg => pg.Current, 1));
+
+        Assert.Equal(7, cut.FindAll(".wss-pagination-item").Count);
+        Assert.Empty(cut.FindAll(".wss-pagination-ellipsis"));
+    }
 }
