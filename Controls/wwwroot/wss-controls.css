@@ -336,7 +336,8 @@
     transition: color 0.3s ease, opacity 0.15s ease;
 }
 
-.wss-select:hover .wss-select-clear {
+.wss-select:hover .wss-select-clear,
+.wss-select:focus-within .wss-select-clear {
     opacity: 1;
 }
 
