@@ -97,6 +97,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// </summary>
     protected override void OnParametersSet()
     {
+        base.OnParametersSet();
         if (_attributes is not null)
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
     }
