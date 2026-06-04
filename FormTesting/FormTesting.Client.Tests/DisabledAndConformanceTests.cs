@@ -135,4 +135,25 @@ public class DisabledAndConformanceTests : TestContext
         // The per-option read-only id must be sanitized via ToId() — no raw space (invalid/duplicate id).
         Assert.DoesNotContain(' ', cut.Find(".edit-readonly-value").Id ?? "");
     }
+
+    [Fact]
+    public void EditCheckedStringList_renders_its_id_in_edit_mode_so_the_validation_summary_link_resolves()
+    {
+        var model = new PersonModel { Tags = [] };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            b.CloseComponent();
+        }));
+
+        // ValidationView links each error to "#{id}"; in edit mode the control must render that id on
+        // a real element (the fieldset) or the skip-to-field summary link dangles. The cbx-/lbl-/
+        // error-msg- ids are all decorated, so only the fieldset can carry the bare {id}.
+        Assert.Single(cut.FindAll("#Tags"));
+        Assert.Equal("Tags", cut.Find("fieldset.edit-checkedList-fieldset").Id);
+    }
 }
