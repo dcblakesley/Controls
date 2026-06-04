@@ -216,14 +216,35 @@ public class ControlSmokeTests : TestContext
         }));
 
         var options = cut.FindAll("option");
-        Assert.Equal(4, options.Count);
-        // .ToId() yields safe ids — no spaces / punctuation.
+        Assert.Equal(5, options.Count); // 4 enum members + the leading empty/placeholder option (Priority is nullable)
+        // .ToId() yields safe ids — no spaces / punctuation (the empty option is "Priority-option-none").
         foreach (var opt in options)
         {
             var id = opt.Id ?? "";
             Assert.DoesNotContain(' ', id);
             Assert.StartsWith("Priority-option-", id);
         }
+    }
+
+    [Fact]
+    public void EditSelectEnum_nullable_renders_a_leading_empty_placeholder_option()
+    {
+        // Without it, a null value silently displays the first enum member and can't be cleared.
+        var model = new PersonModel { Priority = Priority.Medium };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "NullOptionText", "(none)");
+            b.CloseComponent();
+        }));
+
+        var options = cut.FindAll("option");
+        Assert.Equal("", options[0].GetAttribute("value"));    // empty option is first
+        Assert.Equal("(none)", options[0].TextContent.Trim()); // labelled by NullOptionText
     }
 
     [Fact]

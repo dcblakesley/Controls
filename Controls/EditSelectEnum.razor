@@ -18,6 +18,17 @@
                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                     aria-describedby=@_describedBy>
 
+                @* Nullable enum: a leading empty option so null is selectable and a null value shows
+                   blank instead of silently displaying the first member. *@
+                @if (_isNullable)
+                {
+                    <option class=@($"edit-select-option {CssClass}")
+                            value=""
+                            id=@($"{_id}-option-none")
+                            data-test-id=@($"{_id}-option-none")>
+                        @NullOptionText
+                    </option>
+                }
                 @foreach (var o in GetOptions())
                 {
                     <option title=@_attributes.Tooltip()

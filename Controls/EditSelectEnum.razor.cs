@@ -10,6 +10,12 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
     /// <summary> When true, sorts the enum options alphabetically by their display name. When false, uses the enum's numeric order.</summary>
     [Parameter] public bool Sort { get; set; }
 
+    /// <summary>
+    /// Text for the empty/placeholder option rendered only for a <b>nullable</b> enum, so the user can
+    /// represent and select "no value". Defaults to empty. Has no effect on a non-nullable enum.
+    /// </summary>
+    [Parameter] public string NullOptionText { get; set; } = "";
+
     Type _type = null!;
     Type _underlyingType = null!;
     bool _isNullable;
