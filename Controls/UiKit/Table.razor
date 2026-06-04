@@ -1,5 +1,7 @@
 @namespace Controls
 @typeparam TItem
+@implements IAsyncDisposable
+@inject IJSRuntime JS
 
 <CascadingValue Value="this" IsFixed="true">
     @ChildContent
@@ -17,7 +19,7 @@
                 {
                     <th scope="col" class="wss-table-cell wss-table-selection-cell">
                         <input type="checkbox" class="wss-table-checkbox" aria-label="Select all rows" checked="@AllSelected"
-                               @onchange="@(e => ToggleAll(e.Value is true))" />
+                               @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
                     </th>
                 }
                 @foreach (var col in _columns)
@@ -87,6 +89,8 @@
     IEnumerable<TItem>? _lastDataSource;
     IEnumerable<TItem>? _lastSelectedItems;
     int _page = 1;
+    ElementReference _selectAllRef;
+    IJSObjectReference? _jsModule;
 
     string SizeName => Size.ToString().ToLowerInvariant();
 
@@ -141,6 +145,45 @@
     bool IsSelected(TItem item) => _selected.Contains(item);
 
     bool AllSelected => _pageItems.Count > 0 && _pageItems.All(_selected.Contains);
+
+    // Some — but not all — of the current page is selected. The header checkbox then renders
+    // unchecked (AllSelected == false); we drive it to the native "mixed" state via JS so screen
+    // readers announce the partial selection (WCAG 4.1.2) instead of "not checked".
+    bool SomeSelected => _pageItems.Count > 0 && !AllSelected && _pageItems.Any(_selected.Contains);
+
+    // indeterminate is a DOM property with no HTML attribute, so it can only be set from JS. Runs
+    // after every render to keep the mixed state in step with the selection; degrades to a plain
+    // checkbox when there's no JS runtime (server prerender, unit tests).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!Selectable) return;
+        try
+        {
+            _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/WssBlazorControls/wss-table.js");
+            await _jsModule.InvokeVoidAsync("setIndeterminate", _selectAllRef, SomeSelected);
+        }
+        catch
+        {
+            // No JS runtime / module — the header checkbox just shows checked/unchecked.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_jsModule is not null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch
+            {
+                // Circuit may already be gone; nothing to clean up.
+            }
+            _jsModule = null;
+        }
+    }
 
     async Task ToggleRow(TItem item, bool on)
     {

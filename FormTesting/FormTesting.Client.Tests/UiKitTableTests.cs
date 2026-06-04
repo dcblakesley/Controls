@@ -8,6 +8,9 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class UiKitTableTests : TestContext
 {
+    // Table imports wss-table.js (to set the indeterminate select-all checkbox); tolerate the import.
+    public UiKitTableTests() => JSInterop.Mode = JSRuntimeMode.Loose;
+
     record Person(string Name, int Age);
 
     static List<Person> Sample() => [new("Alice", 30), new("Bob", 25)];
@@ -80,5 +83,22 @@ public class UiKitTableTests : TestContext
         Assert.Equal("Select all rows", cut.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
         Assert.All(cut.FindAll("tbody input.wss-table-checkbox"),
             cb => Assert.Equal("Select row", cb.GetAttribute("aria-label")));
+    }
+
+    [Fact]
+    public void Table_select_all_checkbox_is_not_checked_when_only_some_rows_are_selected()
+    {
+        var data = Sample(); // Alice, Bob
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectedItems, new List<Person> { data[0] }) // one of two selected
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        // Partial selection: the header checkbox is unchecked (the mixed/indeterminate state is then
+        // applied via JS, which bUnit can't observe) — it must not falsely render as fully checked.
+        Assert.False(cut.Find("thead input.wss-table-checkbox").HasAttribute("checked"));
     }
 }
