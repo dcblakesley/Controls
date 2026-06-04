@@ -43,11 +43,10 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
     }
     panel.style.setProperty('--wss-shift', `${Math.round(shift)}px`);
 
-    // Apply the (possibly flipped) placement class so the arrow ends up on the correct edge.
-    if (place !== placement) {
-        ['top', 'bottom', 'left', 'right'].forEach(d =>
-            panel.classList.toggle(`${prefix}-${d}`, d === place));
-    }
+    // Return the resolved side; the caller owns the placement class. We deliberately don't mutate
+    // classList here — the panel's class is a Blazor-bound attribute, so the re-render that drops
+    // `wss-measuring` would clobber any class we set. (--wss-shift is safe: it's an inline style
+    // property the markup never binds.) The `prefix` arg is kept for call-site/back-compat clarity.
     return place;
 }
 

@@ -9,9 +9,10 @@
     @if (_open)
     {
         <div class="wss-popover-backdrop" @onclick="Close"></div>
-        <div class="wss-popover wss-popover-@PlacementName @(_positioned ? null : "wss-measuring")"
+        <div class="wss-popover wss-popover-@(_resolvedPlacement ?? PlacementName) @(_positioned ? null : "wss-measuring")"
              @ref="_panelRef" role="dialog" tabindex="-1"
              aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"
+             aria-label="@(HasTitle ? null : AriaLabel)"
              aria-describedby="@($"{_id}-content")"
              @onkeydown="OnPanelKeyDown"
              @onclick:stopPropagation="true">
@@ -35,6 +36,8 @@
     /// <summary>The trigger element.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public PopupPlacement Placement { get; set; } = PopupPlacement.Top;
+    /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
 
     ElementReference _triggerRef;
     ElementReference _panelRef;
@@ -42,6 +45,9 @@
     bool _open;
     bool _positioned;
     bool _pendingFocus;
+    // Side the panel actually rendered on after the viewport flip. Null until measured (falls back to
+    // the preferred PlacementName). Owned by C# so the re-render that drops `wss-measuring` keeps it.
+    string? _resolvedPlacement;
     readonly string _id = $"wss-popover-{Guid.NewGuid():N}";
 
     string PlacementName => Placement.ToString().ToLowerInvariant();
@@ -73,7 +79,7 @@
             try
             {
                 _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
-                await _module.InvokeVoidAsync("place", _triggerRef, _panelRef, "wss-popover", PlacementName, 10, 8);
+                _resolvedPlacement = await _module.InvokeAsync<string>("place", _triggerRef, _panelRef, "wss-popover", PlacementName, 10, 8);
             }
             catch
             {
@@ -92,6 +98,7 @@
         else if (!_open && _positioned)
         {
             _positioned = false;
+            _resolvedPlacement = null; // re-measure on the next open
             try { await _triggerRef.FocusAsync(); } catch { /* restore focus to the trigger */ }
         }
     }
