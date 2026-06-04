@@ -71,7 +71,11 @@ public class DisabledAndConformanceTests : TestContext
             b.CloseComponent();
         }));
 
-        Assert.All(cut.FindAll("input[type=checkbox]"), c => Assert.True(c.HasAttribute("disabled")));
+        Assert.All(cut.FindAll("input[type=checkbox]"), c =>
+        {
+            Assert.True(c.HasAttribute("disabled"));
+            Assert.Equal("true", c.GetAttribute("aria-disabled")); // lowercase ARIA boolean, not "True"
+        });
     }
 
     [Fact]

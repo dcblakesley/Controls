@@ -19,7 +19,7 @@
 		<span class="edit-tooltip-content" 
 		      role="tooltip" 
 		      id="tooltip-@Id"
-		      aria-hidden="@(!isTooltipVisible)">
+		      aria-hidden=@(isTooltipVisible ? "false" : "true")>
 			@DisplayTooltip()
 		</span>
 	</button>

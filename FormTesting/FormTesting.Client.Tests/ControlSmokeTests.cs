@@ -311,4 +311,23 @@ public class ControlSmokeTests : TestContext
 
         Assert.Equal("lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
     }
+
+    [Fact]
+    public void LabelTooltip_content_uses_lowercase_aria_hidden()
+    {
+        var model = new PersonModel { Name = "Alice" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Tooltip", "Helpful hint");
+            b.CloseComponent();
+        }));
+
+        // Lowercase ARIA boolean — the CSS [aria-hidden="false"] reveal rule depends on it, not "True"/"False".
+        Assert.Equal("true", cut.Find(".edit-tooltip-content").GetAttribute("aria-hidden"));
+    }
 }

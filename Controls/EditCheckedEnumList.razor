@@ -21,7 +21,7 @@
                                    value=@option
                                    checked="@(Value?.Contains(option) == true)"
                                    disabled=@IsDisabled
-                                   aria-disabled=@IsDisabled
+                                   aria-disabled=@(IsDisabled ? "true" : null)
                                    aria-invalid=@(isInvalid ? "true" : null) aria-describedby=@_describedBy
                                    tabindex="0"
                                    @onchange="() => ToggleAsync(option)"
