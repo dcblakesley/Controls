@@ -110,6 +110,15 @@
         {
             _items = DataSource?.ToList() ?? new List<TItem>();
             _lastDataSource = DataSource;
+
+            // Drop selected rows that no longer exist in the new data, so an uncontrolled table
+            // doesn't keep ghost references and emit them in the next SelectedItemsChanged payload.
+            // (Controlled mode re-syncs from SelectedItems below, so only prune when uncontrolled.)
+            if (Selectable && SelectedItems is null && _selected.Count > 0)
+            {
+                var present = new HashSet<TItem>(_items);
+                _selected.RemoveWhere(i => !present.Contains(i));
+            }
         }
 
         if (IsPaged)

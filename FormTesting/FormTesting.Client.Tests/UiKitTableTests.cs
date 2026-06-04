@@ -86,6 +86,34 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void Table_prunes_selection_when_the_data_source_is_swapped_uncontrolled()
+    {
+        List<Person>? selected = null;
+        var first = new List<Person> { new("Alice", 30), new("Bob", 25) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, first)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody input.wss-table-checkbox")[0].Change(true); // select Alice
+        Assert.Single(selected!);
+
+        // Swap to a new data source that shares no rows with the old one.
+        var second = new List<Person> { new("Carol", 40), new("Dave", 22) };
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, second));
+
+        // Selecting a row in the new data must not drag the now-absent Alice along.
+        cut.FindAll("tbody input.wss-table-checkbox")[0].Change(true); // select Carol
+        Assert.NotNull(selected);
+        Assert.Single(selected!);
+        Assert.Equal("Carol", selected![0].Name);
+    }
+
+    [Fact]
     public void Table_select_all_checkbox_is_not_checked_when_only_some_rows_are_selected()
     {
         var data = Sample(); // Alice, Bob
