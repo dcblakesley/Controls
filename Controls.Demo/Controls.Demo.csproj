@@ -4,8 +4,9 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <!-- Only auto-pack on Release builds; otherwise dev/inner-loop builds repack on every save. -->
-    <GeneratePackageOnBuild Condition="'$(Configuration)' == 'Release'">True</GeneratePackageOnBuild>
+    <!-- No GeneratePackageOnBuild: it conflicts with `dotnet pack` on a multi-targeted Razor class
+         library (NU5026/NU5019 from clean) and the documented publish uses `dotnet pack -o ./nupkg`
+         then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls Demo</Title>
     <PackageId>WssBlazorControls.Demo</PackageId>
 	  <AssemblyVersion>10.1.0</AssemblyVersion>
