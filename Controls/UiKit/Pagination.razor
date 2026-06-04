@@ -79,9 +79,11 @@
             else
             {
                 items.Add(1);
-                items.Add(Ellipsis);
+                // A gap of a single page is shown rather than hidden behind an ellipsis that would
+                // occupy the same width (e.g. 8 pages at current 4: show "2", don't collapse it).
+                if (left == 3) items.Add(2); else items.Add(Ellipsis);
                 items.AddRange(Enumerable.Range(left, right - left + 1));
-                items.Add(Ellipsis);
+                if (right == count - 2) items.Add(count - 1); else items.Add(Ellipsis);
                 items.Add(count);
             }
             return items;

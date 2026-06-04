@@ -142,4 +142,19 @@ public class UiKitLeafControlsTests : TestContext
         Assert.Equal(7, cut.FindAll(".wss-pagination-item").Count);
         Assert.Empty(cut.FindAll(".wss-pagination-ellipsis"));
     }
+
+    [Fact]
+    public void Pagination_shows_a_single_gap_page_instead_of_an_ellipsis()
+    {
+        var cut = RenderComponent<Pagination>(p => p
+            .Add(pg => pg.Total, 80)    // 80 / 10 => 8 pages
+            .Add(pg => pg.PageSize, 10)
+            .Add(pg => pg.Current, 4));
+
+        // Only page 2 is "missing" on the left — show it rather than hide one page behind an ellipsis
+        // that takes the same width. The right side still collapses {6,7}.
+        var labels = cut.FindAll(".wss-pagination-item").Select(i => i.TextContent).ToArray();
+        Assert.Equal(new[] { "1", "2", "3", "4", "5", "8" }, labels);
+        Assert.Single(cut.FindAll(".wss-pagination-ellipsis"));
+    }
 }
