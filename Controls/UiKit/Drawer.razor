@@ -84,6 +84,9 @@
             {
                 _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
                 _focusHandle = await _module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
+                // Closed while awaiting the import/activation? The close path already ran with a null
+                // handle, so release the one we just acquired — otherwise the body-scroll lock leaks.
+                if (!Visible) await ReleaseFocusAsync();
             }
             catch { /* no JS — drawer still usable */ }
         }
