@@ -56,17 +56,21 @@ Install-Package WssBlazorControls
     <DataAnnotationsValidator />
     
     <EditString @bind-Value="model.Name" 
+                Field="@(() => model.Name)"
                 Label="Full Name" 
                 IsRequired="true" />
     
     <EditNumber @bind-Value="model.Age" 
+                Field="@(() => model.Age)"
                 Label="Age" 
                 IsRequired="true" />
     
     <EditDate @bind-Value="model.BirthDate" 
+              Field="@(() => model.BirthDate)"
               Label="Birth Date" />
     
     <EditBool @bind-Value="model.IsActive" 
+              Field="@(() => model.IsActive)"
               Label="Active Status" />
     
     <button type="submit">Submit</button>
@@ -175,6 +179,7 @@ All form controls implement the `IEditControl` interface and provide:
 
 ```razor
 <EditSelectEnum @bind-Value="model.Priority" 
+                Field="@(() => model.Priority)"
                 Label="Priority Level" 
                 IsRequired="true" />
 
@@ -199,6 +204,7 @@ All form controls implement the `IEditControl` interface and provide:
 
 ```razor
 <EditRadioString @bind-Value="model.Department" 
+                 Field="@(() => model.Department)"
                  Label="Department"
                  Options="@departments" />
 
@@ -217,6 +223,7 @@ All form controls implement the `IEditControl` interface and provide:
 
 ```razor
 <EditCheckedStringList @bind-Value="model.Skills" 
+                       Field="@(() => model.Skills)"
                        Label="Technical Skills"
                        Options="@skills" />
 
@@ -243,6 +250,7 @@ The AntDesign-style UI-kit controls (Alert, Modal, Table, Select, ...) are theme
 
 ```razor
 <EditString @bind-Value="model.Name" 
+            Field="@(() => model.Name)"
             Label="Name" 
             ContainerClass="my-custom-style" />
 ```
