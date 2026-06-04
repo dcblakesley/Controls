@@ -28,6 +28,9 @@ public partial class Select<TValue> : IAsyncDisposable
     ElementReference _dropdownRef;
     ElementReference _wrapperRef;
     CancellationTokenSource? _debounceCts;
+    // True while a debounced search has updated _searchText but not yet rebuilt _filtered. Keyboard
+    // navigation/selection flushes it first so it never acts on the pre-keystroke filtered list.
+    bool _searchPending;
     bool _open;
     bool _dropdownPositioned;
     bool _focused;
@@ -326,6 +329,9 @@ public partial class Select<TValue> : IAsyncDisposable
         _open = false;
         _focused = false;
         _searchText = string.Empty;
+        // Drop any in-flight debounced search so it can't re-fire against the now-closed dropdown.
+        _debounceCts?.Cancel();
+        _searchPending = false;
         RebuildFiltered();
         // No StateHasChanged: every caller (wrapper/option/backdrop click, Escape keydown) is an
         // event handler, after which Blazor re-renders automatically.
@@ -349,13 +355,14 @@ public partial class Select<TValue> : IAsyncDisposable
         _debounceCts?.Dispose();
         _debounceCts = new CancellationTokenSource();
         var token = _debounceCts.Token;
+        _searchPending = true;
         try
         {
             await Task.Delay(DebounceMilliseconds, token);
         }
         catch (TaskCanceledException)
         {
-            return; // superseded by a newer keystroke
+            return; // superseded by a newer keystroke (or flushed by a keyboard action)
         }
 
         await ApplySearchAsync();
@@ -364,9 +371,20 @@ public partial class Select<TValue> : IAsyncDisposable
 
     async Task ApplySearchAsync()
     {
+        _searchPending = false;
         _activeIndex = 0;
         RebuildFiltered();
         if (OnSearch.HasDelegate) await OnSearch.InvokeAsync(_searchText);
+    }
+
+    // Apply a still-pending debounced search immediately, so keyboard navigation/selection sees the
+    // list filtered by what the user has actually typed. Cancels the timer so it can't re-fire and
+    // reset the active index afterwards. No-op when nothing is pending (the common, non-debounced path).
+    async Task FlushPendingSearchAsync()
+    {
+        if (!_searchPending) return;
+        _debounceCts?.Cancel();
+        await ApplySearchAsync();
     }
 
     async Task SelectAsync(SelectOption<TValue> option)
@@ -462,6 +480,11 @@ public partial class Select<TValue> : IAsyncDisposable
 
     async Task OnKeyDownAsync(KeyboardEventArgs e)
     {
+        // A debounced search may have updated the text but not yet rebuilt _filtered; flush it before
+        // any key that navigates or commits against that list, so it reflects what the user typed.
+        if (_searchPending && e.Key is "Enter" or "ArrowDown" or "ArrowUp" or "Home" or "End")
+            await FlushPendingSearchAsync();
+
         switch (e.Key)
         {
             case "ArrowDown":
