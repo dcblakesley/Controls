@@ -704,7 +704,12 @@
     align-items: center;
     justify-content: center;
     min-width: 32px;
+    /* min-height (not just height) so a consumer reset like `button { max-height: fit-content }`
+       can't collapse the buttons to content height — a min-height floor beats a max-height clamp,
+       keeping every pager button a consistent 32px square (the icon-only prev/next included). */
     height: 32px;
+    min-height: 32px;
+    box-sizing: border-box;
     padding: 0 6px;
     font-size: var(--wss-font-size);
     font-family: inherit; /* <button> elements default to the system font otherwise */
@@ -750,6 +755,7 @@
     justify-content: center;
     min-width: 32px;
     height: 32px;
+    min-height: 32px;
     color: var(--wss-color-text);
     user-select: none;
 }
@@ -1127,8 +1133,20 @@
 
 .wss-table-pagination {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-end; /* default; overridden by the align modifier classes below */
     margin-top: 16px;
+}
+
+.wss-table-pagination-left {
+    justify-content: flex-start;
+}
+
+.wss-table-pagination-center {
+    justify-content: center;
+}
+
+.wss-table-pagination-right {
+    justify-content: flex-end;
 }
 
 .wss-table-actions {

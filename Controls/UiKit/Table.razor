@@ -7,6 +7,9 @@
     @ChildContent
 </CascadingValue>
 
+@* Single root block so the table + pager don't pick up extra spacing from a parent's
+   flex/grid gap stacking on top of the pager's own margin. *@
+<div class="wss-table-root">
 <div class="wss-table-wrapper">
     <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName">
         @if (!string.IsNullOrEmpty(Caption))
@@ -75,10 +78,11 @@
 
 @if (IsPaged && _items.Count > 0)
 {
-    <div class="wss-table-pagination">
+    <div class="wss-table-pagination wss-table-pagination-@PagerAlignName">
         <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange" />
     </div>
 }
+</div>
 
 @code {
     [Parameter] public IEnumerable<TItem>? DataSource { get; set; }
@@ -92,6 +96,9 @@
 
     /// <summary>Rows per page; 0 (default) shows all rows without pagination.</summary>
     [Parameter] public int PageSize { get; set; }
+
+    /// <summary>Horizontal alignment of the pager beneath the table. Defaults to <see cref="PagerAlign.Right"/> (AntD default).</summary>
+    [Parameter] public PagerAlign PagerAlign { get; set; } = PagerAlign.Right;
 
     [Parameter] public bool Selectable { get; set; }
     [Parameter] public IEnumerable<TItem>? SelectedItems { get; set; }
@@ -111,6 +118,8 @@
     IJSObjectReference? _jsModule;
 
     string SizeName => Size.ToString().ToLowerInvariant();
+
+    string PagerAlignName => PagerAlign.ToString().ToLowerInvariant();
 
     bool IsPaged => PageSize > 0;
 

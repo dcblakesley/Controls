@@ -169,6 +169,20 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void Table_pager_alignment_renders_the_modifier_class()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.PageSize, 1) // force the pager to render
+            .Add(t => t.PagerAlign, PagerAlign.Left)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Contains("wss-table-pagination-left", cut.Find(".wss-table-pagination").ClassName);
+    }
+
+    [Fact]
     public void Table_custom_column_with_SortBy_is_sortable()
     {
         var cut = RenderComponent<Table<Person>>(p => p

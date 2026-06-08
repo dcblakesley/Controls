@@ -35,6 +35,14 @@ public enum TableSize
     Small
 }
 
+/// <summary>Horizontal alignment of a paged <see cref="Table{TItem}"/>'s pager.</summary>
+public enum PagerAlign
+{
+    Left,
+    Center,
+    Right
+}
+
 /// <summary>Sort state of a <see cref="Table{TItem}"/> column.</summary>
 public enum SortDirection
 {
