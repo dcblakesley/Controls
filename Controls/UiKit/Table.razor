@@ -10,6 +10,12 @@
 @* Single root block so the table + pager don't pick up extra spacing from a parent's
    flex/grid gap stacking on top of the pager's own margin. *@
 <div class="wss-table-root">
+@if (ShowTopPager)
+{
+    <div class="wss-table-pagination wss-table-pagination-top wss-table-pagination-@PagerAlignName">
+        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange" />
+    </div>
+}
 <div class="wss-table-wrapper">
     <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName">
         @if (!string.IsNullOrEmpty(Caption))
@@ -76,9 +82,9 @@
     </table>
 </div>
 
-@if (IsPaged && _items.Count > 0)
+@if (ShowBottomPager)
 {
-    <div class="wss-table-pagination wss-table-pagination-@PagerAlignName">
+    <div class="wss-table-pagination wss-table-pagination-bottom wss-table-pagination-@PagerAlignName">
         <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange" />
     </div>
 }
@@ -97,8 +103,11 @@
     /// <summary>Rows per page; 0 (default) shows all rows without pagination.</summary>
     [Parameter] public int PageSize { get; set; }
 
-    /// <summary>Horizontal alignment of the pager beneath the table. Defaults to <see cref="PagerAlign.Right"/> (AntD default).</summary>
+    /// <summary>Horizontal alignment of the pager. Defaults to <see cref="PagerAlign.Right"/> (AntD default).</summary>
     [Parameter] public PagerAlign PagerAlign { get; set; } = PagerAlign.Right;
+
+    /// <summary>Whether the pager renders above, below, or both above and below the table. Defaults to <see cref="PagerPosition.Bottom"/>.</summary>
+    [Parameter] public PagerPosition PagerPosition { get; set; } = PagerPosition.Bottom;
 
     [Parameter] public bool Selectable { get; set; }
     [Parameter] public IEnumerable<TItem>? SelectedItems { get; set; }
@@ -122,6 +131,10 @@
     string PagerAlignName => PagerAlign.ToString().ToLowerInvariant();
 
     bool IsPaged => PageSize > 0;
+
+    bool HasPager => IsPaged && _items.Count > 0;
+    bool ShowTopPager => HasPager && PagerPosition is PagerPosition.Top or PagerPosition.Both;
+    bool ShowBottomPager => HasPager && PagerPosition is PagerPosition.Bottom or PagerPosition.Both;
 
     // Reorders _items into _sorted by the active column/direction (stable: ties keep their original
     // order via the index tie-break). Unsorted falls back to the original list with no copy.

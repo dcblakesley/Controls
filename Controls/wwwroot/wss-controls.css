@@ -1134,6 +1134,14 @@
 .wss-table-pagination {
     display: flex;
     justify-content: flex-end; /* default; overridden by the align modifier classes below */
+}
+
+/* The pager spaces toward the table: a bottom pager pushes down from it, a top pager up. */
+.wss-table-pagination-top {
+    margin-bottom: 16px;
+}
+
+.wss-table-pagination-bottom {
     margin-top: 16px;
 }
 

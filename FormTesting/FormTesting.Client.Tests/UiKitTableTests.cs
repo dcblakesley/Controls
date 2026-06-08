@@ -183,6 +183,39 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void Table_pager_position_top_renders_a_single_top_pager()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.PageSize, 1)
+            .Add(t => t.PagerPosition, PagerPosition.Top)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var pagers = cut.FindAll(".wss-table-pagination");
+        Assert.Single(pagers);
+        Assert.Contains("wss-table-pagination-top", pagers[0].ClassName);
+    }
+
+    [Fact]
+    public void Table_pager_position_both_renders_a_top_and_a_bottom_pager()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.PageSize, 1)
+            .Add(t => t.PagerPosition, PagerPosition.Both)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var pagers = cut.FindAll(".wss-table-pagination");
+        Assert.Equal(2, pagers.Count);
+        Assert.Contains("wss-table-pagination-top", pagers[0].ClassName);
+        Assert.Contains("wss-table-pagination-bottom", pagers[1].ClassName);
+    }
+
+    [Fact]
     public void Table_custom_column_with_SortBy_is_sortable()
     {
         var cut = RenderComponent<Table<Person>>(p => p

@@ -43,6 +43,14 @@ public enum PagerAlign
     Right
 }
 
+/// <summary>Where a paged <see cref="Table{TItem}"/> renders its pager(s).</summary>
+public enum PagerPosition
+{
+    Bottom,
+    Top,
+    Both
+}
+
 /// <summary>Sort state of a <see cref="Table{TItem}"/> column.</summary>
 public enum SortDirection
 {

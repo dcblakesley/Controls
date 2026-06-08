@@ -69,7 +69,7 @@
 
     <section class="demo-section">
         <h3>Table (selectable, sortable, paged)</h3>
-        <Table TItem="Row" DataSource="_rows" Selectable="true" PageSize="5"
+        <Table TItem="Row" DataSource="_rows" Selectable="true" PageSize="5" PagerPosition="PagerPosition.Both"
                SelectedItems="_selectedRows" SelectedItemsChanged="@(s => _selectedRows = s.ToList())">
             <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" Sortable="true" />
             <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" Sortable="true" />
