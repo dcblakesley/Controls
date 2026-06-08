@@ -69,12 +69,12 @@
 
     <section class="demo-section">
         <h3>Table (selectable, sortable, paged)</h3>
-        <Table TItem="Row" DataSource="_rows" Selectable="true" PageSize="5" Bordered="true"
+        <Table TItem="Row" DataSource="_rows" Selectable="true" PageSize="5"
                SelectedItems="_selectedRows" SelectedItemsChanged="@(s => _selectedRows = s.ToList())">
             <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" Sortable="true" />
             <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" Sortable="true" />
             <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" Sortable="true" />
-            <ActionColumn TItem="Row">
+            <ActionColumn TItem="Row" Title="Action">
                 <button class="wss-dialog-btn wss-dialog-btn-sm">Edit</button>
             </ActionColumn>
         </Table>
