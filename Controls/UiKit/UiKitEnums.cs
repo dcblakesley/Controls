@@ -34,3 +34,12 @@ public enum TableSize
     Middle,
     Small
 }
+
+/// <summary>Sort state of a <see cref="Table{TItem}"/> column.</summary>
+public enum SortDirection
+{
+    /// <summary>Unsorted — rows keep their original <c>DataSource</c> order.</summary>
+    None,
+    Ascending,
+    Descending
+}

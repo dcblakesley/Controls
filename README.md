@@ -157,7 +157,7 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Modal`** - Dialog with `@bind-Visible`, footer, mask-close
 - **`Drawer`** - Slide-in panel (4 placements)
 - **`Popconfirm`** - Inline confirm popover
-- **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging
+- **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging, and column sorting (`Sortable="true"` on a `PropertyColumn`, or a `SortBy` comparison on any column)
 - **Toasts & notifications** - two paths with identical rendering: **scoped / Server-safe** (`IMessageService` / `INotificationService` via `builder.Services.AddWssControlsToasts()` + `<MessageContainer />` / `<NotificationContainer />`), or **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + `<WasmMessageContainer />` / `<WasmNotificationContainer />`). On Blazor Server use the scoped path — the static `Wasm*` services hold process-static state that would bleed across users.
 
 > `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
@@ -288,6 +288,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Changelog
 
 ### Unreleased
+
+**New: `Table` column sorting**
+- Columns can now sort. Set `Sortable="true"` on a `PropertyColumn` (the comparison is derived from its `Property` via `Comparer<T>.Default`), or supply a `SortBy` comparison on any `Column` for custom / template columns. Clicking a sortable header cycles ascending -> descending -> unsorted (restoring the original `DataSource` order); the sort is stable (ties keep their original order). Headers expose `aria-sort` (`ascending` / `descending` / `none`) and a keyboard-focusable `<button>` so the feature is screen-reader- and keyboard-accessible. Sorting resets to page 1 and survives a `DataSource` swap.
 
 **Accessibility, theming & performance (audit follow-up)**
 - **Grouped controls now surface validation state.** The radio controls (`EditRadio`, `EditRadioEnum`, `EditRadioString`, `EditBoolNullRadio`) expose `aria-invalid` / `aria-required` / `aria-describedby` on a `role="radiogroup"` `<fieldset>` named by its legend (previously splatted onto `<InputRadioGroup>`, which renders no element — so they didn't reliably appear). The checkbox lists (`EditCheckedStringList`, `EditCheckedEnumList`) mark each checkbox `aria-invalid` (they had none). And because the list controls are `ComponentBase` (not `InputBase`), they now subscribe to the `EditContext` so their invalid state updates live on validation — matching the scalar controls. This completes "`aria-invalid` on every editable control".

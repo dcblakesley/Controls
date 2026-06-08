@@ -11,6 +11,20 @@ public class PropertyColumn<TItem, TProp> : Column<TItem>
     /// <summary>Optional format string for <see cref="IFormattable"/> values.</summary>
     [Parameter] public string? Format { get; set; }
 
+    /// <summary>
+    /// Makes the column header sortable. The comparison is derived from <see cref="Property"/>
+    /// via <see cref="Comparer{T}.Default"/> (so <typeparamref name="TProp"/> must be comparable);
+    /// set <c>SortBy</c> to supply a custom comparison instead.
+    /// </summary>
+    [Parameter] public bool Sortable { get; set; }
+
+    public override bool CanSort => (Sortable && Property is not null) || SortBy is not null;
+
+    public override int Compare(TItem a, TItem b) =>
+        SortBy is not null
+            ? SortBy(a, b)
+            : Comparer<TProp>.Default.Compare(Property!(a), Property!(b));
+
     public override RenderFragment CellFor(TItem item) => builder =>
     {
         object? value = Property != null ? Property(item) : null;

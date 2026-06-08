@@ -24,7 +24,22 @@
                 }
                 @foreach (var col in _columns)
                 {
-                    <th scope="col" class="wss-table-cell">@col.HeaderText</th>
+                    @if (col.CanSort)
+                    {
+                        <th scope="col" class="wss-table-cell wss-table-cell-sortable" aria-sort="@AriaSortFor(col)">
+                            <button type="button" class="wss-table-sort-trigger" @onclick="@(() => ToggleSort(col))">
+                                <span class="wss-table-sort-label">@col.HeaderText</span>
+                                <span class="wss-table-sorter" aria-hidden="true">
+                                    <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
+                                    <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
+                                </span>
+                            </button>
+                        </th>
+                    }
+                    else
+                    {
+                        <th scope="col" class="wss-table-cell">@col.HeaderText</th>
+                    }
                 }
             </tr>
         </thead>
@@ -84,11 +99,14 @@
 
     readonly List<Column<TItem>> _columns = new();
     readonly HashSet<TItem> _selected = new();
-    List<TItem> _items = new();
+    List<TItem> _items = new();      // original DataSource order — the source of truth
+    List<TItem> _sorted = new();     // _items reordered by the active sort (or _items itself when unsorted)
     List<TItem> _pageItems = new();
     IEnumerable<TItem>? _lastDataSource;
     IEnumerable<TItem>? _lastSelectedItems;
     int _page = 1;
+    Column<TItem>? _sortColumn;
+    SortDirection _sortDirection = SortDirection.None;
     ElementReference _selectAllRef;
     IJSObjectReference? _jsModule;
 
@@ -96,10 +114,67 @@
 
     bool IsPaged => PageSize > 0;
 
-    // Rebuilt only when the page / data / page-size change (OnParametersSet, OnPageChange), so the
-    // row loop and AllSelected don't each re-materialize the page on every render.
+    // Reorders _items into _sorted by the active column/direction (stable: ties keep their original
+    // order via the index tie-break). Unsorted falls back to the original list with no copy.
+    void ApplySort()
+    {
+        if (_sortColumn is null || _sortDirection == SortDirection.None)
+        {
+            _sorted = _items;
+            return;
+        }
+
+        var col = _sortColumn;
+        var sign = _sortDirection == SortDirection.Ascending ? 1 : -1;
+        _sorted = _items
+            .Select((item, index) => (item, index))
+            .OrderBy(x => x, Comparer<(TItem item, int index)>.Create((a, b) =>
+            {
+                var c = sign * col.Compare(a.item, b.item);
+                return c != 0 ? c : a.index - b.index;
+            }))
+            .Select(x => x.item)
+            .ToList();
+    }
+
+    // Rebuilt only when the page / data / page-size / sort change, so the row loop and AllSelected
+    // don't each re-materialize the page on every render.
     void RebuildPageItems() =>
-        _pageItems = IsPaged ? _items.Skip((_page - 1) * PageSize).Take(PageSize).ToList() : _items;
+        _pageItems = IsPaged ? _sorted.Skip((_page - 1) * PageSize).Take(PageSize).ToList() : _sorted;
+
+    bool IsActive(Column<TItem> col, SortDirection direction) =>
+        ReferenceEquals(_sortColumn, col) && _sortDirection == direction;
+
+    // aria-sort per WAI-ARIA: the active column reports its direction, other sortable columns "none".
+    string AriaSortFor(Column<TItem> col) =>
+        ReferenceEquals(_sortColumn, col) && _sortDirection != SortDirection.None
+            ? (_sortDirection == SortDirection.Ascending ? "ascending" : "descending")
+            : "none";
+
+    // Header click cycles a column ascending -> descending -> unsorted, and resets to page 1 so the
+    // newly ordered rows are shown from the top. EventCallback re-renders, so no StateHasChanged.
+    void ToggleSort(Column<TItem> col)
+    {
+        if (!ReferenceEquals(_sortColumn, col))
+        {
+            _sortColumn = col;
+            _sortDirection = SortDirection.Ascending;
+        }
+        else
+        {
+            _sortDirection = _sortDirection switch
+            {
+                SortDirection.Ascending => SortDirection.Descending,
+                SortDirection.Descending => SortDirection.None,
+                _ => SortDirection.Ascending,
+            };
+            if (_sortDirection == SortDirection.None) _sortColumn = null;
+        }
+
+        _page = 1;
+        ApplySort();
+        RebuildPageItems();
+    }
 
     protected override void OnParametersSet()
     {
@@ -119,6 +194,10 @@
                 var present = new HashSet<TItem>(_items);
                 _selected.RemoveWhere(i => !present.Contains(i));
             }
+
+            // Re-derive the sorted view from the new data (the column reference is stable, so the
+            // active sort persists across a DataSource swap).
+            ApplySort();
         }
 
         if (IsPaged)

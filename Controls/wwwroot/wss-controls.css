@@ -1136,6 +1136,69 @@
     background: var(--wss-color-bg-selected);
 }
 
+/* Sortable headers */
+.wss-table-thead .wss-table-cell-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.wss-table-thead .wss-table-cell-sortable:hover {
+    background: var(--wss-color-bg-selected);
+}
+
+/* Header sort control — a bare button that inherits the header's typography. */
+.wss-table-sort-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.wss-table-sort-trigger:focus-visible {
+    outline: 2px solid var(--wss-color-primary);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* The up/down caret stack, drawn with CSS triangles (no Icon component in this library). */
+.wss-table-sorter {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.wss-table-sorter-up,
+.wss-table-sorter-down {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+}
+
+.wss-table-sorter-up {
+    border-bottom: 5px solid var(--wss-color-text-disabled);
+}
+
+.wss-table-sorter-down {
+    border-top: 5px solid var(--wss-color-text-disabled);
+}
+
+.wss-table-sorter-up.wss-table-sorter-active {
+    border-bottom-color: var(--wss-color-primary);
+}
+
+.wss-table-sorter-down.wss-table-sorter-active {
+    border-top-color: var(--wss-color-primary);
+}
+
 /* Sizes */
 .wss-table-middle .wss-table-cell {
     padding: 10px 12px;
