@@ -157,7 +157,7 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Modal`** - Dialog with `@bind-Visible`, footer, mask-close
 - **`Drawer`** - Slide-in panel (4 placements)
 - **`Popconfirm`** - Inline confirm popover
-- **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging (pager position via `PagerAlign`), and column sorting (`Sortable="true"` on a `PropertyColumn`, or a `SortBy` comparison on any column)
+- **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging (pager placement via `PagerPosition` = Top/Bottom/Both and alignment via `PagerAlign`), and column sorting (`Sortable="true"` on a `PropertyColumn`, or a `SortBy` comparison on any column)
 - **Toasts & notifications** - two paths with identical rendering: **scoped / Server-safe** (`IMessageService` / `INotificationService` via `builder.Services.AddWssControlsToasts()` + `<MessageContainer />` / `<NotificationContainer />`), or **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + `<WasmMessageContainer />` / `<WasmNotificationContainer />`). On Blazor Server use the scoped path — the static `Wasm*` services hold process-static state that would bleed across users.
 
 > `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
@@ -293,7 +293,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Columns can now sort. Set `Sortable="true"` on a `PropertyColumn` (the comparison is derived from its `Property` via `Comparer<T>.Default`), or supply a `SortBy` comparison on any `Column` for custom / template columns. Clicking a sortable header cycles ascending -> descending -> unsorted (restoring the original `DataSource` order); the sort is stable (ties keep their original order). Headers expose `aria-sort` (`ascending` / `descending` / `none`) and a keyboard-focusable `<button>` so the feature is screen-reader- and keyboard-accessible. Sorting resets to page 1 and survives a `DataSource` swap.
 
 **`Table` / `Pagination` polish**
-- The table pager position is now configurable: `PagerAlign="Left | Center | Right"` (default `Right`, matching AntD).
+- The table pager is now configurable: `PagerPosition="Top | Bottom | Both"` (default `Bottom`) places it above, below, or both above and below the table, and `PagerAlign="Left | Center | Right"` (default `Right`, matching AntD) aligns it horizontally. When `Both`, the two pagers stay synced to the same page.
 - The pager buttons now hold a consistent 32px square via a `min-height` floor, so an aggressive consumer reset such as `button { max-height: fit-content }` can no longer collapse them to content height (which made the icon-only prev/next buttons render shorter than the numbered ones).
 - The `Table` now renders its grid and pager inside a single root element, so a parent's flex/grid `gap` doesn't stack on top of the pager's margin and inflate the space between the table and its pager.
 
