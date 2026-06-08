@@ -40,10 +40,12 @@
     --wss-color-bg-disabled: #f5f5f5;
     --wss-color-bg-hover: #f5f5f5;
     --wss-color-bg-selected: #e6f7ff;
+    --wss-color-bg-selected-hover: #dcf4ff;
     --wss-color-border: var(--border-color, #d9d9d9);
     --wss-color-split: #f0f0f0;
     --wss-color-mask: rgba(0, 0, 0, 0.45);
     --wss-color-thead-bg: #fafafa;
+    --wss-color-thead-split: rgba(0, 0, 0, 0.06);
     --wss-skeleton-base: rgba(0, 0, 0, 0.06);
     --wss-skeleton-shine: rgba(0, 0, 0, 0.12);
 
@@ -729,7 +731,7 @@
 .wss-pagination-item-active {
     color: var(--wss-color-primary);
     border-color: var(--wss-color-primary);
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .wss-pagination-disabled {
@@ -1079,16 +1081,30 @@
 }
 
 .wss-table-cell {
-    padding: 12px 16px;
+    padding: 16px 16px;
     text-align: left;
     border-bottom: 1px solid var(--wss-color-split);
 }
 
 .wss-table-thead .wss-table-cell {
+    position: relative; /* anchors the column-split separator (::before) */
     background: var(--wss-color-thead-bg);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--wss-color-text);
     white-space: nowrap;
+}
+
+/* Thin vertical separator between header cells (AntD trait); never after the
+   selection column or the last header cell. */
+.wss-table-thead .wss-table-cell:not(:last-child):not(.wss-table-selection-cell)::before {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    width: 1px;
+    height: 1.6em;
+    background-color: var(--wss-color-thead-split);
+    transform: translateY(-50%);
+    content: "";
 }
 
 .wss-table-tbody .wss-table-row:hover .wss-table-cell {
@@ -1097,6 +1113,11 @@
 
 .wss-table-bordered .wss-table-cell {
     border: 1px solid var(--wss-color-split);
+}
+
+/* The cell borders already separate bordered header cells — drop the ::before line. */
+.wss-table-bordered .wss-table-thead .wss-table-cell::before {
+    display: none;
 }
 
 .wss-table-placeholder .wss-table-cell {
@@ -1133,7 +1154,7 @@
 }
 
 .wss-table-tbody .wss-table-row-selected:hover .wss-table-cell {
-    background: var(--wss-color-bg-selected);
+    background: var(--wss-color-bg-selected-hover);
 }
 
 /* Sortable headers */
@@ -1142,8 +1163,17 @@
     user-select: none;
 }
 
+/* The actively-sorted column is tinted in both the header and its body cells. */
+.wss-table-thead .wss-table-cell-sort-active {
+    background: var(--wss-color-bg-hover);
+}
+
+.wss-table-tbody .wss-table-cell-sort-active {
+    background: var(--wss-color-thead-bg);
+}
+
 .wss-table-thead .wss-table-cell-sortable:hover {
-    background: var(--wss-color-bg-selected);
+    background: var(--wss-color-bg-hover);
 }
 
 /* Header sort control — a bare button that inherits the header's typography. */
@@ -1199,9 +1229,9 @@
     border-top-color: var(--wss-color-primary);
 }
 
-/* Sizes */
+/* Sizes (match AntD's table density steps) */
 .wss-table-middle .wss-table-cell {
-    padding: 10px 12px;
+    padding: 12px 8px;
 }
 
 .wss-table-small .wss-table-cell {

@@ -26,7 +26,7 @@
                 {
                     @if (col.CanSort)
                     {
-                        <th scope="col" class="wss-table-cell wss-table-cell-sortable" aria-sort="@AriaSortFor(col)">
+                        <th scope="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)" aria-sort="@AriaSortFor(col)">
                             <button type="button" class="wss-table-sort-trigger" @onclick="@(() => ToggleSort(col))">
                                 <span class="wss-table-sort-label">@col.HeaderText</span>
                                 <span class="wss-table-sorter" aria-hidden="true">
@@ -64,7 +64,7 @@
                         }
                         @foreach (var col in _columns)
                         {
-                            <td class="wss-table-cell">@col.CellFor(item)</td>
+                            <td class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)">@col.CellFor(item)</td>
                         }
                     </tr>
                 }
@@ -144,6 +144,10 @@
 
     bool IsActive(Column<TItem> col, SortDirection direction) =>
         ReferenceEquals(_sortColumn, col) && _sortDirection == direction;
+
+    // The column currently driving the sort (used to tint its header + body cells).
+    bool IsSortActive(Column<TItem> col) =>
+        ReferenceEquals(_sortColumn, col) && _sortDirection != SortDirection.None;
 
     // aria-sort per WAI-ARIA: the active column reports its direction, other sortable columns "none".
     string AriaSortFor(Column<TItem> col) =>
