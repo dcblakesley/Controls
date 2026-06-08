@@ -287,7 +287,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### Unreleased
+### 10.2.0
+
+*Headline release: debuts the dependency-free AntDesign-style UI-kit controls (`Select`, `Alert`, `Modal`, `Drawer`, `Table`, `Pagination`, `Popover` / `Popconfirm`, `Skeleton`, toasts) and the searchable form selects (`EditSelectSearch` / `EditMultiSelect`), alongside a library-wide accessibility & architecture overhaul (the `EditControlBase` refactor). Adds `Table` column sorting and configurable pager placement. Includes one **breaking dependency change** — see below.*
 
 **New: `Table` column sorting**
 - Columns can now sort. Set `Sortable="true"` on a `PropertyColumn` (the comparison is derived from its `Property` via `Comparer<T>.Default`), or supply a `SortBy` comparison on any `Column` for custom / template columns. Clicking a sortable header cycles ascending -> descending -> unsorted (restoring the original `DataSource` order); the sort is stable (ties keep their original order). Headers expose `aria-sort` (`ascending` / `descending` / `none`) and a keyboard-focusable `<button>` so the feature is screen-reader- and keyboard-accessible. Sorting resets to page 1 and survives a `DataSource` swap.
