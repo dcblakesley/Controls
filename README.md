@@ -162,6 +162,39 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 
 > `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
 
+### Server-side paging (`Table`)
+
+The `Table`'s built-in pager (`PageSize`) is **in-memory** — it materializes the whole `DataSource` and slices it client-side, so it can't reflect a server-side total. For server-side paging, compose the `Table` with the standalone, fully-controlled `Pagination`: give the `Table` only the current page (omit `PageSize` so it renders exactly what you pass), and drive a `Pagination` yourself.
+
+```razor
+<Table TItem="Row" DataSource="_pageRows">
+    <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" />
+    <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+</Table>
+
+<div style="display:flex; justify-content:flex-end; margin-top:16px;">
+    <Pagination Total="_total" PageSize="PageSize" Current="_page" CurrentChanged="GoToPageAsync" />
+</div>
+
+@code {
+    const int PageSize = 20;
+    List<Row> _pageRows = new();
+    int _total, _page = 1;
+
+    protected override Task OnInitializedAsync() => GoToPageAsync(1);
+
+    async Task GoToPageAsync(int page)
+    {
+        _page = page;
+        var result = await Api.GetRows(page, PageSize /*, sortField, sortDir */);
+        _pageRows = result.Items.ToList(); // a NEW reference — the Table only re-copies when DataSource changes ref
+        _total    = result.TotalCount;     // the server's overall count drives the pager
+    }
+}
+```
+
+`Pagination` is a controlled component (`Total` / `Current` / `PageSize` + `CurrentChanged`), so it shows the correct page count from the server total and raises `CurrentChanged` when the user picks a page. Handle **sorting** the same way — pass the sort field/direction into your request rather than using the `Table`'s built-in `Sortable`, which only orders the page already loaded. A runnable example (with a simulated server) is in the `/uikit` gallery.
+
 ## Component Features
 
 All form controls implement the `IEditControl` interface and provide:

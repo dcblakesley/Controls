@@ -185,10 +185,13 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     public async Task Table_sorting_a_column_reorders_rows_and_sets_aria_sort()
     {
         await GotoAsync();
-        var idTrigger = _page.Locator(".wss-table-sort-trigger", new() { HasTextString = "Id" });
-        var idHeader = _page.Locator(".wss-table-thead th").Filter(new() { HasTextString = "Id" });
+        // The gallery has more than one table (the server-paging demo also has an "Id" column),
+        // so scope to the first table — the selectable, sortable one.
+        var table = _page.Locator(".wss-table").First;
+        var idTrigger = table.Locator(".wss-table-sort-trigger", new() { HasTextString = "Id" });
+        var idHeader = table.Locator(".wss-table-thead th").Filter(new() { HasTextString = "Id" });
         // First data cell is the selection checkbox (col 0); the Id value is col 1.
-        var firstIdCell = _page.Locator(".wss-table-tbody .wss-table-row").First.Locator("td").Nth(1);
+        var firstIdCell = table.Locator(".wss-table-tbody .wss-table-row").First.Locator("td").Nth(1);
 
         // Page 1 starts in the original (ascending) order: Id 1 first.
         await Expect(firstIdCell).ToHaveTextAsync("1");
@@ -204,6 +207,22 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await idTrigger.ClickAsync();
         await Expect(idHeader).ToHaveAttributeAsync("aria-sort", "none");
         await Expect(firstIdCell).ToHaveTextAsync("1");
+    }
+
+    [Fact]
+    public async Task Server_paging_demo_swaps_the_page_on_pager_click()
+    {
+        await GotoAsync();
+        // The server-paging demo is the last table on the page (no selection column -> Id is col 0),
+        // and its standalone pager is the last .wss-pagination.
+        var table = _page.Locator(".wss-table").Last;
+        var firstId = table.Locator(".wss-table-tbody .wss-table-row").First.Locator("td").First;
+        await Expect(firstId).ToHaveTextAsync("1"); // page 1 -> Row 1
+
+        await _page.Locator(".wss-pagination").Last
+            .Locator(".wss-pagination-item", new() { HasTextString = "2" }).ClickAsync();
+
+        await Expect(firstId).ToHaveTextAsync("11"); // page 2 -> Row 11 (PageSize 10), proving the fetch ran
     }
 
     [Fact]

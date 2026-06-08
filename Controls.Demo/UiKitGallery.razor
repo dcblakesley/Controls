@@ -82,6 +82,24 @@
     </section>
 
     <section class="demo-section">
+        <h3>Table — server-side paging (compose pattern)</h3>
+        <p style="margin:0; color:#666;">
+            The Table renders only the current page (no built-in <code>PageSize</code>); a standalone
+            <code>Pagination</code> you drive fetches each page. The 150&nbsp;ms delay below stands in
+            for a server round-trip.
+        </p>
+        <Table TItem="Row" DataSource="_serverRows">
+            <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" />
+            <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+            <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" />
+        </Table>
+        <div style="display:flex; justify-content:flex-end;">
+            <Pagination Total="_serverTotal" PageSize="ServerPageSize" Current="_serverPage" CurrentChanged="LoadServerPageAsync" />
+        </div>
+        <p>Server has @_serverTotal rows; showing page @_serverPage.</p>
+    </section>
+
+    <section class="demo-section">
         <h3>Toasts (WASM only)</h3>
         <div style="display:flex; gap:1rem; flex-wrap:wrap;">
             <button class="wss-dialog-btn" @onclick="@(() => WasmMessageService.Success("Saved!"))">Message</button>
@@ -119,6 +137,31 @@
         .ToList();
 
     List<Row> _selectedRows = new();
+
+    // --- Server-side paging demo (compose pattern) ---
+    // Stand-in for a server-side table; a real app would query a DB/API in LoadServerPageAsync.
+    const int ServerPageSize = 10;
+    readonly List<Row> _serverBackingStore = Enumerable.Range(1, 47)
+        .Select(i => new Row(i, $"Row {i}", i * 2.5m))
+        .ToList();
+
+    List<Row> _serverRows = new();
+    int _serverTotal;
+    int _serverPage = 1;
+
+    protected override Task OnInitializedAsync() => LoadServerPageAsync(1);
+
+    // Mimics a paged endpoint: returns just the requested page plus the overall row count.
+    async Task LoadServerPageAsync(int page)
+    {
+        _serverPage = page;
+        await Task.Delay(150); // simulate a server round-trip
+        _serverRows = _serverBackingStore
+            .Skip((page - 1) * ServerPageSize)
+            .Take(ServerPageSize)
+            .ToList(); // a new reference so the Table re-copies its DataSource
+        _serverTotal = _serverBackingStore.Count;
+    }
 
     public record Row(int Id, string Name, decimal Price);
 }
