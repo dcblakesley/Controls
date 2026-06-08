@@ -114,6 +114,79 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void Table_sortable_property_column_renders_a_trigger_and_aria_sort_none()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)) // not sortable
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        var headers = cut.FindAll("thead th");
+        // Non-sortable column: plain header, no trigger, no aria-sort.
+        Assert.False(headers[0].HasAttribute("aria-sort"));
+        Assert.Empty(headers[0].QuerySelectorAll("button.wss-table-sort-trigger"));
+        // Sortable column: a sort trigger and aria-sort="none" before any click.
+        Assert.Equal("none", headers[1].GetAttribute("aria-sort"));
+        Assert.Single(headers[1].QuerySelectorAll("button.wss-table-sort-trigger"));
+    }
+
+    [Fact]
+    public void Table_clicking_a_sortable_header_cycles_ascending_descending_then_clears()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name))
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        string[] Names() => cut.FindAll("tbody .wss-table-row td.wss-table-cell:first-child")
+            .Select(td => td.TextContent.Trim()).ToArray();
+        void ClickAge() => cut.FindAll("thead th")[1].QuerySelector("button.wss-table-sort-trigger")!.Click();
+        string AgeAriaSort() => cut.FindAll("thead th")[1].GetAttribute("aria-sort")!;
+
+        Assert.Equal(["Alice", "Bob"], Names()); // original order
+
+        ClickAge(); // ascending by Age -> Bob(25), Alice(30)
+        Assert.Equal(["Bob", "Alice"], Names());
+        Assert.Equal("ascending", AgeAriaSort());
+
+        ClickAge(); // descending -> Alice(30), Bob(25)
+        Assert.Equal(["Alice", "Bob"], Names());
+        Assert.Equal("descending", AgeAriaSort());
+
+        ClickAge(); // cleared -> original order restored
+        Assert.Equal(["Alice", "Bob"], Names());
+        Assert.Equal("none", AgeAriaSort());
+    }
+
+    [Fact]
+    public void Table_custom_column_with_SortBy_is_sortable()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.SortBy, (a, b) => a.Age - b.Age)
+                .Add(c => c.ChildContent, (RenderFragment<Person>)(person => b => b.AddContent(0, person.Name)))));
+
+        Assert.Single(cut.FindAll("button.wss-table-sort-trigger"));
+
+        cut.Find("button.wss-table-sort-trigger").Click(); // ascending by Age -> Bob, Alice
+        var names = cut.FindAll("tbody .wss-table-row td.wss-table-cell")
+            .Select(td => td.TextContent.Trim()).ToArray();
+        Assert.Equal(["Bob", "Alice"], names);
+    }
+
+    [Fact]
     public void Table_select_all_checkbox_is_not_checked_when_only_some_rows_are_selected()
     {
         var data = Sample(); // Alice, Bob

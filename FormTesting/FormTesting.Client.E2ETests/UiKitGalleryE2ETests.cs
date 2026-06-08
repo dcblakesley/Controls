@@ -182,6 +182,31 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Table_sorting_a_column_reorders_rows_and_sets_aria_sort()
+    {
+        await GotoAsync();
+        var idTrigger = _page.Locator(".wss-table-sort-trigger", new() { HasTextString = "Id" });
+        var idHeader = _page.Locator(".wss-table-thead th").Filter(new() { HasTextString = "Id" });
+        // First data cell is the selection checkbox (col 0); the Id value is col 1.
+        var firstIdCell = _page.Locator(".wss-table-tbody .wss-table-row").First.Locator("td").Nth(1);
+
+        // Page 1 starts in the original (ascending) order: Id 1 first.
+        await Expect(firstIdCell).ToHaveTextAsync("1");
+
+        // 1st click = ascending (already ascending here); 2nd click = descending -> Id 13 first.
+        await idTrigger.ClickAsync();
+        await Expect(idHeader).ToHaveAttributeAsync("aria-sort", "ascending");
+        await idTrigger.ClickAsync();
+        await Expect(idHeader).ToHaveAttributeAsync("aria-sort", "descending");
+        await Expect(firstIdCell).ToHaveTextAsync("13");
+
+        // 3rd click clears the sort -> original order restored, aria-sort "none".
+        await idTrigger.ClickAsync();
+        await Expect(idHeader).ToHaveAttributeAsync("aria-sort", "none");
+        await Expect(firstIdCell).ToHaveTextAsync("1");
+    }
+
+    [Fact]
     public async Task Message_toast_appears_on_click()
     {
         await GotoAsync();
