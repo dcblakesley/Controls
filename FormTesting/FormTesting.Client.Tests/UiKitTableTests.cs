@@ -133,6 +133,23 @@ public class UiKitTableTests : TestContext
         // Sortable column: a sort trigger and aria-sort="none" before any click.
         Assert.Equal("none", headers[1].GetAttribute("aria-sort"));
         Assert.Single(headers[1].QuerySelectorAll("button.wss-table-sort-trigger"));
+        // Titled sortable column: the visible header names the button, so no redundant aria-label.
+        Assert.False(headers[1].QuerySelector("button.wss-table-sort-trigger")!.HasAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Table_title_less_sortable_header_button_has_an_accessible_name()
+    {
+        // A sortable column with no Title would otherwise render a sort <button> with no accessible
+        // name (empty label span + aria-hidden carets) — it falls back to aria-label="Sort".
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        var button = cut.Find("button.wss-table-sort-trigger");
+        Assert.Equal("Sort", button.GetAttribute("aria-label"));
     }
 
     [Fact]

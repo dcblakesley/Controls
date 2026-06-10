@@ -36,7 +36,7 @@
                     @if (col.CanSort)
                     {
                         <th scope="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)" aria-sort="@AriaSortFor(col)">
-                            <button type="button" class="wss-table-sort-trigger" @onclick="@(() => ToggleSort(col))">
+                            <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
                                 <span class="wss-table-sort-label">@col.HeaderText</span>
                                 <span class="wss-table-sorter" aria-hidden="true">
                                     <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
@@ -170,6 +170,12 @@
     // The column currently driving the sort (used to tint its header + body cells).
     bool IsSortActive(Column<TItem> col) =>
         ReferenceEquals(_sortColumn, col) && _sortDirection != SortDirection.None;
+
+    // A title-less sortable column would render a sort <button> with no accessible name (its visible
+    // label span is empty and the caret stack is aria-hidden). Fall back to "Sort" so screen readers
+    // announce something; when the column has a header, the visible text names the button (no aria-label).
+    string? SortButtonLabel(Column<TItem> col) =>
+        string.IsNullOrEmpty(col.HeaderText) ? "Sort" : null;
 
     // aria-sort per WAI-ARIA: the active column reports its direction, other sortable columns "none".
     string AriaSortFor(Column<TItem> col) =>
