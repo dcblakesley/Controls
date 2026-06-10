@@ -151,13 +151,13 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 
 - **`Select<T>`** - The dropdown engine behind `EditSelectSearch` / `EditMultiSelect`; usable standalone (single / multiple / tags, search, virtualized)
 - **`Alert`** - Contextual message banner (success / info / warning / error, closable, description)
-- **`Skeleton`** - Loading placeholder with shimmer
+- **`Skeleton`** - Loading placeholder with shimmer; announces `role="status"` / `aria-busy` with a visually-hidden `LoadingText` (default `"Loading"`) for screen readers
 - **`Popover`** - Click-triggered popover (4 placements)
 - **`Pagination`** - Controlled pager
 - **`Modal`** - Dialog with `@bind-Visible`, footer, mask-close
 - **`Drawer`** - Slide-in panel (4 placements)
 - **`Popconfirm`** - Inline confirm popover
-- **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging (pager placement via `PagerPosition` = Top/Bottom/Both and alignment via `PagerAlign`), and column sorting (`Sortable="true"` on a `PropertyColumn`, or a `SortBy` comparison on any column)
+- **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging (pager placement via `PagerPosition` = Top/Bottom/Both and alignment via `PagerAlign`), and column sorting (`Sortable="true"` on a `PropertyColumn` — non-comparable types degrade to non-sortable; or a `SortBy` comparison on any column). Columns may be conditionally rendered (`@if`)
 - **Toasts & notifications** - two paths with identical rendering: **scoped / Server-safe** (`IMessageService` / `INotificationService` via `builder.Services.AddWssControlsToasts()` + `<MessageContainer />` / `<NotificationContainer />`), or **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + `<WasmMessageContainer />` / `<WasmNotificationContainer />`). On Blazor Server use the scoped path — the static `Wasm*` services hold process-static state that would bleed across users.
 
 > `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
@@ -319,6 +319,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### Unreleased
+
+**`Table` — robust dynamic columns + graceful sort**
+- Columns may now be conditionally rendered (`@if`). The Table re-collects its columns in document order on each render, so a hidden column drops out and a re-shown one returns to its declared position — previously a removed column left a stale header and cells behind, and re-showing it produced a duplicate. Hiding the column that drives the active sort now clears the sort so the indicator and the row order can't disagree.
+- A `Sortable` `PropertyColumn` whose property type isn't comparable no longer throws on the first header click (which on Blazor Server tore down the circuit) — the header simply isn't made sortable. Supply a `SortBy` comparison to sort any type.
+- A sortable column declared without a `Title` now gives its sort `<button>` an `aria-label="Sort"`, so it isn't an unnamed button for screen-reader users.
+
+**Accessibility**
+- `Skeleton` announces its loading state to screen readers: `role="status"` + `aria-busy="true"` and a visually-hidden `LoadingText` (default `"Loading"`); the placeholder bars are `aria-hidden`. New `.wss-sr-only` utility class.
+- Toast (`Message`) and `Notification` containers route each toast by severity into two always-present live regions — a polite `role="status"` region and an assertive `role="alert"` region — instead of flipping a single shared region's politeness when an error arrives (a change screen readers don't reliably re-announce, which could swallow the error). The regions are `display:contents`, so the on-screen layout is unchanged (errors group below the polite toasts).
 
 ### 10.2.0
 
