@@ -2,23 +2,28 @@
 
 @* Shared presentational view for notifications. Rendered by both WasmNotificationContainer (static)
    and NotificationContainer (scoped) so the two paths produce identical DOM. *@
-<div class="wss-notification-container" role="@Role" aria-live="@AriaLive" aria-atomic="false">
-    @foreach (var n in Items)
-    {
-        <div class="wss-notification" @key="n.Id">
-            <span class="wss-notification-icon wss-notification-icon-@n.Type.ToString().ToLowerInvariant()">@Icon(n.Type)</span>
-            <div class="wss-notification-body">
-                <div class="wss-notification-message">@n.Message</div>
-                @if (!string.IsNullOrEmpty(n.Description))
-                {
-                    <div class="wss-notification-description">@n.Description</div>
-                }
-            </div>
-            <button type="button" class="wss-notification-close" aria-label="Close" @onclick="() => OnRemove.InvokeAsync(n.Id)">
-                <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 00203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z"/></svg>
-            </button>
-        </div>
-    }
+@* Two always-present live regions (polite for normal severities, assertive for errors) rather
+   than one region whose politeness flips on an error — see MessageListView for the rationale.
+   display:contents regions keep the container's flex/gap layout unchanged. *@
+<div class="wss-notification-container">
+    <div class="wss-notification-region" role="status" aria-live="polite" aria-atomic="false">
+        @foreach (var n in Items)
+        {
+            @if (n.Type != NotificationType.Error)
+            {
+                @Row(n)
+            }
+        }
+    </div>
+    <div class="wss-notification-region" role="alert" aria-live="assertive" aria-atomic="false">
+        @foreach (var n in Items)
+        {
+            @if (n.Type == NotificationType.Error)
+            {
+                @Row(n)
+            }
+        }
+    </div>
 </div>
 
 @code {
@@ -27,18 +32,19 @@
     /// <summary>Invoked with the item id when its close button is clicked.</summary>
     [Parameter] public EventCallback<Guid> OnRemove { get; set; }
 
-    // Errors interrupt assistive tech (alert/assertive); other severities announce politely.
-    bool HasError
-    {
-        get
-        {
-            foreach (var n in Items)
-                if (n.Type == NotificationType.Error) return true;
-            return false;
-        }
-    }
-    string Role => HasError ? "alert" : "status";
-    string AriaLive => HasError ? "assertive" : "polite";
+    RenderFragment Row(NotificationItem n) => @<div class="wss-notification" @key="n.Id">
+        <span class="wss-notification-icon wss-notification-icon-@n.Type.ToString().ToLowerInvariant()">@Icon(n.Type)</span>
+        <div class="wss-notification-body">
+            <div class="wss-notification-message">@n.Message</div>
+            @if (!string.IsNullOrEmpty(n.Description))
+            {
+                <div class="wss-notification-description">@n.Description</div>
+            }
+        </div>
+        <button type="button" class="wss-notification-close" aria-label="Close" @onclick="() => OnRemove.InvokeAsync(n.Id)">
+            <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 00203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z"/></svg>
+        </button>
+    </div>;
 
     static RenderFragment Icon(NotificationType type) => type switch
     {

@@ -2,12 +2,15 @@
 
 @if (Loading)
 {
-    <div class="wss-skeleton @(Active ? "wss-skeleton-active" : null)">
+    @* role=status + aria-busy announce the loading state; the bars are decorative (aria-hidden) so a
+       screen reader hears the loading text, not a string of empty elements. *@
+    <div class="wss-skeleton @(Active ? "wss-skeleton-active" : null)" role="status" aria-busy="true">
+        <span class="wss-sr-only">@LoadingText</span>
         @if (Title)
         {
-            <div class="wss-skeleton-title"></div>
+            <div class="wss-skeleton-title" aria-hidden="true"></div>
         }
-        <ul class="wss-skeleton-paragraph">
+        <ul class="wss-skeleton-paragraph" aria-hidden="true">
             @for (var i = 0; i < Rows; i++)
             {
                 <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
@@ -32,6 +35,9 @@ else
 
     /// <summary>Number of paragraph lines.</summary>
     [Parameter] public int Rows { get; set; } = 3;
+
+    /// <summary>Screen-reader text announced while loading (the bars themselves are hidden from AT).</summary>
+    [Parameter] public string LoadingText { get; set; } = "Loading";
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

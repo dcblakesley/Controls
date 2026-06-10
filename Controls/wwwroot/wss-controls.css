@@ -553,6 +553,19 @@
 .wss-alert-error { background: var(--wss-color-error-bg); border-color: var(--wss-color-error-border); }
 .wss-alert-error .wss-alert-icon { color: var(--wss-color-error); }
 
+/* Visually hidden but exposed to assistive tech (loading cues, region labels). */
+.wss-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* ============================================================================
  * Skeleton
  * ============================================================================ */
@@ -1281,6 +1294,12 @@
     pointer-events: none;
 }
 
+/* The polite/assertive live regions group toasts for screen readers without affecting layout —
+   their .wss-msg children participate directly in the container's flex column. */
+.wss-msg-region {
+    display: contents;
+}
+
 .wss-msg {
     display: inline-flex;
     align-items: center;
@@ -1333,6 +1352,11 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+/* Live-region grouping wrappers; display:contents keeps the notifications in the container's flex column. */
+.wss-notification-region {
+    display: contents;
 }
 
 .wss-notification {

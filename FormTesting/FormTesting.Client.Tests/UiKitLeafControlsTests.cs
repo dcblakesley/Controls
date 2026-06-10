@@ -54,6 +54,18 @@ public class UiKitLeafControlsTests : TestContext
     }
 
     [Fact]
+    public void Skeleton_loading_exposes_a_busy_status_with_screen_reader_text()
+    {
+        var cut = RenderComponent<Skeleton>();
+        var root = cut.Find(".wss-skeleton");
+        Assert.Equal("status", root.GetAttribute("role"));
+        Assert.Equal("true", root.GetAttribute("aria-busy"));
+        Assert.Equal("Loading", cut.Find(".wss-sr-only").TextContent);
+        // The decorative bars are hidden from assistive tech (so it hears the loading text, not noise).
+        Assert.Equal("true", cut.Find(".wss-skeleton-paragraph").GetAttribute("aria-hidden"));
+    }
+
+    [Fact]
     public void Skeleton_not_loading_renders_child_content()
     {
         var cut = RenderComponent<Skeleton>(p => p

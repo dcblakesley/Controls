@@ -81,25 +81,34 @@ public class ScopedToastTests : TestContext
     }
 
     [Fact]
-    public void Error_message_makes_container_assertive_alert()
+    public void Error_message_goes_to_an_assertive_alert_region()
     {
         Services.AddWssControlsToasts();
         Services.GetRequiredService<IMessageService>().Error("boom", duration: 0);
 
-        var container = RenderComponent<MessageContainer>().Find(".wss-msg-container");
-        Assert.Equal("alert", container.GetAttribute("role"));
-        Assert.Equal("assertive", container.GetAttribute("aria-live"));
+        var cut = RenderComponent<MessageContainer>();
+        // The error renders inside the always-present assertive region...
+        var assertive = cut.Find(".wss-msg-region[role=alert]");
+        Assert.Equal("assertive", assertive.GetAttribute("aria-live"));
+        Assert.Contains("boom", assertive.TextContent);
+        // ...while the polite region stays present (so it's ready for later polite toasts) but empty.
+        var polite = cut.Find(".wss-msg-region[role=status]");
+        Assert.Equal("polite", polite.GetAttribute("aria-live"));
+        Assert.Empty(polite.QuerySelectorAll(".wss-msg"));
     }
 
     [Fact]
-    public void Non_error_message_stays_polite_status()
+    public void Non_error_message_goes_to_a_polite_status_region()
     {
         Services.AddWssControlsToasts();
         Services.GetRequiredService<IMessageService>().Info("hi", duration: 0);
 
-        var container = RenderComponent<MessageContainer>().Find(".wss-msg-container");
-        Assert.Equal("status", container.GetAttribute("role"));
-        Assert.Equal("polite", container.GetAttribute("aria-live"));
+        var cut = RenderComponent<MessageContainer>();
+        var polite = cut.Find(".wss-msg-region[role=status]");
+        Assert.Equal("polite", polite.GetAttribute("aria-live"));
+        Assert.Contains("hi", polite.TextContent);
+        // No spurious alert: the assertive region is present but empty.
+        Assert.Empty(cut.Find(".wss-msg-region[role=alert]").QuerySelectorAll(".wss-msg"));
     }
 
     [Fact]
