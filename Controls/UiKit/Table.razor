@@ -3,6 +3,11 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
+@* Reset the per-render column buffer before the columns below register into it (they do so in
+   document order during their OnParametersSet); OnAfterRender then promotes the buffer to the
+   rendered set. This is what lets a conditionally-rendered column drop / reappear in its declared
+   position instead of leaving a zombie or a duplicate. *@
+@{ StartCollectingColumns(); }
 <CascadingValue Value="this" IsFixed="true">
     @ChildContent
 </CascadingValue>
@@ -113,7 +118,8 @@
     [Parameter] public IEnumerable<TItem>? SelectedItems { get; set; }
     [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
 
-    readonly List<Column<TItem>> _columns = new();
+    List<Column<TItem>> _columns = new();        // promoted, ordered column set the body renders
+    List<Column<TItem>>? _collecting;            // buffer the current pass collects into (promoted next pass)
     readonly HashSet<TItem> _selected = new();
     List<TItem> _items = new();      // original DataSource order — the source of truth
     List<TItem> _sorted = new();     // _items reordered by the active sort (or _items itself when unsorted)
@@ -249,13 +255,46 @@
         RebuildPageItems();
     }
 
+    // Child columns register themselves (in document order) during their OnParametersSet, into a
+    // buffer that this resets at the top of every render. Before the body renders, the buffer the
+    // *previous* pass collected is promoted to the rendered set — so a hidden column drops out and a
+    // re-shown one returns to its declared position, with no zombie or duplicate. Promotion is driven
+    // by a re-render queued from Register (a column appeared) or Column.Dispose (one was removed),
+    // which works under static SSR too (StateHasChanged during render is honored there; OnAfterRender
+    // is not), matching the original collect-then-re-render behaviour.
+    void StartCollectingColumns()
+    {
+        if (_collecting is not null && !_columns.SequenceEqual(_collecting))
+        {
+            _columns = _collecting;
+
+            // If the column driving the active sort is gone, drop the sort so the indicator and the
+            // row order can't disagree, and re-derive the view before the body renders.
+            if (_sortColumn is not null && !_columns.Contains(_sortColumn))
+            {
+                _sortColumn = null;
+                _sortDirection = SortDirection.None;
+                ApplySort();
+                RebuildPageItems();
+            }
+        }
+        _collecting = new List<Column<TItem>>();
+    }
+
     internal void Register(Column<TItem> column)
     {
-        if (!_columns.Contains(column))
-        {
-            _columns.Add(column);
-            StateHasChanged();
-        }
+        if (_collecting is null || _collecting.Contains(column)) return;
+        _collecting.Add(column);
+        // A column not already in the rendered set means it changed — re-render so the freshly
+        // collected, ordered buffer is promoted on the next pass.
+        if (!_columns.Contains(column)) StateHasChanged();
+    }
+
+    internal void Unregister(Column<TItem> column)
+    {
+        // A rendered column was disposed (e.g. conditionally removed). Re-render so the next pass
+        // promotes the reduced set — the column simply won't re-register into the buffer.
+        if (_columns.Contains(column)) StateHasChanged();
     }
 
     // Pagination.CurrentChanged is an EventCallback, so Blazor re-renders this component

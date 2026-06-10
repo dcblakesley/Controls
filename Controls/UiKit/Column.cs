@@ -6,7 +6,7 @@ namespace Controls;
 /// A table column with a custom cell template. Declared as a child of
 /// <see cref="Table{TItem}"/>; it registers itself and renders no markup of its own.
 /// </summary>
-public class Column<TItem> : ComponentBase
+public class Column<TItem> : ComponentBase, IDisposable
 {
     [CascadingParameter] public Table<TItem>? Table { get; set; }
 
@@ -22,7 +22,11 @@ public class Column<TItem> : ComponentBase
     /// </summary>
     [Parameter] public Comparison<TItem>? SortBy { get; set; }
 
-    protected override void OnInitialized() => Table?.Register(this);
+    // Re-register on every render so the Table re-collects its columns in document order each pass.
+    // This makes conditionally-rendered columns (@if) drop and re-appear in their declared position
+    // instead of leaving a stale registration or appending a duplicate. The Table only adds during
+    // an active collection pass (see Table.StartCollectingColumns / FinishCollectingColumns).
+    protected override void OnParametersSet() => Table?.Register(this);
 
     public virtual string? HeaderText => Title;
 
@@ -37,4 +41,8 @@ public class Column<TItem> : ComponentBase
 
     // Columns are declarative metadata only — they emit nothing themselves.
     protected override void BuildRenderTree(RenderTreeBuilder builder) { }
+
+    // When a column is conditionally removed (@if), Blazor disposes it; tell the Table so it
+    // re-renders and the now-shorter column buffer is promoted (no zombie left behind).
+    public void Dispose() => Table?.Unregister(this);
 }

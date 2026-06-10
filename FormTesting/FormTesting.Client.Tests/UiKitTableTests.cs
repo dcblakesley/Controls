@@ -251,6 +251,120 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void Table_sortable_on_a_non_comparable_property_renders_no_sort_control()
+    {
+        // Person doesn't implement IComparable, so Comparer<Person>.Default would throw on a header
+        // click; CanSort degrades the column to non-sortable instead of crashing the circuit.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, Person>>(cp => cp
+                .Add(c => c.Title, "Self")
+                .Add(c => c.Property, x => x)
+                .Add(c => c.Sortable, true)));
+
+        Assert.Empty(cut.FindAll("button.wss-table-sort-trigger"));
+        Assert.False(cut.Find("thead th").HasAttribute("aria-sort"));
+    }
+
+    [Fact]
+    public void Table_non_comparable_property_is_still_sortable_with_an_explicit_SortBy()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
+            .AddChildContent<PropertyColumn<Person, Person>>(cp => cp
+                .Add(c => c.Title, "Self")
+                .Add(c => c.Property, x => x)
+                .Add(c => c.Sortable, true)
+                .Add(c => c.SortBy, (a, b) => a.Age - b.Age)));
+
+        Assert.Single(cut.FindAll("button.wss-table-sort-trigger"));
+        cut.Find("button.wss-table-sort-trigger").Click(); // ascending by Age -> Bob first
+        Assert.Contains("Bob", cut.FindAll("tbody .wss-table-row td.wss-table-cell:first-child")[0].TextContent);
+    }
+
+    [Fact]
+    public void Table_conditionally_hidden_column_drops_and_reappears_in_order()
+    {
+        var showMiddle = true;
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+
+            if (showMiddle)
+            {
+                builder.OpenComponent<PropertyColumn<Person, int>>(3);
+                builder.AddAttribute(4, "Title", "Age");
+                builder.AddAttribute(5, "Property", (Func<Person, int>)(x => x.Age));
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<PropertyColumn<Person, string>>(6);
+            builder.AddAttribute(7, "Title", "City");
+            builder.AddAttribute(8, "Property", (Func<Person, string>)(_ => "NYC"));
+            builder.CloseComponent();
+        };
+
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+
+        string[] Headers() => cut.FindAll("thead th").Select(th => th.TextContent.Trim()).ToArray();
+        Assert.Equal(["Name", "Age", "City"], Headers());
+
+        // Hide the middle column: it drops out, no zombie left behind.
+        showMiddle = false;
+        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Name", "City"], Headers());
+
+        // Re-show it: no duplicate, and it returns to its declared (middle) position.
+        showMiddle = true;
+        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Name", "Age", "City"], Headers());
+    }
+
+    [Fact]
+    public void Table_hiding_the_sorted_column_clears_the_sort()
+    {
+        var showAge = true;
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+
+            if (showAge)
+            {
+                builder.OpenComponent<PropertyColumn<Person, int>>(3);
+                builder.AddAttribute(4, "Title", "Age");
+                builder.AddAttribute(5, "Property", (Func<Person, int>)(x => x.Age));
+                builder.AddAttribute(6, "Sortable", true);
+                builder.CloseComponent();
+            }
+        };
+
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
+            .Add(t => t.ChildContent, Columns()));
+
+        string[] Names() => cut.FindAll("tbody .wss-table-row td.wss-table-cell:first-child")
+            .Select(td => td.TextContent.Trim()).ToArray();
+
+        // Sort ascending by Age -> Bob(25), Alice(30).
+        cut.Find("button.wss-table-sort-trigger").Click();
+        Assert.Equal(["Bob", "Alice"], Names());
+
+        // Hide the sorted column: the sort clears and rows return to DataSource order.
+        showAge = false;
+        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Empty(cut.FindAll("button.wss-table-sort-trigger"));
+        Assert.Equal(["Alice", "Bob"], Names());
+    }
+
+    [Fact]
     public void Table_select_all_checkbox_is_not_checked_when_only_some_rows_are_selected()
     {
         var data = Sample(); // Alice, Bob
