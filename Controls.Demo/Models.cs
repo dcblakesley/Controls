@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using Controls;
 using Controls.Helpers;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace Controls.Demo;
 
@@ -67,6 +68,10 @@ internal class DemoModelForEditControls
     [Required]
     [MinLength(2)]
     public List<Animal> EditCheckedEnumList { get; set; } = [];
+
+    [DisplayName("EditFile")]
+    [Description("Upload one or more files")]
+    public List<IBrowserFile> EditFile { get; set; } = [];
 
 }
 

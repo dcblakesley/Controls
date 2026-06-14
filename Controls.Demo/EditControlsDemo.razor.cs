@@ -85,5 +85,6 @@ public enum CurrentView
     SelectSearch,
     MultiSelect,
     String,
-    TextArea
+    TextArea,
+    File
 }

@@ -64,5 +64,9 @@
         <EditCheckedEnumList @bind-Value=_model.EditCheckedEnumList
                              Field=@(() => _model.EditCheckedEnumList!)
                              IsHorizontal=@_isHorizontal />
+
+        <EditFile @bind-Value=_model.EditFile
+                  Field=@(() => _model.EditFile)
+                  AllowedExtensions="@([".pdf", ".xlsx", ".docx"])" />
     </fieldset>
 </EditForm>

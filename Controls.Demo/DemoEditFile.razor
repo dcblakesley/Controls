@@ -1,0 +1,65 @@
+<h1>EditFile Demo</h1>
+
+<EditForm Model="@_model" class="flex-column" @ref=_form>
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <h3>Basic — all file types</h3>
+        <EditFile @bind-Value="_model.BasicFiles"
+                  Field="@(() => _model.BasicFiles)" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>Extension filter + max files</h3>
+        <EditFile @bind-Value="_model.FilteredFiles"
+                  Field="@(() => _model.FilteredFiles)"
+                  AllowedExtensions="@([".pdf", ".xlsx"])"
+                  MaxFiles="3" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_filterExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>Required validation</h3>
+        <EditFile @bind-Value="_model.RequiredFiles"
+                  Field="@(() => _model.RequiredFiles)" />
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+    <button type="submit">Submit</button>
+</EditForm>
+
+@code {
+    readonly DemoEditFileModel _model = new();
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    readonly string _basicExample = @"<EditFile @bind-Value=""_model.Files""
+          Field=""@(() => _model.Files)"" />";
+
+    readonly string _filterExample = @"<EditFile @bind-Value=""_model.Files""
+          Field=""@(() => _model.Files)""
+          AllowedExtensions=""@([&quot;.pdf&quot;, &quot;.xlsx&quot;])""
+          MaxFiles=""3"" />";
+
+    readonly string _validationModel =
+        @"[Required]
+[MinLength(1, ErrorMessage = ""At least one file is required."")]
+public List<IBrowserFile> RequiredFiles { get; set; } = [];";
+
+    public class DemoEditFileModel
+    {
+        public List<IBrowserFile> BasicFiles { get; set; } = [];
+        public List<IBrowserFile> FilteredFiles { get; set; } = [];
+
+        [Required]
+        [MinLength(1, ErrorMessage = "At least one file is required.")]
+        public List<IBrowserFile> RequiredFiles { get; set; } = [];
+    }
+}
