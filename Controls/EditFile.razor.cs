@@ -67,8 +67,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         if (toAdd.Count > 0)
         {
             Value = [.. Value, .. toAdd];
-            EditContext?.NotifyFieldChanged(_fieldIdentifier);
+            // Write back to the model (ValueChanged) BEFORE notifying — the validator reads the property
+            // live off the model during NotifyFieldChanged, so notifying first validates the stale value.
             await ValueChanged.InvokeAsync(Value);
+            EditContext?.NotifyFieldChanged(_fieldIdentifier);
         }
     }
 
@@ -78,7 +80,8 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         updated.Remove(file);
         Value = updated;
         _uploadError = null;
-        EditContext?.NotifyFieldChanged(_fieldIdentifier);
+        // Write back before notifying so validation sees the post-removal list, not the stale one.
         await ValueChanged.InvokeAsync(Value);
+        EditContext?.NotifyFieldChanged(_fieldIdentifier);
     }
 }

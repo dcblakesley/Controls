@@ -106,8 +106,12 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
             updated.Add(item);
         Value = updated;
 
-        EditContext?.NotifyFieldChanged(_fieldIdentifier);
+        // Write the new value back to the bound model BEFORE notifying the EditContext. The validator
+        // reads the property live off the model via reflection during NotifyFieldChanged, so notifying
+        // first would validate the stale (pre-toggle) value — leaving the error state one click behind
+        // (e.g. a [MinLength(2)] error lingering after the second box is checked).
         await ValueChanged.InvokeAsync(Value);
+        EditContext?.NotifyFieldChanged(_fieldIdentifier);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

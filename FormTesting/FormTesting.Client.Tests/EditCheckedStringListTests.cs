@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -205,5 +206,51 @@ public class EditCheckedStringListTests : TestContext
         }));
 
         Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    // Model whose list property carries a count-based annotation, so toggling boxes can flip validity.
+    class MinTwoModel
+    {
+        [Required, MinLength(2)]
+        public List<string> Picks { get; set; } = [];
+    }
+
+    [Fact]
+    public void Toggling_to_satisfy_MinLength_clears_the_validation_error_in_the_same_click()
+    {
+        // Regression: ToggleAsync must write the new value back to the model (via ValueChanged) BEFORE
+        // NotifyFieldChanged, otherwise the validator reads the stale pre-toggle value off the model and
+        // the error state lags one click behind (a [MinLength(2)] error lingered after the 2nd box).
+        var model = new MinTwoModel();
+        var editContext = new EditContext(model);
+        Expression<Func<List<string>>> field = () => model.Picks;
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditCheckedStringList>(1);
+                content.AddAttribute(2, "Value", model.Picks);
+                content.AddAttribute(3, "ValueChanged",
+                    EventCallback.Factory.Create<List<string>>(this, v => model.Picks = v)); // simulate @bind-Value
+                content.AddAttribute(4, "Field", field);
+                content.AddAttribute(5, "Options", new List<string> { "a", "b", "c" });
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+        var fi = editContext.Field(nameof(MinTwoModel.Picks));
+
+        cut.InvokeAsync(() => editContext.Validate());
+        Assert.NotEmpty(editContext.GetValidationMessages(fi)); // empty list -> MinLength(2) fails
+
+        cut.FindAll("input[type=checkbox]").First(c => c.GetAttribute("value") == "a").Change(true);
+        cut.FindAll("input[type=checkbox]").First(c => c.GetAttribute("value") == "b").Change(true);
+
+        Assert.Equal(2, model.Picks.Count);
+        Assert.Empty(editContext.GetValidationMessages(fi)); // requirement met -> no lingering error
     }
 }

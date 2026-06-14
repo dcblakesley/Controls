@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -192,5 +193,52 @@ public class EditSelectControlsTests : TestContext
         var ro = cut.Find(".edit-readonly-value").TextContent;
         Assert.Contains("Green", ro);
         Assert.Contains("Blue", ro);
+    }
+
+    // Model whose list property carries a count-based annotation, so selecting options can flip validity.
+    class MinTwoColorsModel
+    {
+        [Required, MinLength(2)]
+        public List<Color> Picks { get; set; } = [];
+    }
+
+    [Fact]
+    public void EditMultiSelect_selecting_to_satisfy_MinLength_clears_the_error_in_the_same_click()
+    {
+        // Regression: OnValuesChanged must write back to the model (ValueChanged) BEFORE NotifyFieldChanged,
+        // otherwise the validator reads the stale pre-change value and the error state lags one click behind.
+        JSInterop.Mode = Bunit.JSRuntimeMode.Loose;   // tolerate the scroll/position JS module imports
+        var model = new MinTwoColorsModel { Picks = [Color.Green] };
+        var editContext = new EditContext(model);
+        Expression<Func<List<Color>>> field = () => model.Picks;
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditMultiSelect<Color>>(1);
+                content.AddAttribute(2, "Value", model.Picks);
+                content.AddAttribute(3, "ValueChanged",
+                    EventCallback.Factory.Create<List<Color>>(this, v => model.Picks = v)); // simulate @bind-Value
+                content.AddAttribute(4, "Field", field);
+                content.AddAttribute(5, "Options", ColorOptions());
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+        var fi = editContext.Field(nameof(MinTwoColorsModel.Picks));
+
+        cut.InvokeAsync(() => editContext.Validate());
+        Assert.NotEmpty(editContext.GetValidationMessages(fi)); // one selection -> MinLength(2) fails
+
+        cut.Find(".wss-select").Click();                        // open the dropdown
+        // Click the "Blue" option (Green is already selected) -> two selections satisfies MinLength(2).
+        cut.FindAll("[role=option]").First(o => o.TextContent.Contains("Blue")).Click();
+
+        Assert.Equal(2, model.Picks.Count);
+        Assert.Empty(editContext.GetValidationMessages(fi)); // requirement met -> no lingering error
     }
 }
