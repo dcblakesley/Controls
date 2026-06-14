@@ -301,3 +301,145 @@
           edit-tooltip-container (optional)
              edit-tooltip-content (optional)
 */
+
+/********************************************** EditFile ************************************************/
+/* Icons — SVG data URIs, sized to match the Hatch/Spot icon set */
+.edit-icon-upload {
+    height: 36px;
+    width: 36px;
+    display: inline-block;
+    flex-shrink: 0;
+    background-repeat: no-repeat;
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23277C6C"/></svg>');
+}
+.edit-icon-upload-error {
+    height: 36px;
+    width: 36px;
+    display: inline-block;
+    flex-shrink: 0;
+    background-repeat: no-repeat;
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23CF1322"/></svg>');
+}
+.edit-icon-paperclip {
+    height: 14px;
+    width: 14px;
+    display: inline-block;
+    flex-shrink: 0;
+    background-repeat: no-repeat;
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.6535 2.68857C9.36564 1.40068 7.26837 1.40068 5.98185 2.68857L2.41349 6.2542C2.39025 6.27744 2.37794 6.30889 2.37794 6.3417C2.37794 6.37451 2.39025 6.40596 2.41349 6.4292L2.91798 6.93369C2.94104 6.95665 2.97226 6.96954 3.0048 6.96954C3.03734 6.96954 3.06855 6.95665 3.09161 6.93369L6.65997 3.36807C7.10294 2.9251 7.6922 2.68174 8.31837 2.68174C8.94454 2.68174 9.5338 2.9251 9.9754 3.36807C10.4184 3.81104 10.6617 4.40029 10.6617 5.0251C10.6617 5.65127 10.4184 6.23916 9.9754 6.68213L6.33868 10.3175L5.74943 10.9067C5.19845 11.4577 4.30294 11.4577 3.75197 10.9067C3.48536 10.6401 3.33908 10.286 3.33908 9.90869C3.33908 9.53135 3.48536 9.17725 3.75197 8.91064L7.35997 5.304C7.45157 5.21377 7.57189 5.16318 7.7004 5.16318H7.70177C7.83029 5.16318 7.94923 5.21377 8.03946 5.304C8.13107 5.39561 8.18029 5.51592 8.18029 5.64443C8.18029 5.77158 8.1297 5.89189 8.03946 5.98213L5.09044 8.92842C5.0672 8.95166 5.0549 8.98311 5.0549 9.01592C5.0549 9.04873 5.0672 9.08018 5.09044 9.10342L5.59493 9.60791C5.61799 9.63087 5.64921 9.64376 5.68175 9.64376C5.71429 9.64376 5.74551 9.63087 5.76857 9.60791L8.71622 6.66025C8.98829 6.38818 9.13732 6.02725 9.13732 5.64307C9.13732 5.25889 8.98693 4.89658 8.71622 4.62588C8.15431 4.06396 7.24103 4.06533 6.67911 4.62588L6.32911 4.97725L3.07247 8.23252C2.85144 8.45225 2.67623 8.71369 2.55701 9.00165C2.43779 9.28962 2.37692 9.59839 2.37794 9.91006C2.37794 10.5431 2.6254 11.1378 3.07247 11.5849C3.53595 12.047 4.14298 12.278 4.75001 12.278C5.35704 12.278 5.96407 12.047 6.42618 11.5849L10.6535 7.36025C11.2756 6.73682 11.6201 5.90693 11.6201 5.0251C11.6215 4.14189 11.277 3.31201 10.6535 2.68857Z" fill="%238C8C8C"/></svg>');
+}
+.edit-icon-delete {
+    height: 14px;
+    width: 14px;
+    display: inline-block;
+    flex-shrink: 0;
+    background-repeat: no-repeat;
+    background-image: url('data:image/svg+xml,<svg viewBox="-1 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.625 1.875H3.5C3.56875 1.875 3.625 1.81875 3.625 1.75V1.875H8.375V1.75C8.375 1.81875 8.43125 1.875 8.5 1.875H8.375V3H9.5V1.75C9.5 1.19844 9.05156 0.75 8.5 0.75H3.5C2.94844 0.75 2.5 1.19844 2.5 1.75V3H3.625V1.875ZM11.5 3H0.5C0.223437 3 0 3.22344 0 3.5V4C0 4.06875 0.05625 4.125 0.125 4.125H1.06875L1.45469 12.2969C1.47969 12.8297 1.92031 13.25 2.45312 13.25H9.54688C10.0813 13.25 10.5203 12.8313 10.5453 12.2969L10.9312 4.125H11.875C11.9438 4.125 12 4.06875 12 4V3.5C12 3.22344 11.7766 3 11.5 3ZM9.42656 12.125H2.57344L2.19531 4.125H9.80469L9.42656 12.125Z" fill="%23277C6C"/></svg>');
+}
+
+/* Drop zone */
+.edit-file-drop-zone {
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 36px 16px 16px 16px;
+    gap: 16px;
+    background: #f3f3f3;
+    border: 1px dashed #b7b7b7;
+    border-radius: 4px;
+    height: 146px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.edit-file-drop-zone input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.edit-file-drop-zone:focus-within {
+    outline: 2px solid var(--edit-focus-ring);
+    outline-offset: var(--edit-focus-offset);
+}
+
+.edit-file-drop-zone.hover {
+    border-color: var(--color-primary, #277c6c);
+}
+
+.edit-file-drop-zone.error {
+    border-color: var(--edit-color-danger);
+}
+
+.edit-file-drop-zone.error:focus-within {
+    outline-color: var(--edit-color-danger);
+}
+
+.edit-file-drop-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: rgba(28, 28, 28, 1);
+    text-align: center;
+    pointer-events: none;
+}
+
+.edit-file-formats {
+    color: rgba(0, 0, 0, 0.65);
+    font-size: 0.85em;
+}
+
+/* Loaded files list */
+.edit-file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.edit-file-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 2px 4px;
+    border-radius: 2px;
+}
+
+.edit-file-item:hover {
+    background-color: var(--color-page-background, #f5f5f5);
+}
+
+.edit-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.edit-file-delete-btn {
+    background: transparent;
+    border: none;
+    padding: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    visibility: hidden;
+    border-radius: 2px;
+}
+
+.edit-file-item:hover .edit-file-delete-btn {
+    visibility: visible;
+}
+
+.edit-file-list--readonly .edit-file-item {
+    cursor: default;
+}
