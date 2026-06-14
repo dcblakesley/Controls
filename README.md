@@ -320,7 +320,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### Unreleased
+### 10.3.0
+
+**New: `EditFile` — multi-file upload control**
+- `EditFile` is a new form control that binds a `List<IBrowserFile>` via the standard `Value` / `ValueChanged` / `Field` pattern, integrating with `EditContext` validation like every other `Edit*` control.
+- Supports drag-and-drop and click-to-browse. An invisible `<InputFile>` overlay covers the entire drop zone so both interactions work natively without extra JS.
+- Multiple files are supported. The drop zone stays visible until an optional `MaxFiles` cap is reached; files already chosen appear as a dismissible list below it (hover to reveal the remove button per file).
+- `AllowedExtensions` (e.g. `".pdf"`, `".xlsx"`) filters by extension; `MaxFileSizeBytes` caps individual file size (default 10 MB). Validation errors from either check are shown inline below the drop zone.
+- The drop zone border turns red when there's a validation error from the format/size check or when the field fails `EditContext` validation; the upload icon switches to its error (red) variant to match.
+- Read-only mode shows the selected filenames with a paperclip icon; empty renders a blank `ReadOnlyValue` consistent with the other controls.
+- Styled to match the Hatch / Spot drop-zone look: dashed `#b7b7b7` border, `#f3f3f3` background, primary-color hover border. Tokens bridge to `--color-primary` and `--color-danger` so the control follows the consumer's theme.
+- Adds four inline-SVG icon classes to `edit-controls.css`: `.edit-icon-upload`, `.edit-icon-upload-error`, `.edit-icon-paperclip`, `.edit-icon-delete`.
 
 **`Table` — robust dynamic columns + graceful sort**
 - Columns may now be conditionally rendered (`@if`). The Table re-collects its columns in document order on each render, so a hidden column drops out and a re-shown one returns to its declared position — previously a removed column left a stale header and cells behind, and re-showing it produced a duplicate. Hiding the column that drives the active sort now clears the sort so the indicator and the row order can't disagree.

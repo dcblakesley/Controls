@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.2.0</AssemblyVersion>
+	  <AssemblyVersion>10.3.0</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
     
@@ -22,7 +22,7 @@
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>10.2.0 - Adds the dependency-free AntDesign-style UI-kit controls (Select, Alert, Modal, Drawer, Table with column sorting and configurable pager placement, Pagination, Popover/Popconfirm, Skeleton, toasts) and searchable form selects (EditSelectSearch/EditMultiSelect), plus a library-wide accessibility and architecture overhaul. One breaking dependency change (Microsoft.AspNetCore.Components.DataAnnotations.Validation moved to the consumer). See the README changelog for the full list.</PackageReleaseNotes>
+    <PackageReleaseNotes>10.3.0 - Adds EditFile (multi-file drag-and-drop upload control), Table dynamic-column robustness, graceful sort degradation, and accessibility improvements to Skeleton and toasts. See the README changelog for the full list.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
