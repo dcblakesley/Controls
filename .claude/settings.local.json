@@ -5,7 +5,29 @@
       "Bash(code *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Repos-Dave\\\\Controls\\\\Controls\" -Recurse)",
       "Bash(Select-Object FullName)",
-      "PowerShell(head *)"
+      "PowerShell(head *)",
+      "PowerShell(dotnet build C:\\\\Repos\\\\Controls\\\\Controls\\\\Controls.csproj -c Release 2>&1 | Select-Object -Last 3; dotnet pack C:\\\\Repos\\\\Controls\\\\Controls\\\\Controls.csproj -c Release -o C:\\\\Repos\\\\Controls\\\\nupkg-audit --no-build 2>&1 | Select-Object -Last 3)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(dotnet pack *)",
+      "PowerShell(dotnet build *)",
+      "Skill(run)",
+      "PowerShell(dotnet run *)",
+      "PowerShell(Start-Process \"https://localhost:7002\")",
+      "PowerShell(dotnet test *)",
+      "PowerShell(git *)",
+      "PowerShell(Start-Process \"https://localhost:7002/uikit\")",
+      "PowerShell(& \"C:\\\\Repos\\\\Controls\\\\FormTesting\\\\FormTesting.Client.E2ETests\\\\bin\\\\Debug\\\\net10.0\\\\playwright.ps1\" screenshot --ignore-https-errors --full-page --wait-for-timeout=4000 \"https://localhost:7002/uikit\" \"C:\\\\Repos\\\\Controls\\\\screenshots\\\\uikit.png\" 2>&1 | Select-Object -Last 8)",
+      "PowerShell(& \"C:\\\\Repos\\\\Controls\\\\FormTesting\\\\FormTesting.Client.E2ETests\\\\bin\\\\Debug\\\\net10.0\\\\playwright.ps1\" screenshot --ignore-https-errors --full-page --wait-for-timeout=3500 \"https://localhost:7002/uikit\" \"C:\\\\Repos\\\\Controls\\\\screenshots\\\\uikit-after.png\" 2>&1 | Select-Object -Last 3)",
+      "PowerShell(& \"C:\\\\Repos\\\\Controls\\\\FormTesting\\\\FormTesting.Client.E2ETests\\\\bin\\\\Debug\\\\net10.0\\\\playwright.ps1\" screenshot --ignore-https-errors --full-page --wait-for-timeout=3500 \"https://localhost:7002/uikit\" \"C:\\\\Repos\\\\Controls\\\\screenshots\\\\uikit-toppager.png\" 2>&1 | Select-Object -Last 2)",
+      "PowerShell(& \"C:\\\\Repos\\\\Controls\\\\FormTesting\\\\FormTesting.Client.E2ETests\\\\bin\\\\Debug\\\\net10.0\\\\playwright.ps1\" screenshot --ignore-https-errors --full-page --wait-for-timeout=3000 \"https://localhost:7002/uikit\" \"C:\\\\Repos\\\\Controls\\\\screenshots\\\\uikit-bottomcenter.png\" 2>&1 | Select-Object -Last 1)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(cd C:\\\\Repos\\\\Controls && dotnet run --project FormTesting/FormTesting/FormTesting.csproj --no-build 2>&1 &)",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Get-NetTCPConnection *)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell($deadline = \\(Get-Date\\).AddSeconds\\(60\\); while \\(\\(Get-Date\\) -lt $deadline\\) { if \\(Get-NetTCPConnection -State Listen -LocalPort 5067 -ErrorAction SilentlyContinue\\) { \"listening on 5067\"; break }; Start-Sleep -Milliseconds 500 })",
+      "PowerShell($p = \\(Get-NetTCPConnection -State Listen -LocalPort 5067 -ErrorAction SilentlyContinue | Select-Object -First 1\\).OwningProcess; if \\($p\\) { $tree = Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -eq $p -or $_.ParentProcessId -eq $p }; Stop-Process -Id $p -Force -ErrorAction SilentlyContinue; Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $p } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }; Start-Sleep -Milliseconds 800; \\(Get-NetTCPConnection -State Listen -LocalPort 5067 -ErrorAction SilentlyContinue\\) ? \"still up\" : \"port 5067 free\")",
+      "PowerShell(explorer.exe \\(Resolve-Path ./nupkg\\).Path)"
     ]
   }
 }
