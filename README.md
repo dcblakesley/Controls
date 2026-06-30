@@ -50,58 +50,67 @@ Install-Package WssBlazorControls
 3. **Use the controls** in your Blazor components:
 
 ```razor
+@using System.ComponentModel
 @using System.ComponentModel.DataAnnotations
 
 <EditForm Model="@model" OnValidSubmit="@HandleSubmit">
     <DataAnnotationsValidator />
-    
-    <EditString @bind-Value="model.Name" 
-                Field="@(() => model.Name)"
-                Label="Full Name" 
-                IsRequired="true" />
-    
-    <EditNumber @bind-Value="model.Age" 
-                Field="@(() => model.Age)"
-                Label="Age" 
-                IsRequired="true" />
-    
-    <EditDate @bind-Value="model.BirthDate" 
-              Field="@(() => model.BirthDate)"
-              Label="Birth Date" />
-    
-    <EditBool @bind-Value="model.IsActive" 
-              Field="@(() => model.IsActive)"
-              Label="Active Status" />
-    
+
+    @* No Label needed: "Name", "Age", and "Birth Date" are derived correctly
+       from the property names, and the required star comes from [Required]. *@
+    <EditString @bind-Value="model.Name"     Field="@(() => model.Name)" />
+    <EditNumber @bind-Value="model.Age"       Field="@(() => model.Age)" />
+    <EditDate   @bind-Value="model.BirthDate" Field="@(() => model.BirthDate)" />
+
+    @* "Is Active" would be wrong, so the constant label lives on the model. *@
+    <EditBool   @bind-Value="model.IsActive"  Field="@(() => model.IsActive)" />
+
+    @* Label is set in markup only because the text is dynamic at runtime. *@
+    <EditString @bind-Value="model.Answer"    Field="@(() => model.Answer)" Label="@_currentQuestion" />
+
     <button type="submit">Submit</button>
-    
+
     <ValidationSummary />
 </EditForm>
 
 @code {
+    private string _currentQuestion = "Your favorite color?";
     private PersonModel model = new();
-    
+
     private void HandleSubmit()
     {
         // Handle form submission
     }
-    
+
     public class PersonModel
     {
         [Required]
         [StringLength(100)]
         public string Name { get; set; } = "";
-        
+
         [Required]
         [Range(1, 120)]
         public int? Age { get; set; }
-        
+
         public DateTime? BirthDate { get; set; }
-        
+
+        [DisplayName("Active Status")]
         public bool IsActive { get; set; } = true;
+
+        public string? Answer { get; set; }
     }
 }
 ```
+
+### Labeling: how to choose
+
+Pick the label source by how the text is determined, in this order of preference:
+
+1. **Let the label auto-generate** from the property name when that's already correct. The name is split on camel-case, so `BirthDate` → "Birth Date". Don't set anything — no `Label`, no attribute, and no manual `<label>`.
+2. **Put constant labels on the model** with `[DisplayName("...")]` when the auto-generated text is wrong or awkward (e.g. `IsActive` → "Is Active", but you want "Active Status"). This keeps the label next to the data it describes and reused everywhere the property is rendered.
+3. **Set the `Label` parameter in markup only for dynamic / runtime text** — a label that varies per instance or isn't known at compile time. A constant string in `Label="..."` is the wrong tier; move it to `[DisplayName]`.
+
+Under the hood the highest-priority source wins: the `Label` parameter overrides `[DisplayName]`, which overrides the auto-generated property name. Preferring tier 1, then 2, then 3 keeps you from reaching for a higher-priority source than the text actually needs.
 
 ## Available Controls
 
@@ -201,7 +210,7 @@ All form controls implement the `IEditControl` interface and provide:
 
 - **Identity Management**: `Id`, `IdPrefix` for unique identification
 - **Display Control**: `IsEditMode`, `IsDisabled`, `IsHidden`
-- **Labeling**: `Label`, `Description` with markup support
+- **Labeling**: auto-generated from the property name, `[DisplayName]` for constant labels, or the `Label` parameter for dynamic text — see [Labeling: how to choose](#labeling-how-to-choose). `Description` supports markup.
 - **Styling**: `ContainerClass` for custom CSS
 - **Validation**: `IsRequired` integration with DataAnnotations
 - **Conditional Display**: `Hiding` modes and `HidingMode` enum

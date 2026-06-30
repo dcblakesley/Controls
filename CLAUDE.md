@@ -144,6 +144,6 @@ The README serves as both the repo landing page and the NuGet package readme (pa
 
 - Component names use `Edit` prefix (EditString, EditSelectEnum, EditRadio, etc.)
 - All controls support accessibility: ARIA attributes (`aria-required`, `aria-invalid`, `aria-describedby`), fieldset/legend for groups, screen reader text
-- Label resolution chain: auto-generated from property name → `[DisplayName]` attribute → `Label` parameter
+- Label preference (in order): (1) let it auto-generate from the property name when correct — the name is camel-case split, so `BirthDate` → "Birth Date"; (2) use `[DisplayName("…")]` on the model for constant labels the auto-name gets wrong; (3) use the `Label` parameter in markup only for dynamic/runtime text. Resolution precedence (highest wins): `Label` parameter → `[DisplayName]` → auto-generated property name.
 - Generic components: `EditDate<T>`, `EditSelectEnum<TEnum>`, `EditRadioEnum<TEnum>`, `EditCheckedEnumList<TEnum>`
 - JavaScript interop is in `Controls/wwwroot/edit-controls.js` with C# wrappers in `JsInteropEc.cs`
