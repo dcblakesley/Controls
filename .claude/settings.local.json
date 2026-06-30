@@ -27,7 +27,23 @@
       "PowerShell(Stop-Process *)",
       "PowerShell($deadline = \\(Get-Date\\).AddSeconds\\(60\\); while \\(\\(Get-Date\\) -lt $deadline\\) { if \\(Get-NetTCPConnection -State Listen -LocalPort 5067 -ErrorAction SilentlyContinue\\) { \"listening on 5067\"; break }; Start-Sleep -Milliseconds 500 })",
       "PowerShell($p = \\(Get-NetTCPConnection -State Listen -LocalPort 5067 -ErrorAction SilentlyContinue | Select-Object -First 1\\).OwningProcess; if \\($p\\) { $tree = Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -eq $p -or $_.ParentProcessId -eq $p }; Stop-Process -Id $p -Force -ErrorAction SilentlyContinue; Get-CimInstance Win32_Process | Where-Object { $_.ParentProcessId -eq $p } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }; Start-Sleep -Milliseconds 800; \\(Get-NetTCPConnection -State Listen -LocalPort 5067 -ErrorAction SilentlyContinue\\) ? \"still up\" : \"port 5067 free\")",
-      "PowerShell(explorer.exe \\(Resolve-Path ./nupkg\\).Path)"
+      "PowerShell(explorer.exe \\(Resolve-Path ./nupkg\\).Path)",
+      "Bash(unzip -l nupkg/WssBlazorControls.10.1.0.nupkg)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Repos-Dave\\\\Controls\" -Recurse -Include \"*.csproj\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Repos-Dave\\\\Controls\\\\Controls\" -Directory | ForEach-Object { $_.Name })",
+      "PowerShell(Start-Process \"C:\\\\Repos-Dave\\\\Controls\\\\ARCHITECTURE_PLAN.md\")",
+      "Bash(start *)",
+      "Bash(curl -s \"https://api.nuget.org/v3-flatcontainer/sixlabors.imagesharp/index.json\")",
+      "Bash(python -c \"import sys,json; v=json.load\\(sys.stdin\\)['versions']; print\\([x for x in v if not '-' in x][-5:]\\)\")",
+      "PowerShell(& \"FormTesting\\\\FormTesting.Client.E2ETests\\\\bin\\\\Debug\\\\net10.0\\\\playwright.ps1\" install chromium 2>&1 | Select-Object -Last 10)",
+      "PowerShell(Test-Path *)",
+      "Bash(UPDATE_SNAPSHOTS=1 dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj --no-build --nologo --filter \"FullyQualifiedName~EditStringE2ETests\" -v normal)",
+      "Bash(UPDATE_SNAPSHOTS=1 dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj --nologo --filter \"FullyQualifiedName~E2ETests\" -v normal)",
+      "mcp__playwright__browser_navigate",
+      "Bash(break)",
+      "mcp__playwright__browser_take_screenshot",
+      "PowerShell(git push *)"
     ]
   }
 }
