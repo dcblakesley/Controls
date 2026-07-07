@@ -44,7 +44,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
         foreach (var file in incoming)
         {
-            if (MaxFiles > 0 && Value.Count + toAdd.Count >= MaxFiles)
+            if (MaxFiles > 0 && (Value?.Count ?? 0) + toAdd.Count >= MaxFiles)
                 break;
 
             var ext = Path.GetExtension(file.Name);
@@ -66,7 +66,8 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
         if (toAdd.Count > 0)
         {
-            Value = [.. Value, .. toAdd];
+            // A null bound list (model property never initialized) starts fresh instead of throwing.
+            Value = Value is null ? toAdd : [.. Value, .. toAdd];
             // Write back to the model (ValueChanged) BEFORE notifying — the validator reads the property
             // live off the model during NotifyFieldChanged, so notifying first validates the stale value.
             await ValueChanged.InvokeAsync(Value);

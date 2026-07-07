@@ -100,8 +100,8 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     {
         // Build a new list rather than mutating the caller's bound instance — so a parent that
         // compares references detects the change, and any shared/source list isn't mutated as a
-        // side effect.
-        var updated = new List<TItem>(Value);
+        // side effect. A null bound list (model property never initialized) starts fresh.
+        List<TItem> updated = Value is null ? [] : [.. Value];
         if (!updated.Remove(item))
             updated.Add(item);
         Value = updated;

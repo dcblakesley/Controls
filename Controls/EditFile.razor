@@ -7,7 +7,7 @@
 
         @if (ShowEditor)
         {
-            @if (MaxFiles <= 0 || Value.Count < MaxFiles)
+            @if (MaxFiles <= 0 || Value is null || Value.Count < MaxFiles)
             {
                 <div class="edit-file-drop-zone @_hoverClass @(_hasError ? "error" : "")"
                      @ondragenter="OnDragEnter"
@@ -33,7 +33,7 @@
                 </div>
             }
 
-            @if (Value.Count > 0)
+            @if (Value?.Count > 0)
             {
                 <ul class="edit-file-list" aria-label="Selected files">
                     @foreach (var file in Value)
