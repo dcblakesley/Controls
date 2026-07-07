@@ -46,6 +46,10 @@ public static class EnumHelpers
 
     // Cache the sanitized ids — ToId is called 2-3x per option per render in the enum/string
     // checkbox/radio/select loops, and the regex + intermediate string would otherwise run every time.
+    // Bounded: option strings can be runtime/user data, and this is a process-wide static on Blazor
+    // Server — unbounded it would grow for the process lifetime, one entry per distinct string ever
+    // rendered. Past the cap, compute without caching (correctness unaffected, memoization lost).
+    const int IdCacheCap = 10_000;
     static readonly ConcurrentDictionary<string, string> _idCache = new();
 
     /// <summary>
@@ -56,9 +60,14 @@ public static class EnumHelpers
         if (string.IsNullOrEmpty(value))
             return string.Empty;
 
+        if (_idCache.TryGetValue(value, out var cached))
+            return cached;
+
         // Replace spaces with hyphens, then drop anything that isn't alphanumeric / hyphen / underscore.
-        return _idCache.GetOrAdd(value, static v =>
-            System.Text.RegularExpressions.Regex.Replace(v.Replace(" ", "-"), @"[^a-zA-Z0-9\-_]", ""));
+        var computed = System.Text.RegularExpressions.Regex.Replace(value.Replace(" ", "-"), @"[^a-zA-Z0-9\-_]", "");
+        if (_idCache.Count < IdCacheCap)
+            _idCache[value] = computed;
+        return computed;
     }
 
     /// <summary>

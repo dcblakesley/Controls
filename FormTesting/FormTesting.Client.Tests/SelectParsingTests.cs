@@ -31,6 +31,25 @@ public class SelectParsingTests
     }
 
     [Fact]
+    public void StringOrConvert_parses_fractional_values_invariantly_regardless_of_culture()
+    {
+        var original = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            // de-DE's thousands-separator tolerance read "1.5" as 15 under CurrentCulture parsing,
+            // while the bound value formatted back as "1,5" — matching no option.
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+            var ok = SelectParsing.TryParseStringOrConvert<double>("1.5", "Price", out var result, out _);
+            Assert.True(ok);
+            Assert.Equal(1.5, result);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
     public void StringOrConvert_rejects_an_invalid_value_with_message()
     {
         var ok = SelectParsing.TryParseStringOrConvert<int>("abc", "Age", out _, out var err);

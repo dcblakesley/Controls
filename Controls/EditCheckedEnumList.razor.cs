@@ -24,6 +24,7 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
     Type _underlyingType = null!;
     bool _isNullable;
     List<TEnum>? _cachedOptions;
+    bool _lastSort;
 
     protected override void OnInitialized()
     {
@@ -35,6 +36,18 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
         _isNullable = Nullable.GetUnderlyingType(_type) != null;
         _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
         _cachedOptions = BuildOptions();
+        _lastSort = Sort;
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        // The option list is cached, but a runtime Sort change must rebuild it — it was frozen at init.
+        if (_cachedOptions is not null && Sort != _lastSort)
+        {
+            _lastSort = Sort;
+            _cachedOptions = BuildOptions();
+        }
     }
 
     List<TEnum> GetOptions() => _cachedOptions!;

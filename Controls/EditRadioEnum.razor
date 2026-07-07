@@ -67,11 +67,7 @@
                 <ReadOnlyValue Id=@_id
                                IsLabelHidden=@ShouldHideLabel
                                CssClass=@CssClass
-                               Text=@(
-                               HasOtherOption && Value?.Equals(GetOptions().Last()) == true
-                               ? $"{Value?.GetName()}: {OtherValue}"
-                               : Value?.GetName()
-                                              ) />
+                               Text=@(IsOtherSelected ? $"{Value?.GetName()}: {OtherValue}" : Value?.GetName()) />
                 }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

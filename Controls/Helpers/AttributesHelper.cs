@@ -84,7 +84,7 @@ public static class AttributesHelper
 
     public static string GetLabelText(this List<Attribute>? attrs, FieldIdentifier fieldIdentifier)
     {
-        // Order: DisplayNameAttribute, EnumDisplayNameAttribute, PropertyName
+        // Order: DisplayNameAttribute, EnumDisplayNameAttribute, DisplayAttribute, PropertyName
         var displayNameAttribute = attrs?.OfType<DisplayNameAttribute>().FirstOrDefault();
         var labelText = displayNameAttribute?.DisplayName;
 
@@ -94,6 +94,18 @@ public static class AttributesHelper
             if (enumDisplayName != null)
             {
                 labelText = enumDisplayName.Value;
+            }
+        }
+
+        if (string.IsNullOrEmpty(labelText))
+        {
+            // [Display(Name = …)] — DataAnnotations' own naming attribute. Honoring it keeps the
+            // label consistent with the validation messages DataAnnotations generates (which use
+            // [Display]), and with EnumHelpers.GetName, which already honors it for enum members.
+            var displayAttribute = attrs?.OfType<DisplayAttribute>().FirstOrDefault();
+            if (!string.IsNullOrEmpty(displayAttribute?.Name))
+            {
+                labelText = displayAttribute.Name;
             }
         }
 

@@ -66,6 +66,23 @@ public class AttributesHelperTests
         Assert.Equal("Birth Date", attrs.GetLabelText(fid));
     }
 
+    class DisplayAttributeModel
+    {
+        [Display(Name = "Given Name")]
+        public string FirstName { get; set; } = "";
+    }
+
+    [Fact]
+    public void GetLabelText_honors_DataAnnotations_Display_Name()
+    {
+        // [Display(Name)] is what DataAnnotations itself uses in its messages — ignoring it gave
+        // the raw camel-split label and defeated every ValidationHelper message rewrite.
+        var model = new DisplayAttributeModel();
+        var fid = FieldOf(() => model.FirstName);
+        var attrs = AttributesHelper.GetExpressionCustomAttributes(() => model.FirstName);
+        Assert.Equal("Given Name", attrs.GetLabelText(fid));
+    }
+
     [Fact]
     public void GetMinAndMaxLengths_reads_StringLength_attribute()
     {

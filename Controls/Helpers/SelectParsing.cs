@@ -27,7 +27,10 @@ public static class SelectParsing
             return true;
         }
 
-        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var converted))
+        // Invariant, matching EditNumber's convention: option values are markup/code-authored
+        // literals ("1.5"), and CurrentCulture parsing read "1.5" as 15 under de-DE (thousands-
+        // separator tolerance) while the value formatted back as "1,5" — matching no option.
+        if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.InvariantCulture, out var converted))
         {
             result = converted!;
             validationErrorMessage = null!;

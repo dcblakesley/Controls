@@ -37,6 +37,8 @@ public partial class EditRadioEnum<TEnum> : EditControlBase<TEnum?>
     Type _underlyingType = null!;
     bool _isNullable;
     List<TEnum?>? _cachedOptions;
+    bool _lastSort;
+    bool _lastHasOther;
 
     protected override void OnInitialized()
     {
@@ -48,7 +50,26 @@ public partial class EditRadioEnum<TEnum> : EditControlBase<TEnum?>
         _isNullable = Nullable.GetUnderlyingType(_type) != null;
         _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
         _cachedOptions = BuildOptions();
+        _lastSort = Sort;
+        _lastHasOther = HasOtherOption;
     }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        // The option list is cached, but the parameters that shape it may change at runtime —
+        // previously a Sort/HasOtherOption change was silently ignored forever.
+        if (_cachedOptions is not null && (Sort != _lastSort || HasOtherOption != _lastHasOther))
+        {
+            _lastSort = Sort;
+            _lastHasOther = HasOtherOption;
+            _cachedOptions = BuildOptions();
+        }
+    }
+
+    // Read-only "Other" detection; an empty enum (no options) can't have an Other selection —
+    // GetOptions().Last() threw on it.
+    bool IsOtherSelected => HasOtherOption && _cachedOptions is { Count: > 0 } && Value?.Equals(_cachedOptions[^1]) == true;
 
     List<TEnum?> GetOptions() => _cachedOptions!;
 

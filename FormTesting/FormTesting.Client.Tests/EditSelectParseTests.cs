@@ -21,6 +21,57 @@ public class EditSelectParseTests : TestContext
     };
 
     [Fact]
+    public void EditSelectEnum_rebuilds_options_when_Sort_changes_at_runtime()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Sort", false);
+            b.CloseComponent();
+        }));
+
+        var unsortedFirst = cut.FindAll("select option")[1].TextContent.Trim(); // [0] is the null option
+        Assert.Equal("Low", unsortedFirst);
+
+        // Previously the cached option list was frozen at init and a Sort change was ignored.
+        cut.FindComponent<EditSelectEnum<Priority?>>().SetParametersAndRender(p => p.Add(x => x.Sort, true));
+        var sortedFirst = cut.FindAll("select option")[1].TextContent.Trim();
+        Assert.Equal("Critical", sortedFirst);
+    }
+
+    enum EmptyEnum { }
+
+    class EmptyEnumModel
+    {
+        public EmptyEnum? Choice { get; set; }
+    }
+
+    [Fact]
+    public void EditRadioEnum_with_empty_enum_and_other_option_renders_read_only_without_throwing()
+    {
+        var model = new EmptyEnumModel();
+        Expression<Func<EmptyEnum?>> field = () => model.Choice;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<EmptyEnum?>>(0);
+            b.AddAttribute(1, "Value", model.Choice);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "HasOtherOption", true);
+            b.AddAttribute(5, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        // GetOptions().Last() used to throw on an empty enum in the read-only branch.
+        Assert.NotNull(cut.Find(".edit-readonly-value"));
+    }
+
+    [Fact]
     public void EditSelectString_null_value_selects_the_leading_empty_option()
     {
         var model = new PersonModel { Name = null! };
