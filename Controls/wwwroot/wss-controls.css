@@ -358,6 +358,14 @@
     z-index: 1040;
 }
 
+/* While open, the selector box itself must sit above its own full-screen backdrop — otherwise
+   clicking into the search input / a tag's remove button / the clear button hits the backdrop and
+   closes the dropdown instead. (When JS is available the open-order counter in wss-select.js
+   assigns inline z-indexes that override these static fallbacks.) */
+.wss-select.wss-select-open {
+    z-index: 1041;
+}
+
 .wss-select-dropdown {
     position: absolute;
     top: calc(100% + 4px);
@@ -1286,7 +1294,11 @@
     top: 8px;
     left: 0;
     right: 0;
-    z-index: 1010;
+    /* Toasts are the always-on-top layer: above every static overlay band (modal/drawer 1000,
+       popover 1030, select 1040/1050) and above the JS open-order counter (starts at 1050,
+       resets at 4000) — a popover's invisible backdrop must never swallow the click aimed at a
+       toast's close button. */
+    z-index: 5000;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1348,7 +1360,7 @@
     position: fixed;
     top: 24px;
     right: 24px;
-    z-index: 1010;
+    z-index: 5000; /* always-on-top toast layer — see .wss-msg-container */
     display: flex;
     flex-direction: column;
     gap: 16px;

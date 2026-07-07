@@ -29,6 +29,19 @@ export function placeDropdown(wrapper, dropdown, gap) {
         return;
     }
     gap = gap || 4;
+
+    // Stack in open order via the counter shared with wss-overlay.js (window global — separate
+    // modules can't share module state): backdrop below, the selector box + dropdown above it, so
+    // a select opened inside a modal paints above that modal and clicking the select's own
+    // input/tags/clear button doesn't hit the backdrop. clearZ removes the inline value on close
+    // (the wrapper persists in the page, and a stale high z would poke through later overlay masks).
+    const current = window.__wssOverlayZ;
+    const z = window.__wssOverlayZ = (current && current < 4000 ? current : 1048) + 2;
+    const backdrop = wrapper.previousElementSibling;
+    if (backdrop && backdrop.classList.contains('wss-select-backdrop')) {
+        backdrop.style.zIndex = z;
+    }
+    wrapper.style.zIndex = z + 1;
     const w = wrapper.getBoundingClientRect();
     const dropdownHeight = dropdown.offsetHeight;
     const roomBelow = window.innerHeight - w.bottom;
@@ -39,6 +52,13 @@ export function placeDropdown(wrapper, dropdown, gap) {
     } else {
         dropdown.style.bottom = 'auto';
         dropdown.style.top = `calc(100% + ${gap}px)`;
+    }
+}
+
+// Removes the open-order z-index applied by placeDropdown once the dropdown closes.
+export function clearZ(el) {
+    if (el) {
+        el.style.zIndex = '';
     }
 }
 

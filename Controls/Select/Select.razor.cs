@@ -708,6 +708,16 @@ public partial class Select<TValue> : IAsyncDisposable
         else if (!_open && _dropdownPositioned)
         {
             _dropdownPositioned = false;
+            try
+            {
+                // Drop the open-order z-index — the wrapper persists in the page, and a stale
+                // high z would poke through later overlays' masks.
+                if (_jsModule is not null) await _jsModule.InvokeVoidAsync("clearZ", _wrapperRef);
+            }
+            catch
+            {
+                // No JS runtime / module — nothing was assigned, nothing to clear.
+            }
         }
     }
 

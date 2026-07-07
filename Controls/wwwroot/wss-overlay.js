@@ -4,12 +4,32 @@
 //   * shifts along the cross axis (via the --wss-shift CSS variable) so the panel stays in the viewport.
 // Pure DOM, no dependencies. When this module isn't available (server prerender, unit tests) the
 // component simply keeps the default CSS placement — so it degrades gracefully.
+// Open-order z-index counter, shared with wss-select.js via a window global (separate modules
+// can't share module state). Each overlay activation takes the next slot, so "opened later" always
+// paints above "opened earlier" regardless of DOM order — fixing Modal-vs-Drawer ties and a page
+// Popover out-ranking a later Modal's mask. Starts above every static CSS band (the no-JS
+// fallback values) and resets at 4000 to stay under the 5000 toast layer; a reset only matters if
+// overlays are stacked at that exact moment, and self-heals on the next open.
+function nextZ() {
+    const current = window.__wssOverlayZ;
+    window.__wssOverlayZ = (current && current < 4000 ? current : 1048) + 2;
+    return window.__wssOverlayZ;
+}
+
 export function place(trigger, panel, prefix, placement, gap, margin) {
     if (!trigger || !panel) {
         return placement;
     }
     gap = gap || 10;
     margin = margin || 8;
+
+    // Stack in open order: invisible backdrop below, panel above it.
+    const z = nextZ();
+    const backdrop = panel.previousElementSibling;
+    if (backdrop && backdrop.classList.contains(`${prefix}-backdrop`)) {
+        backdrop.style.zIndex = z;
+    }
+    panel.style.zIndex = z + 1;
 
     // Start from a clean shift so measurements reflect the un-shifted panel.
     panel.style.setProperty('--wss-shift', '0px');
@@ -101,6 +121,12 @@ export function activateModal(panel) {
     }
     const previouslyFocused = document.activeElement;
     wssLockScroll();
+
+    // Stack in open order (see nextZ) — the wrap/root carries the overlay's z-index.
+    const root = panel.closest('.wss-modal-wrap, .wss-drawer-root');
+    if (root) {
+        root.style.zIndex = nextZ();
+    }
 
     const focusables = () =>
         Array.from(panel.querySelectorAll(WSS_FOCUSABLE))
