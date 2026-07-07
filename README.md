@@ -152,6 +152,19 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 - **`ValidationView`** - Validation summary that renders each error as a link jumping to its field
 - **`ReadOnlyValue`** - Read-only value presentation
 - **`EditDisplay`** - Static label+value pair (no model binding)
+- **`FormDefaults`** - Render-tree-scoped defaults for the controls (see below)
+
+#### `FormDefaults`
+
+Wrap your app root (or each micro-frontend's root) in `FormDefaults` to set control defaults for every form underneath it:
+
+```razor
+<FormDefaults IsRequiredStarHidden="true" ShowFieldNameInValidation="false">
+    <Router AppAssembly="@typeof(App).Assembly">...</Router>
+</FormDefaults>
+```
+
+Resolution per setting (highest wins): the form's `FormOptions` instance value → the cascaded `FormDefaults` → the static `FormOptions.Default*` property. Prefer `FormDefaults` over the statics: the statics are process-wide, so on Blazor Server they're shared by every user/circuit, and when several MFEs share one runtime they're shared across MFEs. `FormDefaults` scopes to the render tree, which matches app/MFE/circuit boundaries. It's intended as set-once root configuration — the cascade is registered as fixed, so runtime changes to its parameters don't propagate.
 
 #### `EditDisplay` vs `ReadOnlyValue`
 Both render text in the `edit-readonly-value` style, but their use cases are different:
@@ -379,6 +392,7 @@ A library-wide bug-fix and hardening pass. Version stays 10.3.0 until the next p
 **API changes to note when upgrading**
 - `InvalidIcon.CssClass` → `InvalidIcon.IsInvalid` (bool); `LabelTooltip.TooltipChanged` removed (never invoked); `ValidationView.Model` removed (never read); `EditRadio.Field` is now required; `EditSelectString` gains a leading empty option (opt out with `NullOptionText="@null"`; its type is now `string?`) and selecting the blank now writes `null`/`default` instead of `""`; `EditNumber` commits on change (not per keystroke); `Alert` self-dismisses on close; `Select`/`Table` collection parameters are immutable-by-reference.
 - New: `Table.RowKey`, `Pagination.AriaLabel`, `EditSelect.ReadOnlyText`, `EditSelectString.NullOptionText`, `FormLabel.IsForLabelable`.
+- New `FormDefaults` component: render-tree-scoped defaults for `IsRequiredStarHidden` / `ShowFieldNameInValidation` — wrap an app or MFE root to configure its forms without touching the process-wide `FormOptions` statics (which are shared across circuits on Blazor Server). Resolution: `FormOptions` instance value → cascaded `FormDefaults` → static default. Non-breaking; the statics remain as the final fallback.
 
 **Packaging & repo**
 - The packages now ship XML docs (IntelliSense), SourceLink + `.snupkg` symbols, deterministic CI builds, package validation, and an SPDX `MIT` license expression; warnings are errors. GitHub Actions CI builds the solution, runs the bUnit suite across net8/net9/net10, packs both packages, and runs the Playwright E2E suite. The E2E project is now part of `FormTesting.sln`. The Quick Start documents the required `edit-controls.js` script tag.

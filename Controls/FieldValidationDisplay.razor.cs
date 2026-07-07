@@ -11,6 +11,7 @@ public partial class FieldValidationDisplay
     static readonly ConcurrentDictionary<(Type, string), string> _valueTypeCache = new();
     [CascadingParameter] EditContext? EditContext { get; set; }
     [CascadingParameter] FormOptions? FormOptions { get; set; }
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
 
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
     [Parameter] public required List<Attribute> Attributes { get; set; }
@@ -44,10 +45,11 @@ public partial class FieldValidationDisplay
         // this validation display is conditionally rendered.
     }
 
-    // DefaultShowFieldNameInValidation is a *static* member: in `FormOptions.X` the name binds to the
-    // type, not the (possibly-null) cascaded instance, so the ?? fallback is null-safe despite appearances.
+    // Per-form FormOptions → per-tree FormDefaults → process-wide static. DefaultShowFieldNameInValidation
+    // is a *static* member: in `FormOptions.X` the name binds to the type, not the (possibly-null)
+    // cascaded instance, so the final ?? fallback is null-safe despite appearances.
     bool ShowFieldNameInValidation =>
-        FormOptions?.ShowFieldNameInValidation ?? FormOptions.DefaultShowFieldNameInValidation;
+        FormOptions?.ShowFieldNameInValidation ?? FormDefaults?.ShowFieldNameInValidation ?? FormOptions.DefaultShowFieldNameInValidation;
 
     /// <summary> Overrides the default validation messages. </summary>
     string GetValidationMessage(string message, bool showLabel) =>

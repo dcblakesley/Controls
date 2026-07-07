@@ -49,16 +49,20 @@ public class FormOptions
     /// When null, falls back to <see cref="DefaultIsRequiredStarHidden"/>. </summary>
     public bool? IsRequiredStarHidden { get; set; }
 
-    /// <summary> Global default for <see cref="IsRequiredStarHidden"/>.
-    /// Used when an instance's IsRequiredStarHidden is null. </summary>
+    /// <summary> Global default for <see cref="IsRequiredStarHidden"/>, used when both the instance value
+    /// and any cascaded <see cref="FormDefaults"/> are null. <b>Process-wide</b> — on Blazor Server this is
+    /// shared by every circuit/user, so set it at startup only; for per-app or per-MFE defaults use
+    /// <see cref="FormDefaults"/> instead. </summary>
     public static bool DefaultIsRequiredStarHidden { get; set; } = false;
 
     /// <summary> When true, visual validation messages include the field name (e.g., "Name is required" instead of "Required").
     /// When null, falls back to <see cref="DefaultShowFieldNameInValidation"/>. </summary>
     public bool? ShowFieldNameInValidation { get; set; }
 
-    /// <summary> Global default for <see cref="ShowFieldNameInValidation"/>.
-    /// Used when an instance's ShowFieldNameInValidation is null. </summary>
+    /// <summary> Global default for <see cref="ShowFieldNameInValidation"/>, used when both the instance
+    /// value and any cascaded <see cref="FormDefaults"/> are null. <b>Process-wide</b> — on Blazor Server
+    /// this is shared by every circuit/user, so set it at startup only; for per-app or per-MFE defaults use
+    /// <see cref="FormDefaults"/> instead. </summary>
     public static bool DefaultShowFieldNameInValidation { get; set; } = true;
 }
 

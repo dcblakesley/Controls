@@ -125,13 +125,20 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   press-mask/release-panel stays open; panel-press/mask-release stays open; stale-press-then-new-gesture
   stays open.
 
-### ☐ M6 — `FormOptions` static defaults bleed across circuits on Blazor Server **⚖ decision**
+### ☑ M6 — `FormOptions` static defaults bleed across circuits on Blazor Server **⚖ decision**
 - **Where:** `Controls/FormOptions.cs:45,53` — `DefaultIsRequiredStarHidden`,
   `DefaultShowFieldNameInValidation` are `static bool { get; set; }` (process-wide).
 - **Failure:** per-user/per-tenant assignment from one circuit changes every other user's forms.
   Writes are atomic — semantic sharing problem, not a race.
 - **Options:** (a) document "set at startup only, process-wide"; (b) move to a DI options object
   (breaking-ish). Decide before touching.
+- **Decision: neither — (c) cascading `FormDefaults` component.** DI (b) was rejected because most
+  consumers run as MFEs that don't own the composition root; a render-tree cascade maps onto
+  app/MFE/circuit boundaries with no service registration. New root-level `FormDefaults` component
+  (nullable `IsRequiredStarHidden`/`ShowFieldNameInValidation`, cascades itself `IsFixed`);
+  resolution is FormOptions instance → FormDefaults → static. Statics kept as final fallback
+  (non-breaking) and documented as "process-wide, set at startup only". Tests: `FormDefaultsTests`
+  covers the full chain including both fall-through directions.
 
 ### ☐ M7 — Popover/Popconfirm trigger invites button-in-button **⚖ decision**
 - **Where:** `Controls/UiKit/Popover.razor` / `Popconfirm.razor` — `role="button" tabindex="0"`
