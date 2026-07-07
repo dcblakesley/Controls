@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -180,6 +181,70 @@ public class EditFileTests : TestContext
 
         Assert.Empty(cut.FindAll(".edit-file-drop-zone"));
         Assert.Contains("report.pdf", cut.Find(".edit-file-list--readonly").TextContent);
+    }
+
+    // Reads a selected file with NO size argument — a buffered file must ignore the framework's
+    // 500 KB default, so a bare OpenReadStream() always succeeds regardless of size.
+    static string ReadAll(IBrowserFile f)
+    {
+        using var s = f.OpenReadStream();
+        using var r = new StreamReader(s);
+        return r.ReadToEnd();
+    }
+
+    [Fact]
+    public void Selected_files_are_buffered_into_memory_and_stay_readable()
+    {
+        // H1: the control buffers each file's bytes at pick time (BufferedBrowserFile) rather than
+        // holding the framework IBrowserFile, whose OpenReadStream dies once Blazor wipes the file map.
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("hello world", "a.txt"));
+
+        Assert.NotNull(changed);
+        var stored = Assert.Single(changed);
+        Assert.Equal("BufferedBrowserFile", stored.GetType().Name); // not the framework's transient file
+        Assert.Equal("a.txt", stored.Name);
+        Assert.Equal("hello world", ReadAll(stored));               // bare OpenReadStream() works
+    }
+
+    [Fact]
+    public void Files_from_multiple_selection_batches_all_survive_and_stay_readable()
+    {
+        // The core H1 regression: pick one file, then pick another. Both must remain in the list AND
+        // both must still be readable. (bUnit can't reproduce the browser file-map wipe that breaks an
+        // un-buffered earlier batch, but this proves the buffering that defeats it — batch 1 is read
+        // back after batch 2 arrived.)
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => { changed = v; model.Files = v; });
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("first", "a.txt"));
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("second", "b.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(2, changed.Count);
+        Assert.Equal(["a.txt", "b.txt"], changed.Select(f => f.Name));
+        Assert.Equal("first", ReadAll(changed[0]));  // earlier batch still readable after the later one
+        Assert.Equal("second", ReadAll(changed[1]));
+    }
+
+    [Fact]
+    public void Buffered_file_reads_without_a_size_argument_even_above_the_500KB_framework_default()
+    {
+        // A 600 KB file: the framework's bare OpenReadStream() (512,000-byte default) would throw.
+        // The buffered copy serves the whole thing because the bytes are already in memory.
+        var big = new string('x', 600 * 1024);
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, maxFileSizeBytes: 1024 * 1024);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText(big, "big.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(big.Length, ReadAll(Assert.Single(changed)).Length);
     }
 
     [Fact]

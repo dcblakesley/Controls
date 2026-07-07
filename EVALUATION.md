@@ -18,7 +18,7 @@ Legend: ☐ open · ☑ done · ✗ won't fix
 
 ## High
 
-### ☐ H1 — `EditFile` silently loses every file except the last selection batch
+### ☑ H1 — `EditFile` silently loses every file except the last selection batch
 - **Where:** `Controls/EditFile.razor.cs` (accumulation in `LoadFiles`), `Controls/EditFile.razor:10` (`InputFile` unmounts at `MaxFiles`)
 - **Verified live:** added `batch1.pdf`, then `batch2.pdf` in a second pick. UI listed both;
   the browser's `_blazorFilesById` map and native `input.files` held **only `batch2.pdf`**.
@@ -32,6 +32,15 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   accumulation, so append semantics should become real). Alternatives: replace-not-append per
   change; or document single-batch semantics. Whatever lands, also fix the MaxFiles-unmount case
   and document `OpenReadStream(maxAllowedSize:)` (see L8).
+- **Done (uncommitted):** ⚖ Dave chose *buffer at selection*. New `internal sealed BufferedBrowserFile : IBrowserFile`
+  serves an in-memory buffer; `LoadFiles` reads each accepted file's bytes (`OpenReadStream(MaxFileSizeBytes)`
+  + `ReadExactlyAsync`) at pick time and stores a wrapper. Public API stays `List<IBrowserFile>`.
+  MaxFiles-unmount is fixed by construction (bytes no longer depend on the input element). A per-file
+  read failure is caught and reported, not fatal. **Folds in L8** — `OpenReadStream()` ignores its size
+  arg (buffer already bounded by `MaxFileSizeBytes`), so a bare call works; memory trade-off documented
+  on the class + `MaxFileSizeBytes`. Tests: `Selected_files_are_buffered_into_memory_and_stay_readable`,
+  `Files_from_multiple_selection_batches_all_survive_and_stay_readable`,
+  `Buffered_file_reads_without_a_size_argument_even_above_the_500KB_framework_default`.
 
 ### ☑ H2 — Scalar controls crash outside an `EditForm` (regression from the `IsInvalid` fix, 2ed6416)
 - **Where:** `Controls/EditControlBase.cs:67` — `IsInvalid => EditContext.GetValidationMessages(FieldIdentifier).Any()`
@@ -172,12 +181,15 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   every call, forever. Check-then-add can also overshoot the cap slightly (benign).
 - **Fix:** cache saturation in a `volatile bool` (stop counting once full), or approximate counter.
 
-### ☐ L8 — Doc gap: `MaxFileSizeBytes` vs `OpenReadStream`'s 500 KB default
+### ☑ L8 — Doc gap: `MaxFileSizeBytes` vs `OpenReadStream`'s 500 KB default
 - **Where:** README / EditFile xmldoc — the control validates `file.Size` (10 MB default) but a
   consumer calling bare `OpenReadStream()` throws past 512,000 bytes.
 - **Fix:** README + xmldoc: `file.OpenReadStream(maxAllowedSize: <your cap>)`; on Server, read
   before the circuit disconnects. (SignalR chunking is a non-issue.) Fold into H1's fix if that
   changes the contract anyway.
+- **Done (uncommitted):** resolved *by* H1 rather than just documented — buffered files serve the whole
+  buffer regardless of the size arg, so bare `OpenReadStream()` no longer throws. Class/`MaxFileSizeBytes`
+  xmldoc now explains the buffering + memory trade-off; README EditFile section updated (see H1 commit).
 
 ### ☐ L9 — `[Display(Name)]` support ignores `ResourceType`
 - **Where:** `Controls/Helpers/AttributesHelper.cs` — reads `.Name` instead of `GetName()`, so
