@@ -25,14 +25,20 @@
 
             @if (ShowEditor)
             {
-                <InputRadioGroup @bind-Value=@CurrentValue disabled=@IsDisabled>
-                    <div class=@(IsHorizontal
-                                          ? "edit-radio-buttons-container-horizontal"
-                                          : "edit-radio-buttons-container-vertical")>
-                        @ChildContent
-                    </div>
+                @* InputRadioGroup renders no HTML element, so a `disabled` attribute on it goes
+                   nowhere — the nested fieldset natively disables every descendant radio instead.
+                   ValueExpression is forwarded so the inner group notifies/styles the real model
+                   field rather than a bogus FieldIdentifier("CurrentValue"). *@
+                <InputRadioGroup TValue="TValue" Value=@CurrentValue ValueChanged=@OnGroupValueChanged ValueExpression=@ValueExpression>
+                    <fieldset class="edit-radio-disable-scope" disabled=@IsDisabled>
+                        <div class=@(IsHorizontal
+                                              ? "edit-radio-buttons-container-horizontal"
+                                              : "edit-radio-buttons-container-vertical")>
+                            @ChildContent
+                        </div>
+                    </fieldset>
                 </InputRadioGroup>
-                }
+            }
             else
             {
                 <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@CssClass Text=@CurrentValueAsString />

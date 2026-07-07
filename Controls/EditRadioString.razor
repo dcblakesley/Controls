@@ -17,7 +17,10 @@
 
             @if (ShowEditor)
             {
-                <InputRadioGroup @bind-Value=@SelectedOption disabled=@IsDisabled>
+                @* ValueExpression forwarded so the inner group notifies/styles the real model field;
+                   `disabled` would be a no-op here (InputRadioGroup renders no element) — each
+                   InputRadio below carries it individually. *@
+                <InputRadioGroup Value=@SelectedOption ValueChanged=@((string? v) => SelectedOption = v) ValueExpression=@ValueExpression>
 
                     <div class=@(IsHorizontal
                                    ? "edit-radio-buttons-container-horizontal"

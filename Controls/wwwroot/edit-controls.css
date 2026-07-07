@@ -130,6 +130,16 @@
 
 /************************************************ EditRadio(String and Enum) *****************************/
 .edit-radio-fieldset { }
+
+/* Wrapper whose only job is to natively disable all descendant radios via fieldset[disabled]
+   (EditRadio's consumer-supplied InputRadio children can't receive `disabled` any other way).
+   Strips the default fieldset chrome so it's visually inert. */
+.edit-radio-disable-scope {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
 .edit-radio-buttons-container-vertical {
     /* default/vertical display */
     display: flex;

@@ -56,7 +56,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
 
     // Component specific parameters
     /// <summary> Expression that binds to the property in the model.</summary>
-    [Parameter] public Expression<Func<TValue>>? Field { get; set; }
+    [Parameter] public required Expression<Func<TValue>> Field { get; set; }
     
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
@@ -71,9 +71,13 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     /// <summary> True when this field currently has a validation error (InputBase appends "invalid"). </summary>
     bool IsInvalid => CssClass?.Contains("invalid") == true;
 
+    // The inner InputRadioGroup can't use @bind-Value here because an explicit ValueExpression
+    // alongside @bind-Value is a Razor compile error — so the change handler is spelled out.
+    void OnGroupValueChanged(TValue? value) => CurrentValue = value;
+
     protected override void OnInitialized()
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field!, Id, FormGroupOptions, IdPrefix);
+        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
         // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
         // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);

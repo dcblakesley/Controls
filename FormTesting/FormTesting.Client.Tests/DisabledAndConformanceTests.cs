@@ -79,6 +79,86 @@ public class DisabledAndConformanceTests : TestContext
     }
 
     [Fact]
+    public void EditRadio_IsDisabled_natively_disables_its_InputRadio_children()
+    {
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadio<string>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsDisabled", true);
+            b.AddAttribute(5, "ChildContent", (RenderFragment)(cb =>
+            {
+                cb.OpenComponent<InputRadio<string>>(0);
+                cb.AddAttribute(1, "Value", "a");
+                cb.CloseComponent();
+                cb.OpenComponent<InputRadio<string>>(2);
+                cb.AddAttribute(3, "Value", "b");
+                cb.CloseComponent();
+            }));
+            b.CloseComponent();
+        }));
+
+        // InputRadioGroup renders no element of its own, so `disabled` must come from the wrapping
+        // fieldset — fieldset[disabled] natively disables every descendant radio.
+        Assert.True(cut.Find("fieldset.edit-radio-disable-scope").HasAttribute("disabled"));
+        Assert.Equal(2, cut.FindAll("input[type=radio]").Count);
+    }
+
+    [Fact]
+    public void EditRadio_enabled_has_no_disabled_scope_and_selection_still_binds()
+    {
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+        string? changed = null;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadio<string>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(this, v => changed = v));
+            b.AddAttribute(4, "Field", field);
+            b.AddAttribute(5, "ChildContent", (RenderFragment)(cb =>
+            {
+                cb.OpenComponent<InputRadio<string>>(0);
+                cb.AddAttribute(1, "Value", "a");
+                cb.CloseComponent();
+                cb.OpenComponent<InputRadio<string>>(2);
+                cb.AddAttribute(3, "Value", "b");
+                cb.CloseComponent();
+            }));
+            b.CloseComponent();
+        }));
+
+        Assert.False(cut.Find("fieldset.edit-radio-disable-scope").HasAttribute("disabled"));
+        cut.FindAll("input[type=radio]")[1].Change(new ChangeEventArgs { Value = "b" });
+        Assert.Equal("b", changed);
+    }
+
+    [Fact]
+    public void EditRadioEnum_IsDisabled_disables_every_radio()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsDisabled", true);
+            b.CloseComponent();
+        }));
+
+        var radios = cut.FindAll("input[type=radio]");
+        Assert.NotEmpty(radios);
+        Assert.All(radios, r => Assert.True(r.HasAttribute("disabled")));
+    }
+
+    [Fact]
     public void EditRadio_declares_a_parameter_for_every_IEditControl_member()
     {
         // EditRadio can't inherit EditControlBase (it must inherit InputRadioGroup to supply the
