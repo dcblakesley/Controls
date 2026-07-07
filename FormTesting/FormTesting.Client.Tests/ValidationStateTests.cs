@@ -174,6 +174,58 @@ public class ValidationStateTests : TestContext
     }
 
     [Fact]
+    public void Scalar_control_renders_standalone_without_an_EditForm()
+    {
+        // InputBase supports standalone use (null EditContext) since .NET 8. IsInvalid must guard the
+        // null context, else aria-invalid=@(IsInvalid...) NREs on first render. (Regression: H2.)
+        var model = new PersonModel { Name = "Alice" };
+        Expression<Func<string>> field = () => model.Name;
+
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.CloseComponent();
+        });
+
+        var input = cut.Find("input.edit-string-input");
+        Assert.Null(input.GetAttribute("aria-invalid")); // no context -> no validation -> not invalid
+    }
+
+    [Fact]
+    public void EditRadio_renders_standalone_without_an_EditForm()
+    {
+        // EditRadio inherits InputRadioGroup (also standalone-capable since .NET 8); its hand-rolled
+        // IsInvalid needs the same null-context guard as the shared base. (Regression: H2.)
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditRadio<string>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
+            {
+                cb.OpenComponent<InputRadio<string>>(0);
+                cb.AddAttribute(1, "Value", "a");
+                cb.CloseComponent();
+                cb.OpenComponent<InputRadio<string>>(2);
+                cb.AddAttribute(3, "Value", "b");
+                cb.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        var group = cut.Find("[role=radiogroup]");
+        Assert.Null(group.GetAttribute("aria-invalid"));
+        Assert.Equal(2, cut.FindAll("input[type=radio]").Count);
+    }
+
+    [Fact]
     public void ValidationView_links_use_the_resolved_id_including_IdPrefix()
     {
         var model = new PersonModel(); // Name [Required] empty

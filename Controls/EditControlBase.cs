@@ -62,9 +62,11 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// True when this field currently has a validation error. Read from the EditContext's messages
     /// rather than substring-matching <see cref="InputBase{TValue}.CssClass"/> — CssClass also
     /// contains the consumer's <c>class</c> attribute, so a class like "invalid-style-fix" was a
-    /// permanent false positive (aria-invalid + red X).
+    /// permanent false positive (aria-invalid + red X). Guarded on a null <c>EditContext</c> because
+    /// <see cref="InputBase{TValue}"/> supports standalone use (no surrounding <c>EditForm</c>) since
+    /// .NET 8 — no context means no validation, so no error.
     /// </summary>
-    protected bool IsInvalid => EditContext.GetValidationMessages(FieldIdentifier).Any();
+    protected bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(FieldIdentifier).Any();
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>

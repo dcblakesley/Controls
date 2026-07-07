@@ -52,7 +52,19 @@
       "Bash(grep -v \"///\")",
       "Bash(rmdir Models/Validation Models)",
       "Bash(printf '\\\\n# Playwright MCP browser-session artifacts \\(local tooling, never committed\\)\\\\n.playwright-mcp/\\\\n')",
-      "Bash(unzip -l nupkg-verify/WssBlazorControls.10.3.0.nupkg)"
+      "Bash(unzip -l nupkg-verify/WssBlazorControls.10.3.0.nupkg)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:5199/)",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_file_upload",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_press_key",
+      "mcp__playwright__browser_run_code_unsafe",
+      "PowerShell(New-Item *)",
+      "PowerShell($dll = \"C:\\\\Program Files\\\\dotnet\\\\shared\\\\Microsoft.AspNetCore.App\\\\9.0.17\\\\Microsoft.AspNetCore.Components.Forms.dll\"; $bytes = [IO.File]::ReadAllBytes\\($dll\\); $ascii = [Text.Encoding]::ASCII.GetString\\($bytes\\); foreach \\($p in @\\('EditContext','cascading','dynamically','supports'\\)\\) { $i = $ascii.IndexOf\\($p\\); \"{0} => {1}\" -f $p, $i })",
+      "PowerShell($dll = \"C:\\\\Program Files\\\\dotnet\\\\shared\\\\Microsoft.AspNetCore.App\\\\9.0.17\\\\Microsoft.AspNetCore.Components.Forms.dll\"; $bytes = [IO.File]::ReadAllBytes\\($dll\\); $ascii = [Text.Encoding]::ASCII.GetString\\($bytes\\); $ascii.Substring\\(58400, 1200\\) -replace '[^\\\\x20-\\\\x7E]', '~')",
+      "PowerShell($conn = Get-NetTCPConnection -LocalPort 5067 -State Listen -ErrorAction SilentlyContinue; if \\($conn\\) { Stop-Process -Id $conn[0].OwningProcess -Force -Confirm:$false; \"stopped\" } else { \"not listening\" })"
     ]
   }
 }

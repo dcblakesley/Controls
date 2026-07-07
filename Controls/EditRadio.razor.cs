@@ -71,8 +71,10 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     /// <summary>
     /// True when this field currently has a validation error. Read from the EditContext's messages
     /// rather than substring-matching CssClass (which also contains the consumer's class attribute).
+    /// Guarded on a null <c>EditContext</c> so a standalone <c>EditRadio</c> (no surrounding
+    /// <c>EditForm</c>) doesn't NRE — <see cref="InputRadioGroup{TValue}"/> supports it since .NET 8.
     /// </summary>
-    bool IsInvalid => EditContext.GetValidationMessages(FieldIdentifier).Any();
+    bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(FieldIdentifier).Any();
 
     // The inner InputRadioGroup can't use @bind-Value here because an explicit ValueExpression
     // alongside @bind-Value is a Razor compile error — so the change handler is spelled out.

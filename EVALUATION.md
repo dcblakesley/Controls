@@ -33,7 +33,7 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   change; or document single-batch semantics. Whatever lands, also fix the MaxFiles-unmount case
   and document `OpenReadStream(maxAllowedSize:)` (see L8).
 
-### ☐ H2 — Scalar controls crash outside an `EditForm` (regression from the `IsInvalid` fix, 2ed6416)
+### ☑ H2 — Scalar controls crash outside an `EditForm` (regression from the `IsInvalid` fix, 2ed6416)
 - **Where:** `Controls/EditControlBase.cs:67` — `IsInvalid => EditContext.GetValidationMessages(FieldIdentifier).Any()`
   with no null guard; same pattern in `Controls/EditRadio.razor.cs:75`.
 - **Failure:** `InputBase` supports standalone use (null `EditContext`) since .NET 8. Any
@@ -43,6 +43,9 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   (`EditControlListBase.cs:69`) and declared out-of-form use supported in
   `FieldValidationDisplay.razor:11`.
 - **Fix:** same guard as the list base — `EditContext is not null && ...` — in both spots.
+- **Done (uncommitted):** guard added to both accessors; regression tests
+  `ValidationStateTests.Scalar_control_renders_standalone_without_an_EditForm` +
+  `EditRadio_renders_standalone_without_an_EditForm` render each control with no `EditForm`.
 
 ---
 
