@@ -196,7 +196,7 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   `ShowEditor`, so that's the operative guard). Test:
   `Disabled_drop_zone_does_not_show_the_drag_hover_highlight`.
 
-### ☐ L5 — `EditSelectString` empty option: no opt-out, `""` never null, non-string parse error **⚖ decision**
+### ☑ L5 — `EditSelectString` empty option: no opt-out, `""` never null, non-string parse error
 - **Where:** `Controls/EditSelectString.razor:23-29` — unconditional leading empty option.
 - **Issues:** every existing consumer's dropdown gains a selectable blank row; selecting it writes
   `""` (a `string?` model can never return to null via the UI); with non-string `TValue`
@@ -204,6 +204,17 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   state. Sibling `EditSelectEnum.razor:23` gates its empty option on nullability.
 - **Options:** add a `ShowNullOption` (or make `NullOptionText=null` suppress it); write null for
   nullable models. Decide the API shape.
+- **Done:** ⚖ Dave chose *clear to null*. Three changes: (1) `SelectParsing.TryParseStringOrConvert`
+  now short-circuits empty input to `default(TValue)` with success (null for reference types +
+  `Nullable<T>`, zero otherwise) — fixes the "`""` never null" and non-string parse-error issues,
+  and applies to `EditSelect` too (an `<option value="">` clears cleanly). (2) `NullOptionText` is
+  now `string?`; `null` suppresses the blank option (opt-out for required fields). (3) The blank is
+  auto-suppressed when `TValue` is a non-nullable value type (a static `CanBeNull` per closed generic;
+  NRT erasure means `string`/`string?` are indistinguishable at runtime, so reference types always
+  qualify). Tests: `SelectParsingTests` empty→default for string?/int?/int; `EditSelectParseTests`
+  blank-clears-string-to-null, nullable-int blank shows + clears, non-nullable-value-type has no blank,
+  `NullOptionText=null` suppresses. Full bUnit suite green (346 × net8/9/10). No visual baseline moves
+  (demo binds `string`/`string?` with default `NullOptionText`, so the blank still renders there).
 
 ### ☐ L6 — Other-sentinel collision narrowed, not eliminated
 - **Where:** `Controls/EditRadioString.razor.cs:28,94` — sentinel is `"__wss-other__"`; an Options

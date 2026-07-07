@@ -58,6 +58,36 @@ public class SelectParsingTests
     }
 
     [Fact]
+    public void StringOrConvert_empty_clears_a_string_to_null()
+    {
+        // Previously "" was passed straight through, so a string? could never return to null via the UI.
+        var ok = SelectParsing.TryParseStringOrConvert<string?>("", "Name", out var result, out var err);
+        Assert.True(ok);
+        Assert.Null(result);
+        Assert.Null(err);
+    }
+
+    [Fact]
+    public void StringOrConvert_empty_clears_a_nullable_value_type_to_null()
+    {
+        var ok = SelectParsing.TryParseStringOrConvert<int?>("", "Age", out var result, out var err);
+        Assert.True(ok);
+        Assert.Null(result);
+        Assert.Null(err);
+    }
+
+    [Fact]
+    public void StringOrConvert_empty_is_default_for_a_non_nullable_value_type_without_error()
+    {
+        // Previously "" was fed to BindConverter and failed with "The Age field is not valid."; it now
+        // clears to default(int) with success.
+        var ok = SelectParsing.TryParseStringOrConvert<int>("", "Age", out var result, out var err);
+        Assert.True(ok);
+        Assert.Equal(0, result);
+        Assert.Null(err);
+    }
+
+    [Fact]
     public void FormatInvariant_formats_fractional_values_invariantly_regardless_of_culture()
     {
         var original = System.Globalization.CultureInfo.CurrentCulture;

@@ -17,9 +17,20 @@ public static class SelectParsing
     /// <summary>
     /// Strings pass through unchanged; anything else round-trips via <see cref="BindConverter"/>
     /// (covers enums and primitive value types). Used by <c>EditSelect</c> / <c>EditSelectString</c>.
+    /// Empty input (a leading blank option, or an <c>&lt;option value=""&gt;</c>) clears to
+    /// <c>default(TValue)</c> — <c>null</c> for reference types and <see cref="Nullable{T}"/>, the zero
+    /// value otherwise — instead of storing <c>""</c> (so a <c>string?</c> can return to null) or feeding
+    /// <c>""</c> to <see cref="BindConverter"/> for a non-string type (which would fail with "not valid").
     /// </summary>
     public static bool TryParseStringOrConvert<TValue>(string? value, string fieldName, out TValue result, out string validationErrorMessage)
     {
+        if (string.IsNullOrEmpty(value))
+        {
+            result = default!;
+            validationErrorMessage = null!;
+            return true;
+        }
+
         if (typeof(TValue) == typeof(string))
         {
             result = (TValue)(object)value!;

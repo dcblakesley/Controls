@@ -19,14 +19,18 @@
                     aria-describedby=@_describedBy>
 
                 @* Leading empty option so a null/empty value shows blank instead of silently
-                   displaying the first option while the model still holds null. *@
-                <option class=@($"edit-select-option {CssClass}")
-                        value=""
-                        selected=@(string.IsNullOrEmpty(CurrentValueAsString))
-                        id=@($"{_id}-option-none")
-                        data-test-id=@($"{_id}-option-none")>
-                    @NullOptionText
-                </option>
+                   displaying the first option while the model still holds null. Suppressed when the
+                   consumer opts out (NullOptionText=null) or TValue can't be null (non-nullable value type). *@
+                @if (ShowNullOption)
+                {
+                    <option class=@($"edit-select-option {CssClass}")
+                            value=""
+                            selected=@(string.IsNullOrEmpty(CurrentValueAsString))
+                            id=@($"{_id}-option-none")
+                            data-test-id=@($"{_id}-option-none")>
+                        @NullOptionText
+                    </option>
+                }
                 @foreach (var o in Options)
                 {
                     <option title=@_attributes.Tooltip()

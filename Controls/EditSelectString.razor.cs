@@ -14,9 +14,21 @@ public partial class EditSelectString<TValue> : EditControlBase<TValue>
     /// <summary>
     /// Display text for the leading empty option. A null/empty bound value selects it, so the
     /// control shows blank instead of silently displaying the first option while the model holds
-    /// null (mirrors <c>EditSelectEnum.NullOptionText</c>).
+    /// null (mirrors <c>EditSelectEnum.NullOptionText</c>). Defaults to empty ("" — a blank-labeled
+    /// option). Set to <c>null</c> to suppress the empty option entirely (e.g. a required field that
+    /// must always hold one of the options). Has no effect when <typeparamref name="TValue"/> is a
+    /// non-nullable value type, where a blank would only map to a spurious <c>default</c> value.
     /// </summary>
-    [Parameter] public string NullOptionText { get; set; } = "";
+    [Parameter] public string? NullOptionText { get; set; } = "";
+
+    // Reference types (incl. string — NRT annotations are erased at runtime, so string and string?
+    // are indistinguishable here) and Nullable<T> value types can represent "no value". A non-nullable
+    // value type (e.g. int) cannot, so a blank there would only map to a spurious default(TValue).
+    static readonly bool CanBeNull = !typeof(TValue).IsValueType || Nullable.GetUnderlyingType(typeof(TValue)) is not null;
+
+    /// <summary> Whether the leading blank option renders: suppressed when <see cref="NullOptionText"/>
+    /// is null (explicit opt-out) or <typeparamref name="TValue"/> is a non-nullable value type. </summary>
+    bool ShowNullOption => NullOptionText is not null && CanBeNull;
 
     protected override void OnInitialized()
     {

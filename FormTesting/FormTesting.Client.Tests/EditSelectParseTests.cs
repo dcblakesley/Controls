@@ -169,6 +169,93 @@ public class EditSelectParseTests : TestContext
         Assert.Equal("b", model.Name);
     }
 
+    class NullableNameModel { public string? Name { get; set; } }
+    class NullableCountModel { public int? Count { get; set; } }
+    class CountModel { public int Count { get; set; } }
+
+    [Fact]
+    public void EditSelectString_empty_change_clears_a_nullable_string_to_null()
+    {
+        var model = new NullableNameModel { Name = "a" };
+        Expression<Func<string?>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<string?>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => model.Name = v));
+            b.AddAttribute(4, "Field", field);
+            b.AddAttribute(5, "Options", new List<string> { "a", "b" });
+            b.CloseComponent();
+        }));
+
+        // Selecting the blank used to store "" — a string? could never return to null. It now clears to null.
+        cut.Find("select").Change("");
+        Assert.Null(model.Name);
+    }
+
+    [Fact]
+    public void EditSelectString_nullable_int_shows_the_blank_and_empty_change_clears_to_null()
+    {
+        var model = new NullableCountModel { Count = 2 };
+        Expression<Func<int?>> field = () => model.Count;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<int?>>(0);
+            b.AddAttribute(1, "Value", model.Count);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<int?>(this, v => model.Count = v));
+            b.AddAttribute(4, "Field", field);
+            b.AddAttribute(5, "Options", new List<string> { "1", "2" });
+            b.CloseComponent();
+        }));
+
+        // int? is nullable → the blank renders, and selecting it clears to null (it used to fail parsing "").
+        Assert.NotEmpty(cut.FindAll("option[value='']"));
+        cut.Find("select").Change("");
+        Assert.Null(model.Count);
+    }
+
+    [Fact]
+    public void EditSelectString_non_nullable_value_type_has_no_blank_option()
+    {
+        var model = new CountModel { Count = 1 };
+        Expression<Func<int>> field = () => model.Count;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<int>>(0);
+            b.AddAttribute(1, "Value", model.Count);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "1", "2" });
+            b.CloseComponent();
+        }));
+
+        // A blank on a non-nullable value type would only map to a spurious default(0), so it must not render.
+        Assert.Empty(cut.FindAll("option[value='']"));
+        Assert.Equal(2, cut.FindAll("select option").Count);
+    }
+
+    [Fact]
+    public void EditSelectString_NullOptionText_null_suppresses_the_blank_option()
+    {
+        var model = new NullableNameModel { Name = "a" };
+        Expression<Func<string?>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<string?>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(5, "NullOptionText", (string?)null);   // explicit opt-out
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("option[value='']"));
+        Assert.Equal(2, cut.FindAll("select option").Count);
+    }
+
     class RatioModel { public double Ratio { get; set; } }
 
     [Fact]
