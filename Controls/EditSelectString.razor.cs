@@ -11,6 +11,13 @@ public partial class EditSelectString<TValue> : EditControlBase<TValue>
     /// <summary> List of string options to display in the select dropdown.</summary>
     [Parameter] public required List<string> Options { get; set; }
 
+    /// <summary>
+    /// Display text for the leading empty option. A null/empty bound value selects it, so the
+    /// control shows blank instead of silently displaying the first option while the model holds
+    /// null (mirrors <c>EditSelectEnum.NullOptionText</c>).
+    /// </summary>
+    [Parameter] public string NullOptionText { get; set; } = "";
+
     protected override void OnInitialized()
     {
         base.OnInitialized();

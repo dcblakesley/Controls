@@ -15,6 +15,13 @@ public partial class EditSelect<TValue> : EditControlBase<TValue>
     /// <summary> The <c>&lt;option&gt;</c> elements to render inside the select.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
+    /// <summary>
+    /// Optional read-only display text. The options are consumer-supplied markup, so the control
+    /// can't resolve a value's display label itself — with <c>&lt;option value="1"&gt;One&lt;/option&gt;</c>
+    /// read-only mode would show "1"; pass "One" here (typically resolved from the bound value).
+    /// </summary>
+    [Parameter] public string? ReadOnlyText { get; set; }
+
     protected override void OnInitialized()
     {
         base.OnInitialized();

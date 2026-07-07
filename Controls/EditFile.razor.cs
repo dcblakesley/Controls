@@ -20,10 +20,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// <summary> Maximum number of files that may be selected. 0 = unlimited.</summary>
     [Parameter] public int MaxFiles { get; set; } = 0;
 
-    string? _uploadError;
+    readonly List<string> _uploadErrors = [];
     string _hoverClass = string.Empty;
 
-    bool _hasError => _uploadError != null || IsInvalid;
+    bool _hasError => _uploadErrors.Count > 0 || IsInvalid;
 
     void OnDragEnter(Microsoft.AspNetCore.Components.Web.DragEventArgs _) => _hoverClass = "hover";
     void OnDragLeave(Microsoft.AspNetCore.Components.Web.DragEventArgs _) => _hoverClass = string.Empty;
@@ -34,35 +34,52 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         InitState(Field);
     }
 
+    // "10 MB limit", "500 KB limit" — integer MB division reported "0 MB" for sub-MB caps.
+    static string FormatSize(long bytes) => bytes switch
+    {
+        >= 1024 * 1024 => $"{bytes / (1024.0 * 1024):0.#} MB",
+        >= 1024 => $"{bytes / 1024.0:0.#} KB",
+        _ => $"{bytes} B",
+    };
+
     async Task LoadFiles(InputFileChangeEventArgs e)
     {
+        if (IsDisabled) return;
         _hoverClass = string.Empty;
-        _uploadError = null;
+        _uploadErrors.Clear();
 
         var incoming = e.GetMultipleFiles(e.FileCount);
         var toAdd = new List<IBrowserFile>();
+        var skippedByCap = 0;
 
         foreach (var file in incoming)
         {
             if (MaxFiles > 0 && (Value?.Count ?? 0) + toAdd.Count >= MaxFiles)
-                break;
+            {
+                skippedByCap++;
+                continue;
+            }
 
             var ext = Path.GetExtension(file.Name);
             if (AllowedExtensions.Length > 0 &&
                 !AllowedExtensions.Any(x => x.Equals(ext, StringComparison.OrdinalIgnoreCase)))
             {
-                _uploadError = $"Unsupported format. Accepted: {string.Join(", ", AllowedExtensions)}.";
+                _uploadErrors.Add($"{file.Name}: unsupported format. Accepted: {string.Join(", ", AllowedExtensions)}.");
                 continue;
             }
 
             if (file.Size > MaxFileSizeBytes)
             {
-                _uploadError = $"{file.Name} exceeds the {MaxFileSizeBytes / (1024 * 1024)} MB limit.";
+                _uploadErrors.Add($"{file.Name} exceeds the {FormatSize(MaxFileSizeBytes)} limit.");
                 continue;
             }
 
             toAdd.Add(file);
         }
+
+        // Files silently dropped by the count cap looked like a bug — say so.
+        if (skippedByCap > 0)
+            _uploadErrors.Add($"Only {MaxFiles} file{(MaxFiles == 1 ? "" : "s")} allowed — {skippedByCap} not added.");
 
         if (toAdd.Count > 0)
         {
@@ -77,10 +94,11 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     async Task RemoveFile(IBrowserFile file)
     {
+        if (IsDisabled) return;
         var updated = new List<IBrowserFile>(Value);
         updated.Remove(file);
         Value = updated;
-        _uploadError = null;
+        _uploadErrors.Clear();
         // Write back before notifying so validation sees the post-removal list, not the stale one.
         await ValueChanged.InvokeAsync(Value);
         EditContext?.NotifyFieldChanged(_fieldIdentifier);

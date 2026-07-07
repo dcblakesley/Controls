@@ -385,6 +385,15 @@
     border-color: var(--edit-color-danger);
 }
 
+.edit-file-drop-zone.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.edit-file-drop-zone.disabled input[type=file] {
+    cursor: not-allowed;
+}
+
 .edit-file-drop-zone.error:focus-within {
     outline-color: var(--edit-color-danger);
 }

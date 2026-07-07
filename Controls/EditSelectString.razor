@@ -18,6 +18,15 @@
                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                     aria-describedby=@_describedBy>
 
+                @* Leading empty option so a null/empty value shows blank instead of silently
+                   displaying the first option while the model still holds null. *@
+                <option class=@($"edit-select-option {CssClass}")
+                        value=""
+                        selected=@(string.IsNullOrEmpty(CurrentValueAsString))
+                        id=@($"{_id}-option-none")
+                        data-test-id=@($"{_id}-option-none")>
+                    @NullOptionText
+                </option>
                 @foreach (var o in Options)
                 {
                     <option title=@_attributes.Tooltip()

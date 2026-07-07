@@ -24,7 +24,13 @@ public class EditFileTests : TestContext
         builder.CloseComponent();
     };
 
-    IRenderedFragment RenderEditFile(FileModel model, Action<List<IBrowserFile>>? onChanged = null, int maxFiles = 0)
+    IRenderedFragment RenderEditFile(
+        FileModel model,
+        Action<List<IBrowserFile>>? onChanged = null,
+        int maxFiles = 0,
+        bool isDisabled = false,
+        long maxFileSizeBytes = 0,
+        string[]? allowedExtensions = null)
     {
         Expression<Func<List<IBrowserFile>>> field = () => model.Files;
         return Render(WithForm(model, b =>
@@ -36,6 +42,12 @@ public class EditFileTests : TestContext
                 b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<List<IBrowserFile>>(this, onChanged));
             if (maxFiles > 0)
                 b.AddAttribute(4, "MaxFiles", maxFiles);
+            if (isDisabled)
+                b.AddAttribute(5, "IsDisabled", true);
+            if (maxFileSizeBytes > 0)
+                b.AddAttribute(6, "MaxFileSizeBytes", maxFileSizeBytes);
+            if (allowedExtensions is not null)
+                b.AddAttribute(7, "AllowedExtensions", allowedExtensions);
             b.CloseComponent();
         }));
     }
@@ -69,6 +81,65 @@ public class EditFileTests : TestContext
         Assert.NotNull(changed);
         Assert.Single(changed);
         Assert.Equal("a.txt", changed[0].Name);
+    }
+
+    [Fact]
+    public void IsDisabled_disables_the_file_input_and_remove_buttons()
+    {
+        List<IBrowserFile>? uploaded = null;
+        var enabled = RenderEditFile(new FileModel { Files = [] }, v => uploaded = v);
+        enabled.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("hi", "a.txt"));
+        Assert.NotNull(uploaded);
+
+        var disabled = RenderEditFile(new FileModel { Files = uploaded }, isDisabled: true);
+
+        Assert.True(disabled.Find("input[type=file]").HasAttribute("disabled"));
+        Assert.Contains("disabled", disabled.Find(".edit-file-drop-zone").ClassList);
+        Assert.True(disabled.Find(".edit-file-delete-btn").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Files_beyond_MaxFiles_are_reported_not_silently_dropped()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, maxFiles: 1);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.txt"),
+            InputFileContent.CreateFromText("2", "b.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+        Assert.Contains("Only 1 file allowed — 1 not added.", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
+    public void Sub_megabyte_size_cap_is_reported_in_KB_not_zero_MB()
+    {
+        var cut = RenderEditFile(new FileModel { Files = [] }, maxFileSizeBytes: 500 * 1024);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText(new string('x', 600 * 1024), "big.txt"));
+
+        var message = cut.Find(".edit-validation-message").TextContent;
+        Assert.Contains("500 KB", message);
+        Assert.DoesNotContain("0 MB", message);
+    }
+
+    [Fact]
+    public void Every_rejected_file_gets_its_own_error_message()
+    {
+        var cut = RenderEditFile(new FileModel { Files = [] }, allowedExtensions: [".pdf"]);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.txt"),
+            InputFileContent.CreateFromText("2", "b.csv"));
+
+        // Two rejections used to overwrite each other, leaving only the last visible.
+        var message = cut.Find(".edit-validation-message").TextContent;
+        Assert.Contains("a.txt", message);
+        Assert.Contains("b.csv", message);
     }
 
     [Fact]

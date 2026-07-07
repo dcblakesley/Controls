@@ -21,6 +21,26 @@ public class EditSelectParseTests : TestContext
     };
 
     [Fact]
+    public void EditSelectString_null_value_selects_the_leading_empty_option()
+    {
+        var model = new PersonModel { Name = null! };
+        Expression<Func<string?>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<string?>>(0);
+            b.AddAttribute(1, "Value", (string?)null);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.CloseComponent();
+        }));
+
+        // A null value used to render with "a" visually selected while the model stayed null.
+        Assert.True(cut.Find("option[value='']").HasAttribute("selected"));
+        Assert.False(cut.Find("option[value='a']").HasAttribute("selected"));
+    }
+
+    [Fact]
     public void EditSelectEnum_change_parses_and_updates_bound_value()
     {
         var model = new PersonModel { Priority = Priority.Medium };
