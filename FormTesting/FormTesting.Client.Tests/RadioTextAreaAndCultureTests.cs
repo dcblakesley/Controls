@@ -116,6 +116,38 @@ public class RadioTextAreaAndCultureTests : TestContext
     }
 
     [Fact]
+    public void EditRadioString_an_option_equal_to_the_internal_sentinel_binds_its_own_value()
+    {
+        // L6: the sentinel is uniquified against Options, so even the literal "__wss-other__"
+        // can't route through the Other branch (which would overwrite the model with the empty
+        // other-text) — and the real Other radio keeps working alongside it.
+        var model = new PersonModel { Name = "" };
+        string? captured = null;
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => captured = v));
+            b.AddAttribute(5, "HasOther", true);
+            b.AddAttribute(6, "Options", new List<string> { "__wss-other__", "a" });
+            b.CloseComponent();
+        }));
+
+        // Selecting the pathological literal option binds the literal, not the other-text.
+        cut.Find("#rb-Name-__wss-other__").Change("__wss-other__");
+        Assert.Equal("__wss-other__", captured);
+
+        // The built-in Other radio (re-keyed away from the collision) still routes to the text box.
+        var otherRadio = cut.Find("#rb-Name-other");
+        otherRadio.Change(otherRadio.GetAttribute("value"));
+        cut.Find("#txt-Name-custom-value").Input("bespoke");
+        Assert.Equal("bespoke", captured);
+    }
+
+    [Fact]
     public void EditNumber_binds_on_change_not_per_keystroke()
     {
         var model = new PersonModel { Age = 1 };

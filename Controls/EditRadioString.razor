@@ -45,13 +45,13 @@
                             <div class="edit-radio-other-option-container">
 
                                     <label class=@($"edit-radio-label {LabelClass}")>
-                                        <InputRadio Value=@OtherName
+                                        <InputRadio Value=@_otherName
                                                     id=@($"rb-{_id}-other")
                                                     disabled=@IsDisabled
                                                     data-test-id=@($"rb-{_id}-other")/>
                                         Other
                                     </label>
-                                <input disabled="@(_selectedOption != OtherName || IsDisabled)"
+                                <input disabled="@(_selectedOption != _otherName || IsDisabled)"
                                        type="text"
                                        id=@($"txt-{_id}-custom-value")
                                        aria-label="Custom text value input"

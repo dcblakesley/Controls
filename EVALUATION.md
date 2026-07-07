@@ -234,15 +234,19 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   `NullOptionText=null` suppresses. Full bUnit suite green (346 × net8/9/10). No visual baseline moves
   (demo binds `string`/`string?` with default `NullOptionText`, so the blank still renders there).
 
-### ☐ L6 — Other-sentinel collision narrowed, not eliminated
+### ☑ L6 — Other-sentinel collision narrowed, not eliminated
 - **Where:** `Controls/EditRadioString.razor.cs:28,94` — sentinel is `"__wss-other__"`; an Options
   entry literally equal to it still routes through the Other branch and overwrites the model with
   the (empty) other-text. Vastly less likely than the old `"Other"`, but the design still keys the
   Other radio through the value channel.
 - **Fix (if bothered):** key the Other radio out-of-band (index/flag), not by value.
-- **Deferred:** left open by choice — the collision requires an options entry literally equal to
-  `"__wss-other__"`, and keying out-of-band is a non-trivial rework of the selection channel for
-  negligible real-world risk. Revisit only if the Other contract is reworked for another reason.
+- **Resolved: dynamic sentinel, not the out-of-band rework.** Index/flag keying would break the
+  string-typed `ValueExpression` forwarding to `InputRadioGroup` (load-bearing since the radio
+  hardening pass) or force hand-rolled radios. Instead the sentinel is uniquified against
+  `Options` in `OnParametersSet` (`while (Options.Contains(_otherName)) _otherName += "!"`) —
+  collision impossible by construction, selection channel untouched, no API change. An Options
+  swap that invalidates the sentinel self-heals via the existing implied-value re-derive. Test:
+  `EditRadioString_an_option_equal_to_the_internal_sentinel_binds_its_own_value`.
 
 ### ☑ L7 — `EnumHelpers` id cache degrades permanently at saturation
 - **Where:** `Controls/Helpers/EnumHelpers.cs:52-70` — no eviction; once the 10k cap is hit, every
