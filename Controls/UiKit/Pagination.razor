@@ -1,6 +1,6 @@
 @namespace Controls
 
-<nav class="wss-pagination" aria-label="Pagination">
+<nav class="wss-pagination" aria-label="@AriaLabel">
     <button type="button" class="wss-pagination-prev @(Clamped <= 1 ? "wss-pagination-disabled" : null)"
             disabled="@(Clamped <= 1)" aria-label="Previous page" @onclick="@(() => GoAsync(Clamped - 1))">
         <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z"/></svg>
@@ -32,6 +32,13 @@
 
     /// <summary> Pages to show either side of the current page before collapsing the rest behind an ellipsis. </summary>
     [Parameter] public int SiblingCount { get; set; } = 1;
+
+    /// <summary>
+    /// Accessible name of the nav landmark. Give the two pagers distinct names when a page renders
+    /// more than one (the Table does this for <c>PagerPosition.Both</c>) — identical landmarks are
+    /// indistinguishable to screen-reader landmark navigation.
+    /// </summary>
+    [Parameter] public string AriaLabel { get; set; } = "Pagination";
 
     // Sentinel in PageItems marking a collapsed range (rendered as "…").
     const int Ellipsis = 0;

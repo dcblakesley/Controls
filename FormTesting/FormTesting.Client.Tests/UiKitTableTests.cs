@@ -34,6 +34,83 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void Table_renders_fully_equal_duplicate_rows_without_throwing()
+    {
+        // Two Equals-equal records used to produce duplicate sibling @keys — Blazor rejects those
+        // with an InvalidOperationException that killed the whole table render.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, new List<Person> { new("Alice", 30), new("Alice", 30) })
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Equal(2, cut.FindAll("tbody .wss-table-row").Count);
+    }
+
+    [Fact]
+    public void Table_RowKey_gives_rows_their_identity()
+    {
+        List<Person>? selected = null;
+        var people = new List<Person> { new("Alice", 30), new("Alice", 31) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.RowKey, x => x.Age)
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody input.wss-table-checkbox")[0].Change(true);
+        Assert.NotNull(selected);
+        Assert.Equal([people[0]], selected);
+    }
+
+    [Fact]
+    public void Table_descending_sort_survives_a_subtraction_comparator_overflow()
+    {
+        // The classic (a, b) => a.X - b.X comparator returns int.MinValue for large gaps; negating
+        // that overflows back to int.MinValue, silently mis-sorting descending.
+        var people = new List<Person> { new("Small", int.MinValue), new("Zero", 0) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.SortBy, (a, b) => a.Age - b.Age)
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Name))));
+
+        var sortButton = cut.Find(".wss-table-sort-trigger");
+        sortButton.Click(); // ascending
+        sortButton.Click(); // descending
+
+        var firstCell = cut.FindAll("tbody .wss-table-row")[0].TextContent;
+        Assert.Contains("Zero", firstCell); // descending: 0 before int.MinValue
+    }
+
+    [Fact]
+    public void Table_keeps_a_column_whose_parameters_never_change()
+    {
+        // A title-only column (no template/Property delegates) is skipped by Blazor's diff, so it
+        // never re-registers — after two table self-re-renders it used to vanish silently.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<Column<Person>>(cp => cp.Add(c => c.Title, "Spacer"))
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        var sortButton = cut.Find(".wss-table-sort-trigger");
+        sortButton.Click(); // table self-re-render #1
+        sortButton.Click(); // table self-re-render #2
+
+        var headers = cut.FindAll("thead .wss-table-cell").Select(h => h.TextContent.Trim()).ToList();
+        Assert.Contains("Spacer", headers);
+        Assert.Equal("Spacer", headers[0]); // and still in its declared (first) position
+    }
+
+    [Fact]
     public void Table_empty_data_renders_placeholder()
     {
         var cut = RenderComponent<Table<Person>>(p => p

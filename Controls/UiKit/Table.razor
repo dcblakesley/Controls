@@ -18,7 +18,8 @@
 @if (ShowTopPager)
 {
     <div class="wss-table-pagination wss-table-pagination-top wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange" />
+        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange"
+                    AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")" />
     </div>
 }
 <div class="wss-table-wrapper">
@@ -32,7 +33,10 @@
                 @if (Selectable)
                 {
                     <th scope="col" class="wss-table-cell wss-table-selection-cell">
-                        <input type="checkbox" class="wss-table-checkbox" aria-label="Select all rows" checked="@AllSelected"
+                        @* The label matches the actual scope: ToggleAll only affects the current page. *@
+                        <input type="checkbox" class="wss-table-checkbox"
+                               aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
+                               checked="@AllSelected"
                                @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
                     </th>
                 }
@@ -66,9 +70,10 @@
             }
             else
             {
-                @foreach (var item in _pageItems)
+                @for (var rowIdx = 0; rowIdx < _pageItems.Count; rowIdx++)
                 {
-                    <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)" @key="item">
+                    var item = _pageItems[rowIdx];
+                    <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)" @key="_pageKeys[rowIdx]">
                         @if (Selectable)
                         {
                             <td class="wss-table-cell wss-table-selection-cell">
@@ -90,7 +95,8 @@
 @if (ShowBottomPager)
 {
     <div class="wss-table-pagination wss-table-pagination-bottom wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange" />
+        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange"
+                    AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (bottom)" : "Pagination")" />
     </div>
 }
 </div>
@@ -115,12 +121,29 @@
     [Parameter] public PagerPosition PagerPosition { get; set; } = PagerPosition.Bottom;
 
     [Parameter] public bool Selectable { get; set; }
+
+    /// <summary>
+    /// Controlled selection. Treated as an immutable parameter: reassign a new collection to
+    /// change the selection from the parent — the Table only re-syncs on a reference change, so
+    /// re-passing the same instance cannot veto a user toggle.
+    /// </summary>
     [Parameter] public IEnumerable<TItem>? SelectedItems { get; set; }
     [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
 
+    /// <summary>
+    /// Optional per-row identity selector (e.g. <c>x =&gt; x.Id</c>). Row identity defaults to the
+    /// item itself, which breaks on duplicate-equal rows (records or strings with equal values):
+    /// Blazor rejects duplicate sibling <c>@key</c>s and selection can't tell equal rows apart.
+    /// </summary>
+    [Parameter] public Func<TItem, object>? RowKey { get; set; }
+
     List<Column<TItem>> _columns = new();        // promoted, ordered column set the body renders
     List<Column<TItem>>? _collecting;            // buffer the current pass collects into (promoted next pass)
-    readonly HashSet<TItem> _selected = new();
+    readonly List<Column<TItem>> _liveColumns = new(); // registered and not yet disposed (see StartCollectingColumns)
+    readonly Dictionary<object, TItem> _selected = new(); // row key -> item
+    static readonly object NullKey = new();
+
+    object KeyFor(TItem item) => RowKey?.Invoke(item) ?? (object?)item ?? NullKey;
     List<TItem> _items = new();      // original DataSource order — the source of truth
     List<TItem> _sorted = new();     // _items reordered by the active sort (or _items itself when unsorted)
     List<TItem> _pageItems = new();
@@ -158,7 +181,9 @@
             .Select((item, index) => (item, index))
             .OrderBy(x => x, Comparer<(TItem item, int index)>.Create((a, b) =>
             {
-                var c = sign * col.Compare(a.item, b.item);
+                // Math.Sign first: negating a raw comparison overflows on int.MinValue (the classic
+                // a.X - b.X subtraction comparator), silently mis-sorting descending.
+                var c = sign * Math.Sign(col.Compare(a.item, b.item));
                 return c != 0 ? c : a.index - b.index;
             }))
             .Select(x => x.item)
@@ -167,8 +192,33 @@
 
     // Rebuilt only when the page / data / page-size / sort change, so the row loop and AllSelected
     // don't each re-materialize the page on every render.
-    void RebuildPageItems() =>
+    void RebuildPageItems()
+    {
         _pageItems = IsPaged ? _sorted.Skip((_page - 1) * PageSize).Take(PageSize).ToList() : _sorted;
+
+        // Row @key values, disambiguated: fully-equal rows (equal records/strings, or RowKey
+        // collisions) would be duplicate sibling @keys, which Blazor rejects with an exception that
+        // kills the render. The nth duplicate gets a composite key — it degrades to positional
+        // diffing for just those rows instead of crashing the whole table.
+        _pageKeys.Clear();
+        var seen = new Dictionary<object, int>();
+        foreach (var item in _pageItems)
+        {
+            var key = KeyFor(item);
+            if (seen.TryGetValue(key, out var n))
+            {
+                seen[key] = n + 1;
+                _pageKeys.Add((key, n + 1));
+            }
+            else
+            {
+                seen[key] = 0;
+                _pageKeys.Add(key);
+            }
+        }
+    }
+
+    readonly List<object> _pageKeys = new();
 
     bool IsActive(Column<TItem> col, SortDirection direction) =>
         ReferenceEquals(_sortColumn, col) && _sortDirection == direction;
@@ -229,8 +279,9 @@
             // (Controlled mode re-syncs from SelectedItems below, so only prune when uncontrolled.)
             if (Selectable && SelectedItems is null && _selected.Count > 0)
             {
-                var present = new HashSet<TItem>(_items);
-                _selected.RemoveWhere(i => !present.Contains(i));
+                var present = new HashSet<object>(_items.Select(KeyFor));
+                foreach (var gone in _selected.Keys.Where(k => !present.Contains(k)).ToList())
+                    _selected.Remove(gone);
             }
 
             // Re-derive the sorted view from the new data (the column reference is stable, so the
@@ -248,9 +299,11 @@
         if (SelectedItems is not null && !ReferenceEquals(SelectedItems, _lastSelectedItems))
         {
             _selected.Clear();
-            foreach (var s in SelectedItems) _selected.Add(s);
+            foreach (var s in SelectedItems) _selected[KeyFor(s)] = s;
             _lastSelectedItems = SelectedItems;
         }
+
+        if (!Selectable) _lastIndeterminate = null; // the header checkbox is recreated when re-enabled
 
         RebuildPageItems();
     }
@@ -264,18 +317,38 @@
     // is not), matching the original collect-then-re-render behaviour.
     void StartCollectingColumns()
     {
-        if (_collecting is not null && !_columns.SequenceEqual(_collecting))
+        if (_collecting is not null)
         {
-            _columns = _collecting;
-
-            // If the column driving the active sort is gone, drop the sort so the indicator and the
-            // row order can't disagree, and re-derive the view before the body renders.
-            if (_sortColumn is not null && !_columns.Contains(_sortColumn))
+            // A column whose parameters are all Blazor-"immutable" and unchanged (e.g. a title-only
+            // spacer with no template) is skipped by the diff entirely — its OnParametersSet never
+            // runs, so it never re-registers into the buffer. Merge still-live stragglers back in
+            // at their previous position rather than silently dropping them from the table.
+            var promoted = _collecting;
+            if (promoted.Count != _liveColumns.Count)
             {
-                _sortColumn = null;
-                _sortDirection = SortDirection.None;
-                ApplySort();
-                RebuildPageItems();
+                foreach (var straggler in _liveColumns)
+                {
+                    if (!promoted.Contains(straggler))
+                    {
+                        var prevIdx = _columns.IndexOf(straggler);
+                        promoted.Insert(Math.Min(prevIdx < 0 ? promoted.Count : prevIdx, promoted.Count), straggler);
+                    }
+                }
+            }
+
+            if (!_columns.SequenceEqual(promoted))
+            {
+                _columns = promoted;
+
+                // If the column driving the active sort is gone, drop the sort so the indicator and
+                // the row order can't disagree, and re-derive the view before the body renders.
+                if (_sortColumn is not null && !_columns.Contains(_sortColumn))
+                {
+                    _sortColumn = null;
+                    _sortDirection = SortDirection.None;
+                    ApplySort();
+                    RebuildPageItems();
+                }
             }
         }
         _collecting = new List<Column<TItem>>();
@@ -283,6 +356,7 @@
 
     internal void Register(Column<TItem> column)
     {
+        if (!_liveColumns.Contains(column)) _liveColumns.Add(column);
         if (_collecting is null || _collecting.Contains(column)) return;
         _collecting.Add(column);
         // A column not already in the rendered set means it changed — re-render so the freshly
@@ -292,6 +366,7 @@
 
     internal void Unregister(Column<TItem> column)
     {
+        _liveColumns.Remove(column);
         // A rendered column was disposed (e.g. conditionally removed). Re-render so the next pass
         // promotes the reduced set — the column simply won't re-register into the buffer.
         if (_columns.Contains(column)) StateHasChanged();
@@ -301,26 +376,40 @@
     // automatically once this handler returns — no explicit StateHasChanged needed.
     void OnPageChange(int page) { _page = page; RebuildPageItems(); }
 
-    bool IsSelected(TItem item) => _selected.Contains(item);
+    bool IsSelected(TItem item) => _selected.ContainsKey(KeyFor(item));
 
-    bool AllSelected => _pageItems.Count > 0 && _pageItems.All(_selected.Contains);
+    bool AllSelected => _pageItems.Count > 0 && _pageItems.All(IsSelected);
 
     // Some — but not all — of the current page is selected. The header checkbox then renders
     // unchecked (AllSelected == false); we drive it to the native "mixed" state via JS so screen
     // readers announce the partial selection (WCAG 4.1.2) instead of "not checked".
-    bool SomeSelected => _pageItems.Count > 0 && !AllSelected && _pageItems.Any(_selected.Contains);
+    bool SomeSelected => _pageItems.Count > 0 && !AllSelected && _pageItems.Any(IsSelected);
+
+    bool? _lastIndeterminate;
+    bool _disposed;
 
     // indeterminate is a DOM property with no HTML attribute, so it can only be set from JS. Runs
-    // after every render to keep the mixed state in step with the selection; degrades to a plain
-    // checkbox when there's no JS runtime (server prerender, unit tests).
+    // after a render only when the mixed state actually changed (skipping a JS round-trip per
+    // render); degrades to a plain checkbox when there's no JS runtime (server prerender, tests).
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!Selectable) return;
+        if (!Selectable || _disposed) return;
+        var some = SomeSelected;
+        if (_lastIndeterminate == some) return;
         try
         {
             _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
                 "import", "./_content/WssBlazorControls/wss-table.js");
-            await _jsModule.InvokeVoidAsync("setIndeterminate", _selectAllRef, SomeSelected);
+            if (_disposed)
+            {
+                // Disposed while the import was in flight — DisposeAsync already ran with a null
+                // module, so this reference is ours to clean up.
+                try { await _jsModule.DisposeAsync(); } catch { }
+                _jsModule = null;
+                return;
+            }
+            await _jsModule.InvokeVoidAsync("setIndeterminate", _selectAllRef, some);
+            _lastIndeterminate = some;
         }
         catch
         {
@@ -330,6 +419,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         if (_jsModule is not null)
         {
             try
@@ -346,8 +436,8 @@
 
     async Task ToggleRow(TItem item, bool on)
     {
-        if (on) _selected.Add(item); else _selected.Remove(item);
-        await SelectedItemsChanged.InvokeAsync(_selected.ToList());
+        if (on) _selected[KeyFor(item)] = item; else _selected.Remove(KeyFor(item));
+        await SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
     }
 
     // Select-all toggles the current page's rows (matching Ant Design behaviour).
@@ -355,8 +445,8 @@
     {
         foreach (var i in _pageItems)
         {
-            if (on) _selected.Add(i); else _selected.Remove(i);
+            if (on) _selected[KeyFor(i)] = i; else _selected.Remove(KeyFor(i));
         }
-        await SelectedItemsChanged.InvokeAsync(_selected.ToList());
+        await SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
     }
 }
