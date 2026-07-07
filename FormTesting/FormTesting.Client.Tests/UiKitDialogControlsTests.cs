@@ -59,7 +59,7 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
-    public void Modal_mask_click_closes_only_when_the_press_started_on_the_mask()
+    public void Modal_mask_click_closes_only_when_the_gesture_starts_and_ends_on_the_mask()
     {
         var closes = 0;
         var cut = RenderComponent<Modal>(p => p
@@ -67,16 +67,81 @@ public class UiKitDialogControlsTests : TestContext
             .Add(m => m.Title, "T")
             .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
 
-        // Text-selection drag: the panel stops mousedown propagation, so from the wrap's view no
-        // press ever happened — the mouseup-on-mask click dispatches to the wrap with the flag
-        // unset and must not close the dialog.
+        // A composed click with no recorded mask press/release (e.g. a drag that began in the panel,
+        // which stops propagation) must not close.
         cut.Find(".wss-modal-wrap").Click();
         Assert.Equal(0, closes);
 
-        // A real mask press: mousedown on the mask, then the click — closes.
+        // A real mask click: press AND release on the mask, then the click — closes.
         cut.Find(".wss-modal-wrap").MouseDown();
+        cut.Find(".wss-modal-wrap").MouseUp();
         cut.Find(".wss-modal-wrap").Click();
         Assert.Equal(1, closes);
+    }
+
+    [Fact]
+    public void Modal_press_on_mask_release_in_panel_keeps_it_open()
+    {
+        // "Changed my mind": press on the mask, drag into the dialog, release inside. The panel stops
+        // mouseup propagation so the wrap never records an up; the composed click reaches the wrap but,
+        // with only a mask-down recorded, must NOT close. (This is the M5 direction the old fix missed.)
+        var closes = 0;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
+
+        cut.Find(".wss-modal-wrap").MouseDown(); // down on mask
+        // up on panel -> wrap's onmouseup never fires
+        cut.Find(".wss-modal-wrap").Click();     // composed click reaches the wrap
+        Assert.Equal(0, closes);
+    }
+
+    [Fact]
+    public void Modal_panel_press_then_mask_release_keeps_it_open()
+    {
+        // The already-supported direction, re-asserted under the two-flag model: press in the panel,
+        // release on the mask. Down-in-panel clears the close intent, so the click must not close.
+        var closes = 0;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
+
+        cut.Find(".wss-modal").MouseDown();      // down in the panel (OnPanelMouseDown)
+        cut.Find(".wss-modal-wrap").MouseUp();   // up on the mask
+        cut.Find(".wss-modal-wrap").Click();
+        Assert.Equal(0, closes);
+    }
+
+    [Fact]
+    public void Modal_stale_mask_press_released_outside_does_not_close_a_later_gesture()
+    {
+        // A mask press that releases OUTSIDE the window fires no click, leaving the mask-down flag set.
+        // A later gesture starting in the panel must clear it, so a subsequent mask-release click can't
+        // consume the stale flag and dismiss the dialog.
+        var closes = 0;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
+
+        cut.Find(".wss-modal-wrap").MouseDown(); // press on mask, released outside -> no click to reset
+        cut.Find(".wss-modal").MouseDown();      // a fresh gesture from the panel clears the stale flag
+        cut.Find(".wss-modal-wrap").MouseUp();   // up on mask
+        cut.Find(".wss-modal-wrap").Click();
+        Assert.Equal(0, closes);
+    }
+
+    [Fact]
+    public void Modal_disposes_cleanly_after_being_shown()
+    {
+        // Exercises the DisposeAsync path (M1): the _disposed guard + activation-seq bump release any
+        // in-flight focus-trap/scroll-lock handle instead of orphaning it. The leak itself isn't
+        // observable in bUnit (no real JS module), but disposal must not throw.
+        JSInterop.Mode = Bunit.JSRuntimeMode.Loose; // tolerate the overlay module import
+        var cut = RenderComponent<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
+        cut.Dispose();
     }
 
     [Fact]

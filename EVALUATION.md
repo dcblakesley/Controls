@@ -60,7 +60,7 @@ Legend: ☐ open · ☑ done · ✗ won't fix
 
 ## Medium
 
-### ☐ M1 — Modal/Drawer leak scroll lock + document listeners if disposed while opening
+### ☑ M1 — Modal/Drawer leak scroll lock + document listeners if disposed while opening
 - **Where:** `Controls/UiKit/Modal.razor` / `Drawer.razor` `OnAfterRenderAsync` activation block.
 - **Failure:** the new `_activationSeq` token fixes close→reopen, but `DisposeAsync` neither bumps
   the sequence nor sets a disposed flag. A component removed from the tree while `activateModal`
@@ -68,6 +68,11 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   keydown/mousedown/focusin listeners persist for the circuit's life (no page reload on Server).
 - **Fix:** replicate `Table.razor`'s `_disposed` guard (it solves this exact race): check after the
   await, dispose the late handle; or bump `_activationSeq` in `DisposeAsync`.
+- **Done (uncommitted):** both — added `bool _disposed` (checked in the post-`activateModal` condition
+  so a late handle is disposed, not stored) and `DisposeAsync` now sets `_disposed = true` and bumps
+  `_activationSeq`. Applied to both Modal and Drawer. Smoke test
+  `Modal_disposes_cleanly_after_being_shown` (the leak itself isn't bUnit-observable — no real JS
+  module — but the fix mirrors Table's already-proven pattern and disposal must not throw).
 
 ### ☑ M2 — Invariant select parsing is a half-fix: format side still CurrentCulture
 - **Where:** `Controls/EditSelect.razor.cs` / `EditSelectString.razor.cs` — no `FormatValueAsString`
@@ -103,7 +108,7 @@ Legend: ☐ open · ☑ done · ✗ won't fix
 - **Done (uncommitted):** `disabled="@(_selectedOption != OtherName || IsDisabled)"`. Test:
   `EditRadioString_Other_text_input_respects_IsDisabled` (Other selected + IsDisabled → box disabled).
 
-### ☐ M5 — Mask→panel drag still closes the Modal (+ stale flag)
+### ☑ M5 — Mask→panel drag still closes the Modal (+ stale flag)
 - **Where:** `Controls/UiKit/Modal.razor` — `OnMaskMouseDown` / `OnMaskClickAsync`.
 - **Verified live:** press-in-panel→release-on-mask correctly stays open; press-on-mask→
   release-in-panel **closes** (click dispatches to the wrap, `_maskMouseDown` is set). AntD
@@ -113,6 +118,12 @@ Legend: ☐ open · ☑ done · ✗ won't fix
 - **Fix:** track mouse*up* target too (close only when both down+up hit the mask), or clear the
   flag on panel mousedown-capture / on a window blur; note the Drawer doesn't need this (its mask
   is a sibling, not an ancestor — click never composes to a handler).
+- **Done (uncommitted):** two-flag model — `_maskMouseDown`/`_maskMouseUp` set only by the wrap's
+  mousedown/mouseup (the panel now stops mouseup propagation too), close only when both are set; a
+  new panel `OnPanelMouseDown` clears both (starts a non-closing gesture AND clears a stale mask-down
+  from a release outside the window). Drawer left untouched. Tests: mask-click closes;
+  press-mask/release-panel stays open; panel-press/mask-release stays open; stale-press-then-new-gesture
+  stays open.
 
 ### ☐ M6 — `FormOptions` static defaults bleed across circuits on Blazor Server **⚖ decision**
 - **Where:** `Controls/FormOptions.cs:45,53` — `DefaultIsRequiredStarHidden`,
