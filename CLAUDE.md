@@ -41,14 +41,16 @@ End-to-end tests live in `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Pla
 
 ### Component Pattern
 
-Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, EditRadio*, EditChecked*) follows the same structure:
+Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, EditRadio*, EditChecked*, EditFile) follows the same structure:
 
-1. **Inherits** from a Blazor `InputBase<T>` variant
+1. **Inherits** one of two shared bases: `EditControlBase<T>` (scalar controls, an `InputBase<T>`) or `EditControlListBase<T>` (list-bound controls — `EditChecked*`, `EditMultiSelect`, `EditFile` — a `ComponentBase` binding `List<T>`). Both hoist the `IEditControl` params + cascading options; derived controls declare `Field` and call `InitState(Field)`. (`EditRadio<T>` inherits `InputRadioGroup<T>`; `EditDisplay` is a plain `ComponentBase`.)
 2. **Implements** `IEditControl` (common properties: Label, Description, Tooltip, IsEditMode, IsHidden, IsDisabled, etc.)
 3. **Receives** `FormOptions` and `FormGroupOptions` as `[CascadingParameter]`s
 4. **Split** into `.razor` (markup) + `.razor.cs` (code-behind)
 5. **Wraps** content in a `div.edit-control-wrapper` containing `<FormLabel>`, the input element, and `<FieldValidationDisplay>`
 6. **Supports** edit/read-only toggle — edit mode shows the input; read-only mode shows `<ReadOnlyValue>`
+
+**`EditFile`** is the file-upload control: it binds a `List<IBrowserFile>` (drag-and-drop + click-to-browse, with `AllowedExtensions` filtering, a `MaxFileSizeBytes` per-file cap, and optional `MaxFiles` count), rides `EditControlListBase<IBrowserFile>`, and follows the same wrapper pattern. Prefer it over a hand-rolled `<InputFile>`. Demoed via `DemoEditFile.razor`.
 
 ### Key Types
 
