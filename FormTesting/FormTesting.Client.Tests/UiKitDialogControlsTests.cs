@@ -291,17 +291,28 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
-    public void Popover_trigger_aria_expanded_is_lowercase_and_toggles_on_open()
+    public void Popover_trigger_wrapper_is_not_a_button_and_a_child_buttons_click_bubbles_to_toggle()
     {
+        // M7: the wrapper span used to be role="button" tabindex="0" around arbitrary content —
+        // a consumer's <button> child made it nested-interactive (two tab stops, invalid ARIA).
+        // The child is the trigger now; the popup ARIA lands on it via JS (covered by e2e), so the
+        // server-rendered wrapper must carry no button semantics at all.
         var cut = RenderComponent<Popover>(p => p
             .Add(pv => pv.Title, "Info")
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
-            .AddChildContent("<span>?</span>"));
+            .AddChildContent("<button>?</button>"));
 
-        // Lowercase ARIA boolean, not Blazor's bool ToString ("False"/"True").
-        Assert.Equal("false", cut.Find(".wss-popover-trigger").GetAttribute("aria-expanded"));
-        cut.Find(".wss-popover-trigger").Click();
-        Assert.Equal("true", cut.Find(".wss-popover-trigger").GetAttribute("aria-expanded"));
+        var trigger = cut.Find(".wss-popover-trigger");
+        Assert.False(trigger.HasAttribute("role"));
+        Assert.False(trigger.HasAttribute("tabindex"));
+        Assert.False(trigger.HasAttribute("aria-haspopup"));
+        Assert.False(trigger.HasAttribute("aria-expanded"));
+
+        // The child button's activation bubbles to the wrapper's @onclick and toggles.
+        cut.Find(".wss-popover-trigger button").Click();
+        Assert.NotEmpty(cut.FindAll(".wss-popover"));
+        cut.Find(".wss-popover-trigger button").Click();
+        Assert.Empty(cut.FindAll(".wss-popover"));
     }
 
     [Fact]
@@ -360,17 +371,20 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
-    public void Popconfirm_disabled_trigger_is_aria_disabled_and_out_of_the_tab_order()
+    public void Popconfirm_disabled_never_opens_and_the_wrapper_is_not_a_button()
     {
+        // Trigger ARIA (aria-disabled, dropped aria-haspopup) lives on the child via JS now —
+        // covered by e2e. Server-side, the wrapper must carry no button semantics (M7) and the
+        // Disabled guard must hold.
         var cut = RenderComponent<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Disabled, true)
             .AddChildContent("<button>del</button>"));
 
         var trigger = cut.Find(".wss-popconfirm-trigger");
-        Assert.Equal("true", trigger.GetAttribute("aria-disabled"));
-        Assert.False(trigger.HasAttribute("tabindex"));      // removed from the tab order
-        Assert.False(trigger.HasAttribute("aria-haspopup")); // not announced as opening a dialog
+        Assert.False(trigger.HasAttribute("role"));
+        Assert.False(trigger.HasAttribute("tabindex"));
+        Assert.False(trigger.HasAttribute("aria-haspopup"));
         cut.Find(".wss-popconfirm-trigger").Click();
         Assert.Empty(cut.FindAll(".wss-popconfirm"));        // disabled → never opens
     }

@@ -70,24 +70,63 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
     return place;
 }
 
-// Tames the popover/popconfirm trigger's native key behavior (a role="button" span, so nothing
-// comes free): Space on the trigger itself must toggle without also scrolling the page, and
-// Enter/Space bubbling out of interactive content nested in the trigger must not reach the toggle
-// handler (Blazor's KeyboardEventArgs can't see the event target, so that filtering happens here).
-// Degrades gracefully: without JS, Space additionally scrolls and nested buttons double-toggle.
-export function initTrigger(el) {
-    if (!el || el.__wssTriggerWired) {
+// Popover/popconfirm trigger contract: the consumer's ChildContent normally contains the
+// interactive element (typically a <button>) — its native click/Enter/Space activation bubbles to
+// the wrapper's Blazor @onclick, so the wrapper itself carries no button semantics (it used to be
+// role="button", which nested a button inside a button: two tab stops, invalid ARIA). Called after
+// every render: mirrors aria-haspopup/aria-expanded onto that child (Blazor can't set attributes
+// on projected content). When the content has no focusable element (plain text / an icon), the
+// wrapper is promoted to the button role itself with keyboard activation (Enter/Space synthesize a
+// click; Space's page scroll is suppressed). Degrades gracefully: without JS an interactive child
+// still toggles via its bubbled click — only the popup ARIA and the plain-content keyboard path
+// are lost.
+export function syncTrigger(el, open, disabled) {
+    if (!el) {
         return;
     }
-    el.__wssTriggerWired = true;
-    el.addEventListener('keydown', e => {
-        const isSpace = e.key === ' ' || e.key === 'Spacebar';
-        if (e.target === el && isSpace) {
-            e.preventDefault();
-        } else if (e.target !== el && (isSpace || e.key === 'Enter')) {
-            e.stopPropagation();
+    if (!el.__wssTrigger) {
+        // Deliberately not WSS_FOCUSABLE: a currently-disabled button is still the trigger element
+        // (the consumer may re-enable it) — the wrapper must not be promoted around it.
+        const child = el.querySelector('button, a[href], input, select, textarea, [tabindex]');
+        el.__wssTrigger = { target: child || el, fallback: !child };
+        if (!child) {
+            el.addEventListener('keydown', e => {
+                if (e.target !== el || el.getAttribute('aria-disabled') === 'true') {
+                    return;
+                }
+                if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'Enter') {
+                    e.preventDefault();
+                    el.click(); // route through the wrapper's Blazor click handler
+                }
+            });
         }
-    });
+    }
+    const target = el.__wssTrigger.target;
+    if (el.__wssTrigger.fallback) {
+        el.setAttribute('role', 'button');
+        el.tabIndex = disabled ? -1 : 0;
+        if (disabled) {
+            el.setAttribute('aria-disabled', 'true');
+        } else {
+            el.removeAttribute('aria-disabled');
+        }
+    }
+    if (disabled) {
+        target.removeAttribute('aria-haspopup');
+        target.removeAttribute('aria-expanded');
+    } else {
+        target.setAttribute('aria-haspopup', 'dialog');
+        target.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+}
+
+// Focus restoration when the popup closes — the real trigger element (interactive child or the
+// promoted wrapper), not the wrapper span, which is no longer focusable in the interactive case.
+export function focusTrigger(el) {
+    if (!el) {
+        return;
+    }
+    try { (el.__wssTrigger ? el.__wssTrigger.target : el).focus(); } catch { /* gone */ }
 }
 
 // --- Modal / Drawer focus management ---------------------------------------------------------

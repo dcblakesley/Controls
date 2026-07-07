@@ -140,7 +140,7 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   (non-breaking) and documented as "process-wide, set at startup only". Tests: `FormDefaultsTests`
   covers the full chain including both fall-through directions.
 
-### ☐ M7 — Popover/Popconfirm trigger invites button-in-button **⚖ decision**
+### ☑ M7 — Popover/Popconfirm trigger invites button-in-button **⚖ decision**
 - **Where:** `Controls/UiKit/Popover.razor` / `Popconfirm.razor` — `role="button" tabindex="0"`
   trigger span around arbitrary `ChildContent`; demo passes a `<button>`.
 - **Verified live:** two tab stops for one control (trigger span, then the inner button); nested
@@ -149,6 +149,17 @@ Legend: ☐ open · ☑ done · ✗ won't fix
 - **Options:** (a) document "pass non-interactive trigger content" + fix the demo/gallery to use
   plain content; (b) rework the trigger contract (attach handlers to the child, AntD-style —
   bigger change). Decide direction first.
+- **Decision: (b), Blazor-style — the child element is the trigger.** (a) was rejected because
+  consumers (and our own demo) naturally pass a `<button>`. The wrapper span dropped
+  `role`/`tabindex`/popup ARIA; the child's native click bubbles to the wrapper's `@onclick`
+  (so the C# keydown handler shrank to Escape-only — no double-toggle path exists to filter).
+  `initTrigger` became `syncTrigger(el, open, disabled)`, called every render: mirrors
+  `aria-haspopup`/`aria-expanded` onto the first interactive child (Blazor can't attribute
+  projected content), or promotes the wrapper to `role="button"` + keyboard-click when the content
+  has nothing focusable; `focusTrigger` restores close-focus to the real trigger. Degradation:
+  without JS a button child fully works; plain content is mouse-only (was: span double-toggled
+  nested buttons). bUnit asserts the wrapper is semantics-free; the JS half is e2e-verified
+  (`Popover_child_button_owns_the_popup_aria_and_keyboard_path`).
 
 ### ☑ M8 — `LabelTooltip` Escape doesn't stop propagation
 - **Where:** `Controls/LabelTooltip.razor` — new `OnKeyDown` handles Escape but propagation

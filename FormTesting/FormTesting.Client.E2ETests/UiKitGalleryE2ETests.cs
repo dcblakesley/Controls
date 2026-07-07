@@ -122,6 +122,35 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Popover_child_button_owns_the_popup_aria_and_keyboard_path()
+    {
+        await GotoAsync();
+
+        // M7: the consumer's button is the trigger — the popup ARIA is mirrored onto it by JS and
+        // the wrapper span carries no button semantics (it used to nest a button inside role="button").
+        var wrapper = _page.Locator(".wss-popover-trigger");
+        var button = _page.Locator(".wss-popover-trigger button");
+        await Expect(button).ToHaveAttributeAsync("aria-haspopup", "dialog");
+        await Expect(button).ToHaveAttributeAsync("aria-expanded", "false");
+        Assert.Null(await wrapper.GetAttributeAsync("role"));
+        Assert.Null(await wrapper.GetAttributeAsync("tabindex"));
+        Assert.Null(await wrapper.GetAttributeAsync("aria-expanded"));
+
+        // Keyboard: Enter on the focused button opens exactly once (its native click bubbles to the
+        // toggle; a duplicate key handler on the wrapper would instantly re-close).
+        await button.FocusAsync();
+        await _page.Keyboard.PressAsync("Enter");
+        await Expect(_page.Locator(".wss-popover")).ToBeVisibleAsync();
+        await Expect(button).ToHaveAttributeAsync("aria-expanded", "true");
+
+        // Escape closes and focus returns to the real trigger, not the wrapper.
+        await _page.Keyboard.PressAsync("Escape");
+        await Expect(_page.Locator(".wss-popover")).Not.ToBeVisibleAsync();
+        await Expect(button).ToHaveAttributeAsync("aria-expanded", "false");
+        await Expect(button).ToBeFocusedAsync();
+    }
+
+    [Fact]
     public async Task Popconfirm_anchors_to_trigger_then_confirms()
     {
         await GotoAsync();

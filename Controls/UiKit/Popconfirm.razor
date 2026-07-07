@@ -3,11 +3,12 @@
 @inject IJSRuntime JS
 
 <span class="wss-popconfirm-wrap">
-    <span class="wss-popconfirm-trigger" @ref="_triggerRef" role="button"
-          tabindex=@(Disabled ? null : "0")
-          aria-haspopup=@(Disabled ? null : "dialog")
-          aria-disabled=@(Disabled ? "true" : null)
-          aria-expanded=@(Disabled ? null : (_open ? "true" : "false"))
+    @* The consumer's ChildContent normally holds the interactive trigger (e.g. a <button>): its
+       native activation bubbles here as a click, so this wrapper carries no button semantics of its
+       own (it used to be role="button", nesting a button inside a button — two tab stops, invalid
+       ARIA). wss-overlay.js mirrors the popup ARIA onto that child (skipped while Disabled), or
+       promotes this span to the button role when the content has nothing focusable. *@
+    <span class="wss-popconfirm-trigger" @ref="_triggerRef"
           @onclick="Toggle" @onkeydown="OnTriggerKeyDown" @onkeydown:stopPropagation="@_open">@ChildContent</span>
     @if (_open)
     {
@@ -75,10 +76,12 @@
 
     void Close() => _open = false;
 
+    // Escape only: Enter/Space activation comes from the child's native click (or the JS fallback
+    // synthesizing one for plain content) bubbling into @onclick — handling the keys here as well
+    // would double-toggle when a button child's keystroke both clicks and bubbles.
     void OnTriggerKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key is "Enter" or " " or "Spacebar") Toggle();
-        else if (e.Key == "Escape") Close();
+        if (e.Key == "Escape") Close();
     }
 
     // Escape from inside the panel cancels — the panel is a sibling of the trigger, so its keydown
@@ -104,15 +107,14 @@
     // default CSS placement when JS isn't available (server prerender, unit tests).
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        // Every render, not just the first: aria-expanded on the real trigger element must track
+        // _open, and the popup ARIA drops off entirely while Disabled.
+        try
         {
-            try
-            {
-                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
-                await _module.InvokeVoidAsync("initTrigger", _triggerRef);
-            }
-            catch { /* no JS — Space may also scroll the page; everything else still works */ }
+            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+            await _module.InvokeVoidAsync("syncTrigger", _triggerRef, _open, Disabled);
         }
+        catch { /* no JS — a button child still toggles via its bubbled click; plain content is mouse-only */ }
 
         if (_open && !_positioned)
         {
@@ -139,7 +141,13 @@
         {
             _positioned = false;
             _resolvedPlacement = null; // re-measure on the next open
-            try { await _triggerRef.FocusAsync(); } catch { /* restore focus to the trigger */ }
+            // Restore focus to the real trigger (the interactive child, or the promoted wrapper).
+            try
+            {
+                if (_module is not null) await _module.InvokeVoidAsync("focusTrigger", _triggerRef);
+                else await _triggerRef.FocusAsync();
+            }
+            catch { /* no JS / element gone */ }
         }
     }
 
