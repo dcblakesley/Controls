@@ -47,7 +47,16 @@ Install-Package WssBlazorControls
 <link href="_content/WssBlazorControls/wss-controls.css" rel="stylesheet" />
 ```
 
-3. **Use the controls** in your Blazor components:
+3. **Include the JS helpers** (next to your Blazor script tag):
+
+```html
+<script src="_content/WssBlazorControls/edit-controls.js"></script>
+```
+
+   Required by `JsInteropEc.FocusFirstInvalidField` (focus the first invalid field on a failed
+   submit). The UI-kit controls load their own JS modules lazily — no extra tags needed for them.
+
+4. **Use the controls** in your Blazor components:
 
 ```razor
 @using System.ComponentModel
@@ -140,6 +149,7 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 ### Support Components
 - **`FormLabel`** - Consistent labeling with tooltips and descriptions
 - **`FieldValidationDisplay`** - Validation message display
+- **`ValidationView`** - Validation summary that renders each error as a link jumping to its field
 - **`ReadOnlyValue`** - Read-only value presentation
 - **`EditDisplay`** - Static label+value pair (no model binding)
 
@@ -329,6 +339,44 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### Unreleased
+
+A library-wide bug-fix and hardening pass. Version stays 10.3.0 until the next publish; these notes accumulate for the next release entry.
+
+**Correctness**
+- `EditRadio.IsDisabled` actually disables its `InputRadio` children now (a nested `fieldset[disabled]` — `InputRadioGroup` renders no element, so the old attribute vanished). All three radio controls forward `ValueExpression` to their inner group so it notifies/styles the real model field. `EditRadio.Field` is now `required` like every sibling.
+- A null bound `List<T>` no longer crashes `EditFile`'s render or the first checkbox toggle in the checked lists — null is treated as empty and the list is created on first add.
+- `EditNumber` binds on `change` instead of `oninput` (browsers report `type=number` as `""` mid-typing, flashing "must be a number" on partial input like `-` or `3.`), and formats the unsigned/byte types invariantly to match the parse side.
+- `EditRadioString`: an options list legitimately containing `"Other"` no longer collides with the built-in other-option sentinel (which silently replaced the model value with the empty other-text).
+- The list-bound controls re-derive their `FieldIdentifier` when the model/`EditContext` is swapped, so validation targets the new model instead of dead state; they also work outside an `EditForm` (no more `FieldValidationDisplay` NRE).
+- `EditSelectString` renders a leading empty option (`NullOptionText`) — a null value used to display the first option as selected while the model stayed null.
+- Select parsing (`EditSelect`/`EditSelectString`) is invariant-culture, matching `EditNumber` — `"1.5"` no longer parses as `15` under de-DE.
+- `Table`: fully-equal duplicate rows no longer crash the render (de-duplicated row keys); new `RowKey` parameter (e.g. `x => x.Id`) gives rows identity, and selection is key-based. Descending sort survives `int.MinValue` from subtraction comparators; a column whose parameters never change (title-only spacer) no longer silently vanishes.
+- Toast auto-dismiss durations are capped below `Task.Delay`'s ~24.8-day limit instead of throwing into a fire-and-forget task.
+
+**Overlays**
+- One Escape no longer closes the whole overlay stack: panels stop keydown propagation, and the Select input does so only while its dropdown is open (so Escape still reaches an enclosing Modal once the dropdown is closed).
+- Overlays stack in **open order** via a JS z-index counter (Modal-vs-Drawer DOM-order ties and Popover-above-a-later-Modal are gone); an open Select sits above its own backdrop (clicking your own search input/tags/clear no longer closes the dropdown); toasts are the always-on-top layer.
+- Modal/Drawer: a close→reopen race can no longer leak the body-scroll lock permanently; a text-selection drag ending on the mask no longer dismisses the Modal; the focus trap is document-level and survives focus escaping the panel (nested overlays hand it to the innermost dialog); title-less non-closable dialogs render no empty header and fall back to `aria-label="Dialog"`/`"Drawer"`.
+- `Alert`'s close button hides the alert itself (`OnClose` is a notification, not a requirement).
+
+**Select engine**
+- Enter picks the highlighted option **without** triggering the enclosing form's implicit submission; arrow keys no longer jump the caret; Enter on a closed combobox opens it; opening highlights the current selection (scrolled into view) and skips disabled options; Tab-away closes the dropdown (its invisible backdrop used to swallow the next click).
+- `Options`/`Values` are now explicitly immutable parameters (reference-guarded rebuilds — a parent re-render used to re-copy/re-filter the whole option set per keystroke). Reassign a new instance to refresh.
+- Tags mode prunes a user-created tag from the options once deselected; `EditMultiSelect` throws a clear exception on `Mode="Single"` (selections silently reverted — use `EditSelectSearch`).
+
+**Accessibility**
+- Hidden labels (`IsLabelHidden`) render a visually-hidden label/legend so controls keep an accessible name; checked-list fieldsets expose `role=group` + `aria-required`/`-invalid`; each validation message renders in its own element (no more run-together text); dynamic `Label` changes propagate to `EditBool` and validation messages; `label[for]` no longer references the non-labelable read-only div; `LabelTooltip` dismisses on Escape (WCAG 1.4.13); pagers get distinct landmark names when a Table renders two; the select-all checkbox announces its per-page scope.
+- `IsInvalid` is read from `EditContext` messages instead of substring-matching `"invalid"` in `CssClass` (a consumer class like `invalid-style-fix` rendered a permanent red X). **`InvalidIcon` now takes `IsInvalid` (bool) instead of `CssClass`.**
+- `[Display(Name = …)]` is honored for labels (after `[DisplayName]`/`[EnumDisplayName]`), keeping labels consistent with DataAnnotations' own messages.
+
+**API changes to note when upgrading**
+- `InvalidIcon.CssClass` → `InvalidIcon.IsInvalid` (bool); `LabelTooltip.TooltipChanged` removed (never invoked); `ValidationView.Model` removed (never read); `EditRadio.Field` is now required; `EditSelectString` gains a leading empty option; `EditNumber` commits on change (not per keystroke); `Alert` self-dismisses on close; `Select`/`Table` collection parameters are immutable-by-reference.
+- New: `Table.RowKey`, `Pagination.AriaLabel`, `EditSelect.ReadOnlyText`, `EditSelectString.NullOptionText`, `FormLabel.IsForLabelable`.
+
+**Packaging & repo**
+- The packages now ship XML docs (IntelliSense), SourceLink + `.snupkg` symbols, deterministic CI builds, package validation, and an SPDX `MIT` license expression; warnings are errors. GitHub Actions CI builds the solution, runs the bUnit suite across net8/net9/net10, packs both packages, and runs the Playwright E2E suite. The E2E project is now part of `FormTesting.sln`. The Quick Start documents the required `edit-controls.js` script tag.
 
 ### 10.3.0
 
