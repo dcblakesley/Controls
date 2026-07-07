@@ -1,0 +1,77 @@
+# Build + test on every push/PR. Two jobs:
+#  - build-and-test: Release build of the whole solution (the library projects treat warnings as
+#    errors), the bUnit suite across net8/net9/net10, and a pack of both NuGet packages so a
+#    broken pack is caught before publish day.
+#  - e2e: the Playwright suite on windows-latest — the committed visual-regression baselines are
+#    captured on Windows, and Linux font rendering would diff every screenshot. Debug build
+#    because AppFixture launches the host via `dotnet run --no-build` (Debug output).
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET SDKs
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore FormTesting.sln
+
+      - name: Build (Release)
+        run: dotnet build FormTesting.sln --no-restore -c Release
+
+      - name: Unit tests (bUnit, all target frameworks)
+        run: dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj --no-build -c Release
+
+      - name: Pack
+        run: |
+          dotnet pack Controls/Controls.csproj -c Release -o ./nupkg
+          dotnet pack Controls.Demo/Controls.Demo.csproj -c Release -o ./nupkg
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: nupkg/*.*nupkg
+
+  e2e:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build E2E project (also builds the Blazor host it launches)
+        run: dotnet build FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj
+
+      - name: Install Playwright Chromium
+        run: pwsh FormTesting/FormTesting.Client.E2ETests/bin/Debug/net10.0/playwright.ps1 install chromium
+
+      - name: E2E tests (Playwright + visual regression)
+        run: dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj --no-build
+
+      - name: Upload failure artifacts (actual/diff screenshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failure-screenshots
+          path: |
+            FormTesting/FormTesting.Client.E2ETests/Snapshots/*-actual.png
+            FormTesting/FormTesting.Client.E2ETests/Snapshots/*-diff.png
+          if-no-files-found: ignore
