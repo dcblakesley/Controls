@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -166,5 +167,47 @@ public class EditSelectParseTests : TestContext
 
         cut.Find("select").Change("b");
         Assert.Equal("b", model.Name);
+    }
+
+    class RatioModel { public double Ratio { get; set; } }
+
+    [Fact]
+    public void EditSelect_double_selects_the_matching_option_under_a_foreign_culture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE"); // decimal separator is ','
+            var model = new RatioModel { Ratio = 1.5 };
+            Expression<Func<double>> field = () => model.Ratio;
+            var cut = Render(WithForm(model, b =>
+            {
+                b.OpenComponent<EditSelect<double>>(0);
+                b.AddAttribute(1, "Value", model.Ratio);
+                b.AddAttribute(2, "ValueExpression", field);
+                b.AddAttribute(3, "Field", field);
+                b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
+                {
+                    cb.OpenElement(0, "option");
+                    cb.AddAttribute(1, "value", "1.5");
+                    cb.AddContent(2, "One and a half");
+                    cb.CloseElement();
+                    cb.OpenElement(3, "option");
+                    cb.AddAttribute(4, "value", "2.5");
+                    cb.AddContent(5, "Two and a half");
+                    cb.CloseElement();
+                }));
+                b.CloseComponent();
+            }));
+
+            // Before the fix, the value formatted as "1,5" under de-DE, matched no <option value>, and
+            // the select showed unselected. FormatValueAsString is now invariant, so "1.5" matches.
+            Assert.True(cut.Find("option[value='1.5']").HasAttribute("selected"));
+            Assert.False(cut.Find("option[value='2.5']").HasAttribute("selected"));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 }

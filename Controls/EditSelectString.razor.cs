@@ -28,6 +28,10 @@ public partial class EditSelectString<TValue> : EditControlBase<TValue>
     protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
         SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
+    // Format invariantly to match the parse side (see EditSelect) — culture-sensitive default formatting
+    // desynced the option-value match under cultures with different numeric separators/signs.
+    protected override string? FormatValueAsString(TValue? value) => SelectParsing.FormatInvariant(value);
+
     // Empty stringified value counts as "default" — matches the prior behavior where
     // value.ToString() != "" gated the NullOrDefault hiding modes.
     protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue?.ToString());

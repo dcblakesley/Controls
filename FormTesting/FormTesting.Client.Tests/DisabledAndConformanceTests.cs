@@ -79,6 +79,29 @@ public class DisabledAndConformanceTests : TestContext
     }
 
     [Fact]
+    public void EditRadioString_Other_text_input_respects_IsDisabled()
+    {
+        var model = new PersonModel { Name = "bespoke" }; // custom value -> Other selected, text box active
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(5, "HasOther", true);
+            b.AddAttribute(6, "IsDisabled", true);
+            b.CloseComponent();
+        }));
+
+        // With IsDisabled the Other free-text box must be disabled too. Because Other is the selected
+        // option here, the old `disabled="_selectedOption != OtherName"` left it editable — it wrote to
+        // the model per keystroke while every radio was disabled. Sibling EditRadioEnum already guarded this.
+        Assert.True(cut.Find("#txt-Name-custom-value").HasAttribute("disabled"));
+    }
+
+    [Fact]
     public void EditRadio_IsDisabled_natively_disables_its_InputRadio_children()
     {
         var model = new PersonModel { Name = "a" };

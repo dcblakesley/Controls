@@ -54,6 +54,30 @@ public class FormA11yTests : TestContext
     }
 
     [Fact]
+    public void EditBool_hidden_label_still_names_the_checkbox_via_a_visually_hidden_label()
+    {
+        var model = new PersonModel { IsActive = true };
+        Expression<Func<bool>> field = () => model.IsActive;
+        var cut = Render(WithForm(model, false, b =>
+        {
+            b.OpenComponent<EditBool>(0);
+            b.AddAttribute(1, "Value", model.IsActive);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "IsLabelHidden", true);
+            b.CloseComponent();
+        }));
+
+        // EditBool's edit branch renders its own <label> (not FormLabel), so its hidden-label path used
+        // to emit a bare checkbox with no accessible name. It now renders a visually-hidden label bound
+        // to the checkbox by id — matching the FormLabel path every other control uses.
+        var srLabel = cut.Find("label.edit-sr-only");
+        Assert.Equal("IsActive", srLabel.GetAttribute("for"));
+        Assert.Contains("Is Active", srLabel.TextContent);
+        Assert.Equal("IsActive", cut.Find("input[type=checkbox]").Id);
+    }
+
+    [Fact]
     public void Read_only_label_drops_the_for_attribute()
     {
         var model = new PersonModel { Name = "x" };

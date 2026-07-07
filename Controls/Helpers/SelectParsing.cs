@@ -43,6 +43,24 @@ public static class SelectParsing
     }
 
     /// <summary>
+    /// Formats a select's bound value back to its <c>&lt;option value&gt;</c> string invariantly — the
+    /// mirror of <see cref="TryParseStringOrConvert{TValue}"/>. <see cref="InputBase{TValue}"/>'s default
+    /// <c>FormatValueAsString</c> is <c>value?.ToString()</c>, which uses the current culture: under de-DE
+    /// a <c>double</c> <c>1.5</c> rendered <c>"1,5"</c>, matched no <c>&lt;option value="1.5"&gt;</c>, and the
+    /// select showed unselected (sv-SE's non-ASCII minus sign had the same effect). Strings pass through;
+    /// anything culture-sensitive (numeric types, <c>DateTime</c>, <c>Guid</c>) is <see cref="IFormattable"/>
+    /// and formats under <see cref="CultureInfo.InvariantCulture"/>; enums are <c>IFormattable</c> but
+    /// format by name regardless of culture, round-tripping with the invariant parse.
+    /// </summary>
+    public static string? FormatInvariant<TValue>(TValue? value) => value switch
+    {
+        null => null,
+        string s => s,
+        IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+        _ => value.ToString()
+    };
+
+    /// <summary>
     /// Parses an enum (or nullable enum) by name. Empty input is valid (null) for a nullable enum and
     /// "required" otherwise. Used by <c>EditSelectEnum</c> / <c>EditRadioEnum</c>.
     /// </summary>

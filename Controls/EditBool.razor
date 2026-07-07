@@ -23,6 +23,10 @@
             }
             else
             {
+                @* A hidden label still needs an accessible name — associate a visually-hidden label
+                   with the checkbox (mirrors FormLabel's IsLabelHidden path) instead of shipping an
+                   unnamed control that a screen reader announces as just "checkbox". *@
+                <label class="edit-sr-only" for=@_id>@DisplayLabel()</label>
                 @CheckboxFragment
             }
         }

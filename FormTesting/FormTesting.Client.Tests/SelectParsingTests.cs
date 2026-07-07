@@ -58,6 +58,58 @@ public class SelectParsingTests
     }
 
     [Fact]
+    public void FormatInvariant_formats_fractional_values_invariantly_regardless_of_culture()
+    {
+        var original = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            // The format side used to be InputBase's default value?.ToString() (current culture), so a
+            // double 1.5 rendered "1,5" under de-DE and matched no <option value="1.5"> — the mirror of
+            // the parse-side bug above. FormatInvariant keeps the "." so it round-trips with the parse.
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+            Assert.Equal("1.5", SelectParsing.FormatInvariant(1.5));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void FormatInvariant_passes_strings_through_and_maps_null_to_null()
+    {
+        Assert.Equal("hello", SelectParsing.FormatInvariant("hello"));
+        Assert.Null(SelectParsing.FormatInvariant<string?>(null));
+        Assert.Null(SelectParsing.FormatInvariant<int?>(null));
+    }
+
+    [Fact]
+    public void FormatInvariant_formats_an_enum_by_name()
+    {
+        // Enums are IFormattable but ignore culture — they must still format by name so the value
+        // round-trips with TryParseEnum, not as the underlying number.
+        Assert.Equal("High", SelectParsing.FormatInvariant(Priority.High));
+    }
+
+    [Fact]
+    public void FormatInvariant_round_trips_with_the_invariant_parse_under_a_foreign_culture()
+    {
+        var original = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+            var formatted = SelectParsing.FormatInvariant(1.5);                       // "1.5"
+            var ok = SelectParsing.TryParseStringOrConvert<double>(formatted, "Price", out var back, out _);
+            Assert.True(ok);
+            Assert.Equal(1.5, back);                                                  // parses back to the same value
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
     public void ParseEnum_parses_a_valid_member()
     {
         var ok = SelectParsing.TryParseEnum<Priority>("High", typeof(Priority), isNullable: false, "Priority", out var result, out _);

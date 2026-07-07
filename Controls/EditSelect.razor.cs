@@ -32,5 +32,9 @@ public partial class EditSelect<TValue> : EditControlBase<TValue>
     protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
         SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
+    // Format invariantly to match the parse side — the default (value?.ToString()) is culture-sensitive,
+    // so a de-DE double 1.5 rendered "1,5" and matched no <option value="1.5">.
+    protected override string? FormatValueAsString(TValue? value) => SelectParsing.FormatInvariant(value);
+
     // Base IsValueDefault covers EqualityComparer<TValue>.Default behavior — no override needed.
 }

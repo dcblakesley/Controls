@@ -51,7 +51,7 @@
                                                     data-test-id=@($"rb-{_id}-other")/>
                                         Other
                                     </label>
-                                <input disabled="@(_selectedOption != OtherName)"
+                                <input disabled="@(_selectedOption != OtherName || IsDisabled)"
                                        type="text"
                                        id=@($"txt-{_id}-custom-value")
                                        aria-label="Custom text value input"

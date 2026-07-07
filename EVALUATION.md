@@ -69,7 +69,7 @@ Legend: ☐ open · ☑ done · ✗ won't fix
 - **Fix:** replicate `Table.razor`'s `_disposed` guard (it solves this exact race): check after the
   await, dispose the late handle; or bump `_activationSeq` in `DisposeAsync`.
 
-### ☐ M2 — Invariant select parsing is a half-fix: format side still CurrentCulture
+### ☑ M2 — Invariant select parsing is a half-fix: format side still CurrentCulture
 - **Where:** `Controls/EditSelect.razor.cs` / `EditSelectString.razor.cs` — no `FormatValueAsString`
   override, so `CurrentValueAsString` uses `InputBase`'s default culture-sensitive `ToString()`;
   parse side (`Controls/Helpers/SelectParsing.cs:33`) is invariant.
@@ -78,21 +78,30 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   `"1,5"` and the visual selection is lost again. Also non-ASCII negative signs (sv-SE).
 - **Fix:** override `FormatValueAsString` invariantly in both controls (mirror EditNumber, which
   got both sides).
+- **Done (uncommitted):** new `SelectParsing.FormatInvariant<T>` (strings pass through; `IFormattable`
+  formats under `InvariantCulture`; enums format by name) mirrors the parse; both selects override
+  `FormatValueAsString` to call it. Tests: `FormatInvariant_*` unit tests (incl. round-trip under de-DE)
+  + `EditSelect_double_selects_the_matching_option_under_a_foreign_culture`.
 
-### ☐ M3 — `EditBool` + `IsLabelHidden` renders an unnamed checkbox
+### ☑ M3 — `EditBool` + `IsLabelHidden` renders an unnamed checkbox
 - **Where:** `Controls/EditBool.razor:24-27` — hidden-label edit branch renders bare
   `@CheckboxFragment`; no sr-only label, no `aria-label`.
 - **Context:** this is the exact defect commit 2ed6416 claims to have eliminated; every other
   control got the visually-hidden label via `FormLabel`. EditBool's edit branch bypasses FormLabel.
 - **Fix:** render an `edit-sr-only` label (or `aria-label=@DisplayLabel()`) in the else branch.
+- **Done (uncommitted):** else branch now renders `<label class="edit-sr-only" for=@_id>@DisplayLabel()</label>`
+  before the checkbox (matches FormLabel's IsLabelHidden path). Test:
+  `EditBool_hidden_label_still_names_the_checkbox_via_a_visually_hidden_label`.
 
-### ☐ M4 — `EditRadioString`'s "Other" text input ignores `IsDisabled`
+### ☑ M4 — `EditRadioString`'s "Other" text input ignores `IsDisabled`
 - **Where:** `Controls/EditRadioString.razor:54` — `disabled="@(_selectedOption != OtherName)"`.
 - **Failure:** `IsDisabled="true"` + `HasOther` + model holding a custom value → radios disabled,
   but the Other text box stays editable and writes to the model per keystroke.
 - **Inconsistency:** sibling `EditRadioEnum.razor:52` has the `|| IsDisabled` term; this line was
   edited by the pass (sentinel rename) without adding it.
 - **Fix:** add `|| IsDisabled`.
+- **Done (uncommitted):** `disabled="@(_selectedOption != OtherName || IsDisabled)"`. Test:
+  `EditRadioString_Other_text_input_respects_IsDisabled` (Other selected + IsDisabled → box disabled).
 
 ### ☐ M5 — Mask→panel drag still closes the Modal (+ stale flag)
 - **Where:** `Controls/UiKit/Modal.razor` — `OnMaskMouseDown` / `OnMaskClickAsync`.
@@ -123,12 +132,16 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   plain content; (b) rework the trigger contract (attach handlers to the child, AntD-style —
   bigger change). Decide direction first.
 
-### ☐ M8 — `LabelTooltip` Escape doesn't stop propagation
+### ☑ M8 — `LabelTooltip` Escape doesn't stop propagation
 - **Where:** `Controls/LabelTooltip.razor` — new `OnKeyDown` handles Escape but propagation
   continues; Escape on a tooltip inside a Modal closes **both**.
 - **Context:** violates the pass's own "one Escape, one layer" rule (Select/Popover/Modal all got
   the conditional-stopPropagation treatment).
 - **Fix:** `@onkeydown:stopPropagation="@isTooltipVisible"` (mirror the Select's `_open` pattern).
+- **Done (uncommitted):** added `@onkeydown:stopPropagation="@isTooltipVisible"` to the tooltip button
+  (exact Select `_open` mirror). No unit test — bUnit dispatches synthetic events without DOM
+  propagation, so stopPropagation isn't observable there; it's the same directive the Modal-vs-Select
+  E2E layering already proves works.
 
 ---
 
