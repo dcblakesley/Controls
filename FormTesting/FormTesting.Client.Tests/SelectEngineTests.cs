@@ -154,6 +154,63 @@ public class SelectEngineTests : TestContext
     }
 
     [Fact]
+    public void Opening_by_click_highlights_the_current_selection_not_the_first_option()
+    {
+        string? selected = null;
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false), ("B", false), ("C", false)))
+            .Add(s => s.Value, "C")
+            .Add(s => s.ValueChanged, (string v) => selected = v));
+
+        cut.Find(".wss-select").Click(); // OpenAsync -> SetInitialActive lands on the selected "C"
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("C", selected);
+    }
+
+    [Fact]
+    public void Opening_with_a_disabled_first_option_highlights_the_first_enabled_one()
+    {
+        string? selected = null;
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", true), ("B", false)))
+            .Add(s => s.ValueChanged, (string v) => selected = v));
+
+        cut.Find(".wss-select").Click();
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("B", selected); // previously the disabled "A" was highlighted and Enter did nothing
+    }
+
+    [Fact]
+    public void Enter_on_a_closed_select_opens_the_dropdown()
+    {
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false))));
+
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.NotEmpty(cut.FindAll("[role=listbox]"));
+    }
+
+    [Fact]
+    public void Tags_mode_commits_typed_text_even_when_the_only_match_is_disabled()
+    {
+        IEnumerable<string>? values = null;
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Mode, SelectMode.Tags)
+            .Add(s => s.Options, Opts(("custom-disabled", true)))
+            .Add(s => s.Values, new List<string>())
+            .Add(s => s.ValuesChanged, (IEnumerable<string> v) => values = v));
+
+        cut.Find("input.wss-select-selection-search-input").Input("custom");
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.NotNull(values);
+        Assert.Contains("custom", values!); // Enter fell through the disabled match to the tag commit
+    }
+
+    [Fact]
     public void Select_shows_label_and_clear_when_single_value_is_the_type_default()
     {
         var cut = RenderComponent<Select<int>>(p => p

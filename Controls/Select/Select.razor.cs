@@ -33,6 +33,8 @@ public partial class Select<TValue> : IAsyncDisposable
     bool _searchPending;
     bool _open;
     bool _dropdownPositioned;
+    bool _inputWired;
+    SelectMode _wiredMode;
     bool _focused;
     string _searchText = string.Empty;
     int _activeIndex;
@@ -319,9 +321,26 @@ public partial class Select<TValue> : IAsyncDisposable
     {
         _open = true;
         _focused = true;
-        _activeIndex = 0;
         RebuildFiltered();
+        SetInitialActive();
         await FocusInputAsync();
+    }
+
+    // Highlight the current selection when the dropdown opens (falling back to the first enabled
+    // option, never a disabled one) — so a long list opens at the user's value instead of the top,
+    // and Enter always has a selectable target.
+    void SetInitialActive()
+    {
+        _activeIndex = 0;
+        var selectedIdx = IsMultiple
+            ? (_selected.Count > 0 ? _filtered.FindIndex(o => !o.Disabled && _selectedSet.Contains(o.Value)) : -1)
+            : (HasSingleValue ? _filtered.FindIndex(o => !o.Disabled && _comparer.Equals(o.Value, Value)) : -1);
+        if (selectedIdx >= 0)
+        {
+            _activeIndex = selectedIdx;
+            return;
+        }
+        MoveActiveTo(0, 1);
     }
 
     Task CloseAsync()
@@ -365,6 +384,11 @@ public partial class Select<TValue> : IAsyncDisposable
             return; // superseded by a newer keystroke (or flushed by a keyboard action)
         }
 
+        // The delay can complete just before a selection/close cancels the CTS — without this
+        // check the stale continuation would re-run the search (firing OnSearch("") against the
+        // now-cleared text) after the dropdown already closed.
+        if (token.IsCancellationRequested) return;
+
         await ApplySearchAsync();
         StateHasChanged();
     }
@@ -374,6 +398,7 @@ public partial class Select<TValue> : IAsyncDisposable
         _searchPending = false;
         _activeIndex = 0;
         RebuildFiltered();
+        MoveActiveTo(0, 1); // first enabled match, never a disabled one
         if (OnSearch.HasDelegate) await OnSearch.InvokeAsync(_searchText);
     }
 
@@ -500,13 +525,19 @@ public partial class Select<TValue> : IAsyncDisposable
                 break;
 
             case "Enter":
-                if (_open && _activeIndex >= 0 && _activeIndex < _filtered.Count)
+                // A disabled active option (e.g. every match is disabled) falls through — in Tags
+                // mode the typed text still commits instead of the keystroke dying on it.
+                if (_open && _activeIndex >= 0 && _activeIndex < _filtered.Count && !_filtered[_activeIndex].Disabled)
                 {
                     await SelectAsync(_filtered[_activeIndex]);
                 }
                 else if (Mode == SelectMode.Tags && !string.IsNullOrWhiteSpace(_searchText))
                 {
                     await CommitTagAsync();
+                }
+                else if (!_open)
+                {
+                    await OpenAsync(); // ARIA combobox pattern: Enter on a closed combobox opens it
                 }
                 break;
 
@@ -637,6 +668,25 @@ public partial class Select<TValue> : IAsyncDisposable
     // CSS placement when JS isn't available (server prerender, unit tests).
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Wire the native key-default suppression once per input element (the element is recreated
+        // when Mode switches between the single and multiple markup branches).
+        if (!_inputWired || _wiredMode != Mode)
+        {
+            _inputWired = true;
+            _wiredMode = Mode;
+            try
+            {
+                _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
+                    "import", "./_content/WssBlazorControls/wss-select.js");
+                await _jsModule.InvokeVoidAsync("initInput", _inputRef);
+            }
+            catch
+            {
+                // No JS runtime / module (prerender, tests) — keyboard still works, minus the
+                // native-default suppression (e.g. Enter may implicitly submit an enclosing form).
+            }
+        }
+
         if (_open && !_dropdownPositioned)
         {
             try
@@ -649,6 +699,9 @@ public partial class Select<TValue> : IAsyncDisposable
             {
                 // No JS runtime / module — keep the CSS default (downward) placement.
             }
+            // The highlight opens on the current selection (SetInitialActive) — bring it into view
+            // while the panel is still measuring, so the first visible frame is already scrolled.
+            if (_activeIndex > 0) await ScrollActiveIntoViewAsync();
             _dropdownPositioned = true;
             StateHasChanged(); // reveal now that it's positioned (drops wss-measuring)
         }
