@@ -8,7 +8,7 @@
         <div class="wss-drawer-mask" @onclick="OnMaskClickAsync"></div>
         <div class="wss-drawer wss-drawer-@PlacementName" style="@SizeStyle" role="dialog" aria-modal="true"
              aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel)" tabindex="-1"
-             @ref="_panelRef" @onkeydown="OnKeyDownAsync">
+             @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="true">
             <div class="wss-drawer-header">
                 <div class="wss-drawer-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
                 @if (Closable)

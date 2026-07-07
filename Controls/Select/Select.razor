@@ -33,7 +33,8 @@
                        disabled="@Disabled"
                        value="@_searchText"
                        @oninput="OnInputAsync"
-                       @onkeydown="OnKeyDownAsync" />
+                       @onkeydown="OnKeyDownAsync"
+                       @onkeydown:stopPropagation="@_open" />
             </span>
 
             @if (_showPlaceholder)
@@ -89,7 +90,8 @@
                        disabled="@Disabled"
                        value="@_searchText"
                        @oninput="OnInputAsync"
-                       @onkeydown="OnKeyDownAsync" />
+                       @onkeydown="OnKeyDownAsync"
+                       @onkeydown:stopPropagation="@_open" />
             </span>
 
             @if (_showPlaceholder)

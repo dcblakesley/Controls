@@ -3,9 +3,11 @@
 @inject IJSRuntime JS
 
 <span class="wss-popover-wrap">
+    @* While open, keydown must not bubble further (an Escape meant for this popover would also
+       close an enclosing Modal/Drawer); while closed it bubbles normally. *@
     <span class="wss-popover-trigger" @ref="_triggerRef" tabindex="0" role="button"
           aria-haspopup="dialog" aria-expanded=@(_open ? "true" : "false")
-          @onclick="Toggle" @onkeydown="OnTriggerKeyDown">@ChildContent</span>
+          @onclick="Toggle" @onkeydown="OnTriggerKeyDown" @onkeydown:stopPropagation="@_open">@ChildContent</span>
     @if (_open)
     {
         <div class="wss-popover-backdrop" @onclick="Close"></div>
@@ -15,6 +17,7 @@
              aria-label="@(HasTitle ? null : AriaLabel)"
              aria-describedby="@($"{_id}-content")"
              @onkeydown="OnPanelKeyDown"
+             @onkeydown:stopPropagation="true"
              @onclick:stopPropagation="true">
             <div class="wss-popover-inner">
                 @if (HasTitle)
@@ -74,6 +77,16 @@
     // default CSS placement when JS isn't available (server prerender, unit tests).
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            try
+            {
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+                await _module.InvokeVoidAsync("initTrigger", _triggerRef);
+            }
+            catch { /* no JS — Space may also scroll the page; everything else still works */ }
+        }
+
         if (_open && !_positioned)
         {
             try

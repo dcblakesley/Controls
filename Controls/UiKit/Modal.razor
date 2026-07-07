@@ -7,7 +7,7 @@
     <div class="wss-modal-wrap" @onclick="OnMaskClickAsync">
         <div class="wss-modal" style="width:@Width" role="dialog" aria-modal="true"
              aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel)" tabindex="-1"
-             @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onclick:stopPropagation="true">
+             @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="true" @onclick:stopPropagation="true">
             <div class="wss-modal-header">
                 <div class="wss-modal-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
                 @if (Closable)

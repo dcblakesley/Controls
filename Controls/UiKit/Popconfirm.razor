@@ -8,7 +8,7 @@
           aria-haspopup=@(Disabled ? null : "dialog")
           aria-disabled=@(Disabled ? "true" : null)
           aria-expanded=@(Disabled ? null : (_open ? "true" : "false"))
-          @onclick="Toggle" @onkeydown="OnTriggerKeyDown">@ChildContent</span>
+          @onclick="Toggle" @onkeydown="OnTriggerKeyDown" @onkeydown:stopPropagation="@_open">@ChildContent</span>
     @if (_open)
     {
         <div class="wss-popconfirm-backdrop" @onclick="Close"></div>
@@ -16,6 +16,7 @@
              @ref="_panelRef" role="dialog" aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"
              aria-label="@(HasTitle ? null : AriaLabel)"
              @onkeydown="OnPanelKeyDown"
+             @onkeydown:stopPropagation="true"
              @onclick:stopPropagation="true">
             <div class="wss-popconfirm-inner">
                 <div class="wss-popconfirm-message">
@@ -103,6 +104,16 @@
     // default CSS placement when JS isn't available (server prerender, unit tests).
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (firstRender)
+        {
+            try
+            {
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+                await _module.InvokeVoidAsync("initTrigger", _triggerRef);
+            }
+            catch { /* no JS — Space may also scroll the page; everything else still works */ }
+        }
+
         if (_open && !_positioned)
         {
             try

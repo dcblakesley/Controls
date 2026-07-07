@@ -71,6 +71,46 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
+    public void Escape_inside_an_open_popconfirm_does_not_close_the_enclosing_modal()
+    {
+        var modalClosed = false;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "Outer")
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => modalClosed = true))
+            .AddChildContent<Popconfirm>(pc => pc
+                .Add(x => x.Title, "Inner?")
+                .AddChildContent("<button>del</button>")));
+
+        cut.Find(".wss-popconfirm-trigger").Click(); // open the inner popconfirm
+        cut.Find(".wss-popconfirm").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        Assert.Empty(cut.FindAll(".wss-popconfirm")); // inner closed
+        Assert.False(modalClosed);                    // one Escape must not cascade up the stack
+    }
+
+    [Fact]
+    public void Escape_in_an_open_select_closes_the_dropdown_but_not_the_enclosing_modal()
+    {
+        var closes = 0;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "Outer")
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++))
+            .AddChildContent<Select<string>>(s => s
+                .Add(x => x.Options, new List<SelectOption<string>> { new("A", "A") })));
+
+        cut.Find(".wss-select").Click(); // open the dropdown
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        Assert.Empty(cut.FindAll("[role=listbox]")); // dropdown closed...
+        Assert.Equal(0, closes);                     // ...without dragging the modal down with it
+
+        // With the dropdown closed, Escape bubbles normally and closes the modal.
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        Assert.Equal(1, closes);
+    }
+
+    [Fact]
     public void Popconfirm_opens_on_trigger_then_confirm_invokes_and_closes()
     {
         var confirmed = false;

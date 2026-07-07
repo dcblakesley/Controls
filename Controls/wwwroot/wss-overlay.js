@@ -50,6 +50,26 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
     return place;
 }
 
+// Tames the popover/popconfirm trigger's native key behavior (a role="button" span, so nothing
+// comes free): Space on the trigger itself must toggle without also scrolling the page, and
+// Enter/Space bubbling out of interactive content nested in the trigger must not reach the toggle
+// handler (Blazor's KeyboardEventArgs can't see the event target, so that filtering happens here).
+// Degrades gracefully: without JS, Space additionally scrolls and nested buttons double-toggle.
+export function initTrigger(el) {
+    if (!el || el.__wssTriggerWired) {
+        return;
+    }
+    el.__wssTriggerWired = true;
+    el.addEventListener('keydown', e => {
+        const isSpace = e.key === ' ' || e.key === 'Spacebar';
+        if (e.target === el && isSpace) {
+            e.preventDefault();
+        } else if (e.target !== el && (isSpace || e.key === 'Enter')) {
+            e.stopPropagation();
+        }
+    });
+}
+
 // --- Modal / Drawer focus management ---------------------------------------------------------
 // Moves focus into the panel, traps Tab within it, and locks body scroll. Returns a handle whose
 // dispose() restores body scroll and returns focus to the element that was focused before opening.
