@@ -133,8 +133,10 @@
 
 /* Wrapper whose only job is to natively disable all descendant radios via fieldset[disabled]
    (EditRadio's consumer-supplied InputRadio children can't receive `disabled` any other way).
-   Strips the default fieldset chrome so it's visually inert. */
+   Strips the default fieldset chrome so it's visually inert; explicit display:block because an
+   inline box around the block container leaks stray line boxes (a few px of phantom height). */
 .edit-radio-disable-scope {
+    display: block;
     border: 0;
     margin: 0;
     padding: 0;
@@ -451,12 +453,15 @@
     cursor: pointer;
     display: flex;
     align-items: center;
-    visibility: hidden;
+    /* opacity (not visibility): a visibility-hidden button can't receive focus, which made the
+       remove action unreachable by keyboard. Revealed on row hover or when focused. */
+    opacity: 0;
     border-radius: 2px;
 }
 
-.edit-file-item:hover .edit-file-delete-btn {
-    visibility: visible;
+.edit-file-item:hover .edit-file-delete-btn,
+.edit-file-delete-btn:focus-visible {
+    opacity: 1;
 }
 
 .edit-file-list--readonly .edit-file-item {

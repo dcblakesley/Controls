@@ -113,7 +113,10 @@
 
     @if (_open)
     {
-        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" @ref="_dropdownRef" role="listbox" aria-label="Options" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
+        @* tabindex=-1: Chromium puts scrollable containers in the tab order by default, which made
+           Tab land on the raw listbox. Per the ARIA combobox pattern the popup is driven from the
+           input (arrow keys / type-ahead), never tabbed into. *@
+        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" tabindex="-1" @ref="_dropdownRef" role="listbox" aria-label="Options" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
             @if (_filtered.Count == 0)
             {
                 <div class="wss-select-item-empty">@EmptyText</div>

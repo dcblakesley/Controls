@@ -8,6 +8,11 @@
 
         @if (ShowEditor)
         {
+            @* @bind-value uses the default onchange event (NOT oninput): browsers report
+               type=number as "" while the text is a partial number ("-", "3.", "1e"), so
+               per-keystroke binding flashed "must be a number" mid-typing. Matches Microsoft's
+               InputNumber. (Comment deliberately outside the tag — a Razor comment inside an
+               attribute list compiles into a literal attribute name and breaks setAttribute.) *@
             <div class="edit-input-with-icon">
                 <input type="number"
                        style="padding-right: 2rem"
@@ -15,9 +20,6 @@
                        id=@_id
                        data-test-id=@_id
                        step=@Step.ToString(CultureInfo.InvariantCulture)
-                       @* onchange, not oninput: browsers report type=number as "" while the text is
-                          a partial number ("-", "3.", "1e"), so per-keystroke binding flashed
-                          "must be a number" mid-typing. Matches Microsoft's InputNumber. *@
                        @bind-value=@CurrentValueAsString
                        class=@($"edit-input edit-number-input {CssClass}")
                        aria-required=@_isRequired

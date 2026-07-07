@@ -31,6 +31,8 @@ public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         await Expect(section.Locator(".edit-file-item")).ToHaveCountAsync(1);
         await Expect(section.Locator(".edit-file-name")).ToHaveTextAsync("hello.txt");
 
+        // The remove button reveals on row hover (or keyboard focus).
+        await section.Locator(".edit-file-item").HoverAsync();
         await section.Locator(".edit-file-delete-btn").ClickAsync();
         await Expect(section.Locator(".edit-file-item")).ToHaveCountAsync(0);
     }

@@ -73,8 +73,11 @@ public class EditSelectSearchE2ETests(AppFixture app, BrowserFixture browser) : 
         await select.ClickAsync();
         await Expect(Page.Locator(".wss-select-item-option").First).ToBeVisibleAsync();
 
-        // Tab moves focus out — the dropdown (and its click-swallowing backdrop) must go with it.
+        // First Tab lands on the clear button (still inside the select — the dropdown correctly
+        // stays open); the second leaves the control, which must close the dropdown and its
+        // click-swallowing backdrop.
         await select.Locator("input.wss-select-selection-search-input").PressAsync("Tab");
+        await Page.Keyboard.PressAsync("Tab");
         await Expect(Page.Locator(".wss-select-item-option")).ToHaveCountAsync(0);
         await Expect(Page.Locator(".wss-select-backdrop")).ToHaveCountAsync(0);
     }
