@@ -37,5 +37,9 @@
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@string.Join(", ", Value ?? [])</div>
+        }
     </div>
 }

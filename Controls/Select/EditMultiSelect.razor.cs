@@ -65,6 +65,13 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
 
     protected override void OnParametersSet()
     {
+        // Single mode can't work here: this wrapper binds only Values/ValuesChanged, so the
+        // engine's ValueChanged would fire into the void — every selection silently reverting.
+        // Fail loudly instead.
+        if (Mode == SelectMode.Single)
+            throw new InvalidOperationException(
+                $"{GetType().Name} binds a List<TValue> and supports SelectMode.Multiple or SelectMode.Tags — use EditSelectSearch for single selection.");
+
         base.OnParametersSet();
         if (ReferenceEquals(Value, _labelValue) && ReferenceEquals(Options, _labelOptions)) return;
         _labelValue = Value;

@@ -24,7 +24,7 @@
                        aria-haspopup="listbox"
                        aria-autocomplete="list"
                        aria-expanded=@(_open ? "true" : "false")
-                       aria-controls="@($"{BaseId}-listbox")"
+                       aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
                        aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
                        aria-required="@AriaRequired"
                        aria-invalid="@(AriaInvalid ? "true" : null)"
@@ -81,7 +81,7 @@
                        aria-haspopup="listbox"
                        aria-autocomplete="list"
                        aria-expanded=@(_open ? "true" : "false")
-                       aria-controls="@($"{BaseId}-listbox")"
+                       aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
                        aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
                        aria-required="@AriaRequired"
                        aria-invalid="@(AriaInvalid ? "true" : null)"

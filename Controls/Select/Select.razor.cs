@@ -137,23 +137,39 @@ public partial class Select<TValue> : IAsyncDisposable
         _open = DefaultOpen;
     }
 
+    IEnumerable<TValue>? _lastValues;
+    int? _lastMaxTagCount;
+    SelectMode _lastMode;
+
     protected override void OnParametersSet()
     {
-        // Rebuild the value->option lookup only when the Options instance changes,
-        // not on every parameter set (cheap for huge lists).
-        if (!ReferenceEquals(Options, _lastOptions))
+        // Reference-guarded rebuilds: a parent re-render re-parameterizes this component on every
+        // keystroke elsewhere in the form (delegate parameters defeat Blazor's change skip), and
+        // the advertised use-case is tens of thousands of options — so the O(n) mirror/filter work
+        // only runs when its actual inputs change. Consequence: Options and Values are immutable
+        // parameters — reassign a new instance to refresh, don't mutate in place.
+        var optionsChanged = !ReferenceEquals(Options, _lastOptions);
+        if (optionsChanged)
         {
-            RebuildLookup();
             _lastOptions = Options;
+            RebuildLookup();
+            RebuildFiltered();
         }
 
-        if (IsMultiple)
+        var modeChanged = Mode != _lastMode;
+        _lastMode = Mode;
+
+        if (IsMultiple && (optionsChanged || modeChanged || !ReferenceEquals(Values, _lastValues)))
         {
+            _lastValues = Values;
             SetSelected(Values);
+            RebuildVisibleTags();
         }
-
-        RebuildFiltered();
-        RebuildVisibleTags();
+        else if (MaxTagCount != _lastMaxTagCount)
+        {
+            RebuildVisibleTags();
+        }
+        _lastMaxTagCount = MaxTagCount;
     }
 
     // ----- Display helpers (used by the .razor markup) ----------------------
@@ -421,6 +437,7 @@ public partial class Select<TValue> : IAsyncDisposable
             if (_selectedSet.Contains(option.Value))
             {
                 RemoveSelected(option.Value);
+                PruneTagOption(option.Value);
             }
             else
             {
@@ -444,7 +461,20 @@ public partial class Select<TValue> : IAsyncDisposable
     {
         if (Disabled) return;
         RemoveSelected(value);
+        PruneTagOption(value);
         await ValuesChanged.InvokeAsync(_selected.ToList());
+    }
+
+    // A user-created tag that is no longer selected leaves the option list too (matching AntD) —
+    // otherwise a removed "typo-tag" stayed selectable in the dropdown for the component's lifetime.
+    void PruneTagOption(TValue value)
+    {
+        if (Mode != SelectMode.Tags || _selectedSet.Contains(value)) return;
+        if (_tagOptions.RemoveAll(t => _comparer.Equals(t.Value, value)) > 0)
+        {
+            if (value is not null) _lookup.Remove(value);
+            RebuildFiltered();
+        }
     }
 
     async Task ClearAsync()
@@ -452,6 +482,14 @@ public partial class Select<TValue> : IAsyncDisposable
         if (IsMultiple)
         {
             ClearSelected();
+            if (Mode == SelectMode.Tags && _tagOptions.Count > 0)
+            {
+                foreach (var tag in _tagOptions)
+                {
+                    if (tag.Value is not null) _lookup.Remove(tag.Value);
+                }
+                _tagOptions.Clear();
+            }
             await ValuesChanged.InvokeAsync(_selected.ToList());
         }
         else
@@ -678,7 +716,7 @@ public partial class Select<TValue> : IAsyncDisposable
             {
                 _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
                     "import", "./_content/WssBlazorControls/wss-select.js");
-                await _jsModule.InvokeVoidAsync("initInput", _inputRef);
+                await _jsModule.InvokeVoidAsync("initInput", _inputRef, _wrapperRef);
             }
             catch
             {

@@ -211,6 +211,53 @@ public class SelectEngineTests : TestContext
     }
 
     [Fact]
+    public void Tags_mode_removes_an_unselected_free_tag_from_the_options()
+    {
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Mode, SelectMode.Tags)
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Values, new List<string>()));
+
+        var input = cut.Find("input.wss-select-selection-search-input");
+        input.Input("typo-tag");
+        input.KeyDown(new KeyboardEventArgs { Key = "Enter" });     // commit the free tag
+        input.KeyDown(new KeyboardEventArgs { Key = "Backspace" }); // remove it again
+
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" }); // open
+        Assert.DoesNotContain("typo-tag", cut.Markup); // no zombie option lingering in the dropdown
+    }
+
+    [Fact]
+    public void Rerender_with_unchanged_Values_reference_keeps_the_selection_mirror()
+    {
+        // Uncontrolled multi usage (no Values rebinding): a parent re-render used to re-mirror the
+        // stale Values parameter and wipe in-flight selections.
+        var values = new List<string>();
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Mode, SelectMode.Multiple)
+            .Add(s => s.Options, Opts(("A", false), ("B", false)))
+            .Add(s => s.Values, values));
+
+        cut.Find(".wss-select").Click();
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Enter" }); // select "A"
+        Assert.Single(cut.FindAll("button.wss-select-selection-item-remove"));
+
+        cut.SetParametersAndRender(p => p.Add(s => s.Values, values)); // same reference — no reset
+        Assert.Single(cut.FindAll("button.wss-select-selection-item-remove"));
+    }
+
+    [Fact]
+    public void EditMultiSelect_throws_on_single_mode()
+    {
+        var model = new { Items = new List<string>() };
+        Assert.Throws<InvalidOperationException>(() =>
+            RenderComponent<EditMultiSelect<string>>(p => p
+                .Add(c => c.Value, model.Items)
+                .Add(c => c.Field, () => model.Items)
+                .Add(c => c.Mode, SelectMode.Single)));
+    }
+
+    [Fact]
     public void Select_shows_label_and_clear_when_single_value_is_the_type_default()
     {
         var cut = RenderComponent<Select<int>>(p => p

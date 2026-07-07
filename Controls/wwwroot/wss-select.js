@@ -71,17 +71,33 @@ export function clearZ(el) {
 //  - Escape: type="search" natively clears the text and fires an input event, which would
 //    re-open the dropdown the component just closed. The component owns the text lifecycle.
 // Degrades gracefully: without JS everything still works, minus these polish behaviors.
-export function initInput(input) {
-    if (!input || input.__wssKeysWired) {
-        return;
+export function initInput(input, wrapper) {
+    if (input && !input.__wssKeysWired) {
+        input.__wssKeysWired = true;
+        input.addEventListener('keydown', e => {
+            const key = e.key;
+            if (key === 'Enter' || key === 'ArrowUp' || key === 'ArrowDown' || key === 'Escape') {
+                e.preventDefault();
+            } else if ((key === 'Home' || key === 'End') && input.getAttribute('aria-expanded') === 'true') {
+                e.preventDefault();
+            }
+        });
     }
-    input.__wssKeysWired = true;
-    input.addEventListener('keydown', e => {
-        const key = e.key;
-        if (key === 'Enter' || key === 'ArrowUp' || key === 'ArrowDown' || key === 'Escape') {
-            e.preventDefault();
-        } else if ((key === 'Home' || key === 'End') && input.getAttribute('aria-expanded') === 'true') {
-            e.preventDefault();
-        }
-    });
+
+    // Tabbing away used to leave the dropdown open with its invisible backdrop silently swallowing
+    // the next click anywhere on the page. relatedTarget is the keyboard destination; it's null for
+    // mouse presses on non-focusable targets (e.g. a dropdown option), and those flows are already
+    // owned by the backdrop/option click handlers — so only act when the destination is known.
+    if (wrapper && !wrapper.__wssFocusWired) {
+        wrapper.__wssFocusWired = true;
+        wrapper.addEventListener('focusout', e => {
+            if (!e.relatedTarget || wrapper.contains(e.relatedTarget)) {
+                return;
+            }
+            const backdrop = wrapper.previousElementSibling;
+            if (backdrop && backdrop.classList.contains('wss-select-backdrop')) {
+                backdrop.click(); // routes through the component's own close path
+            }
+        });
+    }
 }
