@@ -158,30 +158,43 @@ Legend: ☐ open · ☑ done · ✗ won't fix
 
 ## Low
 
-### ☐ L1 — `FieldValidationDisplay` re-reflects per parameter cycle
+### ☑ L1 — `FieldValidationDisplay` re-reflects per parameter cycle
 - **Where:** `Controls/FieldValidationDisplay.razor.cs:25-33` —
   `FieldIdentifier.Model.GetType().GetProperty(FieldName)` + attribute scans run on every
   `OnParametersSet`; its parameters (List, FieldIdentifier) defeat Blazor's change skip, so a
   50-field form pays 50 reflections per keystroke. (Flagged independently by both review passes.)
 - **Fix:** memoize per `(Type, FieldName)` in a small static `ConcurrentDictionary`, or guard on
   `FieldIdentifier` equality + `Label` change.
+- **Done (uncommitted):** the `GetProperty` value-type lookup is memoized in a static
+  `ConcurrentDictionary<(Type, string), string>` (the cheap attribute scans left as-is). Behavior
+  unchanged (covered by existing validation-message tests).
 
-### ☐ L2 — List-base `EditContext` swap accumulates stale field registrations
+### ☑ L2 — List-base `EditContext` swap accumulates stale field registrations
 - **Where:** `Controls/EditControlListBase.cs:167-171` — new `FieldIdentifier` registered per
   swap; the old one never leaves `FormOptions.FieldIdentifiers` / `FieldIds`.
   `ValidationView.razor:7` iterates all of them every render. Bounded by swap count, not a hard leak.
 - **Fix:** unregister the previous identifier on swap (and in Dispose).
+- **Done (uncommitted):** new `FormOptions.UnregisterField`; the swap block unregisters the old
+  identifier before re-registering, and `Dispose` unregisters too. Test:
+  `Swapping_the_model_does_not_accumulate_stale_field_registrations` (5 swaps → 1 identifier).
 
-### ☐ L3 — EditFile keyboard remove strands focus on `<body>`
+### ☑ L3 — EditFile keyboard remove strands focus on `<body>`
 - **Where:** `Controls/EditFile.razor.cs:96-105` (`RemoveFile` does no focus management).
 - **Verified live:** delete button is reachable and visible on focus (the pass's opacity fix
   works); after Enter, focus resets to body — keyboard user returns to top of document.
 - **Fix:** after remove, focus the next file's delete button, else previous, else the drop zone.
+- **Done (uncommitted):** delete buttons now carry `id="del-{_id}-{i}"`; `RemoveFile` sets a pending
+  focus target (shifted-in file → new last → the drop-zone input) and `OnAfterRenderAsync` focuses it
+  via a new `WssEditControls.focusById` JS helper (`JsInteropEc.FocusById`), best-effort/catch-guarded.
+  Real focus destination isn't bUnit-observable (no DOM focus) — an E2E assertion is the right home.
 
-### ☐ L4 — Disabled EditFile drop zone still shows drag-hover highlight
+### ☑ L4 — Disabled EditFile drop zone still shows drag-hover highlight
 - **Where:** `Controls/EditFile.razor.cs:30` — `OnDragEnter`/`OnDragOver` set `_hoverClass`
   unconditionally; drop is correctly refused, but the zone lights up as if it accepts.
 - **Fix:** guard the hover class on `!IsDisabled` (and `ShowEditor`).
+- **Done (uncommitted):** `OnDragEnter` now guards on `!IsDisabled` (the zone only renders in
+  `ShowEditor`, so that's the operative guard). Test:
+  `Disabled_drop_zone_does_not_show_the_drag_hover_highlight`.
 
 ### ☐ L5 — `EditSelectString` empty option: no opt-out, `""` never null, non-string parse error **⚖ decision**
 - **Where:** `Controls/EditSelectString.razor:23-29` — unconditional leading empty option.
@@ -198,12 +211,19 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   the (empty) other-text. Vastly less likely than the old `"Other"`, but the design still keys the
   Other radio through the value channel.
 - **Fix (if bothered):** key the Other radio out-of-band (index/flag), not by value.
+- **Deferred:** left open by choice — the collision requires an options entry literally equal to
+  `"__wss-other__"`, and keying out-of-band is a non-trivial rework of the selection channel for
+  negligible real-world risk. Revisit only if the Other contract is reworked for another reason.
 
-### ☐ L7 — `EnumHelpers` id cache degrades permanently at saturation
+### ☑ L7 — `EnumHelpers` id cache degrades permanently at saturation
 - **Where:** `Controls/Helpers/EnumHelpers.cs:52-70` — no eviction; once the 10k cap is hit, every
   new string pays `ConcurrentDictionary.Count` (acquires **all** internal locks) + the regex, on
   every call, forever. Check-then-add can also overshoot the cap slightly (benign).
 - **Fix:** cache saturation in a `volatile bool` (stop counting once full), or approximate counter.
+- **Done (uncommitted):** added `static volatile bool _idCacheFull` — `Count` is consulted only on a
+  miss while filling and latches the flag at the cap; post-saturation calls skip straight to
+  compute-without-cache (never touch `Count` again). Test:
+  `ToId_stays_correct_after_the_id_cache_saturates`.
 
 ### ☑ L8 — Doc gap: `MaxFileSizeBytes` vs `OpenReadStream`'s 500 KB default
 - **Where:** README / EditFile xmldoc — the control validates `file.Size` (10 MB default) but a
@@ -215,10 +235,13 @@ Legend: ☐ open · ☑ done · ✗ won't fix
   buffer regardless of the size arg, so bare `OpenReadStream()` no longer throws. Class/`MaxFileSizeBytes`
   xmldoc now explains the buffering + memory trade-off; README EditFile section updated (see H1 commit).
 
-### ☐ L9 — `[Display(Name)]` support ignores `ResourceType`
+### ☑ L9 — `[Display(Name)]` support ignores `ResourceType`
 - **Where:** `Controls/Helpers/AttributesHelper.cs` — reads `.Name` instead of `GetName()`, so
   localized display names via `ResourceType` don't resolve.
 - **Fix:** call `GetName()`.
+- **Done (uncommitted):** both `AttributesHelper.GetLabelText` and `EnumHelpers.GetName` now call
+  `DisplayAttribute.GetName()`. Test:
+  `GetLabelText_resolves_a_localized_Display_through_its_ResourceType`.
 
 ---
 

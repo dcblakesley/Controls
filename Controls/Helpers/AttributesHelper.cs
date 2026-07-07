@@ -102,10 +102,13 @@ public static class AttributesHelper
             // [Display(Name = …)] — DataAnnotations' own naming attribute. Honoring it keeps the
             // label consistent with the validation messages DataAnnotations generates (which use
             // [Display]), and with EnumHelpers.GetName, which already honors it for enum members.
+            // GetName() (not .Name) so a localized [Display(Name=…, ResourceType=…)] resolves through
+            // its resource manager instead of surfacing the raw resource key.
             var displayAttribute = attrs?.OfType<DisplayAttribute>().FirstOrDefault();
-            if (!string.IsNullOrEmpty(displayAttribute?.Name))
+            var displayName = displayAttribute?.GetName();
+            if (!string.IsNullOrEmpty(displayName))
             {
-                labelText = displayAttribute.Name;
+                labelText = displayName;
             }
         }
 

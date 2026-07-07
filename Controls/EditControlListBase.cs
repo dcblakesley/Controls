@@ -166,6 +166,10 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
         // InputBase controls throw on a context swap; list controls support it instead.)
         if (_fieldIdentifierFactory is not null)
         {
+            // Drop the previous (old-model) registration before adding the new one — otherwise every
+            // swap leaves a dead FieldIdentifier behind and ValidationView iterates all of them each
+            // render, growing with the swap count.
+            FormOptions?.UnregisterField(_fieldIdentifier);
             _fieldIdentifier = _fieldIdentifierFactory();
             FormOptions?.RegisterField(_fieldIdentifier, _id);
         }
@@ -173,10 +177,12 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
 
     void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => StateHasChanged();
 
-    /// <summary> Detaches the validation-state listener. </summary>
+    /// <summary> Detaches the validation-state listener and drops the field registration so a removed
+    /// control (e.g. behind a conditional <c>@if</c>) doesn't leave stale state in the validation summary. </summary>
     public void Dispose()
     {
         if (_subscribedEditContext is not null)
             _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
+        FormOptions?.UnregisterField(_fieldIdentifier);
     }
 }

@@ -27,6 +27,15 @@ public class FormOptions
             FieldIds[field] = id;
     }
 
+    /// <summary> Removes a field's registration (and its resolved id). A list control calls this when
+    /// its model/<see cref="EditContext"/> is swapped — the old-model <see cref="FieldIdentifier"/> is
+    /// dead and must not linger in the validation summary — and when it is disposed. </summary>
+    public void UnregisterField(FieldIdentifier field)
+    {
+        FieldIdentifiers.Remove(field);
+        FieldIds.Remove(field);
+    }
+
     /// <summary> Allows you to set the hiding mode for the entire form. </summary>
     public HidingMode? Hiding { get; set; }
 

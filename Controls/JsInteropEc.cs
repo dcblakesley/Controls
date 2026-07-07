@@ -16,6 +16,15 @@ public static class JsInteropEc
         await jsRuntime.InvokeVoidAsync("WssEditControls.focusFirstInvalidField");
     }
 
+    /// <summary>
+    /// Focuses the element with the given id, if present. Best-effort — a no-op when the id isn't
+    /// found or JS is unavailable (prerender / tests).
+    /// </summary>
+    public static async Task FocusById(IJSRuntime jsRuntime, string id)
+    {
+        await jsRuntime.InvokeVoidAsync("WssEditControls.focusById", id);
+    }
+
     public static async Task Log(IJSRuntime jsRuntime, string text)
     {
         await jsRuntime.InvokeVoidAsync("WssEditControls.log", text);

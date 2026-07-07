@@ -75,6 +75,19 @@ public class EnumHelpersTests
     }
 
     [Fact]
+    public void ToId_stays_correct_after_the_id_cache_saturates()
+    {
+        // Fill well past the 10k cap with distinct strings (fills the process-wide id cache), then
+        // confirm conversion still works. Past saturation the cache stops growing — and stops calling
+        // the lock-acquiring Count — so memoization is lost, but the computed result is unaffected.
+        for (var i = 0; i < 10_050; i++)
+            _ = $"opt {i}!".ToId();
+
+        Assert.Equal("saturated-item", "saturated item".ToId());
+        Assert.Equal("abc", "a/b!c".ToId());
+    }
+
+    [Fact]
     public void ToId_object_handles_enum_with_punctuation_in_display_name()
     {
         // The whole point of .ToId() — Color.Green's display name is "Forest Green",

@@ -162,6 +162,19 @@ public class EditFileTests : TestContext
     }
 
     [Fact]
+    public void Disabled_drop_zone_does_not_show_the_drag_hover_highlight()
+    {
+        var cut = RenderEditFile(new FileModel { Files = [] }, isDisabled: true);
+        var zone = cut.Find(".edit-file-drop-zone");
+        Assert.Contains("disabled", zone.ClassList);
+
+        zone.DragEnter(); // drag a file over the disabled zone
+
+        // The drop is refused when disabled, so the zone must not light up as if it accepts one.
+        Assert.DoesNotContain("hover", cut.Find(".edit-file-drop-zone").ClassList);
+    }
+
+    [Fact]
     public void Read_only_mode_lists_the_file_names_without_a_drop_zone()
     {
         List<IBrowserFile>? uploaded = null;

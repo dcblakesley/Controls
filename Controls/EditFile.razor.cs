@@ -34,12 +34,19 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// <summary> Maximum number of files that may be selected. 0 = unlimited.</summary>
     [Parameter] public int MaxFiles { get; set; } = 0;
 
+    [Inject] IJSRuntime JS { get; set; } = default!;
+
     readonly List<string> _uploadErrors = [];
     string _hoverClass = string.Empty;
+    // Set by RemoveFile, consumed by OnAfterRenderAsync: the element to focus once the list re-renders
+    // (a keyboard remove otherwise drops focus on <body>). Focused by id, so it survives the re-render.
+    string? _pendingFocusId;
 
     bool _hasError => _uploadErrors.Count > 0 || IsInvalid;
 
-    void OnDragEnter(Microsoft.AspNetCore.Components.Web.DragEventArgs _) => _hoverClass = "hover";
+    // Don't light up the drop zone as if it accepts a drop when it doesn't — the drop is refused when
+    // disabled, so the hover highlight would be a lie.
+    void OnDragEnter(Microsoft.AspNetCore.Components.Web.DragEventArgs _) { if (!IsDisabled) _hoverClass = "hover"; }
     void OnDragLeave(Microsoft.AspNetCore.Components.Web.DragEventArgs _) => _hoverClass = string.Empty;
 
     protected override void OnInitialized()
@@ -125,11 +132,29 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     {
         if (IsDisabled) return;
         var updated = new List<IBrowserFile>(Value);
+        var removedIndex = updated.IndexOf(file);
         updated.Remove(file);
         Value = updated;
         _uploadErrors.Clear();
+
+        // Keep keyboard focus on the control after the delete button vanishes: focus the file that
+        // shifted into this slot, else the new last file, else the drop zone's file input. Consumed
+        // in OnAfterRenderAsync once the new list has rendered.
+        _pendingFocusId = updated.Count == 0
+            ? _id
+            : $"del-{_id}-{Math.Min(removedIndex, updated.Count - 1)}";
+
         // Write back before notifying so validation sees the post-removal list, not the stale one.
         await ValueChanged.InvokeAsync(Value);
         EditContext?.NotifyFieldChanged(_fieldIdentifier);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_pendingFocusId is null) return;
+        var id = _pendingFocusId;
+        _pendingFocusId = null;
+        // Best-effort: no-op if the element is gone or JS is unavailable (prerender / tests).
+        try { await JsInteropEc.FocusById(JS, id); } catch { /* focus is a nicety, never fatal */ }
     }
 }

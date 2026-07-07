@@ -37,13 +37,14 @@
             @if (Value?.Count > 0)
             {
                 <ul class="edit-file-list" aria-label="Selected files">
-                    @foreach (var file in Value)
+                    @for (var i = 0; i < Value.Count; i++)
                     {
-                        var f = file;
+                        var f = Value[i];
                         <li class="edit-file-item">
                             <i class="edit-icon-paperclip" aria-hidden="true"></i>
                             <span class="edit-file-name">@f.Name</span>
                             <button type="button"
+                                    id=@($"del-{_id}-{i}")
                                     class="edit-file-delete-btn"
                                     title="Remove @f.Name"
                                     aria-label="Remove @f.Name"

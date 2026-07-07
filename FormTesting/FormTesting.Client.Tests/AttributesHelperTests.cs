@@ -83,6 +83,30 @@ public class AttributesHelperTests
         Assert.Equal("Given Name", attrs.GetLabelText(fid));
     }
 
+    // A stand-in for a generated resources class: a public static string property whose name matches
+    // the [Display(Name)] key, which DisplayAttribute.GetName() resolves through the resource type.
+    public class LocalizedLabelResources
+    {
+        public static string GreetingLabel => "Localized Greeting";
+    }
+
+    class LocalizedDisplayModel
+    {
+        [Display(Name = nameof(LocalizedLabelResources.GreetingLabel), ResourceType = typeof(LocalizedLabelResources))]
+        public string Greeting { get; set; } = "";
+    }
+
+    [Fact]
+    public void GetLabelText_resolves_a_localized_Display_through_its_ResourceType()
+    {
+        // Reading raw .Name surfaced the resource KEY ("GreetingLabel"); GetName() resolves it through
+        // the resource type to the localized text.
+        var model = new LocalizedDisplayModel();
+        var fid = FieldOf(() => model.Greeting);
+        var attrs = AttributesHelper.GetExpressionCustomAttributes(() => model.Greeting);
+        Assert.Equal("Localized Greeting", attrs.GetLabelText(fid));
+    }
+
     [Fact]
     public void GetMinAndMaxLengths_reads_StringLength_attribute()
     {

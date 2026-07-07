@@ -1,8 +1,14 @@
-﻿namespace Controls;
+﻿using System.Collections.Concurrent;
+
+namespace Controls;
 
 /// <summary> Validation shown under the input field when it doesn't meet the requirements based on DataAnnotations. </summary>
 public partial class FieldValidationDisplay
 {
+    // The value-type reflection is a pure function of (model type, field name), but OnParametersSet
+    // re-runs on every parameter cycle — the List/FieldIdentifier parameters defeat Blazor's change
+    // skip, so a 50-field form otherwise paid 50 GetProperty reflections per keystroke. Memoize it.
+    static readonly ConcurrentDictionary<(Type, string), string> _valueTypeCache = new();
     [CascadingParameter] EditContext? EditContext { get; set; }
     [CascadingParameter] FormOptions? FormOptions { get; set; }
 
@@ -30,7 +36,9 @@ public partial class FieldValidationDisplay
         _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
         _label = Label ?? Attributes.GetLabelText(FieldIdentifier);
-        _valueType = FieldIdentifier.Model.GetType().GetProperty(FieldIdentifier.FieldName)?.PropertyType?.ToString() ?? string.Empty;
+        _valueType = _valueTypeCache.GetOrAdd(
+            (FieldIdentifier.Model.GetType(), FieldIdentifier.FieldName),
+            static key => key.Item1.GetProperty(key.Item2)?.PropertyType?.ToString() ?? string.Empty);
         // Field registration with FormOptions.FieldIdentifiers moved to EditControlBase.InitState
         // (and the list/radio equivalents) so it runs once per control regardless of whether
         // this validation display is conditionally rendered.

@@ -35,6 +35,13 @@
         }
     };
 
+    // Focus an element by id if it exists. Used by EditFile to keep keyboard focus on the file list
+    // after a file is removed (its delete button vanishes, otherwise focus falls back to <body>).
+    ns.focusById = function (id) {
+        const el = document.getElementById(id);
+        if (el && typeof el.focus === 'function') el.focus();
+    };
+
     ns.log = function (text) { console.log(text); };
     ns.logError = function (text) { console.log('%c' + text, 'background: red'); };
     ns.logWarn = function (text) { console.log('%c' + text, 'background: orange'); };

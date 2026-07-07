@@ -34,9 +34,12 @@ public static class EnumHelpers
                 if (enumDisplayName != null)
                     return enumDisplayName.Value;
 
+                // GetName() (not .Name) so a localized [Display(Name=…, ResourceType=…)] resolves
+                // through its resource manager instead of returning the raw resource key.
                 var displayAttr = fi.GetCustomAttribute<DisplayAttribute>();
-                if (displayAttr != null && !string.IsNullOrEmpty(displayAttr.Name))
-                    return displayAttr.Name;
+                var displayName = displayAttr?.GetName();
+                if (!string.IsNullOrEmpty(displayName))
+                    return displayName;
             }
 
             // Fallback: split camelCase into words ("InProgress" → "In Progress")
@@ -51,6 +54,10 @@ public static class EnumHelpers
     // rendered. Past the cap, compute without caching (correctness unaffected, memoization lost).
     const int IdCacheCap = 10_000;
     static readonly ConcurrentDictionary<string, string> _idCache = new();
+    // Latches true once the cache saturates. Without it, every post-saturation call paid
+    // ConcurrentDictionary.Count — which acquires ALL internal locks — forever. The flag flips once,
+    // then every later miss skips straight to compute-without-cache and never touches Count again.
+    static volatile bool _idCacheFull;
 
     /// <summary>
     /// Converts a string to a valid HTML ID by removing invalid characters and spaces.
@@ -65,8 +72,14 @@ public static class EnumHelpers
 
         // Replace spaces with hyphens, then drop anything that isn't alphanumeric / hyphen / underscore.
         var computed = System.Text.RegularExpressions.Regex.Replace(value.Replace(" ", "-"), @"[^a-zA-Z0-9\-_]", "");
-        if (_idCache.Count < IdCacheCap)
+        if (!_idCacheFull)
+        {
             _idCache[value] = computed;
+            // Count runs only on a miss while filling (bounded), then never again once latched.
+            // A slight overshoot of the cap under concurrency is benign.
+            if (_idCache.Count >= IdCacheCap)
+                _idCacheFull = true;
+        }
         return computed;
     }
 

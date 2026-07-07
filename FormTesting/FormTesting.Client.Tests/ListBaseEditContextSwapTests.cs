@@ -60,6 +60,41 @@ public class ListBaseEditContextSwapTests : TestContext
     }
 
     [Fact]
+    public void Swapping_the_model_does_not_accumulate_stale_field_registrations()
+    {
+        var holder = new Holder();
+        var formOptions = new FormOptions();
+        var cut = RenderComponent<EditForm>(ps => ps
+            .Add(f => f.Model, holder.Model)
+            .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
+            {
+                b.OpenComponent<CascadingValue<FormOptions>>(0);
+                b.AddAttribute(1, "Value", formOptions);
+                b.AddAttribute(2, "ChildContent", (RenderFragment)(inner =>
+                {
+                    inner.OpenComponent<EditCheckedStringList>(0);
+                    inner.AddAttribute(1, "Value", holder.Model.Items);
+                    inner.AddAttribute(2, "Field", (Expression<Func<List<string>>>)(() => holder.Model.Items));
+                    inner.AddAttribute(3, "Options", new List<string> { "a", "b" });
+                    inner.CloseComponent();
+                }));
+                b.CloseComponent();
+            })));
+
+        // Several model swaps, each creating a new EditContext and re-deriving the FieldIdentifier.
+        for (var i = 0; i < 5; i++)
+        {
+            holder.Model = new ItemsModel();
+            cut.SetParametersAndRender(ps => ps.Add(f => f.Model, holder.Model));
+        }
+
+        // Without unregister-on-swap this grew by one dead identifier per swap (ValidationView then
+        // iterated all of them every render). The old ones are dropped, so only the live one remains.
+        Assert.Single(formOptions.FieldIdentifiers);
+        Assert.Same(holder.Model, formOptions.FieldIdentifiers[0].Model);
+    }
+
+    [Fact]
     public void List_control_works_without_an_EditForm()
     {
         var model = new ItemsModel();
