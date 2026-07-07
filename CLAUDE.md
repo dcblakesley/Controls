@@ -41,6 +41,15 @@ End-to-end tests live in `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Pla
 
 ## Architecture
 
+### Design constraint: consumers are often micro-frontends (MFEs)
+
+Most workplace apps that consume this library are deployed as MFEs — several independently-built Blazor apps composed into one host page, where a single app team usually does **not** own the DI composition root or the process. That rules out two configuration styles for library features:
+
+- **DI-registered options** (`builder.Services.Configure<...>`) — an MFE can't reliably add or override registrations in a shell it doesn't own.
+- **Process-wide statics** — on Blazor Server one process serves every circuit/user, and MFEs sharing a runtime share the static.
+
+Prefer **render-tree-scoped configuration** (cascading values/components): each MFE owns its root component regardless of hosting, so the render tree is the one boundary that always maps onto app/MFE/circuit. `FormDefaults` (per-tree defaults for `FormOptions`, resolution: instance → cascaded `FormDefaults` → legacy static) is the reference example. Service-based features that genuinely need DI (e.g. the scoped toast services) should stay optional, with a registration-free alternative where feasible.
+
 ### Component Pattern
 
 Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, EditRadio*, EditChecked*, EditFile) follows the same structure:
@@ -58,6 +67,7 @@ Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, Edi
 
 - **`IEditControl`** — Interface defining all common control properties (Id, Label, Description, Tooltip, IsEditMode, IsHidden, IsDisabled, Hiding, ContainerClass, etc.)
 - **`FormOptions`** — Cascading parameter for form-wide settings (IsEditMode, HidingMode, ShowBoundValues, IsRequiredStarHidden)
+- **`FormDefaults`** — Root-level cascading component for per-render-tree control defaults (star hiding, validation field names); preferred over the process-wide `FormOptions.Default*` statics (see the MFE design constraint above)
 - **`HidingMode`** — Enum controlling conditional display (None, WhenReadOnlyAndNull, WhenNull, WhenNullOrDefault, etc.)
 - **`FormLabel`** — Shared label component handling display name extraction, required star, description, and tooltip
 - **`FieldValidationDisplay`** — Validation message display with accessibility attributes
