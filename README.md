@@ -121,6 +121,7 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 - **`EditDate`** - Date picker component
 - **`EditBool`** - Checkbox for boolean values
 - **`EditBoolNullRadio`** - Three-state radio for nullable booleans
+- **`EditFile`** - Multi-file upload bound to a `List<IBrowserFile>` (drag-and-drop + click-to-browse, extension filtering, per-file size cap, optional max count)
 
 ### Selection Controls
 - **`EditSelect`** - Dropdown selection for objects
