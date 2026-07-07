@@ -93,6 +93,53 @@ public class RadioTextAreaAndCultureTests : TestContext
     }
 
     [Fact]
+    public void EditRadioString_a_real_option_named_Other_binds_its_own_value()
+    {
+        var model = new PersonModel { Name = "" };
+        string? captured = null;
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => captured = v));
+            b.AddAttribute(5, "Options", new List<string> { "Other", "Something else" });
+            b.CloseComponent();
+        }));
+
+        // The literal "Other" used to collide with the built-in other-option sentinel, silently
+        // replacing the model value with the empty other-text.
+        cut.Find("#rb-Name-Other").Change("Other");
+        Assert.Equal("Other", captured);
+    }
+
+    [Fact]
+    public void EditNumber_binds_on_change_not_per_keystroke()
+    {
+        var model = new PersonModel { Age = 1 };
+        Expression<Func<int?>> field = () => model.Age;
+        int? captured = null;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<int?>>(0);
+            b.AddAttribute(1, "Value", model.Age);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<int?>(this, v => captured = v));
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input.edit-number-input");
+        // No oninput handler: per-keystroke binding flashed "must be a number" while typing partial
+        // numbers ("-", "3.") because browsers report type=number as "" until the text parses.
+        Assert.Throws<Bunit.MissingEventHandlerException>(() => input.Input("5"));
+        input.Change("5");
+        Assert.Equal(5, captured);
+    }
+
+    [Fact]
     public void EditNumber_formats_invariantly_regardless_of_the_current_culture()
     {
         var original = CultureInfo.CurrentCulture;

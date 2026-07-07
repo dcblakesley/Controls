@@ -5,8 +5,9 @@
      aria-live="polite"
      aria-atomic="true">
     @* Enumerate this field's messages directly — the empty case renders nothing, so no guard is
-       needed, and the no-arg GetValidationMessages() (a whole-form scan) is avoided. *@
-    @foreach (var x in EditContext!.GetValidationMessages(FieldIdentifier))
+       needed, and the no-arg GetValidationMessages() (a whole-form scan) is avoided. A null
+       EditContext (control used outside an EditForm) simply has no messages. *@
+    @foreach (var x in EditContext?.GetValidationMessages(FieldIdentifier) ?? [])
     {
         @GetValidationMessage(x, true)
     }
@@ -14,7 +15,7 @@
 
 <!-- non-screen readers -->
 <div class="edit-validation-message">
-    @foreach (var x in EditContext!.GetValidationMessages(FieldIdentifier))
+    @foreach (var x in EditContext?.GetValidationMessages(FieldIdentifier) ?? [])
     {
         @GetValidationMessage(x)
     }

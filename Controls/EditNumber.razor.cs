@@ -40,7 +40,9 @@ public partial class EditNumber<T> : EditControlBase<T>
         return false;
     }
 
-    // Ported from InputNumber<T>: route through BindConverter so culture-aware formatting matches Microsoft's behavior.
+    // Ported from InputNumber<T>, extended to every numeric primitive the parse side accepts —
+    // the unsigned/byte types must format invariantly too, or a culture with a non-ASCII negative
+    // sign (e.g. sv-SE's U+2212 for sbyte) renders a value the number input can't round-trip.
     protected override string? FormatValueAsString(T? value) => value switch
     {
         null => null,
@@ -50,6 +52,11 @@ public partial class EditNumber<T> : EditControlBase<T>
         float @float => BindConverter.FormatValue(@float, CultureInfo.InvariantCulture),
         double @double => BindConverter.FormatValue(@double, CultureInfo.InvariantCulture),
         decimal @decimal => BindConverter.FormatValue(@decimal, CultureInfo.InvariantCulture),
+        byte @byte => @byte.ToString(CultureInfo.InvariantCulture),
+        sbyte @sbyte => @sbyte.ToString(CultureInfo.InvariantCulture),
+        ushort @ushort => @ushort.ToString(CultureInfo.InvariantCulture),
+        uint @uint => @uint.ToString(CultureInfo.InvariantCulture),
+        ulong @ulong => @ulong.ToString(CultureInfo.InvariantCulture),
         _ => value.ToString()
     };
 

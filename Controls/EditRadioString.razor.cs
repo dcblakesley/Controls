@@ -21,7 +21,11 @@ public partial class EditRadioString : EditControlBase<string?>
     [Parameter] public string? LabelClass { get; set; }
 
     string _otherText = "";
-    const string OtherName = "Other";
+    // Internal radio value for the built-in "Other" option. Deliberately NOT the display text
+    // "Other" — a consumer options list may legitimately contain "Other" as a real option, and the
+    // sentinel must never collide with it (the collision silently replaced the model value with
+    // the empty other-text). The sentinel never reaches the model; the setter maps it to _otherText.
+    const string OtherName = "__wss-other__";
     string? _selectedOption;
 
     protected override void OnInitialized()
@@ -87,7 +91,7 @@ public partial class EditRadioString : EditControlBase<string?>
             _selectedOption = value;
             // Assign through CurrentValue (not Value) so InputBase notifies the EditContext and
             // re-runs validation live — matches every other Edit* control.
-            if (value == "Other")
+            if (value == OtherName)
             {
                 CurrentValue = _otherText;
             }

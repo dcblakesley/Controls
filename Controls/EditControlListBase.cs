@@ -81,9 +81,15 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     /// See the matching remarks on <see cref="EditControlBase{TValue}.InitState{T}"/> for why
     /// registration lives here rather than in <c>FieldValidationDisplay</c>.
     /// </summary>
+    // Re-derives the FieldIdentifier when the cascading EditContext is swapped (see OnParametersSet).
+    // The field expression evaluates its model access live against the parent's state, so calling
+    // FieldIdentifier.Create again picks up the new model instance.
+    Func<FieldIdentifier>? _fieldIdentifierFactory;
+
     protected void InitState<T>(Expression<Func<T>> field)
     {
         (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        _fieldIdentifierFactory = () => FieldIdentifier.Create(field);
         // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
         // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
@@ -152,6 +158,17 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
         if (EditContext is not null)
             EditContext.OnValidationStateChanged += OnValidationStateChanged;
         _subscribedEditContext = EditContext;
+
+        // The EditContext changes when the parent swaps the model instance (form reset, reload).
+        // The cached FieldIdentifier still pointed at the old model, so NotifyFieldChanged and
+        // validation lookups silently targeted dead state forever — re-derive it against the
+        // current model and re-register so the validation summary links keep working. (The scalar
+        // InputBase controls throw on a context swap; list controls support it instead.)
+        if (_fieldIdentifierFactory is not null)
+        {
+            _fieldIdentifier = _fieldIdentifierFactory();
+            FormOptions?.RegisterField(_fieldIdentifier, _id);
+        }
     }
 
     void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => StateHasChanged();
