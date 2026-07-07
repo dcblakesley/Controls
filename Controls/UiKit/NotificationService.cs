@@ -85,7 +85,10 @@ public sealed class NotificationService : INotificationService, IDisposable
     {
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(item.Duration), token);
+            // Task.Delay rejects anything over ~24.8 days (int.MaxValue ms) — cap absurd caller
+            // durations there instead of throwing into this fire-and-forget task.
+            var ms = Math.Min(item.Duration * 1000, int.MaxValue - 1);
+            await Task.Delay(TimeSpan.FromMilliseconds(ms), token);
         }
         catch (TaskCanceledException)
         {

@@ -7,17 +7,20 @@
     <div class="wss-drawer-root">
         <div class="wss-drawer-mask" @onclick="OnMaskClickAsync"></div>
         <div class="wss-drawer wss-drawer-@PlacementName" style="@SizeStyle" role="dialog" aria-modal="true"
-             aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel)" tabindex="-1"
+             aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel ?? "Drawer")" tabindex="-1"
              @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="true">
-            <div class="wss-drawer-header">
-                <div class="wss-drawer-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
-                @if (Closable)
-                {
-                    <button type="button" class="wss-drawer-close" aria-label="Close" @onclick="CloseAsync">
-                        <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 00203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z"/></svg>
-                    </button>
-                }
-            </div>
+            @if (HasTitle || Closable)
+            {
+                <div class="wss-drawer-header">
+                    <div class="wss-drawer-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                    @if (Closable)
+                    {
+                        <button type="button" class="wss-drawer-close" aria-label="Close" @onclick="CloseAsync">
+                            <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 00203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z"/></svg>
+                        </button>
+                    }
+                </div>
+            }
             <div class="wss-drawer-body">@ChildContent</div>
             @if (Footer != null)
             {
@@ -75,6 +78,8 @@
         if (e.Key == "Escape" && Closable) await CloseAsync();
     }
 
+    int _activationSeq;
+
     // Focus trap + body-scroll-lock while open; restores focus to the opener on close.
     // Degrades to no-op when JS is unavailable (prerender / tests).
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -82,19 +87,30 @@
         if (Visible && !_active)
         {
             _active = true;
+            // Sequence token: a close (and possibly a reopen, which starts a *new* activation)
+            // while this activation's JS call is in flight makes this one stale. Without the token
+            // a close→reopen race left the first handle orphaned — its ref-counted body-scroll
+            // lock was never released, permanently freezing page scroll.
+            var seq = ++_activationSeq;
             try
             {
                 _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
-                _focusHandle = await _module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
-                // Closed while awaiting the import/activation? The close path already ran with a null
-                // handle, so release the one we just acquired — otherwise the body-scroll lock leaks.
-                if (!Visible) await ReleaseFocusAsync();
+                var handle = await _module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
+                if (seq != _activationSeq || !Visible)
+                {
+                    try { await handle.InvokeVoidAsync("dispose"); await handle.DisposeAsync(); } catch { }
+                }
+                else
+                {
+                    _focusHandle = handle;
+                }
             }
             catch { /* no JS — drawer still usable */ }
         }
         else if (!Visible && _active)
         {
             _active = false;
+            _activationSeq++; // invalidate any in-flight activation
             await ReleaseFocusAsync();
         }
     }

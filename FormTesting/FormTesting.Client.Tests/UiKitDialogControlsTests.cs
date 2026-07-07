@@ -47,6 +47,39 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
+    public void Modal_without_title_and_not_closable_renders_no_empty_header_and_names_itself()
+    {
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Closable, false)
+            .AddChildContent("<p>body</p>"));
+
+        Assert.Empty(cut.FindAll(".wss-modal-header"));                    // no empty header bar
+        Assert.Equal("Dialog", cut.Find(".wss-modal").GetAttribute("aria-label")); // never an unnamed dialog
+    }
+
+    [Fact]
+    public void Modal_mask_click_closes_only_when_the_press_started_on_the_mask()
+    {
+        var closes = 0;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
+
+        // Text-selection drag: the panel stops mousedown propagation, so from the wrap's view no
+        // press ever happened — the mouseup-on-mask click dispatches to the wrap with the flag
+        // unset and must not close the dialog.
+        cut.Find(".wss-modal-wrap").Click();
+        Assert.Equal(0, closes);
+
+        // A real mask press: mousedown on the mask, then the click — closes.
+        cut.Find(".wss-modal-wrap").MouseDown();
+        cut.Find(".wss-modal-wrap").Click();
+        Assert.Equal(1, closes);
+    }
+
+    [Fact]
     public void Drawer_visible_renders_placement_class_and_title()
     {
         var cut = RenderComponent<Drawer>(p => p

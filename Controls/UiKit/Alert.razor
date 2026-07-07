@@ -1,5 +1,7 @@
 @namespace Controls
 
+@if (!_closed)
+{
 <div class="wss-alert wss-alert-@TypeName @(HasDescription ? "wss-alert-with-description" : null)"
      role="@(Type == AlertType.Error ? "alert" : "status")"
      aria-live="@(Type == AlertType.Error ? "assertive" : "polite")">
@@ -21,6 +23,7 @@
         </button>
     }
 </div>
+}
 
 @code {
     [Parameter] public AlertType Type { get; set; } = AlertType.Info;
@@ -48,8 +51,13 @@
     static RenderFragment Svg(string path) => b =>
         b.AddMarkupContent(0, $"<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"{path}\"/></svg>");
 
+    bool _closed;
+
+    // Closing hides the alert itself (matching AntD) — OnClose is a notification, not a
+    // requirement, so a Closable alert without a handler no longer renders a dead button.
     async Task OnCloseClicked()
     {
+        _closed = true;
         if (OnClose.HasDelegate) await OnClose.InvokeAsync();
     }
 }

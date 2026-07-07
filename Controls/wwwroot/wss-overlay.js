@@ -115,6 +115,10 @@ function wssUnlockScroll() {
     }
 }
 
+// Stack of active traps — only the topmost (most recently activated) one acts, so nested
+// overlays behave: the inner dialog owns Tab/focus until it closes, then the outer resumes.
+const wssTraps = [];
+
 export function activateModal(panel) {
     if (!panel) {
         return null;
@@ -135,8 +139,14 @@ export function activateModal(panel) {
     const initial = focusables();
     try { (initial[0] || panel).focus(); } catch { /* element not focusable yet */ }
 
+    const trap = {};
+    const isTopmost = () => wssTraps[wssTraps.length - 1] === trap;
+
+    // Document-level (not panel-level) so the trap keeps working even when focus has somehow
+    // landed outside the panel — a Tab from anywhere is pulled back into the cycle. Panel-level
+    // listening died the moment focus escaped (e.g. a mask click), taking Escape with it.
     const onKeydown = (e) => {
-        if (e.key !== 'Tab') {
+        if (e.key !== 'Tab' || !isTopmost()) {
             return;
         }
         const items = focusables();
@@ -146,9 +156,8 @@ export function activateModal(panel) {
         }
         const first = items[0];
         const last = items[items.length - 1];
-        // indexOf is -1 when focus is on the panel itself (tabindex=-1, e.g. after clicking the
-        // body) or otherwise outside the cycle — pull it back so Tab can't escape the trap, not
-        // only when focus sits exactly on the first/last item.
+        // indexOf is -1 when focus is on the panel itself (tabindex=-1) or outside it entirely —
+        // pull it back so Tab can't escape the trap.
         const idx = items.indexOf(document.activeElement);
         if (e.shiftKey) {
             if (idx <= 0) {
@@ -160,7 +169,29 @@ export function activateModal(panel) {
             first.focus();
         }
     };
-    panel.addEventListener('keydown', onKeydown);
+
+    // A press on the mask (or anything else outside the panel) must not steal focus out of the
+    // trap — otherwise the panel-scoped Escape handler and the Tab cycle die until the user
+    // clicks back in. preventDefault on mousedown suppresses the focus change, not the click.
+    const onMouseDown = (e) => {
+        if (isTopmost() && !panel.contains(e.target)) {
+            e.preventDefault();
+        }
+    };
+
+    // Focus that still lands outside (programmatic .focus(), an outer overlay restoring focus to
+    // its trigger while this one is open) is routed back into the panel.
+    const onFocusIn = (e) => {
+        if (isTopmost() && !panel.contains(e.target)) {
+            const items = focusables();
+            try { (items[0] || panel).focus(); } catch { /* not focusable */ }
+        }
+    };
+
+    document.addEventListener('keydown', onKeydown, true);
+    document.addEventListener('mousedown', onMouseDown, true);
+    document.addEventListener('focusin', onFocusIn);
+    wssTraps.push(trap);
 
     let disposed = false;
     return {
@@ -169,7 +200,13 @@ export function activateModal(panel) {
                 return; // idempotent — a double dispose must not over-decrement the scroll-lock count
             }
             disposed = true;
-            panel.removeEventListener('keydown', onKeydown);
+            document.removeEventListener('keydown', onKeydown, true);
+            document.removeEventListener('mousedown', onMouseDown, true);
+            document.removeEventListener('focusin', onFocusIn);
+            const i = wssTraps.indexOf(trap);
+            if (i >= 0) {
+                wssTraps.splice(i, 1);
+            }
             wssUnlockScroll();
             try { if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus(); } catch { /* gone */ }
         }

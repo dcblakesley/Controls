@@ -34,7 +34,7 @@ public class UiKitLeafControlsTests : TestContext
     }
 
     [Fact]
-    public void Alert_closable_invokes_OnClose()
+    public void Alert_closable_hides_itself_and_invokes_OnClose()
     {
         var closed = false;
         var cut = RenderComponent<Alert>(p => p
@@ -44,6 +44,18 @@ public class UiKitLeafControlsTests : TestContext
 
         cut.Find(".wss-alert-close").Click();
         Assert.True(closed);
+        Assert.Empty(cut.FindAll(".wss-alert")); // self-dismisses — OnClose is a notification, not a requirement
+    }
+
+    [Fact]
+    public void Alert_close_works_without_an_OnClose_handler()
+    {
+        var cut = RenderComponent<Alert>(p => p
+            .Add(a => a.Message, "x")
+            .Add(a => a.Closable, true));
+
+        cut.Find(".wss-alert-close").Click();
+        Assert.Empty(cut.FindAll(".wss-alert"));
     }
 
     [Fact]
