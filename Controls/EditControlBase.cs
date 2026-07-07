@@ -14,7 +14,7 @@ namespace Controls;
 /// <c>EditRadioEnum&lt;TEnum&gt;</c> — bind to a different generic type than they declare for Field).
 /// </para>
 /// <para>
-/// After declaring <c>Field</c>, override <see cref="OnInitialized"/> and call
+/// After declaring <c>Field</c>, override <see cref="ComponentBase.OnInitialized"/> and call
 /// <see cref="InitState{T}"/> with it — that's the one line each derived control needs to populate
 /// the standard derived state.
 /// </para>

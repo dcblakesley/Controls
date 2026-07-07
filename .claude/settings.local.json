@@ -43,7 +43,16 @@
       "mcp__playwright__browser_navigate",
       "Bash(break)",
       "mcp__playwright__browser_take_screenshot",
-      "PowerShell(git push *)"
+      "PowerShell(git push *)",
+      "Bash(ls -d \"New folder\" \"skills - Copy\" skills.7z)",
+      "Bash(rm -rf \"New folder\" \"skills - Copy\" skills.7z)",
+      "Bash(awk '{print $6, $7}')",
+      "Bash(grep -nE '^#{1,3} ' README.md)",
+      "Bash(grep -nE '^#{1,3} ' ARCHITECTURE_PLAN.md)",
+      "Bash(grep -v \"///\")",
+      "Bash(rmdir Models/Validation Models)",
+      "Bash(printf '\\\\n# Playwright MCP browser-session artifacts \\(local tooling, never committed\\)\\\\n.playwright-mcp/\\\\n')",
+      "Bash(unzip -l nupkg-verify/WssBlazorControls.10.3.0.nupkg)"
     ]
   }
 }

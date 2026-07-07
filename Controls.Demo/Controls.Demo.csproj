@@ -13,6 +13,23 @@
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
+    <!-- Build hygiene + shipped XML docs + SourceLink/symbols — mirrors Controls.csproj. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <EnablePackageValidation>true</EnablePackageValidation>
+
+    <!-- NU5104 (prerelease dependency from a stable package) is a deliberate exception: the demos
+         showcase <ObjectGraphDataAnnotationsValidator>/[ValidateComplexType], whose package only
+         ever shipped as 3.2.0-rc1 — there is no stable version to reference. The main
+         WssBlazorControls package carries no such dependency. -->
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
+
     <!-- Package Metadata -->
     <PackageDescription>Demo components for WssBlazorControls, showcasing usage of each control with interactive examples.</PackageDescription>
     <PackageProjectUrl>https://github.com/dcblakesley/Controls</PackageProjectUrl>
@@ -23,17 +40,18 @@
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <SupportedPlatform Include="browser" />
   </ItemGroup>
 
-  <!-- Reuse the repo README and LICENSE as the package readme/license (the main package does the same). -->
+  <!-- Reuse the repo README and the main package's icon (license via PackageLicenseExpression). -->
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="..\Controls\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

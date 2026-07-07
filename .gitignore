@@ -373,3 +373,5 @@ FodyWeavers.xsd
 
 # Marker file emitted by the e2e project's PlaywrightInstall MSBuild target.
 **/.playwright-installed
+# Playwright MCP browser-session artifacts (local tooling, never committed)
+.playwright-mcp/

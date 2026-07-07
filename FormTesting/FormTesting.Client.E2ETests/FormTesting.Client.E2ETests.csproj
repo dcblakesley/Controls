@@ -6,8 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- Allow xUnit's async assertions to flow naturally without trimming warnings. -->
-    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

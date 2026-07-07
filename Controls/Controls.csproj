@@ -12,12 +12,33 @@
 	  <AssemblyVersion>10.3.0</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
-    
+
+    <!-- Build hygiene: the changelog promises 0 warnings — enforce it. CS1591 excepted: the public
+         surface is heavily XML-documented but not exhaustively, and missing-comment noise would
+         drown real warnings. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Ship the XML docs so consumers get IntelliSense from the package. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- Debuggability + reproducibility: SourceLink is built into the .NET 8+ SDK; publish the
+         repo URL, ship a .snupkg symbol package, and make CI builds deterministic. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Catches API surface drift between the three TFMs at pack time. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+
     <!-- Package Metadata -->
     <PackageDescription>A comprehensive library of form controls for Blazor applications, providing consistent, feature-rich input components with built-in validation, accessibility support, and flexible styling options.</PackageDescription>
     <PackageProjectUrl>https://github.com/dcblakesley/Controls</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <!-- SPDX expression (was PackageLicenseFile) so NuGet.org indexes/filters the license properly. -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>icon.png</PackageIcon>
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -29,9 +50,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Include README, LICENSE, and the package icon -->
+    <!-- Include README and the package icon (license is declared via PackageLicenseExpression) -->
     <None Include="..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\LICENSE" Pack="true" PackagePath="\" />
     <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
@@ -49,10 +69,6 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="ai-docs\" />
   </ItemGroup>
 
 </Project>
