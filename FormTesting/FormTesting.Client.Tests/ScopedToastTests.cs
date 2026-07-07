@@ -39,6 +39,21 @@ public class ScopedToastTests : TestContext
     }
 
     [Fact]
+    public void Disposed_MessageContainer_unsubscribes_from_the_service()
+    {
+        Services.AddWssControlsToasts();
+        var svc = Services.GetRequiredService<IMessageService>();
+        var cut = RenderComponent<MessageContainer>();
+
+        DisposeComponents();
+
+        // If the container leaked its OnChange subscription, this would StateHasChanged a
+        // disposed component and throw.
+        svc.Success("after dispose", duration: 0);
+        Assert.Single(svc.Items);
+    }
+
+    [Fact]
     public void Two_message_service_instances_do_not_share_state()
     {
         // The whole point of the scoped variant vs. the static WasmMessageService: independent

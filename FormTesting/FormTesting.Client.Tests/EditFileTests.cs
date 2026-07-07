@@ -143,6 +143,46 @@ public class EditFileTests : TestContext
     }
 
     [Fact]
+    public void Remove_button_removes_only_that_file()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => { changed = v; model.Files = v; });
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.txt"),
+            InputFileContent.CreateFromText("2", "b.txt"));
+        Assert.Equal(2, changed!.Count);
+
+        cut.FindAll(".edit-file-delete-btn")[0].Click();
+
+        Assert.Single(changed);
+        Assert.Equal("b.txt", changed[0].Name);
+    }
+
+    [Fact]
+    public void Read_only_mode_lists_the_file_names_without_a_drop_zone()
+    {
+        List<IBrowserFile>? uploaded = null;
+        var upload = RenderEditFile(new FileModel { Files = [] }, v => uploaded = v);
+        upload.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "report.pdf"));
+
+        var model = new FileModel { Files = uploaded! };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(3, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-file-drop-zone"));
+        Assert.Contains("report.pdf", cut.Find(".edit-file-list--readonly").TextContent);
+    }
+
+    [Fact]
     public void Toggle_on_a_null_bound_checked_list_creates_the_list()
     {
         // Same base-class fix, exercised through EditCheckedStringList.ToggleAsync.

@@ -3,7 +3,7 @@
 <h1>EditSelectSearch Demo</h1>
 <p>Searchable single-select (AntDesign-style) backed by the <code>Select</code> engine. Supports type-to-search, clear, keyboard navigation and a virtualized dropdown for large option sets.</p>
 
-<EditForm Model="@_model" class="flex-row flex-wrap" @ref="_form">
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref="_form" OnSubmit="@(() => _submitCount++)">
     <ObjectGraphDataAnnotationsValidator />
 
     <section class="demo-section">
@@ -46,11 +46,23 @@
         <h3>Markup</h3>
         <pre class="code-block"><code>@_example</code></pre>
     </section>
+
+    <section class="demo-section">
+        <h3>Inside a submitting form</h3>
+        <p>Enter picks the highlighted option without triggering the form's implicit submission.</p>
+        <EditSelectSearch @bind-Value="_model.FormCountry"
+                          Field="@(() => _model.FormCountry)"
+                          Options="_countries"
+                          Width="260px" />
+        <button type="submit">Submit</button>
+        <div class="submit-count">Submits: @_submitCount</div>
+    </section>
 </EditForm>
 
 @code {
     readonly Model _model = new();
     EditForm? _form;
+    int _submitCount;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     readonly List<SelectOption<string?>> _countries =
@@ -81,6 +93,8 @@
 
         [Required(ErrorMessage = "Please select a country")]
         public string? RequiredCountry { get; set; }
+
+        public string? FormCountry { get; set; }
     }
 
     readonly string _example = @"<EditSelectSearch @bind-Value=""_model.Country""
