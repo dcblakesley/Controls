@@ -29,7 +29,7 @@
         else
         {
             @* Read-only — use the same FormLabel + ReadOnlyValue pattern as the other controls *@
-            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel />
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable="false" />
             <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@CssClass Text=@(CurrentValue ? TrueText : FalseText) />
         }
 

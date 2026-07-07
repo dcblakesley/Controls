@@ -4,7 +4,7 @@
 {
     <div class="edit-control-wrapper @ContainerClass">
 
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel />
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
         {
@@ -22,7 +22,7 @@
                        aria-describedby=@_describedBy
                        aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                        autocomplete=@Autocomplete />
-                <InvalidIcon CssClass=@CssClass />
+                <InvalidIcon IsInvalid=@IsInvalid />
             </div>
         }
         else
@@ -33,7 +33,7 @@
                 <!-- Masks with eye icons to show/hide masked text in EditMode  -->
                 @if (!_showMaskedValue)
                 {
-                    <div>
+                    <div id=@_id data-test-id=@_id aria-labelledby=@(ShouldHideLabel ? null : $"lbl-{_id}")>
                         <span class="edit-readonly-value">@GetMaskValue()</span>
                         <button type="button" aria-label="Show value" class="edit-icon-eye-invisible" @onclick=@(() => _showMaskedValue = !_showMaskedValue)>
                             <svg viewBox="64 64 896 896" focusable="false" data-icon="eye-invisible" width="1em" height="1em" fill="currentColor" aria-hidden="true">
@@ -45,7 +45,7 @@
                 }
                 else
                 {
-                    <div>
+                    <div id=@_id data-test-id=@_id aria-labelledby=@(ShouldHideLabel ? null : $"lbl-{_id}")>
                         <span class="edit-readonly-value">@Value</span>
                         <button type="button" aria-label="Hide value" class="edit-icon-eye" @onclick=@(() => _showMaskedValue = !_showMaskedValue)>
                             <svg viewBox="64 64 896 896" focusable="false" data-icon="eye" width="1em" height="1em" fill="currentColor" aria-hidden="true">

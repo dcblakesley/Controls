@@ -32,6 +32,14 @@ public partial class FormLabel
     /// <inheritdoc cref="IEditControl.IsLabelHidden"/>
     [Parameter] public bool IsLabelHidden { get; set; }
 
+    /// <summary>
+    /// False when the paired element is not labelable (the read-only view renders a div, and
+    /// <c>label[for]</c> must reference a labelable element) — the label then renders without
+    /// <c>for</c>; the read-only view names itself via <c>aria-labelledby</c>. Controls pass
+    /// <c>ShowEditor</c>. Defaults to true.
+    /// </summary>
+    [Parameter] public bool IsForLabelable { get; set; } = true;
+
     // Resolved once per parameter-change cycle; the razor binds to these instead of calling the
     // helpers on every render path (the legend + label branches in FormLabel.razor evaluate
     // DisplayLabel/DisplayDescription twice otherwise).

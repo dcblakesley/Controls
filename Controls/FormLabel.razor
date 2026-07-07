@@ -1,4 +1,17 @@
-﻿@if (!IsLabelHidden)
+@if (IsLabelHidden)
+{
+    @* Even a hidden label must keep naming the control — a visually-hidden label/legend preserves
+       the accessible name that used to be dropped entirely (an unnamed field to assistive tech). *@
+    @if (IsLegend)
+    {
+        <legend class="edit-sr-only" id="lbl-@Id">@DisplayLabel()</legend>
+    }
+    else
+    {
+        <label class="edit-sr-only" for=@(IsForLabelable ? Id : null) id="lbl-@Id">@DisplayLabel()</label>
+    }
+}
+else
 {
     @if (IsLegend)
     {
@@ -22,8 +35,9 @@
     }
     else
     {
-        <!-- Typical Label -->
-		<label class="edit-label" for=@Id id="lbl-@Id">
+        <!-- Typical Label. `for` only when the paired element is labelable — in read-only mode the
+             value is a div, and label[for] must reference a labelable element. -->
+		<label class="edit-label" for=@(IsForLabelable ? Id : null) id="lbl-@Id">
 			@if ((_isRequired || IsRequired) && !(FormOptions?.IsRequiredStarHidden ?? FormOptions.DefaultIsRequiredStarHidden))
 			{
 				<span class="edit-label-required-star" aria-hidden="true">*</span>

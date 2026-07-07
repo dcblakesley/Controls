@@ -19,15 +19,16 @@ public partial class FieldValidationDisplay
     string _label = string.Empty;
     string? _valueType;
 
-    protected override void OnInitialized()
+    // Recomputed on parameter change (not just init): a dynamic Label must be reflected in the
+    // rewritten messages ("Old Label is required" was frozen forever), and the list controls
+    // re-derive their FieldIdentifier when the model/EditContext is swapped.
+    protected override void OnParametersSet()
     {
         _isRequired = Attributes.Any(x => x is RequiredAttribute);
         var minAndMax = AttributesHelper.GetMinAndMaxLengths(Attributes);
         _minCharacters = minAndMax.MinLength;
         _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
-        // Cache the resolved label once at init — every validation-message render used to call
-        // GetLabelText() afresh against the attribute list.
         _label = Label ?? Attributes.GetLabelText(FieldIdentifier);
         _valueType = FieldIdentifier.Model.GetType().GetProperty(FieldIdentifier.FieldName)?.PropertyType?.ToString() ?? string.Empty;
         // Field registration with FormOptions.FieldIdentifiers moved to EditControlBase.InitState

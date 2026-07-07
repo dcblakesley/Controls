@@ -30,10 +30,19 @@ public partial class EditBool : EditControlBase<bool>
     {
         base.OnInitialized();
         InitState(Field);
-        // Resolve label/description once at init rather than per render (DisplayDescription was
-        // evaluated twice each render — once for the null-check, once to render).
-        _displayLabel = Label ?? _attributes.GetLabelText(FieldIdentifier);
-        _displayDescription = Description ?? _attributes.Description();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        // Resolved per parameter change (not per render — DisplayDescription used to be evaluated
+        // twice each render) so a dynamic Label (localization switch, runtime text) is reflected;
+        // resolving only at init froze the first value forever. No-op until InitState has run.
+        if (_attributes is not null)
+        {
+            _displayLabel = Label ?? _attributes.GetLabelText(FieldIdentifier);
+            _displayDescription = Description ?? _attributes.Description();
+        }
     }
 
     // Checkboxes don't bind via string parsing — the value is set directly through CurrentValue

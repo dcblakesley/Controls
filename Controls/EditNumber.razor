@@ -4,7 +4,7 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel />
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
         {
@@ -24,7 +24,7 @@
                        aria-invalid=@(IsInvalid ? "true" : null)
                        aria-describedby=@_describedBy
                        aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
-                <InvalidIcon CssClass=@CssClass />
+                <InvalidIcon IsInvalid=@IsInvalid />
             </div>
         }
         else

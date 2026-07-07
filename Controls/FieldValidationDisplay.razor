@@ -7,9 +7,10 @@
     @* Enumerate this field's messages directly — the empty case renders nothing, so no guard is
        needed, and the no-arg GetValidationMessages() (a whole-form scan) is avoided. A null
        EditContext (control used outside an EditForm) simply has no messages. *@
+    @* One element per message — adjacent text nodes ran together ("RequiredMust be between…"). *@
     @foreach (var x in EditContext?.GetValidationMessages(FieldIdentifier) ?? [])
     {
-        @GetValidationMessage(x, true)
+        <div>@GetValidationMessage(x, true)</div>
     }
 </div>
 
@@ -17,6 +18,6 @@
 <div class="edit-validation-message">
     @foreach (var x in EditContext?.GetValidationMessages(FieldIdentifier) ?? [])
     {
-        @GetValidationMessage(x)
+        <div>@GetValidationMessage(x)</div>
     }
 </div>

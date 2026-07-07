@@ -68,8 +68,11 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
     string _errorMsgId = string.Empty;
     string _describedBy = string.Empty;
 
-    /// <summary> True when this field currently has a validation error (InputBase appends "invalid"). </summary>
-    bool IsInvalid => CssClass?.Contains("invalid") == true;
+    /// <summary>
+    /// True when this field currently has a validation error. Read from the EditContext's messages
+    /// rather than substring-matching CssClass (which also contains the consumer's class attribute).
+    /// </summary>
+    bool IsInvalid => EditContext.GetValidationMessages(FieldIdentifier).Any();
 
     // The inner InputRadioGroup can't use @bind-Value here because an explicit ValueExpression
     // alongside @bind-Value is a Razor compile error — so the change handler is spelled out.

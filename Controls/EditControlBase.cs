@@ -59,10 +59,12 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected string _describedBy = string.Empty;
 
     /// <summary>
-    /// True when this field currently has a validation error — Blazor's <see cref="InputBase{TValue}"/>
-    /// appends <c>invalid</c> to <see cref="InputBase{TValue}.CssClass"/> on a failed field.
+    /// True when this field currently has a validation error. Read from the EditContext's messages
+    /// rather than substring-matching <see cref="InputBase{TValue}.CssClass"/> — CssClass also
+    /// contains the consumer's <c>class</c> attribute, so a class like "invalid-style-fix" was a
+    /// permanent false positive (aria-invalid + red X).
     /// </summary>
-    protected bool IsInvalid => CssClass?.Contains("invalid") == true;
+    protected bool IsInvalid => EditContext.GetValidationMessages(FieldIdentifier).Any();
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
