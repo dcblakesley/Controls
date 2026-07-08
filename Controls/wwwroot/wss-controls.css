@@ -77,6 +77,20 @@
     --wss-error-shadow: color-mix(in srgb, var(--wss-color-error) 20%, transparent);
 }
 
+/*
+ * RTL note: direction-sensitive offsets in this file use CSS logical properties
+ * (inset-inline-*, padding-inline-*, margin-inline-*), which compute to the same
+ * values as their physical equivalents under LTR (so the committed visual
+ * baselines are unaffected) and mirror automatically under dir="rtl".
+ * A few rules stay deliberately PHYSICAL — do not convert them:
+ *   - the notification container (right: 24px) and its slide-in animation are
+ *     screen-corner-anchored, not text-direction-relative;
+ *   - the DrawerPlacement left/right styles implement an explicit physical side
+ *     chosen by the consumer (DrawerPlacement.Left means the left edge);
+ *   - the Table's text-align: left matches AntD's fixed table alignment;
+ *   - the dropdown's `left: 0; min-width: 100%` spans its full-width anchor.
+ */
+
 /* ============================================================================
  * Select  (engine + EditSelectSearch / EditMultiSelect)
  * Global, not CSS-isolation: this library ships a single linked stylesheet and
@@ -203,9 +217,9 @@
 .wss-select-single .wss-select-selection-search {
     position: absolute;
     top: 0;
-    right: var(--wss-padding-h);
+    inset-inline-end: var(--wss-padding-h);
     bottom: 0;
-    left: var(--wss-padding-h);
+    inset-inline-start: var(--wss-padding-h);
 }
 
 .wss-select-single .wss-select-selection-search-input {
@@ -226,11 +240,11 @@
     white-space: nowrap;
     text-overflow: ellipsis;
     user-select: none;
-    padding-right: 18px;
+    padding-inline-end: 18px;
 }
 
 .wss-select-single .wss-select-selection-placeholder {
-    padding-right: 18px;
+    padding-inline-end: 18px;
 }
 
 /* dim the shown item while the dropdown is open (matches antd) */
@@ -250,8 +264,10 @@
     display: inline-flex;
     align-items: center;
     height: 24px;
-    margin: 2px 4px 2px 0;
-    padding: 0 4px 0 8px;
+    margin-block: 2px;
+    margin-inline: 0 4px;
+    padding-block: 0;
+    padding-inline: 8px 4px;
     line-height: 22px;
     background: var(--wss-color-bg-hover);
     border: 1px solid var(--wss-color-split);
@@ -260,7 +276,7 @@
 }
 
 .wss-select-multiple .wss-select-selection-item-content {
-    margin-right: 4px;
+    margin-inline-end: 4px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -305,7 +321,7 @@
 .wss-select-multiple .wss-select-selection-placeholder {
     position: absolute;
     top: 50%;
-    left: var(--wss-padding-h);
+    inset-inline-start: var(--wss-padding-h);
     transform: translateY(-50%);
 }
 
@@ -315,7 +331,7 @@
 .wss-select-clear {
     position: absolute;
     top: 50%;
-    right: var(--wss-padding-h);
+    inset-inline-end: var(--wss-padding-h);
     width: 12px;
     height: 12px;
     margin-top: -6px;
@@ -431,7 +447,7 @@
 
 .wss-select-item-option-state {
     flex: none;
-    margin-left: 8px;
+    margin-inline-start: 8px;
     color: var(--wss-color-primary);
 }
 
