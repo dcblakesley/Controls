@@ -36,7 +36,7 @@
                         @* The label matches the actual scope: ToggleAll only affects the current page. *@
                         <input type="checkbox" class="wss-table-checkbox"
                                aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
-                               checked="@AllSelected"
+                               checked="@_allSelected"
                                @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
                     </th>
                 }
@@ -190,10 +190,21 @@
             .ToList();
     }
 
-    // Rebuilt only when the page / data / page-size / sort change, so the row loop and AllSelected
-    // don't each re-materialize the page on every render.
+    // Rebuilt only when the page / data / page-size / sort change, so the row loop and the header
+    // checkbox don't each re-materialize the page on every render. ChildContent defeats Blazor's
+    // parameter-change skip, so OnParametersSet (and therefore this) runs on every parent
+    // re-render — the guard below is what keeps that O(1) for unchanged inputs.
     void RebuildPageItems()
     {
+        // ApplySort always assigns a fresh list reference when the view can change: its sorted
+        // branch builds a new list, and its unsorted branch assigns _items, itself a fresh list per
+        // DataSource swap — so comparing the _sorted reference covers both data and sort changes.
+        // RowKey is deliberately NOT tracked: an inline lambda parameter is a new delegate every
+        // render, and the documented contract is a pure, stable key selector — tracking it would
+        // defeat this skip for the most common usage.
+        if (ReferenceEquals(_sorted, _keyedSorted) && _page == _keyedPage && PageSize == _keyedPageSize)
+            return;
+
         _pageItems = IsPaged ? _sorted.Skip((_page - 1) * PageSize).Take(PageSize).ToList() : _sorted;
 
         // Row @key values, disambiguated: fully-equal rows (equal records/strings, or RowKey
@@ -216,9 +227,21 @@
                 _pageKeys.Add(key);
             }
         }
+
+        _keyedSorted = _sorted;
+        _keyedPage = _page;
+        _keyedPageSize = PageSize;
+
+        // Page membership changed, so the header-checkbox state may have too.
+        RecomputeSelectionFlags();
     }
 
     readonly List<object> _pageKeys = new();
+
+    // Inputs of the last real rebuild (see the guard at the top of RebuildPageItems).
+    List<TItem>? _keyedSorted;
+    int _keyedPage;
+    int _keyedPageSize;
 
     bool IsActive(Column<TItem> col, SortDirection direction) =>
         ReferenceEquals(_sortColumn, col) && _sortDirection == direction;
@@ -282,6 +305,9 @@
                 var present = new HashSet<object>(_items.Select(KeyFor));
                 foreach (var gone in _selected.Keys.Where(k => !present.Contains(k)).ToList())
                     _selected.Remove(gone);
+                // No RecomputeSelectionFlags here: this branch just made _items (and via ApplySort
+                // below, _sorted) a fresh reference, so the RebuildPageItems at the end of
+                // OnParametersSet cannot skip and recomputes the flags against the new page.
             }
 
             // Re-derive the sorted view from the new data (the column reference is stable, so the
@@ -301,6 +327,10 @@
             _selected.Clear();
             foreach (var s in SelectedItems) _selected[KeyFor(s)] = s;
             _lastSelectedItems = SelectedItems;
+            // The selection can change without the page changing (RebuildPageItems below may then
+            // legitimately skip), so refresh the header-checkbox flags here. If the page *is* also
+            // changing this pass, the real rebuild below recomputes again with the new page.
+            RecomputeSelectionFlags();
         }
 
         if (!Selectable) _lastIndeterminate = null; // the header checkbox is recreated when re-enabled
@@ -378,12 +408,31 @@
 
     bool IsSelected(TItem item) => _selected.ContainsKey(KeyFor(item));
 
-    bool AllSelected => _pageItems.Count > 0 && _pageItems.All(IsSelected);
-
-    // Some — but not all — of the current page is selected. The header checkbox then renders
-    // unchecked (AllSelected == false); we drive it to the native "mixed" state via JS so screen
+    // Header-checkbox state, cached so rendering doesn't rescan the page (formerly computed
+    // properties re-evaluated up to three times per render — O(page) each, with a KeyFor boxing
+    // per probe). _someSelected means some but not all of the current page is selected: the header
+    // checkbox then renders unchecked and we drive it to the native "mixed" state via JS so screen
     // readers announce the partial selection (WCAG 4.1.2) instead of "not checked".
-    bool SomeSelected => _pageItems.Count > 0 && !AllSelected && _pageItems.Any(IsSelected);
+    bool _allSelected;
+    bool _someSelected;
+
+    // Single pass with early exit: once both a selected and an unselected row have been seen, the
+    // outcome (mixed) is decided. Called from every point where the page membership or the
+    // selection changes: a real RebuildPageItems rebuild, ToggleRow, ToggleAll, and the controlled
+    // SelectedItems re-sync in OnParametersSet.
+    void RecomputeSelectionFlags()
+    {
+        var anySelected = false;
+        var anyUnselected = false;
+        foreach (var item in _pageItems)
+        {
+            if (IsSelected(item)) anySelected = true; else anyUnselected = true;
+            if (anySelected && anyUnselected) break;
+        }
+
+        _allSelected = anySelected && !anyUnselected; // an empty page reports neither flag
+        _someSelected = anySelected && anyUnselected;
+    }
 
     bool? _lastIndeterminate;
     bool _disposed;
@@ -394,7 +443,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!Selectable || _disposed) return;
-        var some = SomeSelected;
+        var some = _someSelected;
         if (_lastIndeterminate == some) return;
         try
         {
@@ -437,6 +486,7 @@
     async Task ToggleRow(TItem item, bool on)
     {
         if (on) _selected[KeyFor(item)] = item; else _selected.Remove(KeyFor(item));
+        RecomputeSelectionFlags();
         await SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
     }
 
@@ -447,6 +497,7 @@
         {
             if (on) _selected[KeyFor(i)] = i; else _selected.Remove(KeyFor(i));
         }
+        RecomputeSelectionFlags();
         await SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
     }
 }

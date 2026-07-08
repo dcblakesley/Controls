@@ -457,4 +457,88 @@ public class UiKitTableTests : TestContext
         // applied via JS, which bUnit can't observe) — it must not falsely render as fully checked.
         Assert.False(cut.Find("thead input.wss-table-checkbox").HasAttribute("checked"));
     }
+
+    [Fact]
+    public void Parent_rerender_with_unchanged_data_does_not_rewalk_rows()
+    {
+        // Pins the perf contract algorithmically (bUnit can't see wall-clock): with an unchanged
+        // DataSource / page / page size, a parent re-render must not re-run the page-key rebuild or
+        // any selection scan. The only remaining KeyFor calls during a pure re-render are the row
+        // markup's two IsSelected probes per row (the tr's selected-class check and the row
+        // checkbox's checked attribute) — exactly 2 * rows per render pass. Before the fix each
+        // re-render also walked all rows for the key rebuild plus up to three header-checkbox
+        // scans, i.e. O(rows) growth per re-render beyond the markup probes.
+        var keyCalls = 0;
+        var people = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.RowKey, x => { keyCalls++; return x.Name; })
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var callsAfterFirstRender = keyCalls;
+        var rendersAfterFirstRender = cut.RenderCount;
+
+        // Simulate the parent re-rendering with identical values (ChildContent defeats Blazor's
+        // parameter-change skip, so each of these runs the Table's OnParametersSet + render).
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, people));
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, people));
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, people));
+
+        var extraRenders = cut.RenderCount - rendersAfterFirstRender;
+        Assert.True(extraRenders >= 3);
+        Assert.Equal(extraRenders * people.Count * 2, keyCalls - callsAfterFirstRender);
+    }
+
+    [Fact]
+    public void DataSource_swap_rebuilds_keys_and_selection_flags()
+    {
+        var first = new List<Person> { new("Alice", 30), new("Bob", 25) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, first)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.RowKey, x => x.Name)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.Find("thead input.wss-table-checkbox").Change(true); // select all: Alice, Bob
+        Assert.True(cut.Find("thead input.wss-table-checkbox").HasAttribute("checked"));
+
+        // Swap to disjoint data: the rows re-render, the stale (uncontrolled) selection is pruned,
+        // and the cached header-checkbox state recomputes to unchecked.
+        var second = new List<Person> { new("Carol", 40), new("Dave", 22), new("Eve", 35) };
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, second));
+
+        var names = cut.FindAll("tbody .wss-table-row td.wss-table-cell:last-child")
+            .Select(td => td.TextContent.Trim()).ToArray();
+        Assert.Equal(["Carol", "Dave", "Eve"], names);
+        Assert.False(cut.Find("thead input.wss-table-checkbox").HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void Select_all_and_toggle_row_keep_header_checkbox_state_correct()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice, Bob — uncontrolled selection
+            .Add(t => t.Selectable, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        bool HeaderChecked() => cut.Find("thead input.wss-table-checkbox").HasAttribute("checked");
+
+        Assert.False(HeaderChecked()); // nothing selected yet
+
+        cut.Find("thead input.wss-table-checkbox").Change(true); // select all
+        Assert.True(HeaderChecked());
+        Assert.All(cut.FindAll("tbody input.wss-table-checkbox"),
+            cb => Assert.True(cb.HasAttribute("checked")));
+
+        cut.FindAll("tbody input.wss-table-checkbox")[0].Change(false); // untick one row
+        // Partial selection: not fully checked (the mixed state is applied via JS, unobservable here).
+        Assert.False(HeaderChecked());
+    }
 }
