@@ -564,7 +564,7 @@ applied yet — this section is the findings tracker.
 
 ## Medium
 
-### ☐ M14 — M13 is a half-fix: `EditSelect<DateTimeOffset>` still can't match any authored option value; `DateTime`/`TimeOnly` match only one authored form
+### ☑ M14 — M13 is a half-fix: `EditSelect<DateTimeOffset>` still can't match any authored option value; `DateTime`/`TimeOnly` match only one authored form
 - **Where:** `Controls/Helpers/SelectParsing.cs` `FormatInvariant` date arms (from d62c9f3) —
   `DateTimeOffset` formats with `"O"`; `DateTime` with `"s"`; `TimeOnly` with `HH:mm:ss`.
 - **Failure:** `"O"` for `DateTimeOffset` always emits seven fractional digits
@@ -581,10 +581,16 @@ applied yet — this section is the findings tracker.
   `yyyy-MM-ddTHH:mm:ssK` when sub-second is zero (fall back to `"O"` otherwise); document the one
   canonical authored form per type in the README (and fix the changelog claim). A bUnit case per
   type asserting the formatted value equals the naturally-authored literal.
+- **Done:** whole-second `DateTimeOffset` formats `yyyy-MM-ddTHH:mm:ssK`; sub-second falls back to
+  `"O"` so nothing truncates silently. `DateTime`/`TimeOnly` formats unchanged (their canonical
+  authored forms already match) — the README now names the one authored form per type and warns
+  that shorter forms parse but don't re-match. Tests:
+  `FormatInvariant_formats_each_date_type_as_the_literal_an_author_writes` (incl. UTC `+00:00`) and
+  `FormatInvariant_sub_second_DateTimeOffset_falls_back_to_the_full_round_trip_form`.
 
 ## Low
 
-### ☐ L16 — L14's `aria-disabled` tracking still clobbers a consumer's own `aria-disabled` (the exact case the tracking exists for)
+### ☑ L16 — L14's `aria-disabled` tracking still clobbers a consumer's own `aria-disabled` (the exact case the tracking exists for)
 - **Where:** `Controls/wwwroot/wss-overlay.js` `applyTrigger` disabled branch (from bc067d8):
   `target.setAttribute('aria-disabled', 'true'); target.__wssAriaDisabledByWss = true;` — the flag
   is set without checking whether the attribute already existed.
@@ -595,8 +601,11 @@ applied yet — this section is the findings tracker.
   holds only when the component was never disabled.
 - **Fix direction:** set the flag only when `!target.hasAttribute('aria-disabled')` at set time
   (one-line guard). bUnit can't see JS; e2e or accept-as-is given the narrow trigger contract.
+- **Done:** the guard; once set, later passes see our own attribute and the flag stays latched.
+  E2E `Enabling_after_disabled_preserves_a_consumer_owned_aria_disabled` drives `syncTrigger`
+  directly against injected DOM (both the consumer-owned and module-owned cases).
 
-### ☐ L17 — `applyTrigger` never cleans popup ARIA off a *previous* child target that stays in the DOM
+### ☑ L17 — `applyTrigger` never cleans popup ARIA off a *previous* child target that stays in the DOM
 - **Where:** `Controls/wwwroot/wss-overlay.js` `applyTrigger` (from bc067d8) — resolves
   `querySelector(WSS_TRIGGER_SELECTOR)` fresh each call but tracks no previous target; only the
   *wrapper's* promotion is reverted.
@@ -609,8 +618,12 @@ applied yet — this section is the findings tracker.
 - **Fix direction:** remember `el.__wssPrevTarget`; when the resolved target differs, strip
   `aria-haspopup`/`aria-expanded`/our `aria-disabled` from the previous one before applying to the
   new one.
+- **Done:** exactly that, at the top of `applyTrigger`. Bonus: the cleanup also strips the popup
+  ARIA off a demoted wrapper (child appears where the wrapper was promoted) — a latent sibling gap
+  the demote branch didn't cover. E2E
+  `Popup_aria_is_stripped_from_a_previous_target_that_stays_in_the_dom` (injected-DOM module test).
 
-### ☐ L18 — Checkbox-list fieldsets carry `aria-required`/`aria-invalid`/`aria-errormessage` on `role="group"`, where ARIA 1.2 doesn't support them **⚖ decision**
+### ☑ L18 — Checkbox-list fieldsets carry `aria-required`/`aria-invalid`/`aria-errormessage` on `role="group"`, where ARIA 1.2 doesn't support them **⚖ decision**
 - **Where:** `Controls/EditCheckedStringList.razor:9-12` / `EditCheckedEnumList.razor` fieldset —
   added by 2ed6416 (round-2 batch; predates this round's window but never recorded, and it silently
   reversed the recorded f77ab9e decision that checkbox-list groups deliberately get *no*
@@ -624,6 +637,12 @@ applied yet — this section is the findings tracker.
   stays on the legend star, the per-checkbox `aria-invalid`, and the visible message (the f77ab9e
   position); (b) keep them knowingly and record the reversal as deliberate here. Either way the
   decision should be on the record; it currently isn't.
+- **Done (option a):** the three attributes removed from both checkbox fieldsets (with an in-markup
+  comment recording why); `role="group"` kept (explicit = implicit, self-documenting); the radio
+  fieldsets' `radiogroup` attributes untouched (valid there). The one bUnit test asserting fieldset
+  `aria-required` now asserts the corrected contract
+  (`Checked_list_fieldset_exposes_group_semantics_without_unsupported_aria`). This restores the
+  recorded f77ab9e position, which stands again as the design default.
 
 ## What was checked and came back clean
 
