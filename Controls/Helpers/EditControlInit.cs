@@ -16,12 +16,12 @@ namespace Controls.Helpers;
 public static class EditControlInit
 {
     /// <summary>
-    /// Resolves the four standard derived values every edit control needs:
-    /// the FieldIdentifier, the attribute list from the model property, the rendered HTML id,
-    /// and the <c>aria-required</c> value (<c>"true"</c> when required, else <c>null</c> so the
-    /// attribute is omitted rather than rendered as a noisy <c>"false"</c>).
+    /// Resolves the three standard derived values every edit control needs: the rendered HTML id,
+    /// the attribute list from the model property, and the FieldIdentifier. (Required-ness is
+    /// resolved separately via <see cref="IsRequired"/> — it also depends on the control's
+    /// <c>IsRequired</c> parameter and the form's <see cref="FormOptions.RequiredResolver"/>.)
     /// </summary>
-    public static (string Id, string? IsRequired, List<Attribute> Attributes, FieldIdentifier FieldIdentifier) Init<T>(
+    public static (string Id, List<Attribute> Attributes, FieldIdentifier FieldIdentifier) Init<T>(
         Expression<Func<T>> field,
         string? id,
         FormGroupOptions? formGroupOptions,
@@ -30,19 +30,38 @@ public static class EditControlInit
         var fieldIdentifier = FieldIdentifier.Create(field);
         var attributes = AttributesHelper.GetExpressionCustomAttributes(field);
         var resolvedId = AttributesHelper.GetId(id, formGroupOptions, idPrefix, fieldIdentifier);
-        var isRequired = attributes.Any(x => x is RequiredAttribute) ? "true" : null;
-        return (resolvedId, isRequired, attributes, fieldIdentifier);
+        return (resolvedId, attributes, fieldIdentifier);
     }
 
     /// <summary>
-    /// The <c>aria-required</c> value (<c>"true"</c> or <c>null</c> so the attribute is omitted)
-    /// combining a <see cref="RequiredAttribute"/> on the model property with the control's
-    /// <see cref="IEditControl.IsRequired"/> parameter (the conditional-requiredness escape hatch,
-    /// e.g. RequiredIf). Mirrors the FormLabel required-star — which shows for either source — so the
-    /// visible star and <c>aria-required</c> always agree.
+    /// The single source of truth for whether a field is required — used by both the FormLabel
+    /// star and <c>aria-required</c> so the two signals can never disagree. Resolution order:
+    /// an explicitly-set <see cref="IEditControl.IsRequired"/> parameter wins outright
+    /// (<c>true</c> forces required — e.g. RequiredIf; <c>false</c> forces optional — e.g. a
+    /// <see cref="RequiredAttribute"/>-derived conditional attribute whose condition is off);
+    /// otherwise a <see cref="RequiredAttribute"/> on the model property OR the form-level
+    /// <see cref="FormOptions.RequiredResolver"/> (the FluentValidation bridge point) marks it
+    /// required. The resolver is skipped for a default <see cref="FieldIdentifier"/> (no model —
+    /// e.g. FormLabel used standalone) so consumer lambdas never see a null Model.
     /// </summary>
-    public static string? AriaRequired(List<Attribute>? attributes, bool isRequiredParam) =>
-        isRequiredParam || (attributes?.Any(x => x is RequiredAttribute) ?? false) ? "true" : null;
+    public static bool IsRequired(List<Attribute>? attributes, bool? isRequiredParam,
+        FormOptions? formOptions, FieldIdentifier fieldIdentifier)
+    {
+        if (isRequiredParam is not null)
+            return isRequiredParam.Value;
+        if (attributes?.Any(x => x is RequiredAttribute) ?? false)
+            return true;
+        var resolver = formOptions?.RequiredResolver;
+        return resolver is not null && fieldIdentifier.Model is not null && resolver(fieldIdentifier);
+    }
+
+    /// <summary>
+    /// The <c>aria-required</c> value (<c>"true"</c> when <see cref="IsRequired"/> resolves true,
+    /// else <c>null</c> so the attribute is omitted rather than rendered as a noisy <c>"false"</c>).
+    /// </summary>
+    public static string? AriaRequired(List<Attribute>? attributes, bool? isRequiredParam,
+        FormOptions? formOptions, FieldIdentifier fieldIdentifier) =>
+        IsRequired(attributes, isRequiredParam, formOptions, fieldIdentifier) ? "true" : null;
 
     /// <summary> True when the editor input should render. False renders the read-only view instead. </summary>
     public static bool ShowEditor(bool isEditMode, FormOptions? formOptions) =>

@@ -17,7 +17,7 @@ else
     {
         <!-- Wrap only the 'label' within the legend -->
 		<legend class="edit-label-legend" id="lbl-@Id">
-			@if ((_isRequired || IsRequired) && !IsStarHidden)
+			@if (_isRequired && !IsStarHidden)
 			{
 				<span class="edit-label-required-star" aria-hidden="true">*</span>
 			}
@@ -38,7 +38,7 @@ else
         <!-- Typical Label. `for` only when the paired element is labelable — in read-only mode the
              value is a div, and label[for] must reference a labelable element. -->
 		<label class="edit-label" for=@(IsForLabelable ? Id : null) id="lbl-@Id">
-			@if ((_isRequired || IsRequired) && !IsStarHidden)
+			@if (_isRequired && !IsStarHidden)
 			{
 				<span class="edit-label-required-star" aria-hidden="true">*</span>
 			}

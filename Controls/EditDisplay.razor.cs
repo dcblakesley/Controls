@@ -25,7 +25,7 @@ public partial class EditDisplay
     [Parameter] public string? ContainerClass { get; set; }
 
     /// <inheritdoc cref="IEditControl.IsRequired"/>
-    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool? IsRequired { get; set; }
 
     [Parameter] public string? Class { get; set; }
     [Parameter] public string Text { get; set; } = "";

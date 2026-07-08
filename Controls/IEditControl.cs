@@ -66,10 +66,13 @@ public interface IEditControl
     bool IsHidden { get; set; }
 
     /// <summary>
-    /// This is typically handled by the [Required] attribute on the property.
-    /// This displays the required-star and is used when the field isn't always required such as when using RequiredIf.
+    /// Three-state override for the required star and <c>aria-required</c>. Leave unset (null) to
+    /// derive required-ness from the [Required] attribute or <see cref="FormOptions.RequiredResolver"/>.
+    /// Set <c>true</c> to force required (e.g. a RequiredIf condition that's currently on);
+    /// set <c>false</c> to force optional (e.g. a RequiredAttribute-derived conditional whose
+    /// condition is currently off).
     /// </summary>
-    bool IsRequired { get; set; }
+    bool? IsRequired { get; set; }
 
     /// <summary>
     /// When true, hides the label for the control. The label element and description will not be rendered.

@@ -1,3 +1,6 @@
+using System.Linq.Expressions;
+using Microsoft.AspNetCore.Components.Forms;
+
 namespace FormTesting.Client.Tests;
 
 public class EditControlInitTests
@@ -5,33 +8,92 @@ public class EditControlInitTests
     readonly PersonModel _model = new();
 
     [Fact]
-    public void Init_returns_id_isRequired_attributes_and_field_identifier()
+    public void Init_returns_id_attributes_and_field_identifier()
     {
-        var (id, isRequired, attributes, fid) = EditControlInit.Init(
+        var (id, attributes, fid) = EditControlInit.Init(
             () => _model.Name, id: null, formGroupOptions: null, idPrefix: null);
 
         Assert.Equal("Name", id);
-        Assert.Equal("true", isRequired); // [Required] is on Name
         Assert.NotNull(attributes);
         Assert.Equal(nameof(PersonModel.Name), fid.FieldName);
         Assert.Same(_model, fid.Model);
     }
 
     [Fact]
-    public void Init_isRequired_is_null_when_no_Required_attribute()
+    public void Init_uses_explicit_id_when_provided()
     {
-        // Null (not "false") so the binding omits aria-required for optional fields.
-        var (_, isRequired, _, _) = EditControlInit.Init(
-            () => _model.IsActive, null, null, null);
-        Assert.Null(isRequired);
+        var (id, _, _) = EditControlInit.Init(
+            () => _model.Name, id: "my-id", formGroupOptions: null, idPrefix: null);
+        Assert.Equal("my-id", id);
+    }
+
+    // --- Required-ness resolution (IsRequired param → [Required] attribute → RequiredResolver) ---
+
+    (List<Attribute> Attributes, FieldIdentifier Fid) InitFor<T>(Expression<Func<T>> field)
+    {
+        var (_, attributes, fid) = EditControlInit.Init(field, null, null, null);
+        return (attributes, fid);
     }
 
     [Fact]
-    public void Init_uses_explicit_id_when_provided()
+    public void IsRequired_true_when_Required_attribute_present()
     {
-        var (id, _, _, _) = EditControlInit.Init(
-            () => _model.Name, id: "my-id", formGroupOptions: null, idPrefix: null);
-        Assert.Equal("my-id", id);
+        var (attrs, fid) = InitFor(() => _model.Name); // [Required] is on Name
+        Assert.True(EditControlInit.IsRequired(attrs, null, null, fid));
+        Assert.Equal("true", EditControlInit.AriaRequired(attrs, null, null, fid));
+    }
+
+    [Fact]
+    public void AriaRequired_is_null_when_no_Required_attribute()
+    {
+        // Null (not "false") so the binding omits aria-required for optional fields.
+        var (attrs, fid) = InitFor(() => _model.IsActive);
+        Assert.Null(EditControlInit.AriaRequired(attrs, null, null, fid));
+    }
+
+    [Fact]
+    public void IsRequired_param_true_forces_required_without_the_attribute()
+    {
+        var (attrs, fid) = InitFor(() => _model.IsActive); // no [Required]
+        Assert.True(EditControlInit.IsRequired(attrs, true, null, fid));
+    }
+
+    [Fact]
+    public void IsRequired_param_false_forces_optional_even_with_the_attribute()
+    {
+        // The force-off half of the three-state escape hatch: a RequiredAttribute-derived
+        // conditional (RequiredIf) whose condition is off would otherwise show a permanent star.
+        var (attrs, fid) = InitFor(() => _model.Name); // [Required] present
+        Assert.False(EditControlInit.IsRequired(attrs, false, null, fid));
+        Assert.Null(EditControlInit.AriaRequired(attrs, false, null, fid));
+    }
+
+    [Fact]
+    public void RequiredResolver_marks_a_field_required_without_the_attribute()
+    {
+        // The FluentValidation bridge point: no [Required] on the model, the form-level
+        // resolver supplies required-ness instead.
+        var (attrs, fid) = InitFor(() => _model.IsActive);
+        var form = new FormOptions { RequiredResolver = f => f.FieldName == nameof(PersonModel.IsActive) };
+        Assert.True(EditControlInit.IsRequired(attrs, null, form, fid));
+        Assert.Equal("true", EditControlInit.AriaRequired(attrs, null, form, fid));
+    }
+
+    [Fact]
+    public void IsRequired_param_false_overrides_the_resolver()
+    {
+        var (attrs, fid) = InitFor(() => _model.IsActive);
+        var form = new FormOptions { RequiredResolver = _ => true };
+        Assert.False(EditControlInit.IsRequired(attrs, false, form, fid));
+    }
+
+    [Fact]
+    public void RequiredResolver_is_not_called_for_a_default_FieldIdentifier()
+    {
+        // FormLabel can render standalone (EditDisplay) with no field — the consumer's resolver
+        // lambda must never see a FieldIdentifier with a null Model.
+        var form = new FormOptions { RequiredResolver = f => f.Model.GetType() == typeof(PersonModel) };
+        Assert.False(EditControlInit.IsRequired(null, null, form, default));
     }
 
     [Theory]

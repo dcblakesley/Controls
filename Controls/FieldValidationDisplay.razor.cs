@@ -19,7 +19,6 @@ public partial class FieldValidationDisplay
     [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
 
-    bool _isRequired;
     int? _minCharacters;
     int? _maxCharacters;
     string _fieldName = string.Empty;
@@ -31,7 +30,6 @@ public partial class FieldValidationDisplay
     // re-derive their FieldIdentifier when the model/EditContext is swapped.
     protected override void OnParametersSet()
     {
-        _isRequired = Attributes.Any(x => x is RequiredAttribute);
         var minAndMax = AttributesHelper.GetMinAndMaxLengths(Attributes);
         _minCharacters = minAndMax.MinLength;
         _maxCharacters = minAndMax.MaxLength;

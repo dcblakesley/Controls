@@ -11,6 +11,7 @@ A comprehensive library of form controls for Blazor applications providing consi
 - **Searchable & Multi-Select**: AntDesign-style `EditSelectSearch` / `EditMultiSelect` — type-to-search, tags, virtualized dropdown
 - **AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, Skeleton, and toasts
 - **Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
+- **Validator-Agnostic Core**: messages, invalid-state ARIA, and the validation summary work with any `EditContext` validator; a form-level `RequiredResolver` bridges required-star/`aria-required` for FluentValidation and other stacks
 - **Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
 - **Flexible Display Modes**: Edit mode and read-only views for all controls
 - **Consistent Styling**: CSS classes and customizable appearance
@@ -236,8 +237,56 @@ All form controls implement the `IEditControl` interface and provide:
 - **Display Control**: `IsEditMode`, `IsDisabled`, `IsHidden`
 - **Labeling**: auto-generated from the property name, `[DisplayName]` for constant labels, or the `Label` parameter for dynamic text — see [Labeling: how to choose](#labeling-how-to-choose). `Description` supports markup.
 - **Styling**: `ContainerClass` for custom CSS
-- **Validation**: `IsRequired` integration with DataAnnotations
+- **Validation**: required-ness from `[Required]`, the three-state `IsRequired` parameter, or `FormOptions.RequiredResolver` — see [Validation stacks](#validation-stacks-dataannotations-fluentvalidation-custom)
 - **Conditional Display**: `Hiding` modes and `HidingMode` enum
+
+## Validation stacks (DataAnnotations, FluentValidation, custom)
+
+The runtime validation plumbing is **validator-agnostic**: validation messages, `aria-invalid`, `aria-errormessage`, the invalid icon/red styling, and the `ValidationView` summary all read from the cascading `EditContext`, so anything that writes a `ValidationMessageStore` (DataAnnotations, [Blazored.FluentValidation](https://github.com/Blazored/FluentValidation), a hand-rolled validator) works out of the box. Labels are also independent of the validation stack — `[DisplayName]`/`[Display]` and the auto-generated property-name fallback keep working.
+
+What *is* DataAnnotations-specific is required-ness discovery (the required star and `aria-required` come from reflecting `[Required]` off the model) and the short-message rewrite (only the stock .NET DataAnnotations message templates are rewritten — e.g. "The X field is required." → "Required"; messages from other validators display verbatim, which is normally what you want since FluentValidation's defaults are already human-readable).
+
+Required-ness resolves per control in this order:
+
+1. **`IsRequired` parameter** (three-state `bool?`) — when explicitly set it wins outright: `true` forces the star/`aria-required` on (e.g. a RequiredIf condition that's currently active), `false` forces them off (e.g. a `RequiredAttribute`-derived conditional whose condition is off, which would otherwise show a permanent star).
+2. **`[Required]` attribute** on the model property.
+3. **`FormOptions.RequiredResolver`** — a form-level `Func<FieldIdentifier, bool>` for stacks that don't use attributes.
+
+### FluentValidation bridge
+
+Build the resolver once from your validator's own rules, so the star, `aria-required`, and the messages all share one source of truth:
+
+```razor
+<EditForm Model="model">
+    <FluentValidationValidator />  @* Blazored.FluentValidation *@
+    <CascadingValue Value="_formOptions">
+        <EditString @bind-Value="model.Name" Field="@(() => model.Name)" />
+        ...
+    </CascadingValue>
+</EditForm>
+
+@code {
+    FormOptions _formOptions = new();
+
+    protected override void OnInitialized()
+    {
+        // Fields with a NotNull/NotEmpty rule are "required" — no [Required] attributes needed.
+        var required = new PersonValidator().CreateDescriptor()
+            .GetMembersWithValidators()
+            .Where(m => m.Any(v => v.Validator is INotNullValidator or INotEmptyValidator))
+            .Select(m => m.Key)
+            .ToHashSet();
+        _formOptions.RequiredResolver = f => required.Contains(f.FieldName);
+    }
+}
+```
+
+The resolver is keyed by `FieldIdentifier`, so if two nested objects have same-named properties, compare `f.Model` too instead of just the field name. Set the resolver before the form renders — controls consult it on init and on parameter changes.
+
+Two caveats for mixed estates:
+
+- `ShowFieldNameInValidation="false"` (the short "Required"-style messages) only affects rewritten DataAnnotations messages; FluentValidation messages always embed their own property name.
+- For **nested models**, plain `DataAnnotationsValidator` validates nested fields on edit but *skips them on submit* — use `ObjectGraphDataAnnotationsValidator` + `[ValidateComplexType]` (requires the `Microsoft.AspNetCore.Components.DataAnnotations.Validation` package) or FluentValidation, which handles nesting natively.
 
 ## Examples
 
@@ -408,6 +457,11 @@ A library-wide bug-fix and hardening pass. Version stays 10.3.0 until the next p
 - `[Display(Name = …)]` is honored for labels (after `[DisplayName]`/`[EnumDisplayName]`), keeping labels consistent with DataAnnotations' own messages — and now resolves through `GetName()`, so a localized `[Display(Name = …, ResourceType = …)]` yields the localized text instead of the raw resource key (both for control labels and enum display names).
 - `EditFile`: removing a file with the keyboard keeps focus on the control (the file that shifted into the slot, else the new last file, else the drop zone) instead of dropping focus to `<body>`; a disabled drop zone no longer shows the drag-hover highlight for a drop it will refuse.
 - `Popover`/`Popconfirm`: the consumer's own trigger element (typically a `<button>` in `ChildContent`) is the trigger now — the wrapper span no longer renders `role="button"`/`tabindex="0"` around it, which nested a button inside a button (two tab stops, invalid ARIA). JS mirrors `aria-haspopup`/`aria-expanded` onto the child and restores focus to it on close; content with nothing focusable (plain text/icon) gets the wrapper promoted to the button role as before. Without JS, a button child still opens/closes via its bubbled click — only the popup ARIA and the plain-content keyboard path need the runtime.
+
+**Validation stacks (FluentValidation support)**
+- New `FormOptions.RequiredResolver` (`Func<FieldIdentifier, bool>?`): a form-level source of required-ness for validation stacks that don't use `[Required]` (e.g. FluentValidation). Fields the resolver marks required get the star and `aria-required` exactly as if attributed. See the new **Validation stacks** section for the FluentValidation bridge snippet.
+- `IsRequired` is now three-state (`bool?`) on all controls and `FormLabel`: unset defers to the attribute/resolver; `true` forces required (unchanged); **`false` now forces optional** — previously it was a no-op, so a `RequiredAttribute`-derived conditional (RequiredIf) whose condition was off showed a permanent star with no way to remove it. Existing markup (`IsRequired="true"` or a bound `bool`) compiles unchanged.
+- The star and `aria-required` are now computed by one shared resolver (`EditControlInit.IsRequired`), so the two signals can never disagree; `FieldValidationDisplay` dropped an unused required-ness field, and `EditControlInit.Init` no longer returns a redundant `IsRequired` tuple member (its value was always recomputed and overwritten).
 
 **API changes to note when upgrading**
 - `InvalidIcon.CssClass` → `InvalidIcon.IsInvalid` (bool); `LabelTooltip.TooltipChanged` removed (never invoked); `ValidationView.Model` removed (never read); `EditRadio.Field` is now required; `EditSelectString` gains a leading empty option (opt out with `NullOptionText="@null"`; its type is now `string?`) and selecting the blank now writes `null`/`default` instead of `""`; `EditNumber` commits on change (not per keystroke); `Alert` self-dismisses on close; `Select`/`Table` collection parameters are immutable-by-reference.

@@ -62,6 +62,23 @@ public class FormOptions
     /// <summary> Allows you to set the hiding mode for the entire form. </summary>
     public HidingMode? Hiding { get; set; }
 
+    /// <summary>
+    /// Optional form-level source of required-ness for validation stacks that don't use the
+    /// <c>[Required]</c> attribute (e.g. FluentValidation). When set, a field the resolver returns
+    /// <c>true</c> for gets the required star and <c>aria-required</c> exactly as if it carried
+    /// <c>[Required]</c>. Resolution order per control: the <c>IsRequired</c> parameter when
+    /// explicitly set (<c>true</c> forces on, <c>false</c> forces off) → <c>[Required]</c> attribute
+    /// → this resolver. The resolver is additive with attributes (either source shows the star).
+    /// See the README's "FluentValidation and other validation stacks" section for a bridge that
+    /// builds this from an <c>IValidator</c>'s descriptor.
+    /// </summary>
+    /// <remarks>
+    /// Keyed by <see cref="FieldIdentifier"/> so nested models disambiguate naturally
+    /// (<c>FieldIdentifier.Model</c> is the leaf object instance). Set it before the form renders;
+    /// controls consult it on init and on parameter changes, not on every keystroke.
+    /// </remarks>
+    public Func<FieldIdentifier, bool>? RequiredResolver { get; set; }
+
     /// <summary> This is only for debugging purposes. </summary>
     public bool ShowBoundValues { get; set; }
 

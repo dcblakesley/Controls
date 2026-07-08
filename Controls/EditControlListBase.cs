@@ -33,7 +33,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     /// <inheritdoc/>
     [Parameter] public string? ContainerClass { get; set; }
     /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool? IsRequired { get; set; }
     /// <inheritdoc/>
     [Parameter] public bool IsLabelHidden { get; set; }
     /// <inheritdoc/>
@@ -88,11 +88,11 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
 
     protected void InitState<T>(Expression<Func<T>> field)
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         _fieldIdentifierFactory = () => FieldIdentifier.Create(field);
-        // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
-        // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
-        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
+        // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
+        // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
+        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
         FormOptions?.RegisterField(_fieldIdentifier, _id, this);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
@@ -148,7 +148,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
         // or label-hidden toggle). No-op until InitState has run (_attributes is null before then).
         if (_attributes is not null)
         {
-            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
+            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
         }
 

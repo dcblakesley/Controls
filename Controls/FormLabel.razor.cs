@@ -25,7 +25,7 @@ public partial class FormLabel
     [Parameter] public bool IsLegend { get; set; }
     
     /// <inheritdoc cref="IEditControl.IsRequired"/>
-    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool? IsRequired { get; set; }
     
     /// <inheritdoc cref="IEditControl.Tooltip"/>
     [Parameter] public string? Tooltip { get; set; }
@@ -64,6 +64,8 @@ public partial class FormLabel
         // never call GetLabelText with the default FieldIdentifier (its FieldName would be null).
         _label = Label ?? Attributes?.GetLabelText(FieldIdentifier) ?? string.Empty;
         _description = Description ?? Attributes?.Description();
-        _isRequired = Attributes?.Any(x => x is RequiredAttribute) ?? false;
+        // Same resolution as the controls' aria-required (IsRequired param → [Required] attribute →
+        // FormOptions.RequiredResolver) so the star and aria-required can never disagree.
+        _isRequired = EditControlInit.IsRequired(Attributes, IsRequired, FormOptions, FieldIdentifier);
     }
 }

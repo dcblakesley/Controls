@@ -37,7 +37,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// <inheritdoc/>
     [Parameter] public string? ContainerClass { get; set; }
     /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool? IsRequired { get; set; }
     /// <inheritdoc/>
     [Parameter] public bool IsLabelHidden { get; set; }
     /// <inheritdoc/>
@@ -85,10 +85,10 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// </remarks>
     protected void InitState<T>(Expression<Func<T>> field)
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
-        // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
-        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
+        // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
+        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
         FormOptions?.RegisterField(_fieldIdentifier, _id, this);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
@@ -107,7 +107,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         base.OnParametersSet();
         if (_attributes is not null)
         {
-            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
+            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
         }
     }

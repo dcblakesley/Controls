@@ -36,7 +36,7 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     /// <inheritdoc/>
     [Parameter] public string? ContainerClass { get; set; } 
     /// <inheritdoc/>
-    [Parameter] public bool IsRequired { get; set; }
+    [Parameter] public bool? IsRequired { get; set; }
     
     /// <inheritdoc/>
     [Parameter] public bool IsLabelHidden { get; set; }
@@ -82,10 +82,10 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
 
     protected override void OnInitialized()
     {
-        (_id, _isRequired, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
-        // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
-        // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
-        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
+        // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
+        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
         // field survives HidingMode and links from the validation summary always work.
         FormOptions?.RegisterField(_fieldIdentifier, _id, this);
@@ -101,7 +101,7 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         base.OnParametersSet();
         if (_attributes is not null)
         {
-            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
+            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
         }
     }
