@@ -33,7 +33,25 @@
 
 	private bool isTooltipVisible = false;
 
-	string? DisplayTooltip() => Tooltip ?? Attributes.Tooltip();
+	// Resolved once per input change, not per render: the markup reads this twice per render, and
+	// every validation-state change re-renders every control in the form — the attribute OfType
+	// scan otherwise runs 2x per control per keystroke (the last un-guarded piece of that path).
+	string? _displayTooltip;
+	string? _lastTooltipParam;
+	List<Attribute>? _lastAttributes;
+	bool _tooltipResolved;
+
+	protected override void OnParametersSet()
+	{
+		if (_tooltipResolved && Tooltip == _lastTooltipParam && ReferenceEquals(Attributes, _lastAttributes))
+			return;
+		_tooltipResolved = true;
+		_lastTooltipParam = Tooltip;
+		_lastAttributes = Attributes;
+		_displayTooltip = Tooltip ?? Attributes.Tooltip();
+	}
+
+	string? DisplayTooltip() => _displayTooltip;
 
 	private void ShowTooltip() => isTooltipVisible = true;
 	private void HideTooltip() => isTooltipVisible = false;
