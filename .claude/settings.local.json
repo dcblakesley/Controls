@@ -65,7 +65,11 @@
       "PowerShell($dll = \"C:\\\\Program Files\\\\dotnet\\\\shared\\\\Microsoft.AspNetCore.App\\\\9.0.17\\\\Microsoft.AspNetCore.Components.Forms.dll\"; $bytes = [IO.File]::ReadAllBytes\\($dll\\); $ascii = [Text.Encoding]::ASCII.GetString\\($bytes\\); foreach \\($p in @\\('EditContext','cascading','dynamically','supports'\\)\\) { $i = $ascii.IndexOf\\($p\\); \"{0} => {1}\" -f $p, $i })",
       "PowerShell($dll = \"C:\\\\Program Files\\\\dotnet\\\\shared\\\\Microsoft.AspNetCore.App\\\\9.0.17\\\\Microsoft.AspNetCore.Components.Forms.dll\"; $bytes = [IO.File]::ReadAllBytes\\($dll\\); $ascii = [Text.Encoding]::ASCII.GetString\\($bytes\\); $ascii.Substring\\(58400, 1200\\) -replace '[^\\\\x20-\\\\x7E]', '~')",
       "PowerShell($conn = Get-NetTCPConnection -LocalPort 5067 -State Listen -ErrorAction SilentlyContinue; if \\($conn\\) { Stop-Process -Id $conn[0].OwningProcess -Force -Confirm:$false; \"stopped\" } else { \"not listening\" })",
-      "WebFetch(domain:www.nuget.org)"
+      "WebFetch(domain:www.nuget.org)",
+      "PowerShell(Set-Content *)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass \"C:\\\\Repos\\\\Controls\\\\FormTesting\\\\FormTesting.Client.E2ETests\\\\bin\\\\Debug\\\\net10.0\\\\playwright.ps1\" install webkit firefox 2>&1 | Select-Object -Last 6)",
+      "Read(//c/Users/dcbla/AppData/Local/Temp/claude/C--Repos-Controls/e09b87d3-559f-48f8-83d7-57e8ec10ac78/tasks/**)"
     ]
   }
 }
