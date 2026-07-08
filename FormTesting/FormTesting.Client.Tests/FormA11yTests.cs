@@ -91,7 +91,7 @@ public class FormA11yTests : TestContext
     }
 
     [Fact]
-    public void Checked_list_fieldset_exposes_group_and_required_semantics()
+    public void Checked_list_fieldset_exposes_group_semantics_without_unsupported_aria()
     {
         var model = new PersonModel { Tags = [] };
         Expression<Func<List<string>>> field = () => model.Tags;
@@ -101,13 +101,19 @@ public class FormA11yTests : TestContext
             b.AddAttribute(1, "Value", model.Tags);
             b.AddAttribute(2, "Field", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b" });
-            b.AddAttribute(4, "IsRequired", true);
+            b.AddAttribute(4, "IsRequired", (bool?)true);
             b.CloseComponent();
         }));
 
+        // ARIA 1.2 supports aria-required/aria-invalid/aria-errormessage on radiogroup but NOT on
+        // group, so the checkbox fieldset must carry none of them (AT ignores them; axe flags them).
+        // Required-ness is conveyed by the legend star; invalid state by each checkbox's aria-invalid.
         var fieldset = cut.Find("fieldset.edit-checkedList-fieldset");
         Assert.Equal("group", fieldset.GetAttribute("role"));
-        Assert.Equal("true", fieldset.GetAttribute("aria-required"));
+        Assert.False(fieldset.HasAttribute("aria-required"));
+        Assert.False(fieldset.HasAttribute("aria-invalid"));
+        Assert.False(fieldset.HasAttribute("aria-errormessage"));
+        Assert.NotNull(cut.Find(".edit-label-required-star")); // the star still marks the group required
     }
 
     class TwoRuleModel

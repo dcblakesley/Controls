@@ -4,13 +4,14 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
+        @* No aria-required/aria-invalid/aria-errormessage here: ARIA 1.2 doesn't support them on
+           role="group" (unlike the radio fieldsets' radiogroup), so AT ignores them and checkers
+           flag them. Required state lives on the legend star + validation message; invalid state
+           on each checkbox (aria-invalid + aria-describedby). *@
         <fieldset class="edit-checkedList-fieldset"
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
-                  role=@(ShowEditor ? "group" : null)
-                  aria-required=@(ShowEditor ? _isRequired : null)
-                  aria-invalid=@(ShowEditor && IsInvalid ? "true" : null)
-                  aria-errormessage=@(ShowEditor && IsInvalid ? _errorMsgId : null)>
+                  role=@(ShowEditor ? "group" : null)>
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel />
 
             @if (ShowEditor)
