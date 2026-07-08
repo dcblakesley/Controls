@@ -33,6 +33,14 @@ public partial class Select<TValue> : IAsyncDisposable
     bool _searchPending;
     bool _open;
     bool _dropdownPositioned;
+    // The open-order z-index placeDropdown assigned this wrapper (null while closed). C# owns it so a
+    // Blazor re-render of the wrapper's bound `style` (e.g. a changed Width) re-asserts it instead of
+    // clobbering the value JS wrote to the DOM (see WidthStyle). Set once per open (placeDropdown fires
+    // once, guarded by _dropdownPositioned) and cleared on every close path.
+    int? _openZIndex;
+    // Set first thing in DisposeAsync so an import that completes after disposal disposes its module
+    // instead of stranding it on a dead instance (see GetJsModuleAsync).
+    bool _disposed;
     bool _inputWired;
     SelectMode _wiredMode;
     bool _focused;
@@ -190,7 +198,20 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    string? WidthStyle => string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
+    // The wrapper's inline style. While the dropdown is open, C# owns the stack z-index (mirrored from
+    // placeDropdown's return value) and appends it here — so a mid-open re-render (e.g. a changed Width)
+    // re-emits a style attribute that still carries the z-index instead of dropping the wrapper below its
+    // own full-screen backdrop. The z is written twice, by JS immediately on open and by Blazor on the
+    // next diff, and both agree — that agreement is the point. Cleared on close, so a closed wrapper
+    // emits no z (a stale high z would otherwise poke through later overlays' masks).
+    string? WidthStyle
+    {
+        get
+        {
+            var width = string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
+            return _openZIndex is null ? width : $"{width}z-index:{_openZIndex};";
+        }
+    }
 
     // Stable id root for ARIA wiring (the listbox + the active option). Uses the supplied Id when
     // present (the Edit* wrappers pass one), otherwise a generated one so standalone use still works.
@@ -364,6 +385,10 @@ public partial class Select<TValue> : IAsyncDisposable
         _open = false;
         _focused = false;
         _searchText = string.Empty;
+        // Give up the C#-owned open z-index: this is the sole logical close path, so clearing it here
+        // makes the very next (close) render drop the z from the bound style (the OnAfterRender close
+        // branch also nulls it + runs clearZ as the DOM-side teardown). A reopen re-takes a fresh z.
+        _openZIndex = null;
         // Drop any in-flight debounced search so it can't re-fire against the now-closed dropdown.
         _debounceCts?.Cancel();
         _searchPending = false;
@@ -682,17 +707,43 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
+    // Imports the RCL-local JS module once and hands it back, re-checking _disposed after the awaited
+    // import so a dispose that raced an in-flight import disposes-and-nulls the reference here instead of
+    // stranding it on a dead instance (DisposeAsync saw _jsModule still null). Returns null when the
+    // component is disposed or JS is unavailable (server prerender, unit tests) — every caller then takes
+    // the same no-JS degrade path it had when it caught the import failure itself.
+    async Task<IJSObjectReference?> GetJsModuleAsync()
+    {
+        if (_disposed) return null;
+        try
+        {
+            _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/WssBlazorControls/wss-select.js");
+        }
+        catch
+        {
+            return null; // no JS runtime / module (prerender, tests)
+        }
+        if (_disposed)
+        {
+            try { await _jsModule.DisposeAsync(); } catch { }
+            _jsModule = null;
+            return null;
+        }
+        return _jsModule;
+    }
+
     // Keeps the keyboard-highlighted row visible in the virtualized dropdown.
     // Uses a tiny RCL-local JS module; degrades to a no-op when JS isn't available
     // (e.g. server prerender or unit tests).
     async Task ScrollActiveIntoViewAsync()
     {
         if (_activeIndex < 0) return;
+        var module = await GetJsModuleAsync();
+        if (module is null) return;
         try
         {
-            _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/WssBlazorControls/wss-select.js");
-            await _jsModule.InvokeVoidAsync("scrollActiveIntoView", _dropdownRef, _activeIndex, RowHeight);
+            await module.InvokeVoidAsync("scrollActiveIntoView", _dropdownRef, _activeIndex, RowHeight);
         }
         catch
         {
@@ -712,30 +763,42 @@ public partial class Select<TValue> : IAsyncDisposable
         {
             _inputWired = true;
             _wiredMode = Mode;
-            try
+            var module = await GetJsModuleAsync();
+            if (module is not null)
             {
-                _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                    "import", "./_content/WssBlazorControls/wss-select.js");
-                await _jsModule.InvokeVoidAsync("initInput", _inputRef, _wrapperRef);
-            }
-            catch
-            {
-                // No JS runtime / module (prerender, tests) — keyboard still works, minus the
-                // native-default suppression (e.g. Enter may implicitly submit an enclosing form).
+                try
+                {
+                    await module.InvokeVoidAsync("initInput", _inputRef, _wrapperRef);
+                }
+                catch
+                {
+                    // No JS runtime / module (prerender, tests) — keyboard still works, minus the
+                    // native-default suppression (e.g. Enter may implicitly submit an enclosing form).
+                }
             }
         }
 
         if (_open && !_dropdownPositioned)
         {
-            try
+            var module = await GetJsModuleAsync();
+            if (module is not null)
             {
-                _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                    "import", "./_content/WssBlazorControls/wss-select.js");
-                await _jsModule.InvokeVoidAsync("placeDropdown", _wrapperRef, _dropdownRef, 4);
-            }
-            catch
-            {
-                // No JS runtime / module — keep the CSS default (downward) placement.
+                try
+                {
+                    // placeDropdown positions/flips the panel AND returns the open-order z-index it wrote
+                    // to the wrapper. Mirror it into _openZIndex so WidthStyle re-emits it on every bound-
+                    // style re-render (the JS write and the Blazor write agree — that's the point). Fires
+                    // once per open (guarded by _dropdownPositioned), so _openZIndex is null here and there
+                    // is no z creep from the shared counter. On throw (no JS) it stays null → CSS fallback.
+                    var z = await module.InvokeAsync<int>("placeDropdown", _wrapperRef, _dropdownRef, 4);
+                    // 0 is the JS null-ref guard value (nothing was positioned) — mirroring it would pin
+                    // the wrapper at z-index:0, under its own backdrop. Only positive values are real.
+                    _openZIndex = z > 0 ? z : null;
+                }
+                catch
+                {
+                    // No JS runtime / module — keep the CSS default (downward) placement.
+                }
             }
             // The highlight opens on the current selection (SetInitialActive) — bring it into view
             // while the panel is still measuring, so the first visible frame is already scrolled.
@@ -746,6 +809,9 @@ public partial class Select<TValue> : IAsyncDisposable
         else if (!_open && _dropdownPositioned)
         {
             _dropdownPositioned = false;
+            // Keep the C#-owned z in sync with the DOM teardown below (CloseAsync already nulled it on
+            // the normal close path; belt-and-suspenders for any future path that closes without it).
+            _openZIndex = null;
             try
             {
                 // Drop the open-order z-index — the wrapper persists in the page, and a stale
@@ -761,6 +827,9 @@ public partial class Select<TValue> : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        // Set first: an import in flight (GetJsModuleAsync) re-checks this after its await and disposes
+        // its own late-assigned module rather than stranding it on this dead instance.
+        _disposed = true;
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
 

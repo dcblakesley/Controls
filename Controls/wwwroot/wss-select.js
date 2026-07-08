@@ -22,11 +22,16 @@ export function scrollActiveIntoView(container, index, itemSize) {
 
 // Opens the dropdown upward when there isn't room below (and there's more room above), so a Select
 // near the bottom of the viewport doesn't push its list off-screen. The wrapper is the trigger box
-// (the dropdown is absolutely positioned, so it doesn't inflate the wrapper's rect). Degrades to the
-// default downward CSS placement when JS is unavailable.
+// (the dropdown is absolutely positioned, so it doesn't inflate the wrapper's rect). Also stacks the
+// backdrop + wrapper above any open overlay via the shared open-order counter, and RETURNS the
+// wrapper's z-index so C# can mirror it into the Blazor-bound wrapper `style`: the value is written
+// twice — here to the DOM immediately (no flicker) and by Blazor on its next diff — and both agree,
+// so a bound-style re-render (e.g. a changed Width while open) can no longer clobber this inline write
+// and drop the wrapper below its own backdrop. Degrades to the default downward CSS placement when JS
+// is unavailable (the invoke throws, C# leaves its mirrored z null, and the CSS fallback applies).
 export function placeDropdown(wrapper, dropdown, gap) {
     if (!wrapper || !dropdown) {
-        return;
+        return 0;
     }
     gap = gap || 4;
 
@@ -53,6 +58,8 @@ export function placeDropdown(wrapper, dropdown, gap) {
         dropdown.style.bottom = 'auto';
         dropdown.style.top = `calc(100% + ${gap}px)`;
     }
+    // Hand the wrapper's z-index back so C# can re-assert it on every bound-style re-render.
+    return z + 1;
 }
 
 // Removes the open-order z-index applied by placeDropdown once the dropdown closes.

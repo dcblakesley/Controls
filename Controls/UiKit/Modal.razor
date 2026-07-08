@@ -130,6 +130,15 @@
             try
             {
                 _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+                if (_disposed)
+                {
+                    // Disposed while the import itself was in flight — DisposeAsync already ran with a null
+                    // module, so this reference is ours to clean up (it would otherwise strand for the
+                    // circuit's life). The seq/!Visible checks below cover the later activateModal handle.
+                    try { await _module.DisposeAsync(); } catch { }
+                    _module = null;
+                    return;
+                }
                 var handle = await _module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
                 // Disposed (or closed/reopened) while activateModal was in flight? DisposeAsync already
                 // ran — storing this handle would orphan it, leaking the body-scroll lock + document
