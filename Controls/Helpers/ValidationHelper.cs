@@ -128,26 +128,35 @@ public static class ValidationHelper
         return output;
     }
 
-    // Cached sentinel sets — covers every numeric primitive's MinValue/MaxValue ToString().
+    // Sentinel sets — every numeric primitive's MinValue/MaxValue as text. RangeAttribute formats
+    // its message under the culture active at validation time, so the sentinels must be built under
+    // that same culture: a set frozen at first static touch (the old design) stops matching the
+    // moment the culture diverges (de-DE writes "-1,79…E+308", sv-SE uses U+2212 for the minus),
+    // and the one-sided "Cannot exceed…" rewrite silently degrades to the raw between-message.
+    // Cached per culture name; bounded by the handful of cultures a process actually serves.
     // The "-3.4028234663852886E+38" entry is the textual form Microsoft emits for float.MinValue,
     // which can differ slightly from float.MinValue.ToString() depending on culture / formatter.
-    static readonly HashSet<string> _typeMinSentinels = new(StringComparer.Ordinal)
-    {
-        int.MinValue.ToString(), long.MinValue.ToString(), short.MinValue.ToString(),
-        sbyte.MinValue.ToString(), byte.MinValue.ToString(),
-        uint.MinValue.ToString(), ulong.MinValue.ToString(), ushort.MinValue.ToString(),
-        double.MinValue.ToString(), float.MinValue.ToString(), decimal.MinValue.ToString(),
-        "-3.4028234663852886E+38"
-    };
+    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (HashSet<string> Min, HashSet<string> Max)>
+        _sentinelsByCulture = new();
 
-    static readonly HashSet<string> _typeMaxSentinels = new(StringComparer.Ordinal)
-    {
-        int.MaxValue.ToString(), long.MaxValue.ToString(), short.MaxValue.ToString(),
-        sbyte.MaxValue.ToString(), byte.MaxValue.ToString(),
-        uint.MaxValue.ToString(), ulong.MaxValue.ToString(), ushort.MaxValue.ToString(),
-        double.MaxValue.ToString(), float.MaxValue.ToString(), decimal.MaxValue.ToString()
-    };
+    static (HashSet<string> Min, HashSet<string> Max) CurrentCultureSentinels() =>
+        _sentinelsByCulture.GetOrAdd(System.Globalization.CultureInfo.CurrentCulture.Name, static _ => (
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                int.MinValue.ToString(), long.MinValue.ToString(), short.MinValue.ToString(),
+                sbyte.MinValue.ToString(), byte.MinValue.ToString(),
+                uint.MinValue.ToString(), ulong.MinValue.ToString(), ushort.MinValue.ToString(),
+                double.MinValue.ToString(), float.MinValue.ToString(), decimal.MinValue.ToString(),
+                "-3.4028234663852886E+38"
+            },
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                int.MaxValue.ToString(), long.MaxValue.ToString(), short.MaxValue.ToString(),
+                sbyte.MaxValue.ToString(), byte.MaxValue.ToString(),
+                uint.MaxValue.ToString(), ulong.MaxValue.ToString(), ushort.MaxValue.ToString(),
+                double.MaxValue.ToString(), float.MaxValue.ToString(), decimal.MaxValue.ToString()
+            }));
 
-    static bool IsTypeMinSentinel(string value) => _typeMinSentinels.Contains(value);
-    static bool IsTypeMaxSentinel(string value) => _typeMaxSentinels.Contains(value);
+    static bool IsTypeMinSentinel(string value) => CurrentCultureSentinels().Min.Contains(value);
+    static bool IsTypeMaxSentinel(string value) => CurrentCultureSentinels().Max.Contains(value);
 }

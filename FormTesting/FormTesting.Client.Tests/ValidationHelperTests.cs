@@ -76,6 +76,33 @@ public class ValidationHelperTests
     }
 
     [Fact]
+    public void Sentinel_detection_follows_a_runtime_culture_switch()
+    {
+        // RangeAttribute formats its message under the validation-time culture, so the sentinel
+        // match must too. The old sets were frozen at first static touch: touch them under one
+        // culture, switch to a culture with different numeric text (de-DE decimal comma, or a
+        // different negative sign), and [Range(double.MinValue, x)] stopped rewriting one-sided.
+        var original = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("en-US");
+            // Prime under en-US (this is what froze the old cache).
+            _ = ValidationHelper.GetValidationMessage(
+                $"The field X must be between {double.MinValue} and 100.", "X", "X", valueType: "System.Double");
+
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+            var msg = ValidationHelper.GetValidationMessage(
+                $"The field CappedValue must be between {double.MinValue} and 100.",
+                "CappedValue", "Capped Value", valueType: "System.Double");
+            Assert.Equal("Cannot exceed 100", msg);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
     public void Numeric_range_handles_multi_word_field_names()
     {
         // Regex-based parsing must tolerate field names with spaces — the old split-by-space
