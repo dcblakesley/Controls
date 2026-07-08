@@ -337,6 +337,25 @@ WssBlazorControls is built with accessibility as a priority:
 - Designed for both Blazor Server and Blazor WebAssembly scenarios
 - Compatible with .NET 8.0+
 
+## Trimming and AOT
+
+`WssBlazorControls` is trim- and AOT-compatible: the package ships `IsTrimmable`/`IsAotCompatible` metadata, and the trim, AOT, and single-file analyzers run warning-clean on every build (enforced by `TreatWarningsAsErrors`). A default Blazor WebAssembly publish (`dotnet publish -c Release`) trims the library automatically.
+
+Why the attribute-driven features survive trimming:
+
+- **Labels, tooltips, descriptions, length/range extraction** — every control takes `Field="@(() => model.Property)"`; the expression tree roots the property's getter, so the trimmer keeps the property and the attributes on it. The attribute types themselves (`[DisplayName]`, `[Description]`, `[ToolTip]`, `[Range]`, ...) are referenced by the library and kept.
+- **Enum display names** — `[EnumDisplayName]`/`[Display]` lookups only reflect over enum types, whose fields the trimmer always preserves.
+- **Option building** — enum option lists use `Enum.GetValuesAsUnderlyingType` (no dynamic array creation), safe under WASM AOT.
+
+Consumer notes:
+
+- The generic controls (`EditNumber<T>`, `EditDate<T>`, `EditSelect<TValue>`, `EditRadio*`) annotate their type parameter with `[DynamicallyAccessedMembers(All)]`, mirroring the framework's `InputNumber`/`InputSelect`. Normal usage (binding concrete model properties) compiles warning-free; only forwarding an open generic parameter into them propagates the annotation.
+- `<DataAnnotationsValidator>` is the framework's reflection-based validator and warns under full trimming in *your* app — models bound through `Field` expressions are rooted in practice, but validation of unbound/nested models is your app's concern.
+- `[MinLength]`/`[MaxLength]` attribute constructors are marked `RequiresUnreferencedCode` by the BCL (they reflect over a `Count` property for exotic collection types). On `List<T>`/`ICollection` — what the list-bound controls use — the reflection path is never hit; suppress or ignore that IL2026 in app code.
+- `TrimMode=full` deletes a Blazor WASM app whose routable components are only discovered via the `Router`'s reflection. If you opt into full trimming, root your app assembly: `<TrimmerRootAssembly Include="YourApp.Client" />`.
+
+The e2e suite can run against a trimmed publish to re-verify all of this: publish `FormTesting` with `-p:TrimMode=full -p:WssFullTrimTest=true`, then run the e2e tests with `FORMTESTING_E2E_APP` pointing at the published `FormTesting.dll`.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
@@ -398,6 +417,11 @@ A library-wide bug-fix and hardening pass. Version stays 10.3.0 until the next p
 
 **Packaging & repo**
 - The packages now ship XML docs (IntelliSense), SourceLink + `.snupkg` symbols, deterministic CI builds, package validation, and an SPDX `MIT` license expression; warnings are errors. GitHub Actions CI builds the solution, runs the bUnit suite across net8/net9/net10, packs both packages, and runs the Playwright E2E suite. The E2E project is now part of `FormTesting.sln`. The Quick Start documents the required `edit-controls.js` script tag.
+
+**Trimming / WASM AOT**
+- The package is now trim- and AOT-compatible (`IsTrimmable`/`IsAotCompatible` + warning-clean trim/AOT/single-file analyzers, enforced as errors). A default Blazor WASM publish trims the library. See the new **Trimming and AOT** section above for what survives and the consumer caveats.
+- Reflection sites were made trim-safe rather than suppressed wholesale: enum option builders use `Enum.GetValuesAsUnderlyingType` (AOT-safe, no `RequiresDynamicCode`); `PropertyColumn`'s comparability probe drops `MakeGenericType` (the one lost corner — `Nullable<T>` whose `T` implements *only* `IComparable<T>` — degrades to non-sortable, `SortBy` unaffected); the generic value-bearing controls annotate `T` with `[DynamicallyAccessedMembers(All)]` exactly like the framework's `InputNumber`/`InputSelect`; the two by-name lookups (validation value-type, enum field) carry justified suppressions with graceful fallbacks.
+- Verified end-to-end: the full Playwright e2e suite passes against a `TrimMode=full` publish of the demo host (labels, required stars, length/range message rewrites, `[EnumDisplayName]` options, tooltips, visual baselines).
 
 **Round-3 review fixes** *(post-hardening evaluation — see `EVALUATION.md`)*
 - `Popover`/`Popconfirm` re-resolve their trigger child on every ARIA sync, so conditionally-swapped trigger content (`@if (busy) { spinner } else { button }`) no longer strands `aria-haspopup`/`aria-expanded` on a detached element or drops close-focus to `<body>`, and a wrapper promoted around plain content is demoted again when a real button appears (no more button-in-button after a swap). Focusable non-button trigger children (`[tabindex]` spans, anchors) gained Enter/Space activation; a `Disabled` Popconfirm marks an interactive child `aria-disabled`. The per-render JS interop call is now skipped unless `(open, disabled)` changed — a Popconfirm-per-row Table no longer pays one SignalR round trip per row per re-render on Blazor Server (a `focusin` listener repairs ARIA for children swapped while idle).
