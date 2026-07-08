@@ -807,3 +807,68 @@ placement names, Table alignment) recorded as deliberate product semantics in `w
 **Final state:** 400 bUnit × net8/9/10, 81/81 Playwright E2E (baselines intact), build
 warning-clean, trimmed-publish E2E green. Five fix commits (e472d56, d95a5c3, 2626975, dbbf05b,
 dec0165) + docs.
+
+---
+
+# Evaluation — Round 6: Regression Hunt on the Round-4/5 Fix Batches (pre-release gate)
+
+**Date:** 2026-07-07 · **Scope:** the round-4 fixes (`2bef07c..bcd6b9a`) and round-5 fixes
+(`e472d56..dec0165`), adversarially re-read by three fresh agents before cutting 10.4.0 — the
+repo's standing lesson that fix batches introduce regressions held again: **1 genuine regression
++ 1 lesser defect, both fixed same day** (182b507, f612bbe; plus the LabelTooltip M16 residual,
+d9ac942). Numbering continues.
+
+## Medium (fixed)
+
+### ☑ M18 — The M16 FormLabel guard split the star and `aria-required` onto different update cadences
+- **Where:** `FormLabel.razor.cs` guard vs `EditControlBase`/`EditControlListBase`/`EditRadio`
+  `OnParametersSet` — the bases re-run `EditControlInit.AriaRequired` (resolver included)
+  unguarded on every parameter cycle and render `aria-required` from it; FormLabel's guard
+  re-consulted the resolver only when one of its six inputs changed. A `RequiredResolver` reading
+  mutable model state (conditional required — the feature's stated purpose) updated
+  `aria-required` on a parent re-render while the star stayed frozen, permanently — violating the
+  "can never disagree" invariant asserted by the same commit's comments. Flagged high-confidence
+  by the round-6 agent; verified.
+- **Done (structural):** the bases expose `IsRequiredResolved` (the fully-resolved answer,
+  recomputed alongside `aria-required`) and all 17 base-riding controls pass THAT to FormLabel,
+  where an explicit `IsRequired` wins outright — one computation site, the two signals move
+  together by construction, and FormLabel no longer invokes the resolver at all (also a perf
+  win). `EditDisplay` keeps the raw parameter (standalone, no base). Regression test flips a
+  model-state-reading resolver across parent re-parameterizations and asserts both signals move,
+  both directions.
+
+## Low (fixed)
+
+### ☑ L23 — The L21 per-culture-name sentinel cache could serve wrong-culture hits
+- **Where:** `ValidationHelper.cs` — `CultureInfo.Name` doesn't distinguish clones with customized
+  `NumberFormat`, or Windows user-override (`new CultureInfo`) vs `GetCultureInfo` instances; a
+  first touch under one variant poisoned the set for the other (cosmetic: the one-sided Range
+  rewrite degrades to the raw message).
+- **Done:** dropped the cache — the check runs only while rewriting a matched Range message, so
+  the ~dozen `ToString` comparisons per call are noise and always exactly right.
+
+### ☑ (M16 residual) — `LabelTooltip` attribute scan per render
+- **Done:** tooltip text resolved once per (Tooltip, Attributes-reference) change, same guard
+  shape as FormLabel/FieldValidationDisplay.
+
+## Came back clean (agent-traced; don't re-derive)
+
+- **Round-4 batch:** `DateTimeOffset.Ticks` can never be negative for constructible values, `K`
+  always emits an explicit offset the invariant parse round-trips; `applyTrigger`'s prev-target
+  cleanup runs before the promote/demote and disabled branches so it can't strip what the same
+  call sets, and the ownership flag is sound across disabled/enabled cycles and target swaps;
+  the removed checkbox-fieldset ARIA wasn't load-bearing (per-checkbox `aria-describedby` still
+  leads with the error-message id).
+- **Round-5 Table guard:** every mutation path (DataSource swap, sort toggle/removal, pager,
+  clamp-before-guard, first render, prune) lands a real rebuild; controlled same-reference
+  mutation was equally unsupported before.
+- **Round-5 CSS/localization:** every logical conversion computed-identical in LTR including the
+  one shorthand→longhand pair (both axes still set); the `sm`-variant physical inset rule wins by
+  specificity in both directions; label defaults match character-for-character across engine and
+  wrappers; the unguarded `string.Format` on consumer format strings matches the framework's own
+  `ParsingErrorMessage` precedent; the logical-property support floor is far below the CSS file's
+  existing `color-mix()` requirement.
+
+**Final state:** 401 bUnit × net8/9/10, 81/81 Playwright E2E (baselines intact), build
+warning-clean. **Released as 10.4.0** (version bump + changelog in the release-prep commit;
+`dotnet nuget push` remains the human step).

@@ -421,9 +421,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### Unreleased
+### 10.4.0
 
-A library-wide bug-fix and hardening pass. Version stays 10.3.0 until the next publish; these notes accumulate for the next release entry.
+A library-wide hardening release: six adversarial review rounds (see `EVALUATION.md`) spanning correctness, accessibility, performance (measured), globalization/RTL, plus trimming/AOT support, touch support, and validation-stack (FluentValidation) support.
 
 **Correctness**
 - `EditRadio.IsDisabled` actually disables its `InputRadio` children now (a nested `fieldset[disabled]` — `InputRadioGroup` renders no element, so the old attribute vanished). All three radio controls forward `ValueExpression` to their inner group so it notifies/styles the real model field. `EditRadio.Field` is now `required` like every sibling.
@@ -498,6 +498,11 @@ A library-wide bug-fix and hardening pass. Version stays 10.3.0 until the next p
 - **Culture correctness:** the `[Range]` one-sided message rewrite ("Cannot exceed 100") now works after a runtime culture switch and in mixed-culture Blazor Server processes — the type-min/max sentinels are resolved per current culture instead of being frozen at first touch.
 - **Performance:** `Table` no longer rebuilds its row keys and rescans selection state on every parent re-render (the cost was O(rows) with boxing, per keystroke in any sibling input for unpaged tables); `FormLabel`/`FieldValidationDisplay` skip label/attribute re-derivation — and stop re-invoking `FormOptions.RequiredResolver` — unless their inputs actually changed, honoring the resolver's documented "not on every keystroke" contract; `EditMultiSelect`'s read-only label join is O(selected) via a value→label lookup. Measured reality check: for *very* large unpaged tables the remaining cost is Blazor re-rendering the row fragment itself — prefer `PageSize` or the server-side paging composition at that scale.
 - Verified this round: the full Playwright suite passes against a `TrimMode=full` publish; Select's dropdown virtualization confirmed (20 DOM rows at 1,000 options).
+
+**Round-6 fixes** *(pre-release regression hunt on the round-4/5 fixes — see `EVALUATION.md`)*
+- The required star and `aria-required` now share one computation site: each control resolves its required-ness once (`IsRequired` parameter → `[Required]` → `FormOptions.RequiredResolver`) and passes the resolved value to its label, so a conditional resolver that reads model state moves both signals together on re-render (the round-5 label caching had let `aria-required` update while the star stayed frozen).
+- The `[Range]` sentinel check compares against the current culture's actual formatting on every call (a per-culture-name cache could serve stale sentinels to same-name cultures with customized number formats).
+- `LabelTooltip` resolves its tooltip text once per input change instead of scanning the attribute list twice per render.
 
 ### 10.3.0
 
