@@ -128,35 +128,30 @@ public static class ValidationHelper
         return output;
     }
 
-    // Sentinel sets — every numeric primitive's MinValue/MaxValue as text. RangeAttribute formats
-    // its message under the culture active at validation time, so the sentinels must be built under
-    // that same culture: a set frozen at first static touch (the old design) stops matching the
-    // moment the culture diverges (de-DE writes "-1,79…E+308", sv-SE uses U+2212 for the minus),
-    // and the one-sided "Cannot exceed…" rewrite silently degrades to the raw between-message.
-    // Cached per culture name; bounded by the handful of cultures a process actually serves.
-    // The "-3.4028234663852886E+38" entry is the textual form Microsoft emits for float.MinValue,
+    // Sentinel checks — every numeric primitive's MinValue/MaxValue as text. RangeAttribute formats
+    // its message under the culture active at validation time, so the candidates must be produced
+    // under that same culture: a set frozen at first static touch (the original design) stopped
+    // matching the moment the culture diverged (de-DE writes "-1,79…E+308", sv-SE uses U+2212 for
+    // the minus), silently degrading the one-sided "Cannot exceed…" rewrite. Deliberately NOT
+    // cached at all: a per-culture-NAME cache still returns wrong-culture hits for same-name
+    // cultures with customized number formats (CultureInfo clones, Windows user-override vs
+    // GetCultureInfo instances). This path only runs while a Range message containing
+    // " must be between " is being rewritten, where ~a dozen short ToString calls are noise.
+    // The "-3.4028234663852886E+38" literal is the textual form Microsoft emits for float.MinValue,
     // which can differ slightly from float.MinValue.ToString() depending on culture / formatter.
-    static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (HashSet<string> Min, HashSet<string> Max)>
-        _sentinelsByCulture = new();
+    static bool IsTypeMinSentinel(string value) =>
+        value == int.MinValue.ToString() || value == long.MinValue.ToString()
+        || value == short.MinValue.ToString() || value == sbyte.MinValue.ToString()
+        || value == byte.MinValue.ToString() || value == uint.MinValue.ToString()
+        || value == ulong.MinValue.ToString() || value == ushort.MinValue.ToString()
+        || value == double.MinValue.ToString() || value == float.MinValue.ToString()
+        || value == decimal.MinValue.ToString() || value == "-3.4028234663852886E+38";
 
-    static (HashSet<string> Min, HashSet<string> Max) CurrentCultureSentinels() =>
-        _sentinelsByCulture.GetOrAdd(System.Globalization.CultureInfo.CurrentCulture.Name, static _ => (
-            new HashSet<string>(StringComparer.Ordinal)
-            {
-                int.MinValue.ToString(), long.MinValue.ToString(), short.MinValue.ToString(),
-                sbyte.MinValue.ToString(), byte.MinValue.ToString(),
-                uint.MinValue.ToString(), ulong.MinValue.ToString(), ushort.MinValue.ToString(),
-                double.MinValue.ToString(), float.MinValue.ToString(), decimal.MinValue.ToString(),
-                "-3.4028234663852886E+38"
-            },
-            new HashSet<string>(StringComparer.Ordinal)
-            {
-                int.MaxValue.ToString(), long.MaxValue.ToString(), short.MaxValue.ToString(),
-                sbyte.MaxValue.ToString(), byte.MaxValue.ToString(),
-                uint.MaxValue.ToString(), ulong.MaxValue.ToString(), ushort.MaxValue.ToString(),
-                double.MaxValue.ToString(), float.MaxValue.ToString(), decimal.MaxValue.ToString()
-            }));
-
-    static bool IsTypeMinSentinel(string value) => CurrentCultureSentinels().Min.Contains(value);
-    static bool IsTypeMaxSentinel(string value) => CurrentCultureSentinels().Max.Contains(value);
+    static bool IsTypeMaxSentinel(string value) =>
+        value == int.MaxValue.ToString() || value == long.MaxValue.ToString()
+        || value == short.MaxValue.ToString() || value == sbyte.MaxValue.ToString()
+        || value == byte.MaxValue.ToString() || value == uint.MaxValue.ToString()
+        || value == ulong.MaxValue.ToString() || value == ushort.MaxValue.ToString()
+        || value == double.MaxValue.ToString() || value == float.MaxValue.ToString()
+        || value == decimal.MaxValue.ToString();
 }
