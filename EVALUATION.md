@@ -339,3 +339,209 @@ Code/architecture review came back clean on:
 
 Per CLAUDE.md: work lands directly on `master`, commit+push per logical chunk, no NuGet push from
 agents, version stays 10.3.0 until publish (changelog notes accumulate under Unreleased).
+
+---
+
+# Evaluation — Round 3: Post-Hardening Review
+
+**Date:** 2026-07-07 · **Scope reviewed:** the round-2 fixes themselves (all of H1–L9 landed today)
+plus fresh-eyes passes on the new subsystems (EditFile buffering, FormDefaults, SelectParsing,
+the M7 trigger rework) and the RCL JS modules.
+**Baseline at review time:** green — 352 bUnit tests × net8/net9/net10 (Release), 76/76 Playwright
+E2E, visual baselines intact.
+
+Method: three parallel adversarial lenses (regression-hunt on today's commits; new-subsystem deep
+read; JS + C#↔JS contract), every finding hand-verified against current `master` before recording.
+Numbering continues from round 2. No fixes applied yet — this section is the findings tracker.
+
+## Medium
+
+### ☐ M9 — `syncTrigger` latches the trigger child on first sight; a replaced or late-arriving child permanently breaks the M7 trigger contract
+- **Where:** `Controls/wwwroot/wss-overlay.js:87-104` (`el.__wssTrigger` memoized once); consumed
+  every render by `Controls/UiKit/Popover.razor:90` / `Popconfirm.razor:115`.
+- **Failure (child replaced):** trigger content like
+  `@if (busy) { <span>…</span> } else { <button>Delete</button> }` recreates the element across
+  renders; `target` then points at a detached node — all `aria-haspopup`/`aria-expanded` writes go
+  to the dead element (the live trigger never announces the popup) and `focusTrigger`
+  (wss-overlay.js:125-130) focuses the detached node, a silent no-op → close-focus drops to
+  `<body>` (the defect class L3 fixed for EditFile).
+- **Failure (child appears later):** first render has nothing focusable → wrapper is promoted
+  (`role="button"`, `tabIndex=0`, keydown listener) and `fallback:true` latches. When a real
+  `<button>` appears, promotion is never undone — button-in-button invalid ARIA + two tab stops,
+  the exact state M7 exists to eliminate, now permanent (the fallback branch re-applies it every
+  render). Flagged independently by two lenses; the historical "stale-mirror field" pattern.
+- **Fix direction:** re-run the `querySelector` on every call (it's one cheap query); keep only the
+  keydown-listener wiring latched; demote the wrapper (remove role/tabindex, gate the listener on
+  `fallback`) when a focusable child appears, re-promote when it disappears.
+
+### ☐ M10 — Focusable-but-not-clickable trigger child gets popup ARIA with no keyboard activation path (deferred Space item survives M7 here)
+- **Where:** `Controls/wwwroot/wss-overlay.js:90` (selector includes `input, select, textarea,
+  a[href], [tabindex]`); keyboard-click synthesis exists only in the no-focusable fallback branch
+  (:92-102); the C# trigger keydown is Escape-only (`Popover.razor:70-73`, deliberate — avoids
+  double-toggle with buttons).
+- **Failure:** `<Popover><span tabindex="0">ⓘ</span></Popover>` — the span announces
+  `aria-haspopup="dialog" aria-expanded="false"` but Enter does nothing and Space scrolls the page;
+  the popup is keyboard-unreachable (WCAG 2.1.1) while its ARIA advertises expandability. An
+  `<input>` child additionally sends Enter to the enclosing form's implicit submission. Only a
+  `<button>` child produces native Enter/Space clicks; the contract conflates "focusable" with
+  "keyboard-activatable". The old deferred "Space scrolls on the trigger" item is NOT moot — it
+  lives on in exactly this branch.
+- **Fix direction:** extend the keydown synthesis (with preventDefault on Space) to focusable
+  non-button targets, or narrow the selector to natively-activatable elements and let everything
+  else take the promoted-wrapper path; document "prefer a `<button>` child" either way.
+
+### ☐ M11 — `syncTrigger` interop fires on every render of every Popover/Popconfirm instance
+- **Where:** `Controls/UiKit/Popover.razor:84-92` / `Popconfirm.razor:108-117` — unconditional
+  awaited `InvokeVoidAsync("syncTrigger", …)` in `OnAfterRenderAsync` (was `firstRender`-guarded
+  `initTrigger` before M7). `RenderFragment` parameters defeat Blazor's change-skip, so every
+  ancestor re-render re-renders every instance.
+- **Failure:** the canonical composition — a Table `ActionColumn` with a delete-`Popconfirm` per
+  row — pays one SignalR round trip per row per render pass on Blazor Server (100 rows → 100
+  sequential interop messages on every sort/page/selection/keystroke re-render, per circuit). And
+  per M9 the call doesn't even repair staleness — it rewrites identical values to a cached node.
+- **Fix direction:** cache the last-synced `(open, disabled)` pair and skip the call when unchanged
+  (first render always syncs) — the exact pattern `Table.razor` already uses for `setIndeterminate`
+  via `_lastIndeterminate`. Note M9's fix (re-query every call) pulls the other way; reconcile —
+  e.g. sync on transitions + whenever `ChildContent` re-renders isn't detectable, so transitions
+  + a MutationObserver-free "re-resolve on each actual call" is still fine.
+
+### ☐ M12 — `EditFile` default configuration allows unbounded server-side memory buffering **⚖ decision**
+- **Where:** `Controls/EditFile.razor.cs:35` (`MaxFiles = 0` = unlimited), `:72`
+  (`GetMultipleFiles(e.FileCount)` deliberately lifts the framework's 10-file guard), `:103-108`
+  (every accepted file eagerly buffered, up to `MaxFileSizeBytes` = 10 MB each — a consequence of
+  the H1 buffering decision).
+- **Failure:** Blazor Server, bare `<EditFile Field=… @bind-Value=… />` (the demo's own pattern); a
+  user drag-drops a 300-photo folder → ~3 GB allocated in one gesture on the circuit's heap, live
+  until the bound list is cleared; a few concurrent users OOM the host. Pre-H1 the bytes weren't
+  pulled until the consumer streamed; H1 turned the unlimited-count default into a real exhaustion
+  vector. The class remarks say "set MaxFileSizeBytes and MaxFiles to bound that footprint" but the
+  shipped default leaves the aggregate unbounded.
+- **Options:** (a) non-zero `MaxFiles` default (breaking-ish for consumers relying on unlimited);
+  (b) an aggregate `MaxTotalBytes` cap (new param, sane default, enforced in the accept loop with
+  the same error-reporting shape as the count cap); (c) document-only. Decide before code.
+
+### ☐ M13 — `FormatInvariant` doesn't round-trip date-typed values against authored option values
+- **Where:** `Controls/Helpers/SelectParsing.cs:70` — `f.ToString(null, InvariantCulture)` emits
+  the invariant *display* format for date types (`DateTime` → `"06/15/2026 00:00:00"`, `DateOnly` →
+  `"06/15/2026"`), while the parse side (`:44`, `BindConverter`) accepts ISO.
+- **Failure:** `EditSelect<DateOnly>` with the natural `<option value="2026-06-15">` — picking the
+  option parses and writes the model, then `FormatValueAsString` renders `"06/15/2026"`, matches no
+  option, and the select snaps back to visually-unselected while the model holds the value — the
+  same "picks fine, selection lost" symptom M2 fixed for `double`. Numerics/enums round-trip
+  because their invariant format equals the natural literal; date types don't.
+- **Fix direction:** special-case date types in `FormatInvariant` to round-trip formats
+  (`DateOnly`/`TimeOnly` → `"O"`-style ISO, `DateTime`/`DateTimeOffset` → `"O"` or the sortable
+  form) — ISO parses fine under the existing invariant parse, numeric behavior untouched.
+
+## Low
+
+### ☐ L10 — `EditSelectString<int>` blank suppression re-opens the "first option displays selected while the model holds default" mismatch **⚖ decision**
+- **Where:** `Controls/EditSelectString.razor:21-33` — the L5 auto-suppression (`ShowNullOption`
+  false for non-nullable value types) removes the blank that used to absorb the browser's fallback
+  selection.
+- **Failure:** `EditSelectString<int>` bound to an untouched `Rating = 0`, `Options=["1","2","3"]`:
+  `CurrentValueAsString` is `"0"`, no option matches, browser visually selects **"1"** while the
+  model holds 0 — submit records 0 after the UI showed 1. This is the exact defect class the blank
+  option was added to fix (bc67ec0), and it contradicts the razor comment directly above the
+  `@if (ShowNullOption)` block. The recorded L5 decision covered selectability, not this
+  display-side consequence.
+- **Options:** (a) for suppressed-blank value types, render a hidden+disabled placeholder option
+  when the current value matches no option (shows blank, not selectable); (b) accept + document
+  ("give non-nullable selects a sentinel first option or a matching default"); (c) revert
+  suppression for the unmatched-value case only.
+
+### ☐ L11 — `UnregisterField` isn't ref-counted, breaking the duplicate-registration case `RegisterField` explicitly supports
+- **Where:** `Controls/FormOptions.cs:22-37` — `RegisterField` dedups because "two controls bound
+  to the same property" is a supported pattern (its own doc comment); the L2 `Dispose`/swap
+  unregister (`EditControlListBase.cs`) removes the single shared entry unconditionally.
+- **Failure:** the same list-bound field rendered twice (page section + edit modal, both bound to
+  `model.Tags`); closing the modal disposes one control → unregisters → `ValidationView` silently
+  drops that field's summary messages/anchor while the surviving copy still renders and is invalid.
+  Before the L2 fix, dispose left the registration intact so the survivor kept working.
+- **Fix direction:** ref-count registrations (`Dictionary<FieldIdentifier, int>`), or on unregister
+  only remove when no other live registrant — plus a regression test with two controls sharing a
+  field where one is disposed.
+
+### ☐ L12 — `_module ??= import` race with `DisposeAsync` leaks the module reference in five components (Table has the fix; M1 covered the handle, not the module)
+- **Where:** `Controls/UiKit/Modal.razor:132` + `DisposeAsync` (`:165-173`), `Drawer.razor` (same
+  shape), `Popover.razor:89,98` + `:129-136`, `Popconfirm.razor` (same shape),
+  `Select/Select.razor.cs` (three import sites). `Table.razor:403-410` already re-checks
+  `_disposed` after the import and disposes the module — the same defect, half-applied.
+- **Failure:** `OnAfterRenderAsync` starts the import → component removed (navigation) →
+  `DisposeAsync` sees `_module == null`, does nothing → import completes and assigns `_module` on
+  the disposed instance → one JS object reference stranded in the circuit's store for the circuit's
+  life on Server. Bounded (one per disposed-mid-import instance) but mechanical.
+- **Fix direction:** replicate Table's post-import `_disposed` re-check (dispose-and-null the
+  module) in all five; Modal/Drawer already have `_disposed` flags from M1, Popover/Popconfirm/
+  Select need one.
+
+### ☐ L13 — Select wrapper z-index (JS-written) is clobbered by the Blazor-bound `style` on a `Width` change while open
+- **Where:** `Controls/Select/Select.razor:10` (`style="@WidthStyle"` — Blazor-bound) vs
+  `Controls/wwwroot/wss-select.js:44` (`wrapper.style.zIndex = z + 1`) — the exact
+  attribute-clobber class the overlay panel was fixed for (place() comment, wss-overlay.js:66-69);
+  the Select wrapper is the one remaining JS style write sharing an element with a bound `style`.
+- **Failure:** dropdown open + parent re-renders with a *different* `Width` → Blazor rewrites the
+  whole `style` attribute, wiping the JS z-index → wrapper drops below its own full-screen backdrop
+  (z 1040+) → clicks on the select's input/tags/clear button hit the backdrop and close the
+  dropdown — the exact bug the z assignment was added to fix. Narrow trigger (dynamic Width while
+  open), mechanically certain.
+- **Fix direction:** move the open z-index into C#-owned state (append to `WidthStyle` while open,
+  value passed back from `placeDropdown`), or write a CSS variable on a non-Blazor-bound ancestor.
+
+### ☐ L14 — Disabled Popconfirm with an interactive child leaves a live-looking, tabbable, silently-inert button
+- **Where:** `Controls/wwwroot/wss-overlay.js:114-116` — the disabled branch only strips
+  `aria-haspopup`/`aria-expanded` from an interactive child; only the fallback (promoted-wrapper)
+  branch gets `aria-disabled="true"` + `tabIndex=-1`. `Popconfirm.razor:73` guards `Toggle`.
+- **Failure:** `<Popconfirm Disabled="true"><button>Delete</button></Popconfirm>` — the button is
+  tabbable, styled enabled, and clicking does nothing, with no assistive-tech hint. Regresses the
+  intent of the earlier "disabled trigger is aria-disabled and out of the tab order" fix, which now
+  holds only for plain-content triggers.
+- **Fix direction:** mirror `aria-disabled` onto the interactive child in the disabled branch (and
+  remove it when re-enabled), or document that consumers must disable their own trigger element
+  alongside `Disabled`.
+
+### ☐ L15 — Nested `FormDefaults` don't chain: an inner instance fully shadows an outer one **⚖ decision**
+- **Where:** `Controls/FormDefaults.razor(.cs)` + resolution at `FormLabel.razor.cs:57` /
+  `FieldValidationDisplay.razor.cs:52` — the nearest cascaded `FormDefaults` wins whole-hog; an
+  unset inner property falls through to the process-wide static, not the outer `FormDefaults`.
+- **Failure:** the MFE composition this component exists for — host wraps the page in
+  `<FormDefaults IsRequiredStarHidden="true">`, an MFE wraps its root in
+  `<FormDefaults ShowFieldNameInValidation="false">` (leaving the other property null) → forms
+  inside the MFE silently regain required stars (fall to the static, bypassing the host default).
+- **Options:** (a) chain — `FormDefaults` takes an outer `FormDefaults` as `[CascadingParameter]`
+  and falls through per property (note: `IsFixed="true"` on the cascade is fine, the chain resolves
+  at setup); (b) document non-chaining explicitly ("innermost wins per tree, not per property").
+  The xmldoc currently says null falls to the static, so (b) is arguably just making the existing
+  contract loud.
+
+## Verified clean this round (don't re-litigate)
+
+- **Round-2 fix regressions:** H1 (zero-size/oversize/read-failure paths, MaxFiles-unmount fixed by
+  construction), H2 (every remaining `EditContext` dereference null-guarded), M1 (dispose-race
+  ordering correct both interleavings, Modal + Drawer), M2 (doubles/enums/strings round-trip — the
+  date gap is new M13), M3 (`edit-sr-only` + for/id pairing), M4/M5/M8 (full gesture matrices,
+  stale-flag, right-button), M6 (both readers use the full chain; no other consumers), L1/L3/L4/L6/L7
+  (sentinel recompute self-heals during Other-typing and Options swaps; the L7 latch keeps cache
+  hits; L3's fallback target has a visible focus style).
+- **EditFile lifecycle:** per-file failure isolation, write-back-before-notify ordering, pending-
+  focus consume-then-null race-free, ContentType/LastModified/Size passthrough, duplicate names via
+  reference identity, disabled/read-only closed, `>=` cap check off-by-one-free.
+- **SelectParsing other callers:** enum name round-trip exact, `Nullable<T>` boxes through
+  `IFormattable` correctly, L5 empty→default behavior is the recorded decision.
+- **JS modules:** place() flip/shift math (viewport-relative, no scrollX/Y needed for a delta),
+  placeDropdown flip + clearZ pairing, scroll-lock ref-count balance across Escape/mask/rapid-
+  toggle/out-of-order stacked dispose, trap listener phase symmetry, focusById timing + guards,
+  wss-table.js indeterminate re-sync when `Selectable` toggles, every new call site catch-guarded
+  and prerender-safe.
+- **Concrete verification:** 352 bUnit × net8/9/10 (Release) and 76/76 Playwright E2E green on
+  current `master`.
+
+## Suggested order of work (round 3)
+
+1. **M9 + M11 together** — same function, opposite pressures (re-query every call vs call less);
+   one reconciled change to `syncTrigger` + its two call sites, with an e2e for a swapped trigger
+   child.
+2. **M13, L11, L12, L13** — mechanical fixes with obvious tests, no design decisions.
+3. **M12, L10, L15 (⚖)** — need Dave's call on API shape/defaults before code.
+4. **M10, L14** — trigger-contract polish; decide alongside M9's rework since they touch the same
+   branch of `syncTrigger`.
