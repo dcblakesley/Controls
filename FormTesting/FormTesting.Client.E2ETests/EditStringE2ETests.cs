@@ -29,6 +29,29 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : PageTe
     }
 
     [Fact]
+    public async Task Tooltip_escape_dismisses_while_the_trigger_stays_focused()
+    {
+        await NavigateAsync();
+        var trigger = Page.Locator(".edit-tooltip-container").First;
+        var content = Page.Locator(".edit-tooltip-content").First;
+
+        // Focus shows the tooltip (keyboard path).
+        await trigger.FocusAsync();
+        await Expect(content).ToBeVisibleAsync();
+
+        // Escape must dismiss it even though the trigger keeps focus (WCAG 1.4.13) — the CSS
+        // :focus reveal used to override the aria-hidden state and keep it visible until blur.
+        await Page.Keyboard.PressAsync("Escape");
+        await Expect(content).Not.ToBeVisibleAsync();
+        await Expect(trigger).ToBeFocusedAsync();
+
+        // Re-triggering still works after a dismissal.
+        await Page.Keyboard.PressAsync("Shift+Tab");
+        await Page.Keyboard.PressAsync("Tab");
+        await Expect(content).ToBeVisibleAsync();
+    }
+
+    [Fact]
     public async Task Toggling_FormOptions_edit_mode_swaps_inputs_for_ReadOnlyValue()
     {
         await NavigateAsync();

@@ -300,6 +300,22 @@
     display: block; /* Show on hover or focus */
 }
 
+/* The dismissed state must beat the reveals above (WCAG 1.4.13): Escape sets aria-hidden="true"
+   in C#, but the trigger typically stays focused/hovered, and without this override the :focus
+   reveal kept the tooltip visible until blur. :is() carries the specificity to win. Trade-off:
+   pre-hydration (JS-less) hover reveal is disabled, since aria-hidden starts "true". */
+.edit-tooltip-container:is(:hover, :focus) .edit-tooltip-content[aria-hidden="true"] {
+    display: none;
+}
+
+/* WCAG 2.5.8: the visible icon is 12px — extend the pointer target to ~24px without moving
+   layout (an invisible hit area, not padding, so visual baselines are untouched). */
+.edit-tooltip-container::before {
+    content: "";
+    position: absolute;
+    inset: -1px -6px;
+}
+
 /*
     Structure:
        edit-control-wrapper
@@ -457,11 +473,28 @@
        remove action unreachable by keyboard. Revealed on row hover or when focused. */
     opacity: 0;
     border-radius: 2px;
+    /* Anchor for the ::before hit-area expansion below. */
+    position: relative;
+}
+
+/* WCAG 2.5.8: the button is 18px — extend the pointer target to 24px without moving layout. */
+.edit-file-delete-btn::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
 }
 
 .edit-file-item:hover .edit-file-delete-btn,
 .edit-file-delete-btn:focus-visible {
     opacity: 1;
+}
+
+/* Touch devices have no hover, which left the remove affordance permanently invisible (though
+   still blind-tappable) — keep it always visible where hovering isn't possible. */
+@media (hover: none) {
+    .edit-file-delete-btn {
+        opacity: 1;
+    }
 }
 
 .edit-file-list--readonly .edit-file-item {
