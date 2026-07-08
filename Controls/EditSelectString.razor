@@ -31,6 +31,24 @@
                         @NullOptionText
                     </option>
                 }
+                @* L5 made the blank non-selectable for value types (a blank there maps only to a spurious
+                   default). But an unmatched current value (an untouched default like 0, or a stale model
+                   value not in Options) must still DISPLAY blank — otherwise the browser silently selects
+                   the first real option while the model holds something else, the exact mismatch the blank
+                   was added to fix (bc67ec0). A hidden+disabled placeholder shows blank, is not user-
+                   selectable, and never submits. *@
+                @* Coalesce to "" so the non-nullable Options.Contains stays warning-clean; a value-type
+                   CurrentValueAsString is never null, and a null on an opt-out reference type matches ""
+                   only if the consumer authored a "" option, which correctly needs no placeholder. *@
+                @if (!ShowNullOption && !Options.Contains(CurrentValueAsString ?? ""))
+                {
+                    <option value=""
+                            disabled
+                            hidden
+                            selected
+                            id=@($"{_id}-option-placeholder")
+                            data-test-id=@($"{_id}-option-placeholder")></option>
+                }
                 @foreach (var o in Options)
                 {
                     <option title=@_attributes.Tooltip()

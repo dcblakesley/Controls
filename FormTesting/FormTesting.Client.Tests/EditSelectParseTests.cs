@@ -297,4 +297,112 @@ public class EditSelectParseTests : TestContext
             CultureInfo.CurrentCulture = original;
         }
     }
+
+    class WhenModel { public DateOnly When { get; set; } }
+
+    [Fact]
+    public void EditSelect_DateOnly_selects_the_matching_option_under_a_foreign_culture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE"); // date display format is dd.MM.yyyy
+            var model = new WhenModel { When = new DateOnly(2026, 6, 15) };
+            Expression<Func<DateOnly>> field = () => model.When;
+            var cut = Render(WithForm(model, b =>
+            {
+                b.OpenComponent<EditSelect<DateOnly>>(0);
+                b.AddAttribute(1, "Value", model.When);
+                b.AddAttribute(2, "ValueExpression", field);
+                b.AddAttribute(3, "Field", field);
+                b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
+                {
+                    cb.OpenElement(0, "option");
+                    cb.AddAttribute(1, "value", "2026-06-15");
+                    cb.AddContent(2, "June 15");
+                    cb.CloseElement();
+                    cb.OpenElement(3, "option");
+                    cb.AddAttribute(4, "value", "2026-07-01");
+                    cb.AddContent(5, "July 1");
+                    cb.CloseElement();
+                }));
+                b.CloseComponent();
+            }));
+
+            // Before M13 the value formatted as the invariant display "06/15/2026", matched no ISO
+            // <option value>, and the select showed unselected. FormatInvariant now emits "2026-06-15".
+            Assert.True(cut.Find("option[value='2026-06-15']").HasAttribute("selected"));
+            Assert.False(cut.Find("option[value='2026-07-01']").HasAttribute("selected"));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void EditSelectString_value_type_unmatched_default_shows_a_hidden_placeholder()
+    {
+        var model = new CountModel { Count = 0 };  // untouched default — no option matches "0"
+        Expression<Func<int>> field = () => model.Count;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<int>>(0);
+            b.AddAttribute(1, "Value", model.Count);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "1", "2", "3" });
+            b.CloseComponent();
+        }));
+
+        // L5 removed the blank for value types; without a placeholder the browser would visually select
+        // "1" while the model holds 0. The hidden, disabled placeholder shows blank instead of lying.
+        var placeholder = cut.Find("option[hidden]");
+        Assert.True(placeholder.HasAttribute("selected"));
+        Assert.True(placeholder.HasAttribute("disabled"));
+        Assert.Equal("", placeholder.GetAttribute("value"));   // value="" so it never submits a real value
+        Assert.False(cut.Find("option[value='1']").HasAttribute("selected"));
+    }
+
+    [Fact]
+    public void EditSelectString_value_type_matched_value_renders_no_placeholder()
+    {
+        var model = new CountModel { Count = 2 };
+        Expression<Func<int>> field = () => model.Count;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<int>>(0);
+            b.AddAttribute(1, "Value", model.Count);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "1", "2", "3" });
+            b.CloseComponent();
+        }));
+
+        // Value 2 matches <option value="2">, so the real option carries selection — no placeholder needed.
+        Assert.Empty(cut.FindAll("option[hidden]"));
+        Assert.True(cut.Find("option[value='2']").HasAttribute("selected"));
+        Assert.Equal(3, cut.FindAll("select option").Count);
+    }
+
+    [Fact]
+    public void EditSelectString_nullable_string_renders_no_placeholder_keeping_the_blank_option()
+    {
+        var model = new NullableNameModel { Name = null };
+        Expression<Func<string?>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<string?>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", new List<string> { "a", "b" });
+            b.CloseComponent();
+        }));
+
+        // ShowNullOption is true for a nullable type, so the existing leading blank still absorbs the null.
+        // The placeholder is only for the suppressed-blank (value-type) case and must not appear here.
+        Assert.Empty(cut.FindAll("option[hidden]"));
+        Assert.True(cut.Find("option[value='']").HasAttribute("selected"));
+    }
 }

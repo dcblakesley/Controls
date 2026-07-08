@@ -59,14 +59,24 @@ public static class SelectParsing
     /// <c>FormatValueAsString</c> is <c>value?.ToString()</c>, which uses the current culture: under de-DE
     /// a <c>double</c> <c>1.5</c> rendered <c>"1,5"</c>, matched no <c>&lt;option value="1.5"&gt;</c>, and the
     /// select showed unselected (sv-SE's non-ASCII minus sign had the same effect). Strings pass through;
-    /// anything culture-sensitive (numeric types, <c>DateTime</c>, <c>Guid</c>) is <see cref="IFormattable"/>
-    /// and formats under <see cref="CultureInfo.InvariantCulture"/>; enums are <c>IFormattable</c> but
-    /// format by name regardless of culture, round-tripping with the invariant parse.
+    /// date/time types are special-cased to their ISO round-trip forms because their invariant *display*
+    /// format (<c>DateOnly</c> → <c>06/15/2026</c>, <c>DateTime</c> → <c>06/15/2026 00:00:00</c>) matched no
+    /// ISO-authored option like <c>&lt;option value="2026-06-15"&gt;</c> — the same "picks fine, selection
+    /// lost" desync as the numeric case; anything else culture-sensitive (numeric types, <c>Guid</c>) is
+    /// <see cref="IFormattable"/> and formats under <see cref="CultureInfo.InvariantCulture"/>; enums are
+    /// <c>IFormattable</c> but format by name regardless of culture, round-tripping with the invariant parse.
     /// </summary>
     public static string? FormatInvariant<TValue>(TValue? value) => value switch
     {
         null => null,
         string s => s,
+        // Date/time arms precede the generic IFormattable arm (all four types implement it) and emit the
+        // ISO forms the invariant BindConverter parse above accepts. A non-null Nullable<T> boxes to its
+        // underlying type, so these also match DateOnly?/DateTime?/DateTimeOffset?/TimeOnly?.
+        DateOnly d => d.ToString("O", CultureInfo.InvariantCulture),           // yyyy-MM-dd
+        DateTime dt => dt.ToString("s", CultureInfo.InvariantCulture),         // sortable yyyy-MM-ddTHH:mm:ss — select option values don't carry sub-second precision, so it's dropped
+        DateTimeOffset dto => dto.ToString("O", CultureInfo.InvariantCulture), // round-trip "O" so the offset survives
+        TimeOnly t => t.ToString("HH':'mm':'ss", CultureInfo.InvariantCulture),
         IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
         _ => value.ToString()
     };

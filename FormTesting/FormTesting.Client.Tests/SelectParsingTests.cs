@@ -140,6 +140,43 @@ public class SelectParsingTests
     }
 
     [Fact]
+    public void FormatInvariant_formats_a_DateOnly_as_ISO_yyyy_MM_dd()
+    {
+        // EditSelect<DateOnly> with the natural <option value="2026-06-15">: the invariant *display*
+        // format was "06/15/2026", matched no option, and the select snapped back to unselected. The
+        // date special-casing now emits the ISO literal an author actually writes.
+        Assert.Equal("2026-06-15", SelectParsing.FormatInvariant(new DateOnly(2026, 6, 15)));
+    }
+
+    [Fact]
+    public void FormatInvariant_round_trips_date_and_time_types_through_the_invariant_parse()
+    {
+        var original = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            // A foreign culture whose date display differs from ISO — the format and parse are both pinned
+            // to InvariantCulture, so each date type must format to a literal its own invariant parse accepts.
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+            RoundTrips(new DateOnly(2026, 6, 15));
+            RoundTrips(new DateTime(2026, 6, 15, 14, 30, 45));                                   // whole seconds — option values carry no sub-second precision
+            RoundTrips(new DateTimeOffset(2026, 6, 15, 14, 30, 45, TimeSpan.FromHours(-5)));      // offset must survive the round trip
+            RoundTrips(new TimeOnly(14, 30, 45));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = original;
+        }
+
+        static void RoundTrips<T>(T value)
+        {
+            var formatted = SelectParsing.FormatInvariant(value);
+            var ok = SelectParsing.TryParseStringOrConvert<T>(formatted, "When", out var back, out var err);
+            Assert.True(ok, $"{typeof(T).Name} failed to parse back from '{formatted}': {err}");
+            Assert.Equal(value, back);
+        }
+    }
+
+    [Fact]
     public void ParseEnum_parses_a_valid_member()
     {
         var ok = SelectParsing.TryParseEnum<Priority>("High", typeof(Priority), isNullable: false, "Priority", out var result, out _);
