@@ -68,6 +68,10 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     string _errorMsgId = string.Empty;
     string _describedBy = string.Empty;
 
+    // The fully-resolved required-ness (IsRequired param → [Required] → RequiredResolver), passed
+    // to FormLabel so the star and aria-required share one computation site and can never disagree.
+    bool? IsRequiredResolved => _isRequired is not null;
+
     /// <summary>
     /// True when this field currently has a validation error. Read from the EditContext's messages
     /// rather than substring-matching CssClass (which also contains the consumer's class attribute).

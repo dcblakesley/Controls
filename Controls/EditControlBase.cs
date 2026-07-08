@@ -59,6 +59,15 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected string _describedBy = string.Empty;
 
     /// <summary>
+    /// The control's fully-resolved required-ness (IsRequired parameter → [Required] attribute →
+    /// FormOptions.RequiredResolver), recomputed alongside <c>_isRequired</c> each parameter cycle.
+    /// Markup passes THIS to FormLabel's IsRequired (an explicit value wins outright there), so the
+    /// star and <c>aria-required</c> share one computation site and can never disagree — FormLabel's
+    /// own derivation path remains only for standalone use (e.g. EditDisplay).
+    /// </summary>
+    protected bool? IsRequiredResolved => _isRequired is not null;
+
+    /// <summary>
     /// True when this field currently has a validation error. Read from the EditContext's messages
     /// rather than substring-matching <see cref="InputBase{TValue}.CssClass"/> — CssClass also
     /// contains the consumer's <c>class</c> attribute, so a class like "invalid-style-fix" was a

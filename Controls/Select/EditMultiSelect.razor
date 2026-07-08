@@ -5,7 +5,7 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
         {

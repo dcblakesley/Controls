@@ -11,7 +11,7 @@
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
                   role=@(ShowEditor ? "group" : null)>
-            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequired Description=@Description Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel />
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel />
 
             @if (ShowEditor)
             {

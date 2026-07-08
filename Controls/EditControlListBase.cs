@@ -59,6 +59,14 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     // Cached ARIA references, resolved once in InitState (see EditControlInit.BuildDescribedBy).
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
+
+    /// <summary>
+    /// The control's fully-resolved required-ness (IsRequired parameter → [Required] attribute →
+    /// FormOptions.RequiredResolver), recomputed alongside <c>_isRequired</c> each parameter cycle.
+    /// Markup passes THIS to FormLabel's IsRequired (an explicit value wins outright there), so the
+    /// star and <c>aria-required</c> share one computation site and can never disagree.
+    /// </summary>
+    protected bool? IsRequiredResolved => _isRequired is not null;
     EditContext? _subscribedEditContext;
 
     /// <summary>

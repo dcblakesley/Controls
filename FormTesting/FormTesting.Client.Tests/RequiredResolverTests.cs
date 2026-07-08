@@ -57,6 +57,55 @@ public class RequiredResolverTests : TestContext
     }
 
     [Fact]
+    public void Conditional_resolver_updates_star_and_aria_required_together_on_rerender()
+    {
+        // The resolver reads mutable model state (a conditional-required rule — the feature's
+        // stated purpose). A parent re-render must move BOTH signals: the bases recompute
+        // aria-required each parameter cycle, and the star must follow because the control passes
+        // its RESOLVED required-ness to FormLabel (one computation site). Round-6 regression: the
+        // FormLabel input guard alone left the star frozen while aria-required updated.
+        var required = false;
+        var model = new PersonModel { Username = "bob" };
+        var editContext = new EditContext(model);
+        Expression<Func<string>> field = () => model.Username;
+        var formOptions = new FormOptions { RequiredResolver = _ => required };
+        var cut = RenderComponent<EditForm>(ps => ps
+            .Add(f => f.EditContext, editContext)
+            .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => formContent =>
+            {
+                formContent.OpenComponent<CascadingValue<FormOptions>>(0);
+                formContent.AddAttribute(1, "Value", formOptions);
+                formContent.AddAttribute(2, "ChildContent", (RenderFragment)(content =>
+                {
+                    content.OpenComponent<EditString>(0);
+                    content.AddAttribute(1, "Value", model.Username);
+                    content.AddAttribute(2, "ValueExpression", field);
+                    content.AddAttribute(3, "Field", field);
+                    content.CloseComponent();
+                }));
+                formContent.CloseComponent();
+            })));
+
+        Assert.False(cut.Find("input.edit-string-input").HasAttribute("aria-required"));
+        Assert.Empty(cut.FindAll(".edit-label-required-star"));
+
+        // Flip the condition the resolver reads, then re-parameterize from the top (what a real
+        // parent re-render does when the model state driving the condition changes).
+        required = true;
+        cut.SetParametersAndRender();
+
+        Assert.Equal("true", cut.Find("input.edit-string-input").GetAttribute("aria-required"));
+        Assert.NotNull(cut.Find(".edit-label-required-star"));
+
+        // And back off again — the star must not latch.
+        required = false;
+        cut.SetParametersAndRender();
+
+        Assert.False(cut.Find("input.edit-string-input").HasAttribute("aria-required"));
+        Assert.Empty(cut.FindAll(".edit-label-required-star"));
+    }
+
+    [Fact]
     public void RequiredResolver_returning_false_leaves_the_field_optional()
     {
         var model = new PersonModel { Username = "bob" };
