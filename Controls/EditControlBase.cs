@@ -89,7 +89,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
         // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
-        FormOptions?.RegisterField(_fieldIdentifier, _id);
+        FormOptions?.RegisterField(_fieldIdentifier, _id, this);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
         // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and

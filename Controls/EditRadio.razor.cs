@@ -88,7 +88,7 @@ public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
         // field survives HidingMode and links from the validation summary always work.
-        FormOptions?.RegisterField(_fieldIdentifier, _id);
+        FormOptions?.RegisterField(_fieldIdentifier, _id, this);
 
         // Mirror EditControlBase: resolve the ARIA references (recomputed in OnParametersSet too).
         (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);

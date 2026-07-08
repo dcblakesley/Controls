@@ -51,10 +51,11 @@ public partial class FormLabel
     string DisplayLabel() => _label;
     string? DisplayDescription() => _description;
 
-    // Per-form FormOptions → per-tree FormDefaults → process-wide static. FormOptions in the last
-    // term binds to the *type* (static member), so the chain is null-safe despite appearances.
+    // Per-form FormOptions → per-tree FormDefaults (Effective* walks nested instances per property)
+    // → process-wide static. FormOptions in the last term binds to the *type* (static member), so
+    // the chain is null-safe despite appearances.
     bool IsStarHidden =>
-        FormOptions?.IsRequiredStarHidden ?? FormDefaults?.IsRequiredStarHidden ?? FormOptions.DefaultIsRequiredStarHidden;
+        FormOptions?.IsRequiredStarHidden ?? FormDefaults?.EffectiveIsRequiredStarHidden ?? FormOptions.DefaultIsRequiredStarHidden;
 
     protected override void OnParametersSet()
     {

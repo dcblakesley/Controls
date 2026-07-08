@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace FormTesting.Client.Tests;
 
@@ -126,6 +127,54 @@ public class FieldRegistrationTests : TestContext
         }));
 
         Assert.Contains(formOptions.FieldIdentifiers, fi => fi.FieldName == "Priority");
+    }
+
+    [Fact]
+    public void Disposing_one_of_two_controls_sharing_a_field_keeps_the_registration()
+    {
+        // Two list controls bound to the same property share one FieldIdentifiers entry (RegisterField
+        // dedups). Disposing one (page section + edit modal, modal closes) must not drop the shared
+        // entry while the other still renders — only the last registrant's dispose removes it.
+        var model = new PersonModel { Tags = [] };
+        var formOptions = new FormOptions();
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var showFirst = true;
+        var showSecond = true;
+
+        void AddList(RenderTreeBuilder b, int seq)
+        {
+            b.OpenComponent<EditCheckedStringList>(seq);
+            b.AddAttribute(seq + 1, "Value", model.Tags);
+            b.AddAttribute(seq + 2, "Field", field);
+            b.AddAttribute(seq + 3, "Options", new List<string> { "a", "b" });
+            b.CloseComponent();
+        }
+
+        var cut = RenderComponent<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
+            {
+                b.OpenComponent<CascadingValue<FormOptions>>(0);
+                b.AddAttribute(1, "Value", formOptions);
+                b.AddAttribute(2, "ChildContent", (RenderFragment)(inner =>
+                {
+                    if (showFirst)
+                        AddList(inner, 0);
+                    if (showSecond)
+                        AddList(inner, 10);
+                }));
+                b.CloseComponent();
+            })));
+
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags");
+
+        showSecond = false;
+        cut.SetParametersAndRender(ps => ps.Add(f => f.Model, model));
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags"); // survivor keeps the entry
+
+        showFirst = false;
+        cut.SetParametersAndRender(ps => ps.Add(f => f.Model, model));
+        Assert.DoesNotContain(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags"); // last one out removes it
     }
 
     [Fact]

@@ -126,6 +126,76 @@ public class FormDefaultsTests : TestContext
         Assert.Contains("Full Name is required", VisualMessage(cut));
     }
 
+    // EditForm(editContext) -> validator -> outer FormDefaults -> inner FormDefaults -> EditString(Name).
+    // The MFE composition shape: host page defaults wrapping an MFE root's own (partial) overrides.
+    IRenderedFragment RenderNested(EditContext editContext, PersonModel model,
+        (bool? StarHidden, bool? ShowFieldName) outer, (bool? StarHidden, bool? ShowFieldName) inner)
+    {
+        Expression<Func<string>> field = () => model.Name;
+        return Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => formContent =>
+            {
+                formContent.OpenComponent<DataAnnotationsValidator>(0);
+                formContent.CloseComponent();
+                formContent.OpenComponent<FormDefaults>(1);
+                formContent.AddAttribute(2, "IsRequiredStarHidden", outer.StarHidden);
+                formContent.AddAttribute(3, "ShowFieldNameInValidation", outer.ShowFieldName);
+                formContent.AddAttribute(4, "ChildContent", (RenderFragment)(mid =>
+                {
+                    mid.OpenComponent<FormDefaults>(0);
+                    mid.AddAttribute(1, "IsRequiredStarHidden", inner.StarHidden);
+                    mid.AddAttribute(2, "ShowFieldNameInValidation", inner.ShowFieldName);
+                    mid.AddAttribute(3, "ChildContent", (RenderFragment)(leaf =>
+                    {
+                        leaf.OpenComponent<EditString>(0);
+                        leaf.AddAttribute(1, "Value", model.Name);
+                        leaf.AddAttribute(2, "ValueExpression", field);
+                        leaf.AddAttribute(3, "Field", field);
+                        leaf.CloseComponent();
+                    }));
+                    mid.CloseComponent();
+                }));
+                formContent.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+    }
+
+    [Fact]
+    public void Nested_FormDefaults_chain_per_property_instead_of_shadowing()
+    {
+        // Host sets star hiding; the MFE root sets only the validation-name default. The star
+        // setting must fall through to the OUTER FormDefaults, not skip past it to the static.
+        var model = new PersonModel();
+        var editContext = new EditContext(model);
+        var cut = RenderNested(editContext, model,
+            outer: (StarHidden: true, ShowFieldName: null),
+            inner: (StarHidden: null, ShowFieldName: false));
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        Assert.Empty(cut.FindAll(".edit-label-required-star"));
+        Assert.Equal("Required", VisualMessage(cut).Trim());
+    }
+
+    [Fact]
+    public void Inner_FormDefaults_wins_over_the_outer_for_the_property_it_sets()
+    {
+        var model = new PersonModel();
+        var editContext = new EditContext(model);
+        var cut = RenderNested(editContext, model,
+            outer: (StarHidden: true, ShowFieldName: true),
+            inner: (StarHidden: false, ShowFieldName: null));
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        Assert.NotEmpty(cut.FindAll(".edit-label-required-star"));
+        Assert.Contains("Full Name is required", VisualMessage(cut));
+    }
+
     [Fact]
     public void FormOptions_with_unset_values_falls_through_to_FormDefaults()
     {

@@ -45,11 +45,12 @@ public partial class FieldValidationDisplay
         // this validation display is conditionally rendered.
     }
 
-    // Per-form FormOptions → per-tree FormDefaults → process-wide static. DefaultShowFieldNameInValidation
-    // is a *static* member: in `FormOptions.X` the name binds to the type, not the (possibly-null)
-    // cascaded instance, so the final ?? fallback is null-safe despite appearances.
+    // Per-form FormOptions → per-tree FormDefaults (Effective* walks nested instances per property)
+    // → process-wide static. DefaultShowFieldNameInValidation is a *static* member: in `FormOptions.X`
+    // the name binds to the type, not the (possibly-null) cascaded instance, so the final ?? fallback
+    // is null-safe despite appearances.
     bool ShowFieldNameInValidation =>
-        FormOptions?.ShowFieldNameInValidation ?? FormDefaults?.ShowFieldNameInValidation ?? FormOptions.DefaultShowFieldNameInValidation;
+        FormOptions?.ShowFieldNameInValidation ?? FormDefaults?.EffectiveShowFieldNameInValidation ?? FormOptions.DefaultShowFieldNameInValidation;
 
     /// <summary> Overrides the default validation messages. </summary>
     string GetValidationMessage(string message, bool showLabel) =>

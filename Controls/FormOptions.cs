@@ -16,22 +16,45 @@ public class FormOptions
     /// recomputing a guess that misses those. </summary>
     public Dictionary<FieldIdentifier, string> FieldIds { get; } = new();
 
+    // Live registrant controls per field. RegisterField dedups because two controls may bind the
+    // same property (page section + edit modal); this tracks who still holds the shared entry so
+    // UnregisterField doesn't drop it while another registrant is alive and rendering.
+    readonly Dictionary<FieldIdentifier, HashSet<object>> _fieldOwners = new();
+
     /// <summary> Registers a field (and its resolved element id) for the validation summary, ignoring
     /// duplicates. Without this a control that re-initializes (or two controls bound to the same
-    /// property) would keep appending to <see cref="FieldIdentifiers"/>, growing it unboundedly. </summary>
-    public void RegisterField(FieldIdentifier field, string? id = null)
+    /// property) would keep appending to <see cref="FieldIdentifiers"/>, growing it unboundedly.
+    /// <paramref name="owner"/> identifies the registering control so a shared registration survives
+    /// until the last registrant unregisters. </summary>
+    public void RegisterField(FieldIdentifier field, string? id = null, object? owner = null)
     {
         if (!FieldIdentifiers.Contains(field))
             FieldIdentifiers.Add(field);
         if (id is not null)
             FieldIds[field] = id;
+        if (owner is not null)
+        {
+            if (!_fieldOwners.TryGetValue(field, out var owners))
+                _fieldOwners[field] = owners = [];
+            owners.Add(owner);
+        }
     }
 
     /// <summary> Removes a field's registration (and its resolved id). A list control calls this when
     /// its model/<see cref="EditContext"/> is swapped — the old-model <see cref="FieldIdentifier"/> is
-    /// dead and must not linger in the validation summary — and when it is disposed. </summary>
-    public void UnregisterField(FieldIdentifier field)
+    /// dead and must not linger in the validation summary — and when it is disposed. When
+    /// <paramref name="owner"/> is supplied, the entry is only dropped once no other registered owner
+    /// remains (two controls bound to the same property share one entry); a null owner removes it
+    /// unconditionally. </summary>
+    public void UnregisterField(FieldIdentifier field, object? owner = null)
     {
+        if (owner is not null && _fieldOwners.TryGetValue(field, out var owners))
+        {
+            owners.Remove(owner);
+            if (owners.Count > 0)
+                return; // another live control still holds this field — keep the shared entry
+        }
+        _fieldOwners.Remove(field);
         FieldIdentifiers.Remove(field);
         FieldIds.Remove(field);
     }

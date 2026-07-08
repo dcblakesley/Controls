@@ -93,7 +93,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
         // Fold the IsRequired parameter into aria-required (conditional requiredness, e.g. RequiredIf)
         // so it matches the FormLabel star, which shows for either the [Required] attribute or IsRequired.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired);
-        FormOptions?.RegisterField(_fieldIdentifier, _id);
+        FormOptions?.RegisterField(_fieldIdentifier, _id, this);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
         // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and
@@ -169,9 +169,9 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
             // Drop the previous (old-model) registration before adding the new one — otherwise every
             // swap leaves a dead FieldIdentifier behind and ValidationView iterates all of them each
             // render, growing with the swap count.
-            FormOptions?.UnregisterField(_fieldIdentifier);
+            FormOptions?.UnregisterField(_fieldIdentifier, this);
             _fieldIdentifier = _fieldIdentifierFactory();
-            FormOptions?.RegisterField(_fieldIdentifier, _id);
+            FormOptions?.RegisterField(_fieldIdentifier, _id, this);
         }
     }
 
@@ -183,6 +183,6 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     {
         if (_subscribedEditContext is not null)
             _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
-        FormOptions?.UnregisterField(_fieldIdentifier);
+        FormOptions?.UnregisterField(_fieldIdentifier, this);
     }
 }
