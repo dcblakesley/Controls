@@ -75,7 +75,13 @@ public static class SelectParsing
         // underlying type, so these also match DateOnly?/DateTime?/DateTimeOffset?/TimeOnly?.
         DateOnly d => d.ToString("O", CultureInfo.InvariantCulture),           // yyyy-MM-dd
         DateTime dt => dt.ToString("s", CultureInfo.InvariantCulture),         // sortable yyyy-MM-ddTHH:mm:ss — select option values don't carry sub-second precision, so it's dropped
-        DateTimeOffset dto => dto.ToString("O", CultureInfo.InvariantCulture), // round-trip "O" so the offset survives
+        // Shortest round-trippable form: "O" always emits seven fractional digits, which no authored
+        // option value (`2026-06-15T09:30:00+02:00`) ever contains, so the match failed for every
+        // hand-written option. Whole-second values (the only kind an option can express) format
+        // without the fraction; a sub-second value falls back to "O" so nothing is silently lost.
+        DateTimeOffset dto => dto.Ticks % TimeSpan.TicksPerSecond == 0
+            ? dto.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ssK", CultureInfo.InvariantCulture)
+            : dto.ToString("O", CultureInfo.InvariantCulture),
         TimeOnly t => t.ToString("HH':'mm':'ss", CultureInfo.InvariantCulture),
         IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
         _ => value.ToString()

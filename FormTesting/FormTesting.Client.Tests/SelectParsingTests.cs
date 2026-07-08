@@ -177,6 +177,31 @@ public class SelectParsingTests
     }
 
     [Fact]
+    public void FormatInvariant_formats_each_date_type_as_the_literal_an_author_writes()
+    {
+        // Round-tripping through the parse isn't enough — the formatted string must EQUAL the option
+        // value an author naturally writes, or the browser shows the select as unselected while the
+        // model holds the value (the M13/M14 desync). One canonical authored form per type:
+        Assert.Equal("2026-06-15", SelectParsing.FormatInvariant(new DateOnly(2026, 6, 15)));
+        Assert.Equal("2026-06-15T14:30:45", SelectParsing.FormatInvariant(new DateTime(2026, 6, 15, 14, 30, 45)));
+        Assert.Equal("2026-06-15T14:30:45-05:00", SelectParsing.FormatInvariant(new DateTimeOffset(2026, 6, 15, 14, 30, 45, TimeSpan.FromHours(-5))));
+        Assert.Equal("2026-06-15T14:30:45+00:00", SelectParsing.FormatInvariant(new DateTimeOffset(2026, 6, 15, 14, 30, 45, TimeSpan.Zero)));
+        Assert.Equal("14:30:45", SelectParsing.FormatInvariant(new TimeOnly(14, 30, 45)));
+    }
+
+    [Fact]
+    public void FormatInvariant_sub_second_DateTimeOffset_falls_back_to_the_full_round_trip_form()
+    {
+        // A sub-second value can't match any authored option anyway; "O" keeps the fraction so the
+        // formatted string still parses back to the exact value instead of silently truncating.
+        var value = new DateTimeOffset(2026, 6, 15, 14, 30, 45, 500, TimeSpan.FromHours(2));
+        var formatted = SelectParsing.FormatInvariant(value);
+        Assert.Equal("2026-06-15T14:30:45.5000000+02:00", formatted);
+        Assert.True(SelectParsing.TryParseStringOrConvert<DateTimeOffset>(formatted, "When", out var back, out _));
+        Assert.Equal(value, back);
+    }
+
+    [Fact]
     public void ParseEnum_parses_a_valid_member()
     {
         var ok = SelectParsing.TryParseEnum<Priority>("High", typeof(Priority), isNullable: false, "Priority", out var result, out _);
