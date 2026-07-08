@@ -58,7 +58,7 @@
                     <span class="wss-select-selection-item-content">@option.Label</span>
                     <button type="button"
                             class="wss-select-selection-item-remove"
-                            aria-label="@($"Remove {option.Label}")"
+                            aria-label="@(string.Format(CultureInfo.CurrentCulture, RemoveItemLabelFormat, option.Label))"
                             @onclick="@(e => RemoveAsync(option.Value))"
                             @onclick:stopPropagation>
                         @CloseCross
@@ -108,7 +108,7 @@
     @if (ShowClear)
     {
         <button type="button" class="wss-select-clear"
-                aria-label="@(IsMultiple ? "Clear all selections" : "Clear selection")"
+                aria-label="@(IsMultiple ? ClearSelectionsLabel : ClearSelectionLabel)"
                 @onclick="ClearAsync" @onclick:stopPropagation>@CloseCross</button>
     }
 
@@ -119,7 +119,7 @@
         @* tabindex=-1: Chromium puts scrollable containers in the tab order by default, which made
            Tab land on the raw listbox. Per the ARIA combobox pattern the popup is driven from the
            input (arrow keys / type-ahead), never tabbed into. *@
-        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" tabindex="-1" @ref="_dropdownRef" role="listbox" aria-label="Options" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
+        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" tabindex="-1" @ref="_dropdownRef" role="listbox" aria-label="@ListboxLabel" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
             @if (_filtered.Count == 0)
             {
                 <div class="wss-select-item-empty">@EmptyText</div>
@@ -148,3 +148,25 @@
         </div>
     }
 </div>
+
+@code {
+    // Localizable accessibility strings. Defaults match the previously hardcoded English, so
+    // existing consumers/tests see identical markup. (This component's other members live in
+    // Select.razor.cs; these sit here beside the markup that renders them.)
+
+    /// <summary>
+    /// <see cref="string.Format(IFormatProvider, string, object)"/> template for a tag's remove
+    /// button accessible name; <c>{0}</c> is the option label. Override to localize (formatted
+    /// with <see cref="CultureInfo.CurrentCulture"/>).
+    /// </summary>
+    [Parameter] public string RemoveItemLabelFormat { get; set; } = "Remove {0}";
+
+    /// <summary>Accessible name of the clear button in single mode. Override to localize.</summary>
+    [Parameter] public string ClearSelectionLabel { get; set; } = "Clear selection";
+
+    /// <summary>Accessible name of the clear button in multiple/tags modes. Override to localize.</summary>
+    [Parameter] public string ClearSelectionsLabel { get; set; } = "Clear all selections";
+
+    /// <summary>Accessible name of the dropdown listbox. Override to localize.</summary>
+    [Parameter] public string ListboxLabel { get; set; } = "Options";
+}

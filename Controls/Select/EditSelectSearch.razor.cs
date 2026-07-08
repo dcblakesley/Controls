@@ -38,6 +38,12 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <summary> Raised with the current search text whenever it changes.</summary>
     [Parameter] public EventCallback<string> OnSearch { get; set; }
 
+    /// <inheritdoc cref="Select{TValue}.ClearSelectionLabel"/>
+    [Parameter] public string ClearSelectionLabel { get; set; } = "Clear selection";
+
+    /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
+    [Parameter] public string ListboxLabel { get; set; } = "Options";
+
     protected override void OnInitialized()
     {
         base.OnInitialized();

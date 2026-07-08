@@ -47,6 +47,15 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <summary> Raised with the current search text whenever it changes.</summary>
     [Parameter] public EventCallback<string> OnSearch { get; set; }
 
+    /// <inheritdoc cref="Select{TValue}.RemoveItemLabelFormat"/>
+    [Parameter] public string RemoveItemLabelFormat { get; set; } = "Remove {0}";
+
+    /// <inheritdoc cref="Select{TValue}.ClearSelectionsLabel"/>
+    [Parameter] public string ClearSelectionsLabel { get; set; } = "Clear all selections";
+
+    /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
+    [Parameter] public string ListboxLabel { get; set; } = "Options";
+
     protected override void OnInitialized()
     {
         base.OnInitialized();
