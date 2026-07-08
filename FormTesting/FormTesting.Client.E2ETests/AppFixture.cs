@@ -31,14 +31,22 @@ public class AppFixture : IAsyncLifetime
         var port = FindFreeLocalPort();
         BaseUrl = $"http://127.0.0.1:{port}";
 
-        var projectPath = LocateFormTestingProject();
+        // FORMTESTING_E2E_APP: full path to a published FormTesting.dll. When set, the fixture
+        // launches that published output instead of `dotnet run` on the project — used to run this
+        // suite against a trimmed Release publish (trim-safety verification). The working directory
+        // must be the publish folder so wwwroot/static web assets resolve.
+        var publishedApp = Environment.GetEnvironmentVariable("FORMTESTING_E2E_APP");
+        var arguments = publishedApp is null
+            ? $"run --project \"{LocateFormTestingProject()}\" --no-build --no-launch-profile --urls {BaseUrl}"
+            : $"\"{publishedApp}\" --urls {BaseUrl}";
 
         _process = new Process
         {
             StartInfo =
             {
                 FileName = "dotnet",
-                Arguments = $"run --project \"{projectPath}\" --no-build --no-launch-profile --urls {BaseUrl}",
+                Arguments = arguments,
+                WorkingDirectory = publishedApp is null ? string.Empty : Path.GetDirectoryName(publishedApp)!,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,

@@ -18,4 +18,15 @@
     <ProjectReference Include="..\..\Controls.Demo\Controls.Demo.csproj" />
   </ItemGroup>
 
+  <!-- Trim stress test for the Controls library. Blazor discovers routable components via the
+       Router's reflection, so under TrimMode=full nothing roots this app and the trimmer deletes
+       the whole app (a consumer-side concern any fully-trimmed Blazor app must solve). Rooting the
+       app assembly reproduces a correctly-configured aggressive consumer: the app + demo components
+       stay, while the un-rooted Controls library is trimmed to only what the demos statically reach.
+       Usage: dotnet publish FormTesting/FormTesting/FormTesting.csproj -c Release
+                -p:TrimMode=full -p:WssFullTrimTest=true -->
+  <ItemGroup Condition="'$(WssFullTrimTest)' == 'true'">
+    <TrimmerRootAssembly Include="FormTesting.Client" />
+  </ItemGroup>
+
 </Project>
