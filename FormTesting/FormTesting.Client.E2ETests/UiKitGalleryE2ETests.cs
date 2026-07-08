@@ -114,7 +114,8 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     public async Task Popover_opens_and_anchors_to_trigger()
     {
         await GotoAsync();
-        await _page.Locator(".wss-popover-trigger").ClickAsync();
+        // .First: the swapped-trigger demo section adds a second Popover to the page.
+        await _page.Locator(".wss-popover-trigger").First.ClickAsync();
         var popover = _page.Locator(".wss-popover");
         await Expect(popover).ToBeVisibleAsync();
         await Expect(_page.Locator(".wss-popover-content")).ToContainTextAsync("popover content");
@@ -128,8 +129,9 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
 
         // M7: the consumer's button is the trigger — the popup ARIA is mirrored onto it by JS and
         // the wrapper span carries no button semantics (it used to nest a button inside role="button").
-        var wrapper = _page.Locator(".wss-popover-trigger");
-        var button = _page.Locator(".wss-popover-trigger button");
+        // .First: the swapped-trigger demo section adds a second Popover to the page.
+        var wrapper = _page.Locator(".wss-popover-trigger").First;
+        var button = _page.Locator(".wss-popover-trigger button").First;
         await Expect(button).ToHaveAttributeAsync("aria-haspopup", "dialog");
         await Expect(button).ToHaveAttributeAsync("aria-expanded", "false");
         Assert.Null(await wrapper.GetAttributeAsync("role"));
@@ -154,7 +156,8 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     public async Task Popconfirm_anchors_to_trigger_then_confirms()
     {
         await GotoAsync();
-        await _page.Locator(".wss-popconfirm-trigger").ClickAsync();
+        // .First: the swapped-trigger demo section adds a second (disabled) Popconfirm to the page.
+        await _page.Locator(".wss-popconfirm-trigger").First.ClickAsync();
         var pop = _page.Locator(".wss-popconfirm");
         await Expect(pop).ToBeVisibleAsync();
 
@@ -282,7 +285,8 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         // is fully within the viewport (Ratio = 1 ⇒ no part overflows the edge).
         await Expect(panel).ToBeInViewportAsync(new() { Ratio = 1 });
 
-        var t = await _page.Locator(triggerSelector).BoundingBoxAsync();
+        // .First: trigger selectors can match the swapped-trigger demo section's second instance too.
+        var t = await _page.Locator(triggerSelector).First.BoundingBoxAsync();
         var p = await panel.BoundingBoxAsync();
         Assert.NotNull(t);
         Assert.NotNull(p);
