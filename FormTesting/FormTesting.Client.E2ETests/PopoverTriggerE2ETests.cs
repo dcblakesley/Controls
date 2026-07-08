@@ -93,4 +93,70 @@ public class PopoverTriggerE2ETests : IAsyncLifetime
         await Expect(button).ToHaveAttributeAsync("aria-disabled", "true");
         Assert.Null(await button.GetAttributeAsync("aria-haspopup"));
     }
+
+    // The two module-level tests below drive syncTrigger directly against injected DOM (the demo
+    // can't easily express a consumer-owned aria-disabled or an attached-survivor target swap).
+    // Same real module the components load, served from the app origin.
+
+    [Fact]
+    public async Task Enabling_after_disabled_preserves_a_consumer_owned_aria_disabled()
+    {
+        await GotoAsync();
+
+        // L16: the consumer manages aria-disabled themselves (their own busy state). The component's
+        // Disabled round trip (true -> false) must not remove it — only an aria-disabled the module
+        // itself set may be removed on re-enable.
+        var result = await _page.EvaluateAsync<string[]>(
+            """
+            async () => {
+                const mod = await import('/_content/WssBlazorControls/wss-overlay.js');
+                const make = (attr) => {
+                    const el = document.createElement('span');
+                    const btn = document.createElement('button');
+                    if (attr) btn.setAttribute('aria-disabled', attr);
+                    el.appendChild(btn);
+                    document.body.appendChild(el);
+                    mod.syncTrigger(el, false, true);   // component disabled
+                    mod.syncTrigger(el, false, false);  // component re-enabled
+                    const v = btn.getAttribute('aria-disabled');
+                    el.remove();
+                    return v === null ? '(absent)' : v;
+                };
+                return [make('true'), make(null)];
+            }
+            """);
+
+        Assert.Equal("true", result[0]);     // consumer's own value survives the round trip
+        Assert.Equal("(absent)", result[1]); // ours is set while disabled and removed on re-enable
+    }
+
+    [Fact]
+    public async Task Popup_aria_is_stripped_from_a_previous_target_that_stays_in_the_dom()
+    {
+        await GotoAsync();
+
+        // L17: a new focusable element inserted before the current trigger takes over as the resolved
+        // target; the old element remains attached and must not keep announcing the popup.
+        var result = await _page.EvaluateAsync<string[]>(
+            """
+            async () => {
+                const mod = await import('/_content/WssBlazorControls/wss-overlay.js');
+                const el = document.createElement('span');
+                const oldBtn = document.createElement('button');
+                el.appendChild(oldBtn);
+                document.body.appendChild(el);
+                mod.syncTrigger(el, false, false);      // oldBtn is the target, gets the popup ARIA
+                const newBtn = document.createElement('button');
+                el.insertBefore(newBtn, oldBtn);        // newBtn now resolves first; oldBtn stays attached
+                mod.syncTrigger(el, true, false);       // (open, disabled) changed -> re-applies
+                const read = (b) => `${b.getAttribute('aria-haspopup') ?? '-'}|${b.getAttribute('aria-expanded') ?? '-'}`;
+                const r = [read(newBtn), read(oldBtn)];
+                el.remove();
+                return r;
+            }
+            """);
+
+        Assert.Equal("dialog|true", result[0]); // the new first-match carries the popup ARIA
+        Assert.Equal("-|-", result[1]);         // the survivor was cleaned, not left lying
+    }
 }

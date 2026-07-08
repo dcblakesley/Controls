@@ -171,6 +171,22 @@ function applyTrigger(el, open, disabled) {
     const target = child || el;
     const fallback = !child;
 
+    // The resolved target can change identity while the old element stays in the DOM (a focusable
+    // element inserted before the current trigger, or the current one losing its href/tabindex
+    // match). Strip the popup ARIA — and any aria-disabled we set — off the previous target so two
+    // elements never announce the popup at once. (The common @if-swap detaches the old node, which
+    // needs no cleanup; this covers the attached-survivor case.)
+    const prev = el.__wssPrevTarget;
+    if (prev && prev !== target) {
+        prev.removeAttribute('aria-haspopup');
+        prev.removeAttribute('aria-expanded');
+        if (prev.__wssAriaDisabledByWss) {
+            prev.removeAttribute('aria-disabled');
+            prev.__wssAriaDisabledByWss = false;
+        }
+    }
+    el.__wssPrevTarget = target;
+
     if (fallback) {
         // No focusable content — promote the wrapper itself to the button role.
         el.setAttribute('role', 'button');
@@ -191,9 +207,11 @@ function applyTrigger(el, open, disabled) {
     if (disabled) {
         target.removeAttribute('aria-haspopup');
         target.removeAttribute('aria-expanded');
-        if (!fallback) {
-            // Mark an interactive child inert (the wrapper's own click is guarded in C#). Track that
-            // we set it, so re-enabling only removes our attribute, never a consumer's own.
+        if (!fallback && !target.hasAttribute('aria-disabled')) {
+            // Mark an interactive child inert (the wrapper's own click is guarded in C#). Set — and
+            // flag as ours — only when the attribute is absent: if the consumer already manages
+            // aria-disabled on this element, re-enabling must leave their value untouched. (Once we
+            // set it, later passes see our own attribute and the flag stays latched — correct.)
             target.setAttribute('aria-disabled', 'true');
             target.__wssAriaDisabledByWss = true;
         }
