@@ -14,7 +14,9 @@
           @onclick="Toggle" @onkeydown="OnTriggerKeyDown" @onkeydown:stopPropagation="@_open">@ChildContent</span>
     @if (_open)
     {
-        <div class="wss-popover-backdrop" @onclick="Close"></div>
+        @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap on a focusable/
+           interactive target chain — without it a backdrop tap never reaches @onclick on touch. *@
+        <div class="wss-popover-backdrop" tabindex="-1" @onclick="Close"></div>
         <div class="wss-popover wss-popover-@(_resolvedPlacement ?? PlacementName) @(_positioned ? null : "wss-measuring")"
              @ref="_panelRef" role="dialog" tabindex="-1"
              aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"

@@ -388,4 +388,30 @@ public class UiKitDialogControlsTests : TestContext
         cut.Find(".wss-popconfirm-trigger").Click();
         Assert.Empty(cut.FindAll(".wss-popconfirm"));        // disabled → never opens
     }
+
+    [Fact]
+    public void Overlay_masks_and_backdrops_carry_tabindex_for_touch_click_synthesis()
+    {
+        // iOS-class WebKit only synthesizes a click from a tap when the target chain contains a
+        // focusable/interactive element. These masks/backdrops are plain divs whose whole job is
+        // an @onclick — without tabindex="-1" tap-outside-to-close is dead on touch devices.
+        var modal = RenderComponent<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
+        Assert.Equal("-1", modal.Find(".wss-modal-wrap").GetAttribute("tabindex"));
+
+        var drawer = RenderComponent<Drawer>(p => p.Add(d => d.Visible, true).Add(d => d.Title, "T"));
+        Assert.Equal("-1", drawer.Find(".wss-drawer-mask").GetAttribute("tabindex"));
+
+        var popover = RenderComponent<Popover>(p => p
+            .Add(pv => pv.Title, "Info")
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<button>?</button>"));
+        popover.Find(".wss-popover-trigger").Click();
+        Assert.Equal("-1", popover.Find(".wss-popover-backdrop").GetAttribute("tabindex"));
+
+        var popconfirm = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .AddChildContent("<button>del</button>"));
+        popconfirm.Find(".wss-popconfirm-trigger").Click();
+        Assert.Equal("-1", popconfirm.Find(".wss-popconfirm-backdrop").GetAttribute("tabindex"));
+    }
 }

@@ -94,6 +94,9 @@
     font-size: var(--wss-font-size);
     line-height: var(--wss-line-height);
     cursor: pointer;
+    /* The wrapper is tabindex="-1" (iOS tap-to-click synthesis), so a click can focus it — the
+       focused look is owned by the C#-driven .wss-select-focused class, not a UA ring. */
+    outline: none;
 }
 
 .wss-select * {
@@ -346,6 +349,15 @@
     opacity: 1;
 }
 
+/* Touch devices have no hover and only gain :focus-within once the dropdown is open, so the
+   clear affordance would be invisible until then — show it whenever it renders (it only renders
+   when there is a value to clear). */
+@media (hover: none) {
+    .wss-select:not(.wss-select-disabled) .wss-select-clear {
+        opacity: 1;
+    }
+}
+
 .wss-select-clear:hover {
     color: var(--wss-color-text-secondary);
 }
@@ -356,6 +368,10 @@
     position: fixed;
     inset: 0;
     z-index: 1040;
+    /* cursor:pointer doubles as real-iOS Safari's clickable-element heuristic for synthesizing
+       click from tap on the delegated listener; outline:none because the div is tabindex="-1". */
+    cursor: pointer;
+    outline: none;
 }
 
 /* While open, the selector box itself must sit above its own full-screen backdrop — otherwise
@@ -636,6 +652,9 @@
     position: fixed;
     inset: 0;
     z-index: 1029;
+    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" backdrop. */
+    cursor: pointer;
+    outline: none;
 }
 
 .wss-popover {
@@ -845,6 +864,10 @@
     justify-content: center;
     padding: 100px 16px 16px;
     overflow: auto;
+    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" mask. The panel
+       below resets to auto so only the mask area shows the pointer. */
+    cursor: pointer;
+    outline: none;
     background: var(--wss-color-mask);
 }
 
@@ -855,6 +878,7 @@
     background: var(--wss-color-bg);
     border-radius: var(--wss-radius);
     box-shadow: var(--wss-shadow);
+    cursor: auto;
 }
 
 .wss-modal-header {
@@ -916,6 +940,9 @@
     position: absolute;
     inset: 0;
     background: var(--wss-color-mask);
+    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" mask. */
+    cursor: pointer;
+    outline: none;
 }
 
 .wss-drawer {
@@ -1020,6 +1047,9 @@
     position: fixed;
     inset: 0;
     z-index: 1029;
+    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" backdrop. */
+    cursor: pointer;
+    outline: none;
 }
 
 .wss-popconfirm {

@@ -1,13 +1,16 @@
 @namespace Controls
 @typeparam TValue
 
-@* Backdrop: closes the dropdown on any outside click without needing JS interop. *@
+@* Backdrop: closes the dropdown on any outside click without needing JS interop.
+   tabindex="-1" (here and on the wrapper below): iOS-class WebKit only synthesizes a click from a
+   tap when the target chain contains a focusable/interactive element — a plain div/span gets touch
+   and pointer events but never the click that drives @onclick. -1 keeps both out of the Tab order. *@
 @if (_open)
 {
-    <div class="wss-select-backdrop" @onclick="CloseAsync"></div>
+    <div class="wss-select-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
 }
 
-<div class="@WrapperClass" style="@WidthStyle" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation>
+<div class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation>
 
     <div class="wss-select-selector">
 

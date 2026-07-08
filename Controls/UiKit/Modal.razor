@@ -4,7 +4,10 @@
 
 @if (Visible)
 {
-    <div class="wss-modal-wrap" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
+    @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap on a focusable/interactive
+       target chain, so without it a mask tap never reaches @onclick (mask-close dead on touch). The
+       JS focus trap preventDefaults outside mousedown, so the wrap can't actually steal focus. *@
+    <div class="wss-modal-wrap" tabindex="-1" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
         <div class="wss-modal" style="width:@Width" role="dialog" aria-modal="true"
              aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel ?? "Dialog")" tabindex="-1"
              @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="true"

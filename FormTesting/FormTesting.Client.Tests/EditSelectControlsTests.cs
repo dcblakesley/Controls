@@ -241,4 +241,31 @@ public class EditSelectControlsTests : TestContext
         Assert.Equal(2, model.Picks.Count);
         Assert.Empty(editContext.GetValidationMessages(fi)); // requirement met -> no lingering error
     }
+
+    [Fact]
+    public void Select_wrapper_and_backdrop_carry_tabindex_for_touch_click_synthesis()
+    {
+        // iOS-class WebKit only synthesizes a click from a tap when the target chain contains a
+        // focusable element. The single-mode tap usually lands on the selected-value span, so
+        // without tabindex="-1" on the wrapper the select never opens on touch — and without it
+        // on the backdrop, tap-outside never closes it.
+        JSInterop.Mode = Bunit.JSRuntimeMode.Loose;
+        var model = new PersonModel { Priority = Priority.Medium };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectSearch<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(4, "Options", PriorityOptions());
+            b.CloseComponent();
+        }));
+
+        var wrapper = cut.Find(".wss-select");
+        Assert.Equal("-1", wrapper.GetAttribute("tabindex"));
+
+        wrapper.Click(); // open, so the backdrop renders
+        Assert.Equal("-1", cut.Find(".wss-select-backdrop").GetAttribute("tabindex"));
+    }
 }
