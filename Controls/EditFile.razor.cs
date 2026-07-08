@@ -42,6 +42,26 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// </summary>
     [Parameter] public long MaxTotalBytes { get; set; } = 100L * 1024 * 1024;
 
+    // Localizable upload-error messages (string.Format under CurrentCulture, defaults keep today's
+    // exact English output — same pattern as the Pagination/Select label parameters). The {n}
+    // arguments are documented per parameter; pluralizing formats also receive a pre-pluralized
+    // English unit ("file"/"files") as their last argument, which localized formats simply ignore.
+
+    /// <summary> Rejected-extension message. {0} = file name, {1} = comma-joined accepted extensions.</summary>
+    [Parameter] public string UnsupportedFormatMessageFormat { get; set; } = "{0}: unsupported format. Accepted: {1}.";
+
+    /// <summary> Per-file size-cap message. {0} = file name, {1} = formatted size limit (e.g. "10 MB").</summary>
+    [Parameter] public string FileTooLargeMessageFormat { get; set; } = "{0} exceeds the {1} limit.";
+
+    /// <summary> Per-file read-failure message. {0} = file name.</summary>
+    [Parameter] public string FileReadFailedMessageFormat { get; set; } = "{0} could not be read.";
+
+    /// <summary> Count-cap message. {0} = MaxFiles, {1} = number skipped, {2} = "file"/"files" (English plural of {0} — ignore when localizing).</summary>
+    [Parameter] public string MaxFilesMessageFormat { get; set; } = "Only {0} {2} allowed — {1} not added.";
+
+    /// <summary> Aggregate size-cap message. {0} = formatted total limit (e.g. "100 MB"), {1} = number skipped, {2} = "file"/"files" (English plural of {1} — ignore when localizing).</summary>
+    [Parameter] public string TotalSizeMessageFormat { get; set; } = "Total size limit of {0} reached — {1} {2} not added.";
+
     [Inject] IJSRuntime JS { get; set; } = default!;
 
     readonly List<string> _uploadErrors = [];
@@ -98,13 +118,15 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
             if (AllowedExtensions.Length > 0 &&
                 !AllowedExtensions.Any(x => x.Equals(ext, StringComparison.OrdinalIgnoreCase)))
             {
-                _uploadErrors.Add($"{file.Name}: unsupported format. Accepted: {string.Join(", ", AllowedExtensions)}.");
+                _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
+                    UnsupportedFormatMessageFormat, file.Name, string.Join(", ", AllowedExtensions)));
                 continue;
             }
 
             if (file.Size > MaxFileSizeBytes)
             {
-                _uploadErrors.Add($"{file.Name} exceeds the {FormatSize(MaxFileSizeBytes)} limit.");
+                _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
+                    FileTooLargeMessageFormat, file.Name, FormatSize(MaxFileSizeBytes)));
                 continue;
             }
 
@@ -131,17 +153,20 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
             }
             catch (Exception) // one unreadable file (I/O, disconnected circuit, size race) mustn't nuke the batch
             {
-                _uploadErrors.Add($"{file.Name} could not be read.");
+                _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
+                    FileReadFailedMessageFormat, file.Name));
             }
         }
 
         // Files silently dropped by the count cap looked like a bug — say so.
         if (skippedByCap > 0)
-            _uploadErrors.Add($"Only {MaxFiles} file{(MaxFiles == 1 ? "" : "s")} allowed — {skippedByCap} not added.");
+            _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
+                MaxFilesMessageFormat, MaxFiles, skippedByCap, MaxFiles == 1 ? "file" : "files"));
 
         // Same voice as the count cap: one aggregate line for everything the total-size cap turned away.
         if (skippedByTotalCap > 0)
-            _uploadErrors.Add($"Total size limit of {FormatSize(MaxTotalBytes)} reached — {skippedByTotalCap} file{(skippedByTotalCap == 1 ? "" : "s")} not added.");
+            _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
+                TotalSizeMessageFormat, FormatSize(MaxTotalBytes), skippedByTotalCap, skippedByTotalCap == 1 ? "file" : "files"));
 
         if (toAdd.Count > 0)
         {

@@ -122,6 +122,39 @@ public class EditFileTests : TestContext
     static InputFileContent FileOfBytes(int n, string name) => InputFileContent.CreateFromText(new string('x', n), name);
 
     [Fact]
+    public void Upload_error_message_formats_are_localizable()
+    {
+        // The default English strings are pinned by the surrounding tests; this pins the override
+        // path: consumer-supplied formats replace the built-ins, including a plural-handling format
+        // that ignores the pre-pluralized English unit argument.
+        var model = new FileModel { Files = [] };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(3, "MaxFiles", 1);
+            b.AddAttribute(4, "AllowedExtensions", new[] { ".txt" });
+            b.AddAttribute(5, "MaxFilesMessageFormat", "Maximal {0} Dateien erlaubt — {1} nicht hinzugefügt.");
+            b.AddAttribute(6, "UnsupportedFormatMessageFormat", "{0}: Format nicht unterstützt ({1}).");
+            b.CloseComponent();
+        }));
+
+        // Batch 1: extension rejection (the count cap runs first, so keep this batch under it).
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "b.csv"));
+        Assert.Contains("b.csv: Format nicht unterstützt (.txt).",
+            cut.Find(".edit-validation-message").TextContent);
+
+        // Batch 2: one accepted, one over the count cap.
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("2", "a.txt"),
+            InputFileContent.CreateFromText("3", "c.txt"));
+        Assert.Contains("Maximal 1 Dateien erlaubt — 1 nicht hinzugefügt.",
+            cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
     public void Files_within_the_per_file_cap_but_over_the_total_cap_stop_buffering_at_the_cap()
     {
         // M12: each file passes MaxFileSizeBytes (4 KB) individually, but the aggregate cap (2 KB) admits

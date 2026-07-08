@@ -790,9 +790,13 @@ on this dev box, before → after the round-5 fixes:
   `PreviousPageLabel`/`NextPageLabel`/`PageLabelFormat`; Select engine `RemoveItemLabelFormat`/
   `ClearSelectionLabel`/`ClearSelectionsLabel`/`ListboxLabel`, forwarded through the
   `EditSelectSearch`/`EditMultiSelect` wrappers. bUnit covers defaults + overrides.
-- **☐ Open ⚖ — `EditFile` upload error sentences** ("Only N files allowed — …", size/total-cap
-  messages) are still English-only: localizing them well changes the error-reporting API shape
-  (format strings vs message factory). Needs Dave's call on the API before code.
+- **☑ `EditFile` upload error sentences** — closed post-release-prep (Dave chose the L22
+  format-string pattern): five `*MessageFormat` parameters (`UnsupportedFormat`, `FileTooLarge`,
+  `FileReadFailed`, `MaxFiles`, `TotalSize`), `string.Format` under `CurrentCulture`, defaults
+  byte-identical to the old interpolations; the two pluralizing formats also receive a
+  pre-pluralized English unit argument that localized formats ignore. Override path pinned by
+  `Upload_error_message_formats_are_localizable`; the defaults were already pinned by the
+  surrounding EditFile tests.
 
 ## Globalization/RTL: verified non-defects (traced clean, don't re-flag)
 
@@ -872,3 +876,17 @@ d9ac942). Numbering continues.
 **Final state:** 401 bUnit × net8/9/10, 81/81 Playwright E2E (baselines intact), build
 warning-clean. **Released as 10.4.0** (version bump + changelog in the release-prep commit;
 `dotnet nuget push` remains the human step).
+
+## Post-round-6 closeout (same day, folded into 10.4.0 before push)
+
+- **EditFile message localization** landed (see the checked-off L22 item above) — the last code
+  item from any round; packages repacked so `./nupkg` matches HEAD.
+- **NU5104 decision (final, Dave):** the Demo package's dependency on the prerelease
+  `Microsoft.AspNetCore.Components.DataAnnotations.Validation 3.2.0-rc1` **stays as-is** — it is
+  deliberate (`ObjectGraphDataAnnotationsValidator` showcase; consumed transitively by
+  FormTesting.Client's `[ValidateComplexType]` models), the main package correctly excludes it,
+  and both suppression and swapping were rejected. The pack-time NU5104 warning is accepted and
+  expected; do not re-flag or "fix" it.
+- **Remaining across all rounds** (non-code or needs hardware): demo-page mobile overflow
+  (deferred until mobile e2e profiles matter); real-device iOS confirmation of the touch fixes;
+  the NuGet push itself.
