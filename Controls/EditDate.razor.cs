@@ -1,7 +1,9 @@
 namespace Controls;
 
 /// <summary> Edit control for date and date/time values, displays as a date input with customizable format.</summary>
-public partial class EditDate<T> : EditControlBase<T>
+// T is annotated 'All' because TryParseValueFromString feeds it to BindConverter.TryConvertTo<T>,
+// which declares that requirement for its TypeConverter fallback (mirrors the framework's InputDate<T>).
+public partial class EditDate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T> : EditControlBase<T>
 {
     // Component-specific parameters
 

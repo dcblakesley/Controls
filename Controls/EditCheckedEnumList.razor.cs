@@ -54,7 +54,7 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
 
     List<TEnum> BuildOptions()
     {
-        var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
+        var enumValues = EnumHelpers.GetValues<TEnum>(_underlyingType);
 
         // Sort by the same display name the UI shows so sort order matches what the user sees.
         // EnumHelpers.GetName caches its lookup, so this stays cheap on subsequent renders.

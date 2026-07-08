@@ -14,9 +14,13 @@ public class PropertyColumn<TItem, TProp> : Column<TItem>
 
     static bool ComputeComparable()
     {
+        // Statically-known interface checks only — the previous MakeGenericType probe was flagged
+        // RequiresDynamicCode (IL3050) under AOT. The one shape this no longer detects is a
+        // Nullable<T> whose T implements IComparable<T> but not non-generic IComparable (every BCL
+        // comparable implements both); such a column degrades to non-sortable, and SortBy still works.
         var type = Nullable.GetUnderlyingType(typeof(TProp)) ?? typeof(TProp);
         return typeof(IComparable).IsAssignableFrom(type)
-            || typeof(IComparable<>).MakeGenericType(type).IsAssignableFrom(type);
+            || typeof(IComparable<TProp>).IsAssignableFrom(typeof(TProp));
     }
 
     [Parameter] public Func<TItem, TProp>? Property { get; set; }

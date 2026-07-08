@@ -1,7 +1,9 @@
 namespace Controls;
 
 /// <summary> Edit control for numeric values, displays as a number input. Supports custom formatting and step values.</summary>
-public partial class EditNumber<T> : EditControlBase<T>
+// T is annotated 'All' because TryParseValueFromString feeds it to BindConverter.TryConvertTo<T>,
+// which declares that requirement for its TypeConverter fallback (mirrors the framework's InputNumber<T>).
+public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T> : EditControlBase<T>
 {
     // Component-specific parameters
 

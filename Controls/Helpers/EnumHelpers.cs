@@ -27,7 +27,10 @@ public static class EnumHelpers
         return _displayNameCache.GetOrAdd((type, memberName), key =>
         {
             var (t, name) = key;
-            var fi = t.GetField(name);
+            // IsEnum gate keeps the reflection trim-safe: ILLink preserves every field of an enum
+            // type it keeps (enum ToString/Parse depend on them), so GetField can't come back null
+            // for a live enum member. A non-enum object skips the lookup and gets the name split.
+            var fi = t.IsEnum ? GetEnumField(t, name) : null;
             if (fi != null)
             {
                 var enumDisplayName = fi.GetCustomAttribute<EnumDisplayNameAttribute>();
@@ -46,6 +49,26 @@ public static class EnumHelpers
             return string.Concat(name.Select(c => char.IsUpper(c) ? " " + c : c.ToString())).TrimStart(' ');
         });
     }
+
+    // Trimming (IL2070): callers only reach this behind an IsEnum check, and ILLink keeps all
+    // fields of preserved enum types, so the lookup target always survives trimming.
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "Only called with enum types; ILLink preserves enum fields on kept enum types.")]
+    static FieldInfo? GetEnumField(Type enumType, string name) => enumType.GetField(name);
+
+    /// <summary>
+    /// AOT-safe replacement for <c>Enum.GetValues(Type).Cast&lt;T&gt;()</c>: works when only the
+    /// non-nullable underlying <see cref="Type"/> is known at runtime (the enum controls accept a
+    /// nullable <typeparamref name="T"/>). <see cref="Enum.GetValuesAsUnderlyingType(Type)"/> avoids
+    /// the <c>RequiresDynamicCode</c> array creation in <c>Enum.GetValues(Type)</c>, and
+    /// <see cref="Enum.ToObject(Type, object)"/> re-boxes each value as the enum type, which unboxes
+    /// cleanly to both <c>TEnum</c> and <c>TEnum?</c>.
+    /// </summary>
+    public static List<T> GetValues<T>(Type underlyingType) =>
+        Enum.GetValuesAsUnderlyingType(underlyingType)
+            .Cast<object>()
+            .Select(v => (T)Enum.ToObject(underlyingType, v))
+            .ToList();
 
     // Cache the sanitized ids — ToId is called 2-3x per option per render in the enum/string
     // checkbox/radio/select loops, and the regex + intermediate string would otherwise run every time.

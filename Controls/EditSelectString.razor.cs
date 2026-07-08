@@ -1,7 +1,9 @@
 namespace Controls;
 
 /// <summary> Select a string from Options (List of strings)</summary>
-public partial class EditSelectString<TValue> : EditControlBase<TValue>
+// TValue is annotated 'All' because parsing goes through SelectParsing.TryParseStringOrConvert →
+// BindConverter.TryConvertTo<TValue> (mirrors the framework's InputSelect<TValue>).
+public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : EditControlBase<TValue>
 {
     // Component-specific parameters
 

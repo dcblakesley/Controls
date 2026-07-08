@@ -1,7 +1,9 @@
 namespace Controls;
 
 /// <summary> Edit control for selecting an enum value using radio buttons. Supports sorting and an optional "Other" option with text input.</summary>
-public partial class EditRadioEnum<TEnum> : EditControlBase<TEnum?>
+// TEnum is annotated 'All' because the markup renders InputRadioGroup<TEnum?>/InputRadio<TEnum?>,
+// whose TValue declares that requirement.
+public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEnum> : EditControlBase<TEnum?>
 {
     // Component-specific parameters
     /// <summary>
@@ -75,7 +77,7 @@ public partial class EditRadioEnum<TEnum> : EditControlBase<TEnum?>
 
     List<TEnum?> BuildOptions()
     {
-        var enumValues = Enum.GetValues(_underlyingType).Cast<TEnum>().ToList();
+        var enumValues = EnumHelpers.GetValues<TEnum>(_underlyingType);
 
         // If HasOtherOption is true, remove the last enum value to add it back later
         TEnum? otherOption = default;

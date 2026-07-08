@@ -33,6 +33,14 @@
     <!-- Catches API surface drift between the three TFMs at pack time. -->
     <EnablePackageValidation>true</EnablePackageValidation>
 
+    <!-- Trimming / WASM AOT support. IsAotCompatible turns on IsTrimmable (the assembly-level
+         [AssemblyMetadata("IsTrimmable","True")] that lets a consumer's trimmed publish actually trim
+         this library) plus the trim/AOT/single-file Roslyn analyzers. With TreatWarningsAsErrors
+         above, any new IL2xxx/IL3xxx regression fails the build. The reflection the library does
+         (attribute reads via Field expressions, enum member lookups) is annotated or provably
+         rooted — see EnumHelpers/FieldValidationDisplay for the reasoning. -->
+    <IsAotCompatible>true</IsAotCompatible>
+
     <!-- Package Metadata -->
     <PackageDescription>A comprehensive library of form controls for Blazor applications, providing consistent, feature-rich input components with built-in validation, accessibility support, and flexible styling options.</PackageDescription>
     <PackageProjectUrl>https://github.com/dcblakesley/Controls</PackageProjectUrl>

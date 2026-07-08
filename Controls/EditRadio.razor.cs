@@ -11,7 +11,7 @@ namespace Controls;
 /// <c>EditRadioEnum</c> and <c>EditRadioString</c> render their own <c>&lt;input type="radio"&gt;</c>
 /// markup and never see <c>InputRadio</c> children, so they inherit <c>EditControlBase</c> normally.
 /// </remarks>
-public partial class EditRadio<TValue> : InputRadioGroup<TValue>, IEditControl
+public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : InputRadioGroup<TValue>, IEditControl
 {
     // Cascading parameters
     [CascadingParameter] public FormOptions? FormOptions { get; set; }

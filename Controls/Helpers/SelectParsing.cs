@@ -22,7 +22,7 @@ public static class SelectParsing
     /// value otherwise — instead of storing <c>""</c> (so a <c>string?</c> can return to null) or feeding
     /// <c>""</c> to <see cref="BindConverter"/> for a non-string type (which would fail with "not valid").
     /// </summary>
-    public static bool TryParseStringOrConvert<TValue>(string? value, string fieldName, out TValue result, out string validationErrorMessage)
+    public static bool TryParseStringOrConvert<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue>(string? value, string fieldName, out TValue result, out string validationErrorMessage)
     {
         if (string.IsNullOrEmpty(value))
         {

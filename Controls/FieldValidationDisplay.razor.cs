@@ -39,11 +39,20 @@ public partial class FieldValidationDisplay
         _label = Label ?? Attributes.GetLabelText(FieldIdentifier);
         _valueType = _valueTypeCache.GetOrAdd(
             (FieldIdentifier.Model.GetType(), FieldIdentifier.FieldName),
-            static key => key.Item1.GetProperty(key.Item2)?.PropertyType?.ToString() ?? string.Empty);
+            static key => GetPropertyTypeName(key.Item1, key.Item2));
         // Field registration with FormOptions.FieldIdentifiers moved to EditControlBase.InitState
         // (and the list/radio equivalents) so it runs once per control regardless of whether
         // this validation display is conditionally rendered.
     }
+
+    // Trimming (IL2070): the bound property is statically referenced by the consumer's Field lambda
+    // (the expression tree ldtokens the getter), so ILLink keeps the accessor and with it the property
+    // row — GetProperty finds it in a trimmed app. If a trimmer ever did drop it, the fallback is
+    // graceful: _valueType goes empty and the min/max message rewrite uses the list wording.
+    [UnconditionalSuppressMessage("Trimming", "IL2070",
+        Justification = "The property's getter is rooted by the consumer's Field expression; worst case is a degraded validation message, not a failure.")]
+    static string GetPropertyTypeName(Type modelType, string fieldName) =>
+        modelType.GetProperty(fieldName)?.PropertyType?.ToString() ?? string.Empty;
 
     // Per-form FormOptions → per-tree FormDefaults (Effective* walks nested instances per property)
     // → process-wide static. DefaultShowFieldNameInValidation is a *static* member: in `FormOptions.X`

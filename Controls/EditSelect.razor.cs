@@ -5,7 +5,9 @@ namespace Controls;
 /// If you want an Enum to back the select, use <see cref="EditSelectEnum{TValue}"/> instead. <br/>
 /// If you want to use a list of strings to back the select, use <see cref="EditSelectString{TValue}"/> instead.
 /// </summary>
-public partial class EditSelect<TValue> : EditControlBase<TValue>
+// TValue is annotated 'All' because parsing goes through SelectParsing.TryParseStringOrConvert →
+// BindConverter.TryConvertTo<TValue> (mirrors the framework's InputSelect<TValue>).
+public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : EditControlBase<TValue>
 {
     // Component-specific parameters
 
