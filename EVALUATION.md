@@ -545,3 +545,119 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
 3. **M12, L10, L15 (⚖)** — need Dave's call on API shape/defaults before code.
 4. **M10, L14** — trigger-contract polish; decide alongside M9's rework since they touch the same
    branch of `syncTrigger`.
+
+---
+
+# Evaluation — Round 4: Post-Round-3 Review
+
+**Date:** 2026-07-07 · **Scope reviewed:** `163d1eb..66c8710` — everything landed after the round-3
+docs commit: the round-3 fix batch as it actually landed (`bc067d8..163d1eb` re-read in place), the
+trim/AOT work (29930bc, 0a7eaa4, 4ac261a), the touch/tooltip fixes (a35e083, 4e1501c), and the new
+`FormOptions.RequiredResolver` + three-state `IsRequired` feature (66c8710).
+**Baseline at review time:** green — 384 bUnit tests × net8/net9/net10, 79/79 Playwright E2E,
+visual baselines intact.
+
+Method: four adversarial lenses run sequentially (regression-hunt on the round-3 fixes; trim/AOT
+annotation soundness; touch/tooltip side-effect trace; RequiredResolver deep read), every claim
+verified against current `master` before recording. Numbering continues from round 3. No fixes
+applied yet — this section is the findings tracker.
+
+## Medium
+
+### ☐ M14 — M13 is a half-fix: `EditSelect<DateTimeOffset>` still can't match any authored option value; `DateTime`/`TimeOnly` match only one authored form
+- **Where:** `Controls/Helpers/SelectParsing.cs` `FormatInvariant` date arms (from d62c9f3) —
+  `DateTimeOffset` formats with `"O"`; `DateTime` with `"s"`; `TimeOnly` with `HH:mm:ss`.
+- **Failure:** `"O"` for `DateTimeOffset` always emits seven fractional digits
+  (`2026-06-15T00:00:00.0000000+02:00`). No hand-authored ISO option value
+  (`<option value="2026-06-15T00:00:00+02:00">`) ever equals that string, so the visual selection
+  is lost immediately after picking — the exact desync M13 set out to fix, still fully present for
+  this type. Lesser variants: a `DateTime` bound against a date-only authored value
+  (`value="2026-06-15"`, which the parse side happily accepts) mismatches `"s"`'s
+  `2026-06-15T00:00:00`; a `TimeOnly` authored as `"13:30"` mismatches `13:30:00`. The parse side
+  accepts all these shorter forms, so the model updates while the display snaps back — the
+  asymmetry is the trap. README changelog (~line 483) overclaims: "format to the ISO forms option
+  values are authored in" is true only for `DateOnly`.
+- **Fix direction:** emit the shortest round-trippable form — for `DateTimeOffset` format
+  `yyyy-MM-ddTHH:mm:ssK` when sub-second is zero (fall back to `"O"` otherwise); document the one
+  canonical authored form per type in the README (and fix the changelog claim). A bUnit case per
+  type asserting the formatted value equals the naturally-authored literal.
+
+## Low
+
+### ☐ L16 — L14's `aria-disabled` tracking still clobbers a consumer's own `aria-disabled` (the exact case the tracking exists for)
+- **Where:** `Controls/wwwroot/wss-overlay.js` `applyTrigger` disabled branch (from bc067d8):
+  `target.setAttribute('aria-disabled', 'true'); target.__wssAriaDisabledByWss = true;` — the flag
+  is set without checking whether the attribute already existed.
+- **Failure:** consumer keeps their own `aria-disabled="true"` on the trigger child (their busy
+  state); the component's `Disabled` goes `true` → `false`. On the false transition the flag says
+  "we set it" and removes the attribute — the consumer's own state is wiped. The bc067d8 commit
+  message and the code comment both claim "a consumer's own aria-disabled is left alone"; that
+  holds only when the component was never disabled.
+- **Fix direction:** set the flag only when `!target.hasAttribute('aria-disabled')` at set time
+  (one-line guard). bUnit can't see JS; e2e or accept-as-is given the narrow trigger contract.
+
+### ☐ L17 — `applyTrigger` never cleans popup ARIA off a *previous* child target that stays in the DOM
+- **Where:** `Controls/wwwroot/wss-overlay.js` `applyTrigger` (from bc067d8) — resolves
+  `querySelector(WSS_TRIGGER_SELECTOR)` fresh each call but tracks no previous target; only the
+  *wrapper's* promotion is reverted.
+- **Failure:** the resolved trigger changes identity while the old element remains attached — a new
+  focusable element inserted before the current trigger, or the current one losing its `href`/
+  `tabindex` match — and the old element keeps `aria-haspopup`/`aria-expanded` (and possibly the
+  L16 `aria-disabled` + flag) indefinitely: two elements announce popup semantics, one is a lie.
+  Narrow: the documented contract is a single interactive child, and the common `@if`-swap detaches
+  the old node (which is why M9's fix is otherwise correct).
+- **Fix direction:** remember `el.__wssPrevTarget`; when the resolved target differs, strip
+  `aria-haspopup`/`aria-expanded`/our `aria-disabled` from the previous one before applying to the
+  new one.
+
+### ☐ L18 — Checkbox-list fieldsets carry `aria-required`/`aria-invalid`/`aria-errormessage` on `role="group"`, where ARIA 1.2 doesn't support them **⚖ decision**
+- **Where:** `Controls/EditCheckedStringList.razor:9-12` / `EditCheckedEnumList.razor` fieldset —
+  added by 2ed6416 (round-2 batch; predates this round's window but never recorded, and it silently
+  reversed the recorded f77ab9e decision that checkbox-list groups deliberately get *no*
+  `aria-required` precisely because `group` doesn't support it).
+- **Failure:** ARIA 1.2 lists `aria-required`/`aria-invalid`/`aria-errormessage` as supported on
+  `radiogroup` (the radio fieldsets are correct) but not on `group`. Screen readers generally
+  ignore unsupported attributes (so the practical harm is silence, not wrong announcements), and
+  static checkers (axe `aria-allowed-attr`) may flag every required checkbox list as a violation in
+  consumer audits.
+- **Options:** (a) drop the three attributes from the checkbox fieldsets — required/invalid state
+  stays on the legend star, the per-checkbox `aria-invalid`, and the visible message (the f77ab9e
+  position); (b) keep them knowingly and record the reversal as deliberate here. Either way the
+  decision should be on the record; it currently isn't.
+
+## What was checked and came back clean
+
+- **RequiredResolver / three-state IsRequired (66c8710):** precedence (`IsRequired` param →
+  `[Required]` → resolver) implemented once in `EditControlInit.IsRequired` and consumed
+  identically by all three bases' `aria-required` and FormLabel's star (same cascade, same inputs —
+  the star/aria disagreement class is structurally closed); resolver null-Model-guarded for
+  standalone FormLabel; recompute wired into both `InitState` and `OnParametersSet` in all three
+  bases; both source-breaking surfaces (`bool?` on `IEditControl`, the `Init` tuple shape)
+  documented in the README changelog; tests pin the force-off override.
+- **Trim/AOT (29930bc, 0a7eaa4):** both IL2070 suppression justifications hold (ILLink fully
+  preserves fields of marked enum types; the Field-expression rooting argument has a graceful
+  fallback either way); `GetValuesAsUnderlyingType`+`ToObject` preserves `Enum.GetValues` ordering
+  and duplicate semantics; the `ComputeComparable` rewrite's lost corner (Nullable of a
+  generic-only-`IComparable<T>` type) degrades to non-sortable exactly as documented; the trim-test
+  root is opt-in-conditional and the e2e fixture's default path is byte-identical.
+- **Touch/tooltip (a35e083, 4e1501c):** the trap's capture-phase mousedown `preventDefault`
+  genuinely prevents mask focus (and doesn't suppress the synthesized tap-click); Select refocuses
+  its input on open so wrapper focus is transient; hover and focus both flip the tooltip's
+  `aria-hidden` in C# so the `[aria-hidden="true"]` CSS gate doesn't kill mouse reveals (the
+  pre-hydration trade-off is documented in the commit); both `::before` hit areas have a
+  `position:relative` anchor.
+- **Round-3 fixes:** z-index dual-write agreement (L13) sound including the 0-guard and both close
+  paths; `GetJsModuleAsync` covers both dispose interleavings, as do the Modal/Drawer post-import
+  re-checks (L12); `MaxTotalBytes` counts only successfully-buffered bytes and screens allocations
+  per-file first (M12); owner-set registration handles the shared-binding dispose and the
+  model-swap re-registration, and both `FormDefaults` consumers use the chained `Effective*`
+  accessors (L11/L15); Popover/Popconfirm sync-skip caches only on success and Popconfirm's pair
+  correctly includes `Disabled` (M11).
+- **Concrete verification:** 384 bUnit × net8/9/10 and 79/79 Playwright E2E green on current
+  `master` before review start.
+
+## Suggested order of work (round 4)
+
+1. **M14** — mechanical, obvious tests; fix the changelog line in the same commit.
+2. **L16 + L17 together** — same function; L16 is a one-line guard, L17 a small prev-target field.
+3. **L18 (⚖)** — needs Dave's call: drop the attributes or record the reversal as deliberate.
