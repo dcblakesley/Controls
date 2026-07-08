@@ -61,6 +61,19 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     List<TValue>? _labelValue;
     IEnumerable<SelectOption<TValue>>? _labelOptions;
 
+    // value -> label, rebuilt only when the Options *reference* changes. Every selection toggle
+    // produces a NEW Value list, so joining via Options.FirstOrDefault per selected value made each
+    // click O(selected × options); with the lookup the join is O(selected). TryAdd keeps the FIRST
+    // option for a duplicate value (preserving the old FirstOrDefault semantics), and the label is
+    // stored verbatim (possibly null) so a matched-but-unlabelled option still falls back to the
+    // value's ToString exactly as before. Null option values are filtered on insert and a null
+    // selected value bypasses the lookup (v?.ToString() ?? "" — the old null-miss result), so the
+    // dictionary never sees a null key — suppress the notnull-constraint warning to keep TValue
+    // unconstrained (e.g. nullable-enum options), same pattern as the Select engine's _lookup.
+#pragma warning disable CS8714
+    Dictionary<TValue, string?> _labelLookup = new();
+#pragma warning restore CS8714
+
     string SelectedLabels => _selectedLabels;
 
     protected override void OnParametersSet()
@@ -74,12 +87,23 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
 
         base.OnParametersSet();
         if (ReferenceEquals(Value, _labelValue) && ReferenceEquals(Options, _labelOptions)) return;
+        if (!ReferenceEquals(Options, _labelOptions))
+        {
+#pragma warning disable CS8714
+            _labelLookup = new Dictionary<TValue, string?>();
+#pragma warning restore CS8714
+            foreach (var o in Options ?? [])
+            {
+                if (o.Value is not null)
+                    _labelLookup.TryAdd(o.Value, o.Label);
+            }
+        }
         _labelValue = Value;
         _labelOptions = Options;
         _selectedLabels = string.Join(", ", (Value ?? new List<TValue>())
-            .Select(v => Options?.FirstOrDefault(o => EqualityComparer<TValue>.Default.Equals(o.Value, v))?.Label
-                         ?? v?.ToString()
-                         ?? string.Empty));
+            .Select(v => v is not null && _labelLookup.TryGetValue(v, out var label)
+                ? label ?? v.ToString() ?? string.Empty
+                : v?.ToString() ?? string.Empty));
     }
 
     async Task OnValuesChanged(IEnumerable<TValue> values)

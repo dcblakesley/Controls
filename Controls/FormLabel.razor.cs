@@ -57,8 +57,43 @@ public partial class FormLabel
     bool IsStarHidden =>
         FormOptions?.IsRequiredStarHidden ?? FormDefaults?.EffectiveIsRequiredStarHidden ?? FormOptions.DefaultIsRequiredStarHidden;
 
+    // Last-seen inputs for the OnParametersSet guard below. Every validation-state change re-renders
+    // every InputBase-derived control in the form, which re-parameterizes this label — and the
+    // List<Attribute>/FieldIdentifier parameters defeat Blazor's change skip, so OnParametersSet
+    // re-ran in full (label derivation, attribute scans, RequiredResolver) on every keystroke in
+    // ANY field. Skip the recompute unless an input it reads actually changed.
+    bool _inputsSeen;
+    string? _lastLabelParam;
+    string? _lastDescriptionParam;
+    List<Attribute>? _lastAttributes;
+    FieldIdentifier _lastFieldIdentifier;
+    bool? _lastIsRequiredParam;
+    FormOptions? _lastFormOptions;
+
     protected override void OnParametersSet()
     {
+        // Inputs compared: everything the recompute below reads. IsStarHidden is a live property
+        // evaluated per render (and FormDefaults feeds only it), so neither needs to invalidate here.
+        // Behavior note (matches the documented FormOptions.RequiredResolver contract — "controls
+        // consult it on init and on parameter changes, not on every keystroke"): a resolver whose
+        // ANSWER changes for the same field is re-consulted only when a real parameter changes. A
+        // consumer needing a live re-evaluation toggles IsRequired or cascades a new FormOptions.
+        if (_inputsSeen
+            && Label == _lastLabelParam
+            && Description == _lastDescriptionParam
+            && ReferenceEquals(Attributes, _lastAttributes)
+            && FieldIdentifier.Equals(_lastFieldIdentifier)
+            && IsRequired == _lastIsRequiredParam
+            && ReferenceEquals(FormOptions, _lastFormOptions))
+            return;
+        _inputsSeen = true;
+        _lastLabelParam = Label;
+        _lastDescriptionParam = Description;
+        _lastAttributes = Attributes;
+        _lastFieldIdentifier = FieldIdentifier;
+        _lastIsRequiredParam = IsRequired;
+        _lastFormOptions = FormOptions;
+
         // Attributes can be null when FormLabel is used outside the Edit* controls (EditDisplay supplies
         // no attribute list). Fall back to the explicit Label/Description rather than dropping them, and
         // never call GetLabelText with the default FieldIdentifier (its FieldName would be null).

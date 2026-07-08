@@ -25,11 +25,33 @@ public partial class FieldValidationDisplay
     string _label = string.Empty;
     string? _valueType;
 
+    // Last-seen inputs for the OnParametersSet guard below (same rationale as FormLabel: the
+    // List/FieldIdentifier parameters defeat Blazor's change skip, so every validation-state
+    // re-render otherwise re-ran the attribute scans + label derivation for every control).
+    bool _inputsSeen;
+    string? _lastLabelParam;
+    List<Attribute>? _lastAttributes;
+    FieldIdentifier _lastFieldIdentifier;
+
     // Recomputed on parameter change (not just init): a dynamic Label must be reflected in the
     // rewritten messages ("Old Label is required" was frozen forever), and the list controls
     // re-derive their FieldIdentifier when the model/EditContext is swapped.
     protected override void OnParametersSet()
     {
+        // Inputs compared: everything the recompute below reads — Label, Attributes (reference),
+        // FieldIdentifier (its Model reference pins the model type for the _valueTypeCache key).
+        // EditContext, FormOptions, and FormDefaults are read live in the razor/properties, so a
+        // change to them re-renders correctly without invalidating this derived state.
+        if (_inputsSeen
+            && Label == _lastLabelParam
+            && ReferenceEquals(Attributes, _lastAttributes)
+            && FieldIdentifier.Equals(_lastFieldIdentifier))
+            return;
+        _inputsSeen = true;
+        _lastLabelParam = Label;
+        _lastAttributes = Attributes;
+        _lastFieldIdentifier = FieldIdentifier;
+
         var minAndMax = AttributesHelper.GetMinAndMaxLengths(Attributes);
         _minCharacters = minAndMax.MinLength;
         _maxCharacters = minAndMax.MaxLength;
