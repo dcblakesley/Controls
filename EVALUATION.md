@@ -356,7 +356,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
 
 ## Medium
 
-### ☐ M9 — `syncTrigger` latches the trigger child on first sight; a replaced or late-arriving child permanently breaks the M7 trigger contract
+### ☑ M9 — `syncTrigger` latches the trigger child on first sight; a replaced or late-arriving child permanently breaks the M7 trigger contract
 - **Where:** `Controls/wwwroot/wss-overlay.js:87-104` (`el.__wssTrigger` memoized once); consumed
   every render by `Controls/UiKit/Popover.razor:90` / `Popconfirm.razor:115`.
 - **Failure (child replaced):** trigger content like
@@ -374,7 +374,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   keydown-listener wiring latched; demote the wrapper (remove role/tabindex, gate the listener on
   `fallback`) when a focusable child appears, re-promote when it disappears.
 
-### ☐ M10 — Focusable-but-not-clickable trigger child gets popup ARIA with no keyboard activation path (deferred Space item survives M7 here)
+### ☑ M10 — Focusable-but-not-clickable trigger child gets popup ARIA with no keyboard activation path (deferred Space item survives M7 here)
 - **Where:** `Controls/wwwroot/wss-overlay.js:90` (selector includes `input, select, textarea,
   a[href], [tabindex]`); keyboard-click synthesis exists only in the no-focusable fallback branch
   (:92-102); the C# trigger keydown is Escape-only (`Popover.razor:70-73`, deliberate — avoids
@@ -390,7 +390,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   non-button targets, or narrow the selector to natively-activatable elements and let everything
   else take the promoted-wrapper path; document "prefer a `<button>` child" either way.
 
-### ☐ M11 — `syncTrigger` interop fires on every render of every Popover/Popconfirm instance
+### ☑ M11 — `syncTrigger` interop fires on every render of every Popover/Popconfirm instance
 - **Where:** `Controls/UiKit/Popover.razor:84-92` / `Popconfirm.razor:108-117` — unconditional
   awaited `InvokeVoidAsync("syncTrigger", …)` in `OnAfterRenderAsync` (was `firstRender`-guarded
   `initTrigger` before M7). `RenderFragment` parameters defeat Blazor's change-skip, so every
@@ -405,7 +405,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   e.g. sync on transitions + whenever `ChildContent` re-renders isn't detectable, so transitions
   + a MutationObserver-free "re-resolve on each actual call" is still fine.
 
-### ☐ M12 — `EditFile` default configuration allows unbounded server-side memory buffering **⚖ decision**
+### ☑ M12 — `EditFile` default configuration allows unbounded server-side memory buffering **⚖ decision**
 - **Where:** `Controls/EditFile.razor.cs:35` (`MaxFiles = 0` = unlimited), `:72`
   (`GetMultipleFiles(e.FileCount)` deliberately lifts the framework's 10-file guard), `:103-108`
   (every accepted file eagerly buffered, up to `MaxFileSizeBytes` = 10 MB each — a consequence of
@@ -420,7 +420,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   (b) an aggregate `MaxTotalBytes` cap (new param, sane default, enforced in the accept loop with
   the same error-reporting shape as the count cap); (c) document-only. Decide before code.
 
-### ☐ M13 — `FormatInvariant` doesn't round-trip date-typed values against authored option values
+### ☑ M13 — `FormatInvariant` doesn't round-trip date-typed values against authored option values
 - **Where:** `Controls/Helpers/SelectParsing.cs:70` — `f.ToString(null, InvariantCulture)` emits
   the invariant *display* format for date types (`DateTime` → `"06/15/2026 00:00:00"`, `DateOnly` →
   `"06/15/2026"`), while the parse side (`:44`, `BindConverter`) accepts ISO.
@@ -435,7 +435,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
 
 ## Low
 
-### ☐ L10 — `EditSelectString<int>` blank suppression re-opens the "first option displays selected while the model holds default" mismatch **⚖ decision**
+### ☑ L10 — `EditSelectString<int>` blank suppression re-opens the "first option displays selected while the model holds default" mismatch **⚖ decision**
 - **Where:** `Controls/EditSelectString.razor:21-33` — the L5 auto-suppression (`ShowNullOption`
   false for non-nullable value types) removes the blank that used to absorb the browser's fallback
   selection.
@@ -450,7 +450,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   ("give non-nullable selects a sentinel first option or a matching default"); (c) revert
   suppression for the unmatched-value case only.
 
-### ☐ L11 — `UnregisterField` isn't ref-counted, breaking the duplicate-registration case `RegisterField` explicitly supports
+### ☑ L11 — `UnregisterField` isn't ref-counted, breaking the duplicate-registration case `RegisterField` explicitly supports
 - **Where:** `Controls/FormOptions.cs:22-37` — `RegisterField` dedups because "two controls bound
   to the same property" is a supported pattern (its own doc comment); the L2 `Dispose`/swap
   unregister (`EditControlListBase.cs`) removes the single shared entry unconditionally.
@@ -462,7 +462,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   only remove when no other live registrant — plus a regression test with two controls sharing a
   field where one is disposed.
 
-### ☐ L12 — `_module ??= import` race with `DisposeAsync` leaks the module reference in five components (Table has the fix; M1 covered the handle, not the module)
+### ☑ L12 — `_module ??= import` race with `DisposeAsync` leaks the module reference in five components (Table has the fix; M1 covered the handle, not the module)
 - **Where:** `Controls/UiKit/Modal.razor:132` + `DisposeAsync` (`:165-173`), `Drawer.razor` (same
   shape), `Popover.razor:89,98` + `:129-136`, `Popconfirm.razor` (same shape),
   `Select/Select.razor.cs` (three import sites). `Table.razor:403-410` already re-checks
@@ -475,7 +475,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   module) in all five; Modal/Drawer already have `_disposed` flags from M1, Popover/Popconfirm/
   Select need one.
 
-### ☐ L13 — Select wrapper z-index (JS-written) is clobbered by the Blazor-bound `style` on a `Width` change while open
+### ☑ L13 — Select wrapper z-index (JS-written) is clobbered by the Blazor-bound `style` on a `Width` change while open
 - **Where:** `Controls/Select/Select.razor:10` (`style="@WidthStyle"` — Blazor-bound) vs
   `Controls/wwwroot/wss-select.js:44` (`wrapper.style.zIndex = z + 1`) — the exact
   attribute-clobber class the overlay panel was fixed for (place() comment, wss-overlay.js:66-69);
@@ -488,7 +488,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
 - **Fix direction:** move the open z-index into C#-owned state (append to `WidthStyle` while open,
   value passed back from `placeDropdown`), or write a CSS variable on a non-Blazor-bound ancestor.
 
-### ☐ L14 — Disabled Popconfirm with an interactive child leaves a live-looking, tabbable, silently-inert button
+### ☑ L14 — Disabled Popconfirm with an interactive child leaves a live-looking, tabbable, silently-inert button
 - **Where:** `Controls/wwwroot/wss-overlay.js:114-116` — the disabled branch only strips
   `aria-haspopup`/`aria-expanded` from an interactive child; only the fallback (promoted-wrapper)
   branch gets `aria-disabled="true"` + `tabIndex=-1`. `Popconfirm.razor:73` guards `Toggle`.
@@ -500,7 +500,7 @@ Numbering continues from round 2. No fixes applied yet — this section is the f
   remove it when re-enabled), or document that consumers must disable their own trigger element
   alongside `Disabled`.
 
-### ☐ L15 — Nested `FormDefaults` don't chain: an inner instance fully shadows an outer one **⚖ decision**
+### ☑ L15 — Nested `FormDefaults` don't chain: an inner instance fully shadows an outer one **⚖ decision**
 - **Where:** `Controls/FormDefaults.razor(.cs)` + resolution at `FormLabel.razor.cs:57` /
   `FieldValidationDisplay.razor.cs:52` — the nearest cascaded `FormDefaults` wins whole-hog; an
   unset inner property falls through to the process-wide static, not the outer `FormDefaults`.
