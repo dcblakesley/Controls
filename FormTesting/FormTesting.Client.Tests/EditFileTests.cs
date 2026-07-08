@@ -31,7 +31,8 @@ public class EditFileTests : TestContext
         int maxFiles = 0,
         bool isDisabled = false,
         long maxFileSizeBytes = 0,
-        string[]? allowedExtensions = null)
+        string[]? allowedExtensions = null,
+        long? maxTotalBytes = null)   // nullable so a test can pass 0 explicitly (0 = unlimited) vs. leave the 100 MB default
     {
         Expression<Func<List<IBrowserFile>>> field = () => model.Files;
         return Render(WithForm(model, b =>
@@ -49,6 +50,8 @@ public class EditFileTests : TestContext
                 b.AddAttribute(6, "MaxFileSizeBytes", maxFileSizeBytes);
             if (allowedExtensions is not null)
                 b.AddAttribute(7, "AllowedExtensions", allowedExtensions);
+            if (maxTotalBytes is not null)
+                b.AddAttribute(8, "MaxTotalBytes", maxTotalBytes.Value);
             b.CloseComponent();
         }));
     }
@@ -113,6 +116,69 @@ public class EditFileTests : TestContext
         Assert.NotNull(changed);
         Assert.Single(changed);
         Assert.Contains("Only 1 file allowed — 1 not added.", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    // A text file of exactly n bytes ('x' is one byte in UTF-8), for driving the byte-size caps precisely.
+    static InputFileContent FileOfBytes(int n, string name) => InputFileContent.CreateFromText(new string('x', n), name);
+
+    [Fact]
+    public void Files_within_the_per_file_cap_but_over_the_total_cap_stop_buffering_at_the_cap()
+    {
+        // M12: each file passes MaxFileSizeBytes (4 KB) individually, but the aggregate cap (2 KB) admits
+        // only the first two 1 KB files; the third would push the running total to 3 KB and is skipped.
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, maxFileSizeBytes: 4096, maxTotalBytes: 2048);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            FileOfBytes(1024, "a.txt"),
+            FileOfBytes(1024, "b.txt"),
+            FileOfBytes(1024, "c.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(2, changed.Count);   // only up to the cap got buffered
+        var message = cut.Find(".edit-validation-message").TextContent;
+        Assert.Contains("Total size limit", message);
+        Assert.Contains("1 file not added", message);
+    }
+
+    [Fact]
+    public void MaxTotalBytes_zero_disables_the_aggregate_cap()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, maxTotalBytes: 0);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            FileOfBytes(1024, "a.txt"),
+            FileOfBytes(1024, "b.txt"),
+            FileOfBytes(1024, "c.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(3, changed.Count);   // 0 = unlimited, so nothing is turned away
+        // The upload-error block is the only role="alert" (FieldValidationDisplay renders always-present,
+        // empty .edit-validation-message divs), so its absence means no cap message was produced.
+        Assert.Empty(cut.FindAll("div.edit-validation-message[role='alert']"));
+    }
+
+    [Fact]
+    public void The_total_cap_counts_already_selected_files_from_earlier_batches()
+    {
+        // The cap must include the bytes already buffered: batch 1 fills 1 KB of a 2 KB budget, so batch 2
+        // can add only one more 1 KB file — the second exceeds the total ONLY because of batch 1.
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => { changed = v; model.Files = v; }, maxFileSizeBytes: 4096, maxTotalBytes: 2048);
+
+        cut.FindComponent<InputFile>().UploadFiles(FileOfBytes(1024, "a.txt"));                       // batch 1: total now 1 KB
+        cut.FindComponent<InputFile>().UploadFiles(FileOfBytes(1024, "b.txt"), FileOfBytes(1024, "c.txt")); // batch 2
+
+        Assert.NotNull(changed);
+        Assert.Equal(2, changed.Count);                       // a.txt + b.txt; c.txt turned away by the running total
+        Assert.Equal(["a.txt", "b.txt"], changed.Select(f => f.Name));
+        var message = cut.Find(".edit-validation-message").TextContent;
+        Assert.Contains("Total size limit", message);
+        Assert.Contains("1 file not added", message);
     }
 
     [Fact]

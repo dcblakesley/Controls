@@ -13,9 +13,10 @@ namespace Controls;
 /// <c>IBrowserFile</c> from an earlier batch throws on <c>OpenReadStream</c>. Because the bytes are
 /// already in memory, consumers may call <c>file.OpenReadStream()</c> with no size argument (the
 /// framework's 500&#160;KB default doesn't apply to a buffered file). The trade-off: selected files
-/// occupy memory — bounded by <see cref="MaxFileSizeBytes"/> × file count — from pick time until the
-/// list is cleared; on Blazor Server the bytes cross the SignalR circuit at selection. Set
-/// <see cref="MaxFileSizeBytes"/> and <see cref="MaxFiles"/> to bound that footprint.
+/// occupy memory from pick time until the list is cleared; on Blazor Server the bytes cross the
+/// SignalR circuit at selection. The aggregate footprint is bounded by <see cref="MaxTotalBytes"/>
+/// (default 100&#160;MB across all selected files), with <see cref="MaxFileSizeBytes"/> and
+/// <see cref="MaxFiles"/> bounding the per-file size and the file count.
 /// </remarks>
 public partial class EditFile : EditControlListBase<IBrowserFile>
 {
@@ -33,6 +34,13 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     /// <summary> Maximum number of files that may be selected. 0 = unlimited.</summary>
     [Parameter] public int MaxFiles { get; set; } = 0;
+
+    /// <summary>
+    /// Maximum total bytes across all selected files (existing plus newly picked). Defaults to 100 MB.
+    /// 0 = unlimited. Enforced before each file is buffered, so it bounds the aggregate in-memory
+    /// footprint even when every individual file passes <see cref="MaxFileSizeBytes"/>.
+    /// </summary>
+    [Parameter] public long MaxTotalBytes { get; set; } = 100L * 1024 * 1024;
 
     [Inject] IJSRuntime JS { get; set; } = default!;
 
@@ -72,6 +80,11 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         var incoming = e.GetMultipleFiles(e.FileCount);
         var toAdd = new List<IBrowserFile>();
         var skippedByCap = 0;
+        var skippedByTotalCap = 0;
+        // Running total of accepted bytes: the already-buffered files plus everything accepted so far this
+        // batch. Checked before buffering each file so the aggregate in-memory footprint stays bounded even
+        // when every file individually passes MaxFileSizeBytes (a 300-photo drop otherwise buffers unbounded).
+        var runningTotal = Value?.Sum(f => f.Size) ?? 0;
 
         foreach (var file in incoming)
         {
@@ -95,6 +108,14 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
                 continue;
             }
 
+            // Aggregate cap: skip (don't buffer) an otherwise-valid file that would push the total over
+            // MaxTotalBytes. Counted like the count cap and reported once after the loop.
+            if (MaxTotalBytes > 0 && runningTotal + file.Size > MaxTotalBytes)
+            {
+                skippedByTotalCap++;
+                continue;
+            }
+
             // Buffer the bytes NOW, while the file is still readable. Blazor wipes the browser file map
             // on the next change event and the <InputFile> unmounts once MaxFiles is reached — either
             // makes a stored framework IBrowserFile throw on OpenReadStream. A buffered copy survives
@@ -106,6 +127,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
                 await using var stream = file.OpenReadStream(MaxFileSizeBytes);
                 await stream.ReadExactlyAsync(bytes);
                 toAdd.Add(new BufferedBrowserFile(file, bytes));
+                runningTotal += file.Size; // only count bytes that actually got buffered
             }
             catch (Exception) // one unreadable file (I/O, disconnected circuit, size race) mustn't nuke the batch
             {
@@ -116,6 +138,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         // Files silently dropped by the count cap looked like a bug — say so.
         if (skippedByCap > 0)
             _uploadErrors.Add($"Only {MaxFiles} file{(MaxFiles == 1 ? "" : "s")} allowed — {skippedByCap} not added.");
+
+        // Same voice as the count cap: one aggregate line for everything the total-size cap turned away.
+        if (skippedByTotalCap > 0)
+            _uploadErrors.Add($"Total size limit of {FormatSize(MaxTotalBytes)} reached — {skippedByTotalCap} file{(skippedByTotalCap == 1 ? "" : "s")} not added.");
 
         if (toAdd.Count > 0)
         {
