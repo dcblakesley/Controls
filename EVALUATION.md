@@ -680,3 +680,130 @@ applied yet — this section is the findings tracker.
 1. **M14** — mechanical, obvious tests; fix the changelog line in the same commit.
 2. **L16 + L17 together** — same function; L16 is a one-line guard, L17 a small prev-target field.
 3. **L18 (⚖)** — needs Dave's call: drop the attributes or record the reversal as deliberate.
+
+---
+
+# Evaluation — Round 5: Trim Verification, Globalization/RTL, Performance
+
+**Date:** 2026-07-07 · **Scope:** the three analyses never previously run — (1) a full E2E run
+against a `TrimMode=full` publish, (2) a globalization + RTL sweep (a lens never covered in any
+round), (3) a measured performance pass (static hot-path analysis by one agent, then real
+browser measurements before/after the fixes). All findings below were hand-verified against the
+code before fixing; **everything except the two recorded decision items was fixed the same day**
+(commits e472d56..dec0165). Numbering continues from round 4.
+
+## Analysis 1 — Trimmed-publish verification: CLEAN
+
+`dotnet publish -p:TrimMode=full -p:WssFullTrimTest=true` + the full 81-test Playwright suite
+against the published output (all of rounds 3–4 included): **81/81 green, visual baselines
+intact.** No findings; the trim-safety story holds end-to-end, not just under analyzers.
+
+## Analysis 3 — Measured performance (methodology + honest numbers)
+
+Technique: a temporary `/perfprobe` page (5,000-row unpaged selectable/sortable Table + sibling
+input) and a temporary Playwright probe measuring native-event dispatch time (Blazor WASM handles
+the event + re-render synchronously during dispatch) — both deleted after; numbers are Chromium
+on this dev box, before → after the round-5 fixes:
+
+- **Form keystroke (17-control demo form):** 13 ms median, **0 DOM mutations outside the typed
+  control** → 12.5 ms. Healthy either way; the M16 win is contractual (see below), not latency.
+- **5,000-row unpaged table, keystroke in a sibling input:** 128.6 → 126.1 ms median. The guard
+  fixes (M15/L19) removed the avoidable O(rows) work — proven by the RowKey-counting bUnit test —
+  but the dominant cost is Blazor **re-executing and diffing the 5,000-row fragment**, which no
+  parameter guard can avoid (`ChildContent` defeats render skipping). Consumer guidance: at that
+  scale use `PageSize` or the server-side paging composition; sort/select-all clicks
+  (~190–420 ms) are likewise render-dominated.
+- **EditSelectSearch with 1,000 options:** 20 option nodes in the DOM (virtualization confirmed
+  working), ~sub-frame per-keystroke filter cost.
+- **Verified non-defects (agent-checked, don't re-derive):** Table sort correctly cached (runs on
+  header click / DataSource swap / column removal, never per render); paging materialization
+  reference-guarded; `Select` OnParametersSet fully reference-guarded, dropdown genuinely
+  `<Virtualize>`d; toasts snapshot-per-render with per-item CTS, no timer churn; `FormDefaults`
+  and Table's self-cascade are `IsFixed`.
+
+## Medium (all fixed)
+
+### ☑ M15 — `Table` rebuilt page keys over the whole row set on every parent re-render
+- **Where:** `Controls/UiKit/Table.razor` — `RebuildPageItems()` unconditional at the end of
+  `OnParametersSet` (which runs per parent render; `ChildContent` defeats the parameter skip);
+  the method's own comment claimed it was guarded. Unpaged: O(all rows) dictionary ops + one
+  boxing per row per render for a value-type `RowKey`.
+- **Done:** early-return when `(_sorted reference, _page, PageSize)` unchanged — `ApplySort`
+  assigns a fresh list whenever the view can change, so the reference compare covers data + sort
+  (verified including the sort-clear aliasing case). `RowKey` deliberately untracked (inline
+  lambdas are new delegates per render). bUnit pins the contract by counting `RowKey` calls
+  across forced re-renders with unchanged data.
+
+### ☑ M16 — Per-keystroke re-derivation across the form; `RequiredResolver` invoked per control per keystroke against its documented contract
+- **Where:** `FormLabel.razor.cs` / `FieldValidationDisplay.razor.cs` `OnParametersSet` — every
+  validation-state change re-renders every `InputBase` control, re-parameterizing both children
+  (`List<Attribute>`/`FieldIdentifier` defeat the change skip); each re-ran `GetLabelText`
+  (OfType scans + per-char camel split), min/max extraction, and — sharpest — the consumer's
+  `FormOptions.RequiredResolver`, contradicting `FormOptions.cs`'s "not on every keystroke".
+- **Done:** both components skip the recompute unless an input they read changed (Label,
+  Description, Attributes ref, FieldIdentifier, IsRequired, FormOptions ref). Documented edge:
+  a resolver whose *answer* changes for the same field is re-consulted on real parameter changes
+  only — toggle `IsRequired` or cascade a new `FormOptions` for live re-evaluation. Tests prove
+  the resolver stays flat across `NotifyValidationStateChanged` churn while the subtree really
+  re-renders, and that label/star still update when inputs genuinely change.
+- **Residual (noted, not fixed):** `LabelTooltip.razor` still runs `Attributes.Tooltip()` (one
+  OfType scan) up to twice per render on the same churn path — smaller than everything fixed
+  here; fold into any future pass on that file.
+
+### ☑ M17 — RTL: Select tags/search rendered under the arrow and the opaque clear button (B1/B2)
+- **Where:** `wss-controls.css` — arrow/clear anchored at physical `right`, single-mode search
+  inset with physical `left`/`right`, tag/placeholder physical margins. Under `dir="rtl"` the
+  reversed flex row put the FIRST tag beneath the z-indexed opaque clear (clicking the tag's end
+  cleared the whole selection) and typed search text started under the arrow.
+- **Done:** converted the direction-sensitive rules to logical properties (`inset-inline-end`,
+  `padding-inline-end`, `margin-inline-start`, …) — computed-value-identical in LTR, so **zero
+  visual-baseline movement** (confirmed by the full E2E run). Also the required star,
+  invalid-icon overlay (CSS + the inline `padding-right` in EditString/Number/Date/TextArea),
+  option checkmark, tag margins. **Deliberately still physical** (documented in the CSS):
+  notification container position/slide-in, `DrawerPlacement` left/right semantics, Table
+  `text-align: left`, dropdown left anchoring.
+
+## Low (fixed unless marked)
+
+### ☑ L19 — Table `AllSelected`/`SomeSelected` full-page scans up to 3× per render
+- **Done (with M15):** cached flags recomputed by one early-exit pass at each mutation point
+  (real rebuild, ToggleRow, ToggleAll, controlled `SelectedItems` re-sync; the uncontrolled
+  prune path deliberately relies on its guaranteed fresh `_sorted` → real rebuild, documented
+  in-code).
+
+### ☑ L20 — `EditMultiSelect` read-only label join O(selected × options) per selection click
+- **Done:** value→label dictionary rebuilt only on an `Options` reference change (TryAdd =
+  first-match-wins, labels stored verbatim so unlabelled options fall back byte-identically);
+  join now O(selected). Accepted edge (documented): a selected `null` no longer matches a
+  null-valued option's label — the engine's own lookup already excluded those.
+
+### ☑ L21 — `ValidationHelper` Range sentinels frozen at first-touch culture
+- **Where:** static `HashSet` sentinel sets built with culture-sensitive `ToString()` once per
+  process, ordinal-compared against `RangeAttribute` messages formatted under the
+  validation-time culture — a runtime culture switch (or mixed-culture Server process) silently
+  degraded the one-sided "Cannot exceed X" rewrite to the raw between-message.
+- **Done:** sentinels cached per culture name (`ConcurrentDictionary`, bounded by cultures
+  served); regression test primes en-US then asserts the rewrite under de-DE.
+
+### ☑ L22 — Hardcoded English accessibility strings (partially fixed; remainder is a decision)
+- **Done:** additive localization parameters, defaults keep today's exact strings — Pagination
+  `PreviousPageLabel`/`NextPageLabel`/`PageLabelFormat`; Select engine `RemoveItemLabelFormat`/
+  `ClearSelectionLabel`/`ClearSelectionsLabel`/`ListboxLabel`, forwarded through the
+  `EditSelectSearch`/`EditMultiSelect` wrappers. bUnit covers defaults + overrides.
+- **☐ Open ⚖ — `EditFile` upload error sentences** ("Only N files allowed — …", size/total-cap
+  messages) are still English-only: localizing them well changes the error-reporting API shape
+  (format strings vs message factory). Needs Dave's call on the API before code.
+
+## Globalization/RTL: verified non-defects (traced clean, don't re-flag)
+
+`EditNumber`/`EditDate` read-only display correctly CurrentCulture (localized display is right
+there); all attribute/round-trip paths invariant (prior rounds); `EditFile.FormatSize` display-only;
+Select search filter `OrdinalIgnoreCase` + `ToUpperInvariant` type-ahead (no Turkish-I); no
+`$"{double}px"` style interpolation anywhere; JS modules numerically direction- and locale-safe
+(`getBoundingClientRect` physical math consistent with the physical CSS it drives; computed styles
+always serialize px with `.`). Un-mirrored-but-usable physical CSS (notification slide-in, Drawer
+placement names, Table alignment) recorded as deliberate product semantics in `wss-controls.css`.
+
+**Final state:** 400 bUnit × net8/9/10, 81/81 Playwright E2E (baselines intact), build
+warning-clean, trimmed-publish E2E green. Five fix commits (e472d56, d95a5c3, 2626975, dbbf05b,
+dec0165) + docs.
