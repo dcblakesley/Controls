@@ -55,9 +55,6 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
-    /// <summary> Expression that binds to the property in the model.</summary>
-    [Parameter] public required Expression<Func<TValue>> Field { get; set; }
-    
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
@@ -86,7 +83,9 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
 
     protected override void OnInitialized()
     {
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(Field, Id, FormGroupOptions, IdPrefix);
+        var accessor = ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditRadio<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)}).");
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(accessor, Id, FormGroupOptions, IdPrefix);
         // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
         // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);

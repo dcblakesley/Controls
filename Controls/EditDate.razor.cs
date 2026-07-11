@@ -7,9 +7,6 @@ public partial class EditDate<[DynamicallyAccessedMembers(DynamicallyAccessedMem
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the date/datetime property in the model.</summary>
-    [Parameter] public required Expression<Func<T>> Field { get; set; }
-
     /// <summary> Format string for displaying the date in read-only mode. Defaults to "MM-dd-yyyy".</summary>
     [Parameter] public string DateFormat { get; set; } = "MM-dd-yyyy";
 
@@ -22,7 +19,8 @@ public partial class EditDate<[DynamicallyAccessedMembers(DynamicallyAccessedMem
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditDate<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Ported from Microsoft.AspNetCore.Components.Forms.InputDate<T>:

@@ -7,9 +7,6 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the numeric property in the model.</summary>
-    [Parameter] public required Expression<Func<T>> Field { get; set; }
-
     /// <summary> The increment/decrement step for the number input. Defaults to 1.0.</summary>
     [Parameter] public decimal Step { get; set; } = 1.0m;
 
@@ -22,7 +19,8 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditNumber<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Ported from Microsoft.AspNetCore.Components.Forms.InputNumber<T>:

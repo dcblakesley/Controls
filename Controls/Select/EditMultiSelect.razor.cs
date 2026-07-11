@@ -8,9 +8,6 @@ namespace Controls;
 /// </summary>
 public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
 {
-    /// <summary> Expression that binds to the list property in the model.</summary>
-    [Parameter] public required Expression<Func<List<TValue>>> Field { get; set; }
-
     /// <summary> The options to choose from.</summary>
     [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = Array.Empty<SelectOption<TValue>>();
 
@@ -59,7 +56,8 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditMultiSelect<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Read-only view: comma-joined option labels (or the value's ToString when unmatched). Cached

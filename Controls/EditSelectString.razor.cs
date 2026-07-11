@@ -7,9 +7,6 @@ public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAcc
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the property in the model.</summary>
-    [Parameter] public required Expression<Func<TValue>> Field { get; set; }
-
     /// <summary> List of string options to display in the select dropdown.</summary>
     [Parameter] public required List<string> Options { get; set; }
 
@@ -35,7 +32,8 @@ public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAcc
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditSelectString<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Strings pass through; anything else round-trips via BindConverter (shared with EditSelect).

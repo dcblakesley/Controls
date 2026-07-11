@@ -9,10 +9,10 @@ namespace Controls;
 /// </summary>
 /// <typeparam name="TItem">The type of each item in the bound list.</typeparam>
 /// <remarks>
-/// Each derived control declares its own <c>Field</c> parameter (typed
-/// <c>Expression&lt;Func&lt;List&lt;TItem&gt;&gt;&gt;</c> or similar) and calls
-/// <see cref="EditControlBase{TValue}.InitState{T}"/>'s sibling <see cref="InitState{T}"/>
-/// in its <c>OnInitialized</c>.
+/// Declares its own <see cref="ValueExpression"/> parameter (the Razor compiler's <c>@bind-Value</c>
+/// synthesis only needs the Value/ValueChanged/ValueExpression parameter shape — it isn't limited to
+/// <c>InputBase</c>) so derived controls can call <see cref="InitState{T}"/> with it directly instead
+/// of requiring a separate <c>Field</c> expression from the consumer.
 /// </remarks>
 public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, IDisposable
 {
@@ -51,6 +51,12 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     /// <summary> Event callback that fires when the <see cref="Value"/> list changes.</summary>
     [Parameter] public EventCallback<List<TItem>> ValueChanged { get; set; }
 
+    /// <summary>
+    /// Compiler-populated by <c>@bind-Value</c> alongside <see cref="Value"/>/<see cref="ValueChanged"/>
+    /// (same convention <c>InputBase</c> uses) — supplies the accessor <see cref="InitState{T}"/> needs.
+    /// </summary>
+    [Parameter] public Expression<Func<List<TItem>>>? ValueExpression { get; set; }
+
     // Standard derived state — populated by InitState in derived class's OnInitialized.
     protected string _id = string.Empty;
     protected string? _isRequired;
@@ -84,7 +90,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
-    /// from the derived control's <c>Field</c> expression, and registers the field with
+    /// from the derived control's accessor expression (<see cref="ValueExpression"/>), and registers the field with
     /// <see cref="FormOptions.FieldIdentifiers"/> so the validation summary can link to it.
     /// See the matching remarks on <see cref="EditControlBase{TValue}.InitState{T}"/> for why
     /// registration lives here rather than in <c>FieldValidationDisplay</c>.

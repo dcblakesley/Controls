@@ -8,9 +8,6 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the list of enum values property in the model.</summary>
-    [Parameter] public required Expression<Func<List<TEnum>>> Field { get; set; }
-
     /// <summary> If true, the enum values will be sorted by their display names.</summary>
     [Parameter] public bool Sort { get; set; }
 
@@ -29,7 +26,8 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditCheckedEnumList<TEnum>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
 
         // Handle nullable enum types
         _type = typeof(TEnum);

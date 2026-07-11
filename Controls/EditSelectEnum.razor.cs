@@ -4,9 +4,6 @@ namespace Controls;
 public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
 {
     // Component specific parameters
-    /// <summary> Expression that binds to the enum property in the model.</summary>
-    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
-
     /// <summary> When true, sorts the enum options alphabetically by their display name. When false, uses the enum's numeric order.</summary>
     [Parameter] public bool Sort { get; set; }
 
@@ -25,7 +22,8 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditSelectEnum<TEnum>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
 
         // Handle nullable enum types
         _type = typeof(TEnum);

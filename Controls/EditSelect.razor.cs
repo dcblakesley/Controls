@@ -11,9 +11,6 @@ public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedM
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the property in the model.</summary>
-    [Parameter] public required Expression<Func<TValue>> Field { get; set; }
-
     /// <summary> The <c>&lt;option&gt;</c> elements to render inside the select.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
@@ -27,7 +24,8 @@ public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedM
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditSelect<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Strings pass through; enums and other value types round-trip via BindConverter.

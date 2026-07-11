@@ -5,9 +5,6 @@ public partial class EditBool : EditControlBase<bool>
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the boolean property in the model.</summary>
-    [Parameter] public required Expression<Func<bool>> Field { get; set; }
-
     /// <summary> When true, allows the checkbox to receive focus even when disabled. Defaults to true.</summary>
     [Parameter] public bool AllowFocusWhenDisabled { get; set; } = true;
 
@@ -29,7 +26,8 @@ public partial class EditBool : EditControlBase<bool>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditBool)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     protected override void OnParametersSet()

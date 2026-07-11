@@ -6,13 +6,6 @@ namespace Controls;
 public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEnum> : EditControlBase<TEnum?>
 {
     // Component-specific parameters
-    /// <summary>
-    /// Expression that binds to the enum property in the model.
-    /// Field intentionally uses <c>Expression&lt;Func&lt;TEnum&gt;&gt;</c> (non-nullable) even though
-    /// the base binds <c>TEnum?</c> — preserves the existing public API.
-    /// </summary>
-    [Parameter] public required Expression<Func<TEnum>> Field { get; set; }
-
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
@@ -45,7 +38,8 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditRadioEnum<TEnum>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
 
         // Handle nullable enum types
         _type = typeof(TEnum);

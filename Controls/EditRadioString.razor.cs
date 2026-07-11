@@ -5,9 +5,6 @@ public partial class EditRadioString : EditControlBase<string?>
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the string property in the model.</summary>
-    [Parameter] public required Expression<Func<string>> Field { get; set; }
-
     /// <summary> List of string options to display as radio buttons.</summary>
     [Parameter] public required List<string> Options { get; set; }
 
@@ -33,7 +30,8 @@ public partial class EditRadioString : EditControlBase<string?>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditRadioString)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
         ComputeOtherSentinel();
         DeriveSelectionFromValue();
     }

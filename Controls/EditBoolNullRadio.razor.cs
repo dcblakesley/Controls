@@ -4,9 +4,6 @@ namespace Controls;
 public partial class EditBoolNullRadio : EditControlBase<bool?>
 {
     // Component-specific parameters
-    /// <summary> Expression that binds to the nullable boolean property in the model.</summary>
-    [Parameter] public required Expression<Func<bool?>> Field { get; set; }
-
     /// <summary> When true, displays radio buttons horizontally. Defaults to true.</summary>
     [Parameter] public bool IsHorizontal { get; set; } = true;
 
@@ -25,7 +22,8 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditBoolNullRadio)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     void OnValueChanged(bool? value) => CurrentValue = value;

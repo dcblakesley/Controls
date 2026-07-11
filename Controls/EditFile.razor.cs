@@ -20,9 +20,6 @@ namespace Controls;
 /// </remarks>
 public partial class EditFile : EditControlListBase<IBrowserFile>
 {
-    /// <summary> Expression that binds to the List&lt;IBrowserFile&gt; property on the model.</summary>
-    [Parameter] public required Expression<Func<List<IBrowserFile>>> Field { get; set; }
-
     /// <summary> Accepted file extensions, e.g. <c>".pdf"</c>, <c>".xlsx"</c>. Empty = all types accepted.</summary>
     [Parameter] public string[] AllowedExtensions { get; set; } = [];
 
@@ -80,7 +77,8 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditFile)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // "10 MB limit", "500 KB limit" — integer MB division reported "0 MB" for sub-MB caps.

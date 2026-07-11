@@ -5,9 +5,6 @@ public partial class EditCheckedStringList : EditControlListBase<string>
 {
     // Component-specific parameters
 
-    /// <summary> Expression that binds to the list of strings property in the model.</summary>
-    [Parameter] public required Expression<Func<List<string>>> Field { get; set; }
-
     /// <summary> List of string options to display as checkboxes.</summary>
     [Parameter] public List<string> Options { get; set; } = [];
 
@@ -20,6 +17,7 @@ public partial class EditCheckedStringList : EditControlListBase<string>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditCheckedStringList)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 }

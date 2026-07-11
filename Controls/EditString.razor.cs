@@ -10,9 +10,6 @@ public partial class EditString : EditControlBase<string?>
     /// <summary> Placeholder text to display in the input when empty.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
-    /// <summary> Expression that binds to the string property in the model.</summary>
-    [Parameter] public required Expression<Func<string>> Field { get; set; }
-
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
     /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>
     [Parameter] public string? MaskText { get; set; }
@@ -52,7 +49,8 @@ public partial class EditString : EditControlBase<string?>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditString)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Trivial parser — same as Microsoft's InputText: pass the string through.

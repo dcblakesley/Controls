@@ -8,9 +8,6 @@ namespace Controls;
 /// </summary>
 public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
 {
-    /// <summary> Expression that binds to the property in the model.</summary>
-    [Parameter] public required Expression<Func<TValue>> Field { get; set; }
-
     /// <summary> The options to choose from.</summary>
     [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = Array.Empty<SelectOption<TValue>>();
 
@@ -47,7 +44,8 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditSelectSearch<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Label for the read-only view: the matching option's label, else the value's own ToString.

@@ -8,16 +8,14 @@ public partial class EditTextArea : EditControlBase<string?>
     /// <summary> Placeholder text to display in the textarea when empty.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
-    /// <summary> Expression that binds to the string property in the model.</summary>
-    [Parameter] public required Expression<Func<string>> Field { get; set; }
-
     /// <summary> Number of visible text rows in the textarea. Defaults to 2.</summary>
     [Parameter] public int Rows { get; set; } = 2;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(Field);
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{nameof(EditTextArea)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // Trivial parser — same as Microsoft's InputTextArea: pass the string through.
