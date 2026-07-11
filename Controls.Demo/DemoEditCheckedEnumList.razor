@@ -6,36 +6,32 @@
     <ObjectGraphDataAnnotationsValidator />
 
     <section class="demo-section">
-        <EditCheckedEnumList @bind-Value="_model.BasicEnumList"
-                             Field="@(() => _model.BasicEnumList)" />
-        
+        <EditCheckedEnumList @bind-Value="_model.BasicEnumList" />
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
     </section>
 
     <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.BasicEnumList"
-                             Field="@(() => _model.BasicEnumList)"
                              Label="Read-only"
                              IsEditMode="false" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_readOnlyExample</code></pre>
     </section>
 
     <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.SortedEnumList"
-                             Field="@(() => _model.SortedEnumList)"
                              Label="Sorted"
                              Sort="true" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_sortedExample</code></pre>
     </section>
 
     <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.HorizontalLayout"
-                             Field="@(() => _model.HorizontalLayout)"
                              Label="Horizontal Layout"
                              IsHorizontal="true" />
         
@@ -66,7 +62,6 @@
         </style>
 
         <EditCheckedEnumList @bind-Value="_model.CustomStyling"
-                             Field="@(() => _model.CustomStyling)"
                              ContainerClass="my-custom-container"
                              LabelClass="my-custom-checklist" />
         
@@ -79,11 +74,9 @@
 
     <section class="demo-section">
         <EditCheckedEnumList @bind-Value="_model.Disabled"
-                             Field="@(() => _model.Disabled)"
                              IsDisabled="true" />
 
-        <EditCheckedEnumList @bind-Value="_model.Required"
-                             Field="@(() => _model.Required)" />
+        <EditCheckedEnumList @bind-Value="_model.Required" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
@@ -127,26 +120,21 @@
         public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];
     }
 
-    readonly string _basicExample = @"<EditCheckedEnumList @bind-Value=""_model.BasicEnumList""
-                    Field=""@(() => _model.BasicEnumList)"" />";
+    readonly string _basicExample = @"<EditCheckedEnumList @bind-Value=""_model.BasicEnumList"" />";
 
     readonly string _readOnlyExample = @"<EditCheckedEnumList @bind-Value=""_model.BasicEnumList""
-                    Field=""@(() => _model.BasicEnumList)""
                     Label=""Read-only""
                     IsEditMode=""false"" />";
 
     readonly string _sortedExample = @"<EditCheckedEnumList @bind-Value=""_model.SortedEnumList""
-                    Field=""@(() => _model.SortedEnumList)""
                     Label=""Sorted""
                     Sort=""true"" />";
 
     readonly string _horizontalExample = @"<EditCheckedEnumList @bind-Value=""_model.HorizontalLayout""
-                    Field=""@(() => _model.HorizontalLayout)""
                     Label=""Horizontal Layout""
                     IsHorizontal=""true"" />";
 
     readonly string _customStyleExample = @"<EditCheckedEnumList @bind-Value=""_model.CustomStyling""
-                    Field=""@(() => _model.CustomStyling)""
                     ContainerClass=""my-custom-container""
                     LabelClass=""my-custom-checklist"" />";
 
@@ -170,11 +158,9 @@
 }";
 
     readonly string _validationExample = @"<EditCheckedEnumList @bind-Value=""_model.Disabled""
-                    Field=""@(() => _model.Disabled)""
                     IsDisabled=""true"" />
 
-<EditCheckedEnumList @bind-Value=""_model.Required""
-                    Field=""@(() => _model.Required)"" />";
+<EditCheckedEnumList @bind-Value=""_model.Required"" />";
 
     readonly string _validationModel = @"[Required, MinLength(2)]
 public List<Animal> Required { get; set; } = [];

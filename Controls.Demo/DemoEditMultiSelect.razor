@@ -9,13 +9,11 @@
     <section class="demo-section">
         <h3>Multiple (edit + read-only)</h3>
         <EditMultiSelect @bind-Value="_model.Colors"
-                         Field="@(() => _model.Colors)"
                          Options="_colors"
                          Placeholder="Pick colors..."
                          Width="320px" />
 
         <EditMultiSelect @bind-Value="_model.Colors"
-                         Field="@(() => _model.Colors)"
                          Options="_colors"
                          IsEditMode="false"
                          Width="320px" />
@@ -24,7 +22,6 @@
     <section class="demo-section">
         <h3>Tags (free text) with MaxTagCount</h3>
         <EditMultiSelect @bind-Value="_model.Keywords"
-                         Field="@(() => _model.Keywords)"
                          Options="_keywordSuggestions"
                          Mode="SelectMode.Tags"
                          MaxTagCount="3"
@@ -35,7 +32,6 @@
     <section class="demo-section">
         <h3>Required (min 2) validation</h3>
         <EditMultiSelect @bind-Value="_model.RequiredColors"
-                         Field="@(() => _model.RequiredColors)"
                          Options="_colors"
                          Width="320px" />
 
@@ -78,7 +74,6 @@
     }
 
     readonly string _example = @"<EditMultiSelect @bind-Value=""_model.Colors""
-                 Field=""@(() => _model.Colors)""
                  Options=""_colors""
                  Placeholder=""Pick colors..."" />";
 }

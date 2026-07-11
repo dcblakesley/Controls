@@ -7,13 +7,11 @@
 
     <section class="demo-section">
         <EditSelectString @bind-Value="_model.BasicSelect"
-                          Options="_colors"
-                          Field="@(() => _model.BasicSelect)" />      
-        
+                          Options="_colors" />
+
         <EditSelectString @bind-Value="_model.BasicSelect"
                           IsEditMode=false
-                          Options="_colors"
-                          Field="@(() => _model.BasicSelect)" />
+                          Options="_colors" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
@@ -40,8 +38,7 @@
         <EditSelectString @bind-Value="_model.CustomStyling"
                           Options="_colors"
                           ContainerClass="my-custom-container"
-                          class="my-custom-select"
-                          Field="@(() => _model.CustomStyling)"/>
+                          class="my-custom-select"/>
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_customStyleExample</code></pre>
@@ -53,12 +50,10 @@
     <section class="demo-section">
         <EditSelectString @bind-Value="_model.Disabled"
                           Options="_colors"
-                          IsDisabled="true"
-                          Field="@(() => _model.Disabled)"/>
+                          IsDisabled="true"/>
 
         <EditSelectString @bind-Value="_model.Required"
-                          Options="_colors"
-                          Field="@(() => _model.Required)"/>
+                          Options="_colors"/>
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
@@ -90,19 +85,16 @@
     }
 
     readonly string _basicExample = @"<EditSelectString @bind-Value=""_model.BasicSelect""
-                 Options=""_colors""
-                 Field=""@(() => _model.BasicSelect)"" />
+                 Options=""_colors"" />
 
 <EditSelectString @bind-Value=""_model.BasicSelect""
                  IsEditMode=false
-                 Options=""_colors""
-                 Field=""@(() => _model.BasicSelect)"" />";
+                 Options=""_colors"" />";
 
     readonly string _customStyleExample = @"<EditSelectString @bind-Value=""_model.CustomStyling""
                  Options=""_colors""
                  ContainerClass=""my-custom-container""
-                 class=""my-custom-select""
-                 Field=""@(() => _model.CustomStyling)""/>";
+                 class=""my-custom-select""/>";
 
     readonly string _customStyleCss = @".my-custom-container {
     background-color: yellow;
@@ -120,12 +112,10 @@
 
     readonly string _validationExample = @"<EditSelectString @bind-Value=""_model.Disabled""
                  Options=""_colors""
-                 IsDisabled=""true""
-                 Field=""@(() => _model.Disabled)""/>
+                 IsDisabled=""true""/>
 
 <EditSelectString @bind-Value=""_model.Required""
-                 Options=""_colors""
-                 Field=""@(() => _model.Required)""/>";
+                 Options=""_colors""/>";
 
     readonly string _validationModel = @"[Required]
 public string Required { get; set; } = """";

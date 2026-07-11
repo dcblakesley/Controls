@@ -6,9 +6,9 @@
     <ObjectGraphDataAnnotationsValidator/>
 
     <section class="demo-section">
-        <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" />
+        <EditSelectEnum @bind-Value="_model.BasicEnum" />
 
-        <EditSelectEnum @bind-Value="_model.BasicEnum" Field="@(() => _model.BasicEnum)" IsEditMode="false" Label="Read-only" />
+        <EditSelectEnum @bind-Value="_model.BasicEnum" IsEditMode="false" Label="Read-only" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
@@ -32,7 +32,6 @@
         </style>
 
         <EditSelectEnum @bind-Value="_model.CustomClass"
-                        Field="@(() => _model.CustomClass)"
                         ContainerClass="my-custom-container"
                         class="my-custom-select"/>
         
@@ -45,11 +44,9 @@
 
     <section class="demo-section">
         <EditSelectEnum @bind-Value="_model.Disabled"
-                        Field="@(() => _model.Disabled)"
                         IsDisabled="true"/>
 
-        <EditSelectEnum @bind-Value="_model.Required"
-                        Field="@(() => _model.Required)"/>
+        <EditSelectEnum @bind-Value="_model.Required"/>
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
@@ -76,12 +73,11 @@
         public Animal Disabled { get; set; }
     }
 
-    readonly string _basicExample = @"<EditSelectEnum @bind-Value=""_model.BasicEnum"" Field=""@(() => _model.BasicEnum)"" />
+    readonly string _basicExample = @"<EditSelectEnum @bind-Value=""_model.BasicEnum"" />
 
-<EditSelectEnum @bind-Value=""_model.BasicEnum"" Field=""@(() => _model.BasicEnum)"" IsEditMode=""false"" Label=""Read-only"" />";
+<EditSelectEnum @bind-Value=""_model.BasicEnum"" IsEditMode=""false"" Label=""Read-only"" />";
 
     readonly string _customStyleExample = @"<EditSelectEnum @bind-Value=""_model.CustomClass""
-               Field=""@(() => _model.CustomClass)""
                ContainerClass=""my-custom-container""
                class=""my-custom-select""/>";
 
@@ -100,11 +96,9 @@
 }";
 
     readonly string _validationExample = @"<EditSelectEnum @bind-Value=""_model.Disabled""
-               Field=""@(() => _model.Disabled)""
                IsDisabled=""true""/>
 
-<EditSelectEnum @bind-Value=""_model.Required""
-               Field=""@(() => _model.Required)""/>";
+<EditSelectEnum @bind-Value=""_model.Required""/>";
 
     readonly string _validationModel = @"[Required] 
 public Animal Required { get; set; }

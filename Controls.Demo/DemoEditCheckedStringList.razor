@@ -7,8 +7,7 @@
 
     <section class="demo-section">
         <EditCheckedStringList @bind-Value="_model.BasicList"
-                               Options="@_basicItems"
-                               Field="@(() => _model.BasicList)" />
+                               Options="@_basicItems" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
@@ -18,8 +17,7 @@
         <EditCheckedStringList @bind-Value="_model.CustomStyling"
                                Options="@_basicItems"
                                ContainerClass="my-custom-container"
-                               LabelClass="my-custom-checklist"
-                               Field="@(() => _model.CustomStyling)" />
+                               LabelClass="my-custom-checklist" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_customStyleExample</code></pre>
@@ -31,12 +29,10 @@
     <section class="demo-section">
         <EditCheckedStringList @bind-Value="_model.Disabled"
                                Options="@_basicItems"
-                               IsDisabled="true"
-                               Field="@(() => _model.Disabled)" />
+                               IsDisabled="true" />
 
         <EditCheckedStringList @bind-Value="_model.Required"
-                               Options="@_basicItems"
-                               Field="@(() => _model.Required)" />
+                               Options="@_basicItems" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
@@ -79,14 +75,12 @@
     }
 
     readonly string _basicExample = @"<EditCheckedStringList @bind-Value=""_model.BasicList""
-                      Options=""@_basicItems""
-                      Field=""@(() => _model.BasicList)"" />";
+                      Options=""@_basicItems"" />";
 
     readonly string _customStyleExample = @"<EditCheckedStringList @bind-Value=""_model.CustomStyling""
                       Options=""@_basicItems""
                       ContainerClass=""my-custom-container""
-                      LabelClass=""my-custom-checklist""
-                      Field=""@(() => _model.CustomStyling)"" />";
+                      LabelClass=""my-custom-checklist"" />";
 
     readonly string _customStyleCss = @".my-custom-container {
     background-color: teal;
@@ -108,12 +102,10 @@
 
     readonly string _validationExample = @"<EditCheckedStringList @bind-Value=""_model.Disabled""
                       Options=""@_basicItems""
-                      IsDisabled=""true""
-                      Field=""@(() => _model.Disabled)"" />
+                      IsDisabled=""true"" />
 
 <EditCheckedStringList @bind-Value=""_model.Required""
-                      Options=""@_basicItems""
-                      Field=""@(() => _model.Required)"" />";
+                      Options=""@_basicItems"" />";
 
     readonly string _validationModel = @"[Required, MinLength(2)]
 public List<string> Required { get; set; } = [];

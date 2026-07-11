@@ -5,8 +5,7 @@
 
     <section class="demo-section">
         <h3>Basic — all file types</h3>
-        <EditFile @bind-Value="_model.BasicFiles"
-                  Field="@(() => _model.BasicFiles)" />
+        <EditFile @bind-Value="_model.BasicFiles" />
 
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
@@ -15,7 +14,6 @@
     <section class="demo-section">
         <h3>Extension filter + max files</h3>
         <EditFile @bind-Value="_model.FilteredFiles"
-                  Field="@(() => _model.FilteredFiles)"
                   AllowedExtensions="@([".pdf", ".xlsx"])"
                   MaxFiles="3" />
 
@@ -25,8 +23,7 @@
 
     <section class="demo-section">
         <h3>Required validation</h3>
-        <EditFile @bind-Value="_model.RequiredFiles"
-                  Field="@(() => _model.RequiredFiles)" />
+        <EditFile @bind-Value="_model.RequiredFiles" />
 
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
@@ -40,11 +37,9 @@
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
-    readonly string _basicExample = @"<EditFile @bind-Value=""_model.Files""
-          Field=""@(() => _model.Files)"" />";
+    readonly string _basicExample = @"<EditFile @bind-Value=""_model.Files"" />";
 
     readonly string _filterExample = @"<EditFile @bind-Value=""_model.Files""
-          Field=""@(() => _model.Files)""
           AllowedExtensions=""@([&quot;.pdf&quot;, &quot;.xlsx&quot;])""
           MaxFiles=""3"" />";
 

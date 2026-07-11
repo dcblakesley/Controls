@@ -6,23 +6,19 @@
     <ObjectGraphDataAnnotationsValidator />
 
     <section class="demo-section">
+        <EditDate @bind-Value="_model.BasicDate" />
+
         <EditDate @bind-Value="_model.BasicDate"
-                  Field="@(() => _model.BasicDate)" />
-                  
-        <EditDate @bind-Value="_model.BasicDate"
-                  Field="@(() => _model.BasicDate)"
                   IsEditMode=false
                   Label="DateFormat = MM-dd-yyyy"
                   DateFormat="MM-dd-yyyy" />
 
         <EditDate @bind-Value="_model.BasicDate"
-                  Field="@(() => _model.BasicDate)"
                   IsEditMode=false
                   Label="DateFormat = MM/dd/yy"
                   DateFormat="MM/dd/yy" />
 
         <EditDate @bind-Value="_model.BasicDate"
-                  Field="@(() => _model.BasicDate)"
                   IsEditMode=false
                   Label="MM/dd/yyyy hh:mm:ss tt"
                   DateFormat="MM/dd/yyyy hh:mm:ss tt" />
@@ -32,8 +28,7 @@
     </section>
 
     <section class="demo-section">
-        <EditDate @bind-Value="_model.NullableDate"
-                  Field="@(() => _model.NullableDate)" />
+        <EditDate @bind-Value="_model.NullableDate" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_nullableExample</code></pre>
@@ -44,22 +39,18 @@
 
     <section class="demo-section">
         <EditDate @bind-Value="_model.DateWithTime"
-                  Field="@(() => _model.DateWithTime)"
                   Type="InputDateType.DateTimeLocal"/>
 
         <EditDate @bind-Value="_model.DateWithTime"
-                  Field="@(() => _model.DateWithTime)"
                   Type="InputDateType.DateTimeLocal"
                   IsEditMode="false"
                   Label="MM/dd/yyyy hh:mm:ss tt"
                   DateFormat="MM/dd/yyyy hh:mm:ss tt" />
 
         <EditDate @bind-Value="_model.TimeOnly"
-                  Field="@(() => _model.TimeOnly)"
                   Type="InputDateType.Time" />
 
         <EditDate @bind-Value="_model.TimeOnly"
-                  Field="@(() => _model.TimeOnly)"
                   Type="InputDateType.Time"
                   IsEditMode="false"
                   Label="hh:mm:ss tt"
@@ -86,7 +77,6 @@
         </style>
         
         <EditDate @bind-Value="_model.CustomStyle"
-                  Field="@(() => _model.CustomStyle)"
                   ContainerClass="my-custom-container"
                   class="my-custom-date" />
         
@@ -99,11 +89,9 @@
 
     <section class="demo-section">
         <EditDate @bind-Value="_model.Disabled"
-                  Field="@(() => _model.Disabled)"
                   IsDisabled="true" />
 
-        <EditDate @bind-Value="_model.Required"
-                  Field="@(() => _model.Required)" />
+        <EditDate @bind-Value="_model.Required" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
@@ -135,30 +123,24 @@
 
     }
 
-    readonly string _basicExample = @"<EditDate @bind-Value=""_model.BasicDate""
-          Field=""@(() => _model.BasicDate)"" />
-          
+    readonly string _basicExample = @"<EditDate @bind-Value=""_model.BasicDate"" />
+
 <EditDate @bind-Value=""_model.BasicDate""
-          Field=""@(() => _model.BasicDate)""
           IsEditMode=false
           Label=""DateFormat = MM-dd-yyyy""
           DateFormat=""MM-dd-yyyy"" />";
 
-    readonly string _nullableExample = @"<EditDate @bind-Value=""_model.NullableDate""
-          Field=""@(() => _model.NullableDate)"" />";
+    readonly string _nullableExample = @"<EditDate @bind-Value=""_model.NullableDate"" />";
 
     readonly string _nullableModel = @"public DateTime? NullableDate { get; set; } = DateTime.Today;";
 
     readonly string _dateTimeExample = @"<EditDate @bind-Value=""_model.DateWithTime""
-          Field=""@(() => _model.DateWithTime)""
           Type=""InputDateType.DateTimeLocal""/>
 
 <EditDate @bind-Value=""_model.TimeOnly""
-          Field=""@(() => _model.TimeOnly)""
           Type=""InputDateType.Time"" />";
 
     readonly string _customStyleExample = @"<EditDate @bind-Value=""_model.CustomStyle""
-          Field=""@(() => _model.CustomStyle)""
           ContainerClass=""my-custom-container""
           class=""my-custom-date"" />";
 
@@ -176,11 +158,9 @@
 }";
 
     readonly string _validationExample = @"<EditDate @bind-Value=""_model.Disabled""
-          Field=""@(() => _model.Disabled)""
           IsDisabled=""true"" />
 
-<EditDate @bind-Value=""_model.Required""
-          Field=""@(() => _model.Required)"" />";
+<EditDate @bind-Value=""_model.Required"" />";
 
     readonly string _validationModel = @"[Required]
 public DateTime? Required { get; set; } 

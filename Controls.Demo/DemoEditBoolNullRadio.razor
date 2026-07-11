@@ -6,10 +6,8 @@
     <ObjectGraphDataAnnotationsValidator />
 
     <section class="demo-section">
+        <EditBoolNullRadio @bind-Value="_model.BasicOption" />
         <EditBoolNullRadio @bind-Value="_model.BasicOption"
-                           Field="@(() => _model.BasicOption)" />
-        <EditBoolNullRadio @bind-Value="_model.BasicOption"
-                           Field="@(() => _model.BasicOption)"
                            Label="Read-only"
                            IsEditMode=false />
         
@@ -21,24 +19,21 @@
         <EditBoolNullRadio @bind-Value="_model.CustomText"
                            TrueText="Absolutely!"
                            FalseText="No way!"
-                           NullText="Haven't decided..."
-                           Field="@(() => _model.CustomText)" />
+                           NullText="Haven't decided..." />
 
         <EditBoolNullRadio @bind-Value="_model.CustomText"
                            TrueText="Absolutely!"
                            FalseText="No way!"
                            NullText="Haven't decided..."
                            Label="Read-only"
-                           IsEditMode="false"
-                           Field="@(() => _model.CustomText)" />
+                           IsEditMode="false" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_customTextExample</code></pre>
     </section>
     
     <section class="demo-section">
-        <EditBoolNullRadio @bind-Value="_model.Required"
-                           Field="@(() => _model.Required)" />
+        <EditBoolNullRadio @bind-Value="_model.Required" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_requiredExample</code></pre>
@@ -49,8 +44,7 @@
 
     <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.Disabled"
-                           IsDisabled="true"
-                           Field="@(() => _model.Disabled)" />
+                           IsDisabled="true" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_disabledExample</code></pre>
@@ -58,8 +52,7 @@
 
     <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.NullOptionHidden"
-                           ShowNullOption="false"
-                           Field="@(() => _model.NullOptionHidden)" />
+                           ShowNullOption="false" />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_nullOptionHiddenExample</code></pre>
@@ -67,7 +60,6 @@
     
     <section class="demo-section">
         <EditBoolNullRadio @bind-Value="_model.VerticalLayout"
-                           Field="@(() => _model.VerticalLayout)"
                            IsHorizontal="false" />
         
         <h3>Markup</h3>
@@ -91,7 +83,6 @@
         </style>
         
         <EditBoolNullRadio @bind-Value="_model.CustomStyle"
-                           Field="@(() => _model.CustomStyle)"
                            ContainerClass="my-custom-container"
                            class="my-custom-input" />
         
@@ -125,40 +116,32 @@
 
     readonly DemoModel _model = new();
 
-    readonly string _basicExample = @"<EditBoolNullRadio @bind-Value=""_model.BasicOption""
-                  Field=""@(() => _model.BasicOption)"" />
+    readonly string _basicExample = @"<EditBoolNullRadio @bind-Value=""_model.BasicOption"" />
 
 <EditBoolNullRadio @bind-Value=""_model.BasicOption""
-                  Field=""@(() => _model.BasicOption)""
                   Label=""Read-only""
                   IsEditMode=false />";
 
     readonly string _customTextExample = @"<EditBoolNullRadio @bind-Value=""_model.CustomText""
                   TrueText=""Absolutely!""
                   FalseText=""No way!""
-                  NullText=""Haven't decided...""
-                  Field=""@(() => _model.CustomText)"" />";
+                  NullText=""Haven't decided..."" />";
 
-    readonly string _requiredExample = @"<EditBoolNullRadio @bind-Value=""_model.Required""
-                  Field=""@(() => _model.Required)"" />";
+    readonly string _requiredExample = @"<EditBoolNullRadio @bind-Value=""_model.Required"" />";
 
     readonly string _requiredModel = @"[Required]
 public bool? Required { get; set; }";
 
     readonly string _disabledExample = @"<EditBoolNullRadio @bind-Value=""_model.Disabled""
-                  IsDisabled=""true""
-                  Field=""@(() => _model.Disabled)"" />";
+                  IsDisabled=""true"" />";
 
     readonly string _nullOptionHiddenExample = @"<EditBoolNullRadio @bind-Value=""_model.NullOptionHidden""
-                  ShowNullOption=""false""
-                  Field=""@(() => _model.NullOptionHidden)"" />";
+                  ShowNullOption=""false"" />";
 
     readonly string _verticalLayoutExample = @"<EditBoolNullRadio @bind-Value=""_model.VerticalLayout""
-                  Field=""@(() => _model.VerticalLayout)""
                   IsHorizontal=""false"" />";
 
     readonly string _customStyleExample = @"<EditBoolNullRadio @bind-Value=""_model.CustomStyle""
-                  Field=""@(() => _model.CustomStyle)""
                   ContainerClass=""my-custom-container""
                   class=""my-custom-input"" />";
 

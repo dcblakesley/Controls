@@ -7,12 +7,10 @@
 
     <section class="demo-section">
         <EditRadioString @bind-Value="_model.BasicOption"
-                         Field="@(() => _model.BasicOption)"
                          Description="Blahhhhh"
                          Options="@_basicOptions" />
 
         <EditRadioString @bind-Value="_model.BasicOption"
-                         Field="@(() => _model.BasicOption)"
                          Options="@_basicOptions"
                          IsEditMode="false" />
         
@@ -22,7 +20,6 @@
 
     <section class="demo-section">
         <EditRadioString @bind-Value="_model.WithOther"
-                         Field="@(() => _model.WithOther)"
                          Options="@_basicOptions"
                          HasOther="true" />
         
@@ -32,7 +29,6 @@
 
     <section class="demo-section">
         <EditRadioString @bind-Value="_model.CustomStyling"
-                         Field="@(() => _model.CustomStyling)"
                          Options="@_basicOptions"
                          ContainerClass="my-custom-container"
                          class="my-custom-radio"
@@ -47,12 +43,10 @@
 
     <section class="demo-section">
         <EditRadioString @bind-Value="_model.Disabled"
-                         Field="@(() => _model.Disabled)"
                          Options="@_basicOptions"
                          IsDisabled="true" />
 
         <EditRadioString @bind-Value="_model.Required"
-                         Field="@(() => _model.Required)"
                          Options="@_basicOptions" />
         
         <h3>Markup</h3>
@@ -64,7 +58,6 @@
 
     <section class="demo-section">
         <EditRadioString @bind-Value="_model.HorizontalLayout"
-                         Field="@(() => _model.HorizontalLayout)"
                          Options="@_basicOptions"
                          IsHorizontal="true" />
         
@@ -95,21 +88,17 @@
     }
 
     readonly string _basicExample = @"<EditRadioString @bind-Value=""_model.BasicOption""
-                Field=""@(() => _model.BasicOption)""
                 Options=""@_basicOptions"" />
 
 <EditRadioString @bind-Value=""_model.BasicOption""
-                Field=""@(() => _model.BasicOption)""
                 Options=""@_basicOptions""
                 IsEditMode=""false"" />";
 
     readonly string _otherExample = @"<EditRadioString @bind-Value=""_model.WithOther""
-                Field=""@(() => _model.WithOther)""
                 Options=""@_basicOptions""
                 HasOther=""true"" />";
 
     readonly string _customStyleExample = @"<EditRadioString @bind-Value=""_model.CustomStyling""
-                Field=""@(() => _model.CustomStyling)""
                 Options=""@_basicOptions""
                 ContainerClass=""my-custom-container""
                 class=""my-custom-radio""
@@ -127,12 +116,10 @@
 }";
 
     readonly string _validationExample = @"<EditRadioString @bind-Value=""_model.Disabled""
-                Field=""@(() => _model.Disabled)""
                 Options=""@_basicOptions""
                 IsDisabled=""true"" />
 
 <EditRadioString @bind-Value=""_model.Required""
-                Field=""@(() => _model.Required)""
                 Options=""@_basicOptions"" />";
 
     readonly string _validationModel = @"[Required(ErrorMessage = ""Please select an option"")]
@@ -141,7 +128,6 @@ public string Required { get; set; } = """";
 public string Disabled { get; set; } = """";";
 
     readonly string _horizontalExample = @"<EditRadioString @bind-Value=""_model.HorizontalLayout""
-                Field=""@(() => _model.HorizontalLayout)""
                 Options=""@_basicOptions""
                 IsHorizontal=""true"" />";
 }

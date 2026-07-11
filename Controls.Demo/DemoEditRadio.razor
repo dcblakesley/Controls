@@ -6,8 +6,7 @@
     <ObjectGraphDataAnnotationsValidator/>
 
     <section class="demo-section">
-        <EditRadio @bind-Value="_model.BasicRadio" 
-                   Field="@(() => _model.BasicRadio)">
+        <EditRadio @bind-Value="_model.BasicRadio">
             @foreach (var option in _numberOptions)
             {
                 <label>
@@ -32,7 +31,6 @@
         </style>
         
         <EditRadio @bind-Value="_model.CustomStyling"
-                   Field="@(() => _model.CustomStyling)"
                    ContainerClass="my-custom-container"
                    class="my-custom-radio">
             @foreach (var option in _numberOptions)
@@ -56,7 +54,6 @@
 
     <section class="demo-section">
         <EditRadio @bind-Value="_model.Disabled"
-                   Field="@(() => _model.Disabled)"
                    IsDisabled="true">
             @foreach (var option in _numberOptions)
             {
@@ -75,8 +72,7 @@
     </section>
     
     <section class="demo-section">
-        <EditRadio @bind-Value="_model.Required"
-                   Field="@(() => _model.Required)">
+        <EditRadio @bind-Value="_model.Required">
             @foreach (var option in _numberOptions)
             {
                 <label>
@@ -98,7 +94,6 @@
 
     <section class="demo-section">
         <EditRadio @bind-Value="_model.HorizontalLayout"
-                   Field="@(() => _model.HorizontalLayout)"
                    IsHorizontal="true">
             @foreach (var option in _colorOptions)
             {
@@ -139,8 +134,7 @@
         public int Disabled { get; set; }
     }
 
-    readonly string _basicExample = @"<EditRadio @bind-Value=""_model.BasicRadio"" 
-          Field=""@(() => _model.BasicRadio)"">
+    readonly string _basicExample = @"<EditRadio @bind-Value=""_model.BasicRadio"">
     @foreach (var option in _numberOptions)
     {
         <label>
@@ -151,7 +145,6 @@
 </EditRadio>";
 
     readonly string _customStyleExample = @"<EditRadio @bind-Value=""_model.CustomStyling""
-          Field=""@(() => _model.CustomStyling)""
           ContainerClass=""my-custom-container""
           class=""my-custom-radio"">
     @foreach (var option in _numberOptions)
@@ -178,13 +171,11 @@
 }";
 
     readonly string _disabledExample = @"<EditRadio @bind-Value=""_model.Disabled""
-          Field=""@(() => _model.Disabled)""
           IsDisabled=""true"">
     ...
 </EditRadio>";
 
-    readonly string _requiredExample = @"<EditRadio @bind-Value=""_model.Required""
-          Field=""@(() => _model.Required)"">
+    readonly string _requiredExample = @"<EditRadio @bind-Value=""_model.Required"">
     ...
 </EditRadio>";
 
@@ -192,7 +183,6 @@
 public int? Required { get; set; }";
 
     readonly string _horizontalExample = @"<EditRadio @bind-Value=""_model.HorizontalLayout""
-          Field=""@(() => _model.HorizontalLayout)""
           IsHorizontal=""true"">
     ...
 </EditRadio>";

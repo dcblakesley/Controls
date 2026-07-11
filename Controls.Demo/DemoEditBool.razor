@@ -6,7 +6,7 @@
     <ObjectGraphDataAnnotationsValidator />
 
     <section class="demo-section">
-        <EditBool @bind-Value="_model.BasicCheckbox" Field="@(() => _model.BasicCheckbox)" Description="Description for Basic Checkbox." />
+        <EditBool @bind-Value="_model.BasicCheckbox" Description="Description for Basic Checkbox." />
         
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
@@ -14,7 +14,6 @@
 	
     <section class="demo-section">
         <EditBool @bind-Value="_model.Disabled"
-                  Field="@(() => _model.Disabled)"
                   IsDisabled="true" />
         
         <h3>Markup</h3>
@@ -22,8 +21,7 @@
     </section>
     
     <section class="demo-section">
-	    <EditBool @bind-Value="_model.MustBeTrue"
-	              Field="@(() => _model.MustBeTrue)" />
+	    <EditBool @bind-Value="_model.MustBeTrue" />
         
 	    <h3>Markup</h3>
 	    <pre class="code-block"><code>@_validationExample</code></pre>
@@ -46,7 +44,6 @@
         </style>
 
 	    <EditBool @bind-Value="_model.CustomStyle"
-	              Field="@(() => _model.CustomStyle)"
 	              ContainerClass="my-custom-container"
 	              class="my-custom-checkbox" />
         
@@ -66,12 +63,10 @@
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
-    readonly string _basicExample = @"<EditBool @bind-Value=""_model.BasicCheckbox"" 
-          Field=""@(() => _model.BasicCheckbox)"" 
+    readonly string _basicExample = @"<EditBool @bind-Value=""_model.BasicCheckbox""
           Description=""Description for Basic Checkbox."" />";
 
     readonly string _customStyleExample = @"<EditBool @bind-Value=""_model.CustomStyle""
-          Field=""@(() => _model.CustomStyle)""
           ContainerClass=""my-custom-container""
           class=""my-custom-checkbox"" />";
 
@@ -86,11 +81,9 @@
 }";
 
     readonly string _disabledExample = @"<EditBool @bind-Value=""_model.Disabled""
-          Field=""@(() => _model.Disabled)""
           IsDisabled=""true"" />";
 
-    readonly string _validationExample = @"<EditBool @bind-Value=""_model.MustBeTrue""
-          Field=""@(() => _model.MustBeTrue)"" />";
+    readonly string _validationExample = @"<EditBool @bind-Value=""_model.MustBeTrue"" />";
 
     readonly string _validationModel = @"[MustBeTrue(ErrorMessage = ""Hello"")]
 public bool MustBeTrue { get; set; }";

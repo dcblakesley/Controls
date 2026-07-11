@@ -6,10 +6,10 @@
 	<ObjectGraphDataAnnotationsValidator/>
 
 	<section class="demo-section">
-		<EditNumber @bind-Value="_model.Int" Field="@(() => _model.Int)"/>
-		<EditNumber @bind-Value="_model.Decimal" Field="@(() => _model.Decimal)"/>
-		<EditNumber @bind-Value="_model.Float" Field="@(() => _model.Float)"/>
-		<EditNumber @bind-Value="_model.SteppedNumber" Step="5" Field="@(() => _model.SteppedNumber)"/>
+		<EditNumber @bind-Value="_model.Int"/>
+		<EditNumber @bind-Value="_model.Decimal"/>
+		<EditNumber @bind-Value="_model.Float"/>
+		<EditNumber @bind-Value="_model.SteppedNumber" Step="5"/>
 
 		<h3>Markup</h3>
 		<pre class="code-block"><code>@_basicExample</code></pre>
@@ -19,7 +19,7 @@
 	</section>
 
 	<section class="demo-section">
-		<EditNumber @bind-Value="_model.Disabled" IsDisabled="true" Field="@(() => _model.Disabled)"/>
+		<EditNumber @bind-Value="_model.Disabled" IsDisabled="true"/>
 
 		<h3>Markup</h3>
 		<pre class="code-block"><code>@_disabledExample</code></pre>
@@ -31,7 +31,7 @@
             .my-custom-number { border: 2px solid black; border-radius: 4px; padding: 4px; width: 120px; }
         </style>
 
-		<EditNumber @bind-Value="_model.CustomStyle" ContainerClass="my-custom-container" class="my-custom-number" Field="@(() => _model.CustomStyle)"/>
+		<EditNumber @bind-Value="_model.CustomStyle" ContainerClass="my-custom-container" class="my-custom-number"/>
 
 		<h3>Markup</h3>
 		<pre class="code-block"><code>@_customStyleExample</code></pre>
@@ -41,10 +41,10 @@
 	</section>
 
 	<section class="demo-section">
-		<EditNumber @bind-Value="_model.Required" Field="@(() => _model.Required)"/>
-		<EditNumber @bind-Value="_model.MinValue" Field="@(() => _model.MinValue)"/>
-		<EditNumber @bind-Value="_model.MaxValue" Field="@(() => _model.MaxValue)"/>
-		<EditNumber @bind-Value="_model.RangeValue" Field="@(() => _model.RangeValue)"/>
+		<EditNumber @bind-Value="_model.Required"/>
+		<EditNumber @bind-Value="_model.MinValue"/>
+		<EditNumber @bind-Value="_model.MaxValue"/>
+		<EditNumber @bind-Value="_model.RangeValue"/>
 
 		<h3>Markup</h3>
 		<pre class="code-block"><code>@_validationExample</code></pre>
@@ -79,15 +79,11 @@
 		[Range(100.5, 110.85)] public double RangeValue { get; set; } = 33;
 	}
 
-	readonly string _basicExample = @"<EditNumber @bind-Value=""_model.Int"" 
-          Field=""@(() => _model.Int)"" />
-<EditNumber @bind-Value=""_model.Decimal"" 
-          Field=""@(() => _model.Decimal)"" />
-<EditNumber @bind-Value=""_model.Float"" 
-          Field=""@(() => _model.Float)"" />
-<EditNumber @bind-Value=""_model.SteppedNumber"" 
-          Step=""5"" 
-          Field=""@(() => _model.SteppedNumber)"" />";
+	readonly string _basicExample = @"<EditNumber @bind-Value=""_model.Int"" />
+<EditNumber @bind-Value=""_model.Decimal"" />
+<EditNumber @bind-Value=""_model.Float"" />
+<EditNumber @bind-Value=""_model.SteppedNumber""
+          Step=""5"" />";
 
 	readonly string _basicModel = @"public int Int { get; set; }
 public double Decimal { get; set; } = 1.12345678901;
@@ -96,14 +92,12 @@ public float Float { get; set; } = 1.1234567f;
 [DisplayName(""Step by 5"")]
 public int SteppedNumber { get; set; }";
 
-	readonly string _disabledExample = @"<EditNumber @bind-Value=""_model.Disabled"" 
-          IsDisabled=""true"" 
-          Field=""@(() => _model.Disabled)"" />";
+	readonly string _disabledExample = @"<EditNumber @bind-Value=""_model.Disabled""
+          IsDisabled=""true"" />";
 
-	readonly string _customStyleExample = @"<EditNumber @bind-Value=""_model.CustomStyle"" 
-          ContainerClass=""my-custom-container"" 
-          class=""my-custom-number"" 
-          Field=""@(() => _model.CustomStyle)"" />";
+	readonly string _customStyleExample = @"<EditNumber @bind-Value=""_model.CustomStyle""
+          ContainerClass=""my-custom-container""
+          class=""my-custom-number"" />";
 
 	readonly string _customStyleCss = @".my-custom-container { 
     background-color: darkgreen; 
@@ -118,14 +112,10 @@ public int SteppedNumber { get; set; }";
     width: 120px; 
 }";
 
-	readonly string _validationExample = @"<EditNumber @bind-Value=""_model.Required"" 
-          Field=""@(() => _model.Required)"" />
-<EditNumber @bind-Value=""_model.MinValue"" 
-          Field=""@(() => _model.MinValue)"" />
-<EditNumber @bind-Value=""_model.MaxValue"" 
-          Field=""@(() => _model.MaxValue)"" />
-<EditNumber @bind-Value=""_model.RangeValue"" 
-          Field=""@(() => _model.RangeValue)"" />";
+	readonly string _validationExample = @"<EditNumber @bind-Value=""_model.Required"" />
+<EditNumber @bind-Value=""_model.MinValue"" />
+<EditNumber @bind-Value=""_model.MaxValue"" />
+<EditNumber @bind-Value=""_model.RangeValue"" />";
 
 	readonly string _validationModel = @"[Required]
 public int? Required { get; set; }

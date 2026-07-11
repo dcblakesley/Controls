@@ -9,13 +9,11 @@
     <section class="demo-section">
         <h3>Basic (edit + read-only)</h3>
         <EditSelectSearch @bind-Value="_model.Country"
-                          Field="@(() => _model.Country)"
                           Options="_countries"
                           Placeholder="Search for a country..."
                           Width="260px" />
 
         <EditSelectSearch @bind-Value="_model.Country"
-                          Field="@(() => _model.Country)"
                           Options="_countries"
                           IsEditMode="false"
                           Width="260px" />
@@ -25,7 +23,6 @@
         <h3>Large option set (virtualized)</h3>
         <p>1,000 options — search filters and only visible rows hit the DOM.</p>
         <EditSelectSearch @bind-Value="_model.BigChoice"
-                          Field="@(() => _model.BigChoice)"
                           Options="_bigOptions"
                           Width="260px" />
     </section>
@@ -33,13 +30,11 @@
     <section class="demo-section">
         <h3>Disabled &amp; required validation</h3>
         <EditSelectSearch @bind-Value="_model.DisabledCountry"
-                          Field="@(() => _model.DisabledCountry)"
                           Options="_countries"
                           IsDisabled="true"
                           Width="260px" />
 
         <EditSelectSearch @bind-Value="_model.RequiredCountry"
-                          Field="@(() => _model.RequiredCountry)"
                           Options="_countries"
                           Width="260px" />
 
@@ -51,7 +46,6 @@
         <h3>Inside a submitting form</h3>
         <p>Enter picks the highlighted option without triggering the form's implicit submission.</p>
         <EditSelectSearch @bind-Value="_model.FormCountry"
-                          Field="@(() => _model.FormCountry)"
                           Options="_countries"
                           Width="260px" />
         <button type="submit">Submit</button>
@@ -98,7 +92,6 @@
     }
 
     readonly string _example = @"<EditSelectSearch @bind-Value=""_model.Country""
-                  Field=""@(() => _model.Country)""
                   Options=""_countries""
                   Placeholder=""Search for a country..."" />";
 }

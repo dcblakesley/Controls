@@ -6,8 +6,7 @@
     <ObjectGraphDataAnnotationsValidator/>
 
     <section class="demo-section">
-        <EditSelect @bind-Value="_model.BasicSelect"
-                    Field="@(() => _model.BasicSelect)">
+        <EditSelect @bind-Value="_model.BasicSelect">
             <option value="">Select a number...</option>
             @foreach (var number in Enumerable.Range(1, 5))
             {
@@ -16,7 +15,6 @@
         </EditSelect>
 
         <EditSelect @bind-Value="_model.BasicSelect"
-                    Field="@(() => _model.BasicSelect)"
                     IsEditMode=false>
             <option value="">Select a number...</option>
             @foreach (var number in Enumerable.Range(1, 5))
@@ -30,7 +28,7 @@
     </section>
 
     <section class="demo-section">
-        <EditSelect @bind-Value="_model.PlantSelect" Field="@(() => _model.PlantSelect)">
+        <EditSelect @bind-Value="_model.PlantSelect">
             <option value="0">Choose a plant...</option>
             @foreach (var plant in _plants)
             {
@@ -50,7 +48,6 @@
         </style>
 
         <EditSelect @bind-Value="_model.CustomStyling"
-                    Field="@(() => _model.CustomStyling)"
                     ContainerClass="my-custom-container"
                     class="my-custom-select">
             <option value="">Select a color...</option>
@@ -69,7 +66,6 @@
 
     <section class="demo-section">
         <EditSelect @bind-Value="_model.Disabled"
-                    Field="@(() => _model.Disabled)"
                     IsDisabled="true">
             <option value="">Select a color...</option>
             @foreach (var color in _colors)
@@ -78,8 +74,7 @@
             }
         </EditSelect>
 
-        <EditSelect @bind-Value="_model.Required"
-                    Field="@(() => _model.Required)">
+        <EditSelect @bind-Value="_model.Required">
             <option value="">Select a color...</option>
             @foreach (var color in _colors)
             {
@@ -116,8 +111,7 @@
         public string Disabled { get; set; } = "";
     }
 
-    readonly string _basicExample = @"<EditSelect @bind-Value=""_model.BasicSelect""
-           Field=""@(() => _model.BasicSelect)"">
+    readonly string _basicExample = @"<EditSelect @bind-Value=""_model.BasicSelect"">
     <option value="""">Select a number...</option>
     @foreach (var number in Enumerable.Range(1, 5))
     {
@@ -125,7 +119,7 @@
     }
 </EditSelect>";
 
-    readonly string _plantExample = @"<EditSelect @bind-Value=""_model.PlantSelect"" Field=""@(() => _model.PlantSelect)"">
+    readonly string _plantExample = @"<EditSelect @bind-Value=""_model.PlantSelect"">
     <option value=""0"">Choose a plant...</option>
     @foreach (var plant in _plants)
     {
@@ -134,7 +128,6 @@
 </EditSelect>";
 
     readonly string _customStyleExample = @"<EditSelect @bind-Value=""_model.CustomStyling""
-           Field=""@(() => _model.CustomStyling)""
            ContainerClass=""my-custom-container""
            class=""my-custom-select"">
     <option value="""">Select a color...</option>
@@ -159,13 +152,11 @@
 }";
 
     readonly string _validationExample = @"<EditSelect @bind-Value=""_model.Disabled""
-           Field=""@(() => _model.Disabled)""
            IsDisabled=""true"">
     ...
 </EditSelect>
 
-<EditSelect @bind-Value=""_model.Required""
-           Field=""@(() => _model.Required)"">
+<EditSelect @bind-Value=""_model.Required"">
     ...
 </EditSelect>";
 
