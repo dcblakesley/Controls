@@ -79,7 +79,6 @@ public class HidingModeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Hiding", mode);
             b.AddAttribute(5, "IsEditMode", isEditMode);
             b.CloseComponent();
@@ -111,7 +110,6 @@ public class HidingModeTests : TestContext
             b.OpenComponent<EditNumber<int?>>(0);
             b.AddAttribute(1, "Value", model.N);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Hiding", mode);
             b.AddAttribute(5, "IsEditMode", isEditMode);
             b.CloseComponent();
@@ -132,7 +130,6 @@ public class HidingModeTests : TestContext
             b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.D);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault);
             b.CloseComponent();
         }));
@@ -151,7 +148,6 @@ public class HidingModeTests : TestContext
             b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.D);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault);
             b.CloseComponent();
         }));
@@ -174,7 +170,6 @@ public class HidingModeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Hiding", HidingMode.WhenReadOnlyAndNull);
             b.AddAttribute(5, "IsEditMode", true); // per-control says edit
             b.CloseComponent();
@@ -196,7 +191,6 @@ public class HidingModeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Hiding", HidingMode.WhenReadOnlyAndNull);
             b.AddAttribute(5, "IsEditMode", false);
             b.CloseComponent();

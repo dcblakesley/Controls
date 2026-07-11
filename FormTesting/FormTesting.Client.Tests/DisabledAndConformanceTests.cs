@@ -30,7 +30,6 @@ public class DisabledAndConformanceTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsDisabled", true);
             b.CloseComponent();
         }));
@@ -48,7 +47,6 @@ public class DisabledAndConformanceTests : TestContext
             b.OpenComponent<EditSelectEnum<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsDisabled", true);
             b.CloseComponent();
         }));
@@ -65,7 +63,7 @@ public class DisabledAndConformanceTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.AddAttribute(4, "IsDisabled", true);
             b.CloseComponent();
@@ -88,7 +86,6 @@ public class DisabledAndConformanceTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.AddAttribute(5, "HasOther", true);
             b.AddAttribute(6, "IsDisabled", true);
@@ -111,7 +108,6 @@ public class DisabledAndConformanceTests : TestContext
             b.OpenComponent<EditRadio<string>>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsDisabled", true);
             b.AddAttribute(5, "ChildContent", (RenderFragment)(cb =>
             {
@@ -143,7 +139,6 @@ public class DisabledAndConformanceTests : TestContext
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(this, v => changed = v));
-            b.AddAttribute(4, "Field", field);
             b.AddAttribute(5, "ChildContent", (RenderFragment)(cb =>
             {
                 cb.OpenComponent<InputRadio<string>>(0);
@@ -171,8 +166,7 @@ public class DisabledAndConformanceTests : TestContext
             b.OpenComponent<EditRadioEnum<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
-            b.AddAttribute(4, "IsDisabled", true);
+            b.AddAttribute(3, "IsDisabled", true);
             b.CloseComponent();
         }));
 
@@ -211,7 +205,7 @@ public class DisabledAndConformanceTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b" });
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
@@ -229,7 +223,7 @@ public class DisabledAndConformanceTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "New York" });
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
@@ -248,7 +242,7 @@ public class DisabledAndConformanceTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }));

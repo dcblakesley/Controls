@@ -31,7 +31,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditSelectEnum<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Sort", false);
             b.CloseComponent();
         }));
@@ -62,7 +61,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditRadioEnum<EmptyEnum?>>(0);
             b.AddAttribute(1, "Value", model.Choice);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "HasOtherOption", true);
             b.AddAttribute(5, "IsEditMode", false);
             b.CloseComponent();
@@ -82,7 +80,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditSelectString<string?>>(0);
             b.AddAttribute(1, "Value", (string?)null);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }));
@@ -103,7 +100,6 @@ public class EditSelectParseTests : TestContext
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<Priority?>(this, v => model.Priority = v));
-            b.AddAttribute(4, "Field", field);
             b.CloseComponent();
         }));
 
@@ -122,7 +118,6 @@ public class EditSelectParseTests : TestContext
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<Priority?>(this, v => model.Priority = v));
-            b.AddAttribute(4, "Field", field);
             b.CloseComponent();
         }));
 
@@ -141,7 +136,6 @@ public class EditSelectParseTests : TestContext
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<Priority?>(this, v => model.Priority = v));
-            b.AddAttribute(4, "Field", field);
             b.CloseComponent();
         }));
 
@@ -160,7 +154,6 @@ public class EditSelectParseTests : TestContext
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string>(this, v => model.Name = v));
-            b.AddAttribute(4, "Field", field);
             b.AddAttribute(5, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }));
@@ -184,7 +177,6 @@ public class EditSelectParseTests : TestContext
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => model.Name = v));
-            b.AddAttribute(4, "Field", field);
             b.AddAttribute(5, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }));
@@ -205,7 +197,6 @@ public class EditSelectParseTests : TestContext
             b.AddAttribute(1, "Value", model.Count);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<int?>(this, v => model.Count = v));
-            b.AddAttribute(4, "Field", field);
             b.AddAttribute(5, "Options", new List<string> { "1", "2" });
             b.CloseComponent();
         }));
@@ -226,7 +217,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditSelectString<int>>(0);
             b.AddAttribute(1, "Value", model.Count);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "1", "2" });
             b.CloseComponent();
         }));
@@ -246,7 +236,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditSelectString<string?>>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.AddAttribute(5, "NullOptionText", (string?)null);   // explicit opt-out
             b.CloseComponent();
@@ -272,7 +261,6 @@ public class EditSelectParseTests : TestContext
                 b.OpenComponent<EditSelect<double>>(0);
                 b.AddAttribute(1, "Value", model.Ratio);
                 b.AddAttribute(2, "ValueExpression", field);
-                b.AddAttribute(3, "Field", field);
                 b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
                 {
                     cb.OpenElement(0, "option");
@@ -314,7 +302,6 @@ public class EditSelectParseTests : TestContext
                 b.OpenComponent<EditSelect<DateOnly>>(0);
                 b.AddAttribute(1, "Value", model.When);
                 b.AddAttribute(2, "ValueExpression", field);
-                b.AddAttribute(3, "Field", field);
                 b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
                 {
                     cb.OpenElement(0, "option");
@@ -350,7 +337,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditSelectString<int>>(0);
             b.AddAttribute(1, "Value", model.Count);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "1", "2", "3" });
             b.CloseComponent();
         }));
@@ -374,7 +360,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditSelectString<int>>(0);
             b.AddAttribute(1, "Value", model.Count);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "1", "2", "3" });
             b.CloseComponent();
         }));
@@ -395,7 +380,6 @@ public class EditSelectParseTests : TestContext
             b.OpenComponent<EditSelectString<string?>>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }));

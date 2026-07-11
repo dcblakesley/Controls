@@ -35,7 +35,6 @@ public class LabelEncodingAndAriaTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Label", "<img src=x onerror=alert(1)>");
             b.AddAttribute(5, "Description", "<b>boom</b>");
             b.CloseComponent();
@@ -64,7 +63,6 @@ public class LabelEncodingAndAriaTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Choice);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "<img src=x onerror=alert(1)>", "safe" });
             b.CloseComponent();
         }));
@@ -84,7 +82,6 @@ public class LabelEncodingAndAriaTests : TestContext
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Description", "Whether the account is active");
             b.AddAttribute(5, "Tooltip", "Toggles the active flag");
             b.CloseComponent();

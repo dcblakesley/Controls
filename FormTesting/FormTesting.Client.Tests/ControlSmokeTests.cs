@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -33,7 +34,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
 
@@ -53,7 +53,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Username);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
 
@@ -74,7 +73,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Username);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsRequired", true);
             b.CloseComponent();
         }));
@@ -94,7 +92,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
         }));
@@ -115,7 +112,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
         }));
@@ -135,7 +131,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.AddAttribute(5, "Url", "javascript:alert(1)");
             b.CloseComponent();
@@ -155,7 +150,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.AddAttribute(5, "Url", "https://example.com");
             b.AddAttribute(6, "UrlTarget", "_blank");
@@ -177,7 +171,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
 
@@ -194,7 +187,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditNumber<int?>>(0);
             b.AddAttribute(1, "Value", model.Age);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
 
@@ -213,7 +205,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
         }));
@@ -232,7 +223,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.AddAttribute(5, "RenderAsCheckboxWhenReadOnly", true);
             b.CloseComponent();
@@ -252,7 +242,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditSelectEnum<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
 
@@ -278,7 +267,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditSelectEnum<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "NullOptionText", "(none)");
             b.CloseComponent();
         }));
@@ -302,7 +290,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditSelectEnum<Color?>>(0);
             b.AddAttribute(1, "Value", model.Color);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
 
@@ -317,6 +304,33 @@ public class ControlSmokeTests : TestContext
         public Color? Color { get; set; } = Tests.Color.Blue;
     }
 
+    class NonNullableEnumModel
+    {
+        [Required] public Color BasicColor { get; set; } = Tests.Color.Blue;
+    }
+
+    [Fact]
+    public void EditRadioEnum_resolves_id_and_required_from_ValueExpression_when_bound_to_a_non_nullable_enum_property()
+    {
+        // EditRadioEnum<TEnum> has no `where TEnum : struct` constraint, so the base class's
+        // `TEnum?` is erased to plain TEnum at the CLR level -- Value/ValueExpression's real runtime
+        // type always matches TEnum exactly, non-nullable model property included, so dropping Field
+        // in favor of ValueExpression needs no special-case handling for this control.
+        var model = new NonNullableEnumModel { BasicColor = Tests.Color.Blue };
+        Expression<Func<Color>> valueExpression = () => model.BasicColor;
+        var cut = Render(WithForm(new PersonModel(), b =>
+        {
+            b.OpenComponent<EditRadioEnum<Color>>(0);
+            b.AddAttribute(1, "Value", model.BasicColor);
+            b.AddAttribute(2, "ValueExpression", valueExpression);
+            b.CloseComponent();
+        }));
+
+        var fieldset = cut.Find("fieldset.edit-radio-fieldset");
+        Assert.Equal("BasicColor", fieldset.Id);
+        Assert.Equal("true", fieldset.GetAttribute("aria-required"));
+    }
+
     [Fact]
     public void EditCheckedStringList_renders_one_checkbox_per_option()
     {
@@ -326,7 +340,7 @@ public class ControlSmokeTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.CloseComponent();
         }));
@@ -347,7 +361,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.AddAttribute(5, "IsLabelHidden", true);
             b.CloseComponent();
@@ -366,7 +379,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
         }));
@@ -384,7 +396,6 @@ public class ControlSmokeTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Tooltip", "Helpful hint");
             b.CloseComponent();
         }));

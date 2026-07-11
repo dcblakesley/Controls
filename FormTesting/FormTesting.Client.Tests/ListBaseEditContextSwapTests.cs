@@ -37,7 +37,7 @@ public class ListBaseEditContextSwapTests : TestContext
                 b.OpenComponent<EditCheckedStringList>(0);
                 b.AddAttribute(1, "Value", holder.Model.Items);
                 b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<string>>(this, v => holder.Model.Items = v));
-                b.AddAttribute(3, "Field", (Expression<Func<List<string>>>)(() => holder.Model.Items));
+                b.AddAttribute(3, "ValueExpression", (Expression<Func<List<string>>>)(() => holder.Model.Items));
                 b.AddAttribute(4, "Options", new List<string> { "a", "b", "c" });
                 b.CloseComponent();
             })));
@@ -74,7 +74,7 @@ public class ListBaseEditContextSwapTests : TestContext
                 {
                     inner.OpenComponent<EditCheckedStringList>(0);
                     inner.AddAttribute(1, "Value", holder.Model.Items);
-                    inner.AddAttribute(2, "Field", (Expression<Func<List<string>>>)(() => holder.Model.Items));
+                    inner.AddAttribute(2, "ValueExpression", (Expression<Func<List<string>>>)(() => holder.Model.Items));
                     inner.AddAttribute(3, "Options", new List<string> { "a", "b" });
                     inner.CloseComponent();
                 }));
@@ -102,7 +102,7 @@ public class ListBaseEditContextSwapTests : TestContext
         var cut = RenderComponent<EditCheckedStringList>(ps => ps
             .Add(c => c.Value, model.Items)
             .Add(c => c.ValueChanged, EventCallback.Factory.Create<List<string>>(this, v => changed = v))
-            .Add(c => c.Field, () => model.Items)
+            .Add(c => c.ValueExpression, () => model.Items)
             .Add(c => c.Options, new List<string> { "a", "b" }));
 
         cut.FindAll("input[type=checkbox]")[0].Change(true); // previously NRE'd in FieldValidationDisplay

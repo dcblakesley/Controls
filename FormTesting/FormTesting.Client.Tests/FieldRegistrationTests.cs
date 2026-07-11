@@ -39,7 +39,6 @@ public class FieldRegistrationTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
 
@@ -60,7 +59,6 @@ public class FieldRegistrationTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsHidden", true);
             b.CloseComponent();
         }));
@@ -80,7 +78,6 @@ public class FieldRegistrationTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Hiding", HidingMode.WhenNull);
             b.CloseComponent();
         }));
@@ -99,7 +96,7 @@ public class FieldRegistrationTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b" });
             b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault); // hides because list is empty
             b.CloseComponent();
@@ -121,7 +118,6 @@ public class FieldRegistrationTests : TestContext
             b.OpenComponent<EditRadio<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "ChildContent", (RenderFragment)(_ => { }));
             b.CloseComponent();
         }));
@@ -145,7 +141,7 @@ public class FieldRegistrationTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(seq);
             b.AddAttribute(seq + 1, "Value", model.Tags);
-            b.AddAttribute(seq + 2, "Field", field);
+            b.AddAttribute(seq + 2, "ValueExpression", field);
             b.AddAttribute(seq + 3, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }
@@ -189,13 +185,11 @@ public class FieldRegistrationTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
 
             b.OpenComponent<EditString>(4);
             b.AddAttribute(5, "Value", model.Name);
             b.AddAttribute(6, "ValueExpression", field);
-            b.AddAttribute(7, "Field", field);
             b.CloseComponent();
         }));
 

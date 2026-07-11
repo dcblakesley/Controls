@@ -234,16 +234,15 @@ public class SelectParsingTests
         Assert.Equal("The Priority field is not valid.", err);
     }
 
-    // Callback-bound controls must fail loudly if anyone binds CurrentValueAsString. Field is set only
-    // to satisfy the required member; the parser throws before it is ever read.
+    // Callback-bound controls must fail loudly if anyone binds CurrentValueAsString.
     class ProbeBool : Controls.EditBool { public bool Parse() => TryParseValueFromString("x", out _, out _); }
     class ProbeSelectSearch : Controls.EditSelectSearch<string> { public bool Parse() => TryParseValueFromString("x", out _, out _); }
 
     [Fact]
     public void EditBool_does_not_support_string_parsing()
-        => Assert.Throws<NotSupportedException>(() => new ProbeBool { Field = () => true }.Parse());
+        => Assert.Throws<NotSupportedException>(() => new ProbeBool().Parse());
 
     [Fact]
     public void EditSelectSearch_does_not_support_string_parsing()
-        => Assert.Throws<NotSupportedException>(() => new ProbeSelectSearch { Field = () => "" }.Parse());
+        => Assert.Throws<NotSupportedException>(() => new ProbeSelectSearch().Parse());
 }

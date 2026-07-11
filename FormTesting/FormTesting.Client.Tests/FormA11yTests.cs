@@ -33,7 +33,6 @@ public class FormA11yTests : TestContext
         b.OpenComponent<EditString>(0);
         b.AddAttribute(1, "Value", model.Name);
         b.AddAttribute(2, "ValueExpression", field);
-        b.AddAttribute(3, "Field", field);
         var seq = 4;
         foreach (var (name, value) in extra)
             b.AddAttribute(seq++, name, value);
@@ -63,7 +62,6 @@ public class FormA11yTests : TestContext
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsLabelHidden", true);
             b.CloseComponent();
         }));
@@ -99,7 +97,7 @@ public class FormA11yTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b" });
             b.AddAttribute(4, "IsRequired", (bool?)true);
             b.CloseComponent();
@@ -139,7 +137,6 @@ public class FormA11yTests : TestContext
                 b.OpenComponent<EditString>(1);
                 b.AddAttribute(2, "Value", model.Code);
                 b.AddAttribute(3, "ValueExpression", field);
-                b.AddAttribute(4, "Field", field);
                 b.CloseComponent();
             }));
             builder.CloseComponent();
@@ -162,7 +159,6 @@ public class FormA11yTests : TestContext
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Label", "First");
             b.CloseComponent();
         }));

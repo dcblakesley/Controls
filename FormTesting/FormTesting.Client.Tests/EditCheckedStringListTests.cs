@@ -28,7 +28,7 @@ public class EditCheckedStringListTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.CloseComponent();
         }));
@@ -52,7 +52,7 @@ public class EditCheckedStringListTests : TestContext
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
             b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<string>>(this, v => captured = v));
-            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(3, "ValueExpression", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b", "c" });
             b.CloseComponent();
         }));
@@ -76,7 +76,7 @@ public class EditCheckedStringListTests : TestContext
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
             b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<string>>(this, v => captured = v));
-            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(3, "ValueExpression", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b", "c" });
             b.CloseComponent();
         }));
@@ -97,7 +97,7 @@ public class EditCheckedStringListTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
@@ -120,7 +120,7 @@ public class EditCheckedStringListTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
@@ -140,7 +140,7 @@ public class EditCheckedStringListTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault);
             b.CloseComponent();
@@ -159,7 +159,7 @@ public class EditCheckedStringListTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault);
             b.CloseComponent();
@@ -178,7 +178,7 @@ public class EditCheckedStringListTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.AddAttribute(4, "Hiding", HidingMode.WhenReadOnlyAndNullOrDefault);
             b.AddAttribute(5, "IsEditMode", true);
@@ -198,7 +198,7 @@ public class EditCheckedStringListTests : TestContext
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
             b.AddAttribute(4, "Hiding", HidingMode.WhenReadOnlyAndNullOrDefault);
             b.AddAttribute(5, "IsEditMode", false);
@@ -236,7 +236,7 @@ public class EditCheckedStringListTests : TestContext
                 content.AddAttribute(2, "Value", model.Picks);
                 content.AddAttribute(3, "ValueChanged",
                     EventCallback.Factory.Create<List<string>>(this, v => model.Picks = v)); // simulate @bind-Value
-                content.AddAttribute(4, "Field", field);
+                content.AddAttribute(4, "ValueExpression", field);
                 content.AddAttribute(5, "Options", new List<string> { "a", "b", "c" });
                 content.CloseComponent();
             }));

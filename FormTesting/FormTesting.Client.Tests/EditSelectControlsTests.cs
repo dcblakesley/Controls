@@ -45,7 +45,6 @@ public class EditSelectControlsTests : TestContext
             b.OpenComponent<EditSelectSearch<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", PriorityOptions());
             b.CloseComponent();
         }));
@@ -67,7 +66,6 @@ public class EditSelectControlsTests : TestContext
             b.OpenComponent<EditSelectSearch<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", PriorityOptions());
             b.CloseComponent();
         }));
@@ -86,7 +84,6 @@ public class EditSelectControlsTests : TestContext
             b.OpenComponent<EditSelectSearch<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", PriorityOptions());
             b.CloseComponent();
         }));
@@ -104,7 +101,6 @@ public class EditSelectControlsTests : TestContext
             b.OpenComponent<EditSelectSearch<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", PriorityOptions());
             b.AddAttribute(5, "IsEditMode", false);
             b.CloseComponent();
@@ -123,7 +119,7 @@ public class EditSelectControlsTests : TestContext
         {
             b.OpenComponent<EditMultiSelect<Color>>(0);
             b.AddAttribute(1, "Value", model.FavoriteColors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", ColorOptions());
             b.CloseComponent();
         }));
@@ -142,7 +138,7 @@ public class EditSelectControlsTests : TestContext
         {
             b.OpenComponent<EditMultiSelect<Color>>(0);
             b.AddAttribute(1, "Value", model.FavoriteColors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", ColorOptions());
             b.CloseComponent();
         }));
@@ -164,7 +160,7 @@ public class EditSelectControlsTests : TestContext
         {
             b.OpenComponent<EditMultiSelect<Color>>(0);
             b.AddAttribute(1, "Value", model.FavoriteColors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", ColorOptions());
             b.CloseComponent();
         }));
@@ -183,7 +179,7 @@ public class EditSelectControlsTests : TestContext
         {
             b.OpenComponent<EditMultiSelect<Color>>(0);
             b.AddAttribute(1, "Value", model.FavoriteColors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Options", ColorOptions());
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
@@ -223,7 +219,7 @@ public class EditSelectControlsTests : TestContext
                 content.AddAttribute(2, "Value", model.Picks);
                 content.AddAttribute(3, "ValueChanged",
                     EventCallback.Factory.Create<List<Color>>(this, v => model.Picks = v)); // simulate @bind-Value
-                content.AddAttribute(4, "Field", field);
+                content.AddAttribute(4, "ValueExpression", field);
                 content.AddAttribute(5, "Options", ColorOptions());
                 content.CloseComponent();
             }));
@@ -257,7 +253,6 @@ public class EditSelectControlsTests : TestContext
             b.OpenComponent<EditSelectSearch<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", PriorityOptions());
             b.CloseComponent();
         }));

@@ -32,7 +32,7 @@ public class EditCheckedEnumListTests : TestContext
         {
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
         }));
 
@@ -51,7 +51,7 @@ public class EditCheckedEnumListTests : TestContext
         {
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
         }));
 
@@ -75,7 +75,7 @@ public class EditCheckedEnumListTests : TestContext
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
             b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<Color>>(this, v => captured = v));
-            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(3, "ValueExpression", field);
             b.CloseComponent();
         }));
 
@@ -101,7 +101,7 @@ public class EditCheckedEnumListTests : TestContext
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
             b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<Color>>(this, v => captured = v));
-            b.AddAttribute(3, "Field", field);
+            b.AddAttribute(3, "ValueExpression", field);
             b.CloseComponent();
         }));
 
@@ -122,7 +122,7 @@ public class EditCheckedEnumListTests : TestContext
         {
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "IsEditMode", false);
             b.CloseComponent();
         }));
@@ -142,7 +142,7 @@ public class EditCheckedEnumListTests : TestContext
         {
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Sort", true);
             b.CloseComponent();
         }));
@@ -162,7 +162,7 @@ public class EditCheckedEnumListTests : TestContext
         {
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
             b.CloseComponent();
         }));
@@ -179,7 +179,7 @@ public class EditCheckedEnumListTests : TestContext
         {
             b.OpenComponent<EditCheckedEnumList<Color>>(0);
             b.AddAttribute(1, "Value", model.Colors);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
             b.CloseComponent();
         }));

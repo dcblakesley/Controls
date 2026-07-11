@@ -53,7 +53,6 @@ public sealed class PerfGuardTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.CloseComponent();
         });
 
@@ -102,7 +101,7 @@ public sealed class PerfGuardTests : TestContext
         // so the control renders standalone and can be re-parameterized directly.
         var cut = RenderComponent<EditMultiSelect<Color>>(ps => ps
             .Add(x => x.Value, model.FavoriteColors)
-            .Add(x => x.Field, field)
+            .Add(x => x.ValueExpression, field)
             .Add(x => x.Options, options)
             .Add(x => x.IsEditMode, false));
 
@@ -142,7 +141,6 @@ public sealed class PerfGuardTests : TestContext
                     inner.OpenComponent<EditString>(0);
                     inner.AddAttribute(1, "Value", model.Username);
                     inner.AddAttribute(2, "ValueExpression", field);
-                    inner.AddAttribute(3, "Field", field);
                     inner.AddAttribute(4, "Label", label);
                     inner.CloseComponent();
                 }));

@@ -47,7 +47,6 @@ public class RequiredResolverTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.CloseComponent();
         });
 
@@ -80,7 +79,6 @@ public class RequiredResolverTests : TestContext
                     content.OpenComponent<EditString>(0);
                     content.AddAttribute(1, "Value", model.Username);
                     content.AddAttribute(2, "ValueExpression", field);
-                    content.AddAttribute(3, "Field", field);
                     content.CloseComponent();
                 }));
                 formContent.CloseComponent();
@@ -117,7 +115,6 @@ public class RequiredResolverTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.CloseComponent();
         });
 
@@ -138,7 +135,6 @@ public class RequiredResolverTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Name);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.AddAttribute(4, "IsRequired", false);
             content.CloseComponent();
         });
@@ -163,7 +159,6 @@ public class RequiredResolverTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.CloseComponent();
         });
 

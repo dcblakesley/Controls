@@ -39,7 +39,7 @@ public class EditFileTests : TestContext
         {
             b.OpenComponent<EditFile>(0);
             b.AddAttribute(1, "Value", model.Files);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             if (onChanged is not null)
                 b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<List<IBrowserFile>>(this, onChanged));
             if (maxFiles > 0)
@@ -133,7 +133,7 @@ public class EditFileTests : TestContext
         {
             b.OpenComponent<EditFile>(0);
             b.AddAttribute(1, "Value", model.Files);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "MaxFiles", 1);
             b.AddAttribute(4, "AllowedExtensions", new[] { ".txt" });
             b.AddAttribute(5, "MaxFilesMessageFormat", "Maximal {0} Dateien erlaubt — {1} nicht hinzugefügt.");
@@ -286,7 +286,7 @@ public class EditFileTests : TestContext
         {
             b.OpenComponent<EditFile>(0);
             b.AddAttribute(1, "Value", model.Files);
-            b.AddAttribute(2, "Field", field);
+            b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "IsEditMode", false);
             b.CloseComponent();
         }));
@@ -375,7 +375,7 @@ public class EditFileTests : TestContext
                 b.OpenComponent<EditCheckedStringList>(0);
                 b.AddAttribute(1, "Value", model.Tags);
                 b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<string>>(this, v => changed = v));
-                b.AddAttribute(3, "Field", field);
+                b.AddAttribute(3, "ValueExpression", field);
                 b.AddAttribute(4, "Options", new List<string> { "a", "b" });
                 b.CloseComponent();
             }));

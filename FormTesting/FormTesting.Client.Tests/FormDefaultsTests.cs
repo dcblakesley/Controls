@@ -23,7 +23,6 @@ public class FormDefaultsTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         };
         var inner = control;
@@ -153,7 +152,6 @@ public class FormDefaultsTests : TestContext
                         leaf.OpenComponent<EditString>(0);
                         leaf.AddAttribute(1, "Value", model.Name);
                         leaf.AddAttribute(2, "ValueExpression", field);
-                        leaf.AddAttribute(3, "Field", field);
                         leaf.CloseComponent();
                     }));
                     mid.CloseComponent();

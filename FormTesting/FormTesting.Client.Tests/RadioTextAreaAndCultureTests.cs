@@ -38,7 +38,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditBoolNullRadio>(0);
             b.AddAttribute(1, "Value", model.IsSubscribed);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "ValueChanged",
                 EventCallback.Factory.Create<bool?>(this, v => { captured = v; changed = true; }));
             b.CloseComponent();
@@ -61,7 +60,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => captured = v));
             b.AddAttribute(5, "Options", new List<string> { "a", "b", "c" });
             b.CloseComponent();
@@ -82,7 +80,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditTextArea>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Rows", 5);
             b.CloseComponent();
         }));
@@ -103,7 +100,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => captured = v));
             b.AddAttribute(5, "Options", new List<string> { "Other", "Something else" });
             b.CloseComponent();
@@ -129,7 +125,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => captured = v));
             b.AddAttribute(5, "HasOther", true);
             b.AddAttribute(6, "Options", new List<string> { "__wss-other__", "a" });
@@ -158,7 +153,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditNumber<int?>>(0);
             b.AddAttribute(1, "Value", model.Age);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<int?>(this, v => captured = v));
             b.CloseComponent();
         }));
@@ -185,7 +179,6 @@ public class RadioTextAreaAndCultureTests : TestContext
                 b.OpenComponent<EditNumber<decimal?>>(0);
                 b.AddAttribute(1, "Value", model.Price);
                 b.AddAttribute(2, "ValueExpression", field);
-                b.AddAttribute(3, "Field", field);
                 b.CloseComponent();
             }));
 
@@ -210,7 +203,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }));
@@ -223,7 +215,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.AddAttribute(5, "IsEditMode", false);
             b.CloseComponent();
@@ -246,7 +237,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.AddAttribute(5, "IsLabelHidden", true);
             b.CloseComponent();
@@ -266,7 +256,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         }));
         // edit-input is the hook the shipped :focus-visible ring / .invalid styles attach to.
@@ -283,7 +272,6 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Options", new List<string> { "a", "b" });
             b.CloseComponent();
         }));
@@ -297,13 +285,11 @@ public class RadioTextAreaAndCultureTests : TestContext
         var model = new PersonModel { Name = "a" };
         var editContext = new EditContext(model);
         Expression<Func<string?>> valueExpr = () => model.Name;
-        Expression<Func<string>> fieldExpr = () => model.Name;
 
         var cut = RenderComponent<EditRadioString>(ps => ps
             .AddCascadingValue(editContext)
             .Add(c => c.Value, "a")
             .Add(c => c.ValueExpression, valueExpr)
-            .Add(c => c.Field, fieldExpr)
             .Add(c => c.Options, new List<string> { "a", "b", "c" }));
 
         Assert.True(cut.Find("#rb-Name-a").HasAttribute("checked"));
@@ -323,13 +309,11 @@ public class RadioTextAreaAndCultureTests : TestContext
         var model = new PersonModel { Name = "bespoke" }; // not one of the options
         var editContext = new EditContext(model);
         Expression<Func<string?>> valueExpr = () => model.Name;
-        Expression<Func<string>> fieldExpr = () => model.Name;
 
         var cut = RenderComponent<EditRadioString>(ps => ps
             .AddCascadingValue(editContext)
             .Add(c => c.Value, "bespoke")
             .Add(c => c.ValueExpression, valueExpr)
-            .Add(c => c.Field, fieldExpr)
             .Add(c => c.HasOther, true)
             .Add(c => c.Options, new List<string> { "a", "b" }));
 
@@ -348,8 +332,7 @@ public class RadioTextAreaAndCultureTests : TestContext
             b.OpenComponent<EditRadioEnum<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
-            b.AddAttribute(4, "HasOtherOption", true);
+            b.AddAttribute(3, "HasOtherOption", true);
             b.CloseComponent();
         }));
 

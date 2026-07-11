@@ -36,7 +36,6 @@ public class ReadOnlyAndFormatTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "IsEditMode", false);
             b.CloseComponent();
         }));
@@ -58,7 +57,6 @@ public class ReadOnlyAndFormatTests : TestContext
             b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.When);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "DateFormat", "yyyy-MM-dd");
             b.AddAttribute(5, "IsEditMode", false);
             b.CloseComponent();
@@ -81,7 +79,6 @@ public class ReadOnlyAndFormatTests : TestContext
             b.OpenComponent<EditDate<TimeOnly?>>(0);
             b.AddAttribute(1, "Value", model.At);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "Type", InputDateType.Time);
             b.AddAttribute(5, "DateFormat", "yyyy-MM-dd");   // incompatible with TimeOnly
             b.AddAttribute(6, "IsEditMode", false);

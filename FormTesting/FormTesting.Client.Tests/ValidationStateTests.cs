@@ -42,7 +42,6 @@ public class ValidationStateTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Name);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.CloseComponent();
         });
 
@@ -68,7 +67,6 @@ public class ValidationStateTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Name);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.CloseComponent();
         });
 
@@ -90,7 +88,6 @@ public class ValidationStateTests : TestContext
             content.OpenComponent<EditRadioString>(0);
             content.AddAttribute(1, "Value", model.Name);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.AddAttribute(4, "Options", new List<string> { "a", "b" });
             content.CloseComponent();
         });
@@ -117,7 +114,7 @@ public class ValidationStateTests : TestContext
             {
                 content.OpenComponent<EditCheckedStringList>(0);
                 content.AddAttribute(1, "Value", model.Tags);
-                content.AddAttribute(2, "Field", field);
+                content.AddAttribute(2, "ValueExpression", field);
                 content.AddAttribute(3, "Options", new List<string> { "a", "b" });
                 content.CloseComponent();
             }));
@@ -153,7 +150,6 @@ public class ValidationStateTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Name);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.CloseComponent();
             content.OpenComponent<ValidationView>(4);
             content.CloseComponent();
@@ -186,7 +182,6 @@ public class ValidationStateTests : TestContext
             b.OpenComponent<EditString>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.CloseComponent();
         });
 
@@ -207,7 +202,6 @@ public class ValidationStateTests : TestContext
             b.OpenComponent<EditRadio<string>>(0);
             b.AddAttribute(1, "Value", model.Name);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "Field", field);
             b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
             {
                 cb.OpenComponent<InputRadio<string>>(0);
@@ -236,7 +230,6 @@ public class ValidationStateTests : TestContext
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Name);
             content.AddAttribute(2, "ValueExpression", field);
-            content.AddAttribute(3, "Field", field);
             content.AddAttribute(4, "IdPrefix", "foo");
             content.CloseComponent();
             content.OpenComponent<ValidationView>(5);

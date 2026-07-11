@@ -253,7 +253,7 @@ public class SelectEngineTests : TestContext
         Assert.Throws<InvalidOperationException>(() =>
             RenderComponent<EditMultiSelect<string>>(p => p
                 .Add(c => c.Value, model.Items)
-                .Add(c => c.Field, () => model.Items)
+                .Add(c => c.ValueExpression, () => model.Items)
                 .Add(c => c.Mode, SelectMode.Single)));
     }
 
