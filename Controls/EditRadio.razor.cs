@@ -55,6 +55,16 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     [Parameter] public bool IsDisabled { get; set; }
 
     // Component specific parameters
+
+    /// <summary>
+    /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
+    /// this used to require. This inert stub exists only so a leftover <c>Field="..."</c> attribute
+    /// is a compile error instead of silently building and throwing at runtime. Remove the attribute
+    /// from your markup.
+    /// </summary>
+    [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
+    [Parameter] public Expression<Func<TValue>>? Field { get; set; }
+
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 

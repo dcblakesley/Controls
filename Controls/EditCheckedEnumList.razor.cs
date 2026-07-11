@@ -8,6 +8,15 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
 {
     // Component-specific parameters
 
+    /// <summary>
+    /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
+    /// this used to require. This inert stub exists only so a leftover <c>Field="..."</c> attribute
+    /// is a compile error instead of silently building and throwing at runtime. Remove the attribute
+    /// from your markup.
+    /// </summary>
+    [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
+    [Parameter] public Expression<Func<List<TEnum>>>? Field { get; set; }
+
     /// <summary> If true, the enum values will be sorted by their display names.</summary>
     [Parameter] public bool Sort { get; set; }
 

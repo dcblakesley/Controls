@@ -8,6 +8,15 @@ namespace Controls;
 /// </summary>
 public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
 {
+    /// <summary>
+    /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
+    /// this used to require. This inert stub exists only so a leftover <c>Field="..."</c> attribute
+    /// is a compile error instead of silently building and throwing at runtime. Remove the attribute
+    /// from your markup.
+    /// </summary>
+    [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
+    [Parameter] public Expression<Func<TValue>>? Field { get; set; }
+
     /// <summary> The options to choose from.</summary>
     [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = Array.Empty<SelectOption<TValue>>();
 

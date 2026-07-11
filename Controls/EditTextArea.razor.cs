@@ -5,6 +5,15 @@ public partial class EditTextArea : EditControlBase<string?>
 {
     // Component-specific parameters
 
+    /// <summary>
+    /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
+    /// this used to require. This inert stub exists only so a leftover <c>Field="..."</c> attribute
+    /// is a compile error instead of silently building and throwing at runtime. Remove the attribute
+    /// from your markup.
+    /// </summary>
+    [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
+    [Parameter] public Expression<Func<string?>>? Field { get; set; }
+
     /// <summary> Placeholder text to display in the textarea when empty.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
