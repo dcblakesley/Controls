@@ -22,7 +22,7 @@ dotnet pack Controls/Controls.csproj -c Release -o ./nupkg
 dotnet pack Controls.Demo/Controls.Demo.csproj -c Release -o ./nupkg
 ```
 
-CI (`.github/workflows/ci.yml`) runs on every push/PR: Release build of the solution, the bUnit suite across all three TFMs, a pack of both packages, and the Playwright E2E suite (on `windows-latest` — the visual baselines are Windows-rendered). The library projects set `TreatWarningsAsErrors`, so a new warning fails the build.
+CI (`.github/workflows/ci.yml`) runs on every push/PR: Release build of the solution, the bUnit suite, a pack of both packages, and the Playwright E2E suite (on `windows-latest` — the visual baselines are Windows-rendered). The library projects set `TreatWarningsAsErrors`, so a new warning fails the build.
 
 **Trimming / AOT.** `Controls.csproj` sets `IsAotCompatible`, which ships `IsTrimmable` metadata in the package and runs the trim/AOT/single-file analyzers on every build — with warnings-as-errors, any new IL2xxx/IL3xxx is a build break. Consequences when adding code: no `Enum.GetValues(Type)` (use `EnumHelpers.GetValues<T>`), no `MakeGenericType`/`MakeGenericMethod`, and by-name reflection needs either a `[DynamicallyAccessedMembers]` annotation or a named method with a justified `[UnconditionalSuppressMessage]` (see `FieldValidationDisplay.GetPropertyTypeName` / `EnumHelpers.GetEnumField` for the pattern — the justification must explain why the target is rooted and what the graceful fallback is). Generic parameters that flow into `BindConverter.TryConvertTo` or the framework `Input*` components must carry `[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]`. Controls.Demo is intentionally *not* marked trimmable (its demo models hit the BCL's `[MinLength]` IL2026, a consumer-side non-issue on `List<T>`). To re-verify runtime behavior under trimming, publish the demo host fully trimmed and point the e2e suite at it:
 
@@ -33,7 +33,7 @@ FORMTESTING_E2E_APP=<dir>/FormTesting.dll dotnet test FormTesting/FormTesting.Cl
 
 (`WssFullTrimTest` roots the client app assembly — under `TrimMode=full` Blazor's reflection-based route discovery otherwise lets the trimmer delete the whole app. The default `dotnet publish -c Release` needs no flags and trims just the marked library.)
 
-Automated tests live in `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit) and multi-target net8.0/net9.0/net10.0, so `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj` runs the whole bUnit suite once per TFM (the library ships on all three, so the smoke tests guard each). Coverage focuses on the helpers (`EnumHelpers`, `AttributesHelper`, `EditControlInit`, `ValidationHelper`) and bUnit smoke tests for the controls — particularly the parsing logic ported in the `EditControlBase` refactor. The ported AntDesign-style controls have coverage too: `EditSelectControlsTests` (the form selects), `UiKitLeafControlsTests`, `UiKitDialogControlsTests`, `UiKitTableTests`, and `WasmToastTests`. Add new tests alongside any non-trivial helper or control change.
+Automated tests live in `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10.0), so `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj` runs the whole bUnit suite once. Coverage focuses on the helpers (`EnumHelpers`, `AttributesHelper`, `EditControlInit`, `ValidationHelper`) and bUnit smoke tests for the controls — particularly the parsing logic ported in the `EditControlBase` refactor. The ported AntDesign-style controls have coverage too: `EditSelectControlsTests` (the form selects), `UiKitLeafControlsTests`, `UiKitDialogControlsTests`, `UiKitTableTests`, and `WasmToastTests`. Add new tests alongside any non-trivial helper or control change.
 
 End-to-end tests live in `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Playwright .NET, net10 only). Run with `dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj`. There's one test class per Edit* control (render, interaction, read-only toggle, and a visual-regression baseline screenshot per `section.demo-section`), plus `EditSelectSearchE2ETests` / `EditMultiSelectE2ETests` for the searchable selects and `UiKitGalleryE2ETests`, which drives the standalone `/uikit` gallery page (Drawer, Popconfirm, Popover, Pagination, Modal, toasts — with baselines for the visually-distinct ones). The `AppFixture` launches the `FormTesting` Blazor Server host out-of-process on a free port for the duration of the run; the `BrowserFixture` shares one headless Chromium across all tests. Set `PWTEST_HEADED=1` to watch the browser locally.
 
@@ -41,8 +41,8 @@ End-to-end tests live in `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Pla
 
 ## Project Structure
 
-- **Controls/** — Main Razor Class Library (`WssBlazorControls` NuGet package). Multi-targets net8.0, net9.0, net10.0. Form `Edit*` controls live at the root; the ported AntDesign-style controls live in `Controls/Select/` (searchable selects + the `Select<T>` engine) and `Controls/UiKit/` (general widgets).
-- **Controls.Demo/** — Demo components library (`WssBlazorControls.Demo` NuGet package). References Controls. Same multi-targeting.
+- **Controls/** — Main Razor Class Library (`WssBlazorControls` NuGet package). Targets net10.0. Form `Edit*` controls live at the root; the ported AntDesign-style controls live in `Controls/Select/` (searchable selects + the `Select<T>` engine) and `Controls/UiKit/` (general widgets).
+- **Controls.Demo/** — Demo components library (`WssBlazorControls.Demo` NuGet package). References Controls. Also net10.0.
 - **FormTesting/FormTesting/** — Blazor Server host (net10.0).
 - **FormTesting/FormTesting.Client/** — Blazor WebAssembly client that references both Controls and Controls.Demo.
 - **FormTesting/FormTesting.Client.Tests/** — xUnit + bUnit unit tests (net10).
@@ -63,7 +63,7 @@ Prefer **render-tree-scoped configuration** (cascading values/components): each 
 
 Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, EditRadio*, EditChecked*, EditFile) follows the same structure:
 
-1. **Inherits** one of two shared bases: `EditControlBase<T>` (scalar controls, an `InputBase<T>`) or `EditControlListBase<T>` (list-bound controls — `EditChecked*`, `EditMultiSelect`, `EditFile` — a `ComponentBase` binding `List<T>`). Both hoist the `IEditControl` params + cascading options; derived controls declare `Field` and call `InitState(Field)`. (`EditRadio<T>` inherits `InputRadioGroup<T>`; `EditDisplay` is a plain `ComponentBase`.)
+1. **Inherits** one of two shared bases: `EditControlBase<T>` (scalar controls, an `InputBase<T>`) or `EditControlListBase<T>` (list-bound controls — `EditChecked*`, `EditMultiSelect`, `EditFile` — a `ComponentBase` binding `List<T>`). Both hoist the `IEditControl` params + cascading options; derived controls call `InitState(ValueExpression ?? throw ...)` in `OnInitialized` — `@bind-Value` alone supplies `ValueExpression` (no separate `Field` expression needed; a legacy `Field` parameter still exists on every control but only as an `[Obsolete(error: true)]` compile-time guard against stale markup). (`EditRadio<T>` inherits `InputRadioGroup<T>`; `EditDisplay` is a plain `ComponentBase`.)
 2. **Implements** `IEditControl` (common properties: Label, Description, Tooltip, IsEditMode, IsHidden, IsDisabled, etc.)
 3. **Receives** `FormOptions` and `FormGroupOptions` as `[CascadingParameter]`s
 4. **Split** into `.razor` (markup) + `.razor.cs` (code-behind)
@@ -137,11 +137,11 @@ Never push to NuGet from an agent (see Release Workflow).
 
 Version is set via `<AssemblyVersion>` in each `.csproj`. Both Controls and Controls.Demo should be kept in sync. `FileVersion` and `Version` derive from `AssemblyVersion`. Update the changelog in `README.md` when bumping versions.
 
-**Convention: the major version tracks the latest supported .NET version, *not* semver.** Library code currently multi-targets net8/net9/net10, so we sit on `10.x.x` until net11 ships. Within that:
+**Convention: the major version tracks the latest supported .NET version, *not* semver.** Library code currently targets net10.0, so we sit on `10.x.x` until net11 ships. Within that:
 - **Minor** (`10.X.0`) — new features, behavioral changes, or anything a consumer might need to read about before upgrading. Bump even for technically-breaking changes that semver would call major.
 - **Patch** (`10.x.X`) — pure bug fixes, internal refactors, doc tweaks.
 
-When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade itself — pair it with raising `<TargetFrameworks>`.
+When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade itself — pair it with raising `<TargetFramework>`. (Dropping a *lower* supported TFM instead — e.g. the net8.0/net9.0 removal in 10.6.0 — doesn't change the major; it's still a `10.X.0` minor, since it's a supported-platform change a consumer needs to read about before upgrading, not a .NET version bump for the library itself.)
 
 **Bump only at publish time.** Do not bump `<AssemblyVersion>` for in-progress work — accumulate changes against the current version and bump (with the README changelog entry) only when the next NuGet release is being cut. This keeps git history clean and avoids meaningless intermediate version numbers.
 

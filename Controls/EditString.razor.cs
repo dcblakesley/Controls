@@ -63,8 +63,8 @@ public partial class EditString : EditControlBase<string?>
             $"{nameof(EditString)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
-    // Trivial parser — same as Microsoft's InputText: pass the string through.
-    // `out string` (not `string?`) for net8 base-signature compat.
+    // Trivial parser — same as Microsoft's InputText: pass the string through. `out string`
+    // (not `string?`) because InputBase<T>'s abstract signature declares it non-nullable.
     protected override bool TryParseValueFromString(string? value, out string? result, out string validationErrorMessage)
     {
         result = value;

@@ -380,7 +380,7 @@ WssBlazorControls is built with accessibility as a priority:
 
 - Modern browsers with WebAssembly support
 - Designed for both Blazor Server and Blazor WebAssembly scenarios
-- Compatible with .NET 8.0+
+- Requires .NET 10.0+
 
 ## Trimming and AOT
 
@@ -416,6 +416,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.6.0
+
+**Drops net8.0/net9.0 — the package now targets net10.0 only**
+
+- `WssBlazorControls` and `WssBlazorControls.Demo` are single-targeted at `net10.0`; both previously multi-targeted `net8.0;net9.0;net10.0`. **If your app targets net8.0 or net9.0, this version will not install** — stay on `10.5.x` until you upgrade the app to net10.0.
+- CI now installs and runs against a single .NET SDK instead of three; the bUnit suite runs once instead of once per TFM.
+- No API or behavioral changes for net10.0 consumers — this is purely a supported-platform reduction.
 
 ### 10.5.0
 

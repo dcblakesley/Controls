@@ -1,7 +1,7 @@
 # Build + test on every push/PR. Two jobs:
 #  - build-and-test: Release build of the whole solution (the library projects treat warnings as
-#    errors), the bUnit suite across net8/net9/net10, and a pack of both NuGet packages so a
-#    broken pack is caught before publish day.
+#    errors), the bUnit suite (net10.0), and a pack of both NuGet packages so a broken pack is
+#    caught before publish day.
 #  - e2e: the Playwright suite on windows-latest — the committed visual-regression baselines are
 #    captured on Windows, and Linux font rendering would diff every screenshot. Debug build
 #    because AppFixture launches the host via `dotnet run --no-build` (Debug output).
@@ -19,13 +19,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET SDKs
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            8.0.x
-            9.0.x
-            10.0.x
+          dotnet-version: 10.0.x
 
       - name: Restore
         run: dotnet restore FormTesting.sln
@@ -33,7 +30,7 @@ jobs:
       - name: Build (Release)
         run: dotnet build FormTesting.sln --no-restore -c Release
 
-      - name: Unit tests (bUnit, all target frameworks)
+      - name: Unit tests (bUnit)
         run: dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj --no-build -c Release
 
       - name: Pack

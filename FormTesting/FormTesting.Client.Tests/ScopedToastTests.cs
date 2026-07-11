@@ -143,9 +143,8 @@ public class ScopedToastTests : TestContext
 
         // Poll to a deadline instead of racing one fixed wall-clock wait against the real
         // auto-dismiss timer. RemoveAfterAsync's post-Task.Delay continuation resumes on the
-        // threadpool, which can be starved when the net8/9/10 test processes run in parallel, so a
-        // single Task.Delay(400) was intermittently too short. A bounded poll passes on a slow box
-        // without making a fast one wait.
+        // threadpool, which can be starved under CI load, so a single Task.Delay(400) was
+        // intermittently too short. A bounded poll passes on a slow box without making a fast one wait.
         var deadline = DateTime.UtcNow.AddSeconds(5);
         while (svc.Items.Count > 0 && DateTime.UtcNow < deadline)
             await Task.Delay(10);
