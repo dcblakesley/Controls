@@ -417,14 +417,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### 10.6.0
-
-**Drops net8.0/net9.0 — the package now targets net10.0 only**
-
-- `WssBlazorControls` and `WssBlazorControls.Demo` are single-targeted at `net10.0`; both previously multi-targeted `net8.0;net9.0;net10.0`. **If your app targets net8.0 or net9.0, this version will not install** — stay on `10.5.x` until you upgrade the app to net10.0.
-- CI now installs and runs against a single .NET SDK instead of three; the bUnit suite runs once instead of once per TFM.
-- No API or behavioral changes for net10.0 consumers — this is purely a supported-platform reduction.
-
 ### 10.5.0
 
 **`Field` is gone — `@bind-Value` alone is now enough on every control**
@@ -432,6 +424,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Every `Edit*` control previously required both `@bind-Value="model.Property"` **and** `Field="@(() => model.Property)"` — the second was pure duplication. Razor's `@bind-Value` directive already populates a `ValueExpression` (the same mechanism Microsoft's own `InputText`/`InputNumber` rely on for validation and labeling without a second parameter); the library just wasn't using it. All 17 controls now resolve their accessor from `ValueExpression` instead.
 - This covers the scalar controls (`EditString`, `EditNumber`, `EditDate`, `EditBool`, `EditBoolNullRadio`, `EditSelectEnum`, `EditSelectString`, `EditSelect`, `EditSelectSearch`, `EditRadio`, `EditRadioEnum`, `EditRadioString`, `EditTextArea`) and the list-bound controls (`EditCheckedStringList`, `EditCheckedEnumList`, `EditFile`, `EditMultiSelect`). The list-bound controls aren't `InputBase`-derived, so `EditControlListBase<TItem>` gained its own `ValueExpression` parameter — the compiler synthesizes it from `@bind-Value` for any component with the `Value`/`ValueChanged`/`ValueExpression` parameter shape, not just `InputBase` subclasses.
 - **Migration:** delete every `Field="@(() => model.Property)"` attribute — `@bind-Value="model.Property"` alone is sufficient. `Field` still exists on every control as an inert, `[Obsolete(error: true)]`-decorated parameter purely so a leftover `Field=` attribute is a **build error** (`CS0619: 'EditXxx.Field' is obsolete: ...`) instead of a silent runtime failure — Blazor otherwise validates unmatched component parameters at `SetParametersAsync` time, not compile time, so a stale attribute would build cleanly and only throw the first time that component renders. The error message tells you exactly what to remove; this stub carries no other behavior and is planned for physical removal in a future major version.
+
+**Drops net8.0/net9.0 — the package now targets net10.0 only**
+
+- `WssBlazorControls` and `WssBlazorControls.Demo` are single-targeted at `net10.0`; both previously multi-targeted `net8.0;net9.0;net10.0`. **If your app targets net8.0 or net9.0, this version will not install** — stay on `10.4.x` until you upgrade the app to net10.0.
+- CI now installs and runs against a single .NET SDK instead of three; the bUnit suite runs once instead of once per TFM.
+- No API or behavioral changes for net10.0 consumers — this is purely a supported-platform reduction.
 
 ### 10.4.0
 

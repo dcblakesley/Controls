@@ -141,7 +141,7 @@ Version is set via `<AssemblyVersion>` in each `.csproj`. Both Controls and Cont
 - **Minor** (`10.X.0`) — new features, behavioral changes, or anything a consumer might need to read about before upgrading. Bump even for technically-breaking changes that semver would call major.
 - **Patch** (`10.x.X`) — pure bug fixes, internal refactors, doc tweaks.
 
-When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade itself — pair it with raising `<TargetFramework>`. (Dropping a *lower* supported TFM instead — e.g. the net8.0/net9.0 removal in 10.6.0 — doesn't change the major; it's still a `10.X.0` minor, since it's a supported-platform change a consumer needs to read about before upgrading, not a .NET version bump for the library itself.)
+When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade itself — pair it with raising `<TargetFramework>`. (Dropping a *lower* supported TFM instead — e.g. the net8.0/net9.0 removal in 10.5.0 — doesn't change the major; it's still a `10.X.0` minor, since it's a supported-platform change a consumer needs to read about before upgrading, not a .NET version bump for the library itself.)
 
 **Bump only at publish time.** Do not bump `<AssemblyVersion>` for in-progress work — accumulate changes against the current version and bump (with the README changelog entry) only when the next NuGet release is being cut. This keeps git history clean and avoids meaningless intermediate version numbers.
 
