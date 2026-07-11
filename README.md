@@ -68,15 +68,15 @@ Install-Package WssBlazorControls
 
     @* No Label needed: "Name", "Age", and "Birth Date" are derived correctly
        from the property names, and the required star comes from [Required]. *@
-    <EditString @bind-Value="model.Name"     Field="@(() => model.Name)" />
-    <EditNumber @bind-Value="model.Age"       Field="@(() => model.Age)" />
-    <EditDate   @bind-Value="model.BirthDate" Field="@(() => model.BirthDate)" />
+    <EditString @bind-Value="model.Name" />
+    <EditNumber @bind-Value="model.Age" />
+    <EditDate   @bind-Value="model.BirthDate" />
 
     @* "Is Active" would be wrong, so the constant label lives on the model. *@
-    <EditBool   @bind-Value="model.IsActive"  Field="@(() => model.IsActive)" />
+    <EditBool   @bind-Value="model.IsActive" />
 
     @* Label is set in markup only because the text is dynamic at runtime. *@
-    <EditString @bind-Value="model.Answer"    Field="@(() => model.Answer)" Label="@_currentQuestion" />
+    <EditString @bind-Value="model.Answer" Label="@_currentQuestion" />
 
     <button type="submit">Submit</button>
 
@@ -260,7 +260,7 @@ Build the resolver once from your validator's own rules, so the star, `aria-requ
 <EditForm Model="model">
     <FluentValidationValidator />  @* Blazored.FluentValidation *@
     <CascadingValue Value="_formOptions">
-        <EditString @bind-Value="model.Name" Field="@(() => model.Name)" />
+        <EditString @bind-Value="model.Name" />
         ...
     </CascadingValue>
 </EditForm>
@@ -294,7 +294,6 @@ Two caveats for mixed estates:
 
 ```razor
 <EditSelectEnum @bind-Value="model.Priority" 
-                Field="@(() => model.Priority)"
                 Label="Priority Level" 
                 IsRequired="true" />
 
@@ -319,7 +318,6 @@ Two caveats for mixed estates:
 
 ```razor
 <EditRadioString @bind-Value="model.Department" 
-                 Field="@(() => model.Department)"
                  Label="Department"
                  Options="@departments" />
 
@@ -338,7 +336,6 @@ Two caveats for mixed estates:
 
 ```razor
 <EditCheckedStringList @bind-Value="model.Skills" 
-                       Field="@(() => model.Skills)"
                        Label="Technical Skills"
                        Options="@skills" />
 
@@ -365,7 +362,6 @@ The AntDesign-style UI-kit controls (Alert, Modal, Table, Select, ...) are theme
 
 ```razor
 <EditString @bind-Value="model.Name" 
-            Field="@(() => model.Name)"
             Label="Name" 
             ContainerClass="my-custom-style" />
 ```
@@ -392,14 +388,14 @@ WssBlazorControls is built with accessibility as a priority:
 
 Why the attribute-driven features survive trimming:
 
-- **Labels, tooltips, descriptions, length/range extraction** — every control takes `Field="@(() => model.Property)"`; the expression tree roots the property's getter, so the trimmer keeps the property and the attributes on it. The attribute types themselves (`[DisplayName]`, `[Description]`, `[ToolTip]`, `[Range]`, ...) are referenced by the library and kept.
+- **Labels, tooltips, descriptions, length/range extraction** — every control resolves its accessor from `@bind-Value`'s compiler-synthesized `ValueExpression`; the expression tree roots the property's getter, so the trimmer keeps the property and the attributes on it. The attribute types themselves (`[DisplayName]`, `[Description]`, `[ToolTip]`, `[Range]`, ...) are referenced by the library and kept.
 - **Enum display names** — `[EnumDisplayName]`/`[Display]` lookups only reflect over enum types, whose fields the trimmer always preserves.
 - **Option building** — enum option lists use `Enum.GetValuesAsUnderlyingType` (no dynamic array creation), safe under WASM AOT.
 
 Consumer notes:
 
 - The generic controls (`EditNumber<T>`, `EditDate<T>`, `EditSelect<TValue>`, `EditRadio*`) annotate their type parameter with `[DynamicallyAccessedMembers(All)]`, mirroring the framework's `InputNumber`/`InputSelect`. Normal usage (binding concrete model properties) compiles warning-free; only forwarding an open generic parameter into them propagates the annotation.
-- `<DataAnnotationsValidator>` is the framework's reflection-based validator and warns under full trimming in *your* app — models bound through `Field` expressions are rooted in practice, but validation of unbound/nested models is your app's concern.
+- `<DataAnnotationsValidator>` is the framework's reflection-based validator and warns under full trimming in *your* app — models bound through `@bind-Value` are rooted in practice, but validation of unbound/nested models is your app's concern.
 - `[MinLength]`/`[MaxLength]` attribute constructors are marked `RequiresUnreferencedCode` by the BCL (they reflect over a `Count` property for exotic collection types). On `List<T>`/`ICollection` — what the list-bound controls use — the reflection path is never hit; suppress or ignore that IL2026 in app code.
 - `TrimMode=full` deletes a Blazor WASM app whose routable components are only discovered via the `Router`'s reflection. If you opt into full trimming, root your app assembly: `<TrimmerRootAssembly Include="YourApp.Client" />`.
 

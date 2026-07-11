@@ -1,11 +1,11 @@
 ﻿@using Controls
 <CascadingValue Value="@(new FormGroupOptions { Name = Name })">
-    <EditString @bind-Value=Address.Line1 Field=@(() => Address.Line1)  />
+    <EditString @bind-Value=Address.Line1 />
 
     <div class="flex-row">
-        <EditString @bind-Value=Address.City Field=@(() => Address.City)  />
-        <EditSelectString @bind-Value=Address.State Field=@(() => Address.State) IsEditMode=IsEditMode Options=_stateOptions />
-        <EditString @bind-Value=Address.ZipCode Field=@(() => Address.ZipCode)  />
+        <EditString @bind-Value=Address.City />
+        <EditSelectString @bind-Value=Address.State IsEditMode=IsEditMode Options=_stateOptions />
+        <EditString @bind-Value=Address.ZipCode />
     </div>
 </CascadingValue>
 
