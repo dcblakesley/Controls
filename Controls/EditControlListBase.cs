@@ -55,7 +55,15 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     /// Compiler-populated by <c>@bind-Value</c> alongside <see cref="Value"/>/<see cref="ValueChanged"/>
     /// (same convention <c>InputBase</c> uses) — supplies the accessor <see cref="InitState{T}"/> needs.
     /// </summary>
-    [Parameter] public Expression<Func<List<TItem>>>? ValueExpression { get; set; }
+    /// <remarks>
+    /// <see cref="EditorRequiredAttribute"/> makes a missing/incomplete bind (e.g. one-way <c>Value="..."</c>
+    /// with no <c>@bind-Value</c>) a build-time <c>RZ2012</c> diagnostic instead of only the runtime
+    /// <see cref="InvalidOperationException"/> each derived control's <c>OnInitialized</c> throws. Unlike
+    /// the scalar controls, this parameter is declared here rather than inherited from Microsoft's
+    /// <c>InputBase&lt;TValue&gt;</c>, so attaching the attribute doesn't require hiding an inherited,
+    /// non-virtual member — which would silently break <c>InputBase</c>'s own change-notification path.
+    /// </remarks>
+    [Parameter, EditorRequired] public Expression<Func<List<TItem>>>? ValueExpression { get; set; }
 
     // Standard derived state — populated by InitState in derived class's OnInitialized.
     protected string _id = string.Empty;
