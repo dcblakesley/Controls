@@ -235,7 +235,7 @@ All form controls implement the `IEditControl` interface and provide:
 
 - **Identity Management**: `Id`, `IdPrefix` for unique identification
 - **Display Control**: `IsEditMode`, `IsDisabled`, `IsHidden`
-- **Labeling**: auto-generated from the property name, `[DisplayName]` for constant labels, or the `Label` parameter for dynamic text — see [Labeling: how to choose](#labeling-how-to-choose). `Description` supports markup.
+- **Labeling**: auto-generated from the property name, `[DisplayName]` for constant labels, or the `Label` parameter for dynamic text — see [Labeling: how to choose](#labeling-how-to-choose). `Description` is plain text (HTML-encoded when rendered).
 - **Styling**: `ContainerClass` for custom CSS
 - **Validation**: required-ness from `[Required]`, the three-state `IsRequired` parameter, or `FormOptions.RequiredResolver` — see [Validation stacks](#validation-stacks-dataannotations-fluentvalidation-custom)
 - **Conditional Display**: `Hiding` modes and `HidingMode` enum
@@ -431,6 +431,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **New feature**
 - `EditBool.UseStyledCheckbox` (default `false`) — opt-in custom-drawn checkbox. No current browser (Chromium or Safari/WebKit) honors `border-radius` on a native `<input type="checkbox">` once `accent-color` is set, so there was previously no way to get a shaped checkbox out of `EditBool`. When enabled, the real `<input>` stays in the DOM (focusable, keyboard-operable, full native semantics) but is visually hidden; a sibling element draws the box, checked fill, checkmark, and focus ring via the plain adjacent-sibling (`+`) CSS selector (not `:has()`, so it still works on older Safari). Existing checkboxes are pixel-identical — nothing changes unless you opt in. See [Custom-Styled Checkbox](#custom-styled-checkbox-border-radius).
+
+**Bug fixes**
+- `width: 100%` (or any percentage width) on the editor element of `EditString` / `EditNumber` / `EditDate` / `EditTextArea` now works. Previously the `.edit-input-with-icon` wrapper shrink-wrapped to the editor's intrinsic size, which made a percentage width on the editor circular per the CSS sizing spec — it silently resolved to `auto` and the input stayed at its default size. The wrapper is now a flex row that stretches to the control column (so percentages resolve against it), and the red-X invalid icon overlays the editor's trailing edge via a negative flex-item margin instead of absolute positioning — still `dir="rtl"`-correct and still immune to being wrapped onto its own line under a width squeeze.
 
 ### 10.5.1
 

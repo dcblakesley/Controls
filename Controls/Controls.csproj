@@ -51,7 +51,7 @@
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>10.5.1 - EditControlListBase.ValueExpression is now EditorRequired (a missing/incomplete @bind-Value is a compile-time RZ2012 instead of only a runtime throw); fixed the edit-icon-invalid validation icon wrapping onto its own line under a width squeeze. See the README changelog for the full list.</PackageReleaseNotes>
+    <PackageReleaseNotes>10.6.0 - EditBool.UseStyledCheckbox: opt-in custom-drawn checkbox (border-radius etc.) with full native input semantics; percentage widths (width: 100%) on the EditString/EditNumber/EditDate/EditTextArea editor now resolve correctly instead of silently collapsing to the default size. See the README changelog for the full list.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>

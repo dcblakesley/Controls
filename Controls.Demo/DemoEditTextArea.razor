@@ -44,9 +44,9 @@
     <section class="demo-section">
         <style>
             .my-custom-container { background-color:cyan; padding: 10px; border-radius: 40px; }
-            .my-custom-textarea { background-color: magenta; border: 2px solid #0066cc; border-radius: 40px; padding: 8px; width: 100%; min-height: 100px; font-family: 'Courier New', monospace; background:  }
+            .my-custom-textarea { background-color: magenta; border: 2px solid #0066cc; border-radius: 40px; padding: 8px; width: 100%; min-height: 100px; font-family: 'Courier New', monospace; }
         </style>
-        
+
         <EditTextArea @bind-Value="_model.CustomStyling"
                       ContainerClass="my-custom-container"
                       class="my-custom-textarea"/>
@@ -123,14 +123,14 @@
     border-radius: 40px; 
 }
 
-.my-custom-textarea { 
-    background-color: magenta; 
-    border: 2px solid #0066cc; 
-    border-radius: 40px; 
-    padding: 8px; 
-    width: 100%; 
-    min-height: 100px; 
-    font-family: 'Courier New', monospace; 
+.my-custom-textarea {
+    background-color: magenta;
+    border: 2px solid #0066cc;
+    border-radius: 40px;
+    padding: 8px;
+    width: 100%;
+    min-height: 100px;
+    font-family: 'Courier New', monospace;
 }";
 
     readonly string _validationExample = @"<EditTextArea @bind-Value=""_model.Disabled""

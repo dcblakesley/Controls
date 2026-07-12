@@ -72,4 +72,26 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : PageTe
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
+
+    [Fact]
+    public async Task Percentage_width_on_the_input_resolves_against_the_control_column()
+    {
+        // Regression: .edit-input-with-icon used to shrink-wrap (align-self: flex-start), which made
+        // a consumer width:100% on the editor circular per the CSS sizing spec — it silently resolved
+        // to auto and the input stayed at its intrinsic default size. The custom-styling demo section
+        // sets width:100%; the input must now span (nearly) its purple container's inner width.
+        await NavigateAsync();
+        var input = Page.Locator("input.my-custom-input");
+        var container = Page.Locator(".my-custom-container");
+
+        var inputBox = await input.BoundingBoxAsync();
+        var containerBox = await container.BoundingBoxAsync();
+        Assert.NotNull(inputBox);
+        Assert.NotNull(containerBox);
+
+        // Container has 10px padding per side; allow slack for borders/rounding. A collapsed input
+        // renders ~180px (Chromium's default size="20" width), far below this threshold.
+        Assert.True(inputBox.Width >= containerBox.Width - 25,
+            $"input width {inputBox.Width}px should fill the container ({containerBox.Width}px wide) — percentage width collapsed");
+    }
 }
