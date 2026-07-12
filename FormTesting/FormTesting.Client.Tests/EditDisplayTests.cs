@@ -66,6 +66,17 @@ public class EditDisplayTests : TestContext
     }
 
     [Fact]
+    public void EditDisplay_applies_the_Class_parameter_to_the_value_element()
+    {
+        // Class was a documented parameter that the markup never rendered.
+        var cut = RenderComponent<EditDisplay>(p => p
+            .Add(d => d.Class, "highlight")
+            .Add(d => d.Text, "15.3 oz"));
+
+        Assert.Contains("highlight", cut.Find(".edit-readonly-value").ClassList);
+    }
+
+    [Fact]
     public void EditDisplay_id_composes_group_name_and_IdPrefix_like_bound_controls()
     {
         var cut = RenderComponent<EditDisplay>(p => p

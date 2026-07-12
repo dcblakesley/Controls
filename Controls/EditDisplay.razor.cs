@@ -27,7 +27,9 @@ public partial class EditDisplay
     /// <inheritdoc cref="IEditControl.IsRequired"/>
     [Parameter] public bool? IsRequired { get; set; }
 
+    /// <summary>Extra CSS class(es) appended to the displayed value element (alongside <c>edit-readonly-value</c>); use <see cref="ContainerClass"/> to style the wrapper instead.</summary>
     [Parameter] public string? Class { get; set; }
+    /// <summary>The read-only text to display, styled like the other Edit controls' read-only values.</summary>
     [Parameter] public string Text { get; set; } = "";
 
     /// <inheritdoc cref="IEditControl.IsHidden"/>
