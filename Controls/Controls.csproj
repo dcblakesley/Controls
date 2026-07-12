@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.5.0</AssemblyVersion>
+	  <AssemblyVersion>10.5.1</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -51,7 +51,7 @@
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>10.5.0 - Field is gone from every control; @bind-Value alone now supplies the accessor (a leftover Field= attribute is a build error, not a silent runtime failure). Also drops net8.0/net9.0 -- the package now targets net10.0 only. See the README changelog for the full list.</PackageReleaseNotes>
+    <PackageReleaseNotes>10.5.1 - EditControlListBase.ValueExpression is now EditorRequired (a missing/incomplete @bind-Value is a compile-time RZ2012 instead of only a runtime throw); fixed the edit-icon-invalid validation icon wrapping onto its own line under a width squeeze. See the README changelog for the full list.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>

@@ -417,6 +417,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.5.1
+
+**Bug fixes**
+- `EditControlListBase<TItem>.ValueExpression` is now `[EditorRequired]` — a missing/incomplete `@bind-Value` (e.g. one-way `Value="..."` with no binding) is now a build-time `RZ2012` diagnostic instead of only the runtime `InvalidOperationException` each list-bound control's `OnInitialized` already threw.
+- Fixed `.edit-icon-invalid` (the validation-error icon overlaid on `EditString`/`EditNumber`/`EditDate`/`EditTextArea`) wrapping onto its own line under a width squeeze. It's now absolutely positioned (`inset-inline-end`, so it still overlays the correct edge under `dir="rtl"`) instead of relying on a negative margin to pull it over the input.
+
+**Demo**
+- Added a "Comparison" view to the demo app that renders the same field via WssBlazorControls, hand-rolled Blazor, and React + Ant Design (with and without full accessibility parity) side by side, with reasoned notes on the accessibility and AI-authoring trade-offs of each.
+
 ### 10.5.0
 
 **`Field` is gone — `@bind-Value` alone is now enough on every control**
