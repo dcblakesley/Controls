@@ -69,7 +69,9 @@
       "PowerShell(Set-Content *)",
       "PowerShell(Get-ChildItem *)",
       "PowerShell(pwsh -NoProfile -ExecutionPolicy Bypass \"C:\\\\Repos\\\\Controls\\\\FormTesting\\\\FormTesting.Client.E2ETests\\\\bin\\\\Debug\\\\net10.0\\\\playwright.ps1\" install webkit firefox 2>&1 | Select-Object -Last 6)",
-      "Read(//c/Users/dcbla/AppData/Local/Temp/claude/C--Repos-Controls/e09b87d3-559f-48f8-83d7-57e8ec10ac78/tasks/**)"
+      "Read(//c/Users/dcbla/AppData/Local/Temp/claude/C--Repos-Controls/e09b87d3-559f-48f8-83d7-57e8ec10ac78/tasks/**)",
+      "Bash(cat)",
+      "Bash(rm -f /tmp_check.txt)"
     ]
   }
 }
