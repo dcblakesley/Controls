@@ -48,4 +48,65 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
+
+    [Fact]
+    public async Task Clicking_styled_checkbox_toggles_value()
+    {
+        await NavigateAsync();
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Display bound values" }).ClickAsync();
+
+        var section = Page.Locator("section.demo-section").Nth(4);
+        var checkbox = section.Locator("input[type=checkbox]").First;
+        await Expect(checkbox).Not.ToBeCheckedAsync();
+        await checkbox.CheckAsync();
+        await Expect(checkbox).ToBeCheckedAsync();
+
+        await Expect(section.Locator(".bound-value").First).ToContainTextAsync("True");
+    }
+
+    [Fact]
+    public async Task Tabbing_to_styled_checkbox_shows_focus_visible_outline_and_Space_toggles_it()
+    {
+        await NavigateAsync();
+        var checkbox = Page.Locator("section.demo-section").Nth(4).Locator("input.edit-checkbox-input-styled").First;
+        var box = Page.Locator("section.demo-section").Nth(4).Locator(".edit-checkbox-box").First;
+
+        // .FocusAsync() (calling the DOM .focus() directly) doesn't reliably trigger :focus-visible
+        // — programmatically focus the preceding section's checkbox as a neutral starting point,
+        // then move onto the target via a real Tab keypress (mirrors EditStringE2ETests' pattern).
+        var previousCheckbox = Page.Locator("section.demo-section").Nth(3).Locator("input[type=checkbox]").First;
+        await previousCheckbox.EvaluateAsync("el => el.focus()");
+        await Page.Keyboard.PressAsync("Tab");
+        await Expect(checkbox).ToBeFocusedAsync();
+
+        var outline = await box.EvaluateAsync<string>("el => getComputedStyle(el).outlineStyle");
+        Assert.NotEqual("none", outline);
+
+        await Expect(checkbox).Not.ToBeCheckedAsync();
+        await Page.Keyboard.PressAsync("Space");
+        await Expect(checkbox).ToBeCheckedAsync();
+    }
+
+    [Fact]
+    public async Task Styled_checkbox_required_validation_marks_it_invalid_when_unchecked()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Nth(5);
+        var checkbox = section.Locator("input.edit-checkbox-input-styled").First;
+
+        await Expect(checkbox).ToHaveAttributeAsync("aria-invalid", "true");
+        await Expect(section.Locator(".edit-validation-message").First).ToBeVisibleAsync();
+
+        await checkbox.CheckAsync();
+        await Expect(checkbox).Not.ToHaveAttributeAsync("aria-invalid", "true");
+    }
+
+    [Fact]
+    public async Task Visual_baseline_styled_checkbox_section()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Nth(4);
+        await Expect(section).ToBeVisibleAsync();
+        await ExpectMatchesBaselineAsync(section, "styled-checkbox-section");
+    }
 }

@@ -10,7 +10,7 @@
             @if (!ShouldHideLabel)
             {
                 <label class="edit-checkbox-label" for=@_id>
-                    @CheckboxFragment
+                    @(UseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
                     @DisplayLabel()
                     <LabelTooltip Id=@_id Tooltip=@Tooltip Attributes=@_attributes/>
                 </label>
@@ -27,7 +27,7 @@
                    with the checkbox (mirrors FormLabel's IsLabelHidden path) instead of shipping an
                    unnamed control that a screen reader announces as just "checkbox". *@
                 <label class="edit-sr-only" for=@_id>@DisplayLabel()</label>
-                @CheckboxFragment
+                @(UseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
             }
         }
         else
@@ -61,4 +61,27 @@
                                                 aria-invalid=@(IsInvalid ? "true" : null)
                                                 aria-describedby=@_describedBy
                                                 aria-errormessage=@(IsInvalid ? _errorMsgId : null) />;
+
+    // Opt-in via UseStyledCheckbox — same attribute set as CheckboxFragment (nothing about the
+    // binding/accessibility wiring changes), just wrapped so a sibling <span> can draw the box/fill/
+    // checkmark/focus-ring in CSS. Native accent-color styling can't honor border-radius in any
+    // current browser, so this is the only way to get a shaped checkbox.
+    RenderFragment StyledCheckboxFragment => @<span class="edit-checkbox-wrap">
+        <input type="checkbox"
+               value="@CurrentValue"
+               @onchange="HandleCheckboxChange"
+               @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"
+               class="edit-input edit-checkbox-input-styled @CssClass"
+               id=@_id
+               data-test-id=@_id
+               checked=@CurrentValue
+               tabindex="0"
+               aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
+               disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
+               aria-required=@_isRequired
+               aria-invalid=@(IsInvalid ? "true" : null)
+               aria-describedby=@_describedBy
+               aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
+        <span class="edit-checkbox-box" aria-hidden="true"></span>
+    </span>;
 }

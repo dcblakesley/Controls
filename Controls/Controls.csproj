@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.5.1</AssemblyVersion>
+	  <AssemblyVersion>10.6.0</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 

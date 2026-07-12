@@ -233,6 +233,28 @@ public class ControlSmokeTests : TestContext
     }
 
     [Fact]
+    public void EditBool_with_UseStyledCheckbox_wraps_the_input_for_css_styling()
+    {
+        // Default (UseStyledCheckbox=false) renders the bare native checkbox with no wrapper --
+        // opting in swaps to the hidden-input + sibling-span pattern needed for border-radius.
+        var model = new PersonModel { IsActive = true };
+        Expression<Func<bool>> field = () => model.IsActive;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditBool>(0);
+            b.AddAttribute(1, "Value", model.IsActive);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "UseStyledCheckbox", true);
+            b.CloseComponent();
+        }));
+
+        Assert.NotNull(cut.Find("span.edit-checkbox-wrap"));
+        var checkbox = cut.Find("input.edit-checkbox-input-styled");
+        Assert.Equal("checkbox", checkbox.GetAttribute("type"));
+        Assert.NotNull(cut.Find("span.edit-checkbox-box"));
+    }
+
+    [Fact]
     public void EditSelectEnum_renders_one_option_per_enum_value_with_sanitized_ids()
     {
         var model = new PersonModel { Priority = Priority.Medium };

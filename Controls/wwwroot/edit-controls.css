@@ -103,6 +103,77 @@
 /************************************************ EditBool ***********************************************/
 .edit-checkbox-label { cursor: pointer; }
 
+/* Opt-in custom-styled checkbox (EditBool's UseStyledCheckbox="true"). No current browser
+   (Chromium or Safari/WebKit) honors border-radius on a native <input type="checkbox"> once
+   accent-color is set (see caniuse: accent-color), so consumers who need real shape control keep
+   the real <input> in the DOM -- focusable, keyboard-operable, full native semantics -- but
+   visually transparent; a sibling <span> draws the box, checked fill, checkmark, and focus ring
+   via the plain adjacent-sibling (+) selector (not :has(), so this still works on older Safari).
+   Default (UseStyledCheckbox="false") rendering is completely unchanged. */
+.edit-checkbox-wrap {
+    position: relative;
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    flex: none;
+    vertical-align: middle;
+}
+
+.edit-checkbox-input-styled {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.edit-checkbox-box {
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--border-color, #ccc);
+    border-radius: 4px;
+    background: #fff;
+    pointer-events: none;
+}
+
+.edit-checkbox-input-styled:checked + .edit-checkbox-box {
+    background: var(--color-primary, #277c6c);
+    border-color: var(--color-primary, #277c6c);
+}
+
+.edit-checkbox-input-styled:checked + .edit-checkbox-box::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.edit-checkbox-input-styled:focus-visible + .edit-checkbox-box {
+    outline: 2px solid var(--edit-focus-ring);
+    outline-offset: var(--edit-focus-offset);
+}
+
+.edit-checkbox-input-styled.invalid + .edit-checkbox-box {
+    border-color: var(--edit-color-danger);
+}
+
+/* aria-disabled (not :disabled) — AllowFocusWhenDisabled (default true) keeps the native `disabled`
+   attribute off so the input stays focusable, but aria-disabled is set correctly either way (see
+   EditBool.razor), so it's the reliable signal for the dimmed visual. */
+.edit-checkbox-input-styled[aria-disabled="true"] + .edit-checkbox-box {
+    opacity: 0.6;
+}
+
+.edit-checkbox-input-styled[aria-disabled="true"] {
+    cursor: default;
+}
+
 /************************************************ EditCheckedList(String and Enum) ***********************/
 .edit-checkedList-fieldset { }
 .edit-checkedList-checkboxes-container-vertical {

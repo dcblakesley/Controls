@@ -350,6 +350,16 @@ Two caveats for mixed estates:
 }
 ```
 
+### Custom-Styled Checkbox (border-radius)
+
+No current browser (Chromium or Safari/WebKit) honors `border-radius` on a native `<input type="checkbox">` once `accent-color` is set (see [caniuse: accent-color](https://caniuse.com/mdn-css_properties_accent-color)). When a design spec calls for a shaped checkbox, opt in with `UseStyledCheckbox`:
+
+```razor
+<EditBool @bind-Value="model.AcceptedTerms" UseStyledCheckbox="true" />
+```
+
+The real `<input>` stays in the DOM — focusable, keyboard-operable, full native semantics — but is visually hidden; a sibling element draws the box, checked fill, checkmark, and focus ring in CSS (`.edit-checkbox-box` in `edit-controls.css`), styleable like any other element. Defaults to `false`, so every existing `EditBool` renders exactly as before.
+
 ## Styling and Customization
 
 The library provides default styling through the included CSS file. You can customize the appearance by:
@@ -416,6 +426,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.6.0
+
+**New feature**
+- `EditBool.UseStyledCheckbox` (default `false`) — opt-in custom-drawn checkbox. No current browser (Chromium or Safari/WebKit) honors `border-radius` on a native `<input type="checkbox">` once `accent-color` is set, so there was previously no way to get a shaped checkbox out of `EditBool`. When enabled, the real `<input>` stays in the DOM (focusable, keyboard-operable, full native semantics) but is visually hidden; a sibling element draws the box, checked fill, checkmark, and focus ring via the plain adjacent-sibling (`+`) CSS selector (not `:has()`, so it still works on older Safari). Existing checkboxes are pixel-identical — nothing changes unless you opt in. See [Custom-Styled Checkbox](#custom-styled-checkbox-border-radius).
 
 ### 10.5.1
 

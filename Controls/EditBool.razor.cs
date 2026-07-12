@@ -29,6 +29,14 @@ public partial class EditBool : EditControlBase<bool>
     /// </summary>
     [Parameter] public bool RenderAsCheckboxWhenReadOnly { get; set; }
 
+    /// <summary>
+    /// When true, renders the checkbox with a custom-drawn box (hidden native input + a sibling
+    /// element that draws the visual state) instead of the bare native checkbox. Use this when you
+    /// need <c>border-radius</c> or other shape styling that a native checkbox + accent-color cannot
+    /// render in any current browser. Defaults to false — unchanged native-checkbox rendering.
+    /// </summary>
+    [Parameter] public bool UseStyledCheckbox { get; set; }
+
     string _displayLabel = string.Empty;
     string? _displayDescription;
 

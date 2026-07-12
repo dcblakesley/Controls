@@ -54,6 +54,25 @@
 	    <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditBool @bind-Value="_model.StyledCheckbox"
+                  UseStyledCheckbox="true"
+                  Description="Custom-drawn box — supports border-radius, which a native checkbox + accent-color cannot render in any current browser." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_styledCheckboxExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditBool @bind-Value="_model.StyledCheckboxRequired" UseStyledCheckbox="true" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_styledCheckboxValidationExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_styledCheckboxValidationModel</code></pre>
+    </section>
+
 </EditForm>
 
 
@@ -83,10 +102,21 @@
     readonly string _disabledExample = @"<EditBool @bind-Value=""_model.Disabled""
           IsDisabled=""true"" />";
 
+    readonly string _styledCheckboxExample = @"<EditBool @bind-Value=""_model.StyledCheckbox""
+          UseStyledCheckbox=""true""
+          Description=""Custom-drawn box — supports border-radius, which a native checkbox
+                         + accent-color cannot render in any current browser."" />";
+
     readonly string _validationExample = @"<EditBool @bind-Value=""_model.MustBeTrue"" />";
 
     readonly string _validationModel = @"[MustBeTrue(ErrorMessage = ""Hello"")]
 public bool MustBeTrue { get; set; }";
+
+    readonly string _styledCheckboxValidationExample = @"<EditBool @bind-Value=""_model.StyledCheckboxRequired""
+          UseStyledCheckbox=""true"" />";
+
+    readonly string _styledCheckboxValidationModel = @"[MustBeTrue(ErrorMessage = ""You must agree"")]
+public bool StyledCheckboxRequired { get; set; }";
 
     public class DemoEditBoolModel
     {
@@ -97,5 +127,9 @@ public bool MustBeTrue { get; set; }";
         public bool MustBeTrue { get; set; }
 
         public bool Disabled { get; set; }
+        public bool StyledCheckbox { get; set; }
+
+        [MustBeTrue(ErrorMessage = "You must agree")]
+        public bool StyledCheckboxRequired { get; set; }
     }
 }
