@@ -78,6 +78,16 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     bool _hasError => _uploadErrors.Count > 0 || IsInvalid;
 
+    // The <InputFile> (and its drop zone) unmounts once the MaxFiles cap is reached — anything that
+    // targets the input (the FormLabel's `for`, focus restoration) must gate on this same condition
+    // or it points at an element that isn't in the DOM.
+    bool CanAddMoreFiles => MaxFiles <= 0 || Value is null || Value.Count < MaxFiles;
+
+    // AllowedExtensions entries are documented dot-prefixed (".pdf"), but a bare "pdf" is an easy
+    // consumer mistake that otherwise silently rejects every file (Path.GetExtension always returns
+    // the dot) and emits an invalid `accept` attribute — normalize instead of failing.
+    string[] NormalizedExtensions => [.. AllowedExtensions.Select(x => x.StartsWith('.') ? x : $".{x}")];
+
     // Don't light up the drop zone as if it accepts a drop when it doesn't — the drop is refused when
     // disabled, so the hover highlight would be a lie.
     void OnDragEnter(Microsoft.AspNetCore.Components.Web.DragEventArgs _) { if (!IsDisabled) _hoverClass = "hover"; }
@@ -123,7 +133,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
             var ext = Path.GetExtension(file.Name);
             if (AllowedExtensions.Length > 0 &&
-                !AllowedExtensions.Any(x => x.Equals(ext, StringComparison.OrdinalIgnoreCase)))
+                !NormalizedExtensions.Any(x => x.Equals(ext, StringComparison.OrdinalIgnoreCase)))
             {
                 _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
                     UnsupportedFormatMessageFormat, file.Name, string.Join(", ", AllowedExtensions)));

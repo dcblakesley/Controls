@@ -3,18 +3,20 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+        @* IsForLabelable gates on CanAddMoreFiles too — at the MaxFiles cap the <InputFile> carrying
+           _id unmounts, and a label pointing at a missing id is invalid (and clicks dead). *@
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@(ShowEditor && CanAddMoreFiles) />
 
         @if (ShowEditor)
         {
-            @if (MaxFiles <= 0 || Value is null || Value.Count < MaxFiles)
+            @if (CanAddMoreFiles)
             {
                 <div class="edit-file-drop-zone @_hoverClass @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "")"
                      @ondragenter="OnDragEnter"
                      @ondragleave="OnDragLeave"
                      @ondragover="OnDragEnter"
                      aria-label="File upload area">
-                    <i class="edit-icon-upload@(_uploadErrors.Count > 0 ? "-error" : "")" aria-hidden="true"></i>
+                    <i class="edit-icon-upload@(_hasError ? "-error" : "")" aria-hidden="true"></i>
                     <div class="edit-file-drop-text">
                         <div>Click or drag files to this area to upload</div>
                         @if (AllowedExtensions.Length > 0)
@@ -24,7 +26,7 @@
                     </div>
                     <InputFile OnChange="LoadFiles"
                                id=@_id
-                               accept="@string.Join(",", AllowedExtensions)"
+                               accept="@string.Join(",", NormalizedExtensions)"
                                multiple
                                disabled=@IsDisabled
                                aria-label="Choose files"
@@ -78,7 +80,14 @@
             }
             else
             {
-                <ul class="edit-file-list edit-file-list--readonly">
+                @* aria-labelledby ties the read-only list back to the field label ("lbl-{_id}" also
+                   exists when the label is visually hidden — FormLabel renders an sr-only label);
+                   the edit-mode list above names itself the same way via aria-label. *@
+                <ul class="edit-file-list edit-file-list--readonly"
+                    id=@_id
+                    data-test-id=@_id
+                    aria-labelledby=@(ShouldHideLabel ? null : $"lbl-{_id}")
+                    aria-label=@(ShouldHideLabel ? "Selected files" : null)>
                     @foreach (var file in Value)
                     {
                         <li class="edit-file-item">

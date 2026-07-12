@@ -360,6 +360,62 @@ public class EditFileTests : TestContext
     }
 
     [Fact]
+    public void AllowedExtensions_without_a_leading_dot_still_match_and_emit_a_valid_accept()
+    {
+        // Path.GetExtension always returns the dot, so a consumer's bare "pdf" used to silently
+        // reject every file and emit an invalid accept attribute.
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: ["pdf", ".txt"]);
+
+        Assert.Equal(".pdf,.txt", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.pdf"),
+            InputFileContent.CreateFromText("2", "b.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(2, changed.Count);
+    }
+
+    [Fact]
+    public void At_the_MaxFiles_cap_the_label_stops_pointing_at_the_unmounted_input()
+    {
+        // The <InputFile> (which carries the control id) unmounts at the cap — the label's `for`
+        // must drop with it rather than dangle at a missing id.
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v, maxFiles: 1);
+        Assert.True(cut.Find("label.edit-label").HasAttribute("for")); // labelable while under the cap
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+
+        Assert.Empty(cut.FindAll("input[type=file]"));
+        Assert.False(cut.Find("label.edit-label").HasAttribute("for"));
+    }
+
+    [Fact]
+    public void Read_only_file_list_is_labelled_by_the_field_label()
+    {
+        List<IBrowserFile>? uploaded = null;
+        var upload = RenderEditFile(new FileModel { Files = [] }, v => uploaded = v);
+        upload.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "report.pdf"));
+
+        var model = new FileModel { Files = uploaded! };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        var list = cut.Find(".edit-file-list--readonly");
+        Assert.Equal($"lbl-{list.GetAttribute("id")}", list.GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
     public void Toggle_on_a_null_bound_checked_list_creates_the_list()
     {
         // Same base-class fix, exercised through EditCheckedStringList.ToggleAsync.
