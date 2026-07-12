@@ -83,7 +83,7 @@ Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, Edi
 
 ### Helpers (Controls/Helpers/)
 
-- **`AttributesHelper`** — Extracts `[DisplayName]`, `[Description]`, `[ToolTip]`, `[Range]`, `[MinLength]`, `[MaxLength]` from model properties via reflection. Also generates element IDs from property names.
+- **`AttributesHelper`** — Extracts `[DisplayName]`, `[Display]`, `[EnumDisplayName]`, `[Description]`, `[ToolTip]`, `[StringLength]`/`[MinLength]`/`[MaxLength]` from model properties via reflection. Also generates element IDs from property names. (`[Range]` is handled in `ValidationHelper`'s message rewriting, not here.)
 - **`ValidationHelper`** — Rewrites default DataAnnotation error messages into shorter forms (e.g., "The X field is required" → "Required").
 - **`EnumHelpers`** — Resolves `[EnumDisplayName]` attributes and converts values to valid HTML IDs.
 

@@ -54,7 +54,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected string? _isRequired;
     protected List<Attribute>? _attributes;
     protected FieldIdentifier _fieldIdentifier;
-    // Cached ARIA references, resolved once in InitState (see BuildDescribedBy for why).
+    // Cached ARIA references — resolved in InitState and re-resolved each OnParametersSet (see BuildDescribedBy).
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
 

@@ -70,7 +70,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     protected string? _isRequired;
     protected List<Attribute>? _attributes;
     protected FieldIdentifier _fieldIdentifier;
-    // Cached ARIA references, resolved once in InitState (see EditControlInit.BuildDescribedBy).
+    // Cached ARIA references — resolved in InitState and re-resolved each OnParametersSet (see EditControlInit.BuildDescribedBy).
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
 

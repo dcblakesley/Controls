@@ -1,6 +1,6 @@
 namespace Controls;
 
-/// <summary> Uses an enum as the options. Defaults to sorted by Id, can be sorted by name using the SortByName parameter</summary>
+/// <summary> Uses an enum as the options. Defaults to the enum's numeric order; set <c>Sort</c> to sort alphabetically by display name.</summary>
 public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
 {
     // Component specific parameters
