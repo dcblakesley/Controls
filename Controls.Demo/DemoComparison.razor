@@ -2,20 +2,42 @@
 @using System.Net
 @using System.Text.RegularExpressions
 
+<h1>Comparison Demo</h1>
+
 <div class="comparison-grid">
     <div></div>
-    <div class="comparison-tabs">
+    @* APG tabs pattern: roving tabindex (only the selected tab is a Tab stop) + ArrowLeft/Right
+       moving both selection and focus. No aria-controls — the panels are conditionally rendered
+       (@switch below), so two of the three IDREFs would always dangle; each panel points back at
+       its tab via aria-labelledby instead. Home/End are omitted deliberately: Blazor has no
+       per-key preventDefault, so handling them would also scroll the page. *@
+    <div class="comparison-tabs" role="tablist" aria-label="Comparison view" @onkeydown="OnTablistKeyDown">
         <button type="button"
+                @ref="_tabRollYourOwn"
+                id="tab-rollyourown"
+                role="tab"
+                aria-selected=@(_selectedTab == ComparisonTab.RollYourOwn ? "true" : "false")
+                tabindex=@(_selectedTab == ComparisonTab.RollYourOwn ? null : "-1")
                 class=@(_selectedTab == ComparisonTab.RollYourOwn ? "active" : "inactive")
                 @onclick=@(() => _selectedTab = ComparisonTab.RollYourOwn)>
             Roll Your Own (Blazor)
         </button>
         <button type="button"
+                @ref="_tabReactTypical"
+                id="tab-reacttypical"
+                role="tab"
+                aria-selected=@(_selectedTab == ComparisonTab.ReactTypical ? "true" : "false")
+                tabindex=@(_selectedTab == ComparisonTab.ReactTypical ? null : "-1")
                 class=@(_selectedTab == ComparisonTab.ReactTypical ? "active" : "inactive")
                 @onclick=@(() => _selectedTab = ComparisonTab.ReactTypical)>
             React + Ant Design
         </button>
         <button type="button"
+                @ref="_tabReactFullParity"
+                id="tab-reactfullparity"
+                role="tab"
+                aria-selected=@(_selectedTab == ComparisonTab.ReactFullParity ? "true" : "false")
+                tabindex=@(_selectedTab == ComparisonTab.ReactFullParity ? null : "-1")
                 class=@(_selectedTab == ComparisonTab.ReactFullParity ? "active" : "inactive")
                 @onclick=@(() => _selectedTab = ComparisonTab.ReactFullParity)>
             React + Ant Design + Accessibility
@@ -51,12 +73,12 @@
     </div>
 
     <section class="comparison-column" aria-labelledby="col-ours-heading">
+        <h3 id="col-ours-heading">WssBlazorControls</h3>
         <EditForm Model="@_model" @ref="_form">
             <ObjectGraphDataAnnotationsValidator />
 
             <EditString @bind-Value="_model.FirstName" />
         </EditForm>
-        <h3 id="col-ours-heading">WssBlazorControls</h3>
         <h4>C# Model</h4>
                 <div class="code-box">
                     <span class="code-line-count">@LineCount(_csharpModel) lines</span>
@@ -88,7 +110,7 @@
             @switch (_selectedTab)
             {
                 case ComparisonTab.RollYourOwn:
-                    <section class="comparison-column" aria-labelledby="col-blazor-heading">
+                    <section class="comparison-column" id="panel-rollyourown" role="tabpanel" aria-labelledby="tab-rollyourown" tabindex="0">
                         <h3 id="col-blazor-heading">Roll Your Own (Blazor)</h3>
                         <h4>C# Model</h4>
                         <div class="code-box">
@@ -104,7 +126,7 @@
                     break;
 
                 case ComparisonTab.ReactTypical:
-                    <section class="comparison-column" aria-labelledby="col-react-heading">
+                    <section class="comparison-column" id="panel-reacttypical" role="tabpanel" aria-labelledby="tab-reacttypical" tabindex="0">
                         <h3 id="col-react-heading">React + Ant Design</h3>
                         <h4>C# Model</h4>
                         <div class="code-box">
@@ -125,7 +147,7 @@
                     break;
 
                 case ComparisonTab.ReactFullParity:
-                    <section class="comparison-column" aria-labelledby="col-react-parity-heading">
+                    <section class="comparison-column" id="panel-reactfullparity" role="tabpanel" aria-labelledby="tab-reactfullparity" tabindex="0">
                         <h3 id="col-react-parity-heading">React + Ant Design + Accessibility</h3>
                         <h4>C# Model</h4>
                         <div class="code-box">
@@ -331,6 +353,27 @@
     enum ComparisonTab { RollYourOwn, ReactTypical, ReactFullParity }
     ComparisonTab _selectedTab = ComparisonTab.ReactFullParity;
 
+    // APG tabs keyboard model (automatic activation): ArrowLeft/Right move selection and focus
+    // together, wrapping at the ends. Focus must follow because the roving tabindex makes the
+    // previously-selected tab unreachable by Tab.
+    static readonly ComparisonTab[] _tabOrder = [ComparisonTab.RollYourOwn, ComparisonTab.ReactTypical, ComparisonTab.ReactFullParity];
+    ElementReference _tabRollYourOwn, _tabReactTypical, _tabReactFullParity;
+
+    async Task OnTablistKeyDown(KeyboardEventArgs e)
+    {
+        var delta = e.Key switch { "ArrowRight" => 1, "ArrowLeft" => -1, _ => 0 };
+        if (delta == 0) return;
+
+        var index = (Array.IndexOf(_tabOrder, _selectedTab) + delta + _tabOrder.Length) % _tabOrder.Length;
+        _selectedTab = _tabOrder[index];
+        await (_selectedTab switch
+        {
+            ComparisonTab.RollYourOwn => _tabRollYourOwn,
+            ComparisonTab.ReactTypical => _tabReactTypical,
+            _ => _tabReactFullParity,
+        }).FocusAsync();
+    }
+
     sealed record ComparisonNote(string Intro, string[] Points, string? Footer = null);
 
     ComparisonNote SelectedNote => _selectedTab switch
@@ -356,7 +399,7 @@
         ComparisonTab.RollYourOwn =>
             "Roll Your Own gets none of this for free — every item above is hand-wired.",
         ComparisonTab.ReactTypical =>
-            "Typical Ant Design usage only covers the label linkage and required star — the aria wiring and error linkage above are still missing (ant-design/ant-design#36730).",
+            "Typical Ant Design usage covers the label linkage, required star, and — since ant-design/ant-design#36730 was fixed — aria-required/aria-invalid/aria-describedby automatically. aria-errormessage and an active error announcement are still left to you.",
         ComparisonTab.ReactFullParity =>
             "Matching this in React is possible — but it costs a separate status hook, a hand-built label and star, and per-field ARIA wiring by hand.",
         _ => ""
@@ -403,9 +446,9 @@
             "~1-2 tries to something that compiles and looks right; verifying that every id actually lines up is a separate manual pass, because nothing fails when one doesn't.",
             "~500-800 tokens — the markup plus the code-behind block, repeated per field across the form."),
         ComparisonTab.ReactTypical => new(
-            "Low — this is the pattern Ant Design is built around, and there's little for the author to get wrong. The ARIA gap isn't a bug the agent introduces; it's missing from the library itself, and it ships silently.",
-            "The best agent fit of the four — heavily represented in training data, so agents produce it correctly with no docs or priming. But an agent won't add the missing ARIA unless explicitly asked; nothing about the task signals it's incomplete.",
-            "~1 try. Closing the ARIA gap isn't a retry — it's the separate, harder task on the next tab.",
+            "Low — this is the pattern Ant Design is built around, and there's little for the author to get wrong. Ant Design already wires aria-required/aria-invalid/aria-describedby for you; the residual gap (aria-errormessage, live-announcing the error) isn't a bug the agent introduces — it's missing from the library itself, and it ships silently.",
+            "The best agent fit of the four — heavily represented in training data, so agents produce it correctly with no docs or priming. But an agent won't add the remaining aria-errormessage/live-region wiring unless explicitly asked; nothing about the task signals it's incomplete.",
+            "~1 try. Closing the residual gap isn't a retry — it's the separate, harder task on the next tab.",
             "~150-250 tokens per field, with no context-priming cost — the agent already knows Ant Design."),
         ComparisonTab.ReactFullParity => new(
             "Medium-low per field once the wrapper exists — the ARIA wiring is centralized, so the recurring risks are the hand-typed htmlFor ↔ name pair (breaks silently on a rename) and forgetting noStyle. The wrapper itself is a one-time risk, paid when it's authored.",
@@ -571,10 +614,10 @@ function PersonForm() {
     readonly ComparisonNote _reactNote = new(
         "This is typical, idiomatic Form.Item usage.",
         [
-            "Label linkage and the required mark are automatic",
-            "aria-invalid and aria-describedby are not — a screen reader user is never told the field is invalid or where the error text lives"
+            "Label linkage, the required mark, and aria-required/aria-invalid/aria-describedby are all automatic",
+            "aria-errormessage is not, and the error text isn't in a live region — a screen reader user can discover the error via aria-describedby, but isn't told the moment it appears"
         ],
-        "That gap is still an open request against Ant Design itself (ant-design/ant-design#36730). See React + Ant Design + Accessibility for what actually closing it takes.");
+        "ant-design/ant-design#36730 tracked exactly this gap and was fixed years ago — aria-invalid/aria-describedby are automatic today. What's left (aria-errormessage, announcing the error via a live region) still has to be wired by hand. See React + Ant Design + Accessibility for what that costs.");
 
     // The steady-state, per-field cost: what every field in every form re-writes once the
     // one-time AccessibleInput wrapper (below) exists in the codebase.
