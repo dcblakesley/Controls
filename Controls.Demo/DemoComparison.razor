@@ -1,0 +1,655 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Net
+@using System.Text.RegularExpressions
+
+<div class="comparison-grid">
+    <div></div>
+    <div class="comparison-tabs">
+        <button type="button"
+                class=@(_selectedTab == ComparisonTab.RollYourOwn ? "active" : "inactive")
+                @onclick=@(() => _selectedTab = ComparisonTab.RollYourOwn)>
+            Roll Your Own (Blazor)
+        </button>
+        <button type="button"
+                class=@(_selectedTab == ComparisonTab.ReactTypical ? "active" : "inactive")
+                @onclick=@(() => _selectedTab = ComparisonTab.ReactTypical)>
+            React + Ant Design
+        </button>
+        <button type="button"
+                class=@(_selectedTab == ComparisonTab.ReactFullParity ? "active" : "inactive")
+                @onclick=@(() => _selectedTab = ComparisonTab.ReactFullParity)>
+            React + Ant Design + Accessibility
+        </button>
+    </div>
+
+    <div class="comparison-note-box">
+        <div class="comparison-note">
+            <p class="comparison-note-intro">Generated for you, automatically:</p>
+            <ul class="comparison-note-list">
+                @foreach (var feature in _ourFeatures)
+                {
+                    <li>@feature</li>
+                }
+            </ul>
+            <p class="comparison-note-footer">@OurGapFooter</p>
+        </div>
+    </div>
+    <div class="comparison-note-box">
+        <div class="comparison-note comparison-note-wide">
+            <p class="comparison-note-intro">@SelectedNote.Intro</p>
+            <ul class="comparison-note-list">
+                @foreach (var point in SelectedNote.Points)
+                {
+                    <li>@point</li>
+                }
+            </ul>
+            @if (SelectedNote.Footer is not null)
+            {
+                <p class="comparison-note-footer">@SelectedNote.Footer</p>
+            }
+        </div>
+    </div>
+
+    <section class="comparison-column" aria-labelledby="col-ours-heading">
+        <EditForm Model="@_model" @ref="_form">
+            <ObjectGraphDataAnnotationsValidator />
+
+            <EditString @bind-Value="_model.FirstName" />
+        </EditForm>
+        <h3 id="col-ours-heading">WssBlazorControls</h3>
+        <h4>C# Model</h4>
+                <div class="code-box">
+                    <span class="code-line-count">@LineCount(_csharpModel) lines</span>
+                    <pre class="code-block code-block-model"><code>@_csharpModel</code></pre>
+                </div>
+                <h4>Markup</h4>
+                <div class="code-box">
+                    <span class="code-line-count">@LineCount(_ourMarkup) lines</span>
+                    <pre class="code-block"><code>@_ourMarkup</code></pre>
+                </div>
+
+                @foreach (var row in _aiMetricRows)
+                {
+                    <h4>@row.Heading</h4>
+                    <div class="ai-metric-row">
+                        <div class="ai-metric-side ai-metric-side-blazor">
+                            <span class="ai-metric-side-label">WssBlazorControls</span>
+                            <p class="ai-metric">@row.Value(_ourAiFit)</p>
+                        </div>
+                        <div class="ai-metric-side ai-metric-side-@SelectedApproachCategory">
+                            <span class="ai-metric-side-label">@SelectedTabName</span>
+                            <p class="ai-metric">@row.Value(SelectedAiFit)</p>
+                        </div>
+                    </div>
+                }
+                <p class="ai-metric-disclaimer">These are reasoned estimates based on how each approach is structured, not measured benchmarks.</p>
+            </section>
+
+            @switch (_selectedTab)
+            {
+                case ComparisonTab.RollYourOwn:
+                    <section class="comparison-column" aria-labelledby="col-blazor-heading">
+                        <h3 id="col-blazor-heading">Roll Your Own (Blazor)</h3>
+                        <h4>C# Model</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_csharpModel) lines</span>
+                            <pre class="code-block code-block-model"><code>@_csharpModel</code></pre>
+                        </div>
+                        <h4>Markup</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_blazorMarkup) lines</span>
+                            <pre class="code-block"><code>@Highlight(_blazorMarkup, _blazorTokens)</code></pre>
+                        </div>
+                    </section>
+                    break;
+
+                case ComparisonTab.ReactTypical:
+                    <section class="comparison-column" aria-labelledby="col-react-heading">
+                        <h3 id="col-react-heading">React + Ant Design</h3>
+                        <h4>C# Model</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_csharpModel) lines</span>
+                            <pre class="code-block code-block-model"><code>@_csharpModel</code></pre>
+                        </div>
+                        <h4>React Model</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_reactModel) lines</span>
+                            <pre class="code-block code-block-react"><code>@_reactModel</code></pre>
+                        </div>
+                        <h4>Markup</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_reactMarkup) lines</span>
+                            <pre class="code-block"><code>@Highlight(_reactMarkup, _reactFieldIdTokens)</code></pre>
+                        </div>
+                    </section>
+                    break;
+
+                case ComparisonTab.ReactFullParity:
+                    <section class="comparison-column" aria-labelledby="col-react-parity-heading">
+                        <h3 id="col-react-parity-heading">React + Ant Design + Accessibility</h3>
+                        <h4>C# Model</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_csharpModel) lines</span>
+                            <pre class="code-block code-block-model"><code>@_csharpModel</code></pre>
+                        </div>
+                        <h4>React Model</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_reactModel) lines</span>
+                            <pre class="code-block code-block-react"><code>@_reactModel</code></pre>
+                        </div>
+                        <h4>Markup</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_reactParityMarkup) lines</span>
+                            <pre class="code-block"><code>@Highlight(_reactParityMarkup, _reactParityTokens)</code></pre>
+                        </div>
+                        <h4>Reusable Wrapper (one-time)</h4>
+                        <div class="code-box">
+                            <span class="code-line-count">@LineCount(_reactParityWrapper) lines</span>
+                            <pre class="code-block"><code>@Highlight(_reactParityWrapper, _reactParityWrapperTokens)</code></pre>
+                        </div>
+                        <p class="ai-metric-disclaimer">AccessibleInput is written once per codebase and absorbs the ARIA wiring; the markup above is what every field re-writes — the label/star, the rules block, and the hand-typed htmlFor ↔ name pair.</p>
+                    </section>
+                    break;
+            }
+</div>
+
+<style>
+    .comparison-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    /* Tab-buttons row + two note boxes (row 2) + two columns (row 3), sharing ONE grid so all
+       three rows use the exact same column tracks — that's what keeps the tab buttons and each
+       note aligned above its own column (the left track's button/note cells are left empty since
+       only the right-hand, non-WssBlazorControls column has tabs to switch between). Grid's
+       default row-item stretch also gives the two note boxes equal height for free (whichever
+       note is longer sets the row height; the shorter box stretches to match). Not a flex row
+       with auto-fit reflow (that was an implicit max-width, shrinking/wrapping to stay inside the
+       viewport) — this container is instead the ONE horizontal scrollbar for the whole tab when
+       the natural content width doesn't fit, not four separate per-box scrollbars. */
+    .comparison-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(320px, max-content));
+        gap: 8px 16px;
+        overflow-x: auto;
+        /* Grid items default to min-width: auto, which refuses to shrink below content size —
+           without this, .comparison-grid pushed its own parent (and the whole page) wider instead
+           of containing its overflow, producing a second, page-level scrollbar. */
+        width: 100%;
+        min-width: 0;
+    }
+
+    .comparison-note-box {
+        display: flex;
+    }
+
+    .comparison-column {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    /* .code-block's shared -16px top margin (app.css) is tuned to snug it against an
+       immediately-preceding sub-heading in the other demo pages' plain block flow. This column
+       is a flex column with its own gap, which already spaces every child correctly — the
+       negative margin on top of that gap pulled the code box up over the label above it. Still
+       applies now that the code element sits inside the .code-box wrapper (descendant selector
+       matches at any depth), which matters here because .code-box has no padding/border of its
+       own to stop the negative margin from propagating up to it.
+       overflow-x: visible replaces app.css's own overflow-x: auto — no more per-box scrollbar;
+       the .comparison-columns row above is the one place that scrolls now. */
+    .comparison-column .code-block {
+        margin-top: 0;
+        overflow-x: visible;
+    }
+
+    .comparison-column h4 {
+        font-size: 13px;
+        font-weight: 700;
+        color: #666;
+        margin: 0;
+    }
+
+    .comparison-note {
+        font-size: 13px;
+        color: #555;
+        max-width: 450px;
+    }
+
+    .comparison-note-wide {
+        max-width: 600px;
+    }
+
+    .comparison-note-intro {
+        margin: 0 0 4px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .comparison-note-list {
+        margin: 0 0 8px;
+        padding-left: 18px;
+    }
+
+    .comparison-note-list li {
+        margin-bottom: 4px;
+    }
+
+    .comparison-note-list li:last-child {
+        margin-bottom: 0;
+    }
+
+    .comparison-note-footer {
+        margin: 0;
+        color: #666;
+        font-style: italic;
+    }
+
+    .ai-metric-row {
+        display: flex;
+        gap: 12px;
+    }
+
+    .ai-metric-side {
+        flex: 1 1 0;
+        min-width: 0;
+        background-color: #f5f5f5;
+        border: 1px solid #ddd;
+        border-left: 8px solid #ccc;
+        border-radius: 4px;
+        padding: 8px 12px;
+    }
+
+    .ai-metric-side-blazor {
+        border-left-color: #eab308;
+    }
+
+    .ai-metric-side-react {
+        border-left-color: #f97316;
+    }
+
+    .ai-metric-side-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #666;
+        margin-bottom: 4px;
+    }
+
+    .ai-metric {
+        font-size: 13px;
+        color: #555;
+        margin: 0;
+    }
+
+    .ai-metric-disclaimer {
+        margin: 8px 0 0;
+        font-size: 12px;
+        color: #888;
+        font-style: italic;
+    }
+
+    .code-box {
+        position: relative;
+    }
+
+    .code-line-count {
+        position: absolute;
+        top: 6px;
+        right: 10px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #888;
+        background: rgba(255, 255, 255, 0.85);
+        padding: 1px 6px;
+        border-radius: 10px;
+    }
+
+    .id-token-magenta {
+        color: magenta;
+        font-weight: 700;
+    }
+
+    .id-token-lime {
+        color: limegreen;
+        font-weight: 700;
+    }
+</style>
+
+@code {
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    readonly ComparisonModel _model = new();
+
+    enum ComparisonTab { RollYourOwn, ReactTypical, ReactFullParity }
+    ComparisonTab _selectedTab = ComparisonTab.ReactFullParity;
+
+    sealed record ComparisonNote(string Intro, string[] Points, string? Footer = null);
+
+    ComparisonNote SelectedNote => _selectedTab switch
+    {
+        ComparisonTab.RollYourOwn => _blazorNote,
+        ComparisonTab.ReactTypical => _reactNote,
+        ComparisonTab.ReactFullParity => _reactParityNote,
+        _ => new ComparisonNote("", [])
+    };
+
+    // What WssBlazorControls generates for every field is constant; only the comparative gap
+    // against whichever alternative is selected changes.
+    static readonly string[] _ourFeatures =
+    [
+        "Label ↔ field linkage (for/id)",
+        "Required-star indicator",
+        "aria-required, aria-invalid, aria-describedby, aria-errormessage",
+        "Every validation message, rendered and linked to the field"
+    ];
+
+    string OurGapFooter => _selectedTab switch
+    {
+        ComparisonTab.RollYourOwn =>
+            "Roll Your Own gets none of this for free — every item above is hand-wired.",
+        ComparisonTab.ReactTypical =>
+            "Typical Ant Design usage only covers the label linkage and required star — the aria wiring and error linkage above are still missing (ant-design/ant-design#36730).",
+        ComparisonTab.ReactFullParity =>
+            "Matching this in React is possible — but it costs a separate status hook, a hand-built label and star, and per-field ARIA wiring by hand.",
+        _ => ""
+    };
+
+    string SelectedTabName => _selectedTab switch
+    {
+        ComparisonTab.RollYourOwn => "Roll Your Own (Blazor)",
+        ComparisonTab.ReactTypical => "React + Ant Design",
+        ComparisonTab.ReactFullParity => "React + Ant Design + Accessibility",
+        _ => ""
+    };
+
+    // Roll Your Own is Blazor too (same color as the WssBlazorControls side); only the two React
+    // tabs switch the AI-metric box over to the "react" color.
+    string SelectedApproachCategory => _selectedTab == ComparisonTab.RollYourOwn ? "blazor" : "react";
+
+    // Reasoned estimates, not measured data — see the disclaimer under the table. Grounded in how
+    // each approach is structured: hand-typed id/aria strings are the recurring failure mode on
+    // the "other" side, and WssBlazorControls' single bound expression has no such string to drift.
+    sealed record AiFitAnalysis(string BugLikelihood, string AiFit, string TypicalTries, string TokenCost);
+
+    // Drives the side-by-side rows rendered under the WssBlazorControls column — one heading per
+    // dimension, each comparing _ourAiFit against SelectedAiFit via the same accessor.
+    static readonly (string Heading, Func<AiFitAnalysis, string> Value)[] _aiMetricRows =
+    [
+        ("Bug likelihood", a => a.BugLikelihood),
+        ("AI agent fit", a => a.AiFit),
+        ("Cost — typical tries", a => a.TypicalTries),
+        ("Expected token cost", a => a.TokenCost)
+    ];
+
+    static readonly AiFitAnalysis _ourAiFit = new(
+        "Low for wiring bugs — the id/aria linkage is derived from the bound expression, and a bad rename is a compile error, not a silent break. The trade-off: bugs that do exist live in the library, and a consumer can't patch them without a new package release.",
+        "Trivial per field, but only if the agent knows the library — it isn't in public training data, so without docs in context an agent will guess plausible-but-wrong parameters or fall back to raw markup. With docs loaded it's a one-liner that's hard to get wrong.",
+        "~1 try with library docs in context; without them, expect a failed build or a hand-rolled fallback first.",
+        "~15-20 output tokens per field — but that assumes the library's docs are already in context, which is a real (if once-per-session) cost the other approaches don't pay.");
+
+    AiFitAnalysis SelectedAiFit => _selectedTab switch
+    {
+        ComparisonTab.RollYourOwn => new(
+            "Medium-high — every id/aria link is a hand-typed string (\"FirstName\", \"error-msg-FirstName\"); a typo or an un-propagated rename breaks the link silently. It still compiles and looks fine, so the break usually ships and only an accessibility audit catches it.",
+            "Agents handle this boilerplate well for a single field — it's plain Blazor. The risk shows up at scale: repeating the pattern across a whole form, an agent (like a person) eventually drops or mismatches one of the string literals, and nothing flags it.",
+            "~1-2 tries to something that compiles and looks right; verifying that every id actually lines up is a separate manual pass, because nothing fails when one doesn't.",
+            "~500-800 tokens — the markup plus the code-behind block, repeated per field across the form."),
+        ComparisonTab.ReactTypical => new(
+            "Low — this is the pattern Ant Design is built around, and there's little for the author to get wrong. The ARIA gap isn't a bug the agent introduces; it's missing from the library itself, and it ships silently.",
+            "The best agent fit of the four — heavily represented in training data, so agents produce it correctly with no docs or priming. But an agent won't add the missing ARIA unless explicitly asked; nothing about the task signals it's incomplete.",
+            "~1 try. Closing the ARIA gap isn't a retry — it's the separate, harder task on the next tab.",
+            "~150-250 tokens per field, with no context-priming cost — the agent already knows Ant Design."),
+        ComparisonTab.ReactFullParity => new(
+            "Medium-low per field once the wrapper exists — the ARIA wiring is centralized, so the recurring risks are the hand-typed htmlFor ↔ name pair (breaks silently on a rename) and forgetting noStyle. The wrapper itself is a one-time risk, paid when it's authored.",
+            "Good once the wrapper is in the codebase — the per-field markup is an established local pattern agents copy reliably. Authoring the wrapper is the weak spot: the useStatus/noStyle/manual-ARIA combination is thin in training data and needs an explicit spec.",
+            "~1 try per field with the wrapper in place. The one-time wrapper setup runs ~1-3 tries, bounded by review rather than visible failures — a missed attribute breaks nothing you can see. The real cost is knowing to ask for any of this at all.",
+            "~180-250 tokens per field (the markup shown — label, rules, wrapper reference), plus a one-time ~300-400 for the wrapper itself."),
+        _ => new("", "", "", "")
+    };
+
+    public class ComparisonModel
+    {
+        [Required, MinLength(2)]
+        public string FirstName { get; set; } = "";
+    }
+
+    // Token → highlight-color pairings for Highlight(), below. Ordered longest-first inside
+    // Highlight itself so e.g. "error-msg-FirstName" is matched (and colored) as one unit before
+    // the shorter "FirstName" alternative ever gets a chance to match its tail-end.
+    static readonly (string Token, string CssClass)[] _fieldIdTokens =
+        [("FirstName", "id-token-magenta")];
+
+    static readonly (string Token, string CssClass)[] _blazorTokens =
+        [("error-msg-FirstName", "id-token-lime"), ("FirstName", "id-token-magenta")];
+
+    static readonly (string Token, string CssClass)[] _reactFieldIdTokens =
+        [("firstName", "id-token-magenta")];
+
+    static readonly (string Token, string CssClass)[] _reactParityTokens =
+        [("firstName", "id-token-magenta")];
+
+    static readonly (string Token, string CssClass)[] _reactParityWrapperTokens =
+        [("`${id}-error`", "id-token-lime")];
+
+    static int LineCount(string code) => code.Count(c => c == '\n') + 1;
+
+    // HTML-encodes the raw snippet first (so it displays as text, not markup), then wraps each
+    // occurrence of a token in a colored span. A single regex pass — alternatives ordered
+    // longest-first — so a longer token like "error-msg-FirstName" is consumed whole before the
+    // shorter "FirstName" alternative can match the tail end of it a second time.
+    static MarkupString Highlight(string raw, (string Token, string CssClass)[] tokens)
+    {
+        var encoded = WebUtility.HtmlEncode(raw);
+        if (tokens.Length == 0)
+            return (MarkupString)encoded;
+
+        var ordered = tokens.OrderByDescending(t => t.Token.Length).ToArray();
+        var pattern = string.Join('|', ordered.Select(t => Regex.Escape(t.Token)));
+        var highlighted = Regex.Replace(encoded, pattern, m =>
+        {
+            var token = ordered.First(t => t.Token == m.Value);
+            return $"<span class=\"{token.CssClass}\">{m.Value}</span>";
+        });
+        return (MarkupString)highlighted;
+    }
+
+    readonly string _csharpModel = @"public class PersonModel
+{
+    [Required, MinLength(2)]
+    public string FirstName { get; set; } = """";
+}";
+
+    readonly string _ourMarkup = @"<EditString @bind-Value=""_model.FirstName"" />";
+
+    readonly string _blazorMarkup = @"<div class=""form-group"">
+    <label for=""FirstName"">
+        <span aria-hidden=""true""
+              class=""required-star"">*</span>
+        First Name
+    </label>
+
+    <div class=""input-with-icon"">
+        <input id=""FirstName""
+               data-test-id=""FirstName""
+               class=""form-control""
+               @bind=""_model.FirstName""
+               @bind:event=""oninput""
+               aria-required=""true""
+               aria-invalid=""@_ariaInvalid""
+               aria-describedby=""@_describedBy""
+               aria-errormessage=""@_errorMessageId"" />
+
+        @if (_isInvalid)
+        {
+            <span class=""invalid-icon"" aria-hidden=""true""></span>
+        }
+    </div>
+
+    @if (_isInvalid)
+    {
+        <div id=""error-msg-FirstName""
+             data-test-id=""error-msg-FirstName""
+             role=""alert""
+             aria-live=""polite""
+             class=""validation-message"">
+            @foreach (var error in _errors)
+            {
+                <div>@error</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    List<string> _errors
+    {
+        get
+        {
+            var errors = new List<string>();
+            if (string.IsNullOrEmpty(_model.FirstName))
+                errors.Add(""First Name is required."");
+            if (_model.FirstName.Length < 2)
+                errors.Add(""First Name must contain at least 2 characters"");
+            return errors;
+        }
+    }
+
+    bool _isInvalid => _errors.Count > 0;
+    string? _ariaInvalid => _isInvalid ? ""true"" : null;
+    string? _describedBy => _isInvalid ? ""error-msg-FirstName"" : null;
+    string? _errorMessageId => _isInvalid ? ""error-msg-FirstName"" : null;
+}";
+
+    readonly ComparisonNote _blazorNote = new(
+        "On top of the same model, you hand-wire:",
+        [
+            "Label ↔ field linkage",
+            "The required indicator",
+            "aria-invalid, aria-describedby, and aria-errormessage",
+            "The invalid icon",
+            "Every validation message"
+        ],
+        "You own re-deriving all of it for every field, in every form.");
+
+    readonly string _reactModel = @"interface PersonFormValues {
+  firstName: string;
+}";
+
+    readonly string _reactMarkup = @"import { Form, Input } from ""antd"";
+
+function PersonForm() {
+  return (
+    <Form<PersonFormValues> layout=""vertical"">
+      <Form.Item
+        label=""First Name""
+        name=""firstName""
+        rules={[
+          {
+            required: true,
+            message: ""First Name is required."",
+          },
+          {
+            min: 2,
+            message: ""First Name must contain at least 2 characters"",
+          },
+        ]}
+      >
+        <Input id=""firstName"" />
+      </Form.Item>
+    </Form>
+  );
+}";
+
+    readonly ComparisonNote _reactNote = new(
+        "This is typical, idiomatic Form.Item usage.",
+        [
+            "Label linkage and the required mark are automatic",
+            "aria-invalid and aria-describedby are not — a screen reader user is never told the field is invalid or where the error text lives"
+        ],
+        "That gap is still an open request against Ant Design itself (ant-design/ant-design#36730). See React + Ant Design + Accessibility for what actually closing it takes.");
+
+    // The steady-state, per-field cost: what every field in every form re-writes once the
+    // one-time AccessibleInput wrapper (below) exists in the codebase.
+    readonly string _reactParityMarkup = @"function PersonForm() {
+  return (
+    <Form<PersonFormValues> layout=""vertical"">
+      <label htmlFor=""firstName"">
+        <span aria-hidden=""true"">*</span> First Name
+      </label>
+      <Form.Item
+        name=""firstName""
+        noStyle
+        rules={[
+          {
+            required: true,
+            message: ""First Name is required."",
+          },
+          {
+            min: 2,
+            message: ""First Name must contain at least 2 characters"",
+          },
+        ]}
+      >
+        <AccessibleInput />
+      </Form.Item>
+    </Form>
+  );
+}";
+
+    // The one-time cost: written once per codebase, absorbs the ARIA wiring for every field.
+    // Form.Item injects `id` into its child even with noStyle, so no id is passed at use sites.
+    readonly string _reactParityWrapper = @"function AccessibleInput({ id, value, onChange }: {
+  id?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  // Form.Item injects `id` (derived from `name`) into its child, even with noStyle,
+  // so the error id can be derived instead of hand-typed per field.
+  const { status, errors } = Form.Item.useStatus();
+  const hasError = status === ""error"";
+  const errorId = `${id}-error`;
+
+  return (
+    <>
+      <Input
+        id={id}
+        value={value}
+        onChange={onChange}
+        aria-required=""true""
+        aria-invalid={hasError}
+        aria-describedby={hasError ? errorId : undefined}
+        aria-errormessage={hasError ? errorId : undefined}
+      />
+      {hasError && (
+        <div id={errorId}
+             role=""alert"">
+          {errors.map((error, i) => (
+            <div key={i}>{error}</div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}";
+
+    readonly ComparisonNote _reactParityNote = new(
+        "Full accessibility parity — achieved by hand:",
+        [
+            "A separate component reading Form.Item.useStatus()",
+            "A hand-built label and required star",
+            "noStyle to opt out of Form.Item's own (non-wired) rendering",
+            "aria-describedby and aria-errormessage wired by hand",
+            "Every rule's message mapped out individually",
+            "The wrapper is written once per codebase; the markup shown — label/star, rules, and the htmlFor ↔ name string pair — is re-written for every field"
+        ],
+        "Full accessibility parity in React costs about what it costs in Blazor — the difference is our controls do it for you by default.");
+
+}

@@ -17,16 +17,19 @@
         <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="_form">
             <ObjectGraphDataAnnotationsValidator />
 
-            <!-- Actions -->
-            <fieldset style="padding-bottom: 1rem">
-                <legend class="h2">Actions and FormOptions</legend>
+            @if (_currentView is not (CurrentView.Comparison or CurrentView.UiKit))
+            {
+                <!-- Actions -->
+                <fieldset style="padding-bottom: 1rem">
+                    <legend class="h2">Actions and FormOptions</legend>
 
-                <div class="flex-row">
-                    <button class=@(FormOptions.ShowBoundValues ? "active" : "inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
-                    <button class=@(FormOptions.IsEditMode ? "active" : "inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
-                    <EditSelectEnum @bind-Value=@FormOptions.Hiding />
-                </div>
-            </fieldset>
+                    <div class="flex-row">
+                        <button class=@(FormOptions.ShowBoundValues ? "active" : "inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
+                        <button class=@(FormOptions.IsEditMode ? "active" : "inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
+                        <EditSelectEnum @bind-Value=@FormOptions.Hiding />
+                    </div>
+                </fieldset>
+            }
         </EditForm>
 
         <CascadingValue Value=@FormOptions>
@@ -36,8 +39,14 @@
                 case CurrentView.AllControls:
                     <DemoAllControls />
                     break;
+                case CurrentView.UiKit:
+                    <UiKitGallery />
+                    break;
                 case CurrentView.CommonFeatures:
                     <DemoFormLabel />
+                    break;
+                case CurrentView.Comparison:
+                    <DemoComparison />
                     break;
                 case CurrentView.BoolNullRadio:
                     <DemoEditBoolNullRadio />

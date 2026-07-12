@@ -92,6 +92,10 @@ pre {
     border-left-color: #7c4dff;
 }
 
+.code-block-react {
+    border-left-color: #61dafb;
+}
+
 .code-block code {
     color: #333;
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;

@@ -17,7 +17,7 @@ public partial class EditControlsDemo : IDisposable
     EditForm _form = default!; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
-        new() { IsEditMode = true, Hiding = HidingMode.None, IsRequiredStarHidden = true};
+        new() { IsEditMode = true, Hiding = HidingMode.None };
 
     readonly List<string> _colorOptions =
         ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
@@ -40,11 +40,14 @@ public partial class EditControlsDemo : IDisposable
 
     void UpdateViewFromUrl()
     {
-        if (!string.IsNullOrEmpty(ViewParam) && 
+        if (!string.IsNullOrEmpty(ViewParam) &&
             Enum.TryParse<CurrentView>(ViewParam, true, out var view))
         {
             _currentView = view;
         }
+        // CommonFeatures' "required-star Demo" section and Comparison's live example both exist to
+        // show the star; every other view keeps it suppressed for a cleaner look.
+        FormOptions.IsRequiredStarHidden = _currentView is not (CurrentView.CommonFeatures or CurrentView.Comparison);
     }
 
     void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -69,7 +72,9 @@ public partial class EditControlsDemo : IDisposable
 public enum CurrentView
 {
     AllControls,
+    UiKit,
     CommonFeatures,
+    Comparison,
     Bool,
     BoolNullRadio,
     CheckedStringList,
