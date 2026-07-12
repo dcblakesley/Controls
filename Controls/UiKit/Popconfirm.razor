@@ -42,14 +42,23 @@
 </span>
 
 @code {
+    /// <summary>Plain-text confirmation question shown in the popup.</summary>
     [Parameter] public string? Title { get; set; }
+    /// <summary>Rich confirmation content; overrides <see cref="Title"/> when set.</summary>
     [Parameter] public RenderFragment? TitleContent { get; set; }
+    /// <summary>The trigger element the popup attaches to — ideally an interactive element such as a <c>&lt;button&gt;</c>.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Text of the confirm button. Defaults to "OK".</summary>
     [Parameter] public string OkText { get; set; } = "OK";
+    /// <summary>Text of the cancel button. Defaults to "Cancel".</summary>
     [Parameter] public string CancelText { get; set; } = "Cancel";
+    /// <summary>Raised when the confirm button is clicked (the popup closes first).</summary>
     [Parameter] public EventCallback OnConfirm { get; set; }
+    /// <summary>Raised when the popup is cancelled (Cancel button or Escape inside the panel).</summary>
     [Parameter] public EventCallback OnCancel { get; set; }
+    /// <summary>Preferred side of the trigger for the popup; flips to the opposite side when it would leave the viewport. Defaults to <see cref="PopupPlacement.Top"/>.</summary>
     [Parameter] public PopupPlacement Placement { get; set; } = PopupPlacement.Top;
+    /// <summary>When true, clicking the trigger does not open the popup.</summary>
     [Parameter] public bool Disabled { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }

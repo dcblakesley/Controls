@@ -73,25 +73,37 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // ----- Parameters -------------------------------------------------------
 
+    /// <summary>Selection mode: single value, multiple values, or tags (multiple + free-text entries). Defaults to <see cref="SelectMode.Single"/>.</summary>
     [Parameter] public SelectMode Mode { get; set; } = SelectMode.Single;
 
+    /// <summary>The selectable options. Treated as an immutable parameter: reassign a new collection to refresh — mutating the same instance in place is not seen.</summary>
     [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = [];
 
     /// <summary>Bound value for <see cref="SelectMode.Single"/> mode.</summary>
     [Parameter] public TValue Value { get; set; } = default!;
+    /// <summary>Raised with the new value when the single-mode selection changes (supports <c>@bind-Value</c>).</summary>
     [Parameter] public EventCallback<TValue> ValueChanged { get; set; }
 
     /// <summary>Bound values for <see cref="SelectMode.Multiple"/> / <see cref="SelectMode.Tags"/> modes.</summary>
     [Parameter] public IEnumerable<TValue>? Values { get; set; }
+    /// <summary>Raised with the new selection when the multiple/tags-mode values change (supports <c>@bind-Values</c>).</summary>
     [Parameter] public EventCallback<IEnumerable<TValue>> ValuesChanged { get; set; }
 
+    /// <summary>Text shown while nothing is selected. Defaults to "Please select".</summary>
     [Parameter] public string Placeholder { get; set; } = "Please select";
+    /// <summary>Disables all interaction (the dropdown cannot open and tags cannot be removed).</summary>
     [Parameter] public bool Disabled { get; set; }
+    /// <summary>Shows a clear button while a value is selected. Defaults to true.</summary>
     [Parameter] public bool AllowClear { get; set; } = true;
+    /// <summary>Enables type-to-search filtering of the options. Defaults to true; when false, typed letters jump to matching options instead (native-select-style type-ahead).</summary>
     [Parameter] public bool ShowSearch { get; set; } = true;
+    /// <summary>Control height/padding variant. Defaults to <see cref="SelectSize.Default"/>.</summary>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
+    /// <summary>Control width as a CSS length (e.g. "240px", "100%"). Null (default) keeps the stylesheet width.</summary>
     [Parameter] public string? Width { get; set; }
+    /// <summary>Multiple/tags modes: maximum number of selected tags to display; the remainder collapses into a "+ n ..." summary tag. Null (default) shows all.</summary>
     [Parameter] public int? MaxTagCount { get; set; }
+    /// <summary>Text shown in the dropdown when no options match. Defaults to "No data".</summary>
     [Parameter] public string EmptyText { get; set; } = "No data";
 
     /// <summary>Render the dropdown open on first display.</summary>

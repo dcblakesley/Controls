@@ -45,20 +45,35 @@
 }
 
 @code {
+    /// <summary>Whether the modal is shown. Use <c>@bind-Visible</c> — the parent owns the state.</summary>
     [Parameter] public bool Visible { get; set; }
+    /// <summary>Raised with <c>false</c> when the modal requests close (Cancel button, close icon, mask click, or Escape).</summary>
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    /// <summary>Plain-text header title. Omit both title parameters to render a header-less modal.</summary>
     [Parameter] public string? Title { get; set; }
+    /// <summary>Rich header title; overrides <see cref="Title"/> when set.</summary>
     [Parameter] public RenderFragment? TitleContent { get; set; }
+    /// <summary>The modal body.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Custom footer content; replaces the default Cancel/OK buttons when set.</summary>
     [Parameter] public RenderFragment? Footer { get; set; }
+    /// <summary>Suppresses the footer entirely (no default buttons and no <see cref="Footer"/>).</summary>
     [Parameter] public bool HideFooter { get; set; }
+    /// <summary>Text of the default OK button. Defaults to "OK".</summary>
     [Parameter] public string OkText { get; set; } = "OK";
+    /// <summary>Text of the default Cancel button. Defaults to "Cancel".</summary>
     [Parameter] public string CancelText { get; set; } = "Cancel";
+    /// <summary>Raised when the default OK button is clicked. Does not auto-close — the caller decides when to set <see cref="Visible"/> false (e.g. after validation or async work).</summary>
     [Parameter] public EventCallback OnOk { get; set; }
+    /// <summary>Raised after any cancel-style dismissal (Cancel button, close icon, mask click, or Escape).</summary>
     [Parameter] public EventCallback OnCancel { get; set; }
+    /// <summary>Dialog width as a CSS length (e.g. "520px", "60%"). Defaults to "520px".</summary>
     [Parameter] public string Width { get; set; } = "520px";
+    /// <summary>Shows the header close icon and enables Escape-to-close. Defaults to true.</summary>
     [Parameter] public bool Closable { get; set; } = true;
+    /// <summary>When true (default), clicking the mask outside the dialog cancels/closes it.</summary>
     [Parameter] public bool MaskClosable { get; set; } = true;
+    /// <summary>Disables the default OK button while true (e.g. during async confirm work).</summary>
     [Parameter] public bool ConfirmLoading { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }

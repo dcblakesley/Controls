@@ -25,9 +25,13 @@
 </nav>
 
 @code {
+    /// <summary>Total number of items (not pages); the page count is derived from this and <see cref="PageSize"/>.</summary>
     [Parameter] public int Total { get; set; }
+    /// <summary>Items per page. Defaults to 10.</summary>
     [Parameter] public int PageSize { get; set; } = 10;
+    /// <summary>The current page (1-based). Fully controlled: the parent owns it and must update it from <see cref="CurrentChanged"/> (use <c>@bind-Current</c>).</summary>
     [Parameter] public int Current { get; set; } = 1;
+    /// <summary>Raised with the requested page number; the pager does not change page until the parent feeds it back via <see cref="Current"/>.</summary>
     [Parameter] public EventCallback<int> CurrentChanged { get; set; }
 
     /// <summary> Pages to show either side of the current page before collapsing the rest behind an ellipsis. </summary>

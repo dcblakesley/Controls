@@ -26,13 +26,19 @@
 }
 
 @code {
+    /// <summary>Severity of the alert (colors, icon, and screen-reader politeness — <see cref="AlertType.Error"/> announces assertively). Defaults to <see cref="AlertType.Info"/>.</summary>
     [Parameter] public AlertType Type { get; set; } = AlertType.Info;
+    /// <summary>Plain-text message line.</summary>
     [Parameter] public string? Message { get; set; }
     /// <summary>Optional rich message content; overrides <see cref="Message"/> when set.</summary>
     [Parameter] public RenderFragment? MessageContent { get; set; }
+    /// <summary>Optional detail text rendered below the message (switches to the larger "with description" layout).</summary>
     [Parameter] public string? Description { get; set; }
+    /// <summary>Shows the severity icon. Defaults to true.</summary>
     [Parameter] public bool ShowIcon { get; set; } = true;
+    /// <summary>Shows a close button that hides the alert.</summary>
     [Parameter] public bool Closable { get; set; }
+    /// <summary>Raised after the close button hides the alert (a notification — the alert hides itself regardless).</summary>
     [Parameter] public EventCallback OnClose { get; set; }
 
     bool HasDescription => !string.IsNullOrEmpty(Description);

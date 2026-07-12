@@ -102,10 +102,15 @@
 </div>
 
 @code {
+    /// <summary>The rows to render. Treated as an immutable parameter: reassign a new collection to refresh — the Table only re-reads on a reference change, so mutating in place is not seen.</summary>
     [Parameter] public IEnumerable<TItem>? DataSource { get; set; }
+    /// <summary>The column definitions: <see cref="Column{TItem}"/> / <c>PropertyColumn</c> / <c>ActionColumn</c> children (declarative metadata — they emit no markup of their own and may be conditionally rendered).</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Draws borders around every cell (AntD "bordered" look) instead of row separators only.</summary>
     [Parameter] public bool Bordered { get; set; }
+    /// <summary>Row density (cell padding). Defaults to <see cref="TableSize.Default"/>.</summary>
     [Parameter] public TableSize Size { get; set; } = TableSize.Default;
+    /// <summary>Placeholder text shown when there are no rows. Defaults to "No data".</summary>
     [Parameter] public string EmptyText { get; set; } = "No data";
 
     /// <summary>Optional accessible caption rendered above the table (also names it for screen readers).</summary>
@@ -120,6 +125,7 @@
     /// <summary>Whether the pager renders above, below, or both above and below the table. Defaults to <see cref="PagerPosition.Bottom"/>.</summary>
     [Parameter] public PagerPosition PagerPosition { get; set; } = PagerPosition.Bottom;
 
+    /// <summary>Adds a checkbox column for row selection, plus a header checkbox that toggles the current page.</summary>
     [Parameter] public bool Selectable { get; set; }
 
     /// <summary>
@@ -128,6 +134,7 @@
     /// re-passing the same instance cannot veto a user toggle.
     /// </summary>
     [Parameter] public IEnumerable<TItem>? SelectedItems { get; set; }
+    /// <summary>Raised with the full current selection after each row or select-all toggle.</summary>
     [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
 
     /// <summary>

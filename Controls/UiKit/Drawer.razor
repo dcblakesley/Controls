@@ -33,19 +33,29 @@
 }
 
 @code {
+    /// <summary>Whether the drawer is shown. Use <c>@bind-Visible</c> — the parent owns the state.</summary>
     [Parameter] public bool Visible { get; set; }
+    /// <summary>Raised with <c>false</c> when the drawer requests close (close icon, mask click, or Escape).</summary>
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    /// <summary>Plain-text header title. Omit both title parameters to render a header-less drawer.</summary>
     [Parameter] public string? Title { get; set; }
+    /// <summary>Rich header title; overrides <see cref="Title"/> when set.</summary>
     [Parameter] public RenderFragment? TitleContent { get; set; }
+    /// <summary>The drawer body.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Optional footer content pinned to the bottom of the drawer.</summary>
     [Parameter] public RenderFragment? Footer { get; set; }
+    /// <summary>Which screen edge the drawer slides in from. Defaults to <see cref="DrawerPlacement.Right"/>.</summary>
     [Parameter] public DrawerPlacement Placement { get; set; } = DrawerPlacement.Right;
     /// <summary>Width for left/right placements (CSS length).</summary>
     [Parameter] public string Width { get; set; } = "378px";
     /// <summary>Height for top/bottom placements (CSS length).</summary>
     [Parameter] public string Height { get; set; } = "378px";
+    /// <summary>Shows the header close icon and enables Escape-to-close. Defaults to true.</summary>
     [Parameter] public bool Closable { get; set; } = true;
+    /// <summary>When true (default), clicking the mask outside the drawer closes it.</summary>
     [Parameter] public bool MaskClosable { get; set; } = true;
+    /// <summary>Raised after the drawer closes for any reason (close icon, mask click, or Escape).</summary>
     [Parameter] public EventCallback OnClose { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }

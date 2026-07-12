@@ -38,12 +38,15 @@
 </span>
 
 @code {
+    /// <summary>Plain-text popover title.</summary>
     [Parameter] public string? Title { get; set; }
+    /// <summary>Rich popover title; overrides <see cref="Title"/> when set.</summary>
     [Parameter] public RenderFragment? TitleContent { get; set; }
     /// <summary>The popover body.</summary>
     [Parameter] public RenderFragment? Content { get; set; }
     /// <summary>The trigger element.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Preferred side of the trigger for the panel; flips/shifts to stay within the viewport. Defaults to <see cref="PopupPlacement.Top"/>.</summary>
     [Parameter] public PopupPlacement Placement { get; set; } = PopupPlacement.Top;
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }
