@@ -1,7 +1,7 @@
 @if (!IsHidden)
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <FormLabel Id=@_id Label=@Label Description=@Description Tooltip=@Tooltip IsRequired=@IsRequired IsForLabelable="false"/>
+        <FormLabel Id=@_id Label=@Label Description=@Description Tooltip=@Tooltip IsRequired=@IsRequired IsLabelHidden=@ShouldHideLabel IsForLabelable="false"/>
 
         <div id=@_id
              data-test-id=@_id

@@ -33,14 +33,38 @@ public partial class EditDisplay
     /// <inheritdoc cref="IEditControl.IsHidden"/>
     [Parameter] public bool IsHidden { get; set; }
 
+    /// <inheritdoc cref="IEditControl.IsLabelHidden"/>
+    [Parameter] public bool IsLabelHidden { get; set; }
+
+    /// <inheritdoc cref="IEditControl.IdPrefix"/>
+    [Parameter] public string? IdPrefix { get; set; }
+
+    // Same resolution as every other control (EditControlInit.ShouldHideLabel): the per-control
+    // parameter or the cascaded form-wide setting — previously the cascaded FormOptions was
+    // declared but ignored here.
+    internal bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
+
     // Resolved id used by the markup: explicit Id wins, then a Label-derived id, else a unique
     // fallback so label-less displays don't collide on an empty id (and the markup can omit
-    // aria-labelledby rather than point it at an empty label).
+    // aria-labelledby rather than point it at an empty label). The derived forms compose with
+    // FormGroupOptions.Name / IdPrefix the same way AttributesHelper.GetId does for bound controls,
+    // so two "Status" displays in different groups don't collide.
     string _id = string.Empty;
     readonly string _fallbackId = $"ed-{Guid.NewGuid():N}";
 
-    protected override void OnParametersSet() =>
-        _id = !string.IsNullOrEmpty(Id) ? Id
-            : !string.IsNullOrEmpty(Label) ? Label.ToId()
-            : _fallbackId;
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            _id = Id;
+            return;
+        }
+
+        var baseId = !string.IsNullOrEmpty(Label) ? Label.ToId() : _fallbackId;
+        if (!string.IsNullOrEmpty(FormGroupOptions?.Name))
+            baseId = $"{FormGroupOptions.Name}-{baseId}";
+        if (IdPrefix != null)
+            baseId = $"{IdPrefix}-{baseId}";
+        _id = baseId.Replace(" ", "");
+    }
 }

@@ -52,6 +52,33 @@ public class EditDisplayTests : TestContext
     }
 
     [Fact]
+    public void EditDisplay_honors_the_cascaded_FormOptions_IsLabelHidden()
+    {
+        // The cascaded FormOptions used to be declared but ignored — a form-wide label-hidden
+        // setting must reach EditDisplay like every other control (sr-only label, not a visible one).
+        var cut = RenderComponent<EditDisplay>(p => p
+            .AddCascadingValue(new FormOptions { IsLabelHidden = true })
+            .Add(d => d.Label, "Volume")
+            .Add(d => d.Text, "15.3 oz"));
+
+        Assert.Empty(cut.FindAll("label.edit-label"));
+        Assert.Contains("Volume", cut.Find("label.edit-sr-only").TextContent);
+    }
+
+    [Fact]
+    public void EditDisplay_id_composes_group_name_and_IdPrefix_like_bound_controls()
+    {
+        var cut = RenderComponent<EditDisplay>(p => p
+            .AddCascadingValue(new FormGroupOptions { Name = "shipping" })
+            .Add(d => d.IdPrefix, "row1")
+            .Add(d => d.Label, "Volume")
+            .Add(d => d.Text, "15.3 oz"));
+
+        var id = cut.Find(".edit-readonly-value").GetAttribute("id");
+        Assert.Equal("row1-shipping-Volume", id);
+    }
+
+    [Fact]
     public void EditDisplay_value_is_not_an_editable_textbox()
     {
         var cut = RenderComponent<EditDisplay>(p => p

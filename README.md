@@ -434,6 +434,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Bug fixes**
 - `width: 100%` (or any percentage width) on the editor element of `EditString` / `EditNumber` / `EditDate` / `EditTextArea` now works. Previously the `.edit-input-with-icon` wrapper shrink-wrapped to the editor's intrinsic size, which made a percentage width on the editor circular per the CSS sizing spec — it silently resolved to `auto` and the input stayed at its default size. The wrapper is now a flex row that stretches to the control column (so percentages resolve against it), and the red-X invalid icon overlays the editor's trailing edge via a negative flex-item margin instead of absolute positioning — still `dir="rtl"`-correct and still immune to being wrapped onto its own line under a width squeeze.
+- `EditFile`: bare `AllowedExtensions` entries without a leading dot (`"pdf"`) are now normalized instead of silently rejecting every file (and emitting an invalid `accept` attribute); the label's `for` no longer dangles at a missing input once the `MaxFiles` cap unmounts the drop zone; the upload icon now turns red for `EditContext` validation failures (not just client-side rejections); the read-only file list is programmatically associated with the field label.
+- `EditSelectSearch` / `EditMultiSelect` / `Select`: a disabled multi-select no longer renders focusable tag-remove buttons that silently no-op; Space now opens a closed non-searchable select (ARIA combobox pattern) — searchable inputs keep Space for typing.
+- `EditDisplay`: the cascaded `FormOptions` was declared but ignored — form-wide `IsLabelHidden` now applies, and the new `IsLabelHidden` / `IdPrefix` parameters plus `FormGroupOptions.Name` id composition bring it in line with the bound controls (two `EditDisplay`s with the same label in different form groups no longer collide on id).
+- Styled checkbox (`UseStyledCheckbox`): the box background is now `var(--color-bg, #fff)` instead of hardcoded white, so dark-theme consumers have an override hook. Default rendering unchanged.
 
 ### 10.5.1
 
