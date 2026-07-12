@@ -87,6 +87,10 @@ export function initInput(input, wrapper) {
                 e.preventDefault();
             } else if ((key === 'Home' || key === 'End') && input.getAttribute('aria-expanded') === 'true') {
                 e.preventDefault();
+            } else if (key === ' ' && input.readOnly) {
+                // Space opens a closed non-searchable select (readonly input) — without this the
+                // browser's default scrolls the page. A searchable input keeps Space for typing.
+                e.preventDefault();
             }
         });
     }

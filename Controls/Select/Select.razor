@@ -56,13 +56,19 @@
             {
                 <span class="wss-select-selection-item">
                     <span class="wss-select-selection-item-content">@option.Label</span>
-                    <button type="button"
-                            class="wss-select-selection-item-remove"
-                            aria-label="@(string.Format(CultureInfo.CurrentCulture, RemoveItemLabelFormat, option.Label))"
-                            @onclick="@(e => RemoveAsync(option.Value))"
-                            @onclick:stopPropagation>
-                        @CloseCross
-                    </button>
+                    @* No remove button when disabled — RemoveAsync no-ops anyway, so rendering it
+                       leaves a focusable, active-looking control that does nothing (the clear
+                       button is already suppressed the same way via ShowClear). *@
+                    @if (!Disabled)
+                    {
+                        <button type="button"
+                                class="wss-select-selection-item-remove"
+                                aria-label="@(string.Format(CultureInfo.CurrentCulture, RemoveItemLabelFormat, option.Label))"
+                                @onclick="@(e => RemoveAsync(option.Value))"
+                                @onclick:stopPropagation>
+                            @CloseCross
+                        </button>
+                    }
                 </span>
             }
 

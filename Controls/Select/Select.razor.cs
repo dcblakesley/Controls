@@ -608,6 +608,14 @@ public partial class Select<TValue> : IAsyncDisposable
                 if (_open) await CloseAsync();
                 break;
 
+            case " ":
+                // ARIA combobox pattern: Space opens a closed, non-searchable select — its input is
+                // readonly, so Space has no text-entry meaning there (wss-select.js suppresses the
+                // page-scroll default for this case). When ShowSearch is on, Space belongs to the
+                // search text and passes through untouched.
+                if (!ShowSearch && !_open) await OpenAsync();
+                break;
+
             case "Backspace":
                 if (IsMultiple && string.IsNullOrEmpty(_searchText) && _selected.Count > 0)
                 {

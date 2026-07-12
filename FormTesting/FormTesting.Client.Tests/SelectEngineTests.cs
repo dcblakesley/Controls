@@ -127,6 +127,35 @@ public class SelectEngineTests : TestContext
     }
 
     [Fact]
+    public void Disabled_multi_select_renders_tags_without_remove_buttons()
+    {
+        // RemoveAsync no-ops when disabled, so rendering the buttons left focusable,
+        // active-looking controls that did nothing.
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Mode, SelectMode.Multiple)
+            .Add(s => s.Options, Opts(("A", false), ("B", false)))
+            .Add(s => s.Values, new List<string> { "A", "B" })
+            .Add(s => s.Disabled, true));
+
+        Assert.Equal(2, cut.FindAll(".wss-select-selection-item").Count); // tags still shown
+        Assert.Empty(cut.FindAll("button.wss-select-selection-item-remove"));
+    }
+
+    [Fact]
+    public void Space_opens_a_closed_non_searchable_select()
+    {
+        // ARIA combobox pattern: the non-searchable select's input is readonly, so Space has no
+        // text-entry meaning and must open the dropdown (searchable mode keeps Space for typing).
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.ShowSearch, false));
+
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = " " });
+
+        Assert.Single(cut.FindAll("[role=listbox]"));
+    }
+
+    [Fact]
     public void Disabled_select_does_not_open_on_click()
     {
         var cut = RenderComponent<Select<string>>(p => p
