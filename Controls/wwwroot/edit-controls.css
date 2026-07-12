@@ -194,21 +194,29 @@
 .edit-input-with-icon {
     /* Wraps a single editor element (<input>/<textarea>/<InputDate>) together with the optional
        <InvalidIcon> red-X. Used by EditString / EditNumber / EditDate / EditTextArea.
-       The icon (.edit-icon-invalid) overlays the right edge of the input via its own negative
-       margin, so this wrapper doesn't need positioning — it exists as a semantic + styling hook.
-       Override here if you switch .edit-icon-invalid to absolute positioning, or to enforce
-       width/flex behavior on the input row. */
+       align-self:flex-start opts this one item out of .edit-control-wrapper's flex-column
+       align-items:stretch — without it, this wrapper stretches to the column's full width (flex
+       items are "blockified" per spec, so display:inline-block alone can't prevent that stretch)
+       and .edit-icon-invalid's absolute positioning below would land on that wide ancestor's
+       trailing edge instead of the editor's actual one. With stretch opted out, this wrapper's
+       box shrinks to the editor's own rendered size, so the icon lands in the right place. */
+    position: relative;
+    align-self: flex-start;
 }
 
 .edit-icon-invalid {
     /* The x-circle that shows up when a textbox has validation errors. The SVG uses
-       fill="currentColor", so this color drives it — keeping it in sync with the consumer's danger. */
+       fill="currentColor", so this color drives it — keeping it in sync with the consumer's danger.
+       Absolutely positioned (not a negative-margin overlay) so it's removed from normal flow —
+       nothing can ever push it onto its own line the way an inline-flow sibling could wrap under
+       a width squeeze. inset-inline-end (not right) so it still overlays the correct trailing
+       edge under dir="rtl". */
+    position: absolute;
+    inset-inline-end: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
     width: 1em;
     height: 1em;
-    /* Pulls the icon back over the input's trailing padding (padding-inline-end: 2rem reserved
-       inline in the Edit* markup) — logical so it overlays the correct end under dir="rtl". */
-    margin-inline-start: -1.5rem;
-    margin-top: -4px;
     pointer-events: none;
     color: var(--edit-color-danger);
 }
