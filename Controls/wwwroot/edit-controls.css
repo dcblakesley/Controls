@@ -133,7 +133,9 @@
     inset: 0;
     border: 1px solid var(--border-color, #ccc);
     border-radius: 4px;
-    background: #fff;
+    /* Bridged to the consumer theme like every other color in this block — a hardcoded #fff would
+       give dark-theme consumers a fixed white box with no override hook. */
+    background: var(--color-bg, #fff);
     pointer-events: none;
 }
 
