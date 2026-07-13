@@ -85,7 +85,7 @@ Theming contract (documented in README "Styling and Customization"): `--wss-*`/`
 
 ### `edit-controls` skill is part of the deliverable
 
-`~/.claude/skills/edit-controls/` is the usage reference other repos' agents read instead of this source. Whenever a change touches a control's public API, parameters, behavior, or a documented convention, update the matching skill file(s) in the same commit — do not defer to a cleanup pass. A separately-formatted export for non-Claude agents lives at the workspace root (`C:\Repos\.github\skills\edit-controls\` — `skill.json` + monolithic docs, not a file-for-file mirror, and not in any git repo); keep it in sync for API-affecting changes.
+`~/.claude/skills/edit-controls/` is the usage reference other repos' agents read instead of this source. Whenever a change touches a control's public API, parameters, behavior, or a documented convention, update the matching skill file(s) in the same commit — do not defer to a cleanup pass. (The old non-Claude export at the workspace root's `.github/skills/` was deleted 2026-07 — the Claude skill is the only external copy to maintain.)
 
 ## Key Conventions
 
