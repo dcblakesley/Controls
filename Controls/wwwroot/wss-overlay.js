@@ -291,7 +291,20 @@ export function activateModal(panel) {
     // landed outside the panel — a Tab from anywhere is pulled back into the cycle. Panel-level
     // listening died the moment focus escaped (e.g. a mask click), taking Escape with it.
     const onKeydown = (e) => {
-        if (e.key !== 'Tab' || !isTopmost()) {
+        if (!isTopmost()) {
+            return;
+        }
+        // Focus can silently land outside the panel with no focusin fired — disabling the focused
+        // element (the default OK button during ConfirmLoading) or removing it drops focus to
+        // <body>. The panel-scoped Blazor Escape handler then never sees the key, so pull focus
+        // back into the trap and re-dispatch the key at the panel so Escape-to-close still works.
+        if (e.key === 'Escape' && !panel.contains(document.activeElement)) {
+            const items = focusables();
+            try { (items[0] || panel).focus(); } catch { /* not focusable */ }
+            panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            return;
+        }
+        if (e.key !== 'Tab') {
             return;
         }
         const items = focusables();

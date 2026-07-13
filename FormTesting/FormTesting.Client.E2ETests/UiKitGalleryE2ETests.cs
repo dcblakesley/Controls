@@ -86,6 +86,26 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Modal_escape_still_closes_after_the_focused_footer_button_is_disabled()
+    {
+        await GotoAsync();
+        await _page.Locator("button", new() { HasTextString = "Open Modal" }).ClickAsync();
+        var panel = _page.Locator(".wss-modal[role=dialog]");
+        await Expect(panel).ToBeVisibleAsync();
+        await _page.WaitForFunctionAsync(
+            "() => { const d = document.querySelector('.wss-modal[role=dialog]'); return !!d && d.contains(document.activeElement); }");
+
+        // Simulate ConfirmLoading: focus the default OK button, then disable it. The browser silently
+        // drops focus to <body> (no focusin fires), which used to strand the panel-scoped Escape
+        // handler — Escape went dead until the user tabbed or clicked back into the panel.
+        await _page.EvaluateAsync(
+            "() => { const ok = document.querySelector('.wss-modal .wss-dialog-btn-primary'); ok.focus(); ok.disabled = true; }");
+        await _page.Keyboard.PressAsync("Escape");
+
+        await Expect(panel).ToBeHiddenAsync();
+    }
+
+    [Fact]
     public async Task Alert_section_visual_baseline()
     {
         await GotoAsync();
