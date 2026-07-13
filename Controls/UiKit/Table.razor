@@ -449,7 +449,15 @@
     // render); degrades to a plain checkbox when there's no JS runtime (server prerender, tests).
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!Selectable || _disposed) return;
+        if (_disposed) return;
+        if (!Selectable)
+        {
+            // The select-all <input> lives inside @if (Selectable), so toggling Selectable off
+            // destroys it — a fresh element comes back with indeterminate == false. Forget the
+            // mirror so re-enabling re-applies the mixed state instead of short-circuiting.
+            _lastIndeterminate = null;
+            return;
+        }
         var some = _someSelected;
         if (_lastIndeterminate == some) return;
         try

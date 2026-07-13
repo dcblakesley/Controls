@@ -459,6 +459,31 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void Toggling_Selectable_off_and_on_reapplies_the_indeterminate_state()
+    {
+        var data = Sample(); // Alice, Bob
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectedItems, new List<Person> { data[0] }) // partial selection -> mixed state
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        int IndeterminateCalls() => JSInterop.Invocations.Count(i => i.Identifier == "setIndeterminate");
+        Assert.Equal(1, IndeterminateCalls());
+
+        // The select-all <input> lives inside @if (Selectable): toggling it off destroys the element
+        // and a fresh one comes back with indeterminate == false. The stale _lastIndeterminate mirror
+        // used to short-circuit the JS call, leaving the recreated checkbox plain-unchecked while
+        // some rows were selected.
+        cut.SetParametersAndRender(p => p.Add(t => t.Selectable, false));
+        cut.SetParametersAndRender(p => p.Add(t => t.Selectable, true));
+
+        Assert.Equal(2, IndeterminateCalls());
+    }
+
+    [Fact]
     public void Parent_rerender_with_unchanged_data_does_not_rewalk_rows()
     {
         // Pins the perf contract algorithmically (bUnit can't see wall-clock): with an unchanged
