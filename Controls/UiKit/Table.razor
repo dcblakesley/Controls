@@ -36,10 +36,23 @@
                 {
                     <th scope="col" class="wss-table-cell wss-table-selection-cell">
                         @* The label matches the actual scope: ToggleAll only affects the current page. *@
-                        <input type="checkbox" class="wss-table-checkbox"
-                               aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
-                               checked="@_allSelected"
-                               @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
+                        @if (EffectiveUseStyledCheckbox)
+                        {
+                            <span class="wss-table-checkbox-wrap">
+                                <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled"
+                                       aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
+                                       checked="@_allSelected"
+                                       @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
+                                <span class="wss-table-checkbox-box" aria-hidden="true"></span>
+                            </span>
+                        }
+                        else
+                        {
+                            <input type="checkbox" class="wss-table-checkbox"
+                                   aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
+                                   checked="@_allSelected"
+                                   @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
+                        }
                     </th>
                 }
                 @foreach (var col in _columns)
@@ -79,8 +92,19 @@
                         @if (Selectable)
                         {
                             <td class="wss-table-cell wss-table-selection-cell">
-                                <input type="checkbox" class="wss-table-checkbox" aria-label="Select row" checked="@IsSelected(item)"
-                                       @onchange="@(e => ToggleRow(item, e.Value is true))" />
+                                @if (EffectiveUseStyledCheckbox)
+                                {
+                                    <span class="wss-table-checkbox-wrap">
+                                        <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled" aria-label="Select row" checked="@IsSelected(item)"
+                                               @onchange="@(e => ToggleRow(item, e.Value is true))" />
+                                        <span class="wss-table-checkbox-box" aria-hidden="true"></span>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <input type="checkbox" class="wss-table-checkbox" aria-label="Select row" checked="@IsSelected(item)"
+                                           @onchange="@(e => ToggleRow(item, e.Value is true))" />
+                                }
                             </td>
                         }
                         @foreach (var col in _columns)
@@ -129,6 +153,21 @@
 
     /// <summary>Adds a checkbox column for row selection, plus a header checkbox that toggles the current page.</summary>
     [Parameter] public bool Selectable { get; set; }
+
+    /// <summary>
+    /// When true, the header and row selection checkboxes render with a custom-drawn box (hidden
+    /// native input + a sibling element that draws the visual state, including the indeterminate
+    /// "mixed" glyph) instead of the bare native checkbox — the UI-kit analogue of
+    /// <c>EditBool.UseStyledCheckbox</c>. Null (default) falls through to any enclosing
+    /// <see cref="Controls.FormDefaults"/> (set this once for a whole app or MFE), then
+    /// <see cref="FormOptions.DefaultUseStyledCheckbox"/>. Table has no <see cref="FormOptions"/> of
+    /// its own, so that tier of the Edit* controls' resolution chain doesn't apply here.
+    /// </summary>
+    [Parameter] public bool? UseStyledCheckbox { get; set; }
+
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
+
+    bool EffectiveUseStyledCheckbox => UseStyledCheckbox ?? FormDefaults?.EffectiveUseStyledCheckbox ?? FormOptions.DefaultUseStyledCheckbox;
 
     /// <summary>
     /// Controlled selection. Treated as an immutable parameter: reassign a new collection to

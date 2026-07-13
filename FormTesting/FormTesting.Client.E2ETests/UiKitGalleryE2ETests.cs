@@ -105,6 +105,16 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await Expect(panel).ToBeHiddenAsync();
     }
 
+    // KNOWN FLAKY (investigated extensively, unresolved): this test can fail with a blank
+    // screenshot when it runs after another /uikit navigation in the same test process, on some
+    // machines/environments. At capture time the DOM, the applied CSS, and computed styles for the
+    // alert are all provably correct (verified directly via getComputedStyle) -- the discrepancy is
+    // specifically between that and the actual painted pixels, which survives element-level
+    // re-targeting, a hard page reload, a brand-new Page/context, double-requestAnimationFrame
+    // paint sync, and Chromium flags disabling background-tab throttling and paint-holding. This
+    // looks like a Chromium/Playwright compositing anomaly tied to this sandbox, not a product
+    // regression. If this fails, verify on windows-latest CI (see ci.yml) or a real machine before
+    // treating it as a real bug.
     [Fact]
     public async Task Alert_section_visual_baseline()
     {
@@ -207,30 +217,86 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     public async Task Table_select_all_checkbox_reaches_the_indeterminate_state()
     {
         await GotoAsync();
-        const string headerSelector = ".wss-table-thead .wss-table-checkbox";
-        var header = _page.Locator(headerSelector);
-        var rows = _page.Locator(".wss-table-tbody .wss-table-checkbox");
+        // The gallery has more than one table, so scope to the first -- the selectable/sortable one
+        // (also the UseStyledCheckbox demo; the indeterminate DOM property + wss-table.js wiring
+        // this test covers are identical either way, only the visual glyph differs).
+        var table = _page.Locator(".wss-table").First;
+        var header = table.Locator(".wss-table-thead .wss-table-checkbox");
+        var rows = table.Locator(".wss-table-tbody .wss-table-checkbox");
         await Expect(header).ToBeVisibleAsync();
 
-        // Start: neither checked nor indeterminate.
+        // The demo preselects row Id 1 on this 13-row/5-per-page table, so page 1 starts with the
+        // header already mixed (some but not all of the page selected).
         Assert.False(await header.IsCheckedAsync());
-        Assert.False(await header.EvaluateAsync<bool>("el => el.indeterminate"));
+        Assert.True(await header.EvaluateAsync<bool>("el => el.indeterminate"));
 
-        // Select one row → header reaches the mixed state (a DOM property with no HTML attribute,
-        // set from C# via wss-table.js). WaitForFunction tolerates the post-render interop gap.
-        await rows.First.ClickAsync();
-        await _page.WaitForFunctionAsync(
-            $"() => {{ const cb = document.querySelector('{headerSelector}'); return !!cb && cb.indeterminate === true && cb.checked === false; }}");
-
-        // Select all → fully checked, no longer indeterminate.
+        // Select the rest of the page → fully checked, no longer indeterminate.
         await header.ClickAsync();
-        await _page.WaitForFunctionAsync(
-            $"() => {{ const cb = document.querySelector('{headerSelector}'); return !!cb && cb.indeterminate === false && cb.checked === true; }}");
+        await Expect(header).ToBeCheckedAsync();
+        Assert.False(await header.EvaluateAsync<bool>("el => el.indeterminate"));
+        await Expect(rows.First).ToBeCheckedAsync();
 
         // Clear all → neither.
         await header.ClickAsync();
-        await _page.WaitForFunctionAsync(
-            $"() => {{ const cb = document.querySelector('{headerSelector}'); return !!cb && cb.indeterminate === false && cb.checked === false; }}");
+        await Expect(header).Not.ToBeCheckedAsync();
+        Assert.False(await header.EvaluateAsync<bool>("el => el.indeterminate"));
+    }
+
+    [Fact]
+    public async Task Table_styled_checkbox_renders_the_custom_box_and_the_indeterminate_dash()
+    {
+        await GotoAsync();
+        var table = _page.Locator(".wss-table").First;
+        var header = table.Locator(".wss-table-thead .wss-table-checkbox-input-styled");
+        var headerBox = table.Locator(".wss-table-thead .wss-table-checkbox-box");
+        await Expect(header).ToBeVisibleAsync();
+
+        // The demo preselects row Id 1 on a 13-row/5-per-page table, so page 1 starts indeterminate
+        // (a DOM property with no HTML attribute, set from C# via wss-table.js -- unchanged by this
+        // feature; only the CSS drawing the mixed-state dash is new).
+        Assert.True(await header.EvaluateAsync<bool>("el => el.indeterminate"));
+        var mixedColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+
+        // Clicking a partially-selected header selects the rest of the page (AntD convention): fully
+        // checked, no longer indeterminate, same fill color as the mixed state (:checked and
+        // :indeterminate share the same fill rule, only the ::after glyph differs).
+        await header.ClickAsync();
+        await Expect(header).ToBeCheckedAsync();
+        Assert.False(await header.EvaluateAsync<bool>("el => el.indeterminate"));
+        var checkedColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        Assert.Equal(mixedColor, checkedColor);
+
+        // Clearing the selection returns the box to its unfilled appearance.
+        await header.ClickAsync();
+        var clearedColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        Assert.NotEqual(mixedColor, clearedColor);
+    }
+
+    [Fact]
+    public async Task Table_styled_checkbox_row_box_reflects_the_checked_row_too()
+    {
+        await GotoAsync();
+        var table = _page.Locator(".wss-table").First;
+        // Row 1 (Item 1) is preselected by the demo; rows 2-5 are not.
+        var checkedRowBox = table.Locator(".wss-table-tbody .wss-table-checkbox-box").First;
+        var uncheckedRowBox = table.Locator(".wss-table-tbody .wss-table-checkbox-box").Nth(1);
+        await Expect(checkedRowBox).ToBeVisibleAsync();
+
+        var checkedColor = await checkedRowBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        var uncheckedColor = await uncheckedRowBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        var headerMixedColor = await table.Locator(".wss-table-thead .wss-table-checkbox-box")
+            .EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+
+        Assert.Equal(headerMixedColor, checkedColor); // checked row fills with the same primary color
+        Assert.NotEqual(checkedColor, uncheckedColor); // unchecked row stays unfilled
+    }
+
+    [Fact]
+    public async Task Table_styled_checkbox_visual_baseline_indeterminate()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "styled checkboxes" });
+        await BaselineAsync(section, "table-styled-checkbox-indeterminate");
     }
 
     [Fact]

@@ -568,6 +568,36 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
+    public void UseStyledCheckbox_renders_the_custom_drawn_box_for_header_and_row_checkboxes()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .Add(t => t.UseStyledCheckbox, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Single(cut.FindAll("thead .wss-table-checkbox-wrap"));
+        Assert.Equal(2, cut.FindAll("tbody .wss-table-checkbox-wrap").Count);
+        Assert.Equal(3, cut.FindAll("input.wss-table-checkbox-input-styled").Count);
+    }
+
+    [Fact]
+    public void UseStyledCheckbox_unset_renders_bare_native_checkboxes()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Empty(cut.FindAll(".wss-table-checkbox-wrap"));
+        Assert.Equal(3, cut.FindAll("input.wss-table-checkbox").Count);
+    }
+
+    [Fact]
     public void Table_merges_a_consumer_class_and_splats_other_attributes_onto_the_root()
     {
         // Unmatched attributes used to throw InvalidOperationException; per the library owner's

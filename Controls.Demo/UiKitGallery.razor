@@ -68,8 +68,15 @@
     </section>
 
     <section class="demo-section">
-        <h3>Table (selectable, sortable, paged)</h3>
-        <Table TItem="Row" DataSource="_rows" Selectable="true" PageSize="5" PagerAlign="PagerAlign.Center"
+        <h3>Table (selectable, sortable, paged, styled checkboxes)</h3>
+        <p style="margin:0; color:#666;">
+            Antd-style custom-drawn checkboxes for header/row selection (<code>UseStyledCheckbox</code>),
+            including the indeterminate "mixed" glyph when only some rows on the page are selected
+            (preselected below). Settable per-<code>Table</code> or globally via a cascaded
+            <code>FormDefaults</code> (or the process-wide <code>FormOptions.DefaultUseStyledCheckbox</code>
+            static).
+        </p>
+        <Table TItem="Row" DataSource="_rows" Selectable="true" UseStyledCheckbox="true" PageSize="5" PagerAlign="PagerAlign.Center"
                SelectedItems="_selectedRows" SelectedItemsChanged="@(s => _selectedRows = s.ToList())">
             <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" Sortable="true" />
             <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" Sortable="true" />
@@ -169,6 +176,8 @@
         .Select(i => new Row(i, $"Item {i}", i * 4.5m))
         .ToList();
 
+    // Preselected (below, in OnInitializedAsync) so the styled-checkbox Table demo starts in the
+    // indeterminate ("mixed") state — a field initializer can't reference the _rows field above.
     List<Row> _selectedRows = new();
 
     // --- Server-side paging demo (compose pattern) ---
@@ -182,7 +191,11 @@
     int _serverTotal;
     int _serverPage = 1;
 
-    protected override Task OnInitializedAsync() => LoadServerPageAsync(1);
+    protected override Task OnInitializedAsync()
+    {
+        _selectedRows.Add(_rows[0]);
+        return LoadServerPageAsync(1);
+    }
 
     // Mimics a paged endpoint: returns just the requested page plus the overall row count.
     async Task LoadServerPageAsync(int page)
