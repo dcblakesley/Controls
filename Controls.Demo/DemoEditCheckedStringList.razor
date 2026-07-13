@@ -33,12 +33,22 @@
 
         <EditCheckedStringList @bind-Value="_model.Required"
                                Options="@_basicItems" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
-        
+
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditCheckedStringList @bind-Value="_model.StyledCheckboxes"
+                               Options="@_basicItems"
+                               UseStyledCheckbox="true"
+                               Description="Custom-drawn boxes — same opt-in as EditBool.UseStyledCheckbox, settable per-control or globally via FormOptions/FormDefaults." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_styledCheckboxExample</code></pre>
     </section>
 
 </EditForm>
@@ -72,6 +82,7 @@
         public List<string> Required { get; set; } = [];
 
         public List<string> Disabled { get; set; } = [];
+        public List<string> StyledCheckboxes { get; set; } = [];
     }
 
     readonly string _basicExample = @"<EditCheckedStringList @bind-Value=""_model.BasicList""
@@ -111,6 +122,10 @@
 public List<string> Required { get; set; } = [];
 
 public List<string> Disabled { get; set; } = [];";
+
+    readonly string _styledCheckboxExample = @"<EditCheckedStringList @bind-Value=""_model.StyledCheckboxes""
+                      Options=""@_basicItems""
+                      UseStyledCheckbox=""true"" />";
 
     // For demonstration, providing some basic items
     private List<string> GetBasicItems() => new() { "Apple", "Banana", "Cherry" };

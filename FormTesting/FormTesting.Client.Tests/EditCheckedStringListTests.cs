@@ -132,6 +132,43 @@ public class EditCheckedStringListTests : TestContext
     }
 
     [Fact]
+    public void UseStyledCheckbox_renders_a_custom_drawn_box_per_option()
+    {
+        var model = new PersonModel { Tags = ["b"] };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
+            b.AddAttribute(4, "UseStyledCheckbox", true);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal(3, cut.FindAll(".edit-checkbox-wrap").Count);
+        Assert.Equal(3, cut.FindAll("input.edit-checkbox-input-styled").Count);
+    }
+
+    [Fact]
+    public void UseStyledCheckbox_unset_renders_bare_native_checkboxes()
+    {
+        var model = new PersonModel { Tags = ["b"] };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b", "c" });
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-checkbox-wrap"));
+        Assert.Equal(3, cut.FindAll("input[type=checkbox]").Count);
+    }
+
+    [Fact]
     public void Read_only_mode_renders_ReadOnlyValue_per_selected_item_not_checkboxes()
     {
         var model = new PersonModel { Tags = ["a", "c"] };
