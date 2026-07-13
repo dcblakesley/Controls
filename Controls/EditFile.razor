@@ -76,7 +76,7 @@
         {
             @if (Value is null || Value.Count == 0)
             {
-                <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel Text="" />
+                <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@FieldCssClass Text="" />
             }
             else
             {

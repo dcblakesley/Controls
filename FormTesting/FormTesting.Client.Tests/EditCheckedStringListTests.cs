@@ -43,6 +43,26 @@ public class EditCheckedStringListTests : TestContext
     }
 
     [Fact]
+    public void Consumer_class_is_forwarded_in_read_only_mode_too()
+    {
+        // The edit/read-only asymmetry pattern: the class must not vanish when IsEditMode is false.
+        var model = new PersonModel { Tags = ["a"] };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "class", "my-check-class");
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("my-check-class", cut.Find(".edit-readonly-value").ClassList);
+    }
+
+    [Fact]
     public void Renders_one_checkbox_per_option_with_initial_checked_state()
     {
         var model = new PersonModel { Tags = ["b"] };
