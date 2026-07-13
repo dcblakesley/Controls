@@ -370,6 +370,10 @@ The library provides default styling through the included CSS file. You can cust
 
 The AntDesign-style UI-kit controls (Alert, Modal, Table, Select, ...) are themed via `--wss-*` CSS custom properties in `wss-controls.css`. They default to the AntDesign 4.x look and **bridge to your existing `--color-primary` / `--color-danger` / `--border-color`** where those are defined, so they pick up your theme automatically. Override any `--wss-*` variable to re-theme.
 
+**Where to set the variables.** The `--wss-*` / `--edit-*` tokens can be overridden at **any scope** — `:root`, `body`, a theme class, or a micro-frontend's root container — and derived states (hover borders, focus shadows, focus rings) follow the override, because they derive from the base token at each usage site. The generic `--color-primary` / `--color-danger` / `--border-color` bridge, by contrast, is resolved **once, at `:root`** (a CSS custom property substitutes the `var()`s in its value where the property is declared): a `--color-primary` set on a nested container is not seen. Rule of thumb: app-wide theme → set `--color-*` at `:root` and everything follows; scoped/per-area theme (e.g. an MFE that doesn't own the host page) → set the `--wss-*` / `--edit-*` tokens themselves on your container. A directly-set `--wss-*` token always wins over the `--color-*` bridge.
+
+The UI-kit components also accept regular `class` / `style` / `data-*` attributes (applied to the component's root element; `class` and `style` merge with the component's own), so one-off tweaks don't require CSS variables at all.
+
 ```razor
 <EditString @bind-Value="model.Name" 
             Label="Name" 
@@ -443,6 +447,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - `Table`: the header checkbox's mixed (indeterminate) state is re-applied after `Selectable` is toggled off and back on while a partial selection exists — the recreated checkbox used to come back plain-unchecked.
 - `Modal` / `Drawer`: Escape-to-close no longer goes dead when focus is silently dropped to `<body>` — e.g. the focused default OK button becoming disabled via `ConfirmLoading`, or a conditionally-rendered focused element unmounting. The focus trap now pulls focus back into the panel and re-targets the Escape at it.
 - `JsInteropEc.FocusById` now honors its documented best-effort contract (a no-op when JS is unavailable) instead of throwing from a prerender `IJSRuntime`.
+- **Theming: scoped token overrides now cascade into derived states.** `--wss-color-primary-hover`, `--wss-primary-shadow`, `--wss-error-shadow`, and `--edit-focus-ring` used to be derived from their base token at `:root`, so overriding `--wss-color-primary` / `--edit-color-primary` / `--wss-color-error` on a nested container (a theme class, an MFE root) changed the base color but left hover borders, focus shadows, and focus rings at the default blue/red. These are now derived at each usage site — a scoped base-token override re-themes the derived states too. All four remain overridable as before (a directly-set value wins over the derivation); computed defaults are unchanged. `--wss-color-primary-active` (never consumed by any rule) was removed.
+- **UI-kit components accept `class` / `style` / arbitrary attributes.** `Alert`, `Skeleton`, `Pagination`, `Modal`, `Drawer`, `Popover`, `Popconfirm`, `Table`, and `EditDisplay` previously threw `InvalidOperationException` on any unmatched attribute. They now capture unmatched attributes onto their root element (`Modal`/`Drawer`: the dialog panel; `Popover`/`Popconfirm`: the trigger wrapper): `class` and `style` merge with the component's own, everything else (`data-*`, `title`, ...) is splatted verbatim. (On `EditDisplay`, `class` binds to its existing `Class` parameter — same knob — since component-parameter matching is case-insensitive.)
 
 ### 10.5.1
 
