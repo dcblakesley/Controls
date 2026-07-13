@@ -22,7 +22,11 @@ public static class JsInteropEc
     /// </summary>
     public static async Task FocusById(IJSRuntime jsRuntime, string id)
     {
-        await jsRuntime.InvokeVoidAsync("WssEditControls.focusById", id);
+        // The contract above promises best-effort, so the "JS interop not available" throw from a
+        // prerender/test IJSRuntime (and circuit-teardown errors) is swallowed here rather than
+        // making every caller wrap a focus nicety in its own try/catch.
+        try { await jsRuntime.InvokeVoidAsync("WssEditControls.focusById", id); }
+        catch { /* focus is a nicety, never fatal */ }
     }
 
     public static async Task Log(IJSRuntime jsRuntime, string text)

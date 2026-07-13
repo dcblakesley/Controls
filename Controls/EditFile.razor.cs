@@ -241,7 +241,8 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         if (_pendingFocusId is null) return;
         var id = _pendingFocusId;
         _pendingFocusId = null;
-        // Best-effort: no-op if the element is gone or JS is unavailable (prerender / tests).
-        try { await JsInteropEc.FocusById(JS, id); } catch { /* focus is a nicety, never fatal */ }
+        // Best-effort: no-op if the element is gone or JS is unavailable (prerender / tests) —
+        // FocusById swallows interop failures itself.
+        await JsInteropEc.FocusById(JS, id);
     }
 }

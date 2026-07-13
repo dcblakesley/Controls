@@ -27,4 +27,13 @@ public class JsInteropEcTests : TestContext
 
         Assert.Single(planned.Invocations);
     }
+
+    [Fact]
+    public async Task FocusById_is_a_no_op_when_js_is_unavailable()
+    {
+        // The XML contract promises best-effort ("a no-op when ... JS is unavailable"). Strict-mode
+        // JSInterop throws on any unconfigured call — the same way a prerender IJSRuntime does —
+        // so this passes only if FocusById swallows the failure instead of surfacing it.
+        await JsInteropEc.FocusById(JSInterop.JSRuntime, "some-id");
+    }
 }
