@@ -77,12 +77,21 @@
                              IsDisabled="true" />
 
         <EditCheckedEnumList @bind-Value="_model.Required" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
-        
+
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditCheckedEnumList @bind-Value="_model.StyledCheckboxes"
+                             UseStyledCheckbox="true"
+                             Description="Custom-drawn boxes — same opt-in as EditBool.UseStyledCheckbox, settable per-control or globally via FormOptions/FormDefaults." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_styledCheckboxExample</code></pre>
     </section>
 
 </EditForm>
@@ -118,6 +127,8 @@
         public List<Animal> Required { get; set; } = [];
 
         public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];
+
+        public List<Animal> StyledCheckboxes { get; set; } = [];
     }
 
     readonly string _basicExample = @"<EditCheckedEnumList @bind-Value=""_model.BasicEnumList"" />";
@@ -166,4 +177,7 @@
 public List<Animal> Required { get; set; } = [];
 
 public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];";
+
+    readonly string _styledCheckboxExample = @"<EditCheckedEnumList @bind-Value=""_model.StyledCheckboxes""
+                    UseStyledCheckbox=""true"" />";
 }

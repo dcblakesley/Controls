@@ -26,6 +26,17 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
     /// <summary> If true, the checkboxes will be displayed horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
+    /// <summary>
+    /// When true, each checkbox renders with a custom-drawn box (hidden native input + a sibling
+    /// element that draws the visual state) instead of the bare native checkbox — same opt-in as
+    /// <see cref="EditBool.UseStyledCheckbox"/>. Null (default) falls through to <see cref="FormOptions"/>,
+    /// then any enclosing <see cref="Controls.FormDefaults"/>, then <see cref="FormOptions.DefaultUseStyledCheckbox"/>.
+    /// </summary>
+    [Parameter] public bool? UseStyledCheckbox { get; set; }
+
+    /// <summary> <see cref="UseStyledCheckbox"/> resolved through the FormOptions/FormDefaults/static chain. </summary>
+    bool EffectiveUseStyledCheckbox => EditControlInit.UseStyledCheckbox(UseStyledCheckbox, FormOptions, FormDefaults);
+
     Type _type = null!;
     Type _underlyingType = null!;
     bool _isNullable;

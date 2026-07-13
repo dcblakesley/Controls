@@ -43,6 +43,25 @@ public class EditCheckedEnumListTests : TestContext
     }
 
     [Fact]
+    public void UseStyledCheckbox_renders_a_custom_drawn_box_per_option()
+    {
+        var model = new ColorListModel { Colors = [Color.Red] };
+        Expression<Func<List<Color>>> field = () => model.Colors;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedEnumList<Color>>(0);
+            b.AddAttribute(1, "Value", model.Colors);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "UseStyledCheckbox", true);
+            b.CloseComponent();
+        }));
+
+        // Color has 4 values: Red, Green, Blue, PaleYellow.
+        Assert.Equal(4, cut.FindAll(".edit-checkbox-wrap").Count);
+        Assert.Equal(4, cut.FindAll("input.edit-checkbox-input-styled").Count);
+    }
+
+    [Fact]
     public void Labels_use_GetName_attribute_precedence()
     {
         var model = new ColorListModel();
