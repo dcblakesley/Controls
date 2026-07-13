@@ -164,6 +164,10 @@ dotnet nuget push nupkg/WssBlazorControls.Demo.<version>.nupkg --source https://
 
 The README serves as both the repo landing page and the NuGet package readme (packed into `WssBlazorControls` via `<PackageReadmeFile>`). It contains installation instructions, usage examples for every control, and a changelog. Update it when adding features or bumping versions.
 
+### `edit-controls` skill
+
+`~/.claude/skills/edit-controls/` (mirrored at `.github/skills/edit-controls/` for non-Claude agents) is the usage documentation for this library — the reference other repos' agents read instead of re-deriving conventions from this code. It goes stale the same way README examples do, so treat it as part of the deliverable, not an afterthought: whenever a change touches a control's public API, parameters, behavior, or a documented convention (new/changed `Edit*` or UI-kit component, renamed/added parameter, new attribute, changed CSS class or token, new JS interop module), update the matching file(s) under both `~/.claude/skills/edit-controls/` and `.github/skills/edit-controls/` in the same commit — do not defer it to a later cleanup pass.
+
 ## Key Conventions
 
 - Component names use `Edit` prefix (EditString, EditSelectEnum, EditRadio, etc.)
