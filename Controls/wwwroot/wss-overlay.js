@@ -298,7 +298,10 @@ export function activateModal(panel) {
         // element (the default OK button during ConfirmLoading) or removing it drops focus to
         // <body>. The panel-scoped Blazor Escape handler then never sees the key, so pull focus
         // back into the trap and re-dispatch the key at the panel so Escape-to-close still works.
-        if (e.key === 'Escape' && !panel.contains(document.activeElement)) {
+        // isTrusted gate: this capture listener also sees the synthetic event dispatched below; if
+        // the focus() failed to land (e.g. an unfocusable-but-laid-out first item), re-entering
+        // here would recurse without bound.
+        if (e.key === 'Escape' && e.isTrusted && !panel.contains(document.activeElement)) {
             const items = focusables();
             try { (items[0] || panel).focus(); } catch { /* not focusable */ }
             panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
