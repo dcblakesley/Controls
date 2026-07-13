@@ -4,7 +4,11 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <fieldset class="edit-radio-fieldset"
+        @* CssClass (InputBase: consumer class + field-state classes) goes on the fieldset — unlike
+           EditRadioEnum/EditRadioString this control doesn't render its own radio inputs (they come
+           from ChildContent), so the group root is the only element it owns to carry the class.
+           Edit mode only: the read-only branch already forwards CssClass to its ReadOnlyValue. *@
+        <fieldset class="edit-radio-fieldset @(ShowEditor ? CssClass : null)"
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
                   role=@(ShowEditor ? "radiogroup" : null)

@@ -99,6 +99,32 @@ public class DisabledAndConformanceTests : TestContext
     }
 
     [Fact]
+    public void EditRadio_forwards_the_consumers_class_to_the_group_fieldset_in_edit_mode()
+    {
+        // EditRadio renders no radio inputs of its own (they come from ChildContent), so the group
+        // fieldset is the element that must carry InputBase's CssClass — previously the consumer's
+        // class only appeared in the read-only branch and was dropped entirely in edit mode.
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadio<string>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-radio-class");
+            b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
+            {
+                cb.OpenComponent<InputRadio<string>>(0);
+                cb.AddAttribute(1, "Value", "a");
+                cb.CloseComponent();
+            }));
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("my-radio-class", cut.Find("fieldset.edit-radio-fieldset").ClassList);
+    }
+
+    [Fact]
     public void EditRadio_IsDisabled_natively_disables_its_InputRadio_children()
     {
         var model = new PersonModel { Name = "a" };

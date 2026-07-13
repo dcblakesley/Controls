@@ -57,6 +57,25 @@ public class EditFileTests : TestContext
     }
 
     [Fact]
+    public void Consumer_class_is_forwarded_to_the_drop_zone()
+    {
+        // EditControlListBase captures the unmatched class attribute; EditFile must actually render
+        // it (ac15622 only wired up EditMultiSelect — the other list controls silently swallowed it).
+        var model = new FileModel { Files = [] };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-upload-class");
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("my-upload-class", cut.Find(".edit-file-drop-zone").ClassList);
+    }
+
+    [Fact]
     public void Null_bound_list_renders_the_drop_zone_without_throwing()
     {
         var cut = RenderEditFile(new FileModel()); // Files is null

@@ -100,22 +100,23 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     protected bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(_fieldIdentifier).Any();
 
     /// <summary>
-    /// The consumer's <c>class</c> attribute (if any) plus <c>"invalid"</c> when the field has a
-    /// validation error — the list-control analogue of the <c>CssClass</c> the scalar controls inherit
-    /// from <see cref="InputBase{TValue}"/>, mirroring its same merge order and behavior.
+    /// The consumer's <c>class</c> attribute (if any) merged with the <see cref="EditContext"/>'s
+    /// field-state classes (<c>modified</c>/<c>valid</c>/<c>invalid</c> by default, or whatever the
+    /// form's <c>FieldCssClassProvider</c> emits) — the list-control analogue of the <c>CssClass</c>
+    /// the scalar controls inherit from <see cref="InputBase{TValue}"/>, same merge order.
     /// </summary>
     protected string FieldCssClass
     {
         get
         {
-            var invalidClass = IsInvalid ? "invalid" : string.Empty;
+            var fieldClass = EditContext is null ? string.Empty : EditContext.FieldCssClass(_fieldIdentifier);
             if (AdditionalAttributes is not null &&
                 AdditionalAttributes.TryGetValue("class", out var classObj) &&
                 Convert.ToString(classObj, CultureInfo.InvariantCulture) is { Length: > 0 } consumerClass)
             {
-                return $"{consumerClass} {invalidClass}";
+                return fieldClass.Length > 0 ? $"{consumerClass} {fieldClass}" : consumerClass;
             }
-            return invalidClass;
+            return fieldClass;
         }
     }
 

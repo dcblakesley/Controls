@@ -15,8 +15,9 @@
 
             @if (ShowEditor)
             {
-                // Resolve the invalid state once per render instead of re-querying per checkbox.
+                // Resolve the invalid/field-class state once per render instead of re-querying per checkbox.
                 var isInvalid = IsInvalid;
+                var fieldCssClass = FieldCssClass;
                 <div class=@(IsHorizontal
                                ? "edit-checkedList-checkboxes-container-horizontal"
                                : "edit-checkedList-checkboxes-container-vertical")>
@@ -33,7 +34,7 @@
                                    @onchange="() => ToggleAsync(option)"
                                    id=@($"cbx-{_id}-{option.ToId()}")
                                    data-test-id=@($"cbx-{_id}-{option.ToId()}")
-                                   class="edit-checkedList-checkbox @(isInvalid ? "invalid" : "")" />
+                                   class="edit-checkedList-checkbox @fieldCssClass" />
                             @option
                         </label>
                     }

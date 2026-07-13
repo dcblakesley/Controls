@@ -11,7 +11,7 @@
         {
             @if (CanAddMoreFiles)
             {
-                <div class="edit-file-drop-zone @_hoverClass @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "")"
+                <div class="edit-file-drop-zone @_hoverClass @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass"
                      @ondragenter="OnDragEnter"
                      @ondragleave="OnDragLeave"
                      @ondragover="OnDragEnter"
@@ -83,7 +83,7 @@
                 @* aria-labelledby ties the read-only list back to the field label ("lbl-{_id}" also
                    exists when the label is visually hidden — FormLabel renders an sr-only label);
                    the edit-mode list above names itself the same way via aria-label. *@
-                <ul class="edit-file-list edit-file-list--readonly"
+                <ul class="edit-file-list edit-file-list--readonly @FieldCssClass"
                     id=@_id
                     data-test-id=@_id
                     aria-labelledby=@(ShouldHideLabel ? null : $"lbl-{_id}")

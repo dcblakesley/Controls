@@ -20,6 +20,29 @@ public class EditCheckedStringListTests : TestContext
     };
 
     [Fact]
+    public void Consumer_class_and_field_state_classes_are_forwarded_to_every_checkbox()
+    {
+        var model = new PersonModel { Tags = ["a"] };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(4, "class", "my-check-class");
+            b.CloseComponent();
+        }));
+
+        var boxes = cut.FindAll("input[type=checkbox]");
+        Assert.Equal(2, boxes.Count);
+        Assert.All(boxes, box => Assert.Contains("my-check-class", box.ClassList));
+        // Full InputBase parity: the EditContext field-state token rides along ("valid" at rest,
+        // "modified invalid" after a failing edit — same classes the scalar controls emit).
+        Assert.All(boxes, box => Assert.Contains("valid", box.ClassList));
+    }
+
+    [Fact]
     public void Renders_one_checkbox_per_option_with_initial_checked_state()
     {
         var model = new PersonModel { Tags = ["b"] };
