@@ -228,6 +228,37 @@ public class EditFileTests : TestContext
     }
 
     [Fact]
+    public void Reselecting_the_same_file_is_skipped_and_reported_not_added_twice()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => { changed = v; model.Files = v; });
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("hello", "a.txt"));
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("hello", "a.txt")); // re-pick, same name/size/last-modified
+
+        Assert.NotNull(changed);
+        Assert.Single(changed); // not two slots for the same file
+        Assert.Contains("a.txt is already added.", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
+    public void Dropping_two_copies_of_the_same_file_in_one_batch_keeps_only_one()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("hello", "a.txt"),
+            InputFileContent.CreateFromText("hello", "a.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+        Assert.Contains("a.txt is already added.", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
     public void Every_rejected_file_gets_its_own_error_message()
     {
         var cut = RenderEditFile(new FileModel { Files = [] }, allowedExtensions: [".pdf"]);

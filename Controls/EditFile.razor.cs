@@ -62,6 +62,9 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// <summary> Per-file read-failure message. {0} = file name.</summary>
     [Parameter] public string FileReadFailedMessageFormat { get; set; } = "{0} could not be read.";
 
+    /// <summary> Duplicate-file message. {0} = file name.</summary>
+    [Parameter] public string DuplicateFileMessageFormat { get; set; } = "{0} is already added.";
+
     /// <summary> Count-cap message. {0} = MaxFiles, {1} = number skipped, {2} = "file"/"files" (English plural of {0} — ignore when localizing).</summary>
     [Parameter] public string MaxFilesMessageFormat { get; set; } = "Only {0} {2} allowed — {1} not added.";
 
@@ -108,6 +111,12 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         _ => $"{bytes} B",
     };
 
+    // Name + size + last-modified is the same identity a user would judge by eye and is cheap to
+    // compare (no content hashing) — good enough to catch the common case of re-dropping the same
+    // file without reading it twice.
+    static bool IsSameFile(IBrowserFile a, IBrowserFile b) =>
+        a.Size == b.Size && a.LastModified == b.LastModified && a.Name == b.Name;
+
     async Task LoadFiles(InputFileChangeEventArgs e)
     {
         if (IsDisabled) return;
@@ -125,6 +134,16 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
         foreach (var file in incoming)
         {
+            // Skip-and-report, same as every other rejection below: the same file picked twice
+            // (re-drag, or picking an already-added file from a fresh browse) otherwise occupies two
+            // MaxFiles/MaxTotalBytes slots for one logical file. Checked against both the already-held
+            // Value and this batch's own toAdd, so duplicates within a single drop are caught too.
+            if ((Value?.Exists(v => IsSameFile(v, file)) ?? false) || toAdd.Exists(v => IsSameFile(v, file)))
+            {
+                _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture, DuplicateFileMessageFormat, file.Name));
+                continue;
+            }
+
             if (MaxFiles > 0 && (Value?.Count ?? 0) + toAdd.Count >= MaxFiles)
             {
                 skippedByCap++;
