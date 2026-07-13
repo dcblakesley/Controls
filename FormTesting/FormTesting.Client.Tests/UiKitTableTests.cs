@@ -566,4 +566,23 @@ public class UiKitTableTests : TestContext
         // Partial selection: not fully checked (the mixed state is applied via JS, unobservable here).
         Assert.False(HeaderChecked());
     }
+
+    [Fact]
+    public void Table_merges_a_consumer_class_and_splats_other_attributes_onto_the_root()
+    {
+        // Unmatched attributes used to throw InvalidOperationException; per the library owner's
+        // decision, class merges with the component's own and the rest splat onto the root element.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddUnmatched("class", "consumer-table")
+            .AddUnmatched("data-testid", "orders")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var root = cut.Find(".wss-table-root");
+        Assert.Contains("consumer-table", root.ClassList);
+        Assert.Contains("wss-table-root", root.ClassList); // merged, not replaced
+        Assert.Equal("orders", root.GetAttribute("data-testid"));
+    }
 }

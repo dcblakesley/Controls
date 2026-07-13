@@ -181,4 +181,46 @@ public class UiKitLeafControlsTests : TestContext
         Assert.Equal(new[] { "1", "2", "3", "4", "5", "8" }, labels);
         Assert.Single(cut.FindAll(".wss-pagination-ellipsis"));
     }
+
+    [Fact]
+    public void Alert_merges_consumer_class_and_splats_extra_attributes_onto_the_root()
+    {
+        var cut = RenderComponent<Alert>(p => p
+            .Add(a => a.Message, "x")
+            .AddUnmatched("class", "consumer-alert")
+            .AddUnmatched("data-testid", "my-alert"));
+
+        var root = cut.Find(".wss-alert");
+        Assert.Contains("consumer-alert", root.ClassList);   // consumer class merged in...
+        Assert.Contains("wss-alert-info", root.ClassList);   // ...without displacing the built-in ones
+        Assert.Equal("my-alert", root.GetAttribute("data-testid"));
+    }
+
+    [Fact]
+    public void Skeleton_merges_consumer_class_and_splats_extra_attributes_onto_the_root()
+    {
+        var cut = RenderComponent<Skeleton>(p => p
+            .AddUnmatched("class", "consumer-skeleton")
+            .AddUnmatched("data-testid", "my-skeleton"));
+
+        var root = cut.Find(".wss-skeleton");
+        Assert.Contains("consumer-skeleton", root.ClassList);
+        Assert.Contains("wss-skeleton-active", root.ClassList);
+        Assert.Equal("my-skeleton", root.GetAttribute("data-testid"));
+    }
+
+    [Fact]
+    public void Pagination_merges_consumer_class_and_splats_extra_attributes_onto_the_root()
+    {
+        var cut = RenderComponent<Pagination>(p => p
+            .Add(pg => pg.Total, 30)
+            .Add(pg => pg.PageSize, 10)
+            .AddUnmatched("class", "consumer-pager")
+            .AddUnmatched("data-testid", "my-pager"));
+
+        var root = cut.Find("nav.wss-pagination");
+        Assert.Contains("consumer-pager", root.ClassList);
+        Assert.Contains("wss-pagination", root.ClassList);
+        Assert.Equal("my-pager", root.GetAttribute("data-testid"));
+    }
 }

@@ -8,7 +8,9 @@
        target chain, so without it a mask tap never reaches @onclick (mask-close dead on touch). The
        JS focus trap preventDefaults outside mousedown, so the wrap can't actually steal focus. *@
     <div class="wss-modal-wrap" tabindex="-1" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
-        <div class="wss-modal" style="width:@Width" role="dialog" aria-modal="true"
+        <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+             class="wss-modal @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+             style="@AttributeSplat.MergeStyle($"width:{Width}", AdditionalAttributes)" role="dialog" aria-modal="true"
              aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel ?? "Dialog")" tabindex="-1"
              @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="true"
              @onmousedown="OnPanelMouseDown" @onmousedown:stopPropagation="true"
@@ -77,6 +79,13 @@
     [Parameter] public bool ConfirmLoading { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }
+    /// <summary>
+    /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
+    /// applied to the dialog panel (<c>.wss-modal</c>) — not the mask wrapper, whose inline z-index
+    /// is JS-owned. <c>class</c> and <c>style</c> merge with the component's own; the rest are
+    /// splatted verbatim.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     readonly string _titleId = $"wss-modal-title-{Guid.NewGuid():N}";
     ElementReference _panelRef;

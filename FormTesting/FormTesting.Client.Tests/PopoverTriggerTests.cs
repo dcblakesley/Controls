@@ -55,6 +55,29 @@ public class PopoverTriggerTests : TestContext
     }
 
     [Fact]
+    public void Popover_merges_a_consumer_class_and_splats_the_rest_onto_the_wrapper()
+    {
+        JSInterop.Mode = Bunit.JSRuntimeMode.Loose; // tolerate the overlay module import
+
+        // Unmatched attributes go on the outer wrapper span — never the floating panel, whose
+        // inline placement (z-index, --wss-shift) is JS-owned (wss-overlay.js place).
+        var cut = RenderComponent<Popover>(p => p
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddUnmatched("class", "consumer-class")
+            .AddUnmatched("data-testid", "my-popover")
+            .AddChildContent("<button type=\"button\">Open</button>"));
+
+        var wrap = cut.Find(".wss-popover-wrap");
+        Assert.Contains("consumer-class", wrap.ClassList);
+        Assert.Equal("my-popover", wrap.GetAttribute("data-testid"));
+
+        cut.Find(".wss-popover-trigger button").Click(); // open, then check the panel stayed clean
+        var panel = cut.Find(".wss-popover");
+        Assert.DoesNotContain("consumer-class", panel.ClassList);
+        Assert.False(panel.HasAttribute("data-testid"));
+    }
+
+    [Fact]
     public void Popconfirm_disposes_cleanly_after_render()
     {
         JSInterop.Mode = Bunit.JSRuntimeMode.Loose;

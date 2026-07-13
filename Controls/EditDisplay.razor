@@ -3,9 +3,13 @@
     <div class="edit-control-wrapper @ContainerClass">
         <FormLabel Id=@_id Label=@Label Description=@Description Tooltip=@Tooltip IsRequired=@IsRequired IsLabelHidden=@ShouldHideLabel IsForLabelable="false"/>
 
-        <div id=@_id
+        @* No ConsumerClass merge here: parameter matching is case-insensitive, so a consumer's
+           class="..." binds to the declared Class parameter and never reaches the capture dict. *@
+        <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+             id=@_id
              data-test-id=@_id
              class="edit-readonly-value @Class"
+             style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
              aria-labelledby=@(string.IsNullOrEmpty(Label) ? null : $"lbl-{_id}")>
 
             @Text

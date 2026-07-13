@@ -100,4 +100,38 @@ public class EditDisplayTests : TestContext
         Assert.False(value.HasAttribute("role"));
         Assert.False(value.HasAttribute("tabindex"));
     }
+
+    [Fact]
+    public void EditDisplay_merges_a_consumer_class_and_splats_other_attributes_onto_the_value_element()
+    {
+        // Unmatched attributes used to throw InvalidOperationException; per the library owner's
+        // decision, class merges with the component's own and the rest splat onto the value element.
+        var cut = RenderComponent<EditDisplay>(p => p
+            .Add(d => d.Text, "15.3 oz")
+            .AddUnmatched("class", "consumer-class")
+            .AddUnmatched("data-testid", "volume"));
+
+        var value = cut.Find(".edit-readonly-value");
+        Assert.Contains("consumer-class", value.ClassList);
+        Assert.Contains("edit-readonly-value", value.ClassList); // merged, not replaced
+        Assert.Equal("volume", value.GetAttribute("data-testid"));
+    }
+
+    [Fact]
+    public void EditDisplay_Class_parameter_composes_with_splatted_style_and_data_attributes()
+    {
+        // Class + unmatched class can never compose (case-insensitive parameter matching binds a
+        // consumer's class= to the Class parameter — same knob), but Class alongside splatted
+        // style/data-* must all land on the value element together.
+        var cut = RenderComponent<EditDisplay>(p => p
+            .Add(d => d.Class, "highlight")
+            .Add(d => d.Text, "15.3 oz")
+            .AddUnmatched("style", "margin-top:4px")
+            .AddUnmatched("data-testid", "volume"));
+
+        var value = cut.Find(".edit-readonly-value");
+        Assert.Contains("highlight", value.ClassList);
+        Assert.Equal("margin-top:4px", value.GetAttribute("style"));
+        Assert.Equal("volume", value.GetAttribute("data-testid"));
+    }
 }

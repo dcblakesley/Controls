@@ -8,7 +8,9 @@
         @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap on a focusable/
            interactive target chain — without it a mask tap never reaches @onclick on touch. *@
         <div class="wss-drawer-mask" tabindex="-1" @onclick="OnMaskClickAsync"></div>
-        <div class="wss-drawer wss-drawer-@PlacementName" style="@SizeStyle" role="dialog" aria-modal="true"
+        <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+             class="wss-drawer wss-drawer-@PlacementName @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+             style="@AttributeSplat.MergeStyle(SizeStyle, AdditionalAttributes)" role="dialog" aria-modal="true"
              aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel ?? "Drawer")" tabindex="-1"
              @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="true">
             @if (HasTitle || Closable)
@@ -59,6 +61,13 @@
     [Parameter] public EventCallback OnClose { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }
+    /// <summary>
+    /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
+    /// applied to the drawer panel (<c>.wss-drawer</c>) — not <c>.wss-drawer-root</c>, whose inline
+    /// z-index is JS-owned. <c>class</c> and <c>style</c> merge with the component's own; the rest
+    /// are splatted verbatim.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     readonly string _titleId = $"wss-drawer-title-{Guid.NewGuid():N}";
     ElementReference _panelRef;

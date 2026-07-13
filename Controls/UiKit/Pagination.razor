@@ -1,6 +1,9 @@
 @namespace Controls
 
-<nav class="wss-pagination" aria-label="@AriaLabel">
+<nav @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+     class="wss-pagination @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+     style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
+     aria-label="@AriaLabel">
     <button type="button" class="wss-pagination-prev @(Clamped <= 1 ? "wss-pagination-disabled" : null)"
             disabled="@(Clamped <= 1)" aria-label="@PreviousPageLabel" @onclick="@(() => GoAsync(Clamped - 1))">
         <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z"/></svg>
@@ -56,6 +59,13 @@
     /// <see cref="CultureInfo.CurrentCulture"/>).
     /// </summary>
     [Parameter] public string PageLabelFormat { get; set; } = "Page {0}";
+
+    /// <summary>
+    /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
+    /// applied to the component's root element. <c>class</c> and <c>style</c> merge with the
+    /// component's own; the rest are splatted verbatim.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     // Sentinel in PageItems marking a collapsed range (rendered as "…").
     const int Ellipsis = 0;

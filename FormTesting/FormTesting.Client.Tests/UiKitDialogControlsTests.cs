@@ -414,4 +414,70 @@ public class UiKitDialogControlsTests : TestContext
         popconfirm.Find(".wss-popconfirm-trigger").Click();
         Assert.Equal("-1", popconfirm.Find(".wss-popconfirm-backdrop").GetAttribute("tabindex"));
     }
+
+    [Fact]
+    public void Modal_merges_consumer_class_and_style_and_splats_the_rest_onto_the_panel()
+    {
+        // Consumers are expected to override styling, so unmatched attributes must land on the
+        // dialog panel — NOT the mask wrap, whose inline z-index is JS-owned (wss-overlay.js).
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .AddUnmatched("class", "consumer-class")
+            .AddUnmatched("style", "margin-top:4px")
+            .AddUnmatched("data-testid", "my-modal"));
+
+        var panel = cut.Find(".wss-modal");
+        Assert.Contains("consumer-class", panel.ClassList);
+        Assert.Equal("my-modal", panel.GetAttribute("data-testid"));
+        var style = panel.GetAttribute("style");
+        Assert.Contains("width:520px", style);    // the component's own width survives the merge
+        Assert.Contains("margin-top:4px", style); // consumer declarations appended (so they win ties)
+
+        var wrap = cut.Find(".wss-modal-wrap");
+        Assert.DoesNotContain("consumer-class", wrap.ClassList);
+        Assert.False(wrap.HasAttribute("data-testid"));
+    }
+
+    [Fact]
+    public void Drawer_merges_a_consumer_class_and_splats_the_rest_onto_the_panel()
+    {
+        // Unmatched attributes go on the drawer panel — NOT .wss-drawer-root, whose inline
+        // z-index is JS-owned (wss-overlay.js activateModal).
+        var cut = RenderComponent<Drawer>(p => p
+            .Add(d => d.Visible, true)
+            .Add(d => d.Title, "T")
+            .AddUnmatched("class", "consumer-class")
+            .AddUnmatched("data-testid", "my-drawer"));
+
+        var panel = cut.Find(".wss-drawer");
+        Assert.Contains("consumer-class", panel.ClassList);
+        Assert.Equal("my-drawer", panel.GetAttribute("data-testid"));
+        Assert.Contains("width:378px", panel.GetAttribute("style")); // the size style survives
+
+        var root = cut.Find(".wss-drawer-root");
+        Assert.DoesNotContain("consumer-class", root.ClassList);
+        Assert.False(root.HasAttribute("data-testid"));
+    }
+
+    [Fact]
+    public void Popconfirm_merges_a_consumer_class_and_splats_the_rest_onto_the_wrapper()
+    {
+        // Unmatched attributes go on the outer wrapper span — never the floating panel, whose
+        // inline placement (z-index, --wss-shift) is JS-owned (wss-overlay.js place).
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .AddUnmatched("class", "consumer-class")
+            .AddUnmatched("data-testid", "my-popconfirm")
+            .AddChildContent("<button>del</button>"));
+
+        var wrap = cut.Find(".wss-popconfirm-wrap");
+        Assert.Contains("consumer-class", wrap.ClassList);
+        Assert.Equal("my-popconfirm", wrap.GetAttribute("data-testid"));
+
+        cut.Find(".wss-popconfirm-trigger").Click(); // open, then check the panel stayed clean
+        var panel = cut.Find(".wss-popconfirm");
+        Assert.DoesNotContain("consumer-class", panel.ClassList);
+        Assert.False(panel.HasAttribute("data-testid"));
+    }
 }

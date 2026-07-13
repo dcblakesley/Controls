@@ -14,7 +14,9 @@
 
 @* Single root block so the table + pager don't pick up extra spacing from a parent's
    flex/grid gap stacking on top of the pager's own margin. *@
-<div class="wss-table-root">
+<div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+     class="wss-table-root @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+     style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
 @if (ShowTopPager)
 {
     <div class="wss-table-pagination wss-table-pagination-top wss-table-pagination-@PagerAlignName">
@@ -143,6 +145,13 @@
     /// Blazor rejects duplicate sibling <c>@key</c>s and selection can't tell equal rows apart.
     /// </summary>
     [Parameter] public Func<TItem, object>? RowKey { get; set; }
+
+    /// <summary>
+    /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
+    /// applied to the root <c>div.wss-table-root</c> element. <c>class</c> and <c>style</c> merge
+    /// with the component's own; the rest are splatted verbatim.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     List<Column<TItem>> _columns = new();        // promoted, ordered column set the body renders
     List<Column<TItem>>? _collecting;            // buffer the current pass collects into (promoted next pass)

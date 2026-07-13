@@ -2,7 +2,9 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-<span class="wss-popconfirm-wrap">
+<span @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+      class="wss-popconfirm-wrap @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+      style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
     @* The consumer's ChildContent normally holds the interactive trigger (e.g. a <button>): its
        native activation bubbles here as a click, so this wrapper carries no button semantics of its
        own (it used to be role="button", nesting a button inside a button — two tab stops, invalid
@@ -62,6 +64,13 @@
     [Parameter] public bool Disabled { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }
+    /// <summary>
+    /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
+    /// applied to the outer wrapper (<c>.wss-popconfirm-wrap</c>) — never the floating panel, whose
+    /// inline placement (z-index, <c>--wss-shift</c>) is JS-owned. <c>class</c> and <c>style</c>
+    /// merge with the component's own; the rest are splatted verbatim.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     ElementReference _triggerRef;
     ElementReference _panelRef;
