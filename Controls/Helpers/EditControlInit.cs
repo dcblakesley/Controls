@@ -72,6 +72,15 @@ public static class EditControlInit
         isLabelHidden || (formOptions?.IsLabelHidden ?? false);
 
     /// <summary>
+    /// Resolves EditBool / EditCheckedStringList / EditCheckedEnumList's styled-checkbox switch: an
+    /// explicit per-control <c>UseStyledCheckbox</c> parameter wins outright; otherwise the form's
+    /// <see cref="FormOptions.UseStyledCheckbox"/>, then any enclosing <see cref="FormDefaults"/>
+    /// (app/MFE-root default), then the process-wide <see cref="FormOptions.DefaultUseStyledCheckbox"/>.
+    /// </summary>
+    public static bool UseStyledCheckbox(bool? perControlValue, FormOptions? formOptions, FormDefaults? formDefaults) =>
+        perControlValue ?? formOptions?.UseStyledCheckbox ?? formDefaults?.EffectiveUseStyledCheckbox ?? FormOptions.DefaultUseStyledCheckbox;
+
+    /// <summary>
     /// Decides whether an edit control's wrapper renders, from <see cref="IEditControl.IsHidden"/> and
     /// the effective <see cref="HidingMode"/> (per-control ?? form-wide ?? <see cref="HidingMode.None"/>).
     /// Centralizes the hiding truth table that the scalar base, the list base and <c>EditRadio</c>

@@ -19,6 +19,7 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     [CascadingParameter] protected EditContext? EditContext { get; set; }
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [CascadingParameter] public FormDefaults? FormDefaults { get; set; }
 
     /// <inheritdoc/>
     [Parameter] public string? Id { get; set; }

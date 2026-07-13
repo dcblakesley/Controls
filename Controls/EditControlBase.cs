@@ -23,6 +23,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
 {
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [CascadingParameter] public FormDefaults? FormDefaults { get; set; }
 
     /// <inheritdoc/>
     [Parameter] public string? Id { get; set; }

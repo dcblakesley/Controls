@@ -10,7 +10,7 @@
             @if (!ShouldHideLabel)
             {
                 <label class="edit-checkbox-label" for=@_id>
-                    @(UseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
+                    @(EffectiveUseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
                     @DisplayLabel()
                     <LabelTooltip Id=@_id Tooltip=@Tooltip Attributes=@_attributes/>
                 </label>
@@ -27,7 +27,7 @@
                    with the checkbox (mirrors FormLabel's IsLabelHidden path) instead of shipping an
                    unnamed control that a screen reader announces as just "checkbox". *@
                 <label class="edit-sr-only" for=@_id>@DisplayLabel()</label>
-                @(UseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
+                @(EffectiveUseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
             }
         }
         else

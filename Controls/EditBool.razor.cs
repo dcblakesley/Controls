@@ -33,9 +33,14 @@ public partial class EditBool : EditControlBase<bool>
     /// When true, renders the checkbox with a custom-drawn box (hidden native input + a sibling
     /// element that draws the visual state) instead of the bare native checkbox. Use this when you
     /// need <c>border-radius</c> or other shape styling that a native checkbox + accent-color cannot
-    /// render in any current browser. Defaults to false — unchanged native-checkbox rendering.
+    /// render in any current browser. Null (default) falls through to <see cref="FormOptions"/>, then
+    /// any enclosing <see cref="Controls.FormDefaults"/>, then <see cref="FormOptions.DefaultUseStyledCheckbox"/>
+    /// — see <see cref="Controls.FormDefaults"/> to set this once for a whole app or MFE.
     /// </summary>
-    [Parameter] public bool UseStyledCheckbox { get; set; }
+    [Parameter] public bool? UseStyledCheckbox { get; set; }
+
+    /// <summary> <see cref="UseStyledCheckbox"/> resolved through the FormOptions/FormDefaults/static chain. </summary>
+    bool EffectiveUseStyledCheckbox => EditControlInit.UseStyledCheckbox(UseStyledCheckbox, FormOptions, FormDefaults);
 
     string _displayLabel = string.Empty;
     string? _displayDescription;

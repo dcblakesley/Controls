@@ -104,6 +104,20 @@ public class FormOptions
     /// this is shared by every circuit/user, so set it at startup only; for per-app or per-MFE defaults use
     /// <see cref="FormDefaults"/> instead. </summary>
     public static bool DefaultShowFieldNameInValidation { get; set; } = true;
+
+    /// <summary> When true, checkboxes render with a custom-drawn box (border-radius, antd-style fill +
+    /// checkmark) instead of the native checkbox, for every checkbox-bearing control that doesn't set its
+    /// own <c>UseStyledCheckbox</c> parameter (EditBool, EditCheckedStringList, EditCheckedEnumList).
+    /// When null, falls back to <see cref="DefaultUseStyledCheckbox"/> (through any cascaded
+    /// <see cref="FormDefaults"/>). </summary>
+    public bool? UseStyledCheckbox { get; set; }
+
+    /// <summary> Global default for <see cref="UseStyledCheckbox"/>, used when both the instance value and
+    /// any cascaded <see cref="FormDefaults"/> are null. Also the ultimate fallback for the UI-kit
+    /// <c>Table</c>'s row-selection checkboxes, which have no <see cref="FormOptions"/> concept of their
+    /// own. <b>Process-wide</b> — on Blazor Server this is shared by every circuit/user, so set it at
+    /// startup only; for per-app or per-MFE defaults use <see cref="FormDefaults"/> instead. </summary>
+    public static bool DefaultUseStyledCheckbox { get; set; } = false;
 }
 
 /// <summary> 
