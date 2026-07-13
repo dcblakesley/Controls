@@ -4,7 +4,11 @@
     /* Fallback darkened from the AntDesign #ff4d4f (3.27:1 on white — fails WCAG 1.4.3 for the
        validation message / summary text) to #cf1322 (~5.9:1). Consumers' --color-danger still wins. */
     --edit-color-danger: var(--color-danger, #cf1322);
-    --edit-focus-ring: var(--color-primary, #0066cc);
+    /* Single source of truth for the primary/interactive fallback -- every var(--color-primary, ...)
+       in this file must reuse this token so an unset --color-primary renders one consistent color
+       instead of each usage picking its own literal fallback. */
+    --edit-color-primary: var(--color-primary, #0066cc);
+    --edit-focus-ring: var(--edit-color-primary);
     --edit-focus-offset: 2px;
 }
 
@@ -140,8 +144,8 @@
 }
 
 .edit-checkbox-input-styled:checked + .edit-checkbox-box {
-    background: var(--color-primary, #277c6c);
-    border-color: var(--color-primary, #277c6c);
+    background: var(--edit-color-primary);
+    border-color: var(--edit-color-primary);
 }
 
 .edit-checkbox-input-styled:checked + .edit-checkbox-box::after {
@@ -478,7 +482,7 @@
 }
 
 .edit-file-drop-zone.hover {
-    border-color: var(--color-primary, #277c6c);
+    border-color: var(--edit-color-primary);
 }
 
 .edit-file-drop-zone.error {
