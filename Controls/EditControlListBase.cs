@@ -45,6 +45,15 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     /// <inheritdoc/>
     [Parameter] public bool IsDisabled { get; set; }
 
+    /// <summary>
+    /// Captures unmatched attributes (in practice, a consumer's <c>class="..."</c>) so list controls
+    /// can merge it into <see cref="FieldCssClass"/> — the same forwarding scalar controls get for free
+    /// from <see cref="InputBase{TValue}.AdditionalAttributes"/>. Without this, an unmatched attribute
+    /// on a list control (e.g. <c>class</c> on <c>EditMultiSelect</c>) throws at render time instead of
+    /// being applied.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
     /// <summary> The current list of selected items.</summary>
     [Parameter] public required List<TItem> Value { get; set; }
 
@@ -91,10 +100,24 @@ public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, 
     protected bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(_fieldIdentifier).Any();
 
     /// <summary>
-    /// <c>"invalid"</c> when the field has a validation error, else empty — the list-control analogue
-    /// of the <c>CssClass</c> the scalar controls inherit from <see cref="InputBase{TValue}"/>.
+    /// The consumer's <c>class</c> attribute (if any) plus <c>"invalid"</c> when the field has a
+    /// validation error — the list-control analogue of the <c>CssClass</c> the scalar controls inherit
+    /// from <see cref="InputBase{TValue}"/>, mirroring its same merge order and behavior.
     /// </summary>
-    protected string FieldCssClass => IsInvalid ? "invalid" : string.Empty;
+    protected string FieldCssClass
+    {
+        get
+        {
+            var invalidClass = IsInvalid ? "invalid" : string.Empty;
+            if (AdditionalAttributes is not null &&
+                AdditionalAttributes.TryGetValue("class", out var classObj) &&
+                Convert.ToString(classObj, CultureInfo.InvariantCulture) is { Length: > 0 } consumerClass)
+            {
+                return $"{consumerClass} {invalidClass}";
+            }
+            return invalidClass;
+        }
+    }
 
     /// <summary>
     /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>

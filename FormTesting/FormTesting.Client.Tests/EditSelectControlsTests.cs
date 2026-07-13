@@ -129,6 +129,27 @@ public class EditSelectControlsTests : TestContext
     }
 
     [Fact]
+    public void EditMultiSelect_forwards_the_consumers_class_to_the_engine_like_EditSelectSearch_does()
+    {
+        // EditControlListBase isn't an InputBase, so it doesn't get AdditionalAttributes/CssClass
+        // merging for free the way EditSelectSearch (EditControlBase -> InputBase) does — this pins
+        // that the base class now forwards a consumer's class="..." the same way.
+        var model = new PersonModel { FavoriteColors = [Color.Green] };
+        Expression<Func<List<Color>>> field = () => model.FavoriteColors;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditMultiSelect<Color>>(0);
+            b.AddAttribute(1, "Value", model.FavoriteColors);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", ColorOptions());
+            b.AddAttribute(4, "class", "my-custom-class");
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("my-custom-class", cut.Find(".wss-select").ClassList);
+    }
+
+    [Fact]
     public void EditMultiSelect_tag_remove_and_clear_are_labelled_buttons()
     {
         // Tag-remove and clear must be real buttons (keyboard-operable) with accessible names.
