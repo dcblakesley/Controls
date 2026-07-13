@@ -243,7 +243,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Table_styled_checkbox_renders_the_custom_box_and_the_indeterminate_dash()
+    public async Task Table_styled_checkbox_renders_the_custom_box_and_the_indeterminate_square()
     {
         await GotoAsync();
         var table = _page.Locator(".wss-table").First;
@@ -252,24 +252,28 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await Expect(header).ToBeVisibleAsync();
 
         // The demo preselects row Id 1 on a 13-row/5-per-page table, so page 1 starts indeterminate
-        // (a DOM property with no HTML attribute, set from C# via wss-table.js -- unchanged by this
-        // feature; only the CSS drawing the mixed-state dash is new).
+        // (a DOM property with no HTML attribute, set from C# via wss-table.js). Per the AntD mixed
+        // state, the box itself stays unfilled — the primary color appears only as the centered
+        // square drawn by the ::after.
         Assert.True(await header.EvaluateAsync<bool>("el => el.indeterminate"));
-        var mixedColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        var mixedBoxColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        var mixedSquareColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el, '::after').backgroundColor");
+        Assert.NotEqual(mixedBoxColor, mixedSquareColor);
 
         // Clicking a partially-selected header selects the rest of the page (AntD convention): fully
-        // checked, no longer indeterminate, same fill color as the mixed state (:checked and
-        // :indeterminate share the same fill rule, only the ::after glyph differs).
+        // checked, no longer indeterminate — now the box itself fills with the same primary the
+        // mixed-state square used.
         await header.ClickAsync();
         await Expect(header).ToBeCheckedAsync();
         Assert.False(await header.EvaluateAsync<bool>("el => el.indeterminate"));
         var checkedColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
-        Assert.Equal(mixedColor, checkedColor);
+        Assert.Equal(mixedSquareColor, checkedColor);
 
-        // Clearing the selection returns the box to its unfilled appearance.
+        // Clearing the selection returns the box to its unfilled appearance — same as the mixed box.
         await header.ClickAsync();
         var clearedColor = await headerBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
-        Assert.NotEqual(mixedColor, clearedColor);
+        Assert.Equal(mixedBoxColor, clearedColor);
+        Assert.NotEqual(checkedColor, clearedColor);
     }
 
     [Fact]
@@ -284,10 +288,12 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
 
         var checkedColor = await checkedRowBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
         var uncheckedColor = await uncheckedRowBox.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
-        var headerMixedColor = await table.Locator(".wss-table-thead .wss-table-checkbox-box")
-            .EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        // The header is mixed here (AntD: unfilled box + primary ::after square), so the shared
+        // primary color to compare against is the square's, not the header box's.
+        var headerMixedSquareColor = await table.Locator(".wss-table-thead .wss-table-checkbox-box")
+            .EvaluateAsync<string>("el => getComputedStyle(el, '::after').backgroundColor");
 
-        Assert.Equal(headerMixedColor, checkedColor); // checked row fills with the same primary color
+        Assert.Equal(headerMixedSquareColor, checkedColor); // checked row fills with the same primary color
         Assert.NotEqual(checkedColor, uncheckedColor); // unchecked row stays unfilled
     }
 

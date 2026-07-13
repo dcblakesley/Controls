@@ -139,7 +139,9 @@
 .edit-checkbox-box {
     position: absolute;
     inset: 0;
-    border: 1px solid var(--border-color, #ccc);
+    /* #d9d9d9 (not the library-wide #ccc fallback) — the styled checkbox is pixel-matched to the
+       antd checkbox spec, whose default colorBorder is #d9d9d9. */
+    border: 1px solid var(--border-color, #d9d9d9);
     border-radius: 4px;
     /* Bridged to the consumer theme like every other color in this block — a hardcoded #fff would
        give dark-theme consumers a fixed white box with no override hook. */
@@ -152,16 +154,17 @@
     border-color: var(--edit-color-primary);
 }
 
+/* The glyph is the exact antd checkbox check vector (16-unit viewBox), applied as a mask so the
+   check color stays a plain CSS background instead of being baked into the image. inset: -1px spans
+   the border-box: the vector's coordinates are relative to the full 16px outer box, not the 14px
+   content box inside the 1px border. */
 .edit-checkbox-input-styled:checked + .edit-checkbox-box::after {
     content: "";
     position: absolute;
-    left: 5px;
-    top: 2px;
-    width: 4px;
-    height: 8px;
-    border: solid #fff;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg);
+    inset: -1px;
+    background: #fff;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 
 .edit-checkbox-input-styled:focus-visible + .edit-checkbox-box {
