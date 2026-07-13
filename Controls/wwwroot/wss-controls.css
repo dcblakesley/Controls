@@ -20,13 +20,14 @@
  */
 
 :root {
-    /* Brand / interactive. Hover/active/shadow derive from --wss-color-primary, so a consumer who
-       sets --color-primary gets matching interaction states for free (previously these stayed
-       Ant-blue). A consumer may still override --color-primary-hover / --color-primary-active. */
+    /* Brand / interactive. Hover/shadow states derive from --wss-color-primary at each USAGE SITE,
+       not here: a var() inside a custom property is substituted once, where the property is
+       declared, so deriving them at :root would freeze the --wss-color-primary lookup at :root and
+       ignore a consumer's scoped override (the theming contract is that any --wss-* token may be
+       overridden at any scope). --wss-color-primary-hover, --wss-primary-shadow and
+       --wss-error-shadow are therefore pure override knobs — undeclared here; when a consumer sets
+       one (at any scope) it wins over the usage-site derivation. */
     --wss-color-primary: var(--color-primary, #1890ff);
-    --wss-color-primary-hover: var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff));
-    --wss-color-primary-active: var(--color-primary-active, color-mix(in srgb, var(--wss-color-primary) 75%, #000));
-    --wss-primary-shadow: color-mix(in srgb, var(--wss-color-primary) 20%, transparent);
     --wss-color-on-primary: #fff;
 
     /* Text */
@@ -74,7 +75,8 @@
     --wss-color-error: var(--color-danger, #ff4d4f);
     --wss-color-error-bg: #fff2f0;
     --wss-color-error-border: #ffccc7;
-    --wss-error-shadow: color-mix(in srgb, var(--wss-color-error) 20%, transparent);
+    /* --wss-error-shadow: pure override knob, derived from --wss-color-error at each usage site
+       (see the brand/interactive comment above). */
 }
 
 /*
@@ -130,26 +132,26 @@
 }
 
 .wss-select:not(.wss-select-disabled):hover .wss-select-selector {
-    border-color: var(--wss-color-primary-hover);
+    border-color: var(--wss-color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff));
 }
 
 .wss-select-focused:not(.wss-select-disabled) .wss-select-selector {
-    border-color: var(--wss-color-primary-hover);
-    box-shadow: 0 0 0 2px var(--wss-primary-shadow);
+    border-color: var(--wss-color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff));
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
 /* Real-DOM focus ring. .wss-select-focused (above) only toggles on open/close, so a keyboard user
    who Tabs onto a *closed* Select would otherwise get no focus indicator (WCAG 2.4.7). */
 .wss-select:not(.wss-select-disabled) .wss-select-selector:focus-within {
-    border-color: var(--wss-color-primary-hover);
-    box-shadow: 0 0 0 2px var(--wss-primary-shadow);
+    border-color: var(--wss-color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff));
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
 .wss-select.invalid .wss-select-selector:focus-within {
     /* Keep the error-red border on focus: the primary :focus-within rule above has the same
        specificity (0,4,0) and would otherwise win the border-color (red glow, blue border). */
     border-color: var(--wss-color-error);
-    box-shadow: 0 0 0 2px var(--wss-error-shadow);
+    box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
 }
 
 /* Validation invalid state (the form wrapper appends "invalid" via CssClass). */
@@ -158,7 +160,7 @@
 }
 
 .wss-select.invalid.wss-select-focused .wss-select-selector {
-    box-shadow: 0 0 0 2px var(--wss-error-shadow);
+    box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
 }
 
 .wss-select-disabled {
@@ -852,8 +854,8 @@
 
 .wss-dialog-btn-primary:hover {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary-hover);
-    border-color: var(--wss-color-primary-hover);
+    background: var(--wss-color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff));
+    border-color: var(--wss-color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff));
 }
 
 .wss-dialog-btn:disabled {
