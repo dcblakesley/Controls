@@ -1,177 +1,93 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repository. This file carries only what is *not* derivable from the source — commands, policies, and constraints. Do not re-add API surveys, type/file inventories, or per-control behavior descriptions here: the source is authoritative for internals, and the `edit-controls` skill is the consumer-facing reference.
 
-## Build Commands
+## What this repo is
+
+`WssBlazorControls` — a Razor Class Library of Blazor form controls (`Edit*` prefix) plus an AntDesign-style non-form UI kit (`wss-` prefix), published to NuGet and consumed by every Blazor app in this workspace. Targets net10.0 only. **Consumers get changes only via a new published package** — editing this repo does not affect them until a release is cut.
+
+## Build and Test
 
 ```bash
-# Build entire solution
-dotnet build FormTesting.sln
-
-# Build just the Controls library
-dotnet build Controls/Controls.csproj
-
-# Build just the Demo library
-dotnet build Controls.Demo/Controls.Demo.csproj
-
-# Run the test app (Blazor Server + WebAssembly)
-dotnet run --project FormTesting/FormTesting/FormTesting.csproj
-
-# Pack NuGet packages (Release)
-dotnet pack Controls/Controls.csproj -c Release -o ./nupkg
-dotnet pack Controls.Demo/Controls.Demo.csproj -c Release -o ./nupkg
+dotnet build FormTesting.sln                                                      # whole solution
+dotnet run --project FormTesting/FormTesting/FormTesting.csproj                   # demo host (Blazor Server + WASM)
+dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj  # bUnit suite
+dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj  # Playwright e2e
+dotnet pack Controls/Controls.csproj -c Release -o ./nupkg                        # pack (also Controls.Demo)
 ```
 
-CI (`.github/workflows/ci.yml`) runs on every push/PR: Release build of the solution, the bUnit suite, a pack of both packages, and the Playwright E2E suite (on `windows-latest` — the visual baselines are Windows-rendered). The library projects set `TreatWarningsAsErrors`, so a new warning fails the build.
+CI (`.github/workflows/ci.yml`) runs the Release build, bUnit suite, pack, and the e2e suite on `windows-latest` (visual baselines are Windows-rendered). The library projects set `TreatWarningsAsErrors` — a new warning is a build break.
 
-**Trimming / AOT.** `Controls.csproj` sets `IsAotCompatible`, which ships `IsTrimmable` metadata in the package and runs the trim/AOT/single-file analyzers on every build — with warnings-as-errors, any new IL2xxx/IL3xxx is a build break. Consequences when adding code: no `Enum.GetValues(Type)` (use `EnumHelpers.GetValues<T>`), no `MakeGenericType`/`MakeGenericMethod`, and by-name reflection needs either a `[DynamicallyAccessedMembers]` annotation or a named method with a justified `[UnconditionalSuppressMessage]` (see `FieldValidationDisplay.GetPropertyTypeName` / `EnumHelpers.GetEnumField` for the pattern — the justification must explain why the target is rooted and what the graceful fallback is). Generic parameters that flow into `BindConverter.TryConvertTo` or the framework `Input*` components must carry `[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]`. Controls.Demo is intentionally *not* marked trimmable (its demo models hit the BCL's `[MinLength]` IL2026, a consumer-side non-issue on `List<T>`). To re-verify runtime behavior under trimming, publish the demo host fully trimmed and point the e2e suite at it:
+- **Add bUnit tests alongside any non-trivial helper or control change** (`FormTesting/FormTesting.Client.Tests/`). One e2e test class per control is the convention in `FormTesting/FormTesting.Client.E2ETests/`.
+- **JS interop changes need e2e coverage, not bUnit** — bUnit does not execute JavaScript.
+- **Run one test project at a time.** The e2e `AppFixture` launches the FormTesting host out-of-process, so a parallel `dotnet test`/`dotnet run` collides on the host DLLs. Set `PWTEST_HEADED=1` to watch the browser locally.
+
+### Visual regression
+
+Baseline PNGs in `FormTesting/FormTesting.Client.E2ETests/Snapshots/` are committed. After an intentional UI change, regenerate with `UPDATE_SNAPSHOTS=1 dotnet test ...E2ETests.csproj` and commit the PNGs. On failure, gitignored `*-actual.png` / `*-diff.png` land next to the baseline. First-time setup: `pwsh FormTesting/FormTesting.Client.E2ETests/bin/Debug/net10.0/playwright.ps1 install chromium` (the MSBuild target attempts this automatically after first build).
+
+### Trimming / AOT
+
+`Controls.csproj` sets `IsAotCompatible`, so the trim/AOT/single-file analyzers run on every build and any new IL2xxx/IL3xxx is a build break. When adding code: no `Enum.GetValues(Type)` (use `EnumHelpers.GetValues<T>`), no `MakeGenericType`/`MakeGenericMethod`, and by-name reflection needs `[DynamicallyAccessedMembers]` or a named method with a justified `[UnconditionalSuppressMessage]` (pattern: `FieldValidationDisplay.GetPropertyTypeName` — the justification must say why the target is rooted and what the graceful fallback is). Generic parameters flowing into `BindConverter.TryConvertTo` or framework `Input*` components need `[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]`. Controls.Demo is intentionally *not* trimmable (its demo models hit a consumer-side non-issue IL2026).
+
+To re-verify runtime behavior under full trimming:
 
 ```bash
 dotnet publish FormTesting/FormTesting/FormTesting.csproj -c Release -o <dir> -p:TrimMode=full -p:WssFullTrimTest=true
 FORMTESTING_E2E_APP=<dir>/FormTesting.dll dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj
 ```
 
-(`WssFullTrimTest` roots the client app assembly — under `TrimMode=full` Blazor's reflection-based route discovery otherwise lets the trimmer delete the whole app. The default `dotnet publish -c Release` needs no flags and trims just the marked library.)
+(`WssFullTrimTest` roots the client assembly — under `TrimMode=full`, Blazor's reflection-based route discovery otherwise lets the trimmer delete the whole app.)
 
-Automated tests live in `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, net10.0), so `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj` runs the whole bUnit suite once. Coverage focuses on the helpers (`EnumHelpers`, `AttributesHelper`, `EditControlInit`, `ValidationHelper`) and bUnit smoke tests for the controls — particularly the parsing logic ported in the `EditControlBase` refactor. The ported AntDesign-style controls have coverage too: `EditSelectControlsTests` (the form selects), `UiKitLeafControlsTests`, `UiKitDialogControlsTests`, `UiKitTableTests`, and `WasmToastTests`. Add new tests alongside any non-trivial helper or control change.
+## Layout
 
-End-to-end tests live in `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Playwright .NET, net10 only). Run with `dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj`. There's one test class per Edit* control (render, interaction, read-only toggle, and a visual-regression baseline screenshot per `section.demo-section`), plus `EditSelectSearchE2ETests` / `EditMultiSelectE2ETests` for the searchable selects and `UiKitGalleryE2ETests`, which drives the standalone `/uikit` gallery page (Drawer, Popconfirm, Popover, Pagination, Modal, toasts — with baselines for the visually-distinct ones). The `AppFixture` launches the `FormTesting` Blazor Server host out-of-process on a free port for the duration of the run; the `BrowserFixture` shares one headless Chromium across all tests. Set `PWTEST_HEADED=1` to watch the browser locally.
+- **Controls/** — the library. Form `Edit*` controls at the root; `Controls/Select/` (the `Select<T>` engine + searchable form selects); `Controls/UiKit/` (non-form widgets); `Controls/Helpers/`.
+- **Controls.Demo/** — demo components (`WssBlazorControls.Demo` package). `UiKitGallery.razor` serves `/uikit`.
+- **FormTesting/** — Blazor Server host + WASM client + the two test projects.
 
-**Visual regression workflow.** Baseline PNGs live in `FormTesting/FormTesting.Client.E2ETests/Snapshots/` and are committed. After an intentional UI change, regenerate with `UPDATE_SNAPSHOTS=1 dotnet test ...E2ETests.csproj` and commit the updated PNGs. On a failure, `*-actual.png` (what the test saw) and `*-diff.png` (red highlights on differing pixels) are written next to the baseline — both are gitignored. First-time setup also requires a one-time `pwsh FormTesting/FormTesting.Client.E2ETests/bin/Debug/net10.0/playwright.ps1 install chromium` (the MSBuild target attempts this automatically after first build).
+## Design constraint: consumers are often micro-frontends (MFEs)
 
-## Project Structure
-
-- **Controls/** — Main Razor Class Library (`WssBlazorControls` NuGet package). Targets net10.0. Form `Edit*` controls live at the root; the ported AntDesign-style controls live in `Controls/Select/` (searchable selects + the `Select<T>` engine) and `Controls/UiKit/` (general widgets).
-- **Controls.Demo/** — Demo components library (`WssBlazorControls.Demo` NuGet package). References Controls. Also net10.0.
-- **FormTesting/FormTesting/** — Blazor Server host (net10.0).
-- **FormTesting/FormTesting.Client/** — Blazor WebAssembly client that references both Controls and Controls.Demo.
-- **FormTesting/FormTesting.Client.Tests/** — xUnit + bUnit unit tests (net10).
-- **FormTesting/FormTesting.Client.E2ETests/** — xUnit + Playwright .NET e2e tests + visual regression baselines (net10).
-
-## Architecture
-
-### Design constraint: consumers are often micro-frontends (MFEs)
-
-Most workplace apps that consume this library are deployed as MFEs — several independently-built Blazor apps composed into one host page, where a single app team usually does **not** own the DI composition root or the process. That rules out two configuration styles for library features:
+Most consuming apps are MFEs — independently-built Blazor apps composed into one host page, where the app team does **not** own the DI composition root or the process. That rules out two configuration styles for library features:
 
 - **DI-registered options** (`builder.Services.Configure<...>`) — an MFE can't reliably add or override registrations in a shell it doesn't own.
 - **Process-wide statics** — on Blazor Server one process serves every circuit/user, and MFEs sharing a runtime share the static.
 
-Prefer **render-tree-scoped configuration** (cascading values/components): each MFE owns its root component regardless of hosting, so the render tree is the one boundary that always maps onto app/MFE/circuit. `FormDefaults` (per-tree defaults for `FormOptions`, resolution: instance → cascaded `FormDefaults` → legacy static) is the reference example. Service-based features that genuinely need DI (e.g. the scoped toast services) should stay optional, with a registration-free alternative where feasible.
+Prefer **render-tree-scoped configuration** (cascading values/components): each MFE owns its root component regardless of hosting, so the render tree is the one boundary that always maps onto app/MFE/circuit. `FormDefaults` (resolution: instance → cascaded `FormDefaults` → legacy static) is the reference example. Service-based features that genuinely need DI (e.g. the scoped toast services) stay optional, with a registration-free alternative where feasible — which is why the toasts ship in two variants and the static `Wasm*` variant is documented as WASM-only.
 
-### Component Pattern
+## Architecture conventions
 
-Every edit control (EditString, EditNumber, EditDate, EditBool, EditSelect*, EditRadio*, EditChecked*, EditFile) follows the same structure:
+Read an existing control before writing one — the pattern is uniform and the source is the spec. Non-obvious rules:
 
-1. **Inherits** one of two shared bases: `EditControlBase<T>` (scalar controls, an `InputBase<T>`) or `EditControlListBase<T>` (list-bound controls — `EditChecked*`, `EditMultiSelect`, `EditFile` — a `ComponentBase` binding `List<T>`). Both hoist the `IEditControl` params + cascading options; derived controls call `InitState(ValueExpression ?? throw ...)` in `OnInitialized` — `@bind-Value` alone supplies `ValueExpression` (no separate `Field` expression needed; a legacy `Field` parameter still exists on every control but only as an `[Obsolete(error: true)]` compile-time guard against stale markup). (`EditRadio<T>` inherits `InputRadioGroup<T>`; `EditDisplay` is a plain `ComponentBase`.)
-2. **Implements** `IEditControl` (common properties: Label, Description, Tooltip, IsEditMode, IsHidden, IsDisabled, etc.)
-3. **Receives** `FormOptions` and `FormGroupOptions` as `[CascadingParameter]`s
-4. **Split** into `.razor` (markup) + `.razor.cs` (code-behind)
-5. **Wraps** content in a `div.edit-control-wrapper` containing `<FormLabel>`, the input element, and `<FieldValidationDisplay>`
-6. **Supports** edit/read-only toggle — edit mode shows the input; read-only mode shows `<ReadOnlyValue>`
+- **Base class selection:** scalar controls inherit `EditControlBase<T>` (an `InputBase<T>`); list-bound controls inherit `EditControlListBase<T>` (a `ComponentBase` binding `List<T>`). Exceptions: `EditRadio<T>` must inherit `InputRadioGroup<T>` (its child `InputRadio`s need the context), `EditDisplay` is a plain `ComponentBase` (no field). See the `edit-controls` skill's `architecture.md` for the why behind the init pattern and the new-control checklist.
+- **Every control declares an inert `Field` parameter marked `[Obsolete(error: true)]`** — a compile-time guard so stale `Field="..."` markup fails the build instead of throwing at first render. Copy the stub verbatim into new controls; `@bind-Value` alone supplies `ValueExpression`.
+- **Global usings:** `Controls/GlobalUsings.cs` for the library; Controls.Demo uses `_Imports.razor` plus explicit `using`s in `.cs` files (`_Imports.razor` doesn't apply to code-behind).
+- **UI-kit conventions:** namespace `Controls` (pin `@namespace Controls` on each `.razor`); new components capture unmatched attributes via the internal `AttributeSplat` helper (`class`/`style` hand-merged, splat first so explicit attributes win) onto the root element — never onto an element whose inline style is JS-owned. `Icon`, `Button`, `Checkbox`, `Tag` are intentionally excluded from the kit — dialog footers use native `<button>` + `wss-dialog-btn`.
+- **JS interop must degrade gracefully.** The RCL modules (`wss-select.js`, `wss-overlay.js`, `wss-table.js`, `edit-controls.js`) import lazily and every JS-dependent behavior needs a no-JS fallback (prerender/tests) — CSS-default placement, plain checkbox, etc.
 
-**`EditFile`** is the file-upload control: it binds a `List<IBrowserFile>` (drag-and-drop + click-to-browse, with `AllowedExtensions` filtering, a `MaxFileSizeBytes` per-file cap, and optional `MaxFiles` count), rides `EditControlListBase<IBrowserFile>`, and follows the same wrapper pattern. Prefer it over a hand-rolled `<InputFile>`. Demoed via `DemoEditFile.razor`.
+## CSS
 
-### Key Types
+**Global stylesheets, not CSS isolation.** No consumer links a scoped-CSS bundle, so `.razor.css` files never load — put all control CSS in `Controls/wwwroot/edit-controls.css` (form controls, `edit-` prefix) or `wss-controls.css` (UI kit, `wss-` prefix + `--wss-*` tokens).
 
-- **`IEditControl`** — Interface defining all common control properties (Id, Label, Description, Tooltip, IsEditMode, IsHidden, IsDisabled, Hiding, ContainerClass, etc.)
-- **`FormOptions`** — Cascading parameter for form-wide settings (IsEditMode, HidingMode, ShowBoundValues, IsRequiredStarHidden)
-- **`FormDefaults`** — Root-level cascading component for per-render-tree control defaults (star hiding, validation field names); preferred over the process-wide `FormOptions.Default*` statics (see the MFE design constraint above)
-- **`HidingMode`** — Enum controlling conditional display (None, WhenReadOnlyAndNull, WhenNull, WhenNullOrDefault, etc.)
-- **`FormLabel`** — Shared label component handling display name extraction, required star, description, and tooltip
-- **`FieldValidationDisplay`** — Validation message display with accessibility attributes
-
-### Helpers (Controls/Helpers/)
-
-- **`AttributesHelper`** — Extracts `[DisplayName]`, `[Display]`, `[EnumDisplayName]`, `[Description]`, `[ToolTip]`, `[StringLength]`/`[MinLength]`/`[MaxLength]` from model properties via reflection. Also generates element IDs from property names. (`[Range]` is handled in `ValidationHelper`'s message rewriting, not here.)
-- **`ValidationHelper`** — Rewrites default DataAnnotation error messages into shorter forms (e.g., "The X field is required" → "Required").
-- **`EnumHelpers`** — Resolves `[EnumDisplayName]` attributes and converts values to valid HTML IDs.
-
-### Custom Attributes (defined in AttributesHelper.cs, namespace `Controls.Helpers`)
-
-- `[ToolTip("text")]` — Popover tooltip on info icon
-- `[EnumDisplayName("text")]` — Custom display name for enum values
-- `[MustBeTrue]` — Validation requiring a bool to be true
-
-### CSS Conventions
-
-Form controls use the `edit-` prefix (in `Controls/wwwroot/edit-controls.css`). The ported UI-kit controls use the `wss-` prefix + `--wss-*` theme tokens (in `Controls/wwwroot/wss-controls.css`). Key form classes: `edit-control-wrapper`, `edit-label`, `edit-label-required-star`, `edit-validation-message`, `edit-readonly-value`, `edit-tooltip-*`.
-
-**The library styles via global stylesheets, not CSS isolation.** There is no scoped-CSS bundle link in the host/consumers (no `{App}.styles.css` reference anywhere), so `.razor.css` files do **not** load for library components. Put all control CSS in the appropriate global file (`edit-controls.css` for form controls, `wss-controls.css` for UI-kit). Consumers link both from `_content/WssBlazorControls/`. The `--wss-*` tokens default to AntDesign 4.x and bridge to the consumer's `--color-primary` / `--color-danger` / `--border-color` where present.
-
-### UI Kit controls (ported AntDesign-style — `Controls/Select/` + `Controls/UiKit/`)
-
-A second category of controls ported from `Standalone.Controls` (dependency-free AntDesign look-alikes), in two flavors:
-
-- **Form selects** (`Controls/Select/`): `EditSelectSearch<T>` (single, searchable) and `EditMultiSelect<T>` (multiple/tags) follow the standard `Edit*` pattern above but render the `Select<T>` engine instead of a native `<select>`. They sit alongside the existing `EditSelect*` (unchanged). `EditSelectSearch` rides `EditControlBase<T>`; `EditMultiSelect` rides `EditControlListBase<T>`. Both set the value via the engine's callback (no string parsing — `TryParseValueFromString` throws, like `EditBool`).
-- **General widgets** (`Controls/UiKit/`): `Select<T>` (the engine), `Alert`, `Skeleton`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column`/`PropertyColumn`/`ActionColumn`), and WASM-only `WasmMessageService`/`WasmNotificationService` (+ containers). These are plain components — **not** `IEditControl`/form-bound.
-
-Conventions for this category: namespace `Controls` (pin `@namespace Controls` on each `.razor`); `wss-` classes; `--wss-*` tokens; nullable enabled; CSS lives in the global `wss-controls.css`. Three tiny RCL JS modules live at `_content/WssBlazorControls/`: `wss-select.js` (Select keyboard scroll-into-view **+ viewport-aware dropdown flip** — a Select near the bottom of the screen opens upward), `wss-overlay.js` (Popover/Popconfirm viewport-aware flip + cross-axis shift via the `--wss-shift` CSS variable, **plus the Modal/Drawer focus trap + body-scroll lock**), and `wss-table.js` (sets the native `indeterminate` property on the Table's "select all" checkbox — the mixed state has no HTML attribute). All import lazily (path tied to PackageId) and degrade gracefully when JS is unavailable (prerender/tests) — the controls fall back to their default CSS placement / a plain checkbox.
-
-The placement enum for `Popover` / `Popconfirm` is `PopupPlacement` (Top/Right/Bottom/Left); `Drawer` uses `DrawerPlacement`. All UI-kit enums live in `Controls/UiKit/UiKitEnums.cs` (`AlertType`, `PopupPlacement`, `DrawerPlacement`, `TableSize`, `PagerAlign`, `PagerPosition`, `SortDirection`).
-
-`Table<TItem>` reads its columns from child `Column` / `PropertyColumn` / `ActionColumn` components — these are declarative metadata that emit no markup of their own. The Table re-collects them in document order on every render (each registers via a cascading `Table` reference; `Column` is `IDisposable`; a still-live column whose parameters are all Blazor-immutable is merged back at its previous position rather than dropped), so columns may be conditionally rendered (`@if`) — a hidden column drops out and a re-shown one returns to its declared position, with no zombie or duplicate. Row identity defaults to the item itself; pass `RowKey` (e.g. `x => x.Id`) for keyed diffing and per-row selection identity — fully-equal duplicate rows render fine either way (page keys are de-duplicated). Beyond row selection (controlled `SelectedItems` + `SelectedItemsChanged`, or uncontrolled), the Table supports:
-- **Column sorting** — `Sortable="true"` on a `PropertyColumn` (comparison derived from `Property` via `Comparer<T>.Default`; a non-comparable `TProp` degrades to non-sortable rather than throwing on click — use `SortBy` to sort any type), or a `SortBy` `Comparison<TItem>` on any `Column` for custom/template columns. A header click cycles ascending → descending → unsorted (original `DataSource` order); the sort is stable (index tie-break), survives a `DataSource` swap, and drops if its column is removed. Headers are keyboard-focusable `<button>`s exposing `aria-sort` (a title-less sortable column's button falls back to `aria-label="Sort"`).
-- **Paging** — `PageSize > 0` enables the built-in pager; `PagerPosition` (Bottom/Top/Both) and `PagerAlign` (Left/Center/Right) place it. This pager is **in-memory** — the Table materializes the whole `DataSource` and slices client-side, so it can't reflect a server-side total. For server-side paging, compose the Table (pass only the current page, omit `PageSize`) with a standalone fully-controlled `Pagination` (`Total`/`Current`/`PageSize` + `CurrentChanged`). The Table treats `DataSource`/`SelectedItems` as immutable parameters (reference-guarded in `OnParametersSet`) — reassign a new reference to refresh rather than mutating in place. Demoed (with a simulated server) in `/uikit`.
-
-- **`Icon`, `Button`, `Checkbox`, `Tag` are intentionally excluded.** Modal/Popconfirm footers use native `<button>`s with the shared `wss-dialog-btn` class, not a Button component.
-- **UI-kit components capture unmatched attributes** (`class`/`style`/`data-*`) onto their root element via the internal `AttributeSplat` helper — `class`/`style` are hand-merged (Blazor doesn't merge duplicate attributes), the rest splat first so explicit attributes win conflicts. Targets: Modal/Drawer → the dialog panel, Popover/Popconfirm → the trigger wrapper — never an element whose inline style (z-index, `--wss-shift`) is JS-owned. Give any new component the same treatment. Theming contract (documented in README "Styling and Customization"): `--wss-*`/`--edit-*` tokens overridable at any scope with derived hover/shadow/focus states following (they derive at the usage site, never at `:root` — a `var()` inside a custom property substitutes where declared); the generic `--color-*` bridge resolves at `:root` only.
-- **Toasts come in two variants** (identical rendering). **Scoped / Server-safe:** `IMessageService` / `INotificationService` (register via `AddWssControlsToasts()`) + `MessageContainer` / `NotificationContainer`. **Registration-free static (WASM only):** `WasmMessageService` / `WasmNotificationService` + `WasmMessageContainer` / `WasmNotificationContainer` — process-`static` state, unsafe on Server. Logic lives in `MessageService` / `NotificationService` (the `Wasm*` services are static facades over it); all four containers render the shared `MessageListView` / `NotificationListView`.
-- **Overlays are keyboard- and screen-reader-accessible:** Modal/Drawer trap focus, restore it to the trigger on close, close on `Escape`, and set `role="dialog"`/`aria-modal`/`aria-labelledby`; Popover/Popconfirm triggers are focusable buttons (`Enter`/`Space` open, `Escape` closes) with `aria-haspopup`/`aria-expanded`; `Select` exposes combobox ARIA (`role`/`aria-expanded`/`aria-activedescendant`); `Pagination` is a semantic `<nav>` of `<button>`s with `aria-current`; toasts route by severity into two always-present live regions — a polite `role="status"` and an assertive `role="alert"` (errors) — so an error isn't downgraded by a politeness flip on a shared region; `Skeleton` exposes `role="status"`/`aria-busy` with a visually-hidden `LoadingText`.
-- Demoed at `/uikit` (`Controls.Demo/UiKitGallery.razor`); the searchable selects appear in the main form demo (`SelectSearch` / `MultiSelect` views).
-
-### Global Usings
-
-The Controls project defines global usings in `Controls/GlobalUsings.cs`. The Controls.Demo project uses `_Imports.razor` for razor-file usings and explicit `using` statements in `.cs` code-behind files (since `_Imports.razor` doesn't apply to `.cs` files).
+Theming contract (documented in README "Styling and Customization"): `--wss-*`/`--edit-*` tokens are overridable at any scope, with derived hover/shadow/focus states following because they derive at the usage site, never at `:root` (a `var()` inside a custom property substitutes where declared); the generic `--color-*` bridge resolves at `:root` only. Preserve this when adding styles.
 
 ## Git Workflow
 
-**Work directly on `master`.** This project does not use feature branches — commits land on the default branch. This overrides the Claude Code default that creates a branch first; do not run `git checkout -b` before editing.
+**Work directly on `master`.** No feature branches — this overrides the Claude Code default; do not `git checkout -b`.
 
-**Commit and push often.** After each logical chunk of work that builds and tests cleanly, commit it and push to origin. Don't wait to be asked — the user prefers many small focused commits over one big end-of-session dump. Group changes into meaningful commits (one phase / one feature / one fix per commit, not one mega-commit). If a chunk leaves the build or tests broken, finish it first rather than committing a broken state. This overrides the Claude Code default that says "commit or push only when the user asks."
-
-Never push to NuGet from an agent (see Release Workflow).
+**Commit and push often.** Each logical chunk that builds and tests cleanly gets its own focused commit, pushed to origin without being asked — this overrides the Claude Code default of waiting for an ask. Don't commit a broken state; finish the chunk first.
 
 ## Release Workflow
 
-### Versioning
+- **Versioning:** `<AssemblyVersion>` in both `.csproj`s, kept in sync; `FileVersion`/`Version` derive from it. The major tracks the latest supported .NET version, *not* semver (net10.0 → `10.x.x` until net11). Minor (`10.X.0`) = features, behavioral changes, anything a consumer should read about before upgrading — including semver-major breaks and supported-platform changes. Patch = pure fixes/refactors/docs.
+- **Bump only at publish time.** Accumulate work against the current version; bump (with a README changelog entry) only when a NuGet release is being cut.
+- **Never push to NuGet from an agent.** Packing is fine; `dotnet nuget push` is the human's call (they own the API key).
+- **README.md is also the NuGet package readme** (`<PackageReadmeFile>`) — update its examples and changelog when features or versions change.
 
-Version is set via `<AssemblyVersion>` in each `.csproj`. Both Controls and Controls.Demo should be kept in sync. `FileVersion` and `Version` derive from `AssemblyVersion`. Update the changelog in `README.md` when bumping versions.
+### `edit-controls` skill is part of the deliverable
 
-**Convention: the major version tracks the latest supported .NET version, *not* semver.** Library code currently targets net10.0, so we sit on `10.x.x` until net11 ships. Within that:
-- **Minor** (`10.X.0`) — new features, behavioral changes, or anything a consumer might need to read about before upgrading. Bump even for technically-breaking changes that semver would call major.
-- **Patch** (`10.x.X`) — pure bug fixes, internal refactors, doc tweaks.
-
-When bumping to a new .NET major (`11.0.0`), the bump is for the .NET upgrade itself — pair it with raising `<TargetFramework>`. (Dropping a *lower* supported TFM instead — e.g. the net8.0/net9.0 removal in 10.5.0 — doesn't change the major; it's still a `10.X.0` minor, since it's a supported-platform change a consumer needs to read about before upgrading, not a .NET version bump for the library itself.)
-
-**Bump only at publish time.** Do not bump `<AssemblyVersion>` for in-progress work — accumulate changes against the current version and bump (with the README changelog entry) only when the next NuGet release is being cut. This keeps git history clean and avoids meaningless intermediate version numbers.
-
-**Never push to NuGet from an agent.** `dotnet nuget push` is the human's responsibility — agents may pack (`dotnet pack -c Release -o ./nupkg`) so the artifacts are ready, but never push. The user owns the API key and the publish decision.
-
-### Publishing to NuGet
-
-```bash
-# Pack both packages
-dotnet pack Controls/Controls.csproj -c Release -o ./nupkg
-dotnet pack Controls.Demo/Controls.Demo.csproj -c Release -o ./nupkg
-
-# Push to nuget.org (requires API key)
-dotnet nuget push nupkg/WssBlazorControls.<version>.nupkg --source https://api.nuget.org/v3/index.json --api-key <KEY>
-dotnet nuget push nupkg/WssBlazorControls.Demo.<version>.nupkg --source https://api.nuget.org/v3/index.json --api-key <KEY>
-```
-
-### README.md
-
-The README serves as both the repo landing page and the NuGet package readme (packed into `WssBlazorControls` via `<PackageReadmeFile>`). It contains installation instructions, usage examples for every control, and a changelog. Update it when adding features or bumping versions.
-
-### `edit-controls` skill
-
-`~/.claude/skills/edit-controls/` (mirrored at `.github/skills/edit-controls/` for non-Claude agents) is the usage documentation for this library — the reference other repos' agents read instead of re-deriving conventions from this code. It goes stale the same way README examples do, so treat it as part of the deliverable, not an afterthought: whenever a change touches a control's public API, parameters, behavior, or a documented convention (new/changed `Edit*` or UI-kit component, renamed/added parameter, new attribute, changed CSS class or token, new JS interop module), update the matching file(s) under both `~/.claude/skills/edit-controls/` and `.github/skills/edit-controls/` in the same commit — do not defer it to a later cleanup pass.
+`~/.claude/skills/edit-controls/` is the usage reference other repos' agents read instead of this source. Whenever a change touches a control's public API, parameters, behavior, or a documented convention, update the matching skill file(s) in the same commit — do not defer to a cleanup pass. A separately-formatted export for non-Claude agents lives at the workspace root (`C:\Repos\.github\skills\edit-controls\` — `skill.json` + monolithic docs, not a file-for-file mirror, and not in any git repo); keep it in sync for API-affecting changes.
 
 ## Key Conventions
 
-- Component names use `Edit` prefix (EditString, EditSelectEnum, EditRadio, etc.)
-- All controls support accessibility: ARIA attributes (`aria-required`, `aria-invalid`, `aria-describedby`), fieldset/legend for groups, screen reader text
-- Label preference (in order): (1) let it auto-generate from the property name when correct — the name is camel-case split, so `BirthDate` → "Birth Date"; (2) use `[DisplayName("…")]` on the model for constant labels the auto-name gets wrong; (3) use the `Label` parameter in markup only for dynamic/runtime text. Resolution precedence (highest wins): `Label` parameter → `[DisplayName]` → `[EnumDisplayName]` → `[Display(Name)]` → auto-generated property name.
-- Generic components: `EditDate<T>`, `EditSelectEnum<TEnum>`, `EditRadioEnum<TEnum>`, `EditCheckedEnumList<TEnum>`
-- JavaScript interop is in `Controls/wwwroot/edit-controls.js` with C# wrappers in `JsInteropEc.cs`
+- Label preference: (1) let it auto-generate from the property name (camel-case split: `BirthDate` → "Birth Date"); (2) `[DisplayName]` on the model for constant labels the auto-name gets wrong; (3) the `Label` parameter only for dynamic/runtime text. Precedence (highest wins): `Label` param → `[DisplayName]` → `[EnumDisplayName]` → `[Display(Name)]` → auto-generated.
+- All controls carry ARIA wiring (`aria-required`, `aria-invalid`, `aria-describedby`, fieldset/legend for groups) — preserve it when touching markup.
