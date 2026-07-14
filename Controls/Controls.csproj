@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.6.0</AssemblyVersion>
+	  <AssemblyVersion>10.7.0</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -51,7 +51,7 @@
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>10.6.0 - EditBool.UseStyledCheckbox: opt-in custom-drawn checkbox (border-radius etc.) with full native input semantics; percentage widths (width: 100%) on the EditString/EditNumber/EditDate/EditTextArea editor now resolve correctly instead of silently collapsing to the default size. See the README changelog for the full list.</PackageReleaseNotes>
+    <PackageReleaseNotes>10.7.0 - DateRangePicker: a new AntDesign-style date-range picker (composite start → end field, optional preset sidebar, dual-month calendar with month/year quick-select headers). See the README changelog for the full list.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
