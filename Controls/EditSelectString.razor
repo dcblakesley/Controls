@@ -42,7 +42,8 @@
                    only if the consumer authored a "" option, which correctly needs no placeholder. *@
                 @if (!ShowNullOption && !Options.Contains(CurrentValueAsString ?? ""))
                 {
-                    <option value=""
+                    <option class=@($"edit-select-option {CssClass}")
+                            value=""
                             disabled
                             hidden
                             selected

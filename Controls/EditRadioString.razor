@@ -48,7 +48,8 @@
                                         <InputRadio Value=@_otherName
                                                     id=@($"rb-{_id}-other")
                                                     disabled=@IsDisabled
-                                                    data-test-id=@($"rb-{_id}-other")/>
+                                                    data-test-id=@($"rb-{_id}-other")
+                                                    class=@($"edit-radio-input {CssClass}") />
                                         Other
                                     </label>
                                 <input disabled="@(_selectedOption != _otherName || IsDisabled)"
