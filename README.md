@@ -9,7 +9,7 @@ A comprehensive library of form controls for Blazor applications providing consi
 
 - **Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
 - **Searchable & Multi-Select**: AntDesign-style `EditSelectSearch` / `EditMultiSelect` — type-to-search, tags, virtualized dropdown
-- **AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, Skeleton, and toasts
+- **AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, DateRangePicker, Skeleton, and toasts
 - **Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
 - **Validator-Agnostic Core**: messages, invalid-state ARIA, and the validation summary work with any `EditContext` validator; a form-level `RequiredResolver` bridges required-star/`aria-required` for FluentValidation and other stacks
 - **Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
@@ -191,6 +191,7 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Modal`** - Dialog with `@bind-Visible`, footer, mask-close
 - **`Drawer`** - Slide-in panel (4 placements)
 - **`Popconfirm`** - Inline confirm popover
+- **`DateRangePicker`** - Composite start → end date field opening a dropdown with an optional preset sidebar and a dual-month calendar (month/year quick-select headers). Bind with `@bind-Start` / `@bind-End` (`DateTime?`, date-only); `Presets` (a label + a range-resolving `Func`, evaluated at click time — or fixed dates), `Min` / `Max` day bounds, `Format` (default `MM/dd/yyyy`, drives display, parsing and the placeholders), `AllowClear`, `Width`, `FirstDayOfWeek` (default: current culture). Picking the second day (or a preset) commits and closes; a backwards pair swaps; typed input commits on Enter/blur. Flips above the field / shifts into the viewport when space is tight
 - **`Table<TItem>`** - Data table with `Column` / `PropertyColumn` / `ActionColumn`, row selection, paging (pager placement via `PagerPosition` = Top/Bottom/Both and alignment via `PagerAlign`), and column sorting (`Sortable="true"` on a `PropertyColumn` — non-comparable types degrade to non-sortable; or a `SortBy` comparison on any column). Columns may be conditionally rendered (`@if`)
 - **Toasts & notifications** - two paths with identical rendering: **scoped / Server-safe** (`IMessageService` / `INotificationService` via `builder.Services.AddWssControlsToasts()` + `<MessageContainer />` / `<NotificationContainer />`), or **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + `<WasmMessageContainer />` / `<WasmNotificationContainer />`). On Blazor Server use the scoped path — the static `Wasm*` services hold process-static state that would bleed across users.
 

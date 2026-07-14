@@ -1,0 +1,128 @@
+@namespace Controls
+
+@* Backdrop: closes the dropdown on any outside click without needing JS interop. Rendered as the
+   wrapper's previous sibling so placePanel can stack it just under the raised wrapper (the same
+   contract as Select). tabindex="-1": iOS-class WebKit only synthesizes a click from a tap when
+   the target chain contains a focusable element; -1 keeps it out of the Tab order. *@
+@if (_open)
+{
+    <div class="wss-picker-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
+}
+
+<div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+     class="@WrapperClass @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+     style="@AttributeSplat.MergeStyle(WrapperStyle, AdditionalAttributes)"
+     @ref="_wrapperRef"
+     @onkeydown="OnWrapperKeyDownAsync" @onkeydown:stopPropagation="@_open">
+
+    @* tabindex="-1": a click on the field's non-input chrome (separator, padding) then focuses
+       the field itself instead of <body>, so Escape still bubbles through the wrapper's keydown
+       and the focus-out close wiring sees focus as inside. (Same pattern as Select's wrapper;
+       also iOS tap-to-click synthesis.) *@
+    <div class="wss-picker-input" tabindex="-1" @onclick="OnFieldClickAsync">
+        <span class="wss-picker-input-slot @(_open && _activeInput == 0 ? "wss-picker-slot-active" : null)">
+            <input @ref="_startInputRef"
+                   class="wss-picker-input-start"
+                   id="@Id"
+                   data-test-id="@Id"
+                   type="text"
+                   autocomplete="off"
+                   aria-label="@StartInputLabel"
+                   aria-haspopup="dialog"
+                   aria-expanded="@(_open ? "true" : "false")"
+                   placeholder="@(StartPlaceholder ?? DefaultPlaceholder)"
+                   disabled="@Disabled"
+                   value="@StartDisplay"
+                   @oninput="@(e => _startEdit = e.Value?.ToString() ?? string.Empty)"
+                   @onchange="CommitStartTextAsync"
+                   @onfocus="@(() => OnInputFocus(0))" />
+        </span>
+        <span class="wss-picker-separator" aria-hidden="true">@SwapRightIcon</span>
+        <span class="wss-picker-input-slot @(_open && _activeInput == 1 ? "wss-picker-slot-active" : null)">
+            <input @ref="_endInputRef"
+                   class="wss-picker-input-end"
+                   type="text"
+                   autocomplete="off"
+                   aria-label="@EndInputLabel"
+                   aria-haspopup="dialog"
+                   aria-expanded="@(_open ? "true" : "false")"
+                   placeholder="@(EndPlaceholder ?? DefaultPlaceholder)"
+                   disabled="@Disabled"
+                   value="@EndDisplay"
+                   @oninput="@(e => _endEdit = e.Value?.ToString() ?? string.Empty)"
+                   @onchange="CommitEndTextAsync"
+                   @onfocus="@(() => OnInputFocus(1))" />
+        </span>
+        <span class="wss-picker-suffix">@CalendarIcon</span>
+        @if (ShowClear)
+        {
+            <button type="button" class="wss-picker-clear" aria-label="@ClearLabel"
+                    @onclick="ClearAsync" @onclick:stopPropagation>@CloseCross</button>
+        }
+    </div>
+
+    @if (_open)
+    {
+        <div class="wss-picker-dropdown @(_positioned ? null : "wss-measuring")" @ref="_panelRef"
+             role="dialog" aria-label="@DialogLabel" tabindex="-1">
+            @if (Presets is { Count: > 0 })
+            {
+                <ul class="wss-picker-presets" aria-label="@PresetsLabel">
+                    @foreach (var preset in Presets)
+                    {
+                        var p = preset;
+                        <li>
+                            <button type="button" class="wss-picker-preset"
+                                    @onclick="@(() => OnPresetClickAsync(p))">@p.Label</button>
+                        </li>
+                    }
+                </ul>
+            }
+            <div class="wss-picker-panels">
+                @for (var i = 0; i < 2; i++)
+                {
+                    var panel = i;
+                    var month = _viewMonth.AddMonths(panel);
+                    var (fromYear, toYear) = YearRange(month.Year);
+                    <div class="wss-picker-month">
+                        <div class="wss-picker-month-header">
+                            <span class="wss-picker-select">
+                                <select aria-label="@MonthSelectLabel" value="@month.Month"
+                                        @onchange="@(e => OnMonthSelectChanged(panel, e))">
+                                    @for (var m = 1; m <= 12; m++)
+                                    {
+                                        <option value="@m" selected="@(m == month.Month)">@MonthName(m)</option>
+                                    }
+                                </select>
+                                @DownIcon
+                            </span>
+                            <span class="wss-picker-select">
+                                <select aria-label="@YearSelectLabel" value="@month.Year"
+                                        @onchange="@(e => OnYearSelectChanged(panel, e))">
+                                    @for (var y = fromYear; y <= toYear; y++)
+                                    {
+                                        <option value="@y" selected="@(y == month.Year)">@y.ToString(CultureInfo.CurrentCulture)</option>
+                                    }
+                                </select>
+                                @DownIcon
+                            </span>
+                        </div>
+                        <div class="wss-picker-grid">
+                            @foreach (var day in GridDays(month))
+                            {
+                                var d = day;
+                                <div class="@CellClass(d)">
+                                    <button type="button" class="@DayClass(d, month)"
+                                            disabled="@IsDayDisabled(d)"
+                                            aria-label="@d.ToString("D", CultureInfo.CurrentCulture)"
+                                            aria-pressed="@(IsEndpoint(d) ? "true" : "false")"
+                                            @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

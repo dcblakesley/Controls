@@ -64,6 +64,14 @@
     --wss-padding-h: 11px;
     --wss-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
 
+    /* DateRangePicker. Its Figma spec (AntD 5-style) uses 6px/4px radii and #e6e6e6 internal
+       splits — kept as picker-scoped tokens rather than bending the kit-wide --wss-radius (2px).
+       --wss-picker-range-bg is a pure override knob for the in-range tint, derived from
+       --wss-color-primary at the usage site (see the brand/interactive comment above). */
+    --wss-picker-radius: 6px;
+    --wss-picker-radius-sm: 4px;
+    --wss-picker-split: #e6e6e6;
+
     /* Status (alerts / messages / notifications) */
     --wss-color-success: #52c41a;
     --wss-color-success-bg: #f6ffed;
@@ -1570,6 +1578,364 @@
 }
 
 /* ============================================================================
+ * DateRangePicker
+ * A composite start → end field opening a dropdown with an optional preset
+ * sidebar and a dual-month calendar. Metrics/colors follow the Clark Connect
+ * Figma spec (AntD 5-style) via the --wss-picker-* tokens; everything else
+ * reuses the kit tokens above. The wss-picker- prefix (not wss-daterange-) is
+ * deliberate: a future single-date DatePicker shares these calendar internals.
+ * ============================================================================ */
+
+.wss-picker {
+    position: relative;
+    display: inline-block;
+    box-sizing: border-box;
+    min-width: 256px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+}
+
+.wss-picker * {
+    box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------------- Field */
+
+.wss-picker-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: var(--wss-control-height);
+    padding: 0 var(--wss-padding-h);
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-picker-radius);
+    cursor: pointer;
+    /* The field is tabindex="-1" (keeps focus inside the wrapper when its chrome is clicked) —
+       the focused look is owned by the border rules below, not a UA ring. */
+    outline: none;
+    transition: border-color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.wss-picker:not(.wss-picker-disabled):hover .wss-picker-input {
+    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+}
+
+/* The open/focused field shows a solid accent border (no glow — per the Figma mock) plus the
+   active-side underline below. */
+.wss-picker-open .wss-picker-input,
+.wss-picker:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+    border-color: var(--wss-color-primary);
+}
+
+.wss-picker-input-slot {
+    position: relative;
+    display: inline-flex;
+    flex: 1 1 50%;
+    min-width: 0;
+}
+
+.wss-picker-input-slot input {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    background: transparent;
+    border: none;
+    outline: none;
+    appearance: none;
+    cursor: text;
+}
+
+.wss-picker-input-slot input::placeholder {
+    color: var(--wss-color-placeholder);
+}
+
+/* The AntD "active bar": a short accent underline hugging the field's bottom border, beneath
+   whichever side the next pick will fill. Only rendered while the dropdown is open. */
+.wss-picker-slot-active::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -4px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--wss-color-primary);
+}
+
+.wss-picker-separator {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    color: var(--wss-color-placeholder);
+    font-size: 14px;
+}
+
+.wss-picker-suffix {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    color: var(--wss-color-text-disabled);
+    font-size: 14px;
+    pointer-events: none;
+}
+
+/* Swaps in over the suffix icon while hovering a non-empty picker (mirrors .wss-select-clear). */
+.wss-picker-clear {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: var(--wss-padding-h);
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    appearance: none;
+    border: 0;
+    padding: 0;
+    color: var(--wss-color-text-disabled);
+    font-size: 14px;
+    line-height: 1;
+    background: var(--wss-color-bg);
+    cursor: pointer;
+    opacity: 0;
+    z-index: 1;
+    transition: color 0.3s ease, opacity 0.15s ease;
+}
+
+.wss-picker:hover .wss-picker-clear,
+.wss-picker:focus-within .wss-picker-clear {
+    opacity: 1;
+}
+
+/* Touch devices have no hover — show the clear affordance whenever it renders (it only renders
+   when there is a value to clear). */
+@media (hover: none) {
+    .wss-picker:not(.wss-picker-disabled) .wss-picker-clear {
+        opacity: 1;
+    }
+}
+
+.wss-picker-clear:hover {
+    color: var(--wss-color-text-secondary);
+}
+
+.wss-picker-disabled .wss-picker-input {
+    color: var(--wss-color-text-disabled);
+    background: var(--wss-color-bg-disabled);
+    cursor: not-allowed;
+}
+
+.wss-picker-disabled .wss-picker-input-slot input {
+    color: var(--wss-color-text-disabled);
+    cursor: not-allowed;
+}
+
+/* ---------------------------------------------------------------- Dropdown */
+
+.wss-picker-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" backdrop. */
+    cursor: pointer;
+    outline: none;
+}
+
+/* While open, the field must sit above its own full-screen backdrop — otherwise clicking into an
+   input / the clear button hits the backdrop and closes the dropdown. (When JS is available the
+   open-order counter in wss-overlay.js assigns inline z-indexes that override these fallbacks.) */
+.wss-picker.wss-picker-open {
+    z-index: 1041;
+}
+
+.wss-picker-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 1050;
+    display: flex;
+    align-items: stretch;
+    width: max-content;
+    background: var(--wss-color-bg);
+    border-radius: var(--wss-picker-radius);
+    box-shadow: var(--wss-shadow);
+    overflow: hidden;
+    cursor: auto;
+    outline: none;
+}
+
+/* ----------------------------------------------------------------- Presets */
+
+.wss-picker-presets {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 8px;
+    width: 126px;
+    margin: 0;
+    padding: 8px;
+    list-style: none;
+    border-inline-end: 1px solid var(--wss-picker-split);
+    overflow-y: auto;
+}
+
+.wss-picker-preset {
+    display: block;
+    width: 100%;
+    padding: 5px 12px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    text-align: start;
+    background: none;
+    border: none;
+    border-radius: var(--wss-picker-radius-sm);
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.wss-picker-preset:hover {
+    background: var(--wss-color-bg-hover);
+}
+
+/* ------------------------------------------------------------ Month panels */
+
+.wss-picker-panels {
+    display: flex;
+}
+
+.wss-picker-month {
+    width: 300px;
+}
+
+.wss-picker-month + .wss-picker-month {
+    border-inline-start: 1px solid var(--wss-picker-split);
+}
+
+.wss-picker-month-header {
+    display: flex;
+    gap: 8px;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--wss-picker-split);
+}
+
+.wss-picker-select {
+    position: relative;
+    display: inline-flex;
+    width: 80px;
+}
+
+.wss-picker-select select {
+    width: 100%;
+    margin: 0;
+    padding: 1px 28px 1px 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-picker-radius-sm);
+    appearance: none;
+    cursor: pointer;
+}
+
+.wss-picker-select-arrow {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 8px;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+    color: var(--wss-color-text-secondary);
+    pointer-events: none;
+}
+
+/* ------------------------------------------------------------------- Grid */
+
+.wss-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 4px;
+}
+
+.wss-picker-cell {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding: 3px 6px;
+}
+
+/* In-range tint: drawn on the cell (full width, day-box height) so consecutive cells form a
+   continuous band; endpoint cells tint only their inner half so the band butts up against the
+   filled endpoint day. */
+.wss-picker-cell-in-range::before,
+.wss-picker-cell-range-start::before,
+.wss-picker-cell-range-end::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    inset-inline: 0;
+    background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
+}
+
+.wss-picker-cell-range-start::before {
+    inset-inline-start: 50%;
+}
+
+.wss-picker-cell-range-end::before {
+    inset-inline-end: 50%;
+}
+
+.wss-picker-day {
+    /* position: relative pulls the button above the cell's ::before range band. */
+    position: relative;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 3px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    text-align: center;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--wss-picker-radius-sm);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.wss-picker-day:not(:disabled):not(.wss-picker-day-selected):hover {
+    background: var(--wss-color-bg-hover);
+}
+
+.wss-picker-day-outside {
+    color: var(--wss-color-placeholder);
+}
+
+.wss-picker-day-today {
+    border-color: var(--wss-color-primary);
+}
+
+.wss-picker-day-selected {
+    color: var(--wss-color-on-primary);
+    background: var(--wss-color-primary);
+    border-color: var(--wss-color-primary);
+}
+
+.wss-picker-day:disabled {
+    color: var(--wss-color-text-disabled);
+    background: none;
+    cursor: not-allowed;
+}
+
+/* ============================================================================
  * Accessibility
  * ============================================================================ */
 
@@ -1587,9 +1953,19 @@
 .wss-select-clear:focus-visible,
 .wss-select-selection-item-remove:focus-visible,
 .wss-popover-trigger:focus-visible,
-.wss-popconfirm-trigger:focus-visible {
+.wss-popconfirm-trigger:focus-visible,
+.wss-picker-clear:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 2px;
+}
+
+/* Picker popup interactives use a tighter offset — the 24px day cells sit 6px apart, so a 2px
+   offset ring would overlap the neighboring cells' band. */
+.wss-picker-day:focus-visible,
+.wss-picker-preset:focus-visible,
+.wss-picker-select select:focus-visible {
+    outline: 2px solid var(--wss-color-primary);
+    outline-offset: 1px;
 }
 
 /* Honor the OS "reduce motion" setting (WCAG 2.3.3): drop the slide-ins, the skeleton
@@ -1608,7 +1984,11 @@
     .wss-alert-close,
     .wss-modal-close,
     .wss-drawer-close,
-    .wss-notification-close {
+    .wss-notification-close,
+    .wss-picker-input,
+    .wss-picker-clear,
+    .wss-picker-preset,
+    .wss-picker-day {
         transition: none;
     }
 

@@ -115,6 +115,25 @@
     </section>
 
     <section class="demo-section">
+        <h3>DateRangePicker</h3>
+        <p style="margin:0; color:#666;">
+            Composite start → end field opening a preset sidebar + dual-month calendar with
+            month/year quick-select headers. Presets are page-supplied (nothing is built in) and
+            resolve at click time. The initial value is pinned to Jan/Feb 2025 so the e2e visual
+            baseline is deterministic; <code>FirstDayOfWeek</code> is pinned for the same reason.
+        </p>
+        <DateRangePicker @bind-Start="_rangeStart" @bind-End="_rangeEnd"
+                         Presets="_rangePresets"
+                         Min="@(new DateTime(2017, 1, 1))"
+                         FirstDayOfWeek="DayOfWeek.Sunday"
+                         Id="demo-range"
+                         Width="300px" />
+        <p data-test-id="range-result">
+            Selected: @(_rangeStart?.ToString("yyyy-MM-dd") ?? "—") → @(_rangeEnd?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+    </section>
+
+    <section class="demo-section">
         <h3>Popover — swapped trigger child</h3>
         <p style="margin:0; color:#666;">
             The trigger child is re-created across renders (a common busy/idle swap). The popup ARIA
@@ -171,6 +190,54 @@
     // Swapped-trigger demo: flips the Popover's ChildContent between a non-focusable <span> and a
     // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.
     bool _triggerBusy;
+
+    // --- DateRangePicker demo ---
+    // Pinned initial range: the e2e visual baseline screenshots the open panel, so the displayed
+    // months must not depend on the test run's date.
+    DateTime? _rangeStart = new DateTime(2025, 1, 15);
+    DateTime? _rangeEnd = new DateTime(2025, 2, 3);
+
+    // The Sales-Report-style shortcuts. Resolved at click time (DateTime.Today), so they stay
+    // correct however long the page lives.
+    static readonly DateRangePreset[] _rangePresets =
+    [
+        new("This Week", static () =>
+        {
+            var today = DateTime.Today;
+            return (today.AddDays(-(((int)today.DayOfWeek - (int)DayOfWeek.Sunday + 7) % 7)), today);
+        }),
+        new("This Month", static () =>
+        {
+            var today = DateTime.Today;
+            return (new DateTime(today.Year, today.Month, 1), today);
+        }),
+        new("Last Month", static () =>
+        {
+            var first = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-1);
+            return (first, first.AddMonths(1).AddDays(-1));
+        }),
+        new("This Quarter", static () =>
+        {
+            var today = DateTime.Today;
+            return (new DateTime(today.Year, (today.Month - 1) / 3 * 3 + 1, 1), today);
+        }),
+        new("Last Quarter", static () =>
+        {
+            var today = DateTime.Today;
+            var first = new DateTime(today.Year, (today.Month - 1) / 3 * 3 + 1, 1).AddMonths(-3);
+            return (first, first.AddMonths(3).AddDays(-1));
+        }),
+        new("This Year", static () =>
+        {
+            var today = DateTime.Today;
+            return (new DateTime(today.Year, 1, 1), today);
+        }),
+        new("Last Year", static () =>
+        {
+            var year = DateTime.Today.Year - 1;
+            return (new DateTime(year, 1, 1), new DateTime(year, 12, 31));
+        }),
+    ];
 
     readonly List<Row> _rows = Enumerable.Range(1, 13)
         .Select(i => new Row(i, $"Item {i}", i * 4.5m))

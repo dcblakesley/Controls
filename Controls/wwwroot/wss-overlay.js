@@ -235,6 +235,88 @@ export function focusTrigger(el) {
     try { (child || el).focus(); } catch { /* gone */ }
 }
 
+// --- DateRangePicker ---------------------------------------------------------------------------
+// Field-anchored panel placement — wss-select.js/placeDropdown's model (flip above when there's no
+// room below, open-order z stacking, return the wrapper z for C# to mirror into the bound style),
+// generalized with a horizontal viewport clamp: the picker panel is far wider than its field, so a
+// field near the right edge would otherwise push the panel off-screen. Degrades to the default CSS
+// placement (below, left-aligned) when JS is unavailable.
+export function placePanel(wrapper, panel, backdropClass, gap) {
+    if (!wrapper || !panel) {
+        return 0;
+    }
+    gap = gap || 4;
+
+    const z = nextZ();
+    const backdrop = wrapper.previousElementSibling;
+    if (backdrop && backdropClass && backdrop.classList.contains(backdropClass)) {
+        backdrop.style.zIndex = z;
+    }
+    wrapper.style.zIndex = z + 1;
+
+    const w = wrapper.getBoundingClientRect();
+    const ph = panel.offsetHeight;
+    const pw = panel.offsetWidth;
+    const roomBelow = window.innerHeight - w.bottom;
+    const roomAbove = w.top;
+    if (roomBelow < ph + gap && roomAbove > roomBelow) {
+        panel.style.top = 'auto';
+        panel.style.bottom = `calc(100% + ${gap}px)`;
+    } else {
+        panel.style.bottom = 'auto';
+        panel.style.top = `calc(100% + ${gap}px)`;
+    }
+
+    // Shift left just enough to stay inside the right viewport edge (8px margin), never past the
+    // wrapper's own distance from the left edge — a fully off-screen field stays panel-left-aligned.
+    const margin = 8;
+    const overflowRight = w.left + pw - (window.innerWidth - margin);
+    const shift = overflowRight > 0 ? Math.min(overflowRight, Math.max(0, w.left - margin)) : 0;
+    panel.style.left = `${-Math.round(shift)}px`;
+
+    return z + 1;
+}
+
+// Removes the open-order z-index applied by placePanel once the panel closes (the wrapper persists
+// in the page, and a stale high z would poke through later overlays' masks).
+export function clearZ(el) {
+    if (el) {
+        el.style.zIndex = '';
+    }
+}
+
+// One-time picker wiring. Enter in a picker input commits the typed date via the component's own
+// keydown handler — preventDefault stops it also implicitly submitting an enclosing form (which C#
+// can't do; Blazor has no per-key preventDefault). The wrapper focusout mirrors wss-select.js:
+// tabbing away would otherwise leave the panel open with its invisible backdrop silently swallowing
+// the next click — route through the backdrop's click so the component's own close path runs.
+// relatedTarget is null for mouse presses on non-focusable targets; those flows are already owned
+// by the backdrop/day-button click handlers, so only act when the keyboard destination is known.
+export function initPicker(wrapper, startInput, endInput) {
+    for (const input of [startInput, endInput]) {
+        if (input && !input.__wssPickerWired) {
+            input.__wssPickerWired = true;
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                }
+            });
+        }
+    }
+    if (wrapper && !wrapper.__wssPickerFocusWired) {
+        wrapper.__wssPickerFocusWired = true;
+        wrapper.addEventListener('focusout', e => {
+            if (!e.relatedTarget || wrapper.contains(e.relatedTarget)) {
+                return;
+            }
+            const backdrop = wrapper.previousElementSibling;
+            if (backdrop && backdrop.classList.contains('wss-picker-backdrop')) {
+                backdrop.click();
+            }
+        });
+    }
+}
+
 // --- Modal / Drawer focus management ---------------------------------------------------------
 // Moves focus into the panel, traps Tab within it, and locks body scroll. Returns a handle whose
 // dispose() restores body scroll and returns focus to the element that was focused before opening.
