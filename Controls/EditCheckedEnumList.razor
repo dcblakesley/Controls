@@ -25,7 +25,7 @@
                                : "edit-checkedList-checkboxes-container-vertical")>
                     @foreach (var option in GetOptions())
                     {
-                        <label @key="option" class=@($"edit-checkbox-label {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
+                        <label @key="option" class=@($"edit-checkbox-label{(useStyledCheckbox ? " edit-checkbox-label-styled" : "")} {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
                             @if (useStyledCheckbox)
                             {
                                 <span class="edit-checkbox-wrap">

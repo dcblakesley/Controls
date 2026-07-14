@@ -148,6 +148,7 @@ public class EditCheckedStringListTests : TestContext
 
         Assert.Equal(3, cut.FindAll(".edit-checkbox-wrap").Count);
         Assert.Equal(3, cut.FindAll("input.edit-checkbox-input-styled").Count);
+        Assert.Equal(3, cut.FindAll("label.edit-checkbox-label-styled").Count);
     }
 
     [Fact]
@@ -165,6 +166,7 @@ public class EditCheckedStringListTests : TestContext
         }));
 
         Assert.Empty(cut.FindAll(".edit-checkbox-wrap"));
+        Assert.Empty(cut.FindAll(".edit-checkbox-label-styled"));
         Assert.Equal(3, cut.FindAll("input[type=checkbox]").Count);
     }
 

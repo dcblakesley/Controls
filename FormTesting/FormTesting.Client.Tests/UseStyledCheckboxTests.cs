@@ -112,6 +112,19 @@ public class UseStyledCheckboxTests : TestContext
     }
 
     [Fact]
+    public void Styled_label_carries_the_flex_alignment_class_and_native_does_not()
+    {
+        // The design's checkbox+label row (flex, centered, 8px gap) is scoped to the styled opt-in
+        // via edit-checkbox-label-styled; the native variant's label must stay untouched.
+        var styled = RenderCheckbox(perControl: true, formOptions: null, formDefaults: null);
+        Assert.NotEmpty(styled.FindAll("label.edit-checkbox-label.edit-checkbox-label-styled"));
+
+        var native = RenderCheckbox(perControl: null, formOptions: null, formDefaults: null);
+        Assert.NotEmpty(native.FindAll("label.edit-checkbox-label"));
+        Assert.Empty(native.FindAll(".edit-checkbox-label-styled"));
+    }
+
+    [Fact]
     public void FormOptions_instance_value_wins_over_cascaded_FormDefaults()
     {
         var formOptions = new FormOptions { UseStyledCheckbox = false };

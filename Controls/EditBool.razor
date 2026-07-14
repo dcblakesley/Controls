@@ -9,7 +9,7 @@
             @* Editable (or opt-in legacy read-only) — render the checkbox *@
             @if (!ShouldHideLabel)
             {
-                <label class="edit-checkbox-label" for=@_id>
+                <label class=@(EffectiveUseStyledCheckbox ? "edit-checkbox-label edit-checkbox-label-styled" : "edit-checkbox-label") for=@_id>
                     @(EffectiveUseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
                     @DisplayLabel()
                     <LabelTooltip Id=@_id Tooltip=@Tooltip Attributes=@_attributes/>

@@ -111,6 +111,16 @@
 /************************************************ EditBool ***********************************************/
 .edit-checkbox-label { cursor: pointer; }
 
+/* Styled-checkbox labels (EditBool, EditCheckedStringList, EditCheckedEnumList) adopt the design's
+   row layout: box and text in a flex row, vertically centered, 8px apart (the antd checkbox+label
+   spacing). Scoped to the UseStyledCheckbox opt-in so the default native rendering keeps its
+   whitespace-based layout untouched. */
+.edit-checkbox-label-styled {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /* Opt-in custom-styled checkbox (EditBool's UseStyledCheckbox="true"). No current browser
    (Chromium or Safari/WebKit) honors border-radius on a native <input type="checkbox"> once
    accent-color is set (see caniuse: accent-color), so consumers who need real shape control keep

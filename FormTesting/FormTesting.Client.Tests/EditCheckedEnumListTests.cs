@@ -59,6 +59,7 @@ public class EditCheckedEnumListTests : TestContext
         // Color has 4 values: Red, Green, Blue, PaleYellow.
         Assert.Equal(4, cut.FindAll(".edit-checkbox-wrap").Count);
         Assert.Equal(4, cut.FindAll("input.edit-checkbox-input-styled").Count);
+        Assert.Equal(4, cut.FindAll("label.edit-checkbox-label-styled").Count);
     }
 
     [Fact]
