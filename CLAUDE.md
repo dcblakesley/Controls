@@ -78,7 +78,7 @@ Theming contract (documented in README "Styling and Customization"): `--wss-*`/`
 
 ## Release Workflow
 
-- **Versioning:** `<AssemblyVersion>` in both `.csproj`s, kept in sync; `FileVersion`/`Version` derive from it. The major tracks the latest supported .NET version, *not* semver (net10.0 → `10.x.x` until net11). Minor (`10.X.0`) = features, behavioral changes, anything a consumer should read about before upgrading — including semver-major breaks and supported-platform changes. Patch = pure fixes/refactors/docs.
+- **Versioning:** `<AssemblyVersion>` in both `.csproj`s, kept in sync; `FileVersion`/`Version` derive from it. The major tracks the latest supported .NET version, *not* semver (net10.0 → `10.x.x` until net11). Minor (`10.X.0`) = breaking changes — anything a consumer must read about and adjust for before upgrading, including supported-platform changes. Patch (`10.X.Y`) = everything non-breaking: new functionality, behavioral changes, fixes, refactors, docs.
 - **Bump only at publish time.** Accumulate work against the current version; bump (with a README changelog entry) only when a NuGet release is being cut.
 - **Never push to NuGet from an agent.** Packing is fine; `dotnet nuget push` is the human's call (they own the API key).
 - **README.md is also the NuGet package readme** (`<PackageReadmeFile>`) — update its examples and changelog when features or versions change.
