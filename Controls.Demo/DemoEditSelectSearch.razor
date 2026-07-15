@@ -43,6 +43,25 @@
     </section>
 
     <section class="demo-section">
+        <h3>Pill variant + Prefix icon</h3>
+        <p><code>Variant="SelectVariant.Pill"</code> restyles the trigger as a rounded filter button; <code>Prefix</code> renders leading content (typically an icon) inside the trigger in any variant.</p>
+        <EditSelectSearch @bind-Value="_model.PillCountry"
+                          Options="_countries"
+                          Variant="SelectVariant.Pill"
+                          Placeholder="Country"
+                          Width="220px">
+            <Prefix>
+                <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="2" y1="12" x2="22" y2="12"></line>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+            </Prefix>
+        </EditSelectSearch>
+    </section>
+
+    <section class="demo-section">
         <h3>Inside a submitting form</h3>
         <p>Enter picks the highlighted option without triggering the form's implicit submission.</p>
         <EditSelectSearch @bind-Value="_model.FormCountry"
@@ -89,6 +108,8 @@
         public string? RequiredCountry { get; set; }
 
         public string? FormCountry { get; set; }
+
+        public string? PillCountry { get; set; } = "us";
     }
 
     readonly string _example = @"<EditSelectSearch @bind-Value=""_model.Country""

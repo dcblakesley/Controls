@@ -30,6 +30,25 @@
     </section>
 
     <section class="demo-section">
+        <h3>Prefix icon</h3>
+        <p><code>Prefix</code> renders leading content (typically an icon) inside the trigger.</p>
+        <EditMultiSelect @bind-Value="_model.PrefixColors"
+                         Options="_colors"
+                         Placeholder="Pick colors..."
+                         Width="320px">
+            <Prefix>
+                <svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="13.5" cy="6.5" r="2.5"></circle>
+                    <circle cx="19" cy="13" r="2.5"></circle>
+                    <circle cx="6" cy="12" r="2.5"></circle>
+                    <circle cx="10" cy="20" r="2.5"></circle>
+                </svg>
+            </Prefix>
+        </EditMultiSelect>
+    </section>
+
+    <section class="demo-section">
         <h3>Required (min 2) validation</h3>
         <EditMultiSelect @bind-Value="_model.RequiredColors"
                          Options="_colors"
@@ -67,6 +86,8 @@
         public List<string> Colors { get; set; } = ["green"];
 
         public List<string> Keywords { get; set; } = [];
+
+        public List<string> PrefixColors { get; set; } = ["blue"];
 
         [Required(ErrorMessage = "Pick at least two colors")]
         [MinLength(2, ErrorMessage = "Pick at least two colors")]
