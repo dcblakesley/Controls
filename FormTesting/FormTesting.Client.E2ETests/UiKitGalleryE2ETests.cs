@@ -350,6 +350,64 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Expandable_table_toggles_the_nested_detail_and_matches_baseline()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "expandable rows" });
+        var firstChevron = section.Locator(".wss-table-expand-btn").First;
+
+        await firstChevron.ClickAsync();
+        var detail = section.Locator(".wss-table-expanded-row");
+        await Expect(detail).ToBeVisibleAsync();
+        // The detail hosts the nested selectable child table (the Vendor PO pattern).
+        await Expect(detail.Locator(".wss-table-row")).ToHaveCountAsync(2);
+        await Expect(firstChevron).ToHaveAttributeAsync("aria-expanded", "true");
+
+        await BaselineAsync(section, "table-expandable-open");
+
+        await firstChevron.ClickAsync();
+        await Expect(detail).ToHaveCountAsync(0);
+    }
+
+    [Fact]
+    public async Task Tabs_arrow_key_moves_selection_and_focus()
+    {
+        await GotoAsync();
+        var tabs = _page.Locator(".wss-tabs [role=tab]");
+        await Expect(tabs.Nth(1)).ToHaveAttributeAsync("aria-selected", "true"); // pinned "missing"
+
+        await tabs.Nth(1).FocusAsync();
+        await _page.Keyboard.PressAsync("ArrowRight");
+
+        await Expect(tabs.Nth(2)).ToHaveAttributeAsync("aria-selected", "true");
+        await Expect(tabs.Nth(2)).ToBeFocusedAsync(); // FocusAsync moved the roving tab stop
+        await Expect(_page.Locator("[data-test-id='tabs-result']")).ToContainTextAsync("Active: other");
+    }
+
+    [Fact]
+    public async Task Search_input_commits_on_enter_and_on_the_button()
+    {
+        await GotoAsync();
+        await _page.Locator("#demo-search-pos").FillAsync("8999");
+        await _page.Locator("#demo-search-pos").PressAsync("Enter");
+        await Expect(_page.Locator("[data-test-id='tabs-result']")).ToContainTextAsync("POs: 8999");
+
+        await _page.Locator("#demo-search-skus").FillAsync("150005");
+        // The SKUs field's own search button (second .wss-search-btn on the page).
+        await _page.Locator(".wss-search", new() { Has = _page.Locator("#demo-search-skus") })
+            .Locator(".wss-search-btn").ClickAsync();
+        await Expect(_page.Locator("[data-test-id='tabs-result']")).ToContainTextAsync("SKUs: 150005");
+    }
+
+    [Fact]
+    public async Task Tabs_and_search_section_visual_baseline()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "Tabs + SearchInput" });
+        await BaselineAsync(section, "tabs-search-section");
+    }
+
+    [Fact]
     public async Task Pill_select_opens_picks_and_closes_on_outside_click()
     {
         await GotoAsync();

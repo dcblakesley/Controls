@@ -1301,8 +1301,8 @@
 }
 
 /* Thin vertical separator between header cells (AntD trait); never after the
-   selection column or the last header cell. */
-.wss-table-thead .wss-table-cell:not(:last-child):not(.wss-table-selection-cell)::before {
+   expand/selection columns or the last header cell. */
+.wss-table-thead .wss-table-cell:not(:last-child):not(.wss-table-selection-cell):not(.wss-table-expand-cell)::before {
     position: absolute;
     top: 50%;
     right: 0;
@@ -1467,6 +1467,47 @@
 
 .wss-table-tbody .wss-table-row-selected:hover .wss-table-cell {
     background: var(--wss-color-bg-selected-hover);
+}
+
+/* Expandable rows (RowDetail): a narrow leading chevron column; the chevron rotates while the
+   row's full-width detail row is shown beneath it. */
+.wss-table-expand-cell {
+    width: 32px;
+    padding-inline: 8px;
+}
+
+.wss-table-expand-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    color: var(--wss-color-text-secondary);
+    font-size: 12px;
+    background: none;
+    border: none;
+    border-radius: var(--wss-radius);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.wss-table-expand-btn:hover {
+    color: var(--wss-color-text);
+}
+
+.wss-table-expand-btn svg {
+    transition: transform 0.2s ease;
+}
+
+.wss-table-expand-btn-expanded svg {
+    transform: rotate(90deg);
+}
+
+/* The detail row is chrome-free by default — its content (often a nested Table) brings its own.
+   Suppress the row-hover tint so the detail area doesn't flash as one giant hover target. */
+.wss-table-tbody .wss-table-expanded-row:hover .wss-table-expanded-cell {
+    background: var(--wss-color-bg);
 }
 
 /* Sortable headers */
@@ -2071,6 +2112,177 @@
 }
 
 /* ============================================================================
+ * Tabs
+ * Underline ("line" type) tab strip with an optional bordered count chip per
+ * tab (the Clark Connect "12 Overdue" pattern). Colors derive from the kit
+ * tokens: the active underline/text from --wss-color-primary, the chip border
+ * from --wss-color-border (active: --wss-tabs-count-active-border override
+ * knob, derived from the primary at the usage site).
+ * ============================================================================ */
+
+.wss-tabs {
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+}
+
+.wss-tabs-nav {
+    display: flex;
+    gap: 32px;
+    border-bottom: 1px solid var(--wss-color-split);
+}
+
+.wss-tabs-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: -1px; /* the active underline overlays the strip's own border */
+    padding: 12px 0;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.wss-tabs-tab:hover:not(:disabled) {
+    color: var(--wss-color-primary);
+}
+
+.wss-tabs-tab-active {
+    color: var(--wss-color-primary);
+    font-weight: 600;
+    border-bottom-color: var(--wss-color-primary);
+}
+
+.wss-tabs-tab:disabled {
+    color: var(--wss-color-text-disabled);
+    cursor: not-allowed;
+}
+
+.wss-tabs-count {
+    padding: 0 8px;
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-radius);
+}
+
+.wss-tabs-tab-active .wss-tabs-count {
+    border-color: var(--wss-tabs-count-active-border, color-mix(in srgb, var(--wss-color-primary) 50%, #fff));
+}
+
+.wss-tabs-tab:disabled .wss-tabs-count {
+    border-color: var(--wss-color-split);
+}
+
+.wss-tabs-panel {
+    padding-top: 16px;
+    outline: none;
+}
+
+/* ============================================================================
+ * SearchInput
+ * Addon label chip + input + icon-only search button. Pill-rounded ends per
+ * the Clark Connect spec; override --wss-search-radius to square them.
+ * ============================================================================ */
+
+.wss-search {
+    display: inline-flex;
+    align-items: stretch;
+    box-sizing: border-box;
+    min-width: 160px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+}
+
+.wss-search * {
+    box-sizing: border-box;
+}
+
+.wss-search-addon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    padding: 0 12px;
+    color: var(--wss-color-text);
+    background: var(--wss-color-bg-disabled);
+    border: 1px solid var(--wss-color-border);
+    border-inline-end: none;
+    border-start-start-radius: var(--wss-search-radius, 999px);
+    border-end-start-radius: var(--wss-search-radius, 999px);
+}
+
+.wss-search-input {
+    flex: 1;
+    min-width: 0;
+    height: var(--wss-control-height);
+    margin: 0;
+    padding: 0 12px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    outline: none;
+    appearance: none;
+    transition: border-color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+/* No addon: the input owns the rounded start. */
+.wss-search-input:first-child {
+    border-start-start-radius: var(--wss-search-radius, 999px);
+    border-end-start-radius: var(--wss-search-radius, 999px);
+    padding-inline-start: 16px;
+}
+
+.wss-search-input::placeholder {
+    color: var(--wss-color-placeholder);
+}
+
+/* Raise the focused input above the button's overlapping border so the whole accent edge shows. */
+.wss-search-input:focus {
+    position: relative;
+    z-index: 1;
+    border-color: var(--wss-color-primary);
+}
+
+.wss-search-btn {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    margin-inline-start: -1px; /* collapse the doubled border against the input */
+    padding: 0 10px;
+    color: var(--wss-color-text);
+    font-size: 16px;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-start-end-radius: var(--wss-search-radius, 999px);
+    border-end-end-radius: var(--wss-search-radius, 999px);
+    cursor: pointer;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.wss-search-btn:hover:not(:disabled) {
+    position: relative;
+    z-index: 1;
+    color: var(--wss-color-primary);
+    border-color: var(--wss-color-primary);
+}
+
+.wss-search-disabled .wss-search-input,
+.wss-search-btn:disabled {
+    color: var(--wss-color-text-disabled);
+    background: var(--wss-color-bg-disabled);
+    cursor: not-allowed;
+}
+
+/* ============================================================================
  * Accessibility
  * ============================================================================ */
 
@@ -2089,6 +2301,9 @@
 .wss-select-selection-item-remove:focus-visible,
 .wss-popover-trigger:focus-visible,
 .wss-popconfirm-trigger:focus-visible,
+.wss-table-expand-btn:focus-visible,
+.wss-tabs-tab:focus-visible,
+.wss-search-btn:focus-visible,
 .wss-picker-clear:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 2px;

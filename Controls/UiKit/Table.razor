@@ -32,6 +32,11 @@
         }
         <thead class="wss-table-thead">
             <tr>
+                @if (HasRowDetail)
+                {
+                    @* Header slot above the expand-chevron column (first, per the Clark spec). *@
+                    <th scope="col" class="wss-table-cell wss-table-expand-cell"></th>
+                }
                 @if (Selectable)
                 {
                     <th scope="col" class="wss-table-cell wss-table-selection-cell">
@@ -61,7 +66,7 @@
                     {
                         <th scope="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)" aria-sort="@AriaSortFor(col)">
                             <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
-                                <span class="wss-table-sort-label">@col.HeaderText</span>
+                                <span class="wss-table-sort-label">@col.HeaderFor()</span>
                                 <span class="wss-table-sorter" aria-hidden="true">
                                     <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
                                     <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
@@ -71,7 +76,7 @@
                     }
                     else
                     {
-                        <th scope="col" class="wss-table-cell">@col.HeaderText</th>
+                        <th scope="col" class="wss-table-cell">@col.HeaderFor()</th>
                     }
                 }
             </tr>
@@ -80,7 +85,7 @@
             @if (_items.Count == 0)
             {
                 <tr class="wss-table-row wss-table-placeholder">
-                    <td class="wss-table-cell" colspan="@(_columns.Count + (Selectable ? 1 : 0))">@EmptyText</td>
+                    <td class="wss-table-cell" colspan="@TotalColumnCount">@EmptyText</td>
                 </tr>
             }
             else
@@ -89,6 +94,18 @@
                 {
                     var item = _pageItems[rowIdx];
                     <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)" @key="_pageKeys[rowIdx]">
+                        @if (HasRowDetail)
+                        {
+                            <td class="wss-table-cell wss-table-expand-cell">
+                                <button type="button"
+                                        class="wss-table-expand-btn @(IsExpanded(item) ? "wss-table-expand-btn-expanded" : null)"
+                                        aria-expanded="@(IsExpanded(item) ? "true" : "false")"
+                                        aria-label="@(IsExpanded(item) ? CollapseRowLabel : ExpandRowLabel)"
+                                        @onclick="@(() => ToggleExpand(item))">
+                                    @ExpandChevron
+                                </button>
+                            </td>
+                        }
                         @if (Selectable)
                         {
                             <td class="wss-table-cell wss-table-selection-cell">
@@ -112,6 +129,14 @@
                             <td class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)">@col.CellFor(item)</td>
                         }
                     </tr>
+                    @if (HasRowDetail && IsExpanded(item))
+                    {
+                        @* Keyed alongside its parent row (same identity + a discriminator) so
+                           re-orders keep each detail row glued to its row. *@
+                        <tr class="wss-table-expanded-row" @key="@(("wss-detail", _pageKeys[rowIdx]))">
+                            <td class="wss-table-cell wss-table-expanded-cell" colspan="@TotalColumnCount">@RowDetail!(item)</td>
+                        </tr>
+                    }
                 }
             }
         </tbody>
@@ -153,6 +178,20 @@
 
     /// <summary>Adds a checkbox column for row selection, plus a header checkbox that toggles the current page.</summary>
     [Parameter] public bool Selectable { get; set; }
+
+    /// <summary>
+    /// Expandable rows: when set, every row gets a leading expand-chevron column that toggles this
+    /// detail template, rendered as a full-width row directly beneath it (e.g. a nested child
+    /// <see cref="Table{TItem}"/>). Expansion state is keyed by <see cref="RowKey"/> identity, so
+    /// it survives paging and sorting; rows that leave the data are forgotten.
+    /// </summary>
+    [Parameter] public RenderFragment<TItem>? RowDetail { get; set; }
+
+    /// <summary>Accessible name of a collapsed row's expand button. Override to localize.</summary>
+    [Parameter] public string ExpandRowLabel { get; set; } = "Expand row";
+
+    /// <summary>Accessible name of an expanded row's collapse button. Override to localize.</summary>
+    [Parameter] public string CollapseRowLabel { get; set; } = "Collapse row";
 
     /// <summary>
     /// When true, the header and row selection checkboxes render with a custom-drawn box (hidden
@@ -211,6 +250,27 @@
     IJSObjectReference? _jsModule;
 
     string SizeName => Size.ToString().ToLowerInvariant();
+
+    // ----- Expandable rows ---------------------------------------------------
+
+    // AntD RightOutlined; the CSS rotates it 90° while the row is expanded.
+    static readonly MarkupString ExpandChevron = new(
+        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.9 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.1l450.8-352.1a31.96 31.96 0 000-50.2z\"/></svg>");
+
+    bool HasRowDetail => RowDetail is not null;
+    readonly HashSet<object> _expanded = new(); // row key -> expanded
+
+    bool IsExpanded(TItem item) => _expanded.Contains(KeyFor(item));
+
+    void ToggleExpand(TItem item)
+    {
+        var key = KeyFor(item);
+        if (!_expanded.Add(key)) _expanded.Remove(key);
+    }
+
+    // Every leading fixed column plus the data columns — the colspan of the placeholder and
+    // expanded-detail rows.
+    int TotalColumnCount => _columns.Count + (Selectable ? 1 : 0) + (HasRowDetail ? 1 : 0);
 
     string PagerAlignName => PagerAlign.ToString().ToLowerInvariant();
 
@@ -307,9 +367,10 @@
 
     // A title-less sortable column would render a sort <button> with no accessible name (its visible
     // label span is empty and the caret stack is aria-hidden). Fall back to "Sort" so screen readers
-    // announce something; when the column has a header, the visible text names the button (no aria-label).
+    // announce something; when the column has a header (text or a TitleContent template, whose
+    // content names the button), the visible content names it (no aria-label).
     string? SortButtonLabel(Column<TItem> col) =>
-        string.IsNullOrEmpty(col.HeaderText) ? "Sort" : null;
+        string.IsNullOrEmpty(col.HeaderText) && col.TitleContent is null ? "Sort" : null;
 
     // aria-sort per WAI-ARIA: the active column reports its direction, other sortable columns "none".
     string AriaSortFor(Column<TItem> col) =>
@@ -353,16 +414,22 @@
             _lastDataSource = DataSource;
 
             // Drop selected rows that no longer exist in the new data, so an uncontrolled table
-            // doesn't keep ghost references and emit them in the next SelectedItemsChanged payload.
-            // (Controlled mode re-syncs from SelectedItems below, so only prune when uncontrolled.)
-            if (Selectable && SelectedItems is null && _selected.Count > 0)
+            // doesn't keep ghost references and emit them in the next SelectedItemsChanged payload
+            // (controlled mode re-syncs from SelectedItems below, so only prune when uncontrolled) —
+            // and forget expansion state for departed rows the same way.
+            var pruneSelection = Selectable && SelectedItems is null && _selected.Count > 0;
+            if (pruneSelection || _expanded.Count > 0)
             {
                 var present = new HashSet<object>(_items.Select(KeyFor));
-                foreach (var gone in _selected.Keys.Where(k => !present.Contains(k)).ToList())
-                    _selected.Remove(gone);
-                // No RecomputeSelectionFlags here: this branch just made _items (and via ApplySort
-                // below, _sorted) a fresh reference, so the RebuildPageItems at the end of
-                // OnParametersSet cannot skip and recomputes the flags against the new page.
+                if (pruneSelection)
+                {
+                    foreach (var gone in _selected.Keys.Where(k => !present.Contains(k)).ToList())
+                        _selected.Remove(gone);
+                    // No RecomputeSelectionFlags here: this branch just made _items (and via ApplySort
+                    // below, _sorted) a fresh reference, so the RebuildPageItems at the end of
+                    // OnParametersSet cannot skip and recomputes the flags against the new page.
+                }
+                _expanded.RemoveWhere(k => !present.Contains(k));
             }
 
             // Re-derive the sorted view from the new data (the column reference is stable, so the

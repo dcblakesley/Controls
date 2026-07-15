@@ -12,6 +12,11 @@ public class Column<TItem> : ComponentBase, IDisposable
 
     [Parameter] public string? Title { get; set; }
 
+    /// <summary>Optional header template rendered instead of <see cref="Title"/> — e.g. a title
+    /// with a trailing info-tooltip icon. On a sortable column, keep <see cref="Title"/> set too:
+    /// screen readers name the sort button from it when the template carries no text.</summary>
+    [Parameter] public RenderFragment? TitleContent { get; set; }
+
     /// <summary>Cell template; receives the row item as context.</summary>
     [Parameter] public RenderFragment<TItem>? ChildContent { get; set; }
 
@@ -29,6 +34,10 @@ public class Column<TItem> : ComponentBase, IDisposable
     protected override void OnParametersSet() => Table?.Register(this);
 
     public virtual string? HeaderText => Title;
+
+    /// <summary>The header content the table renders: <see cref="TitleContent"/> when supplied,
+    /// otherwise the plain <see cref="HeaderText"/>.</summary>
+    public RenderFragment HeaderFor() => TitleContent ?? (b => b.AddContent(0, HeaderText));
 
     /// <summary>Whether the table should render a sort control on this column's header.</summary>
     public virtual bool CanSort => SortBy is not null;

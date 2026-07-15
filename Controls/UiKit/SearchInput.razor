@@ -1,0 +1,35 @@
+@namespace Controls
+
+<div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+     class="wss-search @(Disabled ? "wss-search-disabled" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+     style="@AttributeSplat.MergeStyle(WidthStyle, AdditionalAttributes)">
+
+    @if (AddonContent is not null || !string.IsNullOrEmpty(AddonLabel))
+    {
+        <span class="wss-search-addon" id="@(Id is null ? null : $"{Id}-addon")">
+            @if (AddonContent is not null)
+            {
+                @AddonContent
+            }
+            else
+            {
+                @AddonLabel
+            }
+        </span>
+    }
+
+    <input class="wss-search-input"
+           id="@Id"
+           data-test-id="@Id"
+           type="text"
+           autocomplete="off"
+           placeholder="@Placeholder"
+           disabled="@Disabled"
+           aria-label="@(InputLabel ?? AddonLabel)"
+           value="@Value"
+           @oninput="OnInputAsync"
+           @onkeydown="OnKeyDownAsync" />
+
+    <button type="button" class="wss-search-btn" aria-label="@SearchButtonLabel"
+            disabled="@Disabled" @onclick="RaiseSearchAsync">@SearchIcon</button>
+</div>

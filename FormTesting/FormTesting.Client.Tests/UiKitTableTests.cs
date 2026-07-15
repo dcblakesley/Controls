@@ -615,4 +615,108 @@ public class UiKitTableTests : TestContext
         Assert.Contains("wss-table-root", root.ClassList); // merged, not replaced
         Assert.Equal("orders", root.GetAttribute("data-testid"));
     }
+
+    // ----- Expandable rows (RowDetail) + header templates (TitleContent) -----
+
+    IRenderedComponent<Table<Person>> RenderExpandable(List<Person>? data = null) =>
+        RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data ?? Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+    [Fact]
+    public void RowDetail_adds_an_expand_column_and_toggles_the_detail_row()
+    {
+        var cut = RenderExpandable();
+
+        // A leading expand header cell plus one chevron button per row; nothing expanded yet.
+        Assert.Equal(2, cut.FindAll("thead .wss-table-cell").Count); // expand + Name
+        Assert.Equal(2, cut.FindAll("tbody .wss-table-expand-btn").Count);
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+
+        var btn = cut.FindAll("tbody .wss-table-expand-btn")[0];
+        Assert.Equal("false", btn.GetAttribute("aria-expanded"));
+        btn.Click();
+
+        var detail = cut.Find(".wss-table-expanded-row .wss-table-expanded-cell");
+        Assert.Contains("Detail for Alice", detail.TextContent);
+        Assert.Equal("2", detail.GetAttribute("colspan")); // expand column + Name
+        Assert.Equal("true", cut.FindAll("tbody .wss-table-expand-btn")[0].GetAttribute("aria-expanded"));
+
+        cut.FindAll("tbody .wss-table-expand-btn")[0].Click();
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+    }
+
+    [Fact]
+    public void Expansion_follows_row_identity_through_a_sort()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice, Bob
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        cut.FindAll("tbody .wss-table-expand-btn")[0].Click(); // expand Alice (row 0)
+        cut.Find(".wss-table-sort-trigger").Click();           // ascending by age -> Bob first
+
+        // Alice (30) is now row 1, and her detail row moved with her. (Only the Age column
+        // renders, so rows are identified by age.)
+        var rows = cut.FindAll("tbody tr");
+        Assert.Contains("25", rows[0].TextContent);
+        Assert.Contains("30", rows[1].TextContent);
+        Assert.Contains("Detail for Alice", rows[2].TextContent);
+        Assert.Single(cut.FindAll(".wss-table-expanded-row"));
+    }
+
+    [Fact]
+    public void Expansion_state_is_forgotten_for_rows_that_leave_the_data()
+    {
+        var cut = RenderExpandable();
+        cut.FindAll("tbody .wss-table-expand-btn")[0].Click(); // expand Alice
+        Assert.Single(cut.FindAll(".wss-table-expanded-row"));
+
+        // Swap Alice out, then back in — she must come back collapsed, not zombie-expanded.
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, new List<Person> { new("Bob", 25) }));
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, Sample()));
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+    }
+
+    [Fact]
+    public void TitleContent_replaces_the_plain_header_text()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.TitleContent, b => b.AddMarkupContent(0, "Name <em class=\"hdr-extra\">(info)</em>"))
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Name))));
+
+        var header = cut.Find("thead .wss-table-cell");
+        Assert.NotNull(header.QuerySelector("em.hdr-extra"));
+        Assert.Contains("Name", header.TextContent);
+    }
+
+    [Fact]
+    public void TitleContent_renders_inside_a_sortable_header_and_the_content_names_the_button()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.TitleContent, b => b.AddContent(0, "Age"))
+                .Add(c => c.SortBy, (a, b) => a.Age.CompareTo(b.Age))
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Age.ToString()))));
+
+        var trigger = cut.Find(".wss-table-sort-trigger");
+        Assert.Contains("Age", trigger.TextContent); // visible content names the button...
+        Assert.Null(trigger.GetAttribute("aria-label")); // ...so no "Sort" fallback overrides it
+        trigger.Click(); // and sorting still works through the templated header
+        Assert.Contains("wss-table-sorter-active", cut.Find(".wss-table-sorter-up").ClassList);
+    }
 }

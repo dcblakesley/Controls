@@ -89,6 +89,35 @@
     </section>
 
     <section class="demo-section">
+        <h3>Table — expandable rows + header info tooltip</h3>
+        <p style="margin:0; color:#666;">
+            <code>RowDetail</code> adds a leading chevron column; clicking it reveals the template
+            as a full-width row (here a nested selectable child <code>Table</code>, the Vendor PO
+            pattern). <code>Column.TitleContent</code> replaces the plain title — here composing a
+            <code>LabelTooltip</code> info icon into the header.
+        </p>
+        <Table TItem="PoRow" DataSource="_poRows" RowKey="@(r => r.Number)">
+            <ChildContent>
+                <PropertyColumn TItem="PoRow" TProp="string" Title="PO #" Property="@(r => r.Number)" />
+                <Column TItem="PoRow" Title="ESD">
+                    <TitleContent>
+                        ESD <LabelTooltip Id="esd-info" Tooltip="Estimated ship date for the full PO." />
+                    </TitleContent>
+                    <ChildContent Context="r">@(r.Esd?.ToString("MM/dd/yyyy") ?? "--")</ChildContent>
+                </Column>
+                <PropertyColumn TItem="PoRow" TProp="string" Title="Tracking Number" Property="@(r => r.Tracking)" />
+            </ChildContent>
+            <RowDetail Context="r">
+                <Table TItem="SkuRow" DataSource="r.Skus" Selectable="true" UseStyledCheckbox="true">
+                    <PropertyColumn TItem="SkuRow" TProp="string" Title="SKU" Property="@(s => s.Sku)" />
+                    <PropertyColumn TItem="SkuRow" TProp="string" Title="Description" Property="@(s => s.Description)" />
+                    <PropertyColumn TItem="SkuRow" TProp="int" Title="Quantity" Property="@(s => s.Quantity)" />
+                </Table>
+            </RowDetail>
+        </Table>
+    </section>
+
+    <section class="demo-section">
         <h3>Table — server-side paging (compose pattern)</h3>
         <p style="margin:0; color:#666;">
             The Table renders only the current page (no built-in <code>PageSize</code>); a standalone
@@ -112,6 +141,29 @@
             <button class="wss-dialog-btn" @onclick="@(() => WasmMessageService.Success("Saved!"))">Message</button>
             <button class="wss-dialog-btn" @onclick="@(() => WasmNotificationService.Info("Notification", "With a description."))">Notification</button>
         </div>
+    </section>
+
+    <section class="demo-section">
+        <h3>Tabs + SearchInput (filter strip)</h3>
+        <p style="margin:0; color:#666;">
+            The Vendor PO Management subheader pattern: labeled pill search fields
+            (<code>SearchInput</code> — Enter or the button raises <code>OnSearch</code>) above an
+            underline <code>Tabs</code> strip whose tabs carry bordered count chips. These tabs are
+            a bare filter strip (no pane content); give a <code>Tab</code> child content to render
+            the active pane below the strip.
+        </p>
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <SearchInput @bind-Value="_poSearch" AddonLabel="POs" OnSearch="@(v => _lastSearch = $"POs: {v}")"
+                         Id="demo-search-pos" Width="240px" />
+            <SearchInput @bind-Value="_skuSearch" AddonLabel="SKUs" OnSearch="@(v => _lastSearch = $"SKUs: {v}")"
+                         Id="demo-search-skus" Width="240px" />
+        </div>
+        <Tabs @bind-ActiveKey="_activeTab" Id="demo-tabs" TablistLabel="Shipment filters">
+            <Tab Key="overdue" Title="Overdue" Count="12" />
+            <Tab Key="missing" Title="Missing Estimations" Count="12" />
+            <Tab Key="other" Title="Other Active" Count="5" />
+        </Tabs>
+        <p data-test-id="tabs-result">Active: @_activeTab · Last search: @_lastSearch</p>
     </section>
 
     <section class="demo-section">
@@ -252,6 +304,30 @@
     // Swapped-trigger demo: flips the Popover's ChildContent between a non-focusable <span> and a
     // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.
     bool _triggerBusy;
+
+    // --- Expandable-table demo (the Vendor PO Management pattern) ---
+    record SkuRow(string Sku, string Description, int Quantity);
+    record PoRow(string Number, DateTime? Esd, string Tracking, List<SkuRow> Skus);
+
+    static readonly List<PoRow> _poRows =
+    [
+        new("8999000", null, "--",
+        [
+            new("150005", "Stainless lid to reduce boil-overs", 1),
+            new("150006", "Heat-resistant, non-slip handle", 6),
+        ]),
+        new("8999002", new DateTime(2026, 1, 4), "L01892155231421",
+        [
+            new("150007", "Fine-mist bottle for even oil coating", 1),
+        ]),
+        new("8999005", new DateTime(2026, 1, 4), "--", []),
+    ];
+
+    // --- Tabs + SearchInput demo ---
+    string? _activeTab = "missing";
+    string? _poSearch;
+    string? _skuSearch;
+    string _lastSearch = "—";
 
     // --- Pill-select demo ---
     string _shipmentFilter = "all";

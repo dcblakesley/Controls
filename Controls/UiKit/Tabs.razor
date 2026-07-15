@@ -1,0 +1,48 @@
+@namespace Controls
+
+@* Reset the per-render tab buffer before the children below register into it (they do so in
+   document order during their OnParametersSet); the next pass promotes the buffer to the rendered
+   set — the same collect/promote mechanism as Table's columns, so a conditionally-rendered Tab
+   drops / reappears in its declared position. *@
+@{ StartCollectingTabs(); }
+<CascadingValue Value="this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+<div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+     class="wss-tabs @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+     style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
+
+    <div class="wss-tabs-nav" role="tablist" aria-label="@TablistLabel">
+        @foreach (var tab in _tabs)
+        {
+            var t = tab;
+            <button type="button"
+                    role="tab"
+                    id="@($"{BaseId}-tab-{t.Key}")"
+                    class="wss-tabs-tab @(IsActive(t) ? "wss-tabs-tab-active" : null)"
+                    aria-selected="@(IsActive(t) ? "true" : "false")"
+                    aria-controls="@(HasPanel && IsActive(t) ? $"{BaseId}-panel" : null)"
+                    tabindex="@(IsActive(t) ? 0 : -1)"
+                    disabled="@t.Disabled"
+                    @ref="t.ButtonRef"
+                    @onclick="@(() => SelectAsync(t))"
+                    @onkeydown="@(e => OnKeyDownAsync(e, t))">
+                @if (t.Count is not null)
+                {
+                    <span class="wss-tabs-count">@t.Count</span>
+                }
+                <span class="wss-tabs-label">@t.LabelFor()</span>
+            </button>
+        }
+    </div>
+
+    @if (HasPanel)
+    {
+        @* One panel, re-labelled per active tab — its content swaps with the selection. *@
+        <div class="wss-tabs-panel" role="tabpanel" id="@($"{BaseId}-panel")"
+             aria-labelledby="@($"{BaseId}-tab-{ActiveTab!.Key}")">
+            @ActiveTab!.ChildContent
+        </div>
+    }
+</div>

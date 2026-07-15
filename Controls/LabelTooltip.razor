@@ -28,7 +28,9 @@
 }
 @code {
 	[Parameter] public string? Id { get; set; }
-	[Parameter] public required List<Attribute> Attributes { get; set; }
+	// Optional: the Edit* controls pass their model attributes so [Tooltip] resolves; standalone
+	// usage (e.g. an info icon in a Table column header) just sets Tooltip.
+	[Parameter] public List<Attribute>? Attributes { get; set; }
 	[Parameter] public string? Tooltip { get; set; }
 
 	private bool isTooltipVisible = false;
@@ -48,7 +50,7 @@
 		_tooltipResolved = true;
 		_lastTooltipParam = Tooltip;
 		_lastAttributes = Attributes;
-		_displayTooltip = Tooltip ?? Attributes.Tooltip();
+		_displayTooltip = Tooltip ?? Attributes?.Tooltip();
 	}
 
 	string? DisplayTooltip() => _displayTooltip;
