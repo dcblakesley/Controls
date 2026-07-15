@@ -65,8 +65,11 @@ public class DateRangePickerE2ETests : IAsyncLifetime
             new PageWaitForFunctionOptions { Timeout = 15_000 });
     }
 
-    ILocator Field => _page.Locator(".wss-picker-input");
-    ILocator Dropdown => _page.Locator(".wss-picker-dropdown");
+    // Scoped to the range picker's wrapper — /uikit also hosts a single-date DatePicker demo,
+    // whose field/dropdown carry the same wss-picker classes.
+    ILocator Picker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range") });
+    ILocator Field => Picker.Locator(".wss-picker-input");
+    ILocator Dropdown => Picker.Locator(".wss-picker-dropdown");
 
     // Scrolls the picker to the center of the viewport before opening, so placePanel always has
     // room below (the anchor/baseline tests rely on the downward placement). behavior:'instant'

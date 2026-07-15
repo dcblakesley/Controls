@@ -64,12 +64,13 @@
     --wss-padding-h: 11px;
     --wss-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
 
-    /* DateRangePicker. Its Figma spec (AntD 5-style) uses 6px/4px radii and #e6e6e6 internal
-       splits — kept as picker-scoped tokens rather than bending the kit-wide --wss-radius (2px).
-       --wss-picker-range-bg is a pure override knob for the in-range tint, derived from
-       --wss-color-primary at the usage site (see the brand/interactive comment above). */
+    /* DatePicker / DateRangePicker. Their Figma spec (AntD 5-style) uses 8px/6px/4px radii and
+       #e6e6e6 internal splits — kept as picker-scoped tokens rather than bending the kit-wide
+       --wss-radius (2px). --wss-picker-range-bg is a pure override knob for the in-range tint,
+       derived from --wss-color-primary at the usage site (see the brand/interactive comment above). */
     --wss-picker-radius: 6px;
     --wss-picker-radius-sm: 4px;
+    --wss-picker-radius-lg: 8px;
     --wss-picker-split: #e6e6e6;
 
     /* Status (alerts / messages / notifications) */
@@ -1750,6 +1751,13 @@
     border-color: var(--wss-color-primary);
 }
 
+/* Single-date variant (DatePicker): its Figma spec adds the focusPrimary ring to the open/focused
+   field (the range field is border-only per its own mock). */
+.wss-picker-single.wss-picker-open .wss-picker-input,
+.wss-picker-single:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
+}
+
 .wss-picker-input-slot {
     position: relative;
     display: inline-flex;
@@ -1889,6 +1897,13 @@
     overflow: hidden;
     cursor: auto;
     outline: none;
+}
+
+/* Single-date variant: the one-month calendar card carries a hairline border and the larger
+   card radius per its Figma spec (the dual-month range panel is shadow-only). */
+.wss-picker-dropdown-single {
+    border: 1px solid var(--wss-picker-split);
+    border-radius: var(--wss-picker-radius-lg);
 }
 
 /* ----------------------------------------------------------------- Presets */

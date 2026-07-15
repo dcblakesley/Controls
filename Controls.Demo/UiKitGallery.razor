@@ -172,6 +172,24 @@
     </section>
 
     <section class="demo-section">
+        <h3>DatePicker (single date)</h3>
+        <p style="margin:0; color:#666;">
+            The single-date sibling of the range picker: one field with a calendar suffix, one
+            month panel with month/year quick-select headers. Picking a day (or typing a date and
+            pressing Enter) commits and closes. The initial value is pinned to Feb 2026 so the e2e
+            visual baseline is deterministic; <code>FirstDayOfWeek</code> is pinned for the same reason.
+        </p>
+        <DatePicker @bind-Value="_singleDate"
+                    Min="@(new DateTime(2017, 1, 1))"
+                    FirstDayOfWeek="DayOfWeek.Sunday"
+                    Id="demo-date"
+                    Width="300px" />
+        <p data-test-id="date-result">
+            Selected: @(_singleDate?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+    </section>
+
+    <section class="demo-section">
         <h3>Popover — swapped trigger child</h3>
         <p style="margin:0; color:#666;">
             The trigger child is re-created across renders (a common busy/idle swap). The popup ARIA
@@ -258,6 +276,9 @@
     // months must not depend on the test run's date.
     DateTime? _rangeStart = new DateTime(2025, 1, 15);
     DateTime? _rangeEnd = new DateTime(2025, 2, 3);
+
+    // --- DatePicker demo --- (pinned for the same baseline-determinism reason)
+    DateTime? _singleDate = new DateTime(2026, 2, 14);
 
     // The Sales-Report-style shortcuts. Resolved at click time (DateTime.Today), so they stay
     // correct however long the page lives.
