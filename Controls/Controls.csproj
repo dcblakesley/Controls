@@ -51,7 +51,7 @@
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>10.6.2 - DateRangePicker: a new AntDesign-style date-range picker (composite start → end field, optional preset sidebar, dual-month calendar with month/year quick-select headers). See the README changelog for the full list.</PackageReleaseNotes>
+    <PackageReleaseNotes>10.6.3 - New UI-kit controls and features per the Clark Connect Vendor PO Management spec: DatePicker (single-date field + one-month calendar), Tabs with count chips, SearchInput (addon chip + search button), Table expandable rows (RowDetail) + templated headers (Column.TitleContent), and the Select pill filter variant + Prefix icon slot. See the README changelog for the full list.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
