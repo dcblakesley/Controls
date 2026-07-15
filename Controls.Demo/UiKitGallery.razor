@@ -115,6 +115,44 @@
     </section>
 
     <section class="demo-section">
+        <h3>Select — pill filter variant</h3>
+        <p style="margin:0; color:#666;">
+            <code>Variant="SelectVariant.Pill"</code> turns the Select trigger into a rounded
+            filter button; <code>Prefix</code> supplies the leading icon. The section is themed via
+            a scoped <code>--wss-select-pill-color</code> / <code>--wss-color-bg-selected</code>
+            override — one knob recolors border, label, chevron, and focus ring.
+        </p>
+        <div class="pill-filters" style="display:flex; gap:12px; flex-wrap:wrap;">
+            <Select TValue="string" @bind-Value="_shipmentFilter" Options="_shipmentOptions"
+                    Variant="SelectVariant.Pill" ShowSearch="false" AllowClear="false"
+                    Id="demo-pill-select">
+                <Prefix>
+                    <svg width="1.25em" height="1.25em" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="1" y="3" width="15" height="13"></rect>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                    </svg>
+                </Prefix>
+            </Select>
+            <Select TValue="string" @bind-Value="_productFilter" Options="_productOptions"
+                    Variant="SelectVariant.Pill" ShowSearch="false" AllowClear="false"
+                    Placeholder="Products" Id="demo-pill-select-2">
+                <Prefix>
+                    <svg width="1.25em" height="1.25em" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="9" cy="21" r="1"></circle>
+                        <circle cx="20" cy="21" r="1"></circle>
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                    </svg>
+                </Prefix>
+            </Select>
+        </div>
+        <p data-test-id="pill-result">Shipments filter: @_shipmentFilter</p>
+    </section>
+
+    <section class="demo-section">
         <h3>DateRangePicker</h3>
         <p style="margin:0; color:#666;">
             Composite start → end field opening a preset sidebar + dual-month calendar with
@@ -179,6 +217,12 @@
         border-radius: 4px;
     }
     .gallery .demo-section > h3 { margin: 0; }
+    /* Pill-select demo theme (the Clark Connect filter look): one scoped token recolors the whole
+       trigger; the selected-row tint follows the same palette. */
+    .gallery .pill-filters {
+        --wss-select-pill-color: #1c4a3f;
+        --wss-color-bg-selected: #d9e8e2;
+    }
 </style>
 
 @code {
@@ -190,6 +234,24 @@
     // Swapped-trigger demo: flips the Popover's ChildContent between a non-focusable <span> and a
     // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.
     bool _triggerBusy;
+
+    // --- Pill-select demo ---
+    string _shipmentFilter = "all";
+    string? _productFilter;
+
+    static readonly List<SelectOption<string>> _shipmentOptions =
+    [
+        new("all", "All shipments"),
+        new("drop", "Drop shipments"),
+        new("warehouse", "Warehouse shipments"),
+    ];
+
+    static readonly List<SelectOption<string>> _productOptions =
+    [
+        new("all", "All products"),
+        new("in-stock", "In stock"),
+        new("special-order", "Special order"),
+    ];
 
     // --- DateRangePicker demo ---
     // Pinned initial range: the e2e visual baseline screenshots the open panel, so the displayed

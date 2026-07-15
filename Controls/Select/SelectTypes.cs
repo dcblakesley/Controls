@@ -21,6 +21,19 @@ public enum SelectSize
     Large
 }
 
+/// <summary>Trigger appearance of <see cref="Select{TValue}"/>.</summary>
+public enum SelectVariant
+{
+    /// <summary>The default bordered-box look (Ant Design outlined select).</summary>
+    Outlined,
+
+    /// <summary>A fully-rounded outlined pill that hugs its content — the filter-button trigger.
+    /// Usually paired with <see cref="Select{TValue}.Prefix"/> for a leading icon,
+    /// <c>ShowSearch="false"</c> and <c>AllowClear="false"</c>. Designed for
+    /// <see cref="SelectMode.Single"/> (multiple/tags render as a stadium-shaped tag box).</summary>
+    Pill
+}
+
 /// <summary>A single selectable option for <see cref="Select{TValue}"/> (and the Edit* select wrappers).</summary>
 /// <typeparam name="TValue">The type of the option's value.</typeparam>
 public class SelectOption<TValue>

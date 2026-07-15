@@ -32,6 +32,12 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <summary> Visual size (small / default / large).</summary>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
+    /// <inheritdoc cref="Select{TValue}.Variant"/>
+    [Parameter] public SelectVariant Variant { get; set; } = SelectVariant.Outlined;
+
+    /// <inheritdoc cref="Select{TValue}.Prefix"/>
+    [Parameter] public RenderFragment? Prefix { get; set; }
+
     /// <summary> Optional CSS width (e.g. "240px", "100%").</summary>
     [Parameter] public string? Width { get; set; }
 

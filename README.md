@@ -183,7 +183,7 @@ Reach for `EditDisplay` when you want the same visual treatment as a read-only `
 
 A set of dependency-free, AntDesign-style general UI widgets (ported from `Standalone.Controls`). Unlike the `Edit*` controls these are **not** form-bound — they're plain components. They use the `wss-` CSS prefix and `--wss-*` theme tokens shipped in `wss-controls.css` (link it as shown in Quick Start). No service registration is required.
 
-- **`Select<T>`** - The dropdown engine behind `EditSelectSearch` / `EditMultiSelect`; usable standalone (single / multiple / tags, search, virtualized)
+- **`Select<T>`** - The dropdown engine behind `EditSelectSearch` / `EditMultiSelect`; usable standalone (single / multiple / tags, search, virtualized). `Prefix` renders leading content (typically an icon) in the trigger; `Variant="SelectVariant.Pill"` restyles the trigger as a rounded filter button (see below)
 - **`Alert`** - Contextual message banner (success / info / warning / error, closable, description)
 - **`Skeleton`** - Loading placeholder with shimmer; announces `role="status"` / `aria-busy` with a visually-hidden `LoadingText` (default `"Loading"`) for screen readers
 - **`Popover`** - Click-triggered popover (4 placements)
@@ -196,6 +196,28 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **Toasts & notifications** - two paths with identical rendering: **scoped / Server-safe** (`IMessageService` / `INotificationService` via `builder.Services.AddWssControlsToasts()` + `<MessageContainer />` / `<NotificationContainer />`), or **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + `<WasmMessageContainer />` / `<WasmNotificationContainer />`). On Blazor Server use the scoped path — the static `Wasm*` services hold process-static state that would bleed across users.
 
 > `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
+
+#### Pill filter variant (`Select` / `EditSelectSearch`)
+
+`Variant="SelectVariant.Pill"` turns the Select trigger into a fully-rounded outlined filter button that hugs its content — the "All shipments ⌄" pattern. Pair it with `Prefix` for a leading icon, and usually `ShowSearch="false"` / `AllowClear="false"` so it reads as a button. The dropdown gets softer corners, content-driven width, and conveys the current value by the bold/tinted row alone (no checkmark). Behavior is unchanged: keyboard navigation, type-ahead, outside-click and Escape close.
+
+```razor
+<Select TValue="string" @bind-Value="_shipmentFilter" Options="_shipmentOptions"
+        Variant="SelectVariant.Pill" ShowSearch="false" AllowClear="false">
+    <Prefix><svg ... aria-hidden="true">...</svg></Prefix>
+</Select>
+```
+
+Theming: the whole trigger (label, border, chevron, focus ring) derives from one knob — override `--wss-select-pill-color` at any scope (`--wss-select-pill-border` / `--wss-select-pill-bg` are finer-grained overrides). The selected row tint is the kit-wide `--wss-color-bg-selected`:
+
+```css
+.my-filters {
+    --wss-select-pill-color: #1c4a3f;   /* label, border, chevron, focus ring */
+    --wss-color-bg-selected: #d9e8e2;   /* selected dropdown row */
+}
+```
+
+`Prefix` also works on the outlined variant and on `EditMultiSelect`; `EditSelectSearch` forwards both `Variant` and `Prefix`.
 
 ### Server-side paging (`Table`)
 
@@ -434,7 +456,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### 10.6.2
 
-**New feature**
+**New features**
+- `Select` pill variant + `Prefix` slot — `Variant="SelectVariant.Pill"` restyles the trigger as a fully-rounded outlined filter button that hugs its content ("All shipments ⌄"), and the new `Prefix` `RenderFragment` renders leading content (typically a decorative icon) inside the trigger in any mode/variant. The pill dropdown gains softer corners, content-driven width, roomier rows, and conveys selection by the bold/tinted row alone (checkmark suppressed); the trigger label/border/chevron/focus ring all derive from one override knob, `--wss-select-pill-color` (plus `--wss-select-pill-border` / `--wss-select-pill-bg`). `EditSelectSearch` forwards `Variant` + `Prefix`; `EditMultiSelect` forwards `Prefix`. Internal DOM note: the selector's value/search stack is now wrapped in a `wss-select-selection-wrap` span (so a prefix can sit beside it) — geometry and behavior are unchanged, but CSS/tests targeting direct-child structure inside `.wss-select-selector` may need the extra level. See [Pill filter variant](#pill-filter-variant-select--editselectsearch).
 - `DateRangePicker` — an AntDesign-style date-range picker: a composite start → end field that opens a dropdown with an optional preset sidebar and a dual-month calendar whose headers are native month/year quick-select dropdowns. Bind with `@bind-Start` / `@bind-End` (`DateTime?`, date-only); picking the second day of a range (or a preset) commits and closes, a backwards pair swaps, and typed input parses by `Format` then culture, committing on Enter/blur. `Presets` resolve their range at click time so relative shortcuts (e.g. "This Week") never go stale in a long-lived page. `Min`/`Max` disable out-of-range days and clamp presets; `FirstDayOfWeek` defaults to the current culture. Not a form control — no `InputBase`/validation wiring. JS interop (viewport flip/clamp placement, Enter-submit suppression, focus-out close) degrades gracefully: without JS the dropdown opens below the field at the CSS default placement and stays fully clickable. New `--wss-picker-*` tokens carry its radii and split-border color. See [UI Kit](#ui-kit-non-form-controls).
 
 ### 10.6.0

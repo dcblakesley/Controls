@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
@@ -298,5 +299,51 @@ public class SelectEngineTests : TestContext
         // the clear button is offered — previously HasSingleValue == "!= default" hid both.
         Assert.Contains("Zero", cut.Find(".wss-select-selection-item").TextContent);
         Assert.NotEmpty(cut.FindAll("button.wss-select-clear"));
+    }
+
+    [Fact]
+    public void Pill_variant_adds_the_pill_class_and_default_stays_outlined()
+    {
+        var outlined = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false))));
+        Assert.DoesNotContain("wss-select-pill", outlined.Find(".wss-select").ClassList);
+
+        var pill = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Variant, SelectVariant.Pill));
+        Assert.Contains("wss-select-pill", pill.Find(".wss-select").ClassList);
+    }
+
+    [Fact]
+    public void Prefix_renders_before_the_selection_wrap_and_is_absent_by_default()
+    {
+        var plain = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false))));
+        Assert.Empty(plain.FindAll(".wss-select-prefix"));
+
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Prefix, (RenderFragment)(b => b.AddContent(0, "ICON"))));
+
+        // The prefix is the selector's first child so it leads the flex row; the value/search
+        // stack sits beside it inside the selection-wrap.
+        var selectorChildren = cut.Find(".wss-select-selector").Children;
+        Assert.Equal("wss-select-prefix", selectorChildren[0].ClassName);
+        Assert.Equal("ICON", selectorChildren[0].TextContent);
+        Assert.Contains("wss-select-selection-wrap", selectorChildren[1].ClassList);
+    }
+
+    [Fact]
+    public void Prefix_renders_in_multiple_mode_too()
+    {
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Mode, SelectMode.Multiple)
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Values, new List<string> { "A" })
+            .Add(s => s.Prefix, (RenderFragment)(b => b.AddContent(0, "ICON"))));
+
+        Assert.Equal("ICON", cut.Find(".wss-select-prefix").TextContent);
+        // Tags render inside the wrap, so they never slide under the prefix column.
+        Assert.NotNull(cut.Find(".wss-select-selection-wrap .wss-select-selection-item"));
     }
 }

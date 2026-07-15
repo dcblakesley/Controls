@@ -14,99 +14,111 @@
 
     <div class="wss-select-selector">
 
+        @* Optional leading content (typically a decorative icon). The selection-wrap below is what
+           lets it sit in the flex row: the value/search stack keeps its own relative box, so the
+           absolutely-positioned search input spans the value area, never the prefix. *@
+        @if (Prefix is not null)
+        {
+            <span class="wss-select-prefix">@Prefix</span>
+        }
+
         @if (Mode == SelectMode.Single)
         {
-            <span class="wss-select-selection-search">
-                <input @ref="_inputRef"
-                       class="wss-select-selection-search-input"
-                       id="@Id"
-                       data-test-id="@Id"
-                       type="search"
-                       autocomplete="off"
-                       role="combobox"
-                       aria-haspopup="listbox"
-                       aria-autocomplete="list"
-                       aria-expanded=@(_open ? "true" : "false")
-                       aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
-                       aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
-                       aria-required="@AriaRequired"
-                       aria-invalid="@(AriaInvalid ? "true" : null)"
-                       aria-describedby="@AriaDescribedBy"
-                       readonly="@(!ShowSearch)"
-                       disabled="@Disabled"
-                       value="@_searchText"
-                       @oninput="OnInputAsync"
-                       @onkeydown="OnKeyDownAsync"
-                       @onkeydown:stopPropagation="@_open" />
-            </span>
+            <span class="wss-select-selection-wrap">
+                <span class="wss-select-selection-search">
+                    <input @ref="_inputRef"
+                           class="wss-select-selection-search-input"
+                           id="@Id"
+                           data-test-id="@Id"
+                           type="search"
+                           autocomplete="off"
+                           role="combobox"
+                           aria-haspopup="listbox"
+                           aria-autocomplete="list"
+                           aria-expanded=@(_open ? "true" : "false")
+                           aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
+                           aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
+                           aria-required="@AriaRequired"
+                           aria-invalid="@(AriaInvalid ? "true" : null)"
+                           aria-describedby="@AriaDescribedBy"
+                           readonly="@(!ShowSearch)"
+                           disabled="@Disabled"
+                           value="@_searchText"
+                           @oninput="OnInputAsync"
+                           @onkeydown="OnKeyDownAsync"
+                           @onkeydown:stopPropagation="@_open" />
+                </span>
 
-            @if (_showPlaceholder)
-            {
-                <span class="wss-select-selection-placeholder">@Placeholder</span>
-            }
-            else if (!(_open && !string.IsNullOrEmpty(_searchText)))
-            {
-                <span class="wss-select-selection-item" title="@SelectedLabel">@SelectedLabel</span>
-            }
+                @if (_showPlaceholder)
+                {
+                    <span class="wss-select-selection-placeholder">@Placeholder</span>
+                }
+                else if (!(_open && !string.IsNullOrEmpty(_searchText)))
+                {
+                    <span class="wss-select-selection-item" title="@SelectedLabel">@SelectedLabel</span>
+                }
+            </span>
         }
         else
         {
-            @* Multiple / Tags: render each selected value as a removable tag. *@
-            @foreach (var (option, index) in VisibleTags())
-            {
-                <span class="wss-select-selection-item">
-                    <span class="wss-select-selection-item-content">@option.Label</span>
-                    @* No remove button when disabled — RemoveAsync no-ops anyway, so rendering it
-                       leaves a focusable, active-looking control that does nothing (the clear
-                       button is already suppressed the same way via ShowClear). *@
-                    @if (!Disabled)
-                    {
-                        <button type="button"
-                                class="wss-select-selection-item-remove"
-                                aria-label="@(string.Format(CultureInfo.CurrentCulture, RemoveItemLabelFormat, option.Label))"
-                                @onclick="@(e => RemoveAsync(option.Value))"
-                                @onclick:stopPropagation>
-                            @CloseCross
-                        </button>
-                    }
-                </span>
-            }
+            <span class="wss-select-selection-wrap">
+                @* Multiple / Tags: render each selected value as a removable tag. *@
+                @foreach (var (option, index) in VisibleTags())
+                {
+                    <span class="wss-select-selection-item">
+                        <span class="wss-select-selection-item-content">@option.Label</span>
+                        @* No remove button when disabled — RemoveAsync no-ops anyway, so rendering it
+                           leaves a focusable, active-looking control that does nothing (the clear
+                           button is already suppressed the same way via ShowClear). *@
+                        @if (!Disabled)
+                        {
+                            <button type="button"
+                                    class="wss-select-selection-item-remove"
+                                    aria-label="@(string.Format(CultureInfo.CurrentCulture, RemoveItemLabelFormat, option.Label))"
+                                    @onclick="@(e => RemoveAsync(option.Value))"
+                                    @onclick:stopPropagation>
+                                @CloseCross
+                            </button>
+                        }
+                    </span>
+                }
 
-            @if (_hiddenTagCount > 0)
-            {
-                <span class="wss-select-selection-item wss-select-selection-item-rest">
-                    <span class="wss-select-selection-item-content">+ @_hiddenTagCount ...</span>
-                </span>
-            }
+                @if (_hiddenTagCount > 0)
+                {
+                    <span class="wss-select-selection-item wss-select-selection-item-rest">
+                        <span class="wss-select-selection-item-content">+ @_hiddenTagCount ...</span>
+                    </span>
+                }
 
-            <span class="wss-select-selection-search">
-                <input @ref="_inputRef"
-                       class="wss-select-selection-search-input"
-                       id="@Id"
-                       data-test-id="@Id"
-                       type="search"
-                       autocomplete="off"
-                       role="combobox"
-                       aria-haspopup="listbox"
-                       aria-autocomplete="list"
-                       aria-expanded=@(_open ? "true" : "false")
-                       aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
-                       aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
-                       aria-required="@AriaRequired"
-                       aria-invalid="@(AriaInvalid ? "true" : null)"
-                       aria-describedby="@AriaDescribedBy"
-                       readonly="@(!ShowSearch)"
-                       disabled="@Disabled"
-                       value="@_searchText"
-                       @oninput="OnInputAsync"
-                       @onkeydown="OnKeyDownAsync"
-                       @onkeydown:stopPropagation="@_open" />
+                <span class="wss-select-selection-search">
+                    <input @ref="_inputRef"
+                           class="wss-select-selection-search-input"
+                           id="@Id"
+                           data-test-id="@Id"
+                           type="search"
+                           autocomplete="off"
+                           role="combobox"
+                           aria-haspopup="listbox"
+                           aria-autocomplete="list"
+                           aria-expanded=@(_open ? "true" : "false")
+                           aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
+                           aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
+                           aria-required="@AriaRequired"
+                           aria-invalid="@(AriaInvalid ? "true" : null)"
+                           aria-describedby="@AriaDescribedBy"
+                           readonly="@(!ShowSearch)"
+                           disabled="@Disabled"
+                           value="@_searchText"
+                           @oninput="OnInputAsync"
+                           @onkeydown="OnKeyDownAsync"
+                           @onkeydown:stopPropagation="@_open" />
+                </span>
+
+                @if (_showPlaceholder)
+                {
+                    <span class="wss-select-selection-placeholder">@Placeholder</span>
+                }
             </span>
-
-            @if (_showPlaceholder)
-            {
-                <span class="wss-select-selection-placeholder">@Placeholder</span>
-            }
         }
     </div>
 

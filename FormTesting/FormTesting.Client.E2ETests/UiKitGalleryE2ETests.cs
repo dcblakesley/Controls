@@ -350,6 +350,46 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Pill_select_opens_picks_and_closes_on_outside_click()
+    {
+        await GotoAsync();
+        var pill = _page.Locator(".wss-select-pill").First;
+        var dropdown = _page.Locator(".wss-select-pill .wss-select-dropdown");
+
+        await pill.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+
+        // The current value renders as the bold/tinted row, with the checkmark glyph suppressed
+        // (pill dropdowns convey selection by the row treatment alone).
+        var selected = _page.Locator(".wss-select-item-option-selected");
+        await Expect(selected).ToContainTextAsync("All shipments");
+        await Expect(selected.Locator(".wss-select-item-option-state")).ToBeHiddenAsync();
+
+        // Picking an option commits the binding and closes the dropdown.
+        await _page.Locator(".wss-select-item-option", new() { HasTextString = "Drop shipments" }).ClickAsync();
+        await Expect(dropdown).ToBeHiddenAsync();
+        await Expect(_page.Locator("[data-test-id=pill-result]")).ToContainTextAsync("drop");
+
+        // Reopen; a click anywhere outside (the backdrop) closes without changing the value.
+        await pill.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await _page.Locator(".wss-select-backdrop").ClickAsync(new LocatorClickOptions
+        {
+            Position = new() { X = 5, Y = 5 }, // far corner — the center may be covered by the panel
+        });
+        await Expect(dropdown).ToBeHiddenAsync();
+        await Expect(_page.Locator("[data-test-id=pill-result]")).ToContainTextAsync("drop");
+    }
+
+    [Fact]
+    public async Task Pill_select_section_visual_baseline()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "pill filter variant" });
+        await BaselineAsync(section, "pill-select-section");
+    }
+
+    [Fact]
     public async Task Message_toast_appears_on_click()
     {
         await GotoAsync();

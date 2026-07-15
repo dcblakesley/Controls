@@ -99,6 +99,12 @@ public partial class Select<TValue> : IAsyncDisposable
     [Parameter] public bool ShowSearch { get; set; } = true;
     /// <summary>Control height/padding variant. Defaults to <see cref="SelectSize.Default"/>.</summary>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
+    /// <summary>Trigger appearance. <see cref="SelectVariant.Pill"/> renders the filter-button pill;
+    /// defaults to <see cref="SelectVariant.Outlined"/> (the classic bordered box).</summary>
+    [Parameter] public SelectVariant Variant { get; set; } = SelectVariant.Outlined;
+    /// <summary>Optional content rendered at the start of the selector (before the value/search),
+    /// typically a decorative icon (mark it <c>aria-hidden</c>). Works in every mode/variant.</summary>
+    [Parameter] public RenderFragment? Prefix { get; set; }
     /// <summary>Control width as a CSS length (e.g. "240px", "100%"). Null (default) keeps the stylesheet width.</summary>
     [Parameter] public string? Width { get; set; }
     /// <summary>Multiple/tags modes: maximum number of selected tags to display; the remainder collapses into a "+ n ..." summary tag. Null (default) shows all.</summary>
@@ -205,6 +211,7 @@ public partial class Select<TValue> : IAsyncDisposable
             if (ShowSearch) classes.Add("wss-select-show-search");
             if (Size == SelectSize.Small) classes.Add("wss-select-sm");
             if (Size == SelectSize.Large) classes.Add("wss-select-lg");
+            if (Variant == SelectVariant.Pill) classes.Add("wss-select-pill");
             if (!string.IsNullOrEmpty(CssClass)) classes.Add(CssClass);
             return string.Join(" ", classes);
         }

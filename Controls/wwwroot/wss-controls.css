@@ -218,6 +218,27 @@
     pointer-events: none;
 }
 
+/* Optional leading content (Prefix parameter), typically an icon sized via font-size/1em. */
+.wss-select-prefix {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    margin-inline-end: 8px;
+    color: inherit;
+}
+
+/* Wraps the value/search stack so a Prefix can sit beside it as a flex sibling. It spans the
+   selector's padding box (flex: auto + stretch), so without a prefix the absolutely-positioned
+   search keeps the exact geometry it had when it was inset from the selector itself. */
+.wss-select-selection-wrap {
+    position: relative;
+    display: flex;
+    flex: auto;
+    align-items: center;
+    align-self: stretch;
+    min-width: 0;
+}
+
 /* ----------------------------------------------------------- Single mode */
 
 .wss-select-single .wss-select-selector {
@@ -226,12 +247,11 @@
     padding: 0 var(--wss-padding-h);
 }
 
+/* Positioned within the selection-wrap (which itself spans the selector's padding box), so the
+   input overlays the value area only — a Prefix never sits under typed text. */
 .wss-select-single .wss-select-selection-search {
     position: absolute;
-    top: 0;
-    inset-inline-end: var(--wss-padding-h);
-    bottom: 0;
-    inset-inline-start: var(--wss-padding-h);
+    inset: 0;
 }
 
 .wss-select-single .wss-select-selection-search-input {
@@ -267,9 +287,14 @@
 /* ------------------------------------------------------ Multiple / Tags */
 
 .wss-select-multiple .wss-select-selector {
-    flex-wrap: wrap;
     min-height: var(--wss-control-height);
     padding: 1px 4px;
+}
+
+/* Tags wrap within the selection-wrap (not the selector), so a Prefix keeps its own column
+   instead of having later tag rows slide under it. */
+.wss-select-multiple .wss-select-selection-wrap {
+    flex-wrap: wrap;
 }
 
 .wss-select-multiple .wss-select-selection-item {
@@ -333,7 +358,9 @@
 .wss-select-multiple .wss-select-selection-placeholder {
     position: absolute;
     top: 50%;
-    inset-inline-start: var(--wss-padding-h);
+    /* Relative to the selection-wrap, which starts at the selector's 4px inline padding — the
+       subtraction keeps the placeholder at the same visual offset it had pre-wrap. */
+    inset-inline-start: calc(var(--wss-padding-h) - 4px);
     transform: translateY(-50%);
 }
 
@@ -525,6 +552,99 @@
 
 .wss-select-lg.wss-select-multiple .wss-select-selector {
     min-height: var(--wss-control-height-lg);
+}
+
+/* ----------------------------------------------------------- Pill variant */
+
+/* Filter-button trigger (Variant="SelectVariant.Pill"): a fully-rounded outlined pill that hugs
+   its content, usually paired with Prefix + ShowSearch="false" + AllowClear="false". Everything
+   derives from one knob: --wss-select-pill-color sets the text, and the border/arrow/focus ring
+   follow via currentColor — override it (any scope) to brand the whole trigger. This section sits
+   after the base/hover/size rules on purpose: several pill rules win ties by file order. */
+
+.wss-select-pill {
+    min-width: 0; /* hug the content — a pill is a button, not a form field column */
+    color: var(--wss-select-pill-color, var(--wss-color-text));
+}
+
+.wss-select-pill .wss-select-selector {
+    color: inherit;
+    background: var(--wss-select-pill-bg, var(--wss-color-bg));
+    border-color: var(--wss-select-pill-border, currentColor);
+    border-radius: 999px;
+}
+
+.wss-select-pill.wss-select-single .wss-select-selector {
+    padding: 0 16px;
+}
+
+.wss-select-pill.wss-select-multiple .wss-select-selector {
+    padding: 1px 12px;
+}
+
+/* Keep the pill's own border on hover — the box variant recolors toward the primary hover, which
+   would fight the currentColor-derived look. (Same specificity as the generic hover rule; this
+   one wins by file order.) */
+.wss-select-pill:not(.wss-select-disabled):hover .wss-select-selector {
+    border-color: var(--wss-select-pill-border, currentColor);
+}
+
+/* Focus/open ring derives from the pill color instead of the primary. */
+.wss-select-pill.wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
+.wss-select-pill:not(.wss-select-disabled) .wss-select-selector:focus-within {
+    border-color: var(--wss-select-pill-border, currentColor);
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, currentColor 20%, transparent));
+}
+
+/* Disabled pill drops back to the standard disabled palette (the pill base rules above would
+   otherwise win the file-order tie against the generic disabled rules and keep the brand color). */
+.wss-select-pill.wss-select-disabled {
+    color: var(--wss-color-text-disabled);
+}
+
+.wss-select-pill.wss-select-disabled .wss-select-selector {
+    background: var(--wss-color-bg-disabled);
+    border-color: var(--wss-color-border);
+}
+
+/* The pill reads as a button — keep its label and chevron in the pill color, and don't dim the
+   label to placeholder gray while the dropdown is open. (The clear button shares the arrow's
+   slot, so it moves with it.) */
+.wss-select-pill .wss-select-arrow,
+.wss-select-pill .wss-select-clear {
+    inset-inline-end: 16px;
+}
+
+.wss-select-pill .wss-select-arrow {
+    color: inherit;
+}
+
+.wss-select-pill.wss-select-single.wss-select-open .wss-select-selection-item {
+    color: inherit;
+}
+
+/* An unset pill still reads as a button label (the reference design shows the placeholder filter
+   name in the pill color, not form-field placeholder gray). */
+.wss-select-pill .wss-select-selection-placeholder {
+    color: inherit;
+}
+
+/* Pill dropdown: softer corners, content-driven width (the pill is usually narrower than its
+   options), roomier rows, and selection conveyed by the bold + tinted row alone (no checkmark).
+   Row height must stay var(--wss-control-height): the C# RowHeight constant feeds Virtualize. */
+.wss-select-pill .wss-select-dropdown {
+    width: max-content;
+    min-width: 100%;
+    max-width: 320px;
+    border-radius: 8px;
+}
+
+.wss-select-pill .wss-select-item {
+    padding-inline: 16px;
+}
+
+.wss-select-pill .wss-select-item-option-state {
+    display: none;
 }
 
 /* ============================================================================
