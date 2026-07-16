@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.6.3</AssemblyVersion>
+	  <AssemblyVersion>10.6.4</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -51,7 +51,7 @@
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>10.6.3 - New UI-kit controls and features per the Clark Connect Vendor PO Management spec: DatePicker (single-date field + one-month calendar), Tabs with count chips, SearchInput (addon chip + search button), Table expandable rows (RowDetail) + templated headers (Column.TitleContent), and the Select pill filter variant + Prefix icon slot. See the README changelog for the full list.</PackageReleaseNotes>
+    <PackageReleaseNotes>10.6.4 - New FormDefaults.AssetBase setting: fixes a 404 on the RCL's lazy wss-*.js module imports (Select, Modal, Drawer, Popover, Popconfirm, DatePicker, DateRangePicker, Table) for micro-frontends embedded into a host page that doesn't serve/proxy _content/WssBlazorControls/*. See the README changelog for details.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
