@@ -22,6 +22,7 @@ public partial class Select<TValue> : IAsyncDisposable
     const float RowHeight = 32;
 
     [Inject] IJSRuntime JS { get; set; } = default!;
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
 
     IJSObjectReference? _jsModule;
     ElementReference _inputRef;
@@ -745,7 +746,7 @@ public partial class Select<TValue> : IAsyncDisposable
         try
         {
             _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/WssBlazorControls/wss-select.js");
+                "import", JsModuleUrl.Resolve(FormDefaults, "wss-select.js"));
         }
         catch
         {

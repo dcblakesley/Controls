@@ -87,6 +87,8 @@
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
+
     readonly string _titleId = $"wss-modal-title-{Guid.NewGuid():N}";
     ElementReference _panelRef;
     IJSObjectReference? _module;
@@ -156,7 +158,7 @@
             var seq = ++_activationSeq;
             try
             {
-                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
                 if (_disposed)
                 {
                     // Disposed while the import itself was in flight — DisposeAsync already ran with a null

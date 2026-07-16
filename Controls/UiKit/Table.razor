@@ -578,7 +578,7 @@
         try
         {
             _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/WssBlazorControls/wss-table.js");
+                "import", JsModuleUrl.Resolve(FormDefaults, "wss-table.js"));
             if (_disposed)
             {
                 // Disposed while the import was in flight — DisposeAsync already ran with a null

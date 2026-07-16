@@ -72,6 +72,8 @@
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
+
     ElementReference _triggerRef;
     ElementReference _panelRef;
     ElementReference _okButtonRef;
@@ -142,7 +144,7 @@
         {
             try
             {
-                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
                 if (_disposed)
                 {
                     // Disposed while the import was in flight — DisposeAsync already ran with a null
@@ -161,7 +163,7 @@
         {
             try
             {
-                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/WssBlazorControls/wss-overlay.js");
+                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
                 if (_disposed)
                 {
                     try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }

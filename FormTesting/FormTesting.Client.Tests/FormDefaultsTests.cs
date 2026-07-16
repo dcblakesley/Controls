@@ -208,4 +208,34 @@ public class FormDefaultsTests : TestContext
         Assert.Empty(cut.FindAll(".edit-label-required-star"));
         Assert.Equal("Required", VisualMessage(cut).Trim());
     }
+
+    // AssetBase has no FormOptions counterpart (unlike the two settings above), so it's verified
+    // directly against EffectiveAssetBase rather than through a rendered field's visible output.
+    IRenderedComponent<FormDefaults> RenderNestedAssetBase(string? outer, string? inner) =>
+        RenderComponent<FormDefaults>(p => p
+            .Add(o => o.AssetBase, outer)
+            .Add(o => o.ChildContent, (RenderFragment)(b =>
+            {
+                b.OpenComponent<FormDefaults>(0);
+                b.AddAttribute(1, nameof(FormDefaults.AssetBase), inner);
+                b.CloseComponent();
+            })));
+
+    [Fact]
+    public void An_unset_inner_AssetBase_falls_through_to_the_outer_FormDefaults()
+    {
+        var cut = RenderNestedAssetBase(outer: "https://host.example.com", inner: null);
+
+        var inner = cut.FindComponent<FormDefaults>();
+        Assert.Equal("https://host.example.com", inner.Instance.EffectiveAssetBase);
+    }
+
+    [Fact]
+    public void An_inner_AssetBase_wins_over_the_outer_FormDefaults()
+    {
+        var cut = RenderNestedAssetBase(outer: "https://host.example.com", inner: "https://mfe.example.com");
+
+        var inner = cut.FindComponent<FormDefaults>();
+        Assert.Equal("https://mfe.example.com", inner.Instance.EffectiveAssetBase);
+    }
 }

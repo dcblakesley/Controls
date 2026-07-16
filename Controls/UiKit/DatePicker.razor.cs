@@ -18,6 +18,7 @@ namespace Controls;
 public partial class DatePicker : IAsyncDisposable
 {
     [Inject] IJSRuntime JS { get; set; } = default!;
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
 
     // ----- Parameters -------------------------------------------------------
 
@@ -318,7 +319,7 @@ public partial class DatePicker : IAsyncDisposable
         try
         {
             _module ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", "./_content/WssBlazorControls/wss-overlay.js");
+                "import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
         }
         catch
         {
