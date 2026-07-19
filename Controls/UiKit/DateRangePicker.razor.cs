@@ -78,6 +78,8 @@ public partial class DateRangePicker : IAsyncDisposable
 
     /// <summary>HTML id applied to the start input — wires a consumer label / test hook.</summary>
     [Parameter] public string? Id { get; set; }
+    /// <summary>HTML id applied to the end input — wires a consumer label / test hook.</summary>
+    [Parameter] public string? EndId { get; set; }
 
     // Localizable accessibility strings. Defaults are English, matching Select's convention.
 
@@ -99,6 +101,30 @@ public partial class DateRangePicker : IAsyncDisposable
     [Parameter] public string PrevMonthLabel { get; set; } = "Previous month";
     /// <summary>Accessible name of the next-month button (right panel only). Override to localize.</summary>
     [Parameter] public string NextMonthLabel { get; set; } = "Next month";
+
+    // Validation-state ARIA passthrough onto the actual inputs, for form wrappers (EditDateRange).
+    // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio, doubled because the two
+    // bound fields validate independently — AdditionalAttributes can't do this job because it lands
+    // on the outer wrapper div.
+
+    /// <summary>Value for the start input's <c>aria-required</c>; null (default) omits it.</summary>
+    [Parameter] public string? StartAriaRequired { get; set; }
+    /// <summary>Renders <c>aria-invalid="true"</c> on the start input when true.</summary>
+    [Parameter] public bool StartAriaInvalid { get; set; }
+    /// <summary>Value for the start input's <c>aria-describedby</c>; null (default) omits it.</summary>
+    [Parameter] public string? StartAriaDescribedBy { get; set; }
+    /// <summary>Value for the start input's <c>aria-errormessage</c>; null (default) omits it.
+    /// Pair with <see cref="StartAriaInvalid"/>.</summary>
+    [Parameter] public string? StartAriaErrorMessage { get; set; }
+    /// <summary>Value for the end input's <c>aria-required</c>; null (default) omits it.</summary>
+    [Parameter] public string? EndAriaRequired { get; set; }
+    /// <summary>Renders <c>aria-invalid="true"</c> on the end input when true.</summary>
+    [Parameter] public bool EndAriaInvalid { get; set; }
+    /// <summary>Value for the end input's <c>aria-describedby</c>; null (default) omits it.</summary>
+    [Parameter] public string? EndAriaDescribedBy { get; set; }
+    /// <summary>Value for the end input's <c>aria-errormessage</c>; null (default) omits it.
+    /// Pair with <see cref="EndAriaInvalid"/>.</summary>
+    [Parameter] public string? EndAriaErrorMessage { get; set; }
 
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),

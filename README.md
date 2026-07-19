@@ -133,6 +133,8 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 - **`EditTextArea`** - Multi-line text input
 - **`EditNumber`** - Numeric input with validation
 - **`EditDate`** - Date picker component
+- **`EditDatePicker`** - Form-bound calendar-dropdown date field (the UI-kit `DatePicker` with full `EditForm` validation)
+- **`EditDateRange`** - Form-bound date-range field (`@bind-Start`/`@bind-End`, per-field validation, backed by `DateRangePicker`)
 - **`EditBool`** - Checkbox for boolean values
 - **`EditBoolNullRadio`** - Three-state radio for nullable booleans
 - **`EditFile`** - Multi-file upload bound to a `List<IBrowserFile>` (drag-and-drop + click-to-browse, extension filtering, per-file size cap, aggregate size cap, optional max count)
@@ -482,6 +484,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ### Unreleased
 
 **New features**
+- `EditDatePicker` / `EditDateRange` — form-bound versions of the UI-kit calendar pickers. `EditDatePicker` binds a `DateTime?` via `@bind-Value` (an `InputBase`-derived scalar control, same contract as every other `Edit*`); `EditDateRange` binds two model properties via `@bind-Start` / `@bind-End`, registers both fields with the form, and validates each independently with its own message. Both render the standard label/required-star/validation scaffolding around the calendar dropdown, support read-only mode via `DateFormat`, and forward the pickers' parameter surface (`Min`/`Max`, `Format`, `Presets`, placeholders, accessible-name params). To support them, `DatePicker`/`DateRangePicker` gained validation-state ARIA passthrough onto their actual inputs (`AriaRequired`/`AriaInvalid`/`AriaDescribedBy`/`AriaErrorMessage`, doubled as `StartAria*`/`EndAria*` on the range picker — the same forwarding shape as `Select`'s trio) and the range picker gained `EndId` (an id for its end input). Use `EditDate` when the browser-native date input is fine; use these when the form wants the AntD-style calendar UX.
 - `DatePicker` / `DateRangePicker` calendar round-out: a weekday header row above each day grid (culture-abbreviated names, ordered by `FirstDayOfWeek`); prev/next month buttons flanking the month/year selects (`PrevMonthLabel` / `NextMonthLabel` localize their accessible names; they disable at the `Min`/`Max` view bounds, and `DateRangePicker` places prev on the left panel and next on the right); roving-tabindex keyboard navigation over the day grid — Arrow keys move by day/week, Home/End jump to the focused week's ends, PageUp/PageDown step a month, and the view follows focus across month edges (page-scroll suppression comes from a new lazily-imported `wss-picker.js`, gracefully absent without JS); `DateRangePicker` tints the prospective span on hover while the second day is being picked (override via `--wss-picker-preview-bg`). A stale `Field="..."` attribute on either picker now fails the build (the same inert `[Obsolete]` guard as the form controls).
 
 **Bug fixes**

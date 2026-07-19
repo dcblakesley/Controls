@@ -85,6 +85,20 @@ public partial class DatePicker : IAsyncDisposable
     /// <summary>Accessible name of the next-month button. Override to localize.</summary>
     [Parameter] public string NextMonthLabel { get; set; } = "Next month";
 
+    // Validation-state ARIA passthrough onto the actual <input>, for form wrappers (EditDatePicker).
+    // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio (which EditSelectSearch
+    // forwards) — AdditionalAttributes can't do this job because it lands on the outer wrapper div.
+
+    /// <summary>Value for the input's <c>aria-required</c>; null (default) omits the attribute.</summary>
+    [Parameter] public string? AriaRequired { get; set; }
+    /// <summary>Renders <c>aria-invalid="true"</c> on the input when true.</summary>
+    [Parameter] public bool AriaInvalid { get; set; }
+    /// <summary>Value for the input's <c>aria-describedby</c>; null (default) omits the attribute.</summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+    /// <summary>Value for the input's <c>aria-errormessage</c>; null (default) omits the attribute.
+    /// Pair with <see cref="AriaInvalid"/>.</summary>
+    [Parameter] public string? AriaErrorMessage { get; set; }
+
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the root wrapper (<c>.wss-picker</c>) — never the dropdown panel, whose inline

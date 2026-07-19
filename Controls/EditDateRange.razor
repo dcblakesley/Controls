@@ -1,0 +1,58 @@
+@namespace Controls
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <FormLabel Id=@_id FieldIdentifier=@_startFieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+
+        @if (ShowEditor)
+        {
+            <DateRangePicker Start="Start"
+                             StartChanged="OnStartChanged"
+                             End="End"
+                             EndChanged="OnEndChanged"
+                             Id="@_id"
+                             EndId="@_endId"
+                             Presets="Presets"
+                             Min="@Min"
+                             Max="@Max"
+                             Format="@Format"
+                             StartPlaceholder="@StartPlaceholder"
+                             EndPlaceholder="@EndPlaceholder"
+                             AllowClear="@AllowClear"
+                             Disabled="@IsDisabled"
+                             Width="@Width"
+                             FirstDayOfWeek="@FirstDayOfWeek"
+                             StartInputLabel="@EffectiveStartInputLabel"
+                             EndInputLabel="@EndInputLabel"
+                             DialogLabel="@DialogLabel"
+                             MonthSelectLabel="@MonthSelectLabel"
+                             YearSelectLabel="@YearSelectLabel"
+                             ClearLabel="@ClearLabel"
+                             PresetsLabel="@PresetsLabel"
+                             PrevMonthLabel="@PrevMonthLabel"
+                             NextMonthLabel="@NextMonthLabel"
+                             StartAriaRequired="@_isRequired"
+                             StartAriaInvalid="@IsStartInvalid"
+                             StartAriaDescribedBy="@_describedBy"
+                             StartAriaErrorMessage="@(IsStartInvalid ? _errorMsgId : null)"
+                             EndAriaRequired="@_endIsRequired"
+                             EndAriaInvalid="@IsEndInvalid"
+                             EndAriaDescribedBy="@_endDescribedBy"
+                             EndAriaErrorMessage="@(IsEndInvalid ? _endErrorMsgId : null)"
+                             @attributes="PickerAttributes" />
+        }
+        else
+        {
+            <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel Text=@GetDisplayValue() />
+        }
+
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_startFieldIdentifier Attributes=_attributes Label=@Label />
+        <FieldValidationDisplay Id=@_endId FieldIdentifier=_endFieldIdentifier Attributes=_endAttributes Label=@EndLabel />
+
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@GetDisplayValue()</div>
+        }
+    </div>
+}

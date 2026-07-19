@@ -1,0 +1,45 @@
+@inherits EditControlBase<DateTime?>
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+
+        @if (ShowEditor)
+        {
+            <DatePicker Value="CurrentValue"
+                        ValueChanged="OnValueChanged"
+                        Id="@_id"
+                        Min="@Min"
+                        Max="@Max"
+                        Format="@Format"
+                        Placeholder="@Placeholder"
+                        AllowClear="@AllowClear"
+                        Disabled="@IsDisabled"
+                        Width="@Width"
+                        FirstDayOfWeek="@FirstDayOfWeek"
+                        InputLabel="@EffectiveInputLabel"
+                        DialogLabel="@DialogLabel"
+                        MonthSelectLabel="@MonthSelectLabel"
+                        YearSelectLabel="@YearSelectLabel"
+                        ClearLabel="@ClearLabel"
+                        PrevMonthLabel="@PrevMonthLabel"
+                        NextMonthLabel="@NextMonthLabel"
+                        AriaRequired="@_isRequired"
+                        AriaInvalid="@IsInvalid"
+                        AriaDescribedBy="@_describedBy"
+                        AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)"
+                        @attributes="PickerAttributes" />
+        }
+        else
+        {
+            <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@CssClass Text=@GetDisplayValue() />
+        }
+
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@CurrentValueAsString</div>
+        }
+    </div>
+}
