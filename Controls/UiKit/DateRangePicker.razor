@@ -86,37 +86,75 @@
                     var (fromYear, toYear) = YearRange(month.Year);
                     <div class="wss-picker-month">
                         <div class="wss-picker-month-header">
-                            <span class="wss-picker-select">
-                                <select aria-label="@MonthSelectLabel" value="@month.Month"
-                                        @onchange="@(e => OnMonthSelectChanged(panel, e))">
-                                    @for (var m = 1; m <= 12; m++)
-                                    {
-                                        <option value="@m" selected="@(m == month.Month)">@MonthName(m)</option>
-                                    }
-                                </select>
-                                @DownIcon
-                            </span>
-                            <span class="wss-picker-select">
-                                <select aria-label="@YearSelectLabel" value="@month.Year"
-                                        @onchange="@(e => OnYearSelectChanged(panel, e))">
-                                    @for (var y = fromYear; y <= toYear; y++)
-                                    {
-                                        <option value="@y" selected="@(y == month.Year)">@y.ToString(CultureInfo.CurrentCulture)</option>
-                                    }
-                                </select>
-                                @DownIcon
-                            </span>
+                            @if (panel == 0)
+                            {
+                                <button type="button" class="wss-picker-nav" aria-label="@PrevMonthLabel"
+                                        disabled="@PrevMonthDisabled" @onclick="PrevMonth">@PrevIcon</button>
+                            }
+                            else
+                            {
+                                @* Invisible stand-in for the nav button this panel doesn't render (prev lives on
+                                   the left panel, next on the right), so every header keeps three flex children
+                                   and space-between centers the selects instead of shoving them at the divider. *@
+                                <span class="wss-picker-nav wss-picker-nav-placeholder" aria-hidden="true"></span>
+                            }
+                            <div class="wss-picker-month-selects">
+                                <span class="wss-picker-select">
+                                    <select aria-label="@MonthSelectLabel" value="@month.Month"
+                                            @onchange="@(e => OnMonthSelectChanged(panel, e))">
+                                        @for (var m = 1; m <= 12; m++)
+                                        {
+                                            <option value="@m" selected="@(m == month.Month)">@MonthName(m)</option>
+                                        }
+                                    </select>
+                                    @DownIcon
+                                </span>
+                                <span class="wss-picker-select">
+                                    <select aria-label="@YearSelectLabel" value="@month.Year"
+                                            @onchange="@(e => OnYearSelectChanged(panel, e))">
+                                        @for (var y = fromYear; y <= toYear; y++)
+                                        {
+                                            <option value="@y" selected="@(y == month.Year)">@y.ToString(CultureInfo.CurrentCulture)</option>
+                                        }
+                                    </select>
+                                    @DownIcon
+                                </span>
+                            </div>
+                            @if (panel == 1)
+                            {
+                                <button type="button" class="wss-picker-nav" aria-label="@NextMonthLabel"
+                                        disabled="@NextMonthDisabled" @onclick="NextMonth">@NextIcon</button>
+                            }
+                            else
+                            {
+                                <span class="wss-picker-nav wss-picker-nav-placeholder" aria-hidden="true"></span>
+                            }
                         </div>
-                        <div class="wss-picker-grid">
+                        <div class="wss-picker-week-header" aria-hidden="true">
+                            @foreach (var name in WeekdayHeaders)
+                            {
+                                <div class="wss-picker-week-day">@name</div>
+                            }
+                        </div>
+                        @* The pointer handlers only exist while a range pick is in progress: wiring them
+                           unconditionally would re-render the component (a SignalR round trip per cell on
+                           Blazor Server) for every cell the idle pointer crosses. An EventCallback without
+                           a delegate is omitted from the render tree entirely. *@
+                        <div class="wss-picker-grid" @ref="_gridRefs[panel]"
+                             @onkeydown="OnGridKeyDown"
+                             @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
                             @foreach (var day in GridDays(month))
                             {
                                 var d = day;
                                 <div class="@CellClass(d)">
                                     <button type="button" class="@DayClass(d, month)"
                                             disabled="@IsDayDisabled(d)"
+                                            tabindex="@(IsFocusStop(d, month) ? "0" : "-1")"
+                                            data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                             aria-label="@d.ToString("D", CultureInfo.CurrentCulture)"
                                             aria-pressed="@(IsEndpoint(d) ? "true" : "false")"
-                                            @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+                                            @onclick="@(() => OnDayClickAsync(d))"
+                                            @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnDayPointerEnter(d)) : default)">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                                 </div>
                             }
                         </div>

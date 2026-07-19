@@ -66,8 +66,10 @@
 
     /* DatePicker / DateRangePicker. Their Figma spec (AntD 5-style) uses 8px/6px/4px radii and
        #e6e6e6 internal splits — kept as picker-scoped tokens rather than bending the kit-wide
-       --wss-radius (2px). --wss-picker-range-bg is a pure override knob for the in-range tint,
-       derived from --wss-color-primary at the usage site (see the brand/interactive comment above). */
+       --wss-radius (2px). --wss-picker-range-bg (committed range) and --wss-picker-preview-bg
+       (hover-range preview, DateRangePicker only) are pure override knobs for their respective
+       tints, both derived from --wss-color-primary at the usage site (see the brand/interactive
+       comment above). */
     --wss-picker-radius: 6px;
     --wss-picker-radius-sm: 4px;
     --wss-picker-radius-lg: 8px;
@@ -1582,6 +1584,28 @@
     border-top-color: var(--wss-color-primary);
 }
 
+/* When TitleContent supplies its own interactive content (e.g. a LabelTooltip's <button>), it can't
+   render inside the sort trigger (nested buttons are invalid HTML and the template's clicks would
+   bubble into ToggleSort) — split into a flex row instead: a clickable content area preserves
+   "click the header to sort", and the trigger shrinks to just the caret glyphs. */
+.wss-table-sort-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.wss-table-sort-content {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.wss-table-sort-trigger-icon {
+    width: auto;
+    flex: none;
+}
+
 /* Sizes (match AntD's table density steps) */
 .wss-table-middle .wss-table-cell {
     padding: 12px 8px;
@@ -1997,9 +2021,78 @@
 
 .wss-picker-month-header {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 8px;
     padding: 12px 8px;
     border-bottom: 1px solid var(--wss-picker-split);
+}
+
+/* Groups the month + year selects so `justify-content: space-between` on the header (which spaces
+   the prev/next nav buttons out to the two outer edges) doesn't also split the selects apart from
+   each other. Every header always has exactly three children — DateRangePicker panels render an
+   invisible .wss-picker-nav-placeholder in place of the nav button they omit — so space-between
+   reliably centers the selects between the two outer slots. */
+.wss-picker-month-selects {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Holds the omitted nav button's 24px slot on DateRangePicker panels (prev renders only on the
+   left panel, next only on the right) so the header keeps three flex children. */
+.wss-picker-nav-placeholder {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* Prev/next month buttons: a plain icon button (no border/fill, unlike the pagination buttons this
+   glyph is borrowed from) — closer to AntD's calendar nav than the bordered pager control. */
+.wss-picker-nav {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    color: var(--wss-color-text-secondary);
+    font-size: 12px;
+    background: none;
+    border: none;
+    border-radius: var(--wss-picker-radius-sm);
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.wss-picker-nav:hover:not(:disabled) {
+    color: var(--wss-color-text);
+}
+
+.wss-picker-nav:disabled {
+    color: var(--wss-color-text-disabled);
+    cursor: not-allowed;
+}
+
+/* Weekday header row: purely decorative (aria-hidden — the day buttons already carry full
+   "D"-format aria-labels), so it only needs to line up visually with the grid below it. Shares the
+   grid's 7-column template and horizontal cell padding so each abbreviation centers over its
+   column. */
+.wss-picker-week-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 0 4px;
+}
+
+.wss-picker-week-day {
+    display: flex;
+    justify-content: center;
+    padding: 3px 6px;
+    color: var(--wss-color-text-secondary);
+    font-size: var(--wss-font-size-sm);
+    line-height: 22px;
 }
 
 .wss-picker-select {
@@ -2067,6 +2160,28 @@
 }
 
 .wss-picker-cell-range-end::before {
+    inset-inline-end: 50%;
+}
+
+/* Hover-range preview (DateRangePicker only): while a pick is in progress, the inclusive span
+   between the pending start and the hovered day tints with a lighter shade of the committed-range
+   band above (5% primary vs. its 10%), so an in-progress drag reads as tentative rather than final. */
+.wss-picker-cell-preview::before,
+.wss-picker-cell-preview-start::before,
+.wss-picker-cell-preview-end::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    inset-inline: 0;
+    background: var(--wss-picker-preview-bg, color-mix(in srgb, var(--wss-color-primary) 5%, #fff));
+}
+
+.wss-picker-cell-preview-start::before {
+    inset-inline-start: 50%;
+}
+
+.wss-picker-cell-preview-end::before {
     inset-inline-end: 50%;
 }
 
@@ -2313,7 +2428,8 @@
    offset ring would overlap the neighboring cells' band. */
 .wss-picker-day:focus-visible,
 .wss-picker-preset:focus-visible,
-.wss-picker-select select:focus-visible {
+.wss-picker-select select:focus-visible,
+.wss-picker-nav:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 1px;
 }
@@ -2338,7 +2454,8 @@
     .wss-picker-input,
     .wss-picker-clear,
     .wss-picker-preset,
-    .wss-picker-day {
+    .wss-picker-day,
+    .wss-picker-nav {
         transition: none;
     }
 

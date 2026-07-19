@@ -161,6 +161,33 @@ public class DatePickerE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Arrow_keys_move_focus_between_days_without_scrolling_the_page()
+    {
+        await GotoAsync();
+        await OpenAsync();
+
+        // The demo pins Value=2026-02-14, which also carries the roving tabindex on open.
+        var start = Dropdown.Locator("[data-date='2026-02-14']");
+        await start.FocusAsync();
+        var scrollBefore = await _page.EvaluateAsync<double>("window.scrollY");
+
+        await _page.Keyboard.PressAsync("ArrowRight");
+        await Expect(Dropdown.Locator("[data-date='2026-02-15']")).ToBeFocusedAsync();
+
+        await _page.Keyboard.PressAsync("ArrowDown");
+        await Expect(Dropdown.Locator("[data-date='2026-02-22']")).ToBeFocusedAsync();
+
+        // Crosses a month boundary — the grid re-renders with new button instances, exercising the
+        // pending-focus-date handoff (an ElementReference can't survive that re-render).
+        await _page.Keyboard.PressAsync("PageDown");
+        await Expect(Dropdown.Locator("[data-date='2026-03-22']")).ToBeFocusedAsync();
+
+        // wss-picker.js suppresses the native scroll-on-arrow-key/PageDown behavior for day buttons.
+        var scrollAfter = await _page.EvaluateAsync<double>("window.scrollY");
+        Assert.Equal(scrollBefore, scrollAfter);
+    }
+
+    [Fact]
     public async Task Open_panel_visual_baseline()
     {
         await GotoAsync();

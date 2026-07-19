@@ -218,4 +218,118 @@ public class DatePickerTests : TestContext
         Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
         Assert.Contains("wss-picker-disabled", cut.Find(".wss-picker").ClassList);
     }
+
+    [Fact]
+    public void Year_select_options_are_clamped_to_the_datetime_range_and_selecting_the_max_does_not_throw()
+    {
+        // Unclamped, ±10 around 9998 would offer up to 10008 — outside DateTime's [1, 9999] years,
+        // and constructing `new DateTime(10008, ...)` throws (circuit-killing on Blazor Server).
+        var cut = RenderPicker(p => p.Add(c => c.Value, new DateTime(9998, 2, 14)));
+        Open(cut);
+
+        var yearSelect = cut.FindAll(".wss-picker-month-header select")[1];
+        var options = yearSelect.QuerySelectorAll("option");
+        Assert.Equal("9999", options.Last().GetAttribute("value"));
+
+        var ex = Record.Exception(() => yearSelect.Change("9999"));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void Weekday_header_row_matches_the_grids_first_day_of_week()
+    {
+        var sunday = RenderPicker(p => p.Add(c => c.Value, Feb14)); // fixture pins Sunday
+        Open(sunday);
+        var sundayNames = sunday.FindAll(".wss-picker-week-day").Select(d => d.TextContent).ToList();
+        Assert.Equal(new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" }, sundayNames);
+        Assert.Equal("true", sunday.Find(".wss-picker-week-header").GetAttribute("aria-hidden"));
+
+        var monday = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Monday)
+            .Add(c => c.Value, Feb14));
+        Open(monday);
+        Assert.Equal("Mo", monday.FindAll(".wss-picker-week-day")[0].TextContent);
+    }
+
+    [Fact]
+    public void Prev_and_next_month_buttons_step_the_view()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal("Previous month", buttons[0].GetAttribute("aria-label"));
+        Assert.Equal("Next month", buttons[1].GetAttribute("aria-label"));
+
+        buttons[0].Click(); // prev
+        Assert.Equal("1", cut.FindAll(".wss-picker-month-header select")[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+
+        cut.FindAll(".wss-picker-nav")[1].Click(); // next, back to Feb
+        Assert.Equal("2", cut.FindAll(".wss-picker-month-header select")[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Prev_button_disables_at_the_earliest_representable_month()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, new DateTime(1, 2, 1))); // ClampView's floor
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.True(buttons[0].HasAttribute("disabled"));
+        Assert.False(buttons[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void The_selected_day_carries_the_roving_tabindex_by_default()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex"));
+        Assert.Equal("-1", Day(cut, 15).GetAttribute("tabindex"));
+        Assert.Equal("2026-02-14", Day(cut, 14).GetAttribute("data-date"));
+    }
+
+    [Fact]
+    public void Arrow_keys_move_the_roving_tabindex_day()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        Assert.Equal("0", Day(cut, 15).GetAttribute("tabindex"));
+        Assert.Equal("-1", Day(cut, 14).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        Assert.Equal("0", Day(cut, 22).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void PageDown_steps_a_month_and_moves_the_displayed_view()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" });
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("3", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Home_and_end_move_to_the_start_and_end_of_the_focused_week()
+    {
+        // Feb 14 2026 is a Saturday; a Sunday-start week runs Feb 8 - Feb 14.
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "Home" });
+        Assert.Equal("0", Day(cut, 8).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "End" });
+        Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex"));
+    }
 }

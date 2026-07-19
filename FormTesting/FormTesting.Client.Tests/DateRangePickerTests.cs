@@ -408,6 +408,186 @@ public class DateRangePickerTests : TestContext
     }
 
     [Fact]
+    public void A_typed_end_commit_mid_pick_finalizes_state_so_the_display_matches_the_bound_values()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+
+        Open(cut);
+        Day(cut, 0, 10).Click(); // pending pick: Jan 10 — _selecting is now true
+
+        var endInput = cut.Find(".wss-picker-input-end");
+        endInput.Input("02/20/2025");
+        endInput.Change("02/20/2025");
+
+        // The typed commit finalizes the field: the start side reverts to displaying the bound
+        // value (Jan 15, untouched by the discarded Jan 10 pending pick) instead of contradicting it.
+        Assert.Equal("01/15/2025", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+        Assert.Equal(new DateTime(2025, 2, 20), cut.Instance.End);
+
+        // A later day click starts a brand-new pick rather than resurrecting the discarded Jan 10 —
+        // before the fix this would have been read as the SECOND click of the old pick (committing
+        // Jan 5 - Jan 10 and closing).
+        Day(cut, 0, 5).Click();
+        Assert.Equal("01/05/2025", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Preset_entirely_past_max_clamps_to_max_max()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Max, new DateTime(2025, 1, 31))
+            .Add(c => c.Presets, new[]
+            {
+                new DateRangePreset("Future", new DateTime(2025, 3, 1), new DateTime(2025, 3, 15)),
+            })
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal(new DateTime(2025, 1, 31), start);
+        Assert.Equal(new DateTime(2025, 1, 31), end);
+    }
+
+    [Fact]
+    public void Preset_entirely_before_min_clamps_to_min_min()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Min, new DateTime(2025, 3, 1))
+            .Add(c => c.Presets, new[]
+            {
+                new DateRangePreset("Past", new DateTime(2025, 1, 1), new DateTime(2025, 1, 15)),
+            })
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal(new DateTime(2025, 3, 1), start);
+        Assert.Equal(new DateTime(2025, 3, 1), end);
+    }
+
+    [Fact]
+    public void Year_select_options_are_clamped_to_the_datetime_range_and_selecting_the_max_does_not_throw()
+    {
+        // Unclamped, ±10 around 9998 would offer up to 10008 — outside DateTime's [1, 9999] years,
+        // and constructing `new DateTime(10008, ...)` throws (circuit-killing on Blazor Server).
+        var cut = RenderPicker(p => p.Add(c => c.Start, new DateTime(9998, 2, 14)));
+        Open(cut);
+
+        var yearSelect = cut.FindAll(".wss-picker-month")[0].QuerySelectorAll("select")[1];
+        var options = yearSelect.QuerySelectorAll("option");
+        Assert.Equal("9999", options.Last().GetAttribute("value"));
+
+        var ex = Record.Exception(() => yearSelect.Change("9999"));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void Weekday_header_row_matches_the_grids_first_day_of_week()
+    {
+        var sunday = RenderPicker(p => p.Add(c => c.Start, Jan15)); // fixture pins Sunday
+        Open(sunday);
+        var sundayNames = sunday.FindAll(".wss-picker-month")[0]
+            .QuerySelectorAll(".wss-picker-week-day").Select(d => d.TextContent).ToList();
+        Assert.Equal(new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" }, sundayNames);
+        Assert.Equal("true", sunday.FindAll(".wss-picker-week-header")[0].GetAttribute("aria-hidden"));
+
+        var monday = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Monday)
+            .Add(c => c.Start, Jan15));
+        Open(monday);
+        Assert.Equal("Mo", monday.FindAll(".wss-picker-week-day")[0].TextContent);
+    }
+
+    [Fact]
+    public void Prev_and_next_month_buttons_appear_only_on_the_outer_edges_and_step_the_view()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(cut);
+
+        var buttons = cut.FindAll("button.wss-picker-nav");
+        Assert.Equal(2, buttons.Count); // one prev (left panel), one next (right panel) — not four
+        Assert.Equal("Previous month", buttons[0].GetAttribute("aria-label"));
+        Assert.Equal("Next month", buttons[1].GetAttribute("aria-label"));
+
+        // Each panel renders an invisible stand-in for the nav button it omits, keeping the header
+        // at three flex children so space-between centers the selects instead of shoving them
+        // against the panel divider.
+        Assert.Equal(2, cut.FindAll("span.wss-picker-nav-placeholder").Count);
+
+        buttons[0].Click(); // prev: Jan/Feb 2025 -> Dec 2024/Jan 2025
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("12", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("2024", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Hovering_during_a_pick_tints_the_inclusive_span_and_clears_on_pointer_leave()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(cut);
+
+        Day(cut, 0, 10).Click(); // pending start = Jan 10
+        Day(cut, 0, 15).PointerEnter();
+
+        var previewSelector = ".wss-picker-cell-preview, .wss-picker-cell-preview-start, .wss-picker-cell-preview-end";
+        Assert.NotEmpty(cut.FindAll(".wss-picker-month")[0].QuerySelectorAll(previewSelector));
+
+        cut.Find(".wss-picker-grid").PointerLeave();
+        Assert.Empty(cut.FindAll(".wss-picker-month")[0].QuerySelectorAll(previewSelector));
+    }
+
+    [Fact]
+    public void The_start_endpoint_carries_the_roving_tabindex_by_default()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15).Add(c => c.End, Feb3));
+        Open(cut);
+
+        Assert.Equal("0", Day(cut, 0, 15).GetAttribute("tabindex"));
+        Assert.Equal("-1", Day(cut, 0, 16).GetAttribute("tabindex"));
+        Assert.Equal("2025-01-15", Day(cut, 0, 15).GetAttribute("data-date"));
+    }
+
+    [Fact]
+    public void Arrow_keys_move_the_roving_tabindex_day_without_moving_the_view_when_already_visible()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(cut);
+
+        // Jan 15 + 20 days lands on Feb 4 — already the right panel, so the view shouldn't move.
+        for (var i = 0; i < 20; i++)
+        {
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        }
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("1", selects[0].QuerySelector("option[selected]")!.GetAttribute("value")); // still Jan
+        Assert.Equal("2", selects[2].QuerySelector("option[selected]")!.GetAttribute("value")); // still Feb
+        Assert.Equal("0", Day(cut, 1, 4).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void PageDown_that_lands_outside_both_panels_moves_the_left_panel_to_that_month()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" }); // Jan15 -> Feb15 (already visible)
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" }); // Feb15 -> Mar15 (outside both — view moves)
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("3", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", Day(cut, 0, 15).GetAttribute("tabindex"));
+    }
+
+    [Fact]
     public void Consumer_class_style_and_data_attributes_land_on_the_wrapper()
     {
         var cut = RenderComponent<DateRangePicker>(p => p
