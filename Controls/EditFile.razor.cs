@@ -242,7 +242,9 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         var id = _pendingFocusId;
         _pendingFocusId = null;
         // Best-effort: no-op if the element is gone or JS is unavailable (prerender / tests) —
-        // FocusById swallows interop failures itself.
-        await JsInteropEc.FocusById(JS, id);
+        // FocusById swallows interop failures itself. Passing the cascaded FormDefaults lets it
+        // resolve a lazy re-import against the right origin if window.WssEditControls is missing
+        // (a cross-origin MFE whose host page never linked edit-controls.js as a <script> tag).
+        await JsInteropEc.FocusById(JS, id, FormDefaults);
     }
 }

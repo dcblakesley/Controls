@@ -1,0 +1,27 @@
+@using Controls
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+
+<EditForm Model="_model" OnInvalidSubmit="HandleInvalidSubmit">
+    <DataAnnotationsValidator />
+    <EditString @bind-Value="_model.Required" />
+    <button type="submit">Submit</button>
+</EditForm>
+
+@code {
+    // Descendant of JsInteropFallback's <FormDefaults>, so this is the real cascade path a lazy-JS
+    // consumer (e.g. EditFile) uses -- not a directly-constructed FormDefaults, which would need a
+    // BL0005 suppression (see JsModuleUrlTests' rationale) for no reason here.
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
+
+    [Inject] IJSRuntime JsRuntime { get; set; } = default!;
+
+    readonly Model _model = new();
+
+    Task HandleInvalidSubmit() => JsInteropEc.FocusFirstInvalidField(JsRuntime, FormDefaults);
+
+    class Model
+    {
+        [Required] public string Required { get; set; } = "";
+    }
+}

@@ -1,0 +1,21 @@
+@page "/js-interop-fallback"
+@using Controls
+
+<h1>JS Interop Fallback</h1>
+
+<FormDefaults AssetBase="@(string.IsNullOrEmpty(AssetBase) ? null : AssetBase)">
+    <JsInteropFallbackForm />
+</FormDefaults>
+
+@code {
+    // Test-only page (not part of the Controls.Demo gallery) for JsInteropEc's cross-origin-MFE
+    // fallback -- see JsInteropEc.FocusFirstInvalidField / InvokeBestEffortAsync. The e2e suite
+    // deletes window.WssEditControls to simulate a host page that never linked edit-controls.js via
+    // a classic <script> tag, submits the JsInteropFallbackForm below, and asserts the lazy
+    // re-import + retry still lands focus on the invalid field. The optional "assetBase" query
+    // parameter drives the "import 404s" case by pointing the re-import at an origin nothing serves,
+    // asserting the method still doesn't throw.
+    [SupplyParameterFromQuery(Name = "assetBase")]
+    [Parameter]
+    public string? AssetBase { get; set; }
+}
