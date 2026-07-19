@@ -164,12 +164,14 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 Wrap your app root (or each micro-frontend's root) in `FormDefaults` to set control defaults for every form underneath it:
 
 ```razor
-<FormDefaults IsRequiredStarHidden="true" ShowFieldNameInValidation="false">
+<FormDefaults IsRequiredStarHidden="true" ShowFieldNameInValidation="false" UseStyledCheckbox="true">
     <Router AppAssembly="@typeof(App).Assembly">...</Router>
 </FormDefaults>
 ```
 
 Resolution per setting (highest wins): the form's `FormOptions` instance value → the cascaded `FormDefaults` → the static `FormOptions.Default*` property. Prefer `FormDefaults` over the statics: the statics are process-wide, so on Blazor Server they're shared by every user/circuit, and when several MFEs share one runtime they're shared across MFEs. `FormDefaults` scopes to the render tree, which matches app/MFE/circuit boundaries. It's intended as set-once root configuration — the cascade is registered as fixed, so runtime changes to its parameters don't propagate.
+
+`UseStyledCheckbox` follows this same chain and additionally reaches the UI-kit `Table`'s row-selection checkboxes (which have no `FormOptions` of their own) — see [Custom-Styled Checkbox](#custom-styled-checkbox-border-radius).
 
 `FormDefaults` also carries `AssetBase` (`string?`), which has no `FormOptions` counterpart: an absolute URL prefixed onto the RCL's lazy `wss-*.js` module imports (see the UI Kit section below), for a micro-frontend whose host page doesn't serve/proxy `_content/WssBlazorControls/*`. Unset (the default) keeps today's relative import path.
 
@@ -390,7 +392,21 @@ No current browser (Chromium or Safari/WebKit) honors `border-radius` on a nativ
 <EditBool @bind-Value="model.AcceptedTerms" UseStyledCheckbox="true" />
 ```
 
-The real `<input>` stays in the DOM — focusable, keyboard-operable, full native semantics — but is visually hidden; a sibling element draws the box, checked fill, checkmark, and focus ring in CSS (`.edit-checkbox-box` in `edit-controls.css`), styleable like any other element. Defaults to `false`, so every existing `EditBool` renders exactly as before.
+The real `<input>` stays in the DOM — focusable, keyboard-operable, full native semantics — but is visually hidden; a sibling element draws the box, checked fill, checkmark, and focus ring in CSS (`.edit-checkbox-box` in `edit-controls.css`), styleable like any other element. Defaults to `null` (falls through to the app-wide switch below, ultimately `false`), so every existing `EditBool` renders exactly as before unless something in that chain turns it on.
+
+`EditCheckedStringList` and `EditCheckedEnumList` take the same `UseStyledCheckbox` (`bool?`) parameter and apply it to every option's checkbox; the UI-kit `Table` (see [UI Kit](#ui-kit-non-form-controls)) takes it too, applied to the header/row selection checkboxes including the indeterminate "mixed" glyph.
+
+#### Turning it on for a whole app or MFE
+
+Setting `UseStyledCheckbox="true"` on every control individually doesn't scale. Instead, set it once — either on the cascaded `FormOptions` for one form/section, or on [`FormDefaults`](#formdefaults) for everything under an app or micro-frontend root — and leave the per-control parameter unset everywhere:
+
+```razor
+<FormDefaults UseStyledCheckbox="true">
+    <Router AppAssembly="@typeof(App).Assembly">...</Router>
+</FormDefaults>
+```
+
+Resolution per control (first non-null wins): the control's own `UseStyledCheckbox` parameter → the cascaded `FormOptions.UseStyledCheckbox` → the nearest enclosing `FormDefaults.UseStyledCheckbox` → the process-wide `FormOptions.DefaultUseStyledCheckbox` static (default `false`). `Table` has no `FormOptions` of its own, so it resolves through `FormDefaults` then the static only.
 
 ## Styling and Customization
 
@@ -488,6 +504,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **New feature**
 - `DateRangePicker` — an AntDesign-style date-range picker: a composite start → end field that opens a dropdown with an optional preset sidebar and a dual-month calendar whose headers are native month/year quick-select dropdowns. Bind with `@bind-Start` / `@bind-End` (`DateTime?`, date-only); picking the second day of a range (or a preset) commits and closes, a backwards pair swaps, and typed input parses by `Format` then culture, committing on Enter/blur. `Presets` resolve their range at click time so relative shortcuts (e.g. "This Week") never go stale in a long-lived page. `Min`/`Max` disable out-of-range days and clamp presets; `FirstDayOfWeek` defaults to the current culture. Not a form control — no `InputBase`/validation wiring. JS interop (viewport flip/clamp placement, Enter-submit suppression, focus-out close) degrades gracefully: without JS the dropdown opens below the field at the CSS default placement and stays fully clickable. New `--wss-picker-*` tokens carry its radii and split-border color. See [UI Kit](#ui-kit-non-form-controls).
+- `UseStyledCheckbox` app/MFE-wide switch (shipped in this release but missed in the original changelog) — `FormOptions.UseStyledCheckbox` (`bool?`) and the render-tree-scoped `FormDefaults.UseStyledCheckbox` (`bool?`) resolve the same way as `IsRequiredStarHidden` / `ShowFieldNameInValidation`: instance → nearest enclosing `FormDefaults` → the process-wide `FormOptions.DefaultUseStyledCheckbox` static (default `false`). `EditBool.UseStyledCheckbox` (shipped 10.6.0) changed from `bool` to `bool?` so it participates in this chain instead of being per-control only — existing `UseStyledCheckbox="true"`/`"false"` markup is unaffected, only an unset control now inherits the app-wide default instead of always rendering the native checkbox. Two more controls gained the same opt-in: `EditCheckedStringList.UseStyledCheckbox` / `EditCheckedEnumList.UseStyledCheckbox` (`bool?`) apply the custom-drawn box to every option's checkbox, and the UI-kit `Table.UseStyledCheckbox` (`bool?`) applies it to the header/row selection checkboxes, including the indeterminate "mixed" glyph — `Table` has no `FormOptions` of its own, so it resolves through a cascaded `FormDefaults` then the static only. See [`FormDefaults`](#formdefaults) and [Custom-Styled Checkbox](#custom-styled-checkbox-border-radius).
+- Styled checkbox visual restyle (also shipped in this release): the checked glyph is now the exact antd check vector via a themeable CSS mask (was a generic rotated-border "L"), the unchecked border fallback moved from `#ccc` to `#d9d9d9` (antd `colorBorder`), the `Table` variant's box corner radius moved from 2px to 4px to match `EditBool`'s, and the indeterminate "mixed" state is now an unfilled box with a centered primary-colored square (was a filled box with a white dash) — also fixing a CSS comment bug (`/* ... edit-*/ ...`) that had been closing the `Table` box-wrapper rule early and letting the box escape its cell. The label row for `EditBool` and each `EditChecked*` option is now a flex row (`align-items: center`, 8px gap) instead of relying on inline whitespace. These restyles apply automatically to every consumer already using `UseStyledCheckbox="true"` since 10.6.0 — there is no separate opt-in for the new look.
 
 ### 10.6.0
 
@@ -533,7 +551,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### 10.4.0
 
-A library-wide hardening release: six adversarial review rounds (see `EVALUATION.md`) spanning correctness, accessibility, performance (measured), globalization/RTL, plus trimming/AOT support, touch support, and validation-stack (FluentValidation) support.
+A library-wide hardening release: six adversarial review rounds (documented across this release's commit history) spanning correctness, accessibility, performance (measured), globalization/RTL, plus trimming/AOT support, touch support, and validation-stack (FluentValidation) support.
 
 **Correctness**
 - `EditRadio.IsDisabled` actually disables its `InputRadio` children now (a nested `fieldset[disabled]` — `InputRadioGroup` renders no element, so the old attribute vanished). All three radio controls forward `ValueExpression` to their inner group so it notifies/styles the real model field. `EditRadio.Field` is now `required` like every sibling.
@@ -587,7 +605,7 @@ A library-wide hardening release: six adversarial review rounds (see `EVALUATION
 - Reflection sites were made trim-safe rather than suppressed wholesale: enum option builders use `Enum.GetValuesAsUnderlyingType` (AOT-safe, no `RequiresDynamicCode`); `PropertyColumn`'s comparability probe drops `MakeGenericType` (the one lost corner — `Nullable<T>` whose `T` implements *only* `IComparable<T>` — degrades to non-sortable, `SortBy` unaffected); the generic value-bearing controls annotate `T` with `[DynamicallyAccessedMembers(All)]` exactly like the framework's `InputNumber`/`InputSelect`; the two by-name lookups (validation value-type, enum field) carry justified suppressions with graceful fallbacks.
 - Verified end-to-end: the full Playwright e2e suite passes against a `TrimMode=full` publish of the demo host (labels, required stars, length/range message rewrites, `[EnumDisplayName]` options, tooltips, visual baselines).
 
-**Round-3 review fixes** *(post-hardening evaluation — see `EVALUATION.md`)*
+**Round-3 review fixes** *(post-hardening evaluation)*
 - `Popover`/`Popconfirm` re-resolve their trigger child on every ARIA sync, so conditionally-swapped trigger content (`@if (busy) { spinner } else { button }`) no longer strands `aria-haspopup`/`aria-expanded` on a detached element or drops close-focus to `<body>`, and a wrapper promoted around plain content is demoted again when a real button appears (no more button-in-button after a swap). Focusable non-button trigger children (`[tabindex]` spans, anchors) gained Enter/Space activation; a `Disabled` Popconfirm marks an interactive child `aria-disabled`. The per-render JS interop call is now skipped unless `(open, disabled)` changed — a Popconfirm-per-row Table no longer pays one SignalR round trip per row per re-render on Blazor Server (a `focusin` listener repairs ARIA for children swapped while idle).
 - `EditFile`: new `MaxTotalBytes` parameter (default **100 MB**, `0` = unlimited) bounds the aggregate buffered footprint across all selected files — buffering at pick time otherwise let a single large multi-file drop allocate unbounded server memory under the default `MaxFiles = 0`.
 - Date-typed selects round-trip: `EditSelect<DateOnly>`/`<DateTime>`/`<DateTimeOffset>`/`<TimeOnly>` now format to the ISO forms option values are authored in, so picking an option no longer immediately loses the visual selection while the model holds the value. Author your option values in the matching canonical form — `DateOnly`: `2026-06-15` · `DateTime`: `2026-06-15T14:30:45` · `DateTimeOffset`: `2026-06-15T14:30:45-05:00` (UTC is `+00:00`, not `Z`) · `TimeOnly`: `14:30:45`. Shorter authored forms (`2026-06-15` for a `DateTime`, `14:30` for a `TimeOnly`) still *parse* on pick, but the formatted value won't visually re-match them.
@@ -597,19 +615,19 @@ A library-wide hardening release: six adversarial review rounds (see `EVALUATION
 - Nested `FormDefaults` chain per property instead of the inner instance shadowing the outer entirely (see the `FormDefaults` note above).
 - `Select`, `Modal`, `Drawer`, `Popover`, and `Popconfirm` no longer strand a JS module reference when disposed while their module import is in flight (the same race `Table` was already guarded against).
 
-**Round-4 review fixes** *(post-round-3 evaluation — see `EVALUATION.md`)*
+**Round-4 review fixes** *(post-round-3 evaluation)*
 - `EditSelect<DateTimeOffset>` now formats whole-second values without the `.0000000` fraction (`2026-06-15T14:30:45-05:00`), so authored option values actually match and the visual selection survives a pick; sub-second values keep the full round-trip form. The canonical authored forms per date type are documented in the round-3 entry above.
 - `Popover`/`Popconfirm` trigger ARIA: a consumer-owned `aria-disabled` on the trigger child is no longer removed when the component's `Disabled` round-trips; when the resolved trigger child changes identity while the old element stays in the DOM, the popup ARIA is stripped off the old element instead of two elements announcing the popup.
 - `EditCheckedStringList`/`EditCheckedEnumList` fieldsets no longer emit `aria-required`/`aria-invalid`/`aria-errormessage` — ARIA 1.2 doesn't support them on `role="group"` (assistive tech ignored them; checkers flag them). Required state remains on the legend star and the validation message, invalid state on each checkbox's `aria-invalid`. The radio fieldsets (`role="radiogroup"`, where these attributes are valid) are unchanged.
 
-**Round-5 fixes** *(trim verification, globalization/RTL sweep, measured performance pass — see `EVALUATION.md`)*
+**Round-5 fixes** *(trim verification, globalization/RTL sweep, measured performance pass)*
 - **RTL support:** the direction-sensitive Select geometry (arrow/clear anchoring, search inset, tag/placeholder spacing) and the form controls' trailing invalid-icon/required-star spacing now use CSS logical properties — under `dir="rtl"` tags no longer render beneath the opaque clear button (where a tap cleared the entire selection) and typed search text no longer starts under the arrow. Rendering under LTR is byte-identical. Notification position, `DrawerPlacement` left/right, and Table alignment deliberately keep physical semantics.
 - **Localization:** new label parameters with unchanged English defaults — `Pagination` `PreviousPageLabel`/`NextPageLabel`/`PageLabelFormat`; `Select`/`EditSelectSearch`/`EditMultiSelect` `RemoveItemLabelFormat`/`ClearSelectionLabel`/`ClearSelectionsLabel`/`ListboxLabel` — so localized apps can localize what screen readers hear. `EditFile`'s five upload-error messages are likewise localizable via `*MessageFormat` parameters (`UnsupportedFormat`, `FileTooLarge`, `FileReadFailed`, `MaxFiles`, `TotalSize`); the pluralizing formats receive a pre-pluralized English unit argument that localized formats can ignore.
 - **Culture correctness:** the `[Range]` one-sided message rewrite ("Cannot exceed 100") now works after a runtime culture switch and in mixed-culture Blazor Server processes — the type-min/max sentinels are resolved per current culture instead of being frozen at first touch.
 - **Performance:** `Table` no longer rebuilds its row keys and rescans selection state on every parent re-render (the cost was O(rows) with boxing, per keystroke in any sibling input for unpaged tables); `FormLabel`/`FieldValidationDisplay` skip label/attribute re-derivation — and stop re-invoking `FormOptions.RequiredResolver` — unless their inputs actually changed, honoring the resolver's documented "not on every keystroke" contract; `EditMultiSelect`'s read-only label join is O(selected) via a value→label lookup. Measured reality check: for *very* large unpaged tables the remaining cost is Blazor re-rendering the row fragment itself — prefer `PageSize` or the server-side paging composition at that scale.
 - Verified this round: the full Playwright suite passes against a `TrimMode=full` publish; Select's dropdown virtualization confirmed (20 DOM rows at 1,000 options).
 
-**Round-6 fixes** *(pre-release regression hunt on the round-4/5 fixes — see `EVALUATION.md`)*
+**Round-6 fixes** *(pre-release regression hunt on the round-4/5 fixes)*
 - The required star and `aria-required` now share one computation site: each control resolves its required-ness once (`IsRequired` parameter → `[Required]` → `FormOptions.RequiredResolver`) and passes the resolved value to its label, so a conditional resolver that reads model state moves both signals together on re-render (the round-5 label caching had let `aria-required` update while the star stayed frozen).
 - The `[Range]` sentinel check compares against the current culture's actual formatting on every call (a per-culture-name cache could serve stale sentinels to same-name cultures with customized number formats).
 - `LabelTooltip` resolves its tooltip text once per input change instead of scanning the attribute list twice per render.
