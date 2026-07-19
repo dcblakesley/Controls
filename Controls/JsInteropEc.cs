@@ -58,9 +58,10 @@ public static class JsInteropEc
     // via a classic <script> tag). A JSException there usually means window.WssEditControls itself is
     // undefined -- the cross-origin MFE case, where the host page never linked the script -- so import
     // the module once as a side-effect ES module (it assigns onto window itself; see edit-controls.js)
-    // and retry. Any other failure (JS interop not available at all: prerender, tests, circuit
-    // teardown; or the retry also failing, e.g. the import 404s) is swallowed -- every call here is a
-    // nicety, never fatal to the caller.
+    // and retry. Any other failure (JS interop not available at all: prerender, tests; or the retry
+    // also failing, e.g. the import 404s) is swallowed -- every call here is a nicety, never fatal to
+    // the caller. Circuit teardown is caught first: JSDisconnectedException derives from JSException,
+    // and a disconnected circuit must return immediately rather than attempt the doomed import+retry.
     static async Task InvokeBestEffortAsync(
         IJSRuntime jsRuntime, FormDefaults? formDefaults, string identifier, params object?[] args)
     {
@@ -69,13 +70,17 @@ public static class JsInteropEc
             await jsRuntime.InvokeVoidAsync(identifier, args);
             return;
         }
+        catch (JSDisconnectedException)
+        {
+            return; // Circuit torn down -- the import+retry below would be pointless interop calls.
+        }
         catch (JSException)
         {
             // Fall through to the one-time lazy import + retry below.
         }
         catch
         {
-            return; // JS interop not available at all (prerender / tests / circuit teardown)
+            return; // JS interop not available at all (prerender / tests)
         }
 
         try

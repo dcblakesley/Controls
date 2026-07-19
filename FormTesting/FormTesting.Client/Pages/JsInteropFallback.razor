@@ -16,6 +16,5 @@
     // parameter drives the "import 404s" case by pointing the re-import at an origin nothing serves,
     // asserting the method still doesn't throw.
     [SupplyParameterFromQuery(Name = "assetBase")]
-    [Parameter]
     public string? AssetBase { get; set; }
 }

@@ -463,14 +463,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### 10.6.4
-
-**New feature**
-- `FormDefaults.AssetBase` — an absolute URL prefixed onto the RCL's lazy `wss-*.js` module imports (`Select`, `Modal`, `Drawer`, `Popover`, `Popconfirm`, `DatePicker`, `DateRangePicker`, `Table`). Fixes a 404 for micro-frontends embedded into a host page that doesn't serve/proxy `_content/WssBlazorControls/*` — the `"./"`-relative import specifier otherwise resolves against the *host document's* origin instead of the MFE's own. Unset (the default) preserves today's relative import path. Cascade it from the MFE's own root the same render-tree-scoped way as `FormDefaults`'s other settings — not a shared JS global — so multiple MFEs composed into one page don't stomp on each other's asset base. See [FormDefaults](#formdefaults).
+### Unreleased
 
 **Bug fixes**
 - `edit-controls.js`'s `focusFirstInvalidField` DOM query substring-matched `[class*=" invalid"]`, which over-matched an unrelated consumer class like `class="foo invalid-hint"` — it now matches the exact `.invalid` class token only (the same false-positive shape `InvalidIcon.razor` and `EditControlBase.IsInvalid` already fixed for `CssClass`).
 - `JsInteropEc` — `edit-controls.js` was the one JS asset `FormDefaults.AssetBase` didn't yet cover: in a cross-origin MFE whose host page doesn't serve/link `_content/WssBlazorControls/edit-controls.js`, `window.WssEditControls` is undefined, and `FocusFirstInvalidField` (unlike `FocusById`) threw instead of degrading gracefully. All three methods (`FocusFirstInvalidField`, `FocusById`, `Log`) are now best-effort and never throw; when the global is missing they lazily `import()` the module (honoring an optional trailing `formDefaults` parameter, resolved through the same `JsModuleUrl` mechanism as the `wss-*.js` imports) and retry once, degrading quietly if that also fails.
+
+### 10.6.4
+
+**New feature**
+- `FormDefaults.AssetBase` — an absolute URL prefixed onto the RCL's lazy `wss-*.js` module imports (`Select`, `Modal`, `Drawer`, `Popover`, `Popconfirm`, `DatePicker`, `DateRangePicker`, `Table`). Fixes a 404 for micro-frontends embedded into a host page that doesn't serve/proxy `_content/WssBlazorControls/*` — the `"./"`-relative import specifier otherwise resolves against the *host document's* origin instead of the MFE's own. Unset (the default) preserves today's relative import path. Cascade it from the MFE's own root the same render-tree-scoped way as `FormDefaults`'s other settings — not a shared JS global — so multiple MFEs composed into one page don't stomp on each other's asset base. See [FormDefaults](#formdefaults).
 
 ### 10.6.3
 
