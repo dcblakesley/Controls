@@ -1,15 +1,26 @@
-// Namespaced helpers for WssBlazorControls. Kept on `window` (not as an ES module)
-// so Blazor's standard `IJSRuntime.InvokeVoidAsync(...)` can reach them by name.
+// Namespaced helpers for WssBlazorControls. Kept on `window` (not exported) so Blazor's standard
+// `IJSRuntime.InvokeVoidAsync("WssEditControls...")` can reach them by name. The classic
+// `<script src="_content/WssBlazorControls/edit-controls.js">` tag (see README Quick Start) is the
+// primary load path. This file has no import/export statements and doesn't rely on sloppy-mode-only
+// globals (no bare `this`, no implicit global assignment), so it also works unchanged as a
+// side-effect ES module import (`import("...")`) -- the fallback JsInteropEc.cs uses when
+// window.WssEditControls is missing (e.g. a cross-origin micro-frontend whose host page never linked
+// the script tag). Keep both load paths working if you touch this file.
 (function () {
     const ns = window.WssEditControls = window.WssEditControls || {};
 
-    // Find the first invalid form field on the page, scroll it into view, focus it,
-    // and select its text where applicable. Skips invalid elements that aren't form fields
-    // (e.g. a wrapper div that happens to carry the .invalid CSS class for visual state).
+    // Find the first invalid form field on the page, scroll it into view, focus it, and select its
+    // text where applicable. Skips invalid elements that aren't form fields (e.g. a wrapper div that
+    // happens to carry the .invalid CSS class for visual state).
+    //
+    // Exact class-token match only: a CSS class selector like `.invalid` matches an element whose
+    // class attribute contains the literal space-separated token "invalid", on any tag -- so the
+    // separate `input.invalid, textarea.invalid, select.invalid` variants added nothing. This used to
+    // also list `[class*=" invalid"]`, a substring match that over-matched consumer classes like
+    // `class="foo invalid-hint"` (the same false-positive shape InvalidIcon.razor and
+    // EditControlBase.IsInvalid fixed for CssClass -- see their comments).
     ns.focusFirstInvalidField = function () {
-        const candidate = document.querySelector(
-            'input.invalid, textarea.invalid, select.invalid, [class*=" invalid"], .invalid'
-        );
+        const candidate = document.querySelector('.invalid');
         if (!candidate) return;
 
         // Resolve to an actual form field. If `candidate` is one already, use it; otherwise
