@@ -704,8 +704,11 @@ public class UiKitTableTests : TestContext
     }
 
     [Fact]
-    public void TitleContent_renders_inside_a_sortable_header_and_the_content_names_the_button()
+    public void TitleContent_on_a_sortable_column_renders_outside_the_button_which_falls_back_to_Sort()
     {
+        // The template renders in its own clickable content area, not inside the sort button
+        // (nesting the template's own interactive content — e.g. a LabelTooltip's <button> — inside
+        // the sort trigger would be invalid HTML and let its clicks bubble into ToggleSort).
         var cut = RenderComponent<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp
@@ -714,9 +717,126 @@ public class UiKitTableTests : TestContext
                 .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Age.ToString()))));
 
         var trigger = cut.Find(".wss-table-sort-trigger");
-        Assert.Contains("Age", trigger.TextContent); // visible content names the button...
-        Assert.Null(trigger.GetAttribute("aria-label")); // ...so no "Sort" fallback overrides it
-        trigger.Click(); // and sorting still works through the templated header
+        Assert.DoesNotContain("Age", trigger.TextContent);
+        Assert.Contains("Age", cut.Find(".wss-table-sort-content").TextContent);
+        // With no Title set, the now icon-only button has no visible content of its own -> "Sort".
+        Assert.Equal("Sort", trigger.GetAttribute("aria-label"));
+
+        trigger.Click(); // sorting still works through the button
         Assert.Contains("wss-table-sorter-active", cut.Find(".wss-table-sorter-up").ClassList);
+    }
+
+    [Fact]
+    public void Sortable_TitleContent_without_Title_falls_back_to_Sort_button_label()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.TitleContent, b => b.AddMarkupContent(0, "<svg aria-hidden=\"true\"></svg>")) // icon-only, no visible text
+                .Add(c => c.SortBy, (a, b) => a.Age.CompareTo(b.Age))
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Age.ToString()))));
+
+        var button = cut.Find("button.wss-table-sort-trigger");
+        Assert.Equal("Sort", button.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Sortable_TitleContent_with_Title_names_the_button_from_Title()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "ESD")
+                .Add(c => c.TitleContent, b => b.AddMarkupContent(0, "ESD <em>(info)</em>"))
+                .Add(c => c.SortBy, (a, b) => a.Age.CompareTo(b.Age))
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Age.ToString()))));
+
+        var button = cut.Find("button.wss-table-sort-trigger");
+        Assert.Equal("ESD", button.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Sortable_TitleContent_nested_button_click_does_not_toggle_sort_but_content_click_does()
+    {
+        // Mirrors the real-world composition: a LabelTooltip's own <button> nested in the header
+        // template. Its trigger stops propagation, so clicking it must not bubble into the header's
+        // click-to-sort handler; clicking the (non-interactive) content area around it still sorts.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.TitleContent, (RenderFragment)(b =>
+                {
+                    b.AddContent(0, "Age ");
+                    b.OpenComponent<LabelTooltip>(1);
+                    b.AddAttribute(2, "Id", "age-info");
+                    b.AddAttribute(3, "Tooltip", "Age in years");
+                    b.CloseComponent();
+                }))
+                .Add(c => c.SortBy, (a, b) => a.Age.CompareTo(b.Age))
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Age.ToString()))));
+
+        string AriaSort() => cut.Find("thead th").GetAttribute("aria-sort")!;
+        Assert.Equal("none", AriaSort());
+
+        // The tooltip trigger stops propagation, which bUnit models by cutting the bubble path:
+        // the click reaches no onclick handler at all (the trigger itself has none — only the
+        // stopPropagation/preventDefault directives), so bUnit throws instead of sorting. That
+        // exception IS the assertion that the ancestor's click-to-sort handler can't be reached.
+        Assert.Throws<Bunit.MissingEventHandlerException>(
+            () => cut.Find(".edit-tooltip-container").Click());
+        Assert.Equal("none", AriaSort()); // must not have toggled the sort
+
+        cut.Find(".wss-table-sort-content").Click();
+        Assert.Equal("ascending", AriaSort());
+    }
+
+    [Fact]
+    public void Sortable_column_without_TitleContent_keeps_the_original_single_button_structure()
+    {
+        // Committed E2E visual baselines and other bUnit assertions depend on this exact DOM shape
+        // — a templated header must not perturb the overwhelmingly common (no TitleContent) case.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        var th = cut.Find("thead th");
+        Assert.Single(th.Children);
+        var button = th.Children[0];
+        Assert.Equal("button", button.TagName, ignoreCase: true);
+        Assert.Contains("wss-table-sort-trigger", button.ClassList);
+        Assert.DoesNotContain("wss-table-sort-trigger-icon", button.ClassList);
+
+        Assert.Equal(2, button.Children.Length);
+        Assert.Contains("wss-table-sort-label", button.Children[0].ClassList);
+        Assert.Contains("wss-table-sorter", button.Children[1].ClassList);
+    }
+
+    [Fact]
+    public void Toggling_UseStyledCheckbox_reapplies_the_indeterminate_state()
+    {
+        var data = Sample(); // Alice, Bob
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectedItems, new List<Person> { data[0] }) // partial selection -> mixed state
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        int IndeterminateCalls() => JSInterop.Invocations.Count(i => i.Identifier == "setIndeterminate");
+        Assert.Equal(1, IndeterminateCalls());
+
+        // The styled/unstyled branches have different DOM shapes (see EffectiveUseStyledCheckbox):
+        // swapping UseStyledCheckbox recreates the <input>, so the stale _lastIndeterminate mirror
+        // must not short-circuit the re-apply.
+        cut.SetParametersAndRender(p => p.Add(t => t.UseStyledCheckbox, true));
+        Assert.Equal(2, IndeterminateCalls());
+
+        cut.SetParametersAndRender(p => p.Add(t => t.UseStyledCheckbox, false));
+        Assert.Equal(3, IndeterminateCalls());
     }
 }

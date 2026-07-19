@@ -13,8 +13,12 @@ public class Column<TItem> : ComponentBase, IDisposable
     [Parameter] public string? Title { get; set; }
 
     /// <summary>Optional header template rendered instead of <see cref="Title"/> — e.g. a title
-    /// with a trailing info-tooltip icon. On a sortable column, keep <see cref="Title"/> set too:
-    /// screen readers name the sort button from it when the template carries no text.</summary>
+    /// with a trailing info-tooltip icon. On a sortable column the template renders in its own
+    /// clickable area next to the sort button, never inside it (nesting the template's own
+    /// interactive content — e.g. a LabelTooltip's <c>&lt;button&gt;</c> — inside the sort trigger
+    /// would be invalid HTML and let its clicks bubble into a sort toggle). That leaves the button
+    /// with no visible content of its own, so keep <see cref="Title"/> set too: screen readers name
+    /// the sort button from it (falling back to "Sort" when Title is also unset).</summary>
     [Parameter] public RenderFragment? TitleContent { get; set; }
 
     /// <summary>Cell template; receives the row item as context.</summary>

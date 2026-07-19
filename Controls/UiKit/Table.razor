@@ -65,13 +65,34 @@
                     @if (col.CanSort)
                     {
                         <th scope="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)" aria-sort="@AriaSortFor(col)">
-                            <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
-                                <span class="wss-table-sort-label">@col.HeaderFor()</span>
-                                <span class="wss-table-sorter" aria-hidden="true">
-                                    <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
-                                    <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
-                                </span>
-                            </button>
+                            @if (col.TitleContent is null)
+                            {
+                                <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
+                                    <span class="wss-table-sort-label">@col.HeaderFor()</span>
+                                    <span class="wss-table-sorter" aria-hidden="true">
+                                        <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
+                                        <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
+                                    </span>
+                                </button>
+                            }
+                            else
+                            {
+                                @* A templated header may contain its own interactive content (e.g. a LabelTooltip's
+                                   <button>), so it can't render inside the sort <button> — nested buttons are invalid
+                                   HTML, and the template's clicks would bubble into ToggleSort. Split into a flex row
+                                   instead: a plain (non-focusable) clickable content area preserves "click the header
+                                   to sort", and the button carries only the caret glyphs plus its own accessible name
+                                   (the button has no visible content of its own here). *@
+                                <div class="wss-table-sort-header">
+                                    <div class="wss-table-sort-content" @onclick="@(() => ToggleSort(col))">@col.HeaderFor()</div>
+                                    <button type="button" class="wss-table-sort-trigger wss-table-sort-trigger-icon" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
+                                        <span class="wss-table-sorter" aria-hidden="true">
+                                            <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
+                                            <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
+                                        </span>
+                                    </button>
+                                </div>
+                            }
                         </th>
                     }
                     else
@@ -367,10 +388,14 @@
 
     // A title-less sortable column would render a sort <button> with no accessible name (its visible
     // label span is empty and the caret stack is aria-hidden). Fall back to "Sort" so screen readers
-    // announce something; when the column has a header (text or a TitleContent template, whose
-    // content names the button), the visible content names it (no aria-label).
+    // announce something; when the column has plain header text, the visible content names it (no
+    // aria-label). A TitleContent template renders outside the button (see the th markup above), so
+    // the button never has visible content of its own there — it always needs an aria-label, from
+    // Title/HeaderText when set, "Sort" otherwise.
     string? SortButtonLabel(Column<TItem> col) =>
-        string.IsNullOrEmpty(col.HeaderText) && col.TitleContent is null ? "Sort" : null;
+        col.TitleContent is not null
+            ? (col.HeaderText is { Length: > 0 } h ? h : "Sort")
+            : (string.IsNullOrEmpty(col.HeaderText) ? "Sort" : null);
 
     // aria-sort per WAI-ARIA: the active column reports its direction, other sortable columns "none".
     string AriaSortFor(Column<TItem> col) =>
@@ -456,6 +481,18 @@
         }
 
         if (!Selectable) _lastIndeterminate = null; // the header checkbox is recreated when re-enabled
+
+        // The styled/unstyled header-checkbox branches (see EffectiveUseStyledCheckbox) render
+        // different DOM shapes, so a runtime change of the resolved value swaps in a freshly-created
+        // <input> with indeterminate == false. Forget the mirror the same way as the Selectable
+        // toggle above, so OnAfterRenderAsync re-applies the mixed state instead of short-circuiting
+        // against a stale value from the checkbox the old branch tore down.
+        var effectiveUseStyledCheckbox = EffectiveUseStyledCheckbox;
+        if (effectiveUseStyledCheckbox != _lastUseStyledCheckbox)
+        {
+            _lastIndeterminate = null;
+            _lastUseStyledCheckbox = effectiveUseStyledCheckbox;
+        }
 
         RebuildPageItems();
     }
@@ -557,6 +594,7 @@
     }
 
     bool? _lastIndeterminate;
+    bool? _lastUseStyledCheckbox;
     bool _disposed;
 
     // indeterminate is a DOM property with no HTML attribute, so it can only be set from JS. Runs
