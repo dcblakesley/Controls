@@ -326,25 +326,48 @@ const WSS_FOCUSABLE =
 
 // Body-scroll lock is ref-counted so stacked overlays (e.g. a Modal that opens a Drawer) don't
 // unlock the page when the first-opened one closes — only the last dispose restores the original.
-let wssScrollLocks = 0;
-let wssSavedBodyOverflow = '';
+// Shared with every other instance of this module via a window global (see __wssOverlayZ above for
+// why: FormDefaults.AssetBase lets different MFEs import this file from different origin URLs, and
+// the browser instantiates the module once per distinct URL — each instance's own module-scoped
+// state would otherwise be invisible to the others, so two instances' opens/closes could race and
+// leave the page permanently scroll-locked, or unlock it while a dialog from the other instance is
+// still open).
+// Shape contract: { count: number, saved: string }. `count` is the cross-instance ref-count of
+// active locks — whichever activation takes it from 0 to 1 is "first" and whichever dispose takes
+// it back to 0 is "last", regardless of which instance either belongs to. `saved` is the
+// document.body.style.overflow value captured by that first activation, restored by that last
+// dispose. Any instance may read/write these two properties; never add or depend on anything else
+// here — a future instance must be able to interoperate using only this shape.
+window.__wssOverlayScrollLock = window.__wssOverlayScrollLock || { count: 0, saved: '' };
 function wssLockScroll() {
-    if (wssScrollLocks === 0) {
-        wssSavedBodyOverflow = document.body.style.overflow;
+    const lock = window.__wssOverlayScrollLock;
+    if (lock.count === 0) {
+        lock.saved = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
     }
-    wssScrollLocks++;
+    lock.count++;
 }
 function wssUnlockScroll() {
-    wssScrollLocks = Math.max(0, wssScrollLocks - 1);
-    if (wssScrollLocks === 0) {
-        document.body.style.overflow = wssSavedBodyOverflow;
+    const lock = window.__wssOverlayScrollLock;
+    lock.count = Math.max(0, lock.count - 1);
+    if (lock.count === 0) {
+        document.body.style.overflow = lock.saved;
     }
 }
 
 // Stack of active traps — only the topmost (most recently activated) one acts, so nested
 // overlays behave: the inner dialog owns Tab/focus until it closes, then the outer resumes.
-const wssTraps = [];
+// Shared across module instances via a window global (same cross-instance reasoning as
+// __wssOverlayScrollLock above) so two live overlays from different instances don't each believe
+// they own the document — only the truly topmost trap (across every instance) acts.
+// Shape contract: a plain array. Each instance pushes/splices its own opaque token (whatever object
+// it likes) and only ever compares `array[array.length - 1]` against a token *it* pushed for
+// reference equality — nobody reads or writes a property on an entry another instance pushed. That
+// keeps the array forward-tolerant: an instance never needs to know what shape a foreign instance's
+// token has, and the owning instance's own document listeners are the only ones that ever act on
+// its own trap (a foreign instance's listeners see the equality check fail and no-op) — the
+// callback/element-ref contract of a trap entry never has to cross instance boundaries.
+window.__wssOverlayTraps = window.__wssOverlayTraps || [];
 
 export function activateModal(panel) {
     if (!panel) {
@@ -363,11 +386,9 @@ export function activateModal(panel) {
         Array.from(panel.querySelectorAll(WSS_FOCUSABLE))
             .filter(el => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
 
-    const initial = focusables();
-    try { (initial[0] || panel).focus(); } catch { /* element not focusable yet */ }
-
     const trap = {};
-    const isTopmost = () => wssTraps[wssTraps.length - 1] === trap;
+    const traps = window.__wssOverlayTraps;
+    const isTopmost = () => traps[traps.length - 1] === trap;
 
     // Document-level (not panel-level) so the trap keeps working even when focus has somehow
     // landed outside the panel — a Tab from anywhere is pulled back into the cycle. Panel-level
@@ -431,10 +452,19 @@ export function activateModal(panel) {
         }
     };
 
+    // Register this trap (and this instance's listeners) before grabbing initial focus below — an
+    // already-open OLDER trap (this instance's own in a nested-modal case, or — since
+    // __wssOverlayTraps is shared, see the contract above — another module instance's) must see
+    // itself as no-longer-topmost by the time the very first focusin fires here, or its own
+    // onFocusIn would race this activation and steal the initial focus straight back out of the
+    // panel that's only now opening.
     document.addEventListener('keydown', onKeydown, true);
     document.addEventListener('mousedown', onMouseDown, true);
     document.addEventListener('focusin', onFocusIn);
-    wssTraps.push(trap);
+    traps.push(trap);
+
+    const initial = focusables();
+    try { (initial[0] || panel).focus(); } catch { /* element not focusable yet */ }
 
     let disposed = false;
     return {
@@ -446,9 +476,9 @@ export function activateModal(panel) {
             document.removeEventListener('keydown', onKeydown, true);
             document.removeEventListener('mousedown', onMouseDown, true);
             document.removeEventListener('focusin', onFocusIn);
-            const i = wssTraps.indexOf(trap);
+            const i = traps.indexOf(trap);
             if (i >= 0) {
-                wssTraps.splice(i, 1);
+                traps.splice(i, 1);
             }
             wssUnlockScroll();
             try { if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus(); } catch { /* gone */ }
