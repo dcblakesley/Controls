@@ -481,7 +481,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### Unreleased
+### 10.6.5
 
 **New features**
 - `EditDatePicker` / `EditDateRange` — form-bound versions of the UI-kit calendar pickers. `EditDatePicker` binds a `DateTime?` via `@bind-Value` (an `InputBase`-derived scalar control, same contract as every other `Edit*`); `EditDateRange` binds two model properties via `@bind-Start` / `@bind-End`, registers both fields with the form, and validates each independently with its own message. Both render the standard label/required-star/validation scaffolding around the calendar dropdown, support read-only mode via `DateFormat`, and forward the pickers' parameter surface (`Min`/`Max`, `Format`, `Presets`, placeholders, accessible-name params). To support them, `DatePicker`/`DateRangePicker` gained validation-state ARIA passthrough onto their actual inputs (`AriaRequired`/`AriaInvalid`/`AriaDescribedBy`/`AriaErrorMessage`, doubled as `StartAria*`/`EndAria*` on the range picker — the same forwarding shape as `Select`'s trio) and the range picker gained `EndId` (an id for its end input). Use `EditDate` when the browser-native date input is fine; use these when the form wants the AntD-style calendar UX.
