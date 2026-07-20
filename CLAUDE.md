@@ -58,11 +58,11 @@ Prefer **render-tree-scoped configuration** (cascading values/components): each 
 
 Read an existing control before writing one — the pattern is uniform and the source is the spec. Non-obvious rules:
 
-- **Base class selection:** scalar controls inherit `EditControlBase<T>` (an `InputBase<T>`); list-bound controls inherit `EditControlListBase<T>` (a `ComponentBase` binding `List<T>`). Exceptions: `EditRadio<T>` must inherit `InputRadioGroup<T>` (its child `InputRadio`s need the context), `EditDisplay` is a plain `ComponentBase` (no field). See the `edit-controls` skill's `architecture.md` for the why behind the init pattern and the new-control checklist.
+- **Base class selection:** scalar controls inherit `EditControlBase<T>` (an `InputBase<T>`); list-bound controls inherit `EditControlListBase<T>` (a `ComponentBase` binding `List<T>`). Exceptions: `EditRadio<T>` must inherit `InputRadioGroup<T>` (its child `InputRadio`s need the context), `EditDisplay` is a plain `ComponentBase` (no field), `EditDateRange` is a plain `ComponentBase` implementing `IEditControl` directly (binds two fields). See the `edit-controls` skill's `architecture.md` for the why behind the init pattern and the new-control checklist.
 - **Every control declares an inert `Field` parameter marked `[Obsolete(error: true)]`** — a compile-time guard so stale `Field="..."` markup fails the build instead of throwing at first render. Copy the stub verbatim into new controls; `@bind-Value` alone supplies `ValueExpression`.
 - **Global usings:** `Controls/GlobalUsings.cs` for the library; Controls.Demo uses `_Imports.razor` plus explicit `using`s in `.cs` files (`_Imports.razor` doesn't apply to code-behind).
 - **UI-kit conventions:** namespace `Controls` (pin `@namespace Controls` on each `.razor`); new components capture unmatched attributes via the internal `AttributeSplat` helper (`class`/`style` hand-merged, splat first so explicit attributes win) onto the root element — never onto an element whose inline style is JS-owned. `Icon`, `Button`, `Checkbox`, `Tag` are intentionally excluded from the kit — dialog footers use native `<button>` + `wss-dialog-btn`.
-- **JS interop must degrade gracefully.** The RCL modules (`wss-select.js`, `wss-overlay.js`, `wss-table.js`, `edit-controls.js`) import lazily and every JS-dependent behavior needs a no-JS fallback (prerender/tests) — CSS-default placement, plain checkbox, etc.
+- **JS interop must degrade gracefully.** The RCL modules (`wss-select.js`, `wss-overlay.js`, `wss-table.js`, `wss-picker.js`, `edit-controls.js`) import lazily and every JS-dependent behavior needs a no-JS fallback (prerender/tests) — CSS-default placement, plain checkbox, etc.
 
 ## CSS
 
