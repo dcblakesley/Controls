@@ -481,7 +481,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### Unreleased
+### 10.6.6
 
 **Fixes / polish** (MFE-compatibility follow-up)
 - `.edit-sr-only` now uses the clip-based visually-hidden pattern (`clip-path: inset(50%)` + 1px box + `-1px` margin) instead of `left: -10000px` — the offscreen-position pattern could be un-hidden by a consumer MFE shell's CSS resetting `position`/`left`. Matches `.wss-sr-only`'s existing approach; no visible change for anyone not already relying on the bug.

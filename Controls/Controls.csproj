@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.6.5</AssemblyVersion>
+	  <AssemblyVersion>10.6.6</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -51,7 +51,7 @@
     <RepositoryUrl>https://github.com/dcblakesley/Controls</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
-    <PackageReleaseNotes>10.6.5 - New EditDatePicker/EditDateRange form-bound calendar pickers; DatePicker/DateRangePicker gained a weekday header, month nav, and keyboard grid navigation. Bug fixes: Table sortable-header TitleContent no longer nests a button-in-button and keeps the indeterminate checkbox state across styled/unstyled swaps; DateRangePicker range-commit/preset/year-select fixes; edit-controls.js invalid-field selector no longer over-matches; JsInteropEc degrades gracefully without the WssEditControls global; wss-overlay.js scroll-lock/focus-trap state is now shared across module instances. See the README changelog for details.</PackageReleaseNotes>
+    <PackageReleaseNotes>10.6.6 - Fixes/polish: MFE-compatibility CSS (.edit-sr-only clip pattern, edit-masked-value wrapper class, tokenized --edit-tooltip-z-index); EditDatePicker/EditDateRange accessible-name, keyboard, focus-restore, and Gregorian-calendar fixes; invalid-state border for both pickers plus EditDateRange read-only class forwarding and default(DateTime) NullOrDefault hiding; Tabs strip updates same-pass for Count/Title/Disabled changes and drops Home/End; SearchInput addon-labelled input; pill Select invalid state now outranks pill chrome. See the README changelog for details.</PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
     <Company>WSS</Company>
     <Copyright>Copyright (c) 2025 WssBlazorControls</Copyright>
