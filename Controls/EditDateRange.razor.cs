@@ -206,18 +206,23 @@ public partial class EditDateRange : IEditControl, IDisposable
     protected bool IsEndInvalid => EditContext is not null && EditContext.GetValidationMessages(_endFieldIdentifier).Any();
 
     /// <summary>
-    /// The consumer's <c>class</c> attribute (if any) merged with the Start field's EditContext state
-    /// classes (<c>modified</c>/<c>valid</c>/<c>invalid</c>) — mirrors
+    /// The consumer's <c>class</c> attribute (if any) merged with the EditContext state classes
+    /// (<c>modified</c>/<c>valid</c>/<c>invalid</c>) derived from <em>both</em> bound fields — mirrors
     /// <see cref="EditControlListBase{TItem}.FieldCssClass"/>, the list-control analogue, since this
-    /// control is likewise not an <c>InputBase</c> and gets no <c>CssClass</c> for free. Also forwarded
-    /// onto the read-only view's <c>CssClass</c> so the edit/read-only class-forwarding contract every
-    /// other control provides (EditMultiSelect, EditFile, EditChecked*) holds here too.
+    /// control is likewise not an <c>InputBase</c> and gets no <c>CssClass</c> for free. The base state
+    /// comes from the Start field; if <see cref="IsEndInvalid"/> and that base state doesn't already
+    /// carry <c>invalid</c>, <c>invalid</c> is added (and any <c>valid</c> token stripped, since the two
+    /// are incoherent together) so an End-only validation failure still turns the shared
+    /// <c>.wss-picker</c> wrapper red, not just Start's. Also forwarded onto the read-only view's
+    /// <c>CssClass</c> so the edit/read-only class-forwarding contract every other control provides
+    /// (EditMultiSelect, EditFile, EditChecked*) holds here too.
     /// </summary>
     protected string? FieldCssClass
     {
         get
         {
             var fieldClass = EditContext is null ? string.Empty : EditContext.FieldCssClass(_startFieldIdentifier);
+            fieldClass = MergeEndInvalidState(fieldClass, IsEndInvalid);
             if (AdditionalAttributes is not null &&
                 AdditionalAttributes.TryGetValue("class", out var classObj) &&
                 Convert.ToString(classObj, CultureInfo.InvariantCulture) is { Length: > 0 } consumerClass)
@@ -226,6 +231,23 @@ public partial class EditDateRange : IEditControl, IDisposable
             }
             return fieldClass.Length > 0 ? fieldClass : null;
         }
+    }
+
+    /// <summary>
+    /// Folds an End-field invalid state into the Start-derived state-class string: adds <c>invalid</c>
+    /// when missing and drops any <c>valid</c> token, leaving <c>modified</c> untouched. A no-op when
+    /// <paramref name="isEndInvalid"/> is false or <paramref name="fieldClass"/> already has
+    /// <c>invalid</c>. Split/join on space rather than a fixed literal so it tolerates whichever token
+    /// order/spacing <c>EditContext.FieldCssClass</c> or a future provider produces.
+    /// </summary>
+    static string MergeEndInvalidState(string fieldClass, bool isEndInvalid)
+    {
+        if (!isEndInvalid) return fieldClass;
+        var tokens = fieldClass.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (tokens.Contains("invalid")) return fieldClass;
+        tokens.Remove("valid");
+        tokens.Add("invalid");
+        return string.Join(' ', tokens);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

@@ -29,6 +29,16 @@ public class EditDateRangeTests : TestContext
         public DateTime? End { get; set; }
     }
 
+    // A second model with [Required] on End instead of Start, so an End-only validation failure can
+    // be produced without Start ever being invalid -- RangeModel's Start is always the one under
+    // [Required], which the other tests rely on (e.g. asserting End's aria-required stays unset).
+    class EndRequiredModel
+    {
+        public DateTime? Start { get; set; }
+        [Required]
+        public DateTime? End { get; set; }
+    }
+
     static readonly DateTime Jan15 = new(2025, 1, 15);
     static readonly DateTime Feb3 = new(2025, 2, 3);
 
@@ -231,6 +241,109 @@ public class EditDateRangeTests : TestContext
 
         Assert.Contains(cut.FindAll(".edit-validation-message"),
             m => m.TextContent.Contains("End must be after Start"));
+    }
+
+    [Fact]
+    public void Start_only_invalid_field_marks_the_shared_wrapper_invalid()
+    {
+        var model = new RangeModel(); // Start empty -> [Required] fails; End carries no annotation
+        var editContext = new EditContext(model);
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditDateRange>(1);
+                content.AddAttribute(2, "Start", model.Start);
+                content.AddAttribute(3, "StartExpression", startField);
+                content.AddAttribute(4, "End", model.End);
+                content.AddAttribute(5, "EndExpression", endField);
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        Assert.Contains("invalid", cut.Find(".wss-picker").ClassList);
+    }
+
+    [Fact]
+    public void End_only_invalid_field_marks_the_shared_wrapper_invalid_and_not_valid()
+    {
+        // Start is set and passes (no annotation of its own), End is left null against its own
+        // [Required] -- the shared wrapper's state class is derived from Start's own EditContext
+        // state, so an End-only error must still be folded in to turn the wrapper invalid rather
+        // than leaving it at Start's own "valid".
+        var model = new EndRequiredModel { Start = Jan15 };
+        var editContext = new EditContext(model);
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditDateRange>(1);
+                content.AddAttribute(2, "Start", model.Start);
+                content.AddAttribute(3, "StartExpression", startField);
+                content.AddAttribute(4, "End", model.End);
+                content.AddAttribute(5, "EndExpression", endField);
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        var wrapper = cut.Find(".wss-picker");
+        Assert.Contains("invalid", wrapper.ClassList);
+        Assert.DoesNotContain("valid", wrapper.ClassList);
+    }
+
+    [Fact]
+    public void Both_fields_valid_after_modification_show_modified_valid_and_no_invalid()
+    {
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var editContext = new EditContext(model);
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<EditDateRange>(0);
+                content.AddAttribute(1, "Start", model.Start);
+                content.AddAttribute(2, "StartExpression", startField);
+                content.AddAttribute(3, "StartChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.Start = v));
+                content.AddAttribute(4, "End", model.End);
+                content.AddAttribute(5, "EndExpression", endField);
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        Open(cut);
+        cut.Find(".wss-picker-input-start").Input("03/05/2025");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        var wrapper = cut.Find(".wss-picker");
+        Assert.Contains("modified", wrapper.ClassList);
+        Assert.Contains("valid", wrapper.ClassList);
+        Assert.DoesNotContain("invalid", wrapper.ClassList);
     }
 
     [Fact]
