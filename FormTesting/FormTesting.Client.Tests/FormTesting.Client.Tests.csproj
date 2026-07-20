@@ -16,6 +16,9 @@
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
 
     <!-- bUnit for Blazor component testing -->
+    <!-- bunit 1.40.0 (last 1.x) pins AngleSharp 1.2.0, which carries a moderate NU1902 advisory.
+         The advisory-fixed AngleSharp 1.5.x is binary-incompatible with bunit 1.x (MissingMethodException
+         on IHtmlCollection's indexer), so clearing the warning requires the bunit 2.x migration. -->
     <PackageReference Include="bunit" Version="1.40.0" />
   </ItemGroup>
 

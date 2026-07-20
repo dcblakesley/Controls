@@ -499,6 +499,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - `DateRangePicker`: arrowing forward past the end of the right panel's month now shifts the view one month (focused month becomes the right panel) instead of leapfrogging two; keyboard focus after a forward month-boundary move lands on the in-month day cell, not the left grid's dimmed adjacent-month duplicate (`wss-picker.js` now prefers the roving-tabindex match).
 - Both pickers are now explicitly Gregorian-calendar controls under every culture: cultures whose default calendar isn't Gregorian (th-TH Buddhist, ar-SA Hijri) previously got self-contradictory chrome (Hijri month names over a Gregorian grid; a Buddhist-year input beside a Gregorian year select). All picker-internal formatting and typed-input parsing — including `EditDatePicker`/`EditDateRange`'s read-only display, which must agree with edit mode — now use the culture's language with the calendar forced to Gregorian. Behavior under Gregorian-default cultures (en-US etc.) is unchanged.
 
+**Picker parity fixes** (second post-10.6.5 audit)
+- Invalid pickers now show the error-red border every other control gets: new `.wss-picker.invalid` rules mirror `.wss-select.invalid` (red border at rest, re-asserted while open/focused; the single-date variant's focus ring also flips to the error shadow). Previously `EditDatePicker`/`EditDateRange` forwarded the `invalid` state class onto the wrapper but no stylesheet rule consumed it, so an invalid picker was pixel-identical to a valid one.
+- `EditDateRange` in read-only mode now forwards the consumer's `class` plus the Start field's EditContext state classes (`modified`/`invalid`/custom `FieldCssClassProvider` output) to the read-only value, matching edit mode and every other control's read-only view — previously both were silently dropped.
+- Both pickers now honor the documented `HidingMode.*NullOrDefault` contract for `default(DateTime)` (0001-01-01): `EditDatePicker` overrides `IsValueDefault` like `EditDate`, and `EditDateRange` treats a null-or-default pair as empty. Previously a `default(DateTime)` value kept the control visible where `EditDate` would hide it.
+
 ### 10.6.5
 
 **New features**
