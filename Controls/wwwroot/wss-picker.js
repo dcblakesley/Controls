@@ -63,6 +63,16 @@ export function focusDay(root, dateStr) {
     if (active && active !== document.body && !activeIsDay) {
         return;
     }
-    const el = root.querySelector(`.wss-picker-day[data-date="${dateStr}"]`);
+    // Prefer the cell that actually carries the roving tabindex="0". Near a month boundary the
+    // same date can exist twice in the DateRangePicker's two 42-cell grids — once as the real
+    // in-month cell, once as the other panel's dimmed leading/trailing duplicate — and a plain
+    // data-date match returns whichever comes first in DOM order. That's the left panel's dimmed
+    // duplicate whenever a forward move lands on the right panel's 1st-of-month, so an unqualified
+    // selector would park DOM focus on the greyed, tabindex="-1" cell instead of the real one. C#
+    // always sets the roving stop on the correct in-month cell before invoking focusDay, so the
+    // precise match is the normal path; the untargeted fallback only matters if that invariant is
+    // ever violated (or for DatePicker's single grid, where the two selectors never differ).
+    const el = root.querySelector(`.wss-picker-day[data-date="${dateStr}"][tabindex="0"]`)
+        || root.querySelector(`.wss-picker-day[data-date="${dateStr}"]`);
     try { el && el.focus(); } catch { /* not focusable / gone */ }
 }

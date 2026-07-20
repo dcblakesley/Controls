@@ -139,6 +139,17 @@ public partial class DatePicker : IAsyncDisposable
     // OnAfterRenderAsync runs — this hands the *date* across the render instead, and wss-picker.js's
     // focusDay looks up the new button by its data-date attribute.
     DateTime? _pendingFocusDate;
+    // Set true right before a CloseAsync() call that was triggered by a panel-originated action
+    // (day click/Enter commit/Escape) — anything that means focus was on some now-unmounting element
+    // inside the wrapper. Consumed by the very next OnAfterRenderAsync's closing branch to move
+    // focus back to the text input, so it doesn't fall through to <body>. Left false (the default)
+    // for an outside/backdrop close, which must NOT steal focus from wherever the user clicked.
+    bool _pendingInputFocus;
+    // The input opens the panel on focus (OnInputFocus), so the programmatic focus-reclaim above
+    // would immediately bounce the panel back open. Set around the FocusAsync call and consumed by
+    // OnInputFocus to swallow exactly that one reopen; cleared unconditionally after the call as a
+    // backstop so a swallowed/never-fired focus event can't eat a later genuine focus-open.
+    bool _suppressOpenOnFocus;
 
     // ----- Inline icons (AntD glyphs, no icon-font dependency; matches DateRangePicker) ----
 
@@ -199,8 +210,12 @@ public partial class DatePicker : IAsyncDisposable
     bool IsDayDisabled(DateTime day) =>
         (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date);
 
+    // The picker is a Gregorian-calendar control — see GregorianCultureHelper for the contract.
+    // Every picker-internal format and the typed-input parse route through this culture.
+    CultureInfo PickerCulture => GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
+
     string MonthName(int month) =>
-        CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedMonthNames[month - 1];
+        PickerCulture.DateTimeFormat.AbbreviatedMonthNames[month - 1];
 
     // The years offered by the year select: Min/Max years when set, otherwise ±10 around the
     // displayed year — always including the displayed year itself so the select never shows a
@@ -219,7 +234,7 @@ public partial class DatePicker : IAsyncDisposable
     }
 
     DayOfWeek EffectiveFirstDayOfWeek =>
-        FirstDayOfWeek ?? CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek;
+        FirstDayOfWeek ?? PickerCulture.DateTimeFormat.FirstDayOfWeek;
 
     // The weekday header row, ordered to match GridDays' first-day-of-week so the header and grid
     // can never disagree — both derive from WeekStart/EffectiveFirstDayOfWeek. AntD shows the CLDR
@@ -231,7 +246,7 @@ public partial class DatePicker : IAsyncDisposable
     {
         get
         {
-            var names = CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames;
+            var names = PickerCulture.DateTimeFormat.AbbreviatedDayNames;
             for (var i = 0; i < 7; i++)
             {
                 var name = names[((int)EffectiveFirstDayOfWeek + i) % 7];
@@ -260,12 +275,12 @@ public partial class DatePicker : IAsyncDisposable
     }
 
     string FormatDate(DateTime? value) =>
-        value?.ToString(Format, CultureInfo.CurrentCulture) ?? string.Empty;
+        value?.ToString(Format, PickerCulture) ?? string.Empty;
 
     bool TryParseDate(string text, out DateTime value)
     {
-        if (DateTime.TryParseExact(text, Format, CultureInfo.CurrentCulture, DateTimeStyles.None, out value) ||
-            DateTime.TryParse(text, CultureInfo.CurrentCulture, DateTimeStyles.None, out value))
+        if (DateTime.TryParseExact(text, Format, PickerCulture, DateTimeStyles.None, out value) ||
+            DateTime.TryParse(text, PickerCulture, DateTimeStyles.None, out value))
         {
             value = value.Date;
             return true;
@@ -294,9 +309,25 @@ public partial class DatePicker : IAsyncDisposable
     // the 1st of the month — mirrors AntD's default calendar focus.
     DateTime DefaultFocusDay()
     {
-        if (Value is { } v && IsVisible(v.Date)) return v.Date;
-        if (IsVisible(DateTime.Today)) return DateTime.Today;
-        return _viewMonth;
+        if (Value is { } v && IsVisible(v.Date) && !IsDayDisabled(v.Date)) return v.Date;
+        if (IsVisible(DateTime.Today) && !IsDayDisabled(DateTime.Today)) return DateTime.Today;
+        // Neither natural candidate is usable (disabled — e.g. Min in the future with no value set,
+        // so today falls before it). Falling through to the 1st of the month like before would park
+        // the roving tabindex on a disabled button and make the whole grid keyboard-unreachable (Tab
+        // skips straight past a tabindex="0" that's also disabled). Land on the first enabled
+        // in-month day instead; if the whole visible month is disabled there's nothing actionable in
+        // it either way, so any deterministic in-month day (the 1st) is fine.
+        return FirstEnabledDay(_viewMonth) ?? _viewMonth;
+    }
+
+    // The first enabled, in-month day in `month`'s grid, or null if every in-month day is disabled.
+    DateTime? FirstEnabledDay(DateTime month)
+    {
+        foreach (var day in GridDays(month))
+        {
+            if (day.Month == month.Month && day.Year == month.Year && !IsDayDisabled(day)) return day;
+        }
+        return null;
     }
 
     // _focusDay once a keyboard move has set it, but only while it's still on-screen — a month/year
@@ -357,8 +388,17 @@ public partial class DatePicker : IAsyncDisposable
 
     // ----- Prev/next month navigation ----------------------------------------
 
-    bool PrevMonthDisabled => ClampView(_viewMonth.AddMonths(-1)) == _viewMonth;
-    bool NextMonthDisabled => ClampView(_viewMonth.AddMonths(1)) == _viewMonth;
+    // Disables at the representable DateTime range (ClampView) as before, and now also at the
+    // Min/Max month: prev stops once the view is already on Min's month (one further back would be
+    // entirely before Min), next stops once the view is already on Max's month — the same
+    // month-level granularity YearRange uses for the year select, so the two header mechanisms never
+    // disagree about where navigation runs out.
+    bool PrevMonthDisabled =>
+        ClampView(_viewMonth.AddMonths(-1)) == _viewMonth ||
+        (Min is { } min && _viewMonth <= FirstOfMonth(min));
+    bool NextMonthDisabled =>
+        ClampView(_viewMonth.AddMonths(1)) == _viewMonth ||
+        (Max is { } max && _viewMonth >= FirstOfMonth(max));
 
     void PrevMonth()
     {
@@ -384,6 +424,7 @@ public partial class DatePicker : IAsyncDisposable
 
     void OnInputFocus()
     {
+        if (_suppressOpenOnFocus) { _suppressOpenOnFocus = false; return; }
         if (!Disabled && !_open) Open();
     }
 
@@ -392,6 +433,7 @@ public partial class DatePicker : IAsyncDisposable
         _open = true;
         _edit = null;
         _focusDay = null;
+        _pendingInputFocus = false;
         _viewMonth = ClampView(FirstOfMonth(Value ?? DateTime.Today));
     }
 
@@ -417,10 +459,20 @@ public partial class DatePicker : IAsyncDisposable
         switch (e.Key)
         {
             case "Escape":
-                if (_open) await CloseAsync();
+                // Reaching the wrapper's keydown at all means some descendant (the input, a day
+                // button, a month/year select) had focus — restore it to the text input on close.
+                if (_open)
+                {
+                    _pendingInputFocus = true;
+                    await CloseAsync();
+                }
                 break;
             case "Enter":
-                if (await CommitTextAsync()) await CloseAsync();
+                if (await CommitTextAsync())
+                {
+                    _pendingInputFocus = true;
+                    await CloseAsync();
+                }
                 break;
         }
     }
@@ -430,6 +482,7 @@ public partial class DatePicker : IAsyncDisposable
         // A calendar pick supersedes any half-typed input text.
         _edit = null;
         await SetValueAsync(day);
+        _pendingInputFocus = true; // the clicked day button is about to unmount
         await CloseAsync();
     }
 
@@ -607,6 +660,19 @@ public partial class DatePicker : IAsyncDisposable
             catch
             {
                 // No JS runtime / module — nothing was assigned, nothing to clear.
+            }
+
+            if (_pendingInputFocus)
+            {
+                // The panel subtree (whatever had focus) just unmounted — reclaim focus onto the
+                // input rather than leaving it stranded on <body>. Best-effort: FocusAsync throws if
+                // the element isn't actually focusable yet (prerender/tests).
+                _pendingInputFocus = false;
+                _suppressOpenOnFocus = true;
+                try { await _inputRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+                // Normally consumed by OnInputFocus during the call (the focus event outruns the
+                // interop ack on both runtimes); this backstop covers a failed/eventless focus.
+                _suppressOpenOnFocus = false;
             }
         }
 

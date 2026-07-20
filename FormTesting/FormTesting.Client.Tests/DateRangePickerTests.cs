@@ -574,17 +574,40 @@ public class DateRangePickerTests : TestContext
     }
 
     [Fact]
-    public void PageDown_that_lands_outside_both_panels_moves_the_left_panel_to_that_month()
+    public void PageDown_that_lands_outside_both_panels_anchors_the_right_panel_to_that_month()
     {
         var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
         Open(cut);
 
         cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" }); // Jan15 -> Feb15 (already visible)
-        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" }); // Feb15 -> Mar15 (outside both — view moves)
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" }); // Feb15 -> Mar15 (outside both)
+
+        // A forward crossing anchors the new month as the RIGHT panel, not the left — the view
+        // shifts by exactly one month (Jan/Feb -> Feb/Mar), not two (Jan/Feb -> Mar/Apr).
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("2", selects[0].QuerySelector("option[selected]")!.GetAttribute("value")); // left = Feb
+        Assert.Equal("3", selects[2].QuerySelector("option[selected]")!.GetAttribute("value")); // right = Mar
+        Assert.Equal("0", Day(cut, 1, 15).GetAttribute("tabindex")); // Mar 15 focused, in the right panel
+    }
+
+    [Fact]
+    public void Arrow_right_crossing_out_of_the_right_panel_shifts_the_view_by_one_month_not_two()
+    {
+        // Aug 31 (already the right panel, having paged there from Jul 31) + ArrowRight crosses into
+        // September — one day past the visible range. Anchoring September as the LEFT panel (the
+        // old, buggy behavior) would jump the view two months to [Sep, Oct] for a one-day move; the
+        // fix anchors September as the RIGHT panel instead, so the view moves by exactly one month,
+        // to [Aug, Sep].
+        var cut = RenderPicker(p => p.Add(c => c.Start, new DateTime(2025, 7, 31)));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" }); // Jul 31 -> Aug 31 (already visible, right panel)
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" }); // Aug 31 -> Sep 1 (crosses out)
 
         var selects = cut.FindAll(".wss-picker-month-header select");
-        Assert.Equal("3", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
-        Assert.Equal("0", Day(cut, 0, 15).GetAttribute("tabindex"));
+        Assert.Equal("8", selects[0].QuerySelector("option[selected]")!.GetAttribute("value")); // left = Aug
+        Assert.Equal("9", selects[2].QuerySelector("option[selected]")!.GetAttribute("value")); // right = Sep
+        Assert.Equal("0", Day(cut, 1, 1).GetAttribute("tabindex")); // Sep 1 focused, in the right panel
     }
 
     [Fact]
@@ -601,5 +624,78 @@ public class DateRangePickerTests : TestContext
         Assert.Contains("width:300px", wrapper.GetAttribute("style"));
         Assert.Contains("margin-top:4px", wrapper.GetAttribute("style"));
         Assert.Equal("bar", wrapper.GetAttribute("data-foo"));
+    }
+
+    [Fact]
+    public void Default_focus_day_skips_a_disabled_candidate_and_lands_on_the_first_enabled_day()
+    {
+        // Aug 14 (the bound start) is disabled by Min = Aug 20 — the naive default (an endpoint,
+        // else today, else the left panel's 1st) would land the roving tabindex on a disabled
+        // button, making both grids keyboard-unreachable. The far-future year keeps "today" out of
+        // view too, so the only viable fallback is the first enabled in-month day: Aug 20 itself.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, new DateTime(9000, 8, 14))
+            .Add(c => c.Min, new DateTime(9000, 8, 20)));
+
+        Open(cut);
+
+        var focusStop = Day(cut, 0, 20);
+        Assert.Equal("0", focusStop.GetAttribute("tabindex"));
+        Assert.False(focusStop.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Prev_month_button_disables_when_the_left_panel_is_on_mins_month()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.Min, new DateTime(2025, 1, 1)));
+        Open(cut);
+
+        var buttons = cut.FindAll("button.wss-picker-nav");
+        Assert.True(buttons[0].HasAttribute("disabled")); // prev — left panel (January) is Min's month
+        Assert.False(buttons[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Next_month_button_disables_when_the_right_panel_is_on_maxs_month()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.Max, new DateTime(2025, 2, 28)));
+        Open(cut);
+
+        var buttons = cut.FindAll("button.wss-picker-nav");
+        Assert.False(buttons[0].HasAttribute("disabled"));
+        Assert.True(buttons[1].HasAttribute("disabled")); // next — right panel (February) is Max's month
+    }
+
+    [Fact]
+    public void Non_gregorian_default_calendar_cultures_still_render_gregorian_years()
+    {
+        // th-TH's default calendar is Thai Buddhist (year = Gregorian + 543). Formatting the day
+        // aria-label straight through CurrentCulture would show a Buddhist year (2568) that
+        // contradicts the plain Gregorian year the year-select text renders (2025) for the exact
+        // same grid. The picker is a Gregorian-calendar control regardless of culture — every
+        // picker-internal format should agree on 2025.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("th-TH");
+            var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+
+            Open(cut);
+
+            var yearOption = cut.FindAll(".wss-picker-month")[0].QuerySelectorAll("select")[1].QuerySelector("option[selected]")!;
+            Assert.Equal("2025", yearOption.TextContent);
+
+            var ariaLabel = cut.Find("[data-date='2025-01-15']").GetAttribute("aria-label")!;
+            Assert.Contains("2025", ariaLabel);
+            Assert.DoesNotContain("2568", ariaLabel);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 }

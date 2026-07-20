@@ -332,4 +332,86 @@ public class DatePickerTests : TestContext
         cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "End" });
         Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex"));
     }
+
+    [Fact]
+    public void Default_focus_day_skips_a_disabled_candidate_and_lands_on_the_first_enabled_day()
+    {
+        // Aug 14 (the bound value) is disabled by Min = Aug 20 — the naive default (bound value,
+        // else today, else the 1st) would land the roving tabindex on a disabled button, making the
+        // grid keyboard-unreachable (Tab would skip straight past it). The far-future year keeps
+        // "today" out of view too, so the only viable fallback is the first enabled in-month day:
+        // Aug 20 itself.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, new DateTime(9000, 8, 14))
+            .Add(c => c.Min, new DateTime(9000, 8, 20)));
+
+        Open(cut);
+
+        var focusStop = Day(cut, 20);
+        Assert.Equal("0", focusStop.GetAttribute("tabindex"));
+        Assert.False(focusStop.HasAttribute("disabled"));
+        Assert.Equal("-1", Day(cut, 21).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Prev_and_next_month_buttons_disable_at_the_min_and_max_month()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2026, 2, 1))
+            .Add(c => c.Max, new DateTime(2026, 2, 28)));
+
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        // The view (February) sits on both Min's and Max's month, so navigating either direction
+        // would land on a month entirely outside [Min, Max] — both nav buttons disable, matching the
+        // year select's month-of-Min/Max granularity.
+        Assert.True(buttons[0].HasAttribute("disabled"));
+        Assert.True(buttons[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Prev_and_next_month_buttons_stay_enabled_one_month_inside_min_and_max()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2026, 1, 1))
+            .Add(c => c.Max, new DateTime(2026, 3, 31)));
+
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.False(buttons[0].HasAttribute("disabled"));
+        Assert.False(buttons[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Non_gregorian_default_calendar_cultures_still_render_gregorian_years()
+    {
+        // th-TH's default calendar is Thai Buddhist (year = Gregorian + 543). Formatting the day
+        // aria-label straight through CurrentCulture would show a Buddhist year (2569) that
+        // contradicts the plain Gregorian year the year-select text renders (2026) for the exact
+        // same grid. The picker is a Gregorian-calendar control regardless of culture — every
+        // picker-internal format should agree on 2026.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("th-TH");
+            var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+
+            Open(cut);
+
+            var yearOption = cut.FindAll(".wss-picker-month-header select")[1].QuerySelector("option[selected]")!;
+            Assert.Equal("2026", yearOption.TextContent);
+
+            var ariaLabel = cut.Find("[data-date='2026-02-14']").GetAttribute("aria-label")!;
+            Assert.Contains("2026", ariaLabel);
+            Assert.DoesNotContain("2569", ariaLabel);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
 }

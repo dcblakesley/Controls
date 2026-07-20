@@ -246,6 +246,68 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ArrowRight_across_the_left_panel_month_boundary_focuses_the_in_month_first_of_month_cell()
+    {
+        await GotoAsync();
+        await OpenAsync();
+
+        // The demo pins Start=2025-01-15, which carries the roving tabindex on open (the left
+        // panel's month, Jan 2025). Walk forward to Jan 31 -- the left panel's last day -- via
+        // real key presses so the component's own _focusDay state (not just DOM focus) tracks
+        // along; a raw FocusAsync only moves the DOM, which OnGridKeyDown never reads from.
+        var start = _page.Locator("[data-date='2025-01-15']");
+        await start.FocusAsync();
+        await _page.Keyboard.PressAsync("ArrowDown"); // Jan 22
+        await _page.Keyboard.PressAsync("ArrowDown"); // Jan 29
+        await _page.Keyboard.PressAsync("ArrowRight"); // Jan 30
+        await _page.Keyboard.PressAsync("ArrowRight"); // Jan 31 -- left panel's last day
+        await Expect(_page.Locator(":focus")).ToHaveAttributeAsync("data-date", "2025-01-31");
+
+        // The actual crossing under test: Feb 1 exists in BOTH grids near this boundary -- as a
+        // dimmed trailing cell in the left (Jan) grid, and as the real in-month first day in the
+        // right (Feb) grid. Only the latter carries the roving tabindex="0". This is the
+        // regression coverage for the focusDay selector fix in wss-picker.js, which used to match
+        // the dimmed duplicate because it comes first in DOM order (left panel renders before
+        // right).
+        await _page.Keyboard.PressAsync("ArrowRight");
+
+        var active = _page.Locator(":focus");
+        await Expect(active).ToHaveAttributeAsync("data-date", "2025-02-01");
+        await Expect(active).ToHaveAttributeAsync("tabindex", "0");
+        await Expect(active).Not.ToHaveClassAsync(new Regex("wss-picker-day-outside"));
+    }
+
+    [Fact]
+    public async Task ArrowRight_past_the_right_panel_shifts_the_view_by_one_month_not_two()
+    {
+        await GotoAsync();
+        await OpenAsync();
+
+        // Walk forward from the pinned Start (Jan 15, left panel) to Feb 28 -- the right panel's
+        // last day, 2025 not being a leap year -- via real key presses so _focusDay tracks along.
+        var start = _page.Locator("[data-date='2025-01-15']");
+        await start.FocusAsync();
+        for (var i = 0; i < 6; i++)
+        {
+            await _page.Keyboard.PressAsync("ArrowDown"); // Jan 22, 29; Feb 5, 12, 19, 26
+        }
+        await _page.Keyboard.PressAsync("ArrowRight"); // Feb 27
+        await _page.Keyboard.PressAsync("ArrowRight"); // Feb 28 -- right panel's last day
+        await Expect(_page.Locator(":focus")).ToHaveAttributeAsync("data-date", "2025-02-28");
+
+        // Crossing forward out of the right panel must anchor the RIGHT panel on the new month --
+        // a one-month view shift (Jan/Feb -> Feb/Mar) -- rather than the left panel, which would
+        // jump straight to Mar/Apr and skip Feb entirely.
+        await _page.Keyboard.PressAsync("ArrowRight");
+
+        var monthSelects = _page.Locator(".wss-picker-month-header select");
+        await Expect(monthSelects.Nth(0)).ToHaveValueAsync("2");
+        await Expect(monthSelects.Nth(1)).ToHaveValueAsync("2025");
+        await Expect(monthSelects.Nth(2)).ToHaveValueAsync("3");
+        await Expect(monthSelects.Nth(3)).ToHaveValueAsync("2025");
+    }
+
+    [Fact]
     public async Task Open_panel_visual_baseline()
     {
         await GotoAsync();

@@ -188,6 +188,58 @@ public class DatePickerE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Enter_on_a_focused_day_commits_and_returns_focus_to_the_input()
+    {
+        await GotoAsync();
+        await OpenAsync();
+
+        // The demo pins Value=2026-02-14, which carries the roving tabindex on open. A native
+        // Enter on a focused <button> synthesizes a click, so this exercises the same
+        // panel-originated close (day click) that should restore focus to the text input instead
+        // of leaving it stranded on the day button that's about to unmount.
+        var day = Dropdown.Locator("[data-date='2026-02-14']");
+        await day.FocusAsync();
+        await _page.Keyboard.PressAsync("Enter");
+
+        await Expect(Dropdown).Not.ToBeVisibleAsync();
+        await Expect(Input).ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task Escape_from_the_day_grid_returns_focus_to_the_input()
+    {
+        await GotoAsync();
+        await OpenAsync();
+
+        // Escape while focus is on a descendant of the panel (here, the day grid) must restore
+        // focus to the text input rather than dropping it to <body> once the panel unmounts.
+        var day = Dropdown.Locator("[data-date='2026-02-14']");
+        await day.FocusAsync();
+        await _page.Keyboard.PressAsync("Escape");
+
+        await Expect(Dropdown).Not.ToBeVisibleAsync();
+        await Expect(Input).ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task Outside_click_closes_without_moving_focus_to_the_input()
+    {
+        await GotoAsync();
+        await OpenAsync();
+
+        // Any click while open lands on the full-viewport backdrop (position:fixed; inset:0) --
+        // the practical stand-in for "click elsewhere on the page". Unlike Escape/Enter/day-click,
+        // this outside-close path must NOT steal focus from wherever the user actually clicked.
+        await _page.Locator(".wss-picker-backdrop").ClickAsync(new LocatorClickOptions
+        {
+            Position = new Position { X = 5, Y = 40 },
+        });
+
+        await Expect(Dropdown).Not.ToBeVisibleAsync();
+        await Expect(Input).Not.ToBeFocusedAsync();
+    }
+
+    [Fact]
     public async Task Open_panel_visual_baseline()
     {
         await GotoAsync();

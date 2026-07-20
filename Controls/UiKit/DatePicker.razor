@@ -73,7 +73,7 @@
                                 @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
                                 @for (var y = fromYear; y <= toYear; y++)
                                 {
-                                    <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(CultureInfo.CurrentCulture)</option>
+                                    <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
                                 }
                             </select>
                             @DownIcon
@@ -97,7 +97,7 @@
                                     disabled="@IsDayDisabled(d)"
                                     tabindex="@(IsFocusStop(d) ? "0" : "-1")"
                                     data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                    aria-label="@d.ToString("D", CultureInfo.CurrentCulture)"
+                                    aria-label="@d.ToString("D", PickerCulture)"
                                     aria-pressed="@(d == Value?.Date ? "true" : "false")"
                                     @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                         </div>
