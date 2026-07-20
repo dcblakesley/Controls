@@ -10,8 +10,10 @@ namespace Controls;
 /// </summary>
 /// <remarks>
 /// Keyboard follows the ARIA tabs pattern with automatic activation: Arrow keys move to (and
-/// select) the previous/next enabled tab, Home/End jump to the ends, and the roving tabindex keeps
-/// one Tab stop for the whole strip. No JS interop.
+/// select) the previous/next enabled tab, and the roving tabindex keeps one Tab stop for the whole
+/// strip. Home/End are deliberately not handled — Blazor has no per-key <c>preventDefault</c>, and
+/// suppressing the resulting page-scroll would require JS interop, which this no-JS-interop control
+/// forgoes.
 /// </remarks>
 public partial class Tabs
 {
@@ -97,6 +99,15 @@ public partial class Tabs
         if (_tabs.Contains(tab)) StateHasChanged();
     }
 
+    /// <summary>
+    /// Requests a follow-up render of the strip after an already-registered <see cref="Tab"/>'s
+    /// display-relevant parameters changed. The strip's markup is built from the <see cref="Tab"/>
+    /// instances in <c>_tabs</c> before that <see cref="Tab"/>'s own <c>OnParametersSet</c> runs, so
+    /// a parameter change (Count, Title, Disabled, ...) on an existing tab would otherwise render
+    /// stale for this pass and only self-correct on some later, unrelated render.
+    /// </summary>
+    internal void NotifyTabChanged() => StateHasChanged();
+
     // ----- Interaction -------------------------------------------------------
 
     async Task SelectAsync(Tab tab)
@@ -119,8 +130,6 @@ public partial class Tabs
         {
             "ArrowRight" => enabled[(idx + 1) % enabled.Count],
             "ArrowLeft" => enabled[(idx - 1 + enabled.Count) % enabled.Count],
-            "Home" => enabled[0],
-            "End" => enabled[^1],
             _ => null,
         };
         if (target is null || ReferenceEquals(target, from)) return;

@@ -39,7 +39,9 @@ public partial class SearchInput
     /// <summary>HTML id applied to the input — wires a consumer label / test hook.</summary>
     [Parameter] public string? Id { get; set; }
 
-    /// <summary>Accessible name of the input. Defaults to <see cref="AddonLabel"/> when unset.</summary>
+    /// <summary>Accessible name of the input. Defaults to <see cref="AddonLabel"/> when unset; with
+    /// an <see cref="AddonContent"/> template and no label, <c>aria-labelledby</c> points at the
+    /// addon instead (see <see cref="AddonLabelledBy"/>).</summary>
     [Parameter] public string? InputLabel { get; set; }
 
     /// <summary>Accessible name of the icon-only search button. Override to localize.</summary>
@@ -57,6 +59,22 @@ public partial class SearchInput
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M909.6 854.5L649.9 594.8C690.2 542.7 712 479 712 412c0-80.2-31.3-155.4-87.9-212.1-56.6-56.7-132-87.9-212.1-87.9s-155.5 31.3-212.1 87.9C143.2 256.5 112 331.8 112 412c0 80.1 31.3 155.5 87.9 212.1C256.5 680.8 331.8 712 412 712c67 0 130.6-21.8 182.7-62l259.7 259.6a8.2 8.2 0 0011.6 0l43.6-43.5a8.2 8.2 0 000-11.6zM570.4 570.4C528 612.7 471.8 636 412 636s-116-23.3-158.4-65.6C211.3 528 188 471.8 188 412s23.3-116.1 65.6-158.4C296 211.3 352.2 188 412 188s116.1 23.2 158.4 65.6S636 352.2 636 412s-23.3 116.1-65.6 158.4z\"/></svg>");
 
     string? WidthStyle => string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
+
+    /// <summary>
+    /// The input's accessible name via <c>aria-label</c>: <see cref="InputLabel"/> if set, else
+    /// <see cref="AddonLabel"/> when it's non-empty. Null when only an <see cref="AddonContent"/>
+    /// template supplies the addon — <see cref="AddonLabelledBy"/> takes over instead, so the two
+    /// attributes never render at the same time.
+    /// </summary>
+    string? InputAriaLabel => InputLabel ?? (string.IsNullOrEmpty(AddonLabel) ? null : AddonLabel);
+
+    /// <summary>
+    /// Points the input's <c>aria-labelledby</c> at the addon span's id when <see cref="AddonContent"/>
+    /// is the only naming source (no <see cref="InputAriaLabel"/> and an <see cref="Id"/> to anchor
+    /// the addon's id to). Null otherwise, since the addon span only carries an id when <see cref="Id"/>
+    /// is set.
+    /// </summary>
+    string? AddonLabelledBy => InputAriaLabel is null && AddonContent is not null && Id is not null ? $"{Id}-addon" : null;
 
     async Task OnInputAsync(ChangeEventArgs e)
     {

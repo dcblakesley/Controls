@@ -25,7 +25,8 @@
            autocomplete="off"
            placeholder="@Placeholder"
            disabled="@Disabled"
-           aria-label="@(InputLabel ?? AddonLabel)"
+           aria-label="@InputAriaLabel"
+           aria-labelledby="@AddonLabelledBy"
            value="@Value"
            @oninput="OnInputAsync"
            @onkeydown="OnKeyDownAsync" />

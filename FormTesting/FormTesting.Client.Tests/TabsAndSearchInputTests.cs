@@ -97,6 +97,126 @@ public class TabsAndSearchInputTests : TestContext
     }
 
     [Fact]
+    public void Home_and_End_keys_no_longer_move_the_active_tab()
+    {
+        // Home/End were removed from the key switch (they fall through to the null branch and
+        // return early) because Blazor has no per-key preventDefault — handling them would still
+        // let the browser scroll the page out from under the corrective FocusAsync.
+        string? selected = null;
+        var cut = RenderTabs(changed: EventCallback.Factory.Create<string?>(this, v => selected = v));
+
+        cut.FindAll("[role=tab]")[0].KeyDown(new KeyboardEventArgs { Key = "Home" });
+        Assert.Null(selected);
+        Assert.Contains("wss-tabs-tab-active", cut.FindAll("[role=tab]")[0].ClassList);
+
+        cut.FindAll("[role=tab]")[0].KeyDown(new KeyboardEventArgs { Key = "End" });
+        Assert.Null(selected);
+        Assert.Contains("wss-tabs-tab-active", cut.FindAll("[role=tab]")[0].ClassList);
+    }
+
+    [Fact]
+    public void Existing_tab_Count_change_renders_on_the_same_pass_instead_of_one_behind()
+    {
+        var count = 12;
+        RenderFragment Children() => builder =>
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "overdue");
+            builder.AddAttribute(2, "Title", "Overdue");
+            builder.AddAttribute(3, "Count", count);
+            builder.CloseComponent();
+
+            builder.OpenComponent<Tab>(4);
+            builder.AddAttribute(5, "Key", "other");
+            builder.AddAttribute(6, "Title", "Other");
+            builder.CloseComponent();
+        };
+
+        var cut = RenderComponent<Tabs>(p => p.Add(t => t.ChildContent, Children()));
+        Assert.Equal("12", cut.Find(".wss-tabs-count").TextContent);
+
+        // The auditor's exact repro shape: the parent re-renders with a changed Count on an
+        // already-registered tab (no tab added or removed). Tabs builds the strip from last
+        // pass' values before this Tab's own OnParametersSet runs, so without the corrective
+        // NotifyTabChanged the chip would still read "12" after this call returns.
+        var rendersBefore = cut.RenderCount;
+        count = 34;
+        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Children()));
+
+        Assert.Equal("34", cut.Find(".wss-tabs-count").TextContent);
+        // Bounded corrective re-render, not a runaway loop — an unguarded notification would
+        // re-trigger on every subsequent pass since ChildContent is a new delegate each time.
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+    }
+
+    [Fact]
+    public void Existing_tab_Disabled_flip_renders_on_the_same_pass_instead_of_one_behind()
+    {
+        var disabled = false;
+        RenderFragment Children() => builder =>
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "overdue");
+            builder.AddAttribute(2, "Title", "Overdue");
+            builder.AddAttribute(3, "Disabled", disabled);
+            builder.CloseComponent();
+
+            builder.OpenComponent<Tab>(4);
+            builder.AddAttribute(5, "Key", "other");
+            builder.AddAttribute(6, "Title", "Other");
+            builder.CloseComponent();
+        };
+
+        var cut = RenderComponent<Tabs>(p => p.Add(t => t.ChildContent, Children()));
+        Assert.False(cut.FindAll("[role=tab]")[0].HasAttribute("disabled"));
+
+        var rendersBefore = cut.RenderCount;
+        disabled = true;
+        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Children()));
+
+        Assert.True(cut.FindAll("[role=tab]")[0].HasAttribute("disabled"));
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+    }
+
+    [Fact]
+    public void Existing_tab_Key_change_renders_on_the_same_pass_instead_of_one_behind()
+    {
+        // Key feeds the button id, aria-controls, and the ActiveKey match that drives the active
+        // underline/aria-selected/tab stop — a re-keyed tab whose display text is unchanged must
+        // still trigger the corrective render, or the new ActiveKey matches nothing and the
+        // active state silently falls back to the first enabled tab.
+        var key = "draft";
+        RenderFragment Children() => builder =>
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "all");
+            builder.AddAttribute(2, "Title", "All");
+            builder.CloseComponent();
+
+            builder.OpenComponent<Tab>(4);
+            builder.AddAttribute(5, "Key", key);
+            builder.AddAttribute(6, "Title", "Filtered");
+            builder.CloseComponent();
+        };
+
+        var cut = RenderComponent<Tabs>(p => p
+            .Add(t => t.ChildContent, Children())
+            .Add(t => t.ActiveKey, "draft"));
+        Assert.Contains("wss-tabs-tab-active", cut.FindAll("[role=tab]")[1].ClassList);
+
+        var rendersBefore = cut.RenderCount;
+        key = "saved";
+        cut.SetParametersAndRender(p => p
+            .Add(t => t.ChildContent, Children())
+            .Add(t => t.ActiveKey, "saved"));
+
+        var rekeyed = cut.FindAll("[role=tab]")[1];
+        Assert.Contains("wss-tabs-tab-active", rekeyed.ClassList);
+        Assert.EndsWith("-tab-saved", rekeyed.GetAttribute("id"));
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+    }
+
+    [Fact]
     public void Active_pane_renders_with_the_tabpanel_wiring()
     {
         var cut = RenderTabs(activeKey: "missing", withPanes: true);
@@ -151,5 +271,58 @@ public class TabsAndSearchInputTests : TestContext
         Assert.True(cut.Find(".wss-search-input").HasAttribute("disabled"));
         cut.Find(".wss-search-input").KeyDown(new KeyboardEventArgs { Key = "Enter" });
         Assert.False(fired);
+    }
+
+    [Fact]
+    public void SearchInput_addon_template_without_labels_wires_aria_labelledby()
+    {
+        var cut = RenderComponent<SearchInput>(p => p
+            .Add(s => s.Id, "po-search")
+            .Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
+
+        var input = cut.Find(".wss-search-input");
+        Assert.Equal("po-search-addon", input.GetAttribute("aria-labelledby"));
+        Assert.Null(input.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void SearchInput_InputLabel_wins_over_addon_content_and_suppresses_aria_labelledby()
+    {
+        var cut = RenderComponent<SearchInput>(p => p
+            .Add(s => s.Id, "po-search")
+            .Add(s => s.InputLabel, "Search purchase orders")
+            .Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
+
+        var input = cut.Find(".wss-search-input");
+        Assert.Equal("Search purchase orders", input.GetAttribute("aria-label"));
+        Assert.Null(input.GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void SearchInput_AddonLabel_path_is_unaffected_by_the_labelledby_wiring()
+    {
+        var cut = RenderComponent<SearchInput>(p => p
+            .Add(s => s.Id, "po-search")
+            .Add(s => s.AddonLabel, "POs"));
+
+        var input = cut.Find(".wss-search-input");
+        Assert.Equal("POs", input.GetAttribute("aria-label"));
+        Assert.Null(input.GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void SearchInput_empty_AddonLabel_with_AddonContent_still_uses_aria_labelledby()
+    {
+        // AddonLabel = "" (not null) is the edge case: InputLabel ?? AddonLabel alone would
+        // render aria-label="" while aria-labelledby also pointed at the addon span — both
+        // computed from the code-behind properties so exactly one renders.
+        var cut = RenderComponent<SearchInput>(p => p
+            .Add(s => s.Id, "po-search")
+            .Add(s => s.AddonLabel, "")
+            .Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
+
+        var input = cut.Find(".wss-search-input");
+        Assert.Equal("po-search-addon", input.GetAttribute("aria-labelledby"));
+        Assert.Null(input.GetAttribute("aria-label"));
     }
 }

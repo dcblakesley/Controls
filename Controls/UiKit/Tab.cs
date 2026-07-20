@@ -34,9 +34,39 @@ public class Tab : ComponentBase, IDisposable
     // The Tabs component focuses the rendered button during keyboard navigation.
     internal ElementReference ButtonRef;
 
+    bool _initialized;
+    string? _lastKey;
+    string? _lastTitle;
+    int? _lastCount;
+    bool _lastDisabled;
+    bool _lastHasTitleContent;
+    bool _lastHasChildContent;
+
     // Re-register on every render so Tabs re-collects in document order each pass — conditionally
-    // rendered tabs (@if) drop and re-appear in their declared position (see Table.Register).
-    protected override void OnParametersSet() => Tabs?.Register(this);
+    // rendered tabs (@if) drop and re-appear in their declared position (see Table.Register). This
+    // runs on every parent render regardless of whether these parameters actually changed (a
+    // RenderFragment parameter is a new delegate each pass, so Blazor can't skip the call) — the
+    // snapshot comparison below is what tells a real change from a re-run, and it's what guards
+    // NotifyTabChanged against looping: Tabs renders its strip from these fields BEFORE this method
+    // runs, so a real change on an already-registered tab needs one corrective re-render, but an
+    // unguarded notification on every pass would recurse forever.
+    protected override void OnParametersSet()
+    {
+        var displayChanged = _initialized &&
+            (_lastKey != Key || _lastTitle != Title || _lastCount != Count || _lastDisabled != Disabled ||
+             _lastHasTitleContent != (TitleContent is not null) || _lastHasChildContent != (ChildContent is not null));
+
+        _lastKey = Key;
+        _lastTitle = Title;
+        _lastCount = Count;
+        _lastDisabled = Disabled;
+        _lastHasTitleContent = TitleContent is not null;
+        _lastHasChildContent = ChildContent is not null;
+        _initialized = true;
+
+        Tabs?.Register(this);
+        if (displayChanged) Tabs?.NotifyTabChanged();
+    }
 
     internal RenderFragment LabelFor() => TitleContent ?? (b => b.AddContent(0, Title));
 
