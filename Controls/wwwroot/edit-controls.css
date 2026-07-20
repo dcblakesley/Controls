@@ -16,14 +16,19 @@
     --edit-focus-offset: 2px;
 }
 
-/* Visually hidden but available to screen readers (sr-only). */
+/* Visually hidden but available to screen readers (sr-only). Clip-based hiding (not an offscreen
+   left: -10000px position) so a consumer MFE shell's CSS can't accidentally un-hide it by resetting
+   position/left — mirrors .wss-sr-only in wss-controls.css. */
 .edit-sr-only {
     position: absolute;
-    left: -10000px;
-    top: auto;
     width: 1px;
     height: 1px;
+    padding: 0;
+    margin: -1px;
     overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
 }
 
 /************************************************ General ************************************************/
@@ -284,6 +289,14 @@
 .edit-string-link { /* <a style when IsEditMode=false and Url!=null */ }
 .edit-string-input { /* The input for the "EditString" control */ }
 
+/* Read-only masked-value wrapper: the masked/unmasked <span> plus the eye-toggle <button>.
+   Named so consumers can target it directly instead of a :has() workaround. */
+.edit-masked-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 /************************************************ Input + InvalidIcon wrapper ********************************/
 .edit-input-with-icon {
     /* Wraps a single editor element (<input>/<textarea>/<InputDate>) together with the optional
@@ -386,7 +399,9 @@
     border: 1px solid var(--border-color, #ccc);
     border-radius: 4px;
     padding: 4px 8px;
-    z-index: 100; /* Ensure it appears above other content */
+    /* Consumer-overridable: MFE shells commonly stack drawers/modals above this (clarkConnect's
+       drawer/modal chrome sits at 1082/1040), which otherwise buries the tooltip beneath them. */
+    z-index: var(--edit-tooltip-z-index, 10000); /* Ensure it appears above other content */
     width: max-content; /* Adjust width based on content */
     max-width: 400px; /* Prevent too wide popover */
 

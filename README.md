@@ -481,6 +481,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### Unreleased
+
+**Fixes / polish** (MFE-compatibility follow-up)
+- `.edit-sr-only` now uses the clip-based visually-hidden pattern (`clip-path: inset(50%)` + 1px box + `-1px` margin) instead of `left: -10000px` — the offscreen-position pattern could be un-hidden by a consumer MFE shell's CSS resetting `position`/`left`. Matches `.wss-sr-only`'s existing approach; no visible change for anyone not already relying on the bug.
+- `EditString`'s masked read-only wrapper (the `<span>` + eye-toggle `<button>` shown when `MaskText` is set and `IsEditMode=false`) now carries a `edit-masked-value` class, styled `display: inline-flex; align-items: center; gap: 4px`. Consumers previously had to target this wrapper with a `:has()` hack; style `.edit-masked-value` directly instead.
+- `.edit-tooltip-content`'s `z-index` is now the overridable `var(--edit-tooltip-z-index, 10000)` (was a hardcoded `100`) — tall consumer stacking contexts (drawers, modals) no longer bury the tooltip popover beneath them. Override `--edit-tooltip-z-index` at any scope if 10000 still isn't high enough.
+
 ### 10.6.5
 
 **New features**
