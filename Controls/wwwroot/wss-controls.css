@@ -592,11 +592,27 @@
     border-color: var(--wss-select-pill-border, currentColor);
 }
 
-/* Focus/open ring derives from the pill color instead of the primary. */
+/* Focus/open ring derives from the pill color instead of the primary — no --wss-primary-shadow
+   fallback here, since consulting the primary knob would give a primary-colored ring on a
+   pill-colored control. */
 .wss-select-pill.wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
 .wss-select-pill:not(.wss-select-disabled) .wss-select-selector:focus-within {
     border-color: var(--wss-select-pill-border, currentColor);
-    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, currentColor 20%, transparent));
+    box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 20%, transparent);
+}
+
+/* Invalid pill: the validation-error border/ring must outrank the pill hover/focus rules above.
+   Adding .invalid to the selector (rather than leaning on file order like the rules above) gives
+   these a strictly higher specificity, so the error state wins regardless of where a future edit
+   moves this block. */
+.wss-select-pill.invalid:not(.wss-select-disabled):hover .wss-select-selector {
+    border-color: var(--wss-color-error);
+}
+
+.wss-select-pill.invalid.wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
+.wss-select-pill.invalid:not(.wss-select-disabled) .wss-select-selector:focus-within {
+    border-color: var(--wss-color-error);
+    box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
 }
 
 /* Disabled pill drops back to the standard disabled palette (the pill base rules above would
