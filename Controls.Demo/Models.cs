@@ -37,6 +37,14 @@ internal class DemoModelForEditControls
     [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
     public DateTime EditDate { get; set; } = DateTime.Now;
 
+    [DisplayName("EditDatePicker")]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
+    public DateTime? EditDatePicker { get; set; } = new DateTime(2026, 2, 14);
+
+    [DisplayName("EditDateRange")]
+    public DateTime? EditDateRangeStart { get; set; } = new DateTime(2026, 2, 1);
+    public DateTime? EditDateRangeEnd { get; set; } = new DateTime(2026, 2, 14);
+
     [DisplayName("EditSelectEnum")]
     public Animal EditSelectEnum { get; set; }
 

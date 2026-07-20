@@ -80,6 +80,8 @@ public enum CurrentView
     CheckedStringList,
     CheckedEnumList,
     Date,
+    DatePicker,
+    DateRange,
     Number,
     Radio,
     RadioEnum,

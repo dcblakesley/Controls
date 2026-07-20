@@ -1,0 +1,87 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditDateRange Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.BasicStart"
+                       @bind-End="_model.BasicEnd" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.PresetStart"
+                       @bind-End="_model.PresetEnd"
+                       Label="Quarter"
+                       Presets="_presets" />
+
+        <EditDateRange @bind-Start="_model.PresetStart"
+                       @bind-End="_model.PresetEnd"
+                       Label="Quarter"
+                       IsEditMode=false />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_presetsExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.RequiredStart"
+                       @bind-End="_model.RequiredEnd" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+</EditForm>
+
+@code {
+    readonly DemoEditDateRangeModel _model = new();
+
+    readonly List<DateRangePreset> _presets =
+    [
+        new("Q1 2026", new DateTime(2026, 1, 1), new DateTime(2026, 3, 31)),
+        new("Q2 2026", new DateTime(2026, 4, 1), new DateTime(2026, 6, 30)),
+        new("Full Year 2026", new DateTime(2026, 1, 1), new DateTime(2026, 12, 31)),
+    ];
+
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    public class DemoEditDateRangeModel
+    {
+        public DateTime? BasicStart { get; set; } = new DateTime(2026, 2, 1);
+        public DateTime? BasicEnd { get; set; } = new DateTime(2026, 2, 14);
+
+        public DateTime? PresetStart { get; set; } = new DateTime(2026, 1, 1);
+        public DateTime? PresetEnd { get; set; } = new DateTime(2026, 3, 31);
+
+        [Required]
+        public DateTime? RequiredStart { get; set; }
+        [Required]
+        public DateTime? RequiredEnd { get; set; }
+    }
+
+    readonly string _basicExample = @"<EditDateRange @bind-Start=""_model.BasicStart""
+               @bind-End=""_model.BasicEnd"" />";
+
+    readonly string _presetsExample = @"<EditDateRange @bind-Start=""_model.PresetStart""
+               @bind-End=""_model.PresetEnd""
+               Label=""Quarter""
+               Presets=""_presets"" />";
+
+    readonly string _validationExample = @"<EditDateRange @bind-Start=""_model.RequiredStart""
+               @bind-End=""_model.RequiredEnd"" />";
+
+    readonly string _validationModel = @"[Required]
+public DateTime? RequiredStart { get; set; }
+
+[Required]
+public DateTime? RequiredEnd { get; set; }";
+}

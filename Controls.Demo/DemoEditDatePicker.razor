@@ -1,0 +1,90 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditDatePicker Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <EditDatePicker @bind-Value="_model.BasicDate" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDatePicker @bind-Value="_model.LabeledDate"
+                        Label="Appointment Date" />
+
+        <EditDatePicker @bind-Value="_model.LabeledDate"
+                        IsEditMode=false
+                        DateFormat="MMMM d, yyyy" />
+
+        <EditDatePicker @bind-Value="_model.RangeBoundDate"
+                        Label="Within February 2026"
+                        Min="@_minDate"
+                        Max="@_maxDate" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_labelReadOnlyMinMaxExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDatePicker @bind-Value="_model.Disabled"
+                        IsDisabled="true" />
+
+        <EditDatePicker @bind-Value="_model.Required" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+</EditForm>
+
+@code {
+    readonly DemoEditDatePickerModel _model = new();
+
+    readonly DateTime _minDate = new(2026, 2, 1);
+    readonly DateTime _maxDate = new(2026, 2, 28);
+
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    public class DemoEditDatePickerModel
+    {
+        public DateTime? BasicDate { get; set; } = new DateTime(2026, 2, 14);
+        public DateTime? LabeledDate { get; set; } = new DateTime(2026, 2, 14);
+        public DateTime? RangeBoundDate { get; set; } = new DateTime(2026, 2, 14);
+        public DateTime? Disabled { get; set; } = new DateTime(2026, 2, 14);
+
+        [Required]
+        public DateTime? Required { get; set; }
+    }
+
+    readonly string _basicExample = @"<EditDatePicker @bind-Value=""_model.BasicDate"" />";
+
+    readonly string _labelReadOnlyMinMaxExample = @"<EditDatePicker @bind-Value=""_model.LabeledDate""
+                Label=""Appointment Date"" />
+
+<EditDatePicker @bind-Value=""_model.LabeledDate""
+                IsEditMode=false
+                DateFormat=""MMMM d, yyyy"" />
+
+<EditDatePicker @bind-Value=""_model.RangeBoundDate""
+                Label=""Within February 2026""
+                Min=""@_minDate""
+                Max=""@_maxDate"" />";
+
+    readonly string _validationExample = @"<EditDatePicker @bind-Value=""_model.Disabled""
+                IsDisabled=""true"" />
+
+<EditDatePicker @bind-Value=""_model.Required"" />";
+
+    readonly string _validationModel = @"[Required]
+public DateTime? Required { get; set; }
+
+public DateTime? Disabled { get; set; } = new DateTime(2026, 2, 14);";
+}
