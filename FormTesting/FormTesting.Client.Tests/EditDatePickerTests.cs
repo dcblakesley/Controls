@@ -310,6 +310,45 @@ public class EditDatePickerTests : TestContext
     }
 
     [Fact]
+    public void HidingMode_WhenNullOrDefault_hides_when_the_value_is_default_DateTime()
+    {
+        // default(DateTime) (0001-01-01) must count as semantically empty for the hiding contract,
+        // the same way EditDate<T>'s IsValueDefault override already treats it (see HidingModeTests'
+        // EditDate coverage for the native-input case). EditDatePicker previously fell through to
+        // EditControlBase's plain EqualityComparer check, which treats a non-null default DateTime
+        // as NOT default.
+        var model = new PersonModel { BirthDate = default(DateTime) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    [Fact]
+    public void HidingMode_WhenNullOrDefault_shows_a_real_date()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.NotEmpty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    [Fact]
     public void Min_max_and_placeholder_forward_to_the_inner_picker()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 15) };

@@ -123,4 +123,9 @@ public partial class EditDatePicker : EditControlBase<DateTime?>
             return value.ToString(culture);
         }
     }
+
+    // default(DateTime) (0001-01-01) counts as semantically empty for date controls -- mirrors
+    // EditDate<T>'s IsValueDefault override. Unlike EditDate<T>, CurrentValue here is always
+    // DateTime? (not a boxed generic T), so there's no switch needed to catch the type.
+    protected override bool IsValueDefault() => CurrentValue is null || CurrentValue == default(DateTime);
 }

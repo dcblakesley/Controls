@@ -348,4 +348,75 @@ public class EditDateRangeTests : TestContext
         Assert.Contains("2025-02-03", text);
         Assert.Empty(cut.FindAll(".wss-picker"));
     }
+
+    [Fact]
+    public void Read_only_mode_forwards_the_consumers_class_and_the_Start_fields_state_class()
+    {
+        // The edit/read-only class-forwarding asymmetry fixed across the rest of the library
+        // (EditMultiSelect/EditFile/EditChecked* all forward to ReadOnlyValue) applies here too --
+        // FieldCssClass merges the consumer's class with the Start field's EditContext state class,
+        // and it must reach the read-only view, not just DateRangePicker's edit-mode wrapper.
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "IsEditMode", false);
+            b.AddAttribute(6, "class", "my-range-class");
+            b.CloseComponent();
+        }));
+
+        var value = cut.Find(".edit-readonly-value");
+        Assert.Contains("my-range-class", value.ClassList);
+        // EditContext.FieldCssClass emits "valid" for an untouched, currently-passing field -- the
+        // same token the Start input would carry in edit mode.
+        Assert.Contains("valid", value.ClassList);
+    }
+
+    [Fact]
+    public void HidingMode_WhenNullOrDefault_hides_when_Start_is_default_DateTime_and_End_is_null()
+    {
+        // Mirrors EditDatePicker's per-field default(DateTime) contract: neither endpoint carries a
+        // meaningful value, so the pair counts as "default" even though Start isn't literally null.
+        var model = new RangeModel { Start = default(DateTime), End = null };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    [Fact]
+    public void HidingMode_WhenNullOrDefault_shows_when_one_endpoint_has_a_real_date()
+    {
+        var model = new RangeModel { Start = Jan15, End = null };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.NotEmpty(cut.FindAll(".edit-control-wrapper"));
+    }
 }

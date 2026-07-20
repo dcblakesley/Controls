@@ -209,9 +209,11 @@ public partial class EditDateRange : IEditControl, IDisposable
     /// The consumer's <c>class</c> attribute (if any) merged with the Start field's EditContext state
     /// classes (<c>modified</c>/<c>valid</c>/<c>invalid</c>) — mirrors
     /// <see cref="EditControlListBase{TItem}.FieldCssClass"/>, the list-control analogue, since this
-    /// control is likewise not an <c>InputBase</c> and gets no <c>CssClass</c> for free.
+    /// control is likewise not an <c>InputBase</c> and gets no <c>CssClass</c> for free. Also forwarded
+    /// onto the read-only view's <c>CssClass</c> so the edit/read-only class-forwarding contract every
+    /// other control provides (EditMultiSelect, EditFile, EditChecked*) holds here too.
     /// </summary>
-    string? FieldCssClass
+    protected string? FieldCssClass
     {
         get
         {
@@ -232,13 +234,27 @@ public partial class EditDateRange : IEditControl, IDisposable
     /// <summary> True when the label should be suppressed. </summary>
     protected bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 
-    /// <summary> Both Start and End null count as "default" for the hiding modes — there's no
-    /// meaningful partial-range default distinct from "nothing entered".</summary>
+    /// <summary>
+    /// Both Start and End null count as "default" for the strict Null hiding modes
+    /// (<see cref="HidingMode.WhenNull"/>/<see cref="HidingMode.WhenReadOnlyAndNull"/>); both
+    /// null-or-<c>default(DateTime)</c> count as "default" for the NullOrDefault modes — mirrors
+    /// <see cref="EditDatePicker"/>'s <c>IsValueDefault</c> override applied per field, since there's
+    /// no meaningful partial-range default distinct from "nothing entered".
+    /// </summary>
     protected bool ShouldShowComponent()
     {
         var isNull = Start is null && End is null;
-        return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull);
+        var isDefault = IsEmpty(Start) && IsEmpty(End);
+        return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isDefault);
     }
+
+    /// <summary>
+    /// True when a range endpoint is either unset or the uninitialized <c>default(DateTime)</c>
+    /// (0001-01-01) — the same semantically-empty value <see cref="EditDatePicker"/>'s
+    /// <c>IsValueDefault</c> override treats as empty (see <see cref="EditControlBase{TValue}.IsValueDefault"/>'s
+    /// remarks for why a boxed default DateTime isn't caught by a plain null check).
+    /// </summary>
+    static bool IsEmpty(DateTime? value) => value is null || value.Value == default;
 
     // Both default to the resolved Label plus a " start"/" end" suffix — aria-label wins the
     // accessible-name computation over the visible FormLabel's label[for] association (see the class

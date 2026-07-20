@@ -44,7 +44,7 @@
         }
         else
         {
-            <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel Text=@GetDisplayValue() />
+            <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@FieldCssClass Text=@GetDisplayValue() />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_startFieldIdentifier Attributes=_attributes Label=@Label />
