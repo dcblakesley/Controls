@@ -21,6 +21,7 @@ CI (`.github/workflows/ci.yml`) runs the Release build, bUnit suite, pack, and t
 - **Add bUnit tests alongside any non-trivial helper or control change** (`FormTesting/FormTesting.Client.Tests/`). One e2e test class per control is the convention in `FormTesting/FormTesting.Client.E2ETests/`.
 - **JS interop changes need e2e coverage, not bUnit** — bUnit does not execute JavaScript.
 - **Run one test project at a time.** The e2e `AppFixture` launches the FormTesting host out-of-process, so a parallel `dotnet test`/`dotnet run` collides on the host DLLs. Set `PWTEST_HEADED=1` to watch the browser locally.
+- **The e2e host always launches Debug, regardless of `-c` on the outer `dotnet test`.** `AppFixture` shells out `dotnet run --no-build` with no `-c` flag. If you've only built/packed Release (e.g. after deleting `bin`/`obj` to force a clean pack), the e2e run fails every test with a 60s "host did not become ready" timeout — build the solution once with plain `dotnet build FormTesting.sln` (Debug) first.
 
 ### Visual regression
 
