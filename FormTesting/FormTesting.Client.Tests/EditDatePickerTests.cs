@@ -172,6 +172,47 @@ public class EditDatePickerTests : TestContext
     }
 
     [Fact]
+    public void Label_param_flows_to_the_pickers_aria_label_when_set()
+    {
+        // Label overrides the visible FormLabel text; EffectiveInputLabel must track it too so the
+        // aria-label (which wins the accessible-name computation over label[for]) never diverges from
+        // what's on screen (WCAG 2.5.3 Label in Name).
+        var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Label", "Date of Birth");
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("Date of Birth", cut.Find("label.edit-label").TextContent);
+        Assert.Equal("Date of Birth", cut.Find(".wss-picker-input-date").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void InputLabel_overrides_Label_for_the_pickers_aria_label()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Label", "Date of Birth");
+            b.AddAttribute(4, "InputLabel", "Custom accessible name");
+            b.CloseComponent();
+        }));
+
+        // The visible label still shows Label; only the aria-label takes the explicit InputLabel override.
+        Assert.Contains("Date of Birth", cut.Find("label.edit-label").TextContent);
+        Assert.Equal("Custom accessible name", cut.Find(".wss-picker-input-date").GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void Label_for_resolves_to_the_pickers_actual_input_id()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
@@ -206,6 +247,37 @@ public class EditDatePickerTests : TestContext
 
         Assert.Contains("2020-03-05", cut.Find(".edit-readonly-value").TextContent);
         Assert.Empty(cut.FindAll(".wss-picker"));
+    }
+
+    [Fact]
+    public void Read_only_mode_renders_gregorian_years_under_non_gregorian_cultures()
+    {
+        // Same Gregorian contract as the picker itself: th-TH (Buddhist calendar, year + 543) must
+        // not make read-only mode show 2563 while edit mode's picker shows 2020 for the same value.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("th-TH");
+            var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+            Expression<Func<DateTime?>> field = () => model.BirthDate;
+            var cut = Render(WithForm(model, b =>
+            {
+                b.OpenComponent<EditDatePicker>(0);
+                b.AddAttribute(1, "Value", model.BirthDate);
+                b.AddAttribute(2, "ValueExpression", field);
+                b.AddAttribute(3, "DateFormat", "yyyy-MM-dd");
+                b.AddAttribute(4, "IsEditMode", false);
+                b.CloseComponent();
+            }));
+
+            var text = cut.Find(".edit-readonly-value").TextContent;
+            Assert.Contains("2020-03-05", text);
+            Assert.DoesNotContain("2563", text);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     [Fact]

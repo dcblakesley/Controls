@@ -253,6 +253,79 @@ public class EditDateRangeTests : TestContext
     }
 
     [Fact]
+    public void No_label_defaults_each_inputs_aria_label_to_its_own_field_name_and_stays_unique()
+    {
+        // With no Label override, each input's aria-label falls back to its own field's auto-derived
+        // label rather than a shared/generic string, so Start and End are already unique out of the box.
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal("Start", cut.Find(".wss-picker-input-start").GetAttribute("aria-label"));
+        Assert.Equal("End", cut.Find(".wss-picker-input-end").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Label_flows_into_both_inputs_aria_label_containing_the_visible_text()
+    {
+        // Label sets the one shared visible FormLabel; both Start's and End's aria-label (which wins
+        // the accessible-name computation over label[for]) must each contain that text while staying
+        // unique from one another (WCAG 2.5.3 Label in Name).
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Label", "Trip Dates");
+            b.CloseComponent();
+        }));
+
+        var startLabel = cut.Find(".wss-picker-input-start").GetAttribute("aria-label");
+        var endLabel = cut.Find(".wss-picker-input-end").GetAttribute("aria-label");
+
+        Assert.Contains("Trip Dates", startLabel);
+        Assert.Contains("Trip Dates", endLabel);
+        Assert.NotEqual(startLabel, endLabel);
+    }
+
+    [Fact]
+    public void StartInputLabel_and_EndInputLabel_override_the_composed_label()
+    {
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Label", "Trip Dates");
+            b.AddAttribute(6, "StartInputLabel", "Check-in");
+            b.AddAttribute(7, "EndInputLabel", "Check-out");
+            b.CloseComponent();
+        }));
+
+        Assert.Equal("Check-in", cut.Find(".wss-picker-input-start").GetAttribute("aria-label"));
+        Assert.Equal("Check-out", cut.Find(".wss-picker-input-end").GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void Read_only_mode_renders_start_and_end_formatted_with_DateFormat()
     {
         var model = new RangeModel { Start = Jan15, End = Feb3 };

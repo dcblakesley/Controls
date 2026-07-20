@@ -28,9 +28,13 @@ namespace Controls;
 /// reflecting its own field's state (a Start error never marks the End input invalid, and vice
 /// versa); each input's <c>aria-errormessage</c>/<c>aria-describedby</c> references its own
 /// <see cref="FieldValidationDisplay"/> message. The visible <see cref="FormLabel"/> associates
-/// (<c>label[for]</c>) with the Start input; the End input's accessible name is
-/// <see cref="EndInputLabel"/> (an <c>aria-label</c>), and it carries its own id for
-/// <c>ValidationView</c> links.
+/// (<c>label[for]</c>) with the Start input, but <c>aria-label</c> wins the accessible-name
+/// computation over that association (per the AccName spec) — so both inputs' accessible names come
+/// entirely from <see cref="StartInputLabel"/>/<see cref="EndInputLabel"/>, which default to the
+/// resolved <see cref="Label"/> plus a " start"/" end" suffix (falling back to each field's own
+/// auto-derived label when <see cref="Label"/> isn't set). The suffix keeps the two names unique from
+/// each other while both still containing the visible label text (WCAG 2.5.3 Label in Name). The End
+/// input also carries its own id for <c>ValidationView</c> links.
 /// </para>
 /// </remarks>
 public partial class EditDateRange : IEditControl, IDisposable
@@ -136,16 +140,26 @@ public partial class EditDateRange : IEditControl, IDisposable
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     // Accessible-name parameters forwarded to the inner DateRangePicker. Defaults mirror
-    // DateRangePicker's own literal defaults except StartInputLabel (see EffectiveStartInputLabel).
+    // DateRangePicker's own literal defaults except StartInputLabel/EndInputLabel, which resolve
+    // through EffectiveStartInputLabel/EffectiveEndInputLabel below instead of a literal default.
 
     /// <summary>
     /// Accessible name of the Start input — the one <see cref="DateRangePicker"/> associates a
-    /// <c>label[for]</c> with. Null (default) uses the resolved field label so its accessible name
-    /// matches the visible <see cref="FormLabel"/> (see the class remarks). Override to set something else.
+    /// <c>label[for]</c> with. Null (default) resolves to <see cref="Label"/> + " start" when
+    /// <see cref="Label"/> is set, else the Start field's own auto-derived label (<c>[DisplayName]</c>/
+    /// <c>[Display(Name)]</c>/property name) — see the class remarks for why the suffix is needed even
+    /// though the visible <see cref="FormLabel"/> associates with this same input. Override to set
+    /// something else entirely.
     /// </summary>
     [Parameter] public string? StartInputLabel { get; set; }
-    /// <inheritdoc cref="DateRangePicker.EndInputLabel"/>
-    [Parameter] public string EndInputLabel { get; set; } = "End date";
+    /// <summary>
+    /// Accessible name of the End input. Null (default) resolves to <see cref="Label"/> + " end" when
+    /// <see cref="Label"/> is set, else the End field's own auto-derived label — mirrors
+    /// <see cref="StartInputLabel"/>'s resolution so the two names stay unique from each other while
+    /// both contain the visible label text (WCAG 2.5.3 Label in Name). Override to localize or to set
+    /// something else entirely.
+    /// </summary>
+    [Parameter] public string? EndInputLabel { get; set; }
     /// <inheritdoc cref="DateRangePicker.DialogLabel"/>
     [Parameter] public string DialogLabel { get; set; } = "Choose date range";
     /// <inheritdoc cref="DateRangePicker.MonthSelectLabel"/>
@@ -226,7 +240,13 @@ public partial class EditDateRange : IEditControl, IDisposable
         return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull);
     }
 
-    string EffectiveStartInputLabel => StartInputLabel ?? _attributes.GetLabelText(_startFieldIdentifier);
+    // Both default to the resolved Label plus a " start"/" end" suffix — aria-label wins the
+    // accessible-name computation over the visible FormLabel's label[for] association (see the class
+    // remarks), so the suffix is what keeps the two inputs' names unique from each other while each
+    // still contains the visible label text (WCAG 2.5.3 Label in Name). Falls back to each field's own
+    // auto-derived label (matches EditDatePicker's EffectiveInputLabel) when Label isn't set.
+    string EffectiveStartInputLabel => StartInputLabel ?? (Label is not null ? $"{Label} start" : _attributes.GetLabelText(_startFieldIdentifier));
+    string EffectiveEndInputLabel => EndInputLabel ?? (Label is not null ? $"{Label} end" : _endAttributes.GetLabelText(_endFieldIdentifier));
 
     protected override void OnInitialized()
     {
@@ -341,13 +361,16 @@ public partial class EditDateRange : IEditControl, IDisposable
     string FormatOne(DateTime? value)
     {
         if (value is not { } v) return string.Empty;
+        // Gregorian-forced like the picker's own display, so read-only and edit mode can never
+        // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
+        var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
         try
         {
-            return v.ToString(DateFormat, CultureInfo.CurrentCulture);
+            return v.ToString(DateFormat, culture);
         }
         catch (FormatException)
         {
-            return v.ToString(CultureInfo.CurrentCulture);
+            return v.ToString(culture);
         }
     }
 

@@ -70,7 +70,7 @@ public partial class EditDatePicker : EditControlBase<DateTime?>
     /// <inheritdoc cref="DatePicker.NextMonthLabel"/>
     [Parameter] public string NextMonthLabel { get; set; } = "Next month";
 
-    string EffectiveInputLabel => InputLabel ?? _attributes.GetLabelText(_fieldIdentifier);
+    string EffectiveInputLabel => InputLabel ?? Label ?? _attributes.GetLabelText(_fieldIdentifier);
 
     protected override void OnInitialized()
     {
@@ -111,13 +111,16 @@ public partial class EditDatePicker : EditControlBase<DateTime?>
     string GetDisplayValue()
     {
         if (CurrentValue is not { } value) return string.Empty;
+        // Gregorian-forced like the picker's own display, so read-only and edit mode can never
+        // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
+        var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
         try
         {
-            return value.ToString(DateFormat, CultureInfo.CurrentCulture);
+            return value.ToString(DateFormat, culture);
         }
         catch (FormatException)
         {
-            return value.ToString(CultureInfo.CurrentCulture);
+            return value.ToString(culture);
         }
     }
 }
