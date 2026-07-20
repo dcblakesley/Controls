@@ -100,8 +100,18 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Pag
 
         await Expect(startInput).ToHaveAttributeAsync("aria-invalid", "true");
         await Expect(endInput).ToHaveAttributeAsync("aria-invalid", "true");
-        await Expect(startMessage).ToBeVisibleAsync();
-        await Expect(endMessage).ToBeVisibleAsync();
+        // FieldValidationDisplay's screen-reader div (#error-msg-*) renders unconditionally -- even
+        // with zero validation messages -- and its edit-sr-only clip pattern still has a non-zero
+        // bounding box, so Playwright counts it as visible either way. A bare ToBeVisibleAsync can
+        // never fail here. Assert the rendered text instead: GetValidationMessage(x, true) rewrites
+        // DataAnnotations' "The {FieldName} field is required." into "{label} is required."
+        // (includeLabel: true). Start's FieldValidationDisplay gets no explicit Label in this demo,
+        // so its label auto-derives from the RequiredStart property's own name (camelCase split ->
+        // "Required Start"); End's FieldValidationDisplay is likewise given no EndLabel, so its label
+        // auto-derives from the bound RequiredEnd property -- "Required End" -- even though the DOM
+        // id below is anchored to the Start field's name plus "-end".
+        await Expect(startMessage).ToContainTextAsync("Required Start is required.");
+        await Expect(endMessage).ToContainTextAsync("Required End is required.");
     }
 
     [Fact]

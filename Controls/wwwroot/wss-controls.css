@@ -1930,6 +1930,30 @@
     cursor: not-allowed;
 }
 
+/* Validation invalid state (the form wrapper appends "invalid" via AdditionalAttributes' class
+   onto .wss-picker -- same contract as .wss-select.invalid above). */
+.wss-picker.invalid .wss-picker-input {
+    border-color: var(--wss-color-error);
+}
+
+/* Keep the error-red border on open/focus: the primary open/focus-within rule above has the same
+   specificity (0,4,0) and would otherwise win the border-color (red glow, blue border). */
+.wss-picker.invalid.wss-picker-open .wss-picker-input,
+.wss-picker.invalid:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+    border-color: var(--wss-color-error);
+}
+
+/* Single-date variant only (the range field stays border-only per its own mock, even when
+   invalid -- see the primary box-shadow rule above). Re-assert BOTH the border-color AND the
+   box-shadow together in this one rule: a shadow-only override would leave the border to whichever
+   same-specificity primary rule happens to win the tie-break, pairing a red glow with a blue
+   border (.wss-select.invalid's focus rule had exactly this bug once). */
+.wss-picker-single.invalid.wss-picker-open .wss-picker-input,
+.wss-picker-single.invalid:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+    border-color: var(--wss-color-error);
+    box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
+}
+
 /* ---------------------------------------------------------------- Dropdown */
 
 .wss-picker-backdrop {

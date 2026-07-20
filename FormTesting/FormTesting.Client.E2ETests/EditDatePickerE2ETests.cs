@@ -59,7 +59,26 @@ public class EditDatePickerE2ETests(AppFixture app, BrowserFixture browser) : Pa
         var message = section.Locator("#error-msg-Required");
 
         await Expect(input).ToHaveAttributeAsync("aria-invalid", "true");
-        await Expect(message).ToBeVisibleAsync();
+        // FieldValidationDisplay's screen-reader div (#error-msg-*) renders unconditionally -- even
+        // with zero validation messages -- and its edit-sr-only clip pattern still has a non-zero
+        // bounding box, so Playwright counts it as visible either way. A bare ToBeVisibleAsync can
+        // never fail here. Assert the rendered text instead: GetValidationMessage(x, true) rewrites
+        // DataAnnotations' "The Required field is required." into "{label} is required." (includeLabel:
+        // true), and "Required" -- the bound property's own name, with no camelCase humps to split --
+        // is also its auto-derived label.
+        await Expect(message).ToContainTextAsync("Required is required.");
+
+        // Verify defect 1's fix (the new .wss-picker.invalid rule in wss-controls.css) actually
+        // applies -- an invalid picker used to be pixel-identical to a valid one. The bordered
+        // element is the wrapper's .wss-picker-input div, not the <input> itself. The Has locator
+        // must be page-rooted and simple: Playwright re-roots it at each candidate element, so a
+        // section-chained locator would look for "section.demo-section" INSIDE .wss-picker-input
+        // and never match.
+        var pickerInput = section.Locator(".wss-picker-input", new() { Has = Page.Locator("#Required") });
+        // --wss-color-error resolves to var(--color-danger, #ff4d4f), but the FormTesting host's
+        // app.css overrides --color-danger to #CF1322 at :root -- that bridged value (not the
+        // #ff4d4f fallback) is what actually reaches the browser here.
+        await Expect(pickerInput).ToHaveCSSAsync("border-color", "rgb(207, 19, 34)");
     }
 
     [Fact]
