@@ -2774,6 +2774,18 @@
     border-top: 1px solid var(--wss-picker-split);
 }
 
+/* ShowToday/ShowNow modifier: switches the footer row from the OK-only flex-end above to
+   space-between, so the Today/Now link lands on the left and OK (when present) stays pinned
+   right. Added ONLY alongside .wss-picker-footer when that link actually renders (see
+   TimeFooterClass/the Date-Month-Quarter-Year-Week footer markup in DatePicker.razor) -- an
+   existing OK-only footer keeps the plain .wss-picker-footer class untouched, so its alignment and
+   the DatePickerE2ETests-open-panel baseline stay pixel-identical. With just the Today link and no
+   OK (Date/Month/Quarter/Year/Week), space-between with a single flex child behaves exactly like
+   flex-start -- still "left". */
+.wss-picker-footer-split {
+    justify-content: space-between;
+}
+
 /* Small AntD-primary button -- the same token recipe as .wss-dialog-btn-primary
    combined with .wss-dialog-btn-sm (Modal/Popconfirm footers), merged into one
    class since the picker footer only ever needs this one variant. */
@@ -2797,6 +2809,39 @@
 .wss-picker-ok:hover {
     background: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
     border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+}
+
+/* ShowToday/ShowNow's link button (AntD's text-link "today"/"now" affordance): plain text in the
+   primary color, no border/fill -- unlike .wss-picker-ok's filled button above, this one only ever
+   changes color on hover/disabled. Reused verbatim for both Today and Now (only the click handler
+   and the committed value differ). */
+.wss-picker-today-btn {
+    padding: 0;
+    font-family: inherit;
+    font-size: var(--wss-font-size-sm);
+    line-height: var(--wss-line-height);
+    color: var(--wss-color-primary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.wss-picker-today-btn:hover:not(:disabled) {
+    color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+}
+
+.wss-picker-today-btn:disabled {
+    color: var(--wss-color-text-disabled);
+    cursor: not-allowed;
+}
+
+/* ExtraFooter's strip (AntD's renderExtraFooter): a top hairline separates it from the grid/time
+   row above, same split token as every other picker divider. Renders above wss-picker-footer when
+   both are present, or alone at the panel's bottom edge in a mode with no footer of its own. */
+.wss-picker-extra-footer {
+    padding: 8px 12px;
+    border-top: 1px solid var(--wss-picker-split);
 }
 
 /* ============================================================================
@@ -3004,7 +3049,8 @@
 .wss-picker-preset:focus-visible,
 .wss-picker-select select:focus-visible,
 .wss-picker-nav:focus-visible,
-.wss-picker-ok:focus-visible {
+.wss-picker-ok:focus-visible,
+.wss-picker-today-btn:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 1px;
 }
@@ -3032,7 +3078,8 @@
     .wss-picker-day,
     .wss-picker-month-btn,
     .wss-picker-nav,
-    .wss-picker-ok {
+    .wss-picker-ok,
+    .wss-picker-today-btn {
         transition: none;
     }
 

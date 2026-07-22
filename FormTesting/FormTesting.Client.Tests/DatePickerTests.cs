@@ -1,5 +1,6 @@
 using System.Globalization;
 using AngleSharp.Dom;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
@@ -2001,5 +2002,232 @@ public class DatePickerTests : TestContext
             .Add(c => c.Value, new DateTime(2026, 2, 14, 14, 5, 9)));
 
         Assert.Equal("2:05:09 PM", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+    }
+
+    // ----- ShowToday / ShowNow / Presets / ExtraFooter / DefaultViewDate ---------
+
+    [Fact]
+    public void ShowToday_commits_todays_date_and_closes_in_date_mode()
+    {
+        DateTime? value = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.ShowToday, true)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Assert.Equal("Today", cut.Find(".wss-picker-today-btn").TextContent);
+        cut.Find(".wss-picker-today-btn").Click();
+
+        Assert.Equal(DateTime.Today, value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void ShowToday_commits_the_first_of_the_current_month_and_closes_in_month_mode()
+    {
+        // The "one coarse mode" case -- ShowToday's normalization runs through the same
+        // NormalizeForMode every other commit path uses, so Month mode lands on the 1st.
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.ShowToday, true)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-today-btn").Click();
+
+        Assert.Equal(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void ShowToday_link_disables_when_disableddate_rejects_today_and_the_commit_guard_agrees()
+    {
+        DateTime? value = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.ShowToday, true)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d.Date == DateTime.Today))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+
+        var button = cut.Find(".wss-picker-today-btn");
+        Assert.True(button.HasAttribute("disabled")); // rendered disabled, not hidden
+
+        button.Click(); // the C# guard must reject this even though bUnit dispatches regardless
+        Assert.Null(value);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // nothing committed -- stays open
+    }
+
+    [Fact]
+    public void No_footer_renders_in_date_mode_when_showtoday_is_false_regression_guard()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-footer"));
+        Assert.Empty(cut.FindAll(".wss-picker-today-btn"));
+    }
+
+    [Fact]
+    public void ShowNow_commits_datetime_now_without_closing_in_time_mode()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.ShowNow, true)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        var before = DateTime.Now;
+        Open(cut);
+        Assert.Equal("Now", cut.Find(".wss-picker-today-btn").TextContent);
+        cut.Find(".wss-picker-today-btn").Click();
+        var after = DateTime.Now;
+
+        Assert.NotNull(value);
+        // Time mode anchors to Today (NormalizeForMode) -- +/-2s tolerates the select's own
+        // whole-second truncation and the real time that elapses between the two DateTime.Now calls.
+        Assert.InRange(value!.Value, before.AddSeconds(-2), after.AddSeconds(2));
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // stays open -- OK remains the close signal
+    }
+
+    [Fact]
+    public void Preset_click_resolves_at_click_time_not_at_render_time()
+    {
+        // The Func is invoked when the button is clicked, not when the list was built -- mutate the
+        // state it reads AFTER Open() renders the sidebar but BEFORE the click, and confirm the
+        // CHANGED value wins.
+        DateTime? value = null;
+        var resolveTo = new DateTime(2026, 1, 1);
+        var presets = new List<DatePickerPreset> { new("Dynamic", () => resolveTo) };
+        var cut = RenderPicker(p => p
+            .Add(c => c.Presets, presets)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        resolveTo = new DateTime(2026, 6, 15);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal(new DateTime(2026, 6, 15), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Preset_click_commits_in_time_mode_and_still_closes_unlike_the_incremental_selects()
+    {
+        // A preset is a complete pick even in Time/DateTime mode -- unlike the time selects
+        // (ApplyTimePartAsync), which never close, this closes just like every other mode.
+        DateTime? value = null;
+        var presets = new List<DatePickerPreset> { new("Noon", () => new DateTime(2026, 2, 14, 12, 0, 0)) };
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Presets, presets)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal(new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.Today.Day, 12, 0, 0), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Guard_rejected_preset_no_ops()
+    {
+        DateTime? value = Feb14;
+        var presets = new List<DatePickerPreset> { new("Before Min", () => new DateTime(2026, 1, 1)) };
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2026, 2, 1))
+            .Add(c => c.Presets, presets)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal(Feb14, value); // rejected by Min -- unchanged
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // nothing committed -- stays open
+    }
+
+    [Fact]
+    public void Presets_sidebar_renders_reusing_the_daterangepickers_preset_classes()
+    {
+        var presets = new List<DatePickerPreset>
+        {
+            new("Today", () => DateTime.Today),
+            new("Tomorrow", () => DateTime.Today.AddDays(1)),
+        };
+        var cut = RenderPicker(p => p.Add(c => c.Presets, presets));
+
+        Open(cut);
+
+        var list = cut.Find(".wss-picker-presets");
+        Assert.Equal("Quick picks", list.GetAttribute("aria-label"));
+        var buttons = cut.FindAll(".wss-picker-preset");
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal("Today", buttons[0].TextContent);
+        Assert.Equal("Tomorrow", buttons[1].TextContent);
+    }
+
+    [Fact]
+    public void No_presets_sidebar_renders_when_presets_is_unset_regression_guard()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-presets"));
+    }
+
+    [Fact]
+    public void ExtraFooter_renders_its_own_strip_in_date_mode()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.ExtraFooter, (RenderFragment)(b => b.AddMarkupContent(0, "<span class=\"my-extra\">extra</span>"))));
+
+        Open(cut);
+
+        Assert.Equal("extra", cut.Find(".wss-picker-extra-footer .my-extra").TextContent);
+    }
+
+    [Fact]
+    public void ExtraFooter_renders_alongside_the_existing_footer_in_time_mode()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.ExtraFooter, (RenderFragment)(b => b.AddMarkupContent(0, "<span class=\"my-extra\">extra</span>"))));
+
+        Open(cut);
+
+        Assert.Equal("extra", cut.Find(".wss-picker-extra-footer .my-extra").TextContent);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-ok")); // the existing OK footer still renders too
+    }
+
+    [Fact]
+    public void DefaultViewDate_drives_the_opened_view_when_value_is_null()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.DefaultViewDate, new DateTime(2030, 8, 1)));
+
+        Open(cut);
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("8", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("2030", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void DefaultViewDate_is_ignored_once_value_is_set()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.DefaultViewDate, new DateTime(2030, 8, 1)));
+
+        Open(cut);
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("2", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("2026", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
     }
 }

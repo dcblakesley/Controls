@@ -185,6 +185,56 @@ public partial class DatePicker : IAsyncDisposable
     /// parameter.</summary>
     [Parameter] public bool ShowWeekNumbers { get; set; }
 
+    /// <summary>Adds a "Today"-style link button (<see cref="TodayText"/>) to a footer in
+    /// <see cref="DatePickerMode.Date"/>/<see cref="DatePickerMode.Month"/>/<see cref="DatePickerMode.Quarter"/>/
+    /// <see cref="DatePickerMode.Year"/>/<see cref="DatePickerMode.Week"/> mode that commits
+    /// <see cref="DateTime.Today"/> normalized to Mode's own granularity (today itself, this month,
+    /// this quarter, this year, or this week) and closes the panel. Defaults to FALSE — a DELIBERATE
+    /// divergence from AntD's default-true <c>showToday</c>: this control existed before the
+    /// footer did, so defaulting it on would grow every existing consumer's panel a new row it never
+    /// asked for. Has no effect in <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>
+    /// — see <see cref="ShowNow"/> for their equivalent. The button renders DISABLED, not hidden,
+    /// when the normalized today is rejected by <see cref="Min"/>/<see cref="Max"/>/
+    /// <see cref="DisabledDate"/> — the same convention every other disabled cell in this control
+    /// follows.</summary>
+    [Parameter] public bool ShowToday { get; set; }
+    /// <summary>Visible text of the <see cref="ShowToday"/> link button. Override to localize.</summary>
+    [Parameter] public string TodayText { get; set; } = "Today";
+
+    /// <summary>Adds a "Now"-style link button (<see cref="NowText"/>) to the EXISTING
+    /// <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/> footer, left of OK,
+    /// that commits <see cref="DateTime.Now"/> normalized to Mode's own granularity (seconds zeroed
+    /// when <see cref="ShowSeconds"/> is false) WITHOUT closing the panel — matching those modes'
+    /// incremental commit model, where OK remains the close signal. Defaults to false. Has no effect
+    /// in <see cref="DatePickerMode.Date"/>/<see cref="DatePickerMode.Month"/>/
+    /// <see cref="DatePickerMode.Quarter"/>/<see cref="DatePickerMode.Year"/>/
+    /// <see cref="DatePickerMode.Week"/> — see <see cref="ShowToday"/> for their equivalent.
+    /// Disabled, not hidden, under the same guards as <see cref="ShowToday"/>.</summary>
+    [Parameter] public bool ShowNow { get; set; }
+    /// <summary>Visible text of the <see cref="ShowNow"/> link button. Override to localize.</summary>
+    [Parameter] public string NowText { get; set; } = "Now";
+
+    /// <summary>Optional shortcuts rendered as a sidebar in the dropdown (AntD's <c>presets</c>),
+    /// mirroring <see cref="DateRangePicker.Presets"/>'s shape and reusing its <c>wss-picker-presets</c>/
+    /// <c>wss-picker-preset</c> sidebar classes verbatim. Clicking one resolves it (see
+    /// <see cref="DatePickerPreset.Resolve"/>), normalizes to Mode's own granularity, commits — a
+    /// guard-rejected result (<see cref="IsDisabledForCommit"/>) no-ops instead — and closes the
+    /// panel, in EVERY mode including <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>:
+    /// a preset is a complete pick there, unlike those modes' own incremental time selects.</summary>
+    [Parameter] public IReadOnlyList<DatePickerPreset>? Presets { get; set; }
+    /// <summary>Accessible name of the preset sidebar list. Override to localize.</summary>
+    [Parameter] public string PresetsLabel { get; set; } = "Quick picks";
+
+    /// <summary>Extra content rendered in its own strip (<c>wss-picker-extra-footer</c>) above the
+    /// footer row — or above the panel's own bottom edge, in a mode that has no footer of its own
+    /// (AntD's <c>renderExtraFooter</c>). Renders in every mode.</summary>
+    [Parameter] public RenderFragment? ExtraFooter { get; set; }
+
+    /// <summary>The month/year/decade the panel opens showing when <see cref="Value"/> is null
+    /// (AntD's <c>defaultPickerValue</c>) — ignored once <see cref="Value"/> is set. <see cref="Open"/>'s
+    /// view anchor is <c>Value ?? DefaultViewDate ?? DateTime.Today</c> in every mode.</summary>
+    [Parameter] public DateTime? DefaultViewDate { get; set; }
+
     /// <summary>HTML id applied to the input — wires a consumer label / test hook.</summary>
     [Parameter] public string? Id { get; set; }
 
@@ -380,6 +430,27 @@ public partial class DatePicker : IAsyncDisposable
         DatePickerMode.Week => "Select week",
         _ => "Select date",
     };
+
+    // Whether ShowToday's link renders for the CURRENTLY selected Mode -- Date/Month/Quarter/Year/
+    // Week only; Time/DateTime have their own ShowNowLink instead (see below). Both booleans exist
+    // so a consumer flipping ShowToday/ShowNow has no effect outside their own mode family, matching
+    // the parameters' own doc comments.
+    bool ShowTodayLink => ShowToday && Mode is not (DatePickerMode.Time or DatePickerMode.DateTime);
+
+    // Whether ShowNow's link renders for the CURRENTLY selected Mode -- Time/DateTime only.
+    bool ShowNowLink => ShowNow && Mode is DatePickerMode.Time or DatePickerMode.DateTime;
+
+    // The Time/DateTime footer's class: the existing OK-only "wss-picker-footer" (flex-end) UNLESS
+    // ShowNowLink actually renders alongside it, in which case wss-picker-footer-split switches the
+    // row to space-between so the Now link lands on the left and OK stays pinned right. Gating this
+    // on ShowNowLink (not just ShowNow) keeps an OK-only footer (ShowNow false, or Mode.Time/DateTime
+    // never entered) pixel-identical to before this chunk -- the existing snapshot's whole point.
+    string TimeFooterClass => ShowNowLink ? "wss-picker-footer wss-picker-footer-split" : "wss-picker-footer";
+
+    // DateTime.Today/.Now normalized to Mode's own granularity -- the exact values ShowToday's/
+    // ShowNow's links commit (and the values their disabled attribute/commit guard checks against).
+    DateTime TodayForCommit => NormalizeForMode(DateTime.Today);
+    DateTime NowForCommit => NormalizeForMode(DateTime.Now);
 
     string DayClass(DateTime day)
     {
@@ -1192,7 +1263,10 @@ public partial class DatePicker : IAsyncDisposable
         _edit = null;
         _focusDay = null;
         _pendingInputFocus = false;
-        var anchor = Value ?? DateTime.Today;
+        // DefaultViewDate (AntD's defaultPickerValue) only matters when there's no bound Value to
+        // anchor on -- a set Value always wins, same precedence FormDefaults-style parameters use
+        // elsewhere in the kit.
+        var anchor = Value ?? DefaultViewDate ?? DateTime.Today;
         // Year mode's initial view only needs a year-granularity clamp (ClampDecadeStart already
         // guarantees a safe decade below) -- routing it through ClampView's day-grid-oriented
         // one-month buffer would sacrifice up to a whole year at the DateTime range's edges for a
@@ -1273,6 +1347,45 @@ public partial class DatePicker : IAsyncDisposable
         _edit = null;
         await SetValueAsync(month);
         _pendingInputFocus = true; // the clicked month button is about to unmount
+        await CloseAsync();
+    }
+
+    // ShowToday's link (Date/Month/Quarter/Year/Week): commits today, mode-normalized, and closes --
+    // a complete pick, same as a day/month/year/quarter click. Guarded the same way a typed commit
+    // is (IsDisabledForCommit) rather than relying solely on the button's own `disabled` attribute, so
+    // a caller that invokes this directly (or a test harness that doesn't honor `disabled`) can never
+    // slip a rejected value past the guard.
+    async Task OnTodayClickAsync()
+    {
+        var today = TodayForCommit;
+        if (IsDisabledForCommit(today)) return;
+        _edit = null;
+        await SetValueAsync(today);
+        _pendingInputFocus = true; // the clicked link is about to unmount
+        await CloseAsync();
+    }
+
+    // ShowNow's link (Time/DateTime): commits DateTime.Now, mode-normalized, WITHOUT closing --
+    // mirrors ApplyTimePartAsync's incremental commit model for those two modes; OK remains the
+    // close signal.
+    async Task OnNowClickAsync()
+    {
+        var now = NowForCommit;
+        if (IsDisabledForCommit(now)) return;
+        _edit = null;
+        await SetValueAsync(now);
+    }
+
+    // A preset click (any Mode): resolve at click time, normalize to Mode's own granularity, guard
+    // exactly like a typed commit, and -- unlike the incremental Time/DateTime selects -- always
+    // close, because a preset is a complete pick in every mode.
+    async Task OnPresetClickAsync(DatePickerPreset preset)
+    {
+        var value = NormalizeForMode(preset.Resolve());
+        if (IsDisabledForCommit(value)) return;
+        _edit = null;
+        await SetValueAsync(value);
+        _pendingInputFocus = true; // the clicked preset button is about to unmount
         await CloseAsync();
     }
 

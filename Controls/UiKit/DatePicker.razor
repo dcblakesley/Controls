@@ -52,6 +52,19 @@
     {
         <div class="wss-picker-dropdown wss-picker-dropdown-single @(_positioned ? null : "wss-measuring")" @ref="_panelRef"
              role="dialog" aria-label="@DialogLabel" tabindex="-1">
+            @if (Presets is { Count: > 0 })
+            {
+                <ul class="wss-picker-presets" aria-label="@PresetsLabel">
+                    @foreach (var preset in Presets)
+                    {
+                        var p = preset;
+                        <li>
+                            <button type="button" class="wss-picker-preset"
+                                    @onclick="@(() => OnPresetClickAsync(p))">@p.Label</button>
+                        </li>
+                    }
+                </ul>
+            }
             @if (Mode == DatePickerMode.Month)
             {
                 <div class="wss-picker-month">
@@ -70,6 +83,18 @@
                                     @onclick="@(() => OnMonthClickAsync(month))">@MonthName(m)</button>
                         }
                     </div>
+                    @if (ExtraFooter is not null)
+                    {
+                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
+                    }
+                    @if (ShowTodayLink)
+                    {
+                        <div class="wss-picker-footer wss-picker-footer-split">
+                            <button type="button" class="wss-picker-today-btn"
+                                    disabled="@IsDisabledForCommit(TodayForCommit)"
+                                    @onclick="OnTodayClickAsync">@TodayText</button>
+                        </div>
+                    }
                 </div>
             }
             else if (Mode == DatePickerMode.Year)
@@ -99,6 +124,18 @@
                                     @onclick="@(() => OnYearClickAsync(year))">@year.ToString(PickerCulture)</button>
                         }
                     </div>
+                    @if (ExtraFooter is not null)
+                    {
+                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
+                    }
+                    @if (ShowTodayLink)
+                    {
+                        <div class="wss-picker-footer wss-picker-footer-split">
+                            <button type="button" class="wss-picker-today-btn"
+                                    disabled="@IsDisabledForCommit(TodayForCommit)"
+                                    @onclick="OnTodayClickAsync">@TodayText</button>
+                        </div>
+                    }
                 </div>
             }
             else if (Mode == DatePickerMode.Quarter)
@@ -120,13 +157,35 @@
                                     @onclick="@(() => OnQuarterClickAsync(_viewMonth.Year, quarter))">Q@(quarter.ToString(PickerCulture))</button>
                         }
                     </div>
+                    @if (ExtraFooter is not null)
+                    {
+                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
+                    }
+                    @if (ShowTodayLink)
+                    {
+                        <div class="wss-picker-footer wss-picker-footer-split">
+                            <button type="button" class="wss-picker-today-btn"
+                                    disabled="@IsDisabledForCommit(TodayForCommit)"
+                                    @onclick="OnTodayClickAsync">@TodayText</button>
+                        </div>
+                    }
                 </div>
             }
             else if (Mode == DatePickerMode.Time)
             {
                 <div class="wss-picker-month">
                     @TimeRowFragment
-                    <div class="wss-picker-footer">
+                    @if (ExtraFooter is not null)
+                    {
+                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
+                    }
+                    <div class="@TimeFooterClass">
+                        @if (ShowNowLink)
+                        {
+                            <button type="button" class="wss-picker-today-btn"
+                                    disabled="@IsDisabledForCommit(NowForCommit)"
+                                    @onclick="OnNowClickAsync">@NowText</button>
+                        }
                         <button type="button" class="wss-picker-ok" @onclick="OnPickerOkAsync">@OkText</button>
                     </div>
                 </div>
@@ -217,13 +276,40 @@
                         </div>
                     }
                     @* DateTime mode appends the same time row + OK footer below the calendar --
-                       Mode="Time" (above) renders it alone, this is the only other place it's used. *@
+                       Mode="Time" (above) renders it alone, this is the only other place it's used.
+                       Date/Week mode's ExtraFooter/ShowToday footer (the else branch) has no time
+                       row -- ShowToday doesn't apply to DateTime (see ShowTodayLink), only ShowNow. *@
                     @if (Mode == DatePickerMode.DateTime)
                     {
                         @TimeRowFragment
-                        <div class="wss-picker-footer">
+                        @if (ExtraFooter is not null)
+                        {
+                            <div class="wss-picker-extra-footer">@ExtraFooter</div>
+                        }
+                        <div class="@TimeFooterClass">
+                            @if (ShowNowLink)
+                            {
+                                <button type="button" class="wss-picker-today-btn"
+                                        disabled="@IsDisabledForCommit(NowForCommit)"
+                                        @onclick="OnNowClickAsync">@NowText</button>
+                            }
                             <button type="button" class="wss-picker-ok" @onclick="OnPickerOkAsync">@OkText</button>
                         </div>
+                    }
+                    else
+                    {
+                        @if (ExtraFooter is not null)
+                        {
+                            <div class="wss-picker-extra-footer">@ExtraFooter</div>
+                        }
+                        @if (ShowTodayLink)
+                        {
+                            <div class="wss-picker-footer wss-picker-footer-split">
+                                <button type="button" class="wss-picker-today-btn"
+                                        disabled="@IsDisabledForCommit(TodayForCommit)"
+                                        @onclick="OnTodayClickAsync">@TodayText</button>
+                            </div>
+                        }
                     }
                 </div>
             }
