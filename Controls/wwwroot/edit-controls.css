@@ -358,8 +358,9 @@
    LabelTooltip lazily imports itself, so consumers add nothing) re-aims it toward the center of
    the nearest clipping ancestor / panel by toggling the same wss-tooltip-top/left/right classes
    it uses for [data-tooltip] elements. The class vocabulary is shared deliberately: one placement
-   engine for both tooltip kinds. The reveal itself stays aria-driven from C# (hover/focus show,
-   Escape dismisses — WCAG 1.4.13). */
+   engine for both tooltip kinds. Reveal is pure CSS :hover/:focus (so it works pre-hydration and
+   never re-renders mid-hover); aria-hidden carries only the Escape-dismissed state, set from C#
+   (WCAG 1.4.13). */
 .edit-tooltip-container {
     position: relative;
     display: inline-block; /* Or block, depending on layout */
@@ -430,9 +431,14 @@
     /* The bubble sits inside a <button>, which centers text by default. */
     text-align: start;
     white-space: normal;
-    /* Let clicks/hover pass through to whatever the bubble transiently covers (a below-placed
-       bubble overlays the input) — the bubble is a hint, not an interactive surface. */
-    pointer-events: none;
+    /* The bubble stays pointer-interactive (unlike data-tooltip's pseudo-elements): WCAG 1.4.13
+       "hoverable" requires that the pointer can move onto the revealed content without it
+       disappearing, and as a child of the trigger button, hovering it keeps the reveal alive.
+       It also makes the text selectable/copyable. The trade-off — it transiently intercepts
+       clicks on whatever it covers — matches AntD's own hoverable tooltips. */
+    /* Invisible normally; forced-colors (Windows High Contrast) strips background and box-shadow,
+       and this border turns CanvasText there so the bubble keeps a visible boundary. */
+    border: 1px solid transparent;
     /* Consumer-overridable: MFE shells commonly stack drawers/modals above this (clarkConnect's
        drawer/modal chrome sits at 1082/1040), which otherwise buries the tooltip beneath them. */
     z-index: var(--edit-tooltip-z-index, 10000); /* Ensure it appears above other content */
@@ -495,10 +501,35 @@
     margin-left: 0;
 }
 
-/* Reveal is aria-gated: C# flips aria-hidden on hover/focus, Escape re-hides. The :hover rule
-   adds data-tooltip's 0.35s hover-intent delay on top of that, so a mouse passing over the icon
-   on its way elsewhere doesn't flash the bubble; it outranks the bare aria rule on specificity
-   while the mouse is over the trigger. */
+/* WCAG 1.4.13 hoverable, part 2: an invisible strip bridging the placement gap, so the pointer
+   can travel from the icon to the bubble without ever leaving the button's hover region (icon ->
+   strip -> bubble is one contiguous interactive area; a gap crossing would fire mouseleave and
+   dismiss the bubble mid-travel). Kept narrow — straight down from the icon — and existing only
+   while the tooltip is open (the :has gate), so it never intercepts clicks otherwise. z-index
+   lifts it above the input the gap overlaps (later-DOM siblings otherwise win hit-testing).
+   Height = gap + the 5px arrow offset + the 4px slide-in start offset + slack, so the strip still
+   reaches the bubble while the reveal transition is mid-slide — a 1px dead band there fires
+   mouseleave and dismisses the bubble under the traveling pointer. ::before is taken by the
+   hit-area extension below. */
+.edit-tooltip-container:is(:hover, :focus):has(.edit-tooltip-content[aria-hidden="false"])::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    width: 44px;
+    margin-left: -22px;
+    height: calc(var(--edit-tooltip-gap) + 12px);
+    z-index: var(--edit-tooltip-z-index, 10000);
+}
+
+.edit-tooltip-container.wss-tooltip-top:is(:hover, :focus):has(.edit-tooltip-content[aria-hidden="false"])::after {
+    top: auto;
+    bottom: 100%;
+}
+
+/* Reveal: hover, with data-tooltip's 0.35s hover-intent delay so a mouse passing over the icon
+   on its way elsewhere doesn't flash the bubble. Pure CSS — C# is not consulted on show/hide,
+   only on Escape (the aria-hidden override further down). */
 .edit-tooltip-container:hover .edit-tooltip-content {
     display: block;
     opacity: 1;
@@ -506,10 +537,8 @@
     transition-delay: 0.35s;
 }
 
-/* Keyboard focus and the bare aria flip show instantly — there's no incidental-focus case to
-   guard against. The focus rule sits after :hover so intent (focus) beats the hover delay when
-   both apply. */
-.edit-tooltip-content[aria-hidden="false"],
+/* Keyboard focus shows instantly — there's no incidental-focus case to guard against. The focus
+   rule sits after :hover so intent (focus) beats the hover delay when both apply. */
 .edit-tooltip-container:focus .edit-tooltip-content {
     display: block;
     opacity: 1;
@@ -522,15 +551,13 @@
    always slides toward the trigger. */
 @starting-style {
     .edit-tooltip-container:hover .edit-tooltip-content,
-    .edit-tooltip-container:focus .edit-tooltip-content,
-    .edit-tooltip-content[aria-hidden="false"] {
+    .edit-tooltip-container:focus .edit-tooltip-content {
         opacity: 0;
         translate: 0 4px;
     }
 
     .edit-tooltip-container.wss-tooltip-top:hover .edit-tooltip-content,
-    .edit-tooltip-container.wss-tooltip-top:focus .edit-tooltip-content,
-    .edit-tooltip-container.wss-tooltip-top .edit-tooltip-content[aria-hidden="false"] {
+    .edit-tooltip-container.wss-tooltip-top:focus .edit-tooltip-content {
         opacity: 0;
         translate: 0 -4px;
     }
@@ -538,11 +565,20 @@
 
 /* The dismissed state must beat the reveals above (WCAG 1.4.13): Escape sets aria-hidden="true"
    in C#, but the trigger typically stays focused/hovered, and without this override the :focus
-   reveal kept the tooltip visible until blur. :is() carries the specificity to win. Trade-off:
-   pre-hydration (JS-less) hover reveal is disabled, since aria-hidden starts "true". */
+   reveal kept the tooltip visible until blur. :is() carries the specificity to win. aria-hidden
+   starts "false", so the pure-CSS reveal works even pre-hydration. */
 .edit-tooltip-container:is(:hover, :focus) .edit-tooltip-content[aria-hidden="true"] {
     display: none;
     opacity: 0;
+}
+
+/* Honor the OS "reduce motion" setting (WCAG 2.3.3), mirroring wss-controls.css: the bubble just
+   appears/disappears — no slide, no fade. (The 0.35s hover-intent delay rides the reveal
+   transition, so it goes too; intent-filtering is a nicety, not motion.) */
+@media (prefers-reduced-motion: reduce) {
+    .edit-tooltip-content {
+        transition: none;
+    }
 }
 
 /* WCAG 2.5.8: the visible icon is 12px — extend the pointer target to ~24px without moving

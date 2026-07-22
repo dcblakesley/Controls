@@ -53,6 +53,34 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : PageTe
     }
 
     [Fact]
+    public async Task Tooltip_stays_visible_while_the_pointer_travels_onto_the_bubble()
+    {
+        await NavigateAsync();
+        var trigger = Page.Locator(".edit-tooltip-container").First;
+        var content = Page.Locator(".edit-tooltip-content").First;
+
+        // Hover the icon. The reveal sits behind a 0.35s hover-intent delay plus the aria flip,
+        // so let the assertion retry.
+        var t = await trigger.BoundingBoxAsync();
+        Assert.NotNull(t);
+        await Page.Mouse.MoveAsync((float)(t.X + t.Width / 2), (float)(t.Y + t.Height / 2));
+        await Expect(content).ToBeVisibleAsync();
+
+        // WCAG 1.4.13 "hoverable": travel straight down from the icon, through the gap bridge,
+        // onto the bubble — the tooltip must not dismiss mid-travel or while the pointer rests on
+        // it. Steps make Playwright fire intermediate moves like a real pointer.
+        var c = await content.BoundingBoxAsync();
+        Assert.NotNull(c);
+        await Page.Mouse.MoveAsync((float)(t.X + t.Width / 2), (float)(c.Y + c.Height / 2), new() { Steps = 12 });
+        await Page.WaitForTimeoutAsync(400); // outlive any wrongly-scheduled hide round-trip
+        await Expect(content).ToBeVisibleAsync();
+
+        // Leaving both the trigger and the bubble dismisses it.
+        await Page.Mouse.MoveAsync((float)(c.X + c.Width + 100), (float)(c.Y + c.Height + 100));
+        await Expect(content).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
     public async Task Tooltip_auto_places_toward_the_viewport_center()
     {
         await NavigateAsync();

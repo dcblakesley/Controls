@@ -422,7 +422,9 @@ public class ControlSmokeTests : TestContext
             b.CloseComponent();
         }));
 
-        // Lowercase ARIA boolean — the CSS [aria-hidden="false"] reveal rule depends on it, not "True"/"False".
-        Assert.Equal("true", cut.Find(".edit-tooltip-content").GetAttribute("aria-hidden"));
+        // Lowercase ARIA boolean — the CSS [aria-hidden="true"] Escape-dismissal override depends
+        // on it, not "True"/"False". Starts "false": reveal is pure CSS :hover/:focus, and the
+        // attribute only flips to "true" while Escape-dismissed (WCAG 1.4.13).
+        Assert.Equal("false", cut.Find(".edit-tooltip-content").GetAttribute("aria-hidden"));
     }
 }
