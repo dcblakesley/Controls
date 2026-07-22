@@ -12,10 +12,14 @@ namespace Controls;
 /// day calendar with that same time row and OK button appended below it; <c>Year</c> shows a
 /// decade header (prev/next-decade buttons flanking a static decade label) over a 3x4 grid of year
 /// buttons (10 of the decade plus 2 dimmed adjacent-decade years); <c>Quarter</c> shows the same
-/// year header as <c>Month</c> over a single row of 4 quarter buttons. Picking a day/month/year/
-/// quarter (or typing text and pressing Enter) commits and closes; in <c>Time</c>/<c>DateTime</c>
-/// mode the time selects — and, in <c>DateTime</c> mode, a day click — commit immediately without
-/// closing the panel, so the user can keep adjusting; OK is the close signal there instead.
+/// year header as <c>Month</c> over a single row of 4 quarter buttons; <c>Week</c> shows the exact
+/// same panel as <c>Date</c> (header, weekday header, day grid) plus a leading week-number column —
+/// there the row, not the day, is the selection unit: every day in <see cref="Value"/>'s week
+/// carries the pressed styling and clicking any one of the 7 commits that row's week start.
+/// Picking a day/month/year/quarter/week (or typing text and pressing Enter) commits and closes; in
+/// <c>Time</c>/<c>DateTime</c> mode the time selects — and, in <c>DateTime</c> mode, a day click —
+/// commit immediately without closing the panel, so the user can keep adjusting; OK is the close
+/// signal there instead.
 /// </summary>
 /// <remarks>
 /// The single-date sibling of <see cref="DateRangePicker"/> — it shares the <c>wss-picker-*</c>
@@ -54,15 +58,18 @@ public partial class DatePicker : IAsyncDisposable
     /// midnight, <c>DateTime</c> truncates to whole seconds, <c>Time</c> anchors to
     /// <see cref="DateTime.Today"/> plus the time-of-day (also truncated to whole seconds),
     /// <c>Year</c> normalizes to January 1st at midnight, <c>Quarter</c> normalizes to the 1st day
-    /// of the quarter at midnight.</summary>
+    /// of the quarter at midnight, <c>Week</c> normalizes to that week's first day (per
+    /// <see cref="EffectiveFirstDayOfWeek"/>) at midnight.</summary>
     [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Date;
 
     /// <summary>Earliest selectable date (inclusive). In <see cref="DatePickerMode.Date"/> and
     /// <see cref="DatePickerMode.DateTime"/> this disables days before it; in
     /// <see cref="DatePickerMode.Month"/> it disables whole months before its month; in
     /// <see cref="DatePickerMode.Year"/> whole years, and in <see cref="DatePickerMode.Quarter"/>
-    /// whole quarters, before its own. Ignored in <see cref="DatePickerMode.Time"/> (a time-of-day
-    /// has no date-range concept).</summary>
+    /// whole quarters, before its own; in <see cref="DatePickerMode.Week"/> a whole week (its 7-day
+    /// span entirely before this date) — a day button still enables per its own day-granularity
+    /// check, since a partially-in-range week's commit lands on the week start, not the clicked day.
+    /// Ignored in <see cref="DatePickerMode.Time"/> (a time-of-day has no date-range concept).</summary>
     [Parameter] public DateTime? Min { get; set; }
     /// <summary>Latest selectable date (inclusive). Same mode-dependent granularity as
     /// <see cref="Min"/>; ignored in <see cref="DatePickerMode.Time"/>.</summary>
@@ -72,16 +79,17 @@ public partial class DatePicker : IAsyncDisposable
     /// exact format first, then with the current culture's general date parsing. Null (default)
     /// picks <see cref="Mode"/>'s default: <c>Date</c> <c>MM/dd/yyyy</c> (the Figma spec) ·
     /// <c>Month</c> <c>MM/yyyy</c> · <c>DateTime</c> <c>MM/dd/yyyy HH:mm:ss</c> · <c>Time</c>
-    /// <c>HH:mm:ss</c> · <c>Year</c> <c>yyyy</c>. <c>Quarter</c> has no .NET format token for a
-    /// quarter number: left null, it renders/parses <c>yyyy-Qn</c> (e.g. "2026-Q3") via a hand-
-    /// rolled special case instead of <see cref="DateTime.ToString(string)"/>; set explicitly, it
-    /// is used verbatim via <c>ToString</c> and therefore can't render the quarter digit itself.</summary>
+    /// <c>HH:mm:ss</c> · <c>Year</c> <c>yyyy</c>. <c>Quarter</c> and <c>Week</c> have no .NET format
+    /// token for a quarter number or an ISO-style week number: left null, they render/parse
+    /// <c>yyyy-Qn</c> (e.g. "2026-Q3") / <c>yyyy-Www</c> (e.g. "2026-W08") via a hand-rolled special
+    /// case instead of <see cref="DateTime.ToString(string)"/>; set explicitly, it is used verbatim
+    /// via <c>ToString</c> and therefore can't render the quarter/week digits itself.</summary>
     [Parameter] public string? Format { get; set; }
 
     /// <summary>Input placeholder. Null (default) picks <see cref="Mode"/>'s default: <c>Date</c>/
     /// <c>DateTime</c> "Select date" (the Figma spec) · <c>Month</c> "Select month" · <c>Time</c>
-    /// "Select time" · <c>Year</c> "Select year" · <c>Quarter</c> "Select quarter". Override to
-    /// localize.</summary>
+    /// "Select time" · <c>Year</c> "Select year" · <c>Quarter</c> "Select quarter" · <c>Week</c>
+    /// "Select week". Override to localize.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>Shows a clear button (over the calendar icon) while a value is set. Defaults to true.</summary>
@@ -96,6 +104,13 @@ public partial class DatePicker : IAsyncDisposable
     /// <summary>First day of the week for the calendar grid. Null (default) follows
     /// <see cref="CultureInfo.CurrentCulture"/>.</summary>
     [Parameter] public DayOfWeek? FirstDayOfWeek { get; set; }
+
+    /// <summary>Shows a leading week-number column (AntD's <c>showWeek</c>) beside the day grid in
+    /// <see cref="DatePickerMode.Date"/> and <see cref="DatePickerMode.DateTime"/>, with no other
+    /// behavior change — a day click still commits that day, not its week. Defaults to false.
+    /// <see cref="DatePickerMode.Week"/> always renders this column regardless of this
+    /// parameter.</summary>
+    [Parameter] public bool ShowWeekNumbers { get; set; }
 
     /// <summary>HTML id applied to the input — wires a consumer label / test hook.</summary>
     [Parameter] public string? Id { get; set; }
@@ -255,9 +270,9 @@ public partial class DatePicker : IAsyncDisposable
     // Format/Placeholder resolution: an explicit value always wins; null falls through to Mode's
     // default. All internal display/parse code routes through these (never the raw parameters), so
     // a mode switch changes behavior without a consumer having to also clear a stale Format/Placeholder.
-    // Quarter's null-Format case is a bland "yyyy" here -- FormatDate never actually calls
-    // ToString(EffectiveFormat) for it (see FormatDate's special case below); this value only
-    // matters as TryParseDate's exact-format fallback attempt, tried after the quarter regex.
+    // Quarter's and Week's null-Format cases are a bland "yyyy" here -- FormatDate never actually
+    // calls ToString(EffectiveFormat) for either (see FormatDate's special cases below); this value
+    // only matters as TryParseDate's exact-format fallback attempt, tried after their own regex.
     string EffectiveFormat => Format ?? Mode switch
     {
         DatePickerMode.Date => "MM/dd/yyyy",
@@ -266,6 +281,7 @@ public partial class DatePicker : IAsyncDisposable
         DatePickerMode.Time => "HH:mm:ss",
         DatePickerMode.Year => "yyyy",
         DatePickerMode.Quarter => "yyyy",
+        DatePickerMode.Week => "yyyy",
         _ => "MM/dd/yyyy",
     };
 
@@ -277,6 +293,7 @@ public partial class DatePicker : IAsyncDisposable
         DatePickerMode.Time => "Select time",
         DatePickerMode.Year => "Select year",
         DatePickerMode.Quarter => "Select quarter",
+        DatePickerMode.Week => "Select week",
         _ => "Select date",
     };
 
@@ -285,12 +302,31 @@ public partial class DatePicker : IAsyncDisposable
         var cls = "wss-picker-day";
         if (day.Month != _viewMonth.Month) cls += " wss-picker-day-outside";
         if (day == DateTime.Today) cls += " wss-picker-day-today";
-        if (day == Value?.Date) cls += " wss-picker-day-selected";
+        // Week mode suppresses the single-day selected look -- the row is the selection unit there
+        // (see IsDaySelected/wss-picker-week-row-selected), and every day in the row still carries
+        // aria-pressed="true" via IsDaySelected below.
+        if (Mode != DatePickerMode.Week && day == Value?.Date) cls += " wss-picker-day-selected";
         return cls;
     }
 
+    // Whether `day`'s button should render aria-pressed="true": in every mode but Week, only the
+    // exact selected day; in Week mode, every day sharing Value's week (the row is the selection
+    // unit -- see DayClass's suppression of the single-day background above).
+    bool IsDaySelected(DateTime day) =>
+        Mode == DatePickerMode.Week
+            ? Value is { } v && WeekStart(v.Date) == WeekStart(day)
+            : day == Value?.Date;
+
     bool IsDayDisabled(DateTime day) =>
         (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date);
+
+    // Week-mode equivalent of IsDayDisabled/IsMonthDisabled, at week granularity: a whole week is
+    // disabled once its 7-day span falls entirely outside [Min, Max] -- the individual day buttons
+    // stay enabled per IsDayDisabled above (a partially-in-range week is still clickable; only the
+    // commit itself is guarded here, same split DateTime mode uses between day-cell and Min/Max-day
+    // checks). `weekStart` is already WeekStart-shaped.
+    bool IsWeekDisabledForCommit(DateTime weekStart) =>
+        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date);
 
     // Month-mode equivalent of IsDayDisabled: a whole month is disabled once it falls entirely
     // outside [Min, Max] at month granularity — same granularity PrevMonthDisabled/NextMonthDisabled
@@ -322,6 +358,7 @@ public partial class DatePicker : IAsyncDisposable
         DatePickerMode.Time => false,
         DatePickerMode.Year => IsYearDisabled(value),
         DatePickerMode.Quarter => IsQuarterDisabled(value),
+        DatePickerMode.Week => IsWeekDisabledForCommit(value),
         _ => IsDayDisabled(value),
     };
 
@@ -396,10 +433,41 @@ public partial class DatePicker : IAsyncDisposable
         }
     }
 
+    // Whether the day grid renders as 6 week-number rows (Mode.Week always; ShowWeekNumbers's
+    // column in Date/DateTime mode) instead of the flat 42-cell layout. Only one grid ever renders
+    // for a given Mode (Month/Year/Quarter/Time have their own branches in the .razor markup), so
+    // this only needs to gate the day-grid's own two layouts.
+    bool ShowWeekRows => Mode == DatePickerMode.Week || ShowWeekNumbers;
+
+    // GridDays(month) grouped into 6 rows of 7 -- used by the week-rows layout. Each row's first
+    // entry is that row's own week start (GridDays begins on a week boundary and advances a whole
+    // week at a time), which the markup reuses directly for the row's week-number cell and its
+    // wss-picker-week-row-selected check.
+    DateTime[][] GridWeekRows(DateTime month) => [.. GridDays(month).Chunk(7)];
+
+    // The ISO-ish week number of the calendar week starting on `weekStart`, per the current
+    // culture's week rule (mirrors WeekdayHeaders/WeekStart in following PickerCulture throughout).
+    int WeekNumberOf(DateTime weekStart) =>
+        PickerCulture.Calendar.GetWeekOfYear(weekStart, PickerCulture.DateTimeFormat.CalendarWeekRule, EffectiveFirstDayOfWeek);
+
+    // Is `weekStart` the row containing Value's week? Only meaningful in Mode.Week -- ShowWeekNumbers
+    // in Date/DateTime mode renders the same rows layout with NO selection-styling change (day clicks
+    // still commit days, so there's no "selected week" to band there).
+    bool IsSelectedWeekRow(DateTime weekStart) =>
+        Mode == DatePickerMode.Week && Value is { } v && WeekStart(v.Date) == weekStart;
+
+    string WeekRowClass(DateTime weekStart) =>
+        IsSelectedWeekRow(weekStart) ? "wss-picker-week-row wss-picker-week-row-selected" : "wss-picker-week-row";
+
     // Matches a typed quarter shorthand: "2026-Q3", "2026Q3", "2026 q3" -- 1-4 digit year, optional
     // dash/whitespace, case-insensitive Q, quarter digit 1-4. Compiled because TryParseDate tries it
     // on every keystroke's eventual Enter-commit in Quarter mode.
     static readonly Regex _quarterPattern = new(@"^\s*(\d{1,4})\s*-?\s*[Qq]\s*([1-4])\s*$", RegexOptions.Compiled);
+
+    // Matches a typed week shorthand: "2026-W08", "2026W8", "2026 w08" -- 1-4 digit year, optional
+    // dash/whitespace, case-insensitive W, 1-2 digit week number. Compiled for the same reason as
+    // _quarterPattern above.
+    static readonly Regex _weekPattern = new(@"^\s*(\d{1,4})\s*-?\s*[Ww]\s*(\d{1,2})\s*$", RegexOptions.Compiled);
 
     // Quarter mode's null-Format display: no .NET format token renders a quarter number, so this
     // bypasses ToString(EffectiveFormat) entirely for that one case. Format explicitly set still
@@ -412,6 +480,14 @@ public partial class DatePicker : IAsyncDisposable
         {
             return $"{v.Year.ToString(PickerCulture)}-Q{QuarterOf(v).ToString(PickerCulture)}";
         }
+        // Week mode's null-Format display: same rationale as Quarter's above -- no .NET token for a
+        // week number. The displayed year is the week START's calendar year (deterministic at
+        // year-boundary weeks, unlike v's own year, which can disagree with the week it's in).
+        if (Mode == DatePickerMode.Week && Format is null)
+        {
+            var weekStart = WeekStart(v);
+            return $"{weekStart.Year.ToString(PickerCulture)}-W{WeekNumberOf(weekStart).ToString("00", PickerCulture)}";
+        }
         return v.ToString(EffectiveFormat, PickerCulture);
     }
 
@@ -420,7 +496,14 @@ public partial class DatePicker : IAsyncDisposable
     // commit and a click/select commit always land on the same shape of value). Quarter mode (with
     // Format left null, mirroring FormatDate's special case above) tries the "yyyy-Qn" shorthand
     // first -- a plain typed date still falls through to the general parse below and normalizes to
-    // its own quarter, same as every other mode's typed-text path.
+    // its own quarter, same as every other mode's typed-text path. Week mode's "yyyy-Www" shorthand
+    // mirrors that, resolved as the exact inverse of FormatDate's display: walk the week starts
+    // whose calendar year is the typed year and return the one GetWeekOfYear numbers N. Plain
+    // arithmetic from WeekStart(Jan 1) can't do this -- under CalendarWeekRule.FirstDay a year that
+    // doesn't begin on FirstDayOfWeek numbers its partial first week 1, so every later week start is
+    // one ahead of the (N-1)*7 offset and a displayed week wouldn't round-trip. A week number the
+    // display never produces for that year (e.g. W01 when Jan 1's week started in December) finds no
+    // match and falls through to the general parse below, same as any other malformed text.
     bool TryParseDate(string text, out DateTime value)
     {
         if (Mode == DatePickerMode.Quarter && Format is null)
@@ -433,6 +516,36 @@ public partial class DatePicker : IAsyncDisposable
                 var quarter = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
                 value = QuarterStart(year, quarter);
                 return true;
+            }
+        }
+        if (Mode == DatePickerMode.Week && Format is null)
+        {
+            var match = _weekPattern.Match(text);
+            if (match.Success &&
+                int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year) &&
+                year is >= 1 and <= 9999)
+            {
+                var week = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+                try
+                {
+                    // First week start whose calendar year is `year` (WeekStart(Jan 1) itself may
+                    // belong to the prior December), then at most 53 boundary steps.
+                    var s = WeekStart(new DateTime(year, 1, 1));
+                    if (s.Year < year) s = s.AddDays(7);
+                    for (; s.Year == year; s = s.AddDays(7))
+                    {
+                        if (WeekNumberOf(s) == week)
+                        {
+                            value = s;
+                            return true;
+                        }
+                    }
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // WeekStart/AddDays overflowed at the DateTime range edge (year 1 / 9999) --
+                    // fall through to the general parse below, same as any other malformed text.
+                }
             }
         }
         if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out value) ||
@@ -456,6 +569,7 @@ public partial class DatePicker : IAsyncDisposable
         DatePickerMode.Time => DateTime.Today + new TimeSpan(value.Hour, value.Minute, value.Second),
         DatePickerMode.Year => new DateTime(value.Year, 1, 1),
         DatePickerMode.Quarter => QuarterStart(value),
+        DatePickerMode.Week => WeekStart(value),
         _ => value.Date,
     };
 

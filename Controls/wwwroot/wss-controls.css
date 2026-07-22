@@ -66,10 +66,11 @@
 
     /* DatePicker / DateRangePicker. Their Figma spec (AntD 5-style) uses 8px/6px/4px radii and
        #e6e6e6 internal splits — kept as picker-scoped tokens rather than bending the kit-wide
-       --wss-radius (2px). --wss-picker-range-bg (committed range) and --wss-picker-preview-bg
-       (hover-range preview, DateRangePicker only) are pure override knobs for their respective
-       tints, both derived from --wss-color-primary at the usage site (see the brand/interactive
-       comment above). */
+       --wss-radius (2px). --wss-picker-range-bg (DateRangePicker's committed range, and
+       DatePicker's Mode="Week" selected-row band) and --wss-picker-preview-bg (hover-range
+       preview, DateRangePicker only) are pure override knobs for their respective tints, both
+       derived from --wss-color-primary at the usage site (see the brand/interactive comment
+       above). */
     --wss-picker-radius: 6px;
     --wss-picker-radius-sm: 4px;
     --wss-picker-radius-lg: 8px;
@@ -2478,11 +2479,21 @@
 /* Weekday header row: purely decorative (aria-hidden — the day buttons already carry full
    "D"-format aria-labels), so it only needs to line up visually with the grid below it. Shares the
    grid's 7-column template and horizontal cell padding so each abbreviation centers over its
-   column. */
+   column. wss-picker-week-header-weeks (below, with the week-number rows layout) adds a leading
+   empty column so the header still lines up once the grid grows its own week-number column. */
 .wss-picker-week-header {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     padding: 0 4px;
+}
+
+.wss-picker-week-header.wss-picker-week-header-weeks {
+    grid-template-columns: 28px repeat(7, 1fr);
+}
+
+.wss-picker-week-no-header {
+    /* Empty — just occupies the header's leading column so the 7 WeekdayHeaders cells that follow
+       still line up over their day columns below. */
 }
 
 .wss-picker-week-day {
@@ -2623,6 +2634,41 @@
     color: var(--wss-color-text-disabled);
     background: none;
     cursor: not-allowed;
+}
+
+/* -------------------------------------------- Week mode / ShowWeekNumbers (DatePicker)
+ * Mode="Week" (and ShowWeekNumbers=true in Date/DateTime mode) swaps the flat wss-picker-grid
+ * above for wss-picker-grid-rows: 6 wss-picker-week-row containers, each a leading decorative
+ * wss-picker-week-no cell plus the same 7 wss-picker-cell/wss-picker-day markup the flat grid uses
+ * unchanged. The row hover/selected tint is scoped to wss-picker-grid-week (Mode="Week" only,
+ * reusing --wss-picker-range-bg the same way the range picker's committed-range band does) --
+ * ShowWeekNumbers in Date/DateTime mode renders the same column with no hover/selected band, since
+ * a day click there still commits a day, not a week (wss-picker-day-selected still applies to that
+ * one day, same as when the column is off). */
+.wss-picker-grid-rows {
+    display: flex;
+    flex-direction: column;
+    padding: 4px;
+}
+
+.wss-picker-week-row {
+    display: grid;
+    grid-template-columns: 28px repeat(7, 1fr);
+    border-radius: var(--wss-picker-radius-sm);
+    transition: background 0.2s ease;
+}
+
+.wss-picker-week-no {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--wss-color-text-secondary);
+    font-size: var(--wss-font-size-sm);
+}
+
+.wss-picker-grid-week .wss-picker-week-row:hover,
+.wss-picker-grid-week .wss-picker-week-row-selected {
+    background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
 }
 
 /* ------------------------------------------------- Month mode (DatePicker)

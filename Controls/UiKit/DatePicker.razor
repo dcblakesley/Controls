@@ -163,27 +163,59 @@
                         <button type="button" class="wss-picker-nav" aria-label="@NextMonthLabel"
                                 disabled="@NextMonthDisabled" @onclick="NextMonth">@NextIcon</button>
                     </div>
-                    <div class="wss-picker-week-header" aria-hidden="true">
+                    <div class="@(ShowWeekRows ? "wss-picker-week-header wss-picker-week-header-weeks" : "wss-picker-week-header")" aria-hidden="true">
+                        @if (ShowWeekRows)
+                        {
+                            <div class="wss-picker-week-no-header"></div>
+                        }
                         @foreach (var name in WeekdayHeaders)
                         {
                             <div class="wss-picker-week-day">@name</div>
                         }
                     </div>
-                    <div class="wss-picker-grid" @ref="_gridRef" @onkeydown="OnGridKeyDown">
-                        @foreach (var day in GridDays(_viewMonth))
-                        {
-                            var d = day;
-                            <div class="wss-picker-cell">
-                                <button type="button" class="@DayClass(d)"
-                                        disabled="@IsDayDisabled(d)"
-                                        tabindex="@(IsFocusStop(d) ? "0" : "-1")"
-                                        data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                        aria-label="@d.ToString("D", PickerCulture)"
-                                        aria-pressed="@(d == Value?.Date ? "true" : "false")"
-                                        @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
-                            </div>
-                        }
-                    </div>
+                    @if (ShowWeekRows)
+                    {
+                        <div class="@(Mode == DatePickerMode.Week ? "wss-picker-grid-rows wss-picker-grid-week" : "wss-picker-grid-rows")" @ref="_gridRef" @onkeydown="OnGridKeyDown">
+                            @foreach (var row in GridWeekRows(_viewMonth))
+                            {
+                                var weekStart = row[0];
+                                <div class="@WeekRowClass(weekStart)">
+                                    <div class="wss-picker-week-no" aria-hidden="true">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
+                                    @foreach (var day in row)
+                                    {
+                                        var d = day;
+                                        <div class="wss-picker-cell">
+                                            <button type="button" class="@DayClass(d)"
+                                                    disabled="@IsDayDisabled(d)"
+                                                    tabindex="@(IsFocusStop(d) ? "0" : "-1")"
+                                                    data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                                    aria-label="@d.ToString("D", PickerCulture)"
+                                                    aria-pressed="@(IsDaySelected(d) ? "true" : "false")"
+                                                    @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="wss-picker-grid" @ref="_gridRef" @onkeydown="OnGridKeyDown">
+                            @foreach (var day in GridDays(_viewMonth))
+                            {
+                                var d = day;
+                                <div class="wss-picker-cell">
+                                    <button type="button" class="@DayClass(d)"
+                                            disabled="@IsDayDisabled(d)"
+                                            tabindex="@(IsFocusStop(d) ? "0" : "-1")"
+                                            data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                            aria-label="@d.ToString("D", PickerCulture)"
+                                            aria-pressed="@(d == Value?.Date ? "true" : "false")"
+                                            @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+                                </div>
+                            }
+                        </div>
+                    }
                     @* DateTime mode appends the same time row + OK footer below the calendar --
                        Mode="Time" (above) renders it alone, this is the only other place it's used. *@
                     @if (Mode == DatePickerMode.DateTime)

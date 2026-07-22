@@ -61,7 +61,7 @@ public enum SortDirection
 }
 
 /// <summary>What a <see cref="DatePicker"/> selects: a day, a month, a date+time, a time, a year,
-/// or a quarter.</summary>
+/// a quarter, or a week.</summary>
 public enum DatePickerMode
 {
     Date,
@@ -69,5 +69,6 @@ public enum DatePickerMode
     DateTime,
     Time,
     Year,
-    Quarter
+    Quarter,
+    Week
 }
