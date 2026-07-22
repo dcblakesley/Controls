@@ -160,7 +160,7 @@ public partial class EditDatePicker<T> : EditControlBase<T>
     /// <inheritdoc cref="DatePicker.PeriodSelectLabel"/>
     [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
     /// <inheritdoc cref="DatePicker.ShowToday"/>
-    [Parameter] public bool ShowToday { get; set; }
+    [Parameter] public bool ShowToday { get; set; } = true;
     /// <inheritdoc cref="DatePicker.TodayText"/>
     [Parameter] public string TodayText { get; set; } = "Today";
     /// <inheritdoc cref="DatePicker.ShowNow"/>

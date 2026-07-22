@@ -2060,12 +2060,16 @@ public class DatePickerTests : TestContext
     }
 
     [Fact]
-    public void No_footer_renders_in_date_mode_when_showtoday_is_false_regression_guard()
+    public void Today_footer_renders_by_default_and_showtoday_false_removes_it()
     {
+        // Default-true matches AntD's showToday; false is the explicit opt-out that restores the
+        // footerless panel.
         var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
 
         Open(cut);
+        Assert.Equal("Today", cut.Find(".wss-picker-today-btn").TextContent);
 
+        cut.SetParametersAndRender(p => p.Add(c => c.ShowToday, false));
         Assert.Empty(cut.FindAll(".wss-picker-footer"));
         Assert.Empty(cut.FindAll(".wss-picker-today-btn"));
     }

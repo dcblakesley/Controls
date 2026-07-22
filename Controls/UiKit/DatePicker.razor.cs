@@ -189,15 +189,14 @@ public partial class DatePicker : IAsyncDisposable
     /// <see cref="DatePickerMode.Date"/>/<see cref="DatePickerMode.Month"/>/<see cref="DatePickerMode.Quarter"/>/
     /// <see cref="DatePickerMode.Year"/>/<see cref="DatePickerMode.Week"/> mode that commits
     /// <see cref="DateTime.Today"/> normalized to Mode's own granularity (today itself, this month,
-    /// this quarter, this year, or this week) and closes the panel. Defaults to FALSE — a DELIBERATE
-    /// divergence from AntD's default-true <c>showToday</c>: this control existed before the
-    /// footer did, so defaulting it on would grow every existing consumer's panel a new row it never
-    /// asked for. Has no effect in <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>
+    /// this quarter, this year, or this week) and closes the panel. Defaults to true, matching
+    /// AntD's <c>showToday</c> — set false to drop the footer row entirely. Has no
+    /// effect in <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>
     /// — see <see cref="ShowNow"/> for their equivalent. The button renders DISABLED, not hidden,
     /// when the normalized today is rejected by <see cref="Min"/>/<see cref="Max"/>/
     /// <see cref="DisabledDate"/> — the same convention every other disabled cell in this control
     /// follows.</summary>
-    [Parameter] public bool ShowToday { get; set; }
+    [Parameter] public bool ShowToday { get; set; } = true;
     /// <summary>Visible text of the <see cref="ShowToday"/> link button. Override to localize.</summary>
     [Parameter] public string TodayText { get; set; } = "Today";
 
