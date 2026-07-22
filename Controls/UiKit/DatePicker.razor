@@ -256,9 +256,9 @@
                 disabled="@NextYearDisabled" @onclick="NextYear">@NextIcon</button>
     </div>;
 
-    // The three hour/minute/second selects, shared verbatim between Mode.Time (the whole panel) and
-    // Mode.DateTime (appended below the day calendar) so the ~20 lines of near-identical <select>
-    // blocks aren't duplicated in the markup above (mirrors EditBool's Checkbox/StyledCheckboxFragment
+    // The hour/minute/[second]/[period] selects, shared verbatim between Mode.Time (the whole panel)
+    // and Mode.DateTime (appended below the day calendar) so the near-identical <select> blocks
+    // aren't duplicated in the markup above (mirrors EditBool's Checkbox/StyledCheckboxFragment
     // split). Each select's own @onchange commits immediately via ApplyTimePartAsync -- see
     // DatePicker.razor.cs's "Time/DateTime mode" section. DisabledTime is invoked exactly once for
     // the whole fragment (not once per option) and cached in disabledParts below; each option then
@@ -266,16 +266,20 @@
     // option instead of rendering it disabled -- except the select's OWN CURRENT value, which always
     // renders (selected, and disabled too if it's on the list) so a select can never silently show a
     // value that isn't the bound one (the never-jump rule documented on HideDisabledTimeOptions).
+    // HourOptions/MinuteOptions/SecondOptions apply HourStep/MinuteStep/SecondStep (with their OWN
+    // never-jump rule) before that disabled/hide check runs -- the two filters compose, step first.
+    // The seconds select is omitted entirely when ShowSeconds is false; a fourth period select
+    // (AM/PM, following seconds) is appended when Use12Hours is true.
     RenderFragment TimeRowFragment => @<div class="wss-picker-time-row">
         @{ var disabledParts = DisabledTime?.Invoke(Value?.Date); }
         <span class="wss-picker-select">
             <select aria-label="@HourSelectLabel" value="@DisplayHour" @onchange="OnHourSelectChangedAsync">
-                @for (var h = 0; h <= 23; h++)
+                @foreach (var h in HourOptions())
                 {
                     var disabled = IsTimePartDisabled(disabledParts?.Hours, h);
                     if (!disabled || !HideDisabledTimeOptions || h == DisplayHour)
                     {
-                        <option value="@h" disabled="@disabled" selected="@(h == DisplayHour)">@h.ToString("00", CultureInfo.InvariantCulture)</option>
+                        <option value="@h" disabled="@disabled" selected="@(h == DisplayHour)">@HourOptionText(h)</option>
                     }
                 }
             </select>
@@ -283,7 +287,7 @@
         </span>
         <span class="wss-picker-select">
             <select aria-label="@MinuteSelectLabel" value="@DisplayMinute" @onchange="OnMinuteSelectChangedAsync">
-                @for (var m = 0; m <= 59; m++)
+                @foreach (var m in MinuteOptions())
                 {
                     var disabled = IsTimePartDisabled(disabledParts?.Minutes, m);
                     if (!disabled || !HideDisabledTimeOptions || m == DisplayMinute)
@@ -294,18 +298,31 @@
             </select>
             @DownIcon
         </span>
-        <span class="wss-picker-select">
-            <select aria-label="@SecondSelectLabel" value="@DisplaySecond" @onchange="OnSecondSelectChangedAsync">
-                @for (var s = 0; s <= 59; s++)
-                {
-                    var disabled = IsTimePartDisabled(disabledParts?.Seconds, s);
-                    if (!disabled || !HideDisabledTimeOptions || s == DisplaySecond)
+        @if (ShowSeconds)
+        {
+            <span class="wss-picker-select">
+                <select aria-label="@SecondSelectLabel" value="@DisplaySecond" @onchange="OnSecondSelectChangedAsync">
+                    @foreach (var s in SecondOptions())
                     {
-                        <option value="@s" disabled="@disabled" selected="@(s == DisplaySecond)">@s.ToString("00", CultureInfo.InvariantCulture)</option>
+                        var disabled = IsTimePartDisabled(disabledParts?.Seconds, s);
+                        if (!disabled || !HideDisabledTimeOptions || s == DisplaySecond)
+                        {
+                            <option value="@s" disabled="@disabled" selected="@(s == DisplaySecond)">@s.ToString("00", CultureInfo.InvariantCulture)</option>
+                        }
                     }
-                }
-            </select>
-            @DownIcon
-        </span>
+                </select>
+                @DownIcon
+            </span>
+        }
+        @if (Use12Hours)
+        {
+            <span class="wss-picker-select">
+                <select aria-label="@PeriodSelectLabel" value="@(DisplayIsPM ? "PM" : "AM")" @onchange="OnPeriodSelectChangedAsync">
+                    <option value="AM" selected="@(!DisplayIsPM)">@PickerCulture.DateTimeFormat.AMDesignator</option>
+                    <option value="PM" selected="@DisplayIsPM">@PickerCulture.DateTimeFormat.PMDesignator</option>
+                </select>
+                @DownIcon
+            </span>
+        }
     </div>;
 }

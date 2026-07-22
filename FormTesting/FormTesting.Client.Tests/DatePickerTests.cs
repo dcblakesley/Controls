@@ -1757,4 +1757,249 @@ public class DatePickerTests : TestContext
         Assert.True(sawInvocation);
         Assert.Null(seenDate);
     }
+
+    // ----- ShowSeconds / HourStep / MinuteStep / SecondStep / Use12Hours ---------
+
+    [Fact]
+    public void ShowSeconds_false_renders_two_selects()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.ShowSeconds, false));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(2, selects.Count);
+        Assert.Equal("Hour", selects[0].GetAttribute("aria-label"));
+        Assert.Equal("Minute", selects[1].GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void ShowSeconds_false_with_use12hours_renders_three_selects_hour_minute_period()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.ShowSeconds, false)
+            .Add(c => c.Use12Hours, true));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(3, selects.Count);
+        Assert.Equal("AM/PM", selects[2].GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void ShowSeconds_false_select_change_commits_zero_seconds_over_a_stale_second()
+    {
+        DateTime? value = new DateTime(2026, 2, 14, 10, 30, 45);
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.ShowSeconds, false)
+            .Add(c => c.Value, value)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("13"); // only hour/minute selects exist -- no seconds to change
+
+        Assert.Equal(13, value!.Value.Hour);
+        Assert.Equal(30, value.Value.Minute); // untouched part preserved
+        Assert.Equal(0, value.Value.Second);  // the pre-existing 45 never survives normalization
+    }
+
+    [Fact]
+    public void ShowSeconds_false_typed_datetime_commit_zeroes_the_parsed_seconds()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.ShowSeconds, false)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        var input = cut.Find(".wss-picker-input-date");
+        // The exact-format attempt ("MM/dd/yyyy HH:mm", no seconds token) misses; the general-parse
+        // fallback still reads the seconds, and NormalizeForMode is what actually drops them.
+        input.Input("02/14/2026 13:45:30");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(2026, 2, 14, 13, 45, 0), value);
+    }
+
+    [Fact]
+    public void MinuteStep_15_lists_only_the_stepped_options_when_the_value_is_on_lattice()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.MinuteStep, 15)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 30, 0)));
+
+        Open(cut);
+
+        var values = TimeSelects(cut)[1].QuerySelectorAll("option").Select(o => o.GetAttribute("value"));
+        Assert.Equal(["0", "15", "30", "45"], values);
+    }
+
+    [Fact]
+    public void MinuteStep_15_keeps_an_off_lattice_bound_value_visible_and_selected_never_jump()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.MinuteStep, 15)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 37, 0)));
+
+        Open(cut);
+
+        var options = TimeSelects(cut)[1].QuerySelectorAll("option");
+        Assert.Equal(["0", "15", "30", "37", "45"], options.Select(o => o.GetAttribute("value")));
+        Assert.Equal("37", options.Single(o => o.HasAttribute("selected")).GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Steps_below_one_clamp_to_one_instead_of_throwing()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.HourStep, 0)
+            .Add(c => c.MinuteStep, -5)
+            .Add(c => c.SecondStep, -1));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(24, selects[0].QuerySelectorAll("option").Length);
+        Assert.Equal(60, selects[1].QuerySelectorAll("option").Length);
+        Assert.Equal(60, selects[2].QuerySelectorAll("option").Length);
+    }
+
+    [Fact]
+    public void MinuteStep_composes_with_DisabledTime_step_filtering_first_then_disabled_hide()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 37, 0)) // off-lattice bound minute
+            .Add(c => c.MinuteStep, 15)
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Minutes: [5, 30])))
+            .Add(c => c.HideDisabledTimeOptions, true));
+
+        Open(cut);
+
+        var values = TimeSelects(cut)[1].QuerySelectorAll("option").Select(o => o.GetAttribute("value"));
+        // 30 was on the step lattice and disabled+hidden; 5 was never a step candidate to begin with
+        // (simply absent -- nothing extra to do); 37 (the bound value, off-lattice) stays visible via
+        // the step's own never-jump rule even though DisabledTime never even mentions it.
+        Assert.Equal(["0", "15", "37", "45"], values);
+    }
+
+    [Fact]
+    public void An_off_lattice_bound_value_that_DisabledTime_also_disables_stays_selected_and_visible()
+    {
+        // Both never-jump rules stack on the same option: the step lattice keeps 37 present at all
+        // (it isn't a multiple of 15), and HideDisabledTimeOptions' own never-jump keeps it visible
+        // (disabled, but not hidden) even though it's on DisabledTime's own list.
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 37, 0))
+            .Add(c => c.MinuteStep, 15)
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Minutes: [37])))
+            .Add(c => c.HideDisabledTimeOptions, true));
+
+        Open(cut);
+
+        var option37 = TimeSelects(cut)[1].QuerySelectorAll("option").Single(o => o.GetAttribute("value") == "37");
+        Assert.True(option37.HasAttribute("disabled"));
+        Assert.NotNull(option37.GetAttribute("selected"));
+    }
+
+    [Fact]
+    public void Use12Hours_renders_12_hour_option_text_for_the_current_period_and_a_period_select()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Use12Hours, true)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 14, 0, 0))); // 2 PM
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(4, selects.Count); // hour, minute, second, period
+
+        var hourOptions = selects[0].QuerySelectorAll("option");
+        Assert.Equal(12, hourOptions.Length); // just the PM half of the day
+        Assert.Equal(["12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"],
+            hourOptions.Select(o => o.GetAttribute("value"))); // option VALUES stay 24h
+        Assert.Equal(["12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"],
+            hourOptions.Select(o => o.TextContent)); // option TEXT is 12-hour reading order
+        Assert.Equal("14", hourOptions.Single(o => o.HasAttribute("selected")).GetAttribute("value"));
+
+        var periodSelect = selects[3];
+        Assert.Equal("AM/PM", periodSelect.GetAttribute("aria-label"));
+        var periodOptions = periodSelect.QuerySelectorAll("option");
+        Assert.Equal(["AM", "PM"], periodOptions.Select(o => o.GetAttribute("value")));
+        Assert.Equal(["AM", "PM"], periodOptions.Select(o => o.TextContent)); // culture designators
+        Assert.Equal("PM", periodOptions.Single(o => o.HasAttribute("selected")).GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Use12Hours_picking_the_hour_2_pm_option_commits_the_24_hour_value_14()
+    {
+        DateTime? value = new DateTime(2026, 2, 14, 13, 0, 0); // 1 PM
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Use12Hours, true)
+            .Add(c => c.Value, value)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("14"); // the option labeled "2" in the PM period
+
+        Assert.Equal(14, value!.Value.Hour);
+    }
+
+    [Fact]
+    public void Use12Hours_switching_period_am_to_pm_recommits_the_current_hour_shifted_by_12()
+    {
+        DateTime? value = new DateTime(2026, 2, 14, 9, 15, 0); // 9:15 AM
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Use12Hours, true)
+            .Add(c => c.Value, value)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Assert.Equal("AM", TimeSelects(cut)[3].QuerySelector("option[selected]")!.GetAttribute("value"));
+
+        TimeSelects(cut)[3].Change("PM");
+
+        Assert.Equal(21, value!.Value.Hour);  // 9 % 12 + 12
+        Assert.Equal(15, value.Value.Minute); // untouched
+    }
+
+    [Fact]
+    public void Use12Hours_with_a_null_value_displays_12_am_and_selects_the_am_period()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Use12Hours, true));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        var selectedHour = selects[0].QuerySelector("option[selected]")!;
+        Assert.Equal("0", selectedHour.GetAttribute("value")); // stays the 24h value 0 internally
+        Assert.Equal("12", selectedHour.TextContent);          // displayed as 12 (AM)
+        Assert.Equal("AM", selects[3].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Use12Hours_changes_the_default_effective_format_to_h_mm_ss_tt()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Use12Hours, true)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 14, 5, 9)));
+
+        Assert.Equal("2:05:09 PM", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+    }
 }

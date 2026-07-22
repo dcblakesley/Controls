@@ -55,11 +55,11 @@ public partial class DatePicker : IAsyncDisposable
     /// <summary>What the picker selects. Defaults to <see cref="DatePickerMode.Date"/>. The bound
     /// <see cref="Value"/> stays <c>DateTime?</c> in every mode; only the commit-time normalization
     /// differs — <c>Date</c> keeps the date, <c>Month</c> normalizes to the 1st of the month at
-    /// midnight, <c>DateTime</c> truncates to whole seconds, <c>Time</c> anchors to
-    /// <see cref="DateTime.Today"/> plus the time-of-day (also truncated to whole seconds),
-    /// <c>Year</c> normalizes to January 1st at midnight, <c>Quarter</c> normalizes to the 1st day
-    /// of the quarter at midnight, <c>Week</c> normalizes to that week's first day (per
-    /// <see cref="EffectiveFirstDayOfWeek"/>) at midnight.</summary>
+    /// midnight, <c>DateTime</c> truncates to whole seconds (or zeroes the second entirely when
+    /// <see cref="ShowSeconds"/> is false), <c>Time</c> anchors to <see cref="DateTime.Today"/> plus
+    /// the time-of-day (same truncation/zeroing), <c>Year</c> normalizes to January 1st at midnight,
+    /// <c>Quarter</c> normalizes to the 1st day of the quarter at midnight, <c>Week</c> normalizes to
+    /// that week's first day (per <see cref="EffectiveFirstDayOfWeek"/>) at midnight.</summary>
     [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Date;
 
     /// <summary>Earliest selectable date (inclusive). In <see cref="DatePickerMode.Date"/> and
@@ -111,11 +111,48 @@ public partial class DatePicker : IAsyncDisposable
     /// value that isn't the one actually bound.</summary>
     [Parameter] public bool HideDisabledTimeOptions { get; set; }
 
+    /// <summary>Whether the <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>
+    /// time row includes a seconds select. Defaults to true. False drops the seconds select entirely
+    /// (see <see cref="TimeFormatString"/>) and normalization (<see cref="NormalizeForMode"/>) zeroes
+    /// the second in both modes, so a stale second from before the flip was toggled can never survive
+    /// a commit.</summary>
+    [Parameter] public bool ShowSeconds { get; set; } = true;
+
+    /// <summary>Step between the hour select's offered values (24-hour space, even under
+    /// <see cref="Use12Hours"/>): the select lists 0, <c>HourStep</c>, 2*<c>HourStep</c>, and so on up
+    /// to 23. Defaults to 1 (every hour). Values less than 1 are clamped to 1 at the point of use, not
+    /// thrown. NEVER-JUMP RULE, composing with <see cref="DisabledTime"/>'s own (see
+    /// <see cref="HideDisabledTimeOptions"/>): if the bound value's hour isn't on the step lattice, its
+    /// own option is still rendered (selected) so the select can never silently jump to a different
+    /// hour — the two filters compose by applying the step first, then the disabled/hide check.</summary>
+    [Parameter] public int HourStep { get; set; } = 1;
+    /// <summary>Same contract as <see cref="HourStep"/>, for the minute select (0-59). Defaults to 1.</summary>
+    [Parameter] public int MinuteStep { get; set; } = 1;
+    /// <summary>Same contract as <see cref="HourStep"/>, for the second select (0-59). Defaults to 1.
+    /// Has no effect when <see cref="ShowSeconds"/> is false (the select it would apply to doesn't
+    /// exist).</summary>
+    [Parameter] public int SecondStep { get; set; } = 1;
+
+    /// <summary>Shows the hour select in 12-hour form — <c>12, 1, 2, ... 11</c> for the currently
+    /// selected AM/PM period — plus a trailing period select (<see cref="PeriodSelectLabel"/>) whose
+    /// two options are <see cref="PickerCulture"/>'s <c>AMDesignator</c>/<c>PMDesignator</c>, instead
+    /// of the default single 24-hour (0-23) select. The bound <see cref="Value"/> always stays a
+    /// 24-hour value — only the hour select's displayed text and the period select are 12-hour;
+    /// changing the hour still commits its own 24-hour value verbatim (the option VALUES remain the
+    /// 24h hours belonging to the current period), and changing the period re-commits the CURRENT hour
+    /// shifted into the other one (<c>hour % 12 + (isPM ? 12 : 0)</c>) via the same
+    /// <c>ApplyTimePartAsync</c> every other time-row change routes through. <see cref="HourStep"/>
+    /// still applies in 24-hour space (a step spanning both periods simply yields fewer options in
+    /// each). Defaults to false.</summary>
+    [Parameter] public bool Use12Hours { get; set; }
+
     /// <summary>Display and primary parse format for the input. Typed text is parsed with this
     /// exact format first, then with the current culture's general date parsing. Null (default)
     /// picks <see cref="Mode"/>'s default: <c>Date</c> <c>MM/dd/yyyy</c> (the Figma spec) ·
-    /// <c>Month</c> <c>MM/yyyy</c> · <c>DateTime</c> <c>MM/dd/yyyy HH:mm:ss</c> · <c>Time</c>
-    /// <c>HH:mm:ss</c> · <c>Year</c> <c>yyyy</c>. <c>Quarter</c> and <c>Week</c> have no .NET format
+    /// <c>Month</c> <c>MM/yyyy</c> · <c>DateTime</c> <c>MM/dd/yyyy</c> plus <c>Time</c>'s own string,
+    /// space-separated · <c>Time</c> <c>HH:mm:ss</c> (<see cref="ShowSeconds"/> false drops <c>:ss</c>;
+    /// <see cref="Use12Hours"/> switches to the 12-hour <c>h:mm tt</c>/<c>h:mm:ss tt</c> forms instead)
+    /// · <c>Year</c> <c>yyyy</c>. <c>Quarter</c> and <c>Week</c> have no .NET format
     /// token for a quarter number or an ISO-style week number: left null, they render/parse
     /// <c>yyyy-Qn</c> (e.g. "2026-Q3") / <c>yyyy-Www</c> (e.g. "2026-W08") via a hand-rolled special
     /// case instead of <see cref="DateTime.ToString(string)"/>; set explicitly, it is used verbatim
@@ -186,6 +223,9 @@ public partial class DatePicker : IAsyncDisposable
     [Parameter] public string MinuteSelectLabel { get; set; } = "Minute";
     /// <summary>Accessible name of the second select. Override to localize.</summary>
     [Parameter] public string SecondSelectLabel { get; set; } = "Second";
+    /// <summary>Accessible name of the AM/PM period select (<see cref="Use12Hours"/>). Override to
+    /// localize.</summary>
+    [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
     /// <summary>Visible text of the OK button that closes the <see cref="DatePickerMode.Time"/>/
     /// <see cref="DatePickerMode.DateTime"/> panel. Override to localize.</summary>
     [Parameter] public string OkText { get; set; } = "OK";
@@ -313,13 +353,21 @@ public partial class DatePicker : IAsyncDisposable
     {
         DatePickerMode.Date => "MM/dd/yyyy",
         DatePickerMode.Month => "MM/yyyy",
-        DatePickerMode.DateTime => "MM/dd/yyyy HH:mm:ss",
-        DatePickerMode.Time => "HH:mm:ss",
+        DatePickerMode.DateTime => $"MM/dd/yyyy {TimeFormatString}",
+        DatePickerMode.Time => TimeFormatString,
         DatePickerMode.Year => "yyyy",
         DatePickerMode.Quarter => "yyyy",
         DatePickerMode.Week => "yyyy",
         _ => "MM/dd/yyyy",
     };
+
+    // The Time/DateTime portion of EffectiveFormat -- broken out because DateTime mode's format is
+    // just "MM/dd/yyyy " plus this exact string. ShowSeconds drops ":ss"; Use12Hours switches the
+    // 24-hour "HH" to the unpadded 12-hour "h" plus a trailing "tt" designator (matching
+    // HourOptionText's own unpadded 12-hour option text below).
+    string TimeFormatString => Use12Hours
+        ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
+        : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
 
     string EffectivePlaceholder => Placeholder ?? Mode switch
     {
@@ -446,6 +494,18 @@ public partial class DatePicker : IAsyncDisposable
     int DisplayHour => Value?.Hour ?? 0;
     int DisplayMinute => Value?.Minute ?? 0;
     int DisplaySecond => Value?.Second ?? 0;
+
+    // Whether the displayed hour falls in the PM half of the day — the default (Value null)
+    // DisplayHour of 0 is AM, matching AntD's/the doc comment's "12 AM / 00:00" default. Drives
+    // Use12Hours' period select and hour-option filtering (HourOptions below).
+    bool DisplayIsPM => DisplayHour >= 12;
+
+    // HourStep/MinuteStep/SecondStep clamped to >= 1 at the point of use (never thrown) -- the raw
+    // parameters stay whatever a consumer set (even 0 or negative) so nothing but option-list
+    // construction ever second-guesses them.
+    int EffectiveHourStep => Math.Max(1, HourStep);
+    int EffectiveMinuteStep => Math.Max(1, MinuteStep);
+    int EffectiveSecondStep => Math.Max(1, SecondStep);
 
     // The years offered by the year select: Min/Max years when set, otherwise ±10 around the
     // displayed year — always including the displayed year itself so the select never shows a
@@ -634,10 +694,13 @@ public partial class DatePicker : IAsyncDisposable
     {
         DatePickerMode.Date => value.Date,
         DatePickerMode.Month => FirstOfMonth(value),
-        DatePickerMode.DateTime => new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, value.Second),
+        // ShowSeconds false zeroes the second here too (not just in ApplyTimePartAsync's own compose
+        // step) so a typed-text commit -- which never goes through ApplyTimePartAsync -- can't leave
+        // a stale nonzero second in place.
+        DatePickerMode.DateTime => new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, ShowSeconds ? value.Second : 0),
         // Anchored to today at commit time -- mirrors what EditDate produces for a DateTime bound to
         // a Time input, where BindConverter/DateTime.TryParse("HH:mm:ss") yields today's date.
-        DatePickerMode.Time => DateTime.Today + new TimeSpan(value.Hour, value.Minute, value.Second),
+        DatePickerMode.Time => DateTime.Today + new TimeSpan(value.Hour, value.Minute, ShowSeconds ? value.Second : 0),
         DatePickerMode.Year => new DateTime(value.Year, 1, 1),
         DatePickerMode.Quarter => QuarterStart(value),
         DatePickerMode.Week => WeekStart(value),
@@ -1278,14 +1341,17 @@ public partial class DatePicker : IAsyncDisposable
     // Mode.Time discards this anyway) and the current time-of-day (Value's, or midnight) with one
     // HH/mm/ss part replaced, then commits -- unless DisabledTime rejects the composed H/m/s, in
     // which case this no-ops (the select's own displayed value reverts to Value's on the next
-    // render, same revert semantics a Min/Max rejection gets elsewhere).
+    // render, same revert semantics a Min/Max rejection gets elsewhere). ShowSeconds false zeroes the
+    // second here (not just in NormalizeForMode) so the DisabledTime guard below never rejects a
+    // hour/minute change over a stale second that no select can even change.
     Task ApplyTimePartAsync(int? hour = null, int? minute = null, int? second = null)
     {
         // A select change supersedes any half-typed input text, same as a day/month click.
         _edit = null;
         var date = Value?.Date ?? DateTime.Today;
         var time = Value?.TimeOfDay ?? TimeSpan.Zero;
-        var composed = date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, second ?? time.Seconds);
+        var seconds = ShowSeconds ? second ?? time.Seconds : 0;
+        var composed = date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, seconds);
         return IsTimeDisabledForCommit(composed) ? Task.CompletedTask : SetValueAsync(composed);
     }
 
@@ -1303,6 +1369,58 @@ public partial class DatePicker : IAsyncDisposable
         int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var second)
             ? ApplyTimePartAsync(second: second)
             : Task.CompletedTask;
+
+    // Use12Hours' period select: re-commits the CURRENT hour shifted into the other period, via the
+    // same ApplyTimePartAsync every other time-row change routes through (so it gets the same
+    // DisabledTime guard and _edit-clearing as a direct hour/minute/second change). "PM" is the only
+    // value that flips the shift -- anything else (including a malformed event) is treated as AM, same
+    // permissive fallback OnHourSelectChangedAsync's TryParse gives a bad hour string.
+    Task OnPeriodSelectChangedAsync(ChangeEventArgs e)
+    {
+        var isPM = string.Equals(e.Value?.ToString(), "PM", StringComparison.Ordinal);
+        return ApplyTimePartAsync(hour: DisplayHour % 12 + (isPM ? 12 : 0));
+    }
+
+    // The hour values the hour select offers, before DisabledTime hides/disables any of them: every
+    // EffectiveHourStep-th 24-hour value (0, step, 2*step, ... <= 23) via SteppedOptions, further
+    // filtered under Use12Hours to just the hours belonging to the CURRENTLY DISPLAYED AM/PM period.
+    // SteppedOptions' own never-jump already guarantees DisplayHour survives that filter -- its period
+    // (DisplayIsPM) is computed from DisplayHour itself, so it can never be filtered OUT.  The result
+    // is ascending 24h order, which -- within one period -- is already exactly the "12, 1, 2, ... 11"
+    // 12-hour reading order the Use12Hours doc comment promises (h%12 rises in step with h in both
+    // halves of the day; see HourOptionText for the label itself).
+    IEnumerable<int> HourOptions()
+    {
+        var options = SteppedOptions(23, EffectiveHourStep, DisplayHour);
+        return Use12Hours ? options.Where(h => (h >= 12) == DisplayIsPM) : options;
+    }
+
+    IEnumerable<int> MinuteOptions() => SteppedOptions(59, EffectiveMinuteStep, DisplayMinute);
+
+    IEnumerable<int> SecondOptions() => SteppedOptions(59, EffectiveSecondStep, DisplaySecond);
+
+    // The option values a stepped time select offers before DisabledTime hides/disables any of them:
+    // every `step`-th value from 0 to `max` inclusive, plus `current` itself if it isn't naturally on
+    // that lattice -- the NEVER-JUMP RULE for HourStep/MinuteStep/SecondStep, composing with
+    // DisabledTime's own (see HideDisabledTimeOptions) so a select can never silently show a value
+    // that isn't the one actually bound. A SortedSet both dedupes (current may already be on the
+    // lattice) and keeps the option list in its natural ascending reading order even though `current`
+    // wasn't necessarily added in numeric order. `step` is trusted to already be >= 1 -- see
+    // EffectiveHourStep/EffectiveMinuteStep/EffectiveSecondStep.
+    static IEnumerable<int> SteppedOptions(int max, int step, int current)
+    {
+        var options = new SortedSet<int>();
+        for (var v = 0; v <= max; v += step) options.Add(v);
+        options.Add(current);
+        return options;
+    }
+
+    // The hour select's option TEXT for `h` (always a 24h value): zero-padded 24h ("00".."23")
+    // normally, or the plain (non-zero-padded) 12-hour reading ("12", "1".."11") under Use12Hours --
+    // matching the unpadded "h" custom format specifier TimeFormatString uses for the same mode.
+    string HourOptionText(int h) => Use12Hours
+        ? (h % 12 == 0 ? 12 : h % 12).ToString(PickerCulture)
+        : h.ToString("00", CultureInfo.InvariantCulture);
 
     // The OK button is Time/DateTime mode's close signal -- both modes commit incrementally (time
     // selects, and in DateTime a day click too) without closing, so nothing needs committing here.
