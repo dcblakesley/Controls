@@ -2625,6 +2625,56 @@
     cursor: not-allowed;
 }
 
+/* ------------------------------------------------- Month mode (DatePicker)
+ * Mode="Month" replaces the day calendar with a 3x4 grid of month buttons.
+ * Distinct classes from the day cells above (DateRangePicker gives
+ * wss-picker-day range-specific meaning it must keep). States reuse existing
+ * attributes instead of adding more modifier classes: aria-pressed="true" is
+ * the selected month, aria-current="date" is the current month, :disabled is
+ * an out-of-Min/Max month -- mirrors the day cells' AntD look via the same
+ * tokens. */
+
+.wss-picker-month-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 8px;
+}
+
+.wss-picker-month-btn {
+    height: 24px;
+    padding: 0 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    text-align: center;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--wss-picker-radius-sm);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.wss-picker-month-btn:not(:disabled):not([aria-pressed="true"]):hover {
+    background: var(--wss-color-bg-hover);
+}
+
+.wss-picker-month-btn[aria-current="date"] {
+    border-color: var(--wss-color-primary);
+}
+
+.wss-picker-month-btn[aria-pressed="true"] {
+    color: var(--wss-color-on-primary);
+    background: var(--wss-color-primary);
+    border-color: var(--wss-color-primary);
+}
+
+.wss-picker-month-btn:disabled {
+    color: var(--wss-color-text-disabled);
+    background: none;
+    cursor: not-allowed;
+}
+
 /* ============================================================================
  * Tabs
  * Underline ("line" type) tab strip with an optional bordered count chip per
@@ -2826,6 +2876,7 @@
 /* Picker popup interactives use a tighter offset — the 24px day cells sit 6px apart, so a 2px
    offset ring would overlap the neighboring cells' band. */
 .wss-picker-day:focus-visible,
+.wss-picker-month-btn:focus-visible,
 .wss-picker-preset:focus-visible,
 .wss-picker-select select:focus-visible,
 .wss-picker-nav:focus-visible {
@@ -2854,6 +2905,7 @@
     .wss-picker-clear,
     .wss-picker-preset,
     .wss-picker-day,
+    .wss-picker-month-btn,
     .wss-picker-nav {
         transition: none;
     }

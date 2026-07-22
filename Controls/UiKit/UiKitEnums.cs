@@ -59,3 +59,12 @@ public enum SortDirection
     Ascending,
     Descending
 }
+
+/// <summary>What a <see cref="DatePicker"/> selects: a day, a month, a date+time, or a time.</summary>
+public enum DatePickerMode
+{
+    Date,
+    Month,
+    DateTime,
+    Time
+}

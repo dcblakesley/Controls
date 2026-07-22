@@ -4,9 +4,10 @@ namespace Controls;
 
 /// <summary>
 /// An AntDesign-style single-date picker: a text field with a calendar suffix that opens a
-/// dropdown with a one-month calendar whose header is month/year quick-select dropdowns. Picking a
-/// day (or typing a date and pressing Enter) commits and closes. Date-only — the committed value is
-/// a midnight local date.
+/// dropdown panel. <see cref="Mode"/> selects what the panel offers — <c>Date</c> (default) shows
+/// a one-month calendar whose header is month/year quick-select dropdowns; <c>Month</c> shows a
+/// year header (prev/next-year buttons flanking a year select) over a 3x4 grid of month buttons.
+/// Picking a day/month (or typing text and pressing Enter) commits and closes.
 /// </summary>
 /// <remarks>
 /// The single-date sibling of <see cref="DateRangePicker"/> — it shares the <c>wss-picker-*</c>
@@ -39,18 +40,33 @@ public partial class DatePicker : IAsyncDisposable
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<DateTime?>>? Field { get; set; }
 
-    /// <summary>Earliest selectable day (inclusive). Days before it are disabled.</summary>
+    /// <summary>What the picker selects. Defaults to <see cref="DatePickerMode.Date"/>. The bound
+    /// <see cref="Value"/> stays <c>DateTime?</c> in every mode; only the commit-time normalization
+    /// differs — <c>Date</c> keeps the date, <c>Month</c> normalizes to the 1st of the month at
+    /// midnight, <c>DateTime</c> truncates to whole seconds, <c>Time</c> anchors to
+    /// <see cref="DateTime.Today"/> plus the time-of-day (also truncated to whole seconds).</summary>
+    [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Date;
+
+    /// <summary>Earliest selectable date (inclusive). In <see cref="DatePickerMode.Date"/> and
+    /// <see cref="DatePickerMode.DateTime"/> this disables days before it; in
+    /// <see cref="DatePickerMode.Month"/> it disables whole months before its month. Ignored in
+    /// <see cref="DatePickerMode.Time"/> (a time-of-day has no date-range concept).</summary>
     [Parameter] public DateTime? Min { get; set; }
-    /// <summary>Latest selectable day (inclusive). Days after it are disabled.</summary>
+    /// <summary>Latest selectable date (inclusive). Same mode-dependent granularity as
+    /// <see cref="Min"/>; ignored in <see cref="DatePickerMode.Time"/>.</summary>
     [Parameter] public DateTime? Max { get; set; }
 
     /// <summary>Display and primary parse format for the input. Typed text is parsed with this
-    /// exact format first, then with the current culture's general date parsing. Defaults to
-    /// <c>MM/dd/yyyy</c> (the Figma spec).</summary>
-    [Parameter] public string Format { get; set; } = "MM/dd/yyyy";
+    /// exact format first, then with the current culture's general date parsing. Null (default)
+    /// picks <see cref="Mode"/>'s default: <c>Date</c> <c>MM/dd/yyyy</c> (the Figma spec) ·
+    /// <c>Month</c> <c>MM/yyyy</c> · <c>DateTime</c> <c>MM/dd/yyyy HH:mm:ss</c> · <c>Time</c>
+    /// <c>HH:mm:ss</c>.</summary>
+    [Parameter] public string? Format { get; set; }
 
-    /// <summary>Input placeholder. Defaults to "Select date" (the Figma spec). Override to localize.</summary>
-    [Parameter] public string Placeholder { get; set; } = "Select date";
+    /// <summary>Input placeholder. Null (default) picks <see cref="Mode"/>'s default: <c>Date</c>/
+    /// <c>DateTime</c> "Select date" (the Figma spec) · <c>Month</c> "Select month" · <c>Time</c>
+    /// "Select time". Override to localize.</summary>
+    [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>Shows a clear button (over the calendar icon) while a value is set. Defaults to true.</summary>
     [Parameter] public bool AllowClear { get; set; } = true;
@@ -84,6 +100,12 @@ public partial class DatePicker : IAsyncDisposable
     [Parameter] public string PrevMonthLabel { get; set; } = "Previous month";
     /// <summary>Accessible name of the next-month button. Override to localize.</summary>
     [Parameter] public string NextMonthLabel { get; set; } = "Next month";
+    /// <summary>Accessible name of the previous-year button (<see cref="DatePickerMode.Month"/>'s
+    /// header). Override to localize.</summary>
+    [Parameter] public string PrevYearLabel { get; set; } = "Previous year";
+    /// <summary>Accessible name of the next-year button (<see cref="DatePickerMode.Month"/>'s
+    /// header). Override to localize.</summary>
+    [Parameter] public string NextYearLabel { get; set; } = "Next year";
 
     // Validation-state ARIA passthrough onto the actual <input>, for form wrappers (EditDatePicker).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio (which EditSelectSearch
@@ -198,6 +220,27 @@ public partial class DatePicker : IAsyncDisposable
 
     bool ShowClear => AllowClear && !Disabled && Value is not null;
 
+    // Format/Placeholder resolution: an explicit value always wins; null falls through to Mode's
+    // default. All internal display/parse code routes through these (never the raw parameters), so
+    // a mode switch changes behavior without a consumer having to also clear a stale Format/Placeholder.
+    string EffectiveFormat => Format ?? Mode switch
+    {
+        DatePickerMode.Date => "MM/dd/yyyy",
+        DatePickerMode.Month => "MM/yyyy",
+        DatePickerMode.DateTime => "MM/dd/yyyy HH:mm:ss",
+        DatePickerMode.Time => "HH:mm:ss",
+        _ => "MM/dd/yyyy",
+    };
+
+    string EffectivePlaceholder => Placeholder ?? Mode switch
+    {
+        DatePickerMode.Date => "Select date",
+        DatePickerMode.Month => "Select month",
+        DatePickerMode.DateTime => "Select date",
+        DatePickerMode.Time => "Select time",
+        _ => "Select date",
+    };
+
     string DayClass(DateTime day)
     {
         var cls = "wss-picker-day";
@@ -209,6 +252,26 @@ public partial class DatePicker : IAsyncDisposable
 
     bool IsDayDisabled(DateTime day) =>
         (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date);
+
+    // Month-mode equivalent of IsDayDisabled: a whole month is disabled once it falls entirely
+    // outside [Min, Max] at month granularity — same granularity PrevMonthDisabled/NextMonthDisabled
+    // use for the day-grid's own header nav, so the two panels never disagree about where Min/Max
+    // stop navigation.
+    bool IsMonthDisabled(DateTime month) =>
+        (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max));
+
+    // Whether a parsed/committed value (already mode-normalized) falls outside [Min, Max] at Mode's
+    // own granularity. Date/DateTime check the day itself (Min/Max are date-only); Month checks
+    // month granularity; Time ignores bounds entirely -- they're date-granularity and this control
+    // exposes no time bounds (EditDate has none either).
+    bool IsDisabledForCommit(DateTime value) => Mode switch
+    {
+        DatePickerMode.Date => IsDayDisabled(value),
+        DatePickerMode.Month => IsMonthDisabled(value),
+        DatePickerMode.DateTime => IsDayDisabled(value.Date),
+        DatePickerMode.Time => false,
+        _ => IsDayDisabled(value),
+    };
 
     // The picker is a Gregorian-calendar control — see GregorianCultureHelper for the contract.
     // Every picker-internal format and the typed-input parse route through this culture.
@@ -275,18 +338,34 @@ public partial class DatePicker : IAsyncDisposable
     }
 
     string FormatDate(DateTime? value) =>
-        value?.ToString(Format, PickerCulture) ?? string.Empty;
+        value?.ToString(EffectiveFormat, PickerCulture) ?? string.Empty;
 
+    // Exact effective format first, then the current culture's general parse -- then normalizes the
+    // parsed result to Mode's own granularity (mirrors SetValueAsync's normalization so a typed
+    // commit and a click/select commit always land on the same shape of value).
     bool TryParseDate(string text, out DateTime value)
     {
-        if (DateTime.TryParseExact(text, Format, PickerCulture, DateTimeStyles.None, out value) ||
+        if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out value) ||
             DateTime.TryParse(text, PickerCulture, DateTimeStyles.None, out value))
         {
-            value = value.Date;
+            value = NormalizeForMode(value);
             return true;
         }
         return false;
     }
+
+    // Central per-mode normalization, shared by TryParseDate and SetValueAsync so every commit path
+    // (click, typed text, select change) agrees on the same shape of value.
+    DateTime NormalizeForMode(DateTime value) => Mode switch
+    {
+        DatePickerMode.Date => value.Date,
+        DatePickerMode.Month => FirstOfMonth(value),
+        DatePickerMode.DateTime => new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, value.Second),
+        // Anchored to today at commit time -- mirrors what EditDate produces for a DateTime bound to
+        // a Time input, where BindConverter/DateTime.TryParse("HH:mm:ss") yields today's date.
+        DatePickerMode.Time => DateTime.Today + new TimeSpan(value.Hour, value.Minute, value.Second),
+        _ => value.Date,
+    };
 
     static DateTime FirstOfMonth(DateTime value) => new(value.Year, value.Month, 1);
 
@@ -412,6 +491,109 @@ public partial class DatePicker : IAsyncDisposable
         _focusDay = null;
     }
 
+    // ----- Month mode: grid + year navigation --------------------------------
+    // Mirrors the day-grid machinery above one level up (year/month instead of month/day) and
+    // shares the same _focusDay/_pendingFocusDate/_pendingInputFocus state -- only one grid ever
+    // renders for a given Mode, so there's no risk of the two meanings colliding.
+
+    // Is `month` inside the currently displayed year? (The Month-mode grid always shows all 12.)
+    bool IsVisibleMonth(DateTime month) => month.Year == _viewMonth.Year;
+
+    bool IsSelectedMonth(DateTime month) => Value is { } v && FirstOfMonth(v) == month;
+
+    bool IsCurrentMonth(DateTime month) => month == FirstOfMonth(DateTime.Today);
+
+    // The month the grid's roving tabindex targets when no keyboard navigation has moved it yet: the
+    // bound value's month if it's in the displayed year, else the current month if it's in the
+    // displayed year, else the first enabled month of the year — mirrors DefaultFocusDay.
+    DateTime DefaultFocusMonth()
+    {
+        if (Value is { } v && IsVisibleMonth(FirstOfMonth(v)) && !IsMonthDisabled(FirstOfMonth(v))) return FirstOfMonth(v);
+        var today = FirstOfMonth(DateTime.Today);
+        if (IsVisibleMonth(today) && !IsMonthDisabled(today)) return today;
+        return FirstEnabledMonth(_viewMonth.Year) ?? new DateTime(_viewMonth.Year, 1, 1);
+    }
+
+    // The first enabled month of `year`, or null if every month that year is disabled.
+    DateTime? FirstEnabledMonth(int year)
+    {
+        for (var m = 1; m <= 12; m++)
+        {
+            var month = new DateTime(year, m, 1);
+            if (!IsMonthDisabled(month)) return month;
+        }
+        return null;
+    }
+
+    DateTime EffectiveFocusMonth => _focusDay is { } f && IsVisibleMonth(f) ? f : DefaultFocusMonth();
+
+    bool IsMonthFocusStop(DateTime month) => month == EffectiveFocusMonth;
+
+    // Maps a keydown's Key to the month it should move focus to, or null when the key isn't a
+    // navigation key. The 3-column grid makes Up/Down a +/-3 (one row) step; Home/End jump to the
+    // first/last month of the focused row. AddMonths/AddYears throws at the DateTime.MinValue/
+    // MaxValue edge — the caller treats that as the key being a no-op there.
+    DateTime? NextFocusMonth(DateTime current, string key)
+    {
+        try
+        {
+            return key switch
+            {
+                "ArrowLeft" => current.AddMonths(-1),
+                "ArrowRight" => current.AddMonths(1),
+                "ArrowUp" => current.AddMonths(-3),
+                "ArrowDown" => current.AddMonths(3),
+                "Home" => MonthRowStart(current),
+                "End" => MonthRowStart(current).AddMonths(2),
+                "PageUp" => current.AddYears(-1),
+                "PageDown" => current.AddYears(1),
+                _ => (DateTime?)null,
+            };
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    // The 1st of the first month in the 3-month row containing `month` (rows are Jan-Mar, Apr-Jun,
+    // Jul-Sep, Oct-Dec) — shared by Home/End so they can never disagree about row bounds.
+    static DateTime MonthRowStart(DateTime month) => new(month.Year, (month.Month - 1) / 3 * 3 + 1, 1);
+
+    // Grid keydown: moves the roving-tabindex month, retargeting the displayed year when navigation
+    // crosses out of it. The actual DOM focus move happens in OnAfterRenderAsync via
+    // _pendingFocusDate, same as the day grid's OnGridKeyDown.
+    void OnMonthGridKeyDown(KeyboardEventArgs e)
+    {
+        var next = NextFocusMonth(EffectiveFocusMonth, e.Key);
+        if (next is null) return;
+
+        _focusDay = next.Value;
+        if (next.Value.Year != _viewMonth.Year) _viewMonth = next.Value;
+        _pendingFocusDate = next.Value;
+    }
+
+    // Disables at the representable DateTime year range and at the Min/Max year — same shape as
+    // PrevMonthDisabled/NextMonthDisabled one granularity up.
+    bool PrevYearDisabled =>
+        _viewMonth.Year <= 1 ||
+        (Min is { } min && _viewMonth.Year <= min.Year);
+    bool NextYearDisabled =>
+        _viewMonth.Year >= 9999 ||
+        (Max is { } max && _viewMonth.Year >= max.Year);
+
+    void PrevYear()
+    {
+        _viewMonth = new DateTime(Math.Clamp(_viewMonth.Year - 1, 1, 9999), _viewMonth.Month, 1);
+        _focusDay = null; // recompute the roving-focus default against the newly shown year
+    }
+
+    void NextYear()
+    {
+        _viewMonth = new DateTime(Math.Clamp(_viewMonth.Year + 1, 1, 9999), _viewMonth.Month, 1);
+        _focusDay = null;
+    }
+
     // ----- Interaction ------------------------------------------------------
 
     Task OnFieldClickAsync()
@@ -486,6 +668,15 @@ public partial class DatePicker : IAsyncDisposable
         await CloseAsync();
     }
 
+    async Task OnMonthClickAsync(DateTime month)
+    {
+        // A grid pick supersedes any half-typed input text.
+        _edit = null;
+        await SetValueAsync(month);
+        _pendingInputFocus = true; // the clicked month button is about to unmount
+        await CloseAsync();
+    }
+
     async Task ClearAsync()
     {
         if (Disabled) return;
@@ -506,16 +697,16 @@ public partial class DatePicker : IAsyncDisposable
             if (Value is not null) await SetValueAsync(null);
             return true;
         }
-        if (!TryParseDate(text, out var day) || IsDayDisabled(day)) return false;
+        if (!TryParseDate(text, out var day) || IsDisabledForCommit(day)) return false;
         await SetValueAsync(day);
         _viewMonth = ClampView(FirstOfMonth(day));
         return true;
     }
 
-    // Central commit: normalizes to a date and raises the callback only when it actually changed.
+    // Central commit: normalizes to Mode's shape and raises the callback only when it actually changed.
     async Task SetValueAsync(DateTime? value)
     {
-        value = value?.Date;
+        value = value is { } v ? NormalizeForMode(v) : null;
         if (Value == value) return;
         Value = value;
         await ValueChanged.InvokeAsync(value);

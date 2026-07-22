@@ -33,7 +33,7 @@
                    aria-invalid="@(AriaInvalid ? "true" : null)"
                    aria-describedby="@AriaDescribedBy"
                    aria-errormessage="@AriaErrorMessage"
-                   placeholder="@Placeholder"
+                   placeholder="@EffectivePlaceholder"
                    disabled="@Disabled"
                    value="@Display"
                    @oninput="@(e => _edit = e.Value?.ToString() ?? string.Empty)"
@@ -52,58 +52,99 @@
     {
         <div class="wss-picker-dropdown wss-picker-dropdown-single @(_positioned ? null : "wss-measuring")" @ref="_panelRef"
              role="dialog" aria-label="@DialogLabel" tabindex="-1">
-            <div class="wss-picker-month">
-                <div class="wss-picker-month-header">
-                    <button type="button" class="wss-picker-nav" aria-label="@PrevMonthLabel"
-                            disabled="@PrevMonthDisabled" @onclick="PrevMonth">@PrevIcon</button>
-                    <div class="wss-picker-month-selects">
-                        <span class="wss-picker-select">
-                            <select aria-label="@MonthSelectLabel" value="@_viewMonth.Month"
-                                    @onchange="OnMonthSelectChanged">
-                                @for (var m = 1; m <= 12; m++)
-                                {
-                                    <option value="@m" selected="@(m == _viewMonth.Month)">@MonthName(m)</option>
-                                }
-                            </select>
-                            @DownIcon
-                        </span>
-                        <span class="wss-picker-select">
-                            <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
-                                    @onchange="OnYearSelectChanged">
-                                @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
-                                @for (var y = fromYear; y <= toYear; y++)
-                                {
-                                    <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
-                                }
-                            </select>
-                            @DownIcon
-                        </span>
-                    </div>
-                    <button type="button" class="wss-picker-nav" aria-label="@NextMonthLabel"
-                            disabled="@NextMonthDisabled" @onclick="NextMonth">@NextIcon</button>
-                </div>
-                <div class="wss-picker-week-header" aria-hidden="true">
-                    @foreach (var name in WeekdayHeaders)
-                    {
-                        <div class="wss-picker-week-day">@name</div>
-                    }
-                </div>
-                <div class="wss-picker-grid" @ref="_gridRef" @onkeydown="OnGridKeyDown">
-                    @foreach (var day in GridDays(_viewMonth))
-                    {
-                        var d = day;
-                        <div class="wss-picker-cell">
-                            <button type="button" class="@DayClass(d)"
-                                    disabled="@IsDayDisabled(d)"
-                                    tabindex="@(IsFocusStop(d) ? "0" : "-1")"
-                                    data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                    aria-label="@d.ToString("D", PickerCulture)"
-                                    aria-pressed="@(d == Value?.Date ? "true" : "false")"
-                                    @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+            @if (Mode == DatePickerMode.Month)
+            {
+                <div class="wss-picker-month">
+                    <div class="wss-picker-month-header">
+                        <button type="button" class="wss-picker-nav" aria-label="@PrevYearLabel"
+                                disabled="@PrevYearDisabled" @onclick="PrevYear">@PrevIcon</button>
+                        <div class="wss-picker-month-selects">
+                            <span class="wss-picker-select">
+                                <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
+                                        @onchange="OnYearSelectChanged">
+                                    @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
+                                    @for (var y = fromYear; y <= toYear; y++)
+                                    {
+                                        <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
+                                    }
+                                </select>
+                                @DownIcon
+                            </span>
                         </div>
-                    }
+                        <button type="button" class="wss-picker-nav" aria-label="@NextYearLabel"
+                                disabled="@NextYearDisabled" @onclick="NextYear">@NextIcon</button>
+                    </div>
+                    <div class="wss-picker-month-grid" @ref="_gridRef" @onkeydown="OnMonthGridKeyDown">
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            var month = new DateTime(_viewMonth.Year, m, 1);
+                            <button type="button" class="wss-picker-month-btn"
+                                    disabled="@IsMonthDisabled(month)"
+                                    tabindex="@(IsMonthFocusStop(month) ? "0" : "-1")"
+                                    data-date="@month.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                    aria-label="@month.ToString("MMMM yyyy", PickerCulture)"
+                                    aria-pressed="@(IsSelectedMonth(month) ? "true" : "false")"
+                                    aria-current="@(IsCurrentMonth(month) ? "date" : null)"
+                                    @onclick="@(() => OnMonthClickAsync(month))">@MonthName(m)</button>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
+            else
+            {
+                <div class="wss-picker-month">
+                    <div class="wss-picker-month-header">
+                        <button type="button" class="wss-picker-nav" aria-label="@PrevMonthLabel"
+                                disabled="@PrevMonthDisabled" @onclick="PrevMonth">@PrevIcon</button>
+                        <div class="wss-picker-month-selects">
+                            <span class="wss-picker-select">
+                                <select aria-label="@MonthSelectLabel" value="@_viewMonth.Month"
+                                        @onchange="OnMonthSelectChanged">
+                                    @for (var m = 1; m <= 12; m++)
+                                    {
+                                        <option value="@m" selected="@(m == _viewMonth.Month)">@MonthName(m)</option>
+                                    }
+                                </select>
+                                @DownIcon
+                            </span>
+                            <span class="wss-picker-select">
+                                <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
+                                        @onchange="OnYearSelectChanged">
+                                    @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
+                                    @for (var y = fromYear; y <= toYear; y++)
+                                    {
+                                        <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
+                                    }
+                                </select>
+                                @DownIcon
+                            </span>
+                        </div>
+                        <button type="button" class="wss-picker-nav" aria-label="@NextMonthLabel"
+                                disabled="@NextMonthDisabled" @onclick="NextMonth">@NextIcon</button>
+                    </div>
+                    <div class="wss-picker-week-header" aria-hidden="true">
+                        @foreach (var name in WeekdayHeaders)
+                        {
+                            <div class="wss-picker-week-day">@name</div>
+                        }
+                    </div>
+                    <div class="wss-picker-grid" @ref="_gridRef" @onkeydown="OnGridKeyDown">
+                        @foreach (var day in GridDays(_viewMonth))
+                        {
+                            var d = day;
+                            <div class="wss-picker-cell">
+                                <button type="button" class="@DayClass(d)"
+                                        disabled="@IsDayDisabled(d)"
+                                        tabindex="@(IsFocusStop(d) ? "0" : "-1")"
+                                        data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                        aria-label="@d.ToString("D", PickerCulture)"
+                                        aria-pressed="@(d == Value?.Date ? "true" : "false")"
+                                        @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
         </div>
     }
 </div>

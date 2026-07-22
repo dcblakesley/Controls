@@ -22,9 +22,10 @@ export function init(gridEl) {
         return;
     }
     const handler = e => {
-        // Only the calendar's own day buttons get the suppression — Tab, Enter and Escape (and
-        // anything landing outside a day button) must keep their native behavior.
-        if (WSS_PICKER_NAV_KEYS.has(e.key) && e.target instanceof Element && e.target.classList.contains('wss-picker-day')) {
+        // Only the calendar's own day/month buttons get the suppression — Tab, Enter and Escape
+        // (and anything landing outside one of those buttons) must keep their native behavior.
+        if (WSS_PICKER_NAV_KEYS.has(e.key) && e.target instanceof Element &&
+            (e.target.classList.contains('wss-picker-day') || e.target.classList.contains('wss-picker-month-btn'))) {
             e.preventDefault();
         }
     };
@@ -39,13 +40,14 @@ export function dispose(gridEl) {
     }
 }
 
-// Moves real DOM focus to the day button for `dateStr` (yyyy-MM-dd, invariant) within `root` (the
-// dropdown panel — DateRangePicker searches across both grids in one call since either panel could
-// currently show the date). Called from OnAfterRenderAsync once the grid has (possibly) re-rendered
-// with the new month, so the target button is guaranteed to exist if the date is visible at all.
-// Silently no-ops when it isn't (e.g. focus request raced a close) or the button can't take focus
-// (a disabled day — the browser itself refuses .focus() on a disabled button; C#'s roving-tabindex
-// state still tracks it as the logical target either way).
+// Moves real DOM focus to the day/month button for `dateStr` (yyyy-MM-dd, invariant -- a Month-mode
+// button carries its 1st-of-month as "yyyy-MM-01") within `root` (the dropdown panel —
+// DateRangePicker searches across both grids in one call since either panel could currently show
+// the date). Called from OnAfterRenderAsync once the grid has (possibly) re-rendered with the new
+// month/year, so the target button is guaranteed to exist if the date is visible at all. Silently
+// no-ops when it isn't (e.g. focus request raced a close) or the button can't take focus (a
+// disabled day/month — the browser itself refuses .focus() on a disabled button; C#'s
+// roving-tabindex state still tracks it as the logical target either way).
 export function focusDay(root, dateStr) {
     if (!root) {
         return;
@@ -53,14 +55,14 @@ export function focusDay(root, dateStr) {
     // Don't steal focus the user has since moved elsewhere: this call is a separate, delayed
     // round trip (keydown -> render -> OnAfterRenderAsync -> here), and on Blazor Server it can
     // land after the user has already tabbed to a text input or a month/year select and started
-    // typing. Only move focus when it is still on a day button inside this root (the roving case)
-    // or nowhere at all (body/null — the previously-focused day button was re-rendered away, which
-    // is exactly the situation this function exists to repair).
+    // typing. Only move focus when it is still on a day/month button inside this root (the roving
+    // case) or nowhere at all (body/null — the previously-focused button was re-rendered away,
+    // which is exactly the situation this function exists to repair).
     const active = document.activeElement;
-    const activeIsDay = active instanceof Element
-        && active.classList.contains('wss-picker-day')
+    const activeIsGridButton = active instanceof Element
+        && (active.classList.contains('wss-picker-day') || active.classList.contains('wss-picker-month-btn'))
         && root.contains(active);
-    if (active && active !== document.body && !activeIsDay) {
+    if (active && active !== document.body && !activeIsGridButton) {
         return;
     }
     // Prefer the cell that actually carries the roving tabindex="0". Near a month boundary the
@@ -71,8 +73,9 @@ export function focusDay(root, dateStr) {
     // selector would park DOM focus on the greyed, tabindex="-1" cell instead of the real one. C#
     // always sets the roving stop on the correct in-month cell before invoking focusDay, so the
     // precise match is the normal path; the untargeted fallback only matters if that invariant is
-    // ever violated (or for DatePicker's single grid, where the two selectors never differ).
-    const el = root.querySelector(`.wss-picker-day[data-date="${dateStr}"][tabindex="0"]`)
-        || root.querySelector(`.wss-picker-day[data-date="${dateStr}"]`);
+    // ever violated (or for DatePicker's single grid — day or month — where the two selectors never
+    // differ).
+    const el = root.querySelector(`.wss-picker-day[data-date="${dateStr}"][tabindex="0"], .wss-picker-month-btn[data-date="${dateStr}"][tabindex="0"]`)
+        || root.querySelector(`.wss-picker-day[data-date="${dateStr}"], .wss-picker-month-btn[data-date="${dateStr}"]`);
     try { el && el.focus(); } catch { /* not focusable / gone */ }
 }

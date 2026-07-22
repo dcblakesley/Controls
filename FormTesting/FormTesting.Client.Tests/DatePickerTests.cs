@@ -36,6 +36,11 @@ public class DatePickerTests : TestContext
             .First(b => !b.ClassList.Contains("wss-picker-day-outside") &&
                         b.TextContent == dayNumber.ToString("00", CultureInfo.InvariantCulture));
 
+    // The Mode="Month" grid always renders exactly 12 buttons, Jan..Dec in order -- no outside/
+    // leading cells to skip, unlike Day() above.
+    static IElement MonthButton(IRenderedComponent<DatePicker> cut, int monthNumber) =>
+        cut.FindAll(".wss-picker-month-btn")[monthNumber - 1];
+
     [Fact]
     public void Closed_picker_renders_the_field_only_with_the_spec_placeholder()
     {
@@ -413,5 +418,227 @@ public class DatePickerTests : TestContext
         {
             CultureInfo.CurrentCulture = original;
         }
+    }
+
+    // ----- Mode="Month" -------------------------------------------------------
+
+    [Fact]
+    public void Month_mode_renders_a_twelve_button_grid_with_the_year_header()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14));
+
+        Open(cut);
+
+        var dialog = cut.Find(".wss-picker-dropdown");
+        Assert.Contains("wss-picker-dropdown-single", dialog.ClassList);
+        Assert.Empty(cut.FindAll(".wss-picker-week-header")); // no day-grid chrome in this mode
+        Assert.Empty(cut.FindAll(".wss-picker-grid"));
+
+        var buttons = cut.FindAll(".wss-picker-month-btn");
+        Assert.Equal(12, buttons.Count);
+        Assert.Equal("Jan", buttons[0].TextContent);
+        Assert.Equal("Dec", buttons[11].TextContent);
+
+        var feb = MonthButton(cut, 2);
+        Assert.Equal("2026-02-01", feb.GetAttribute("data-date"));
+        Assert.Equal("February 2026", feb.GetAttribute("aria-label"));
+        Assert.Equal("true", feb.GetAttribute("aria-pressed"));
+
+        Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Month_click_commits_the_first_of_month_and_closes()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        MonthButton(cut, 5).Click(); // May
+
+        Assert.Equal(new DateTime(2026, 5, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Month_mode_selected_and_disabled_states_honor_min_and_max_at_month_granularity()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2026, 3, 1))
+            .Add(c => c.Max, new DateTime(2026, 10, 31)));
+
+        Open(cut);
+
+        var feb = MonthButton(cut, 2);
+        Assert.Equal("true", feb.GetAttribute("aria-pressed")); // Feb14's month
+        Assert.True(feb.HasAttribute("disabled")); // entirely before Min's month (March)
+
+        Assert.False(MonthButton(cut, 3).HasAttribute("disabled")); // Min's own month
+        Assert.False(MonthButton(cut, 10).HasAttribute("disabled")); // Max's own month
+        Assert.True(MonthButton(cut, 11).HasAttribute("disabled")); // entirely after Max's month
+    }
+
+    [Fact]
+    public void Month_mode_marks_the_current_month_as_aria_current()
+    {
+        // View the year containing today so the "today" cell is guaranteed to render, without
+        // hardcoding which month that is (keeps the test valid regardless of when it runs).
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, new DateTime(DateTime.Today.Year, 1, 1)));
+
+        Open(cut);
+
+        Assert.Equal("date", MonthButton(cut, DateTime.Today.Month).GetAttribute("aria-current"));
+        if (DateTime.Today.Month != 1)
+        {
+            Assert.Null(MonthButton(cut, 1).GetAttribute("aria-current"));
+        }
+    }
+
+    [Fact]
+    public void Month_mode_arrow_keys_move_the_roving_tabindex()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14));
+        Open(cut);
+
+        Assert.Equal("0", MonthButton(cut, 2).GetAttribute("tabindex")); // Feb14's month by default
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        Assert.Equal("0", MonthButton(cut, 3).GetAttribute("tabindex"));
+        Assert.Equal("-1", MonthButton(cut, 2).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        Assert.Equal("0", MonthButton(cut, 6).GetAttribute("tabindex")); // +3 -> one grid row down
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+        Assert.Equal("0", MonthButton(cut, 5).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        Assert.Equal("0", MonthButton(cut, 2).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Month_mode_home_and_end_move_to_the_start_and_end_of_the_focused_row()
+    {
+        // May (month 5) sits in the Apr-Jun grid row.
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, new DateTime(2026, 5, 14)));
+        Open(cut);
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "Home" });
+        Assert.Equal("0", MonthButton(cut, 4).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "End" });
+        Assert.Equal("0", MonthButton(cut, 6).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Month_mode_pagedown_steps_a_year_and_moves_the_displayed_view()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14));
+        Open(cut);
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" });
+
+        Assert.Equal("2027", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", MonthButton(cut, 2).GetAttribute("tabindex")); // same month, new year
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "PageUp" });
+        Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Prev_and_next_year_buttons_step_the_view_in_month_mode()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14));
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal("Previous year", buttons[0].GetAttribute("aria-label"));
+        Assert.Equal("Next year", buttons[1].GetAttribute("aria-label"));
+
+        buttons[0].Click(); // prev year
+        Assert.Equal("2025", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+
+        cut.FindAll(".wss-picker-nav")[1].Click(); // next year, back to 2026
+        Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Prev_and_next_year_buttons_disable_at_the_min_and_max_year()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2026, 1, 1))
+            .Add(c => c.Max, new DateTime(2026, 12, 31)));
+
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.True(buttons[0].HasAttribute("disabled"));
+        Assert.True(buttons[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Year_select_retargets_the_month_grid()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14));
+
+        Open(cut);
+        cut.Find(".wss-picker-month-header select").Change("2027");
+
+        Assert.Equal("2027", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("2027-01-01", MonthButton(cut, 1).GetAttribute("data-date"));
+    }
+
+    [Fact]
+    public void Typed_text_in_month_mode_parses_and_normalizes_to_the_first_of_month()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        var input = cut.Find(".wss-picker-input-date");
+        input.Input("03/2026"); // MM/yyyy -- Month mode's default format
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(2026, 3, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Effective_format_and_placeholder_default_per_mode_when_unset()
+    {
+        // Bypass the RenderPicker fixture (it always forces Format) so the mode default applies.
+        var dateCut = RenderComponent<DatePicker>(p => p.Add(c => c.Value, Feb14));
+        Assert.Equal("02/14/2026", dateCut.Find(".wss-picker-input-date").GetAttribute("value"));
+        Assert.Equal("Select date", dateCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
+
+        var monthCut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14));
+        Assert.Equal("02/2026", monthCut.Find(".wss-picker-input-date").GetAttribute("value"));
+        Assert.Equal("Select month", monthCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
     }
 }
