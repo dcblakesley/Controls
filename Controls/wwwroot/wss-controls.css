@@ -2675,6 +2675,58 @@
     cursor: not-allowed;
 }
 
+/* -------------------------------------------- Time/DateTime mode (DatePicker)
+ * Mode="Time" renders only the row below plus the footer; Mode="DateTime"
+ * appends the same two blocks under the day calendar. The adjacency selector
+ * on wss-picker-time-row draws the separating rule only when a calendar grid
+ * actually precedes it, so Mode="Time" (no grid) never gets a stray top edge.
+ * wss-picker-select/-select-arrow above are the existing month/year select
+ * styling, reused as-is for the hour/minute/second selects. */
+
+.wss-picker-time-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 8px;
+}
+
+.wss-picker-grid + .wss-picker-time-row {
+    border-top: 1px solid var(--wss-picker-split);
+}
+
+.wss-picker-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px;
+    border-top: 1px solid var(--wss-picker-split);
+}
+
+/* Small AntD-primary button -- the same token recipe as .wss-dialog-btn-primary
+   combined with .wss-dialog-btn-sm (Modal/Popconfirm footers), merged into one
+   class since the picker footer only ever needs this one variant. */
+.wss-picker-ok {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    padding: 0 7px;
+    font-family: inherit;
+    font-size: var(--wss-font-size-sm);
+    line-height: var(--wss-line-height);
+    color: var(--wss-color-on-primary);
+    background: var(--wss-color-primary);
+    border: 1px solid var(--wss-color-primary);
+    border-radius: var(--wss-radius);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wss-picker-ok:hover {
+    background: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+}
+
 /* ============================================================================
  * Tabs
  * Underline ("line" type) tab strip with an optional bordered count chip per
@@ -2879,7 +2931,8 @@
 .wss-picker-month-btn:focus-visible,
 .wss-picker-preset:focus-visible,
 .wss-picker-select select:focus-visible,
-.wss-picker-nav:focus-visible {
+.wss-picker-nav:focus-visible,
+.wss-picker-ok:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 1px;
 }
@@ -2906,7 +2959,8 @@
     .wss-picker-preset,
     .wss-picker-day,
     .wss-picker-month-btn,
-    .wss-picker-nav {
+    .wss-picker-nav,
+    .wss-picker-ok {
         transition: none;
     }
 

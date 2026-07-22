@@ -90,6 +90,15 @@
                     </div>
                 </div>
             }
+            else if (Mode == DatePickerMode.Time)
+            {
+                <div class="wss-picker-month">
+                    @TimeRowFragment
+                    <div class="wss-picker-footer">
+                        <button type="button" class="wss-picker-ok" @onclick="OnPickerOkAsync">@OkText</button>
+                    </div>
+                </div>
+            }
             else
             {
                 <div class="wss-picker-month">
@@ -143,8 +152,54 @@
                             </div>
                         }
                     </div>
+                    @* DateTime mode appends the same time row + OK footer below the calendar --
+                       Mode="Time" (above) renders it alone, this is the only other place it's used. *@
+                    @if (Mode == DatePickerMode.DateTime)
+                    {
+                        @TimeRowFragment
+                        <div class="wss-picker-footer">
+                            <button type="button" class="wss-picker-ok" @onclick="OnPickerOkAsync">@OkText</button>
+                        </div>
+                    }
                 </div>
             }
         </div>
     }
 </div>
+
+@code {
+    // The three hour/minute/second selects, shared verbatim between Mode.Time (the whole panel) and
+    // Mode.DateTime (appended below the day calendar) so the ~20 lines of near-identical <select>
+    // blocks aren't duplicated in the markup above (mirrors EditBool's Checkbox/StyledCheckboxFragment
+    // split). Each select's own @onchange commits immediately via ApplyTimePartAsync -- see
+    // DatePicker.razor.cs's "Time/DateTime mode" section.
+    RenderFragment TimeRowFragment => @<div class="wss-picker-time-row">
+        <span class="wss-picker-select">
+            <select aria-label="@HourSelectLabel" value="@DisplayHour" @onchange="OnHourSelectChangedAsync">
+                @for (var h = 0; h <= 23; h++)
+                {
+                    <option value="@h" selected="@(h == DisplayHour)">@h.ToString("00", CultureInfo.InvariantCulture)</option>
+                }
+            </select>
+            @DownIcon
+        </span>
+        <span class="wss-picker-select">
+            <select aria-label="@MinuteSelectLabel" value="@DisplayMinute" @onchange="OnMinuteSelectChangedAsync">
+                @for (var m = 0; m <= 59; m++)
+                {
+                    <option value="@m" selected="@(m == DisplayMinute)">@m.ToString("00", CultureInfo.InvariantCulture)</option>
+                }
+            </select>
+            @DownIcon
+        </span>
+        <span class="wss-picker-select">
+            <select aria-label="@SecondSelectLabel" value="@DisplaySecond" @onchange="OnSecondSelectChangedAsync">
+                @for (var s = 0; s <= 59; s++)
+                {
+                    <option value="@s" selected="@(s == DisplaySecond)">@s.ToString("00", CultureInfo.InvariantCulture)</option>
+                }
+            </select>
+            @DownIcon
+        </span>
+    </div>;
+}

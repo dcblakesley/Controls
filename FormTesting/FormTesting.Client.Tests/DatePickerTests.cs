@@ -641,4 +641,206 @@ public class DatePickerTests : TestContext
         Assert.Equal("02/2026", monthCut.Find(".wss-picker-input-date").GetAttribute("value"));
         Assert.Equal("Select month", monthCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
     }
+
+    // ----- Mode="Time" ----------------------------------------------------------
+
+    static IReadOnlyList<IElement> TimeSelects(IRenderedComponent<DatePicker> cut) =>
+        cut.FindAll(".wss-picker-time-row select");
+
+    [Fact]
+    public void Time_mode_renders_three_selects_with_the_spec_option_counts_and_aria_labels()
+    {
+        var cut = RenderComponent<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-grid")); // no day calendar in this mode
+        Assert.Empty(cut.FindAll(".wss-picker-month-header"));
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(3, selects.Count);
+        Assert.Equal("Hour", selects[0].GetAttribute("aria-label"));
+        Assert.Equal("Minute", selects[1].GetAttribute("aria-label"));
+        Assert.Equal("Second", selects[2].GetAttribute("aria-label"));
+        Assert.Equal(24, selects[0].QuerySelectorAll("option").Length);
+        Assert.Equal(60, selects[1].QuerySelectorAll("option").Length);
+        Assert.Equal(60, selects[2].QuerySelectorAll("option").Length);
+
+        Assert.NotEmpty(cut.FindAll(".wss-picker-ok"));
+    }
+
+    [Fact]
+    public void Opening_time_mode_with_a_null_value_shows_midnight_but_commits_nothing()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal("0", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", selects[2].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Null(value); // opening never commits by itself
+    }
+
+    [Fact]
+    public void Changing_a_time_select_commits_a_today_anchored_value_without_closing()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("13"); // hour
+
+        Assert.Equal(new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.Today.Day, 13, 0, 0), value);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // stays open -- OK is the close signal
+    }
+
+    [Fact]
+    public void Time_mode_ok_button_closes_the_panel()
+    {
+        var cut = RenderComponent<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+
+        Open(cut);
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    // ----- Mode="DateTime" -------------------------------------------------------
+
+    [Fact]
+    public void Datetime_mode_renders_the_day_calendar_and_the_time_row_together()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30)));
+
+        Open(cut);
+
+        Assert.Equal(42, cut.FindAll(".wss-picker-day").Count); // the same day calendar as Date mode
+        Assert.Equal(3, TimeSelects(cut).Count);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-ok"));
+    }
+
+    [Fact]
+    public void Datetime_mode_day_click_commits_the_date_and_preserves_the_time_without_closing()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2026, 2, 20, 13, 45, 30), value);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // this mode leaves the panel open
+    }
+
+    [Fact]
+    public void Datetime_mode_day_click_with_no_prior_value_commits_midnight()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 20), value);
+    }
+
+    [Fact]
+    public void Datetime_mode_time_select_change_commits_preserving_the_date()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        TimeSelects(cut)[1].Change("50"); // minute
+
+        Assert.Equal(new DateTime(2026, 2, 14, 13, 50, 30), value);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Typed_datetime_text_round_trips_through_the_effective_format()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        var input = cut.Find(".wss-picker-input-date");
+        input.Input("02/14/2026 13:45:30"); // DateTime mode's default format
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(2026, 2, 14, 13, 45, 30), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown")); // typed Enter-commit still closes
+    }
+
+    [Fact]
+    public void Min_and_max_still_disable_days_in_datetime_mode()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30))
+            .Add(c => c.Min, new DateTime(2026, 2, 10))
+            .Add(c => c.Max, new DateTime(2026, 2, 20)));
+
+        Open(cut);
+
+        Assert.True(Day(cut, 9).HasAttribute("disabled"));
+        Assert.False(Day(cut, 10).HasAttribute("disabled"));
+        Assert.False(Day(cut, 20).HasAttribute("disabled"));
+        Assert.True(Day(cut, 21).HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Datetime_mode_ok_button_closes_the_panel()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, Feb14));
+
+        Open(cut);
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Date_mode_day_click_still_closes_regression_guard()
+    {
+        // Guards OnDayClickAsync's new Mode branch: Mode.Date must still close on a single click,
+        // exactly like before Mode.DateTime existed.
+        DateTime? value = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Mode, DatePickerMode.Date)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2026, 2, 20), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
 }

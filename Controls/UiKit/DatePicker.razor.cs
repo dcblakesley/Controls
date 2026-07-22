@@ -6,8 +6,12 @@ namespace Controls;
 /// An AntDesign-style single-date picker: a text field with a calendar suffix that opens a
 /// dropdown panel. <see cref="Mode"/> selects what the panel offers — <c>Date</c> (default) shows
 /// a one-month calendar whose header is month/year quick-select dropdowns; <c>Month</c> shows a
-/// year header (prev/next-year buttons flanking a year select) over a 3x4 grid of month buttons.
-/// Picking a day/month (or typing text and pressing Enter) commits and closes.
+/// year header (prev/next-year buttons flanking a year select) over a 3x4 grid of month buttons;
+/// <c>Time</c> shows three hour/minute/second selects over an OK button; <c>DateTime</c> shows the
+/// day calendar with that same time row and OK button appended below it. Picking a day/month (or
+/// typing text and pressing Enter) commits and closes; in <c>Time</c>/<c>DateTime</c> mode the time
+/// selects — and, in <c>DateTime</c> mode, a day click — commit immediately without closing the
+/// panel, so the user can keep adjusting; OK is the close signal there instead.
 /// </summary>
 /// <remarks>
 /// The single-date sibling of <see cref="DateRangePicker"/> — it shares the <c>wss-picker-*</c>
@@ -106,6 +110,16 @@ public partial class DatePicker : IAsyncDisposable
     /// <summary>Accessible name of the next-year button (<see cref="DatePickerMode.Month"/>'s
     /// header). Override to localize.</summary>
     [Parameter] public string NextYearLabel { get; set; } = "Next year";
+    /// <summary>Accessible name of the hour select (<see cref="DatePickerMode.Time"/> and
+    /// <see cref="DatePickerMode.DateTime"/>'s time row). Override to localize.</summary>
+    [Parameter] public string HourSelectLabel { get; set; } = "Hour";
+    /// <summary>Accessible name of the minute select. Override to localize.</summary>
+    [Parameter] public string MinuteSelectLabel { get; set; } = "Minute";
+    /// <summary>Accessible name of the second select. Override to localize.</summary>
+    [Parameter] public string SecondSelectLabel { get; set; } = "Second";
+    /// <summary>Visible text of the OK button that closes the <see cref="DatePickerMode.Time"/>/
+    /// <see cref="DatePickerMode.DateTime"/> panel. Override to localize.</summary>
+    [Parameter] public string OkText { get; set; } = "OK";
 
     // Validation-state ARIA passthrough onto the actual <input>, for form wrappers (EditDatePicker).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio (which EditSelectSearch
@@ -279,6 +293,13 @@ public partial class DatePicker : IAsyncDisposable
 
     string MonthName(int month) =>
         PickerCulture.DateTimeFormat.AbbreviatedMonthNames[month - 1];
+
+    // Time-row display (Mode.Time/Mode.DateTime): the bound value's time-of-day, or midnight when
+    // unset. There is no separate "in-progress" time state -- a select change commits immediately
+    // (see ApplyTimePartAsync below), so the next render always has the answer in Value itself.
+    int DisplayHour => Value?.Hour ?? 0;
+    int DisplayMinute => Value?.Minute ?? 0;
+    int DisplaySecond => Value?.Second ?? 0;
 
     // The years offered by the year select: Min/Max years when set, otherwise ±10 around the
     // displayed year — always including the displayed year itself so the select never shows a
@@ -663,7 +684,14 @@ public partial class DatePicker : IAsyncDisposable
     {
         // A calendar pick supersedes any half-typed input text.
         _edit = null;
-        await SetValueAsync(day);
+        // Mode.DateTime keeps whatever time-of-day is already committed (or midnight) instead of
+        // zeroing it out -- the day calendar only ever supplies the date part there, the time row
+        // below it owns the rest. Mode.Date is unaffected: adding TimeSpan.Zero is a no-op.
+        var time = Mode == DatePickerMode.DateTime ? Value?.TimeOfDay ?? TimeSpan.Zero : TimeSpan.Zero;
+        await SetValueAsync(day + time);
+        // Mode.DateTime leaves the panel open -- the user may still want to adjust the time, and OK
+        // is that mode's close signal. Mode.Date completes the pick immediately, as before.
+        if (Mode == DatePickerMode.DateTime) return;
         _pendingInputFocus = true; // the clicked day button is about to unmount
         await CloseAsync();
     }
@@ -729,6 +757,48 @@ public partial class DatePicker : IAsyncDisposable
         year = Math.Clamp(year, 1, 9999);
         _viewMonth = ClampView(new DateTime(year, _viewMonth.Month, 1));
         _focusDay = null;
+    }
+
+    // ----- Time/DateTime mode: time row + OK ---------------------------------
+    // Shared by both modes' three hour/minute/second selects -- the only behavioral difference
+    // between them is which date part survives normalization, and NormalizeForMode already owns
+    // that rule (Mode.Time always re-anchors to today; Mode.DateTime keeps whatever it's given), so
+    // this only has to assemble one candidate DateTime and hand it to SetValueAsync. Unlike a day/
+    // month click, a select change does not close the panel -- OK is the close signal here.
+
+    // Composes a new value from the current date part (Value's date, or DateTime.Today when unset --
+    // Mode.Time discards this anyway) and the current time-of-day (Value's, or midnight) with one
+    // HH/mm/ss part replaced, then commits.
+    Task ApplyTimePartAsync(int? hour = null, int? minute = null, int? second = null)
+    {
+        // A select change supersedes any half-typed input text, same as a day/month click.
+        _edit = null;
+        var date = Value?.Date ?? DateTime.Today;
+        var time = Value?.TimeOfDay ?? TimeSpan.Zero;
+        return SetValueAsync(date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, second ?? time.Seconds));
+    }
+
+    Task OnHourSelectChangedAsync(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var hour)
+            ? ApplyTimePartAsync(hour: hour)
+            : Task.CompletedTask;
+
+    Task OnMinuteSelectChangedAsync(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var minute)
+            ? ApplyTimePartAsync(minute: minute)
+            : Task.CompletedTask;
+
+    Task OnSecondSelectChangedAsync(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var second)
+            ? ApplyTimePartAsync(second: second)
+            : Task.CompletedTask;
+
+    // The OK button is Time/DateTime mode's close signal -- both modes commit incrementally (time
+    // selects, and in DateTime a day click too) without closing, so nothing needs committing here.
+    async Task OnPickerOkAsync()
+    {
+        _pendingInputFocus = true; // the OK button is about to unmount
+        await CloseAsync();
     }
 
     // ----- JS interop (mirrors DateRangePicker's module lifecycle) -------------
