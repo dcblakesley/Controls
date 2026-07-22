@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace Controls;
@@ -8,10 +9,13 @@ namespace Controls;
 /// a one-month calendar whose header is month/year quick-select dropdowns; <c>Month</c> shows a
 /// year header (prev/next-year buttons flanking a year select) over a 3x4 grid of month buttons;
 /// <c>Time</c> shows three hour/minute/second selects over an OK button; <c>DateTime</c> shows the
-/// day calendar with that same time row and OK button appended below it. Picking a day/month (or
-/// typing text and pressing Enter) commits and closes; in <c>Time</c>/<c>DateTime</c> mode the time
-/// selects — and, in <c>DateTime</c> mode, a day click — commit immediately without closing the
-/// panel, so the user can keep adjusting; OK is the close signal there instead.
+/// day calendar with that same time row and OK button appended below it; <c>Year</c> shows a
+/// decade header (prev/next-decade buttons flanking a static decade label) over a 3x4 grid of year
+/// buttons (10 of the decade plus 2 dimmed adjacent-decade years); <c>Quarter</c> shows the same
+/// year header as <c>Month</c> over a single row of 4 quarter buttons. Picking a day/month/year/
+/// quarter (or typing text and pressing Enter) commits and closes; in <c>Time</c>/<c>DateTime</c>
+/// mode the time selects — and, in <c>DateTime</c> mode, a day click — commit immediately without
+/// closing the panel, so the user can keep adjusting; OK is the close signal there instead.
 /// </summary>
 /// <remarks>
 /// The single-date sibling of <see cref="DateRangePicker"/> — it shares the <c>wss-picker-*</c>
@@ -48,13 +52,17 @@ public partial class DatePicker : IAsyncDisposable
     /// <see cref="Value"/> stays <c>DateTime?</c> in every mode; only the commit-time normalization
     /// differs — <c>Date</c> keeps the date, <c>Month</c> normalizes to the 1st of the month at
     /// midnight, <c>DateTime</c> truncates to whole seconds, <c>Time</c> anchors to
-    /// <see cref="DateTime.Today"/> plus the time-of-day (also truncated to whole seconds).</summary>
+    /// <see cref="DateTime.Today"/> plus the time-of-day (also truncated to whole seconds),
+    /// <c>Year</c> normalizes to January 1st at midnight, <c>Quarter</c> normalizes to the 1st day
+    /// of the quarter at midnight.</summary>
     [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Date;
 
     /// <summary>Earliest selectable date (inclusive). In <see cref="DatePickerMode.Date"/> and
     /// <see cref="DatePickerMode.DateTime"/> this disables days before it; in
-    /// <see cref="DatePickerMode.Month"/> it disables whole months before its month. Ignored in
-    /// <see cref="DatePickerMode.Time"/> (a time-of-day has no date-range concept).</summary>
+    /// <see cref="DatePickerMode.Month"/> it disables whole months before its month; in
+    /// <see cref="DatePickerMode.Year"/> whole years, and in <see cref="DatePickerMode.Quarter"/>
+    /// whole quarters, before its own. Ignored in <see cref="DatePickerMode.Time"/> (a time-of-day
+    /// has no date-range concept).</summary>
     [Parameter] public DateTime? Min { get; set; }
     /// <summary>Latest selectable date (inclusive). Same mode-dependent granularity as
     /// <see cref="Min"/>; ignored in <see cref="DatePickerMode.Time"/>.</summary>
@@ -64,12 +72,16 @@ public partial class DatePicker : IAsyncDisposable
     /// exact format first, then with the current culture's general date parsing. Null (default)
     /// picks <see cref="Mode"/>'s default: <c>Date</c> <c>MM/dd/yyyy</c> (the Figma spec) ·
     /// <c>Month</c> <c>MM/yyyy</c> · <c>DateTime</c> <c>MM/dd/yyyy HH:mm:ss</c> · <c>Time</c>
-    /// <c>HH:mm:ss</c>.</summary>
+    /// <c>HH:mm:ss</c> · <c>Year</c> <c>yyyy</c>. <c>Quarter</c> has no .NET format token for a
+    /// quarter number: left null, it renders/parses <c>yyyy-Qn</c> (e.g. "2026-Q3") via a hand-
+    /// rolled special case instead of <see cref="DateTime.ToString(string)"/>; set explicitly, it
+    /// is used verbatim via <c>ToString</c> and therefore can't render the quarter digit itself.</summary>
     [Parameter] public string? Format { get; set; }
 
     /// <summary>Input placeholder. Null (default) picks <see cref="Mode"/>'s default: <c>Date</c>/
     /// <c>DateTime</c> "Select date" (the Figma spec) · <c>Month</c> "Select month" · <c>Time</c>
-    /// "Select time". Override to localize.</summary>
+    /// "Select time" · <c>Year</c> "Select year" · <c>Quarter</c> "Select quarter". Override to
+    /// localize.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>Shows a clear button (over the calendar icon) while a value is set. Defaults to true.</summary>
@@ -110,6 +122,12 @@ public partial class DatePicker : IAsyncDisposable
     /// <summary>Accessible name of the next-year button (<see cref="DatePickerMode.Month"/>'s
     /// header). Override to localize.</summary>
     [Parameter] public string NextYearLabel { get; set; } = "Next year";
+    /// <summary>Accessible name of the previous-decade button (<see cref="DatePickerMode.Year"/>'s
+    /// header). Override to localize.</summary>
+    [Parameter] public string PrevDecadeLabel { get; set; } = "Previous decade";
+    /// <summary>Accessible name of the next-decade button (<see cref="DatePickerMode.Year"/>'s
+    /// header). Override to localize.</summary>
+    [Parameter] public string NextDecadeLabel { get; set; } = "Next decade";
     /// <summary>Accessible name of the hour select (<see cref="DatePickerMode.Time"/> and
     /// <see cref="DatePickerMode.DateTime"/>'s time row). Override to localize.</summary>
     [Parameter] public string HourSelectLabel { get; set; } = "Hour";
@@ -237,12 +255,17 @@ public partial class DatePicker : IAsyncDisposable
     // Format/Placeholder resolution: an explicit value always wins; null falls through to Mode's
     // default. All internal display/parse code routes through these (never the raw parameters), so
     // a mode switch changes behavior without a consumer having to also clear a stale Format/Placeholder.
+    // Quarter's null-Format case is a bland "yyyy" here -- FormatDate never actually calls
+    // ToString(EffectiveFormat) for it (see FormatDate's special case below); this value only
+    // matters as TryParseDate's exact-format fallback attempt, tried after the quarter regex.
     string EffectiveFormat => Format ?? Mode switch
     {
         DatePickerMode.Date => "MM/dd/yyyy",
         DatePickerMode.Month => "MM/yyyy",
         DatePickerMode.DateTime => "MM/dd/yyyy HH:mm:ss",
         DatePickerMode.Time => "HH:mm:ss",
+        DatePickerMode.Year => "yyyy",
+        DatePickerMode.Quarter => "yyyy",
         _ => "MM/dd/yyyy",
     };
 
@@ -252,6 +275,8 @@ public partial class DatePicker : IAsyncDisposable
         DatePickerMode.Month => "Select month",
         DatePickerMode.DateTime => "Select date",
         DatePickerMode.Time => "Select time",
+        DatePickerMode.Year => "Select year",
+        DatePickerMode.Quarter => "Select quarter",
         _ => "Select date",
     };
 
@@ -274,16 +299,29 @@ public partial class DatePicker : IAsyncDisposable
     bool IsMonthDisabled(DateTime month) =>
         (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max));
 
+    // Year-mode equivalent of IsMonthDisabled, one granularity up: a whole year is disabled once it
+    // falls entirely outside [Min, Max] at year granularity. `year` is already FirstOfYear-shaped.
+    bool IsYearDisabled(DateTime year) =>
+        (Min is { } min && year < FirstOfYear(min)) || (Max is { } max && year > FirstOfYear(max));
+
+    // Quarter-mode equivalent of IsMonthDisabled, at quarter granularity: a whole quarter is
+    // disabled once it falls entirely outside [Min, Max]'s own quarter. `quarterStart` is already
+    // QuarterStart-shaped.
+    bool IsQuarterDisabled(DateTime quarterStart) =>
+        (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max));
+
     // Whether a parsed/committed value (already mode-normalized) falls outside [Min, Max] at Mode's
     // own granularity. Date/DateTime check the day itself (Min/Max are date-only); Month checks
-    // month granularity; Time ignores bounds entirely -- they're date-granularity and this control
-    // exposes no time bounds (EditDate has none either).
+    // month granularity; Year/Quarter check their own granularity; Time ignores bounds entirely --
+    // they're date-granularity and this control exposes no time bounds (EditDate has none either).
     bool IsDisabledForCommit(DateTime value) => Mode switch
     {
         DatePickerMode.Date => IsDayDisabled(value),
         DatePickerMode.Month => IsMonthDisabled(value),
         DatePickerMode.DateTime => IsDayDisabled(value.Date),
         DatePickerMode.Time => false,
+        DatePickerMode.Year => IsYearDisabled(value),
+        DatePickerMode.Quarter => IsQuarterDisabled(value),
         _ => IsDayDisabled(value),
     };
 
@@ -358,14 +396,45 @@ public partial class DatePicker : IAsyncDisposable
         }
     }
 
-    string FormatDate(DateTime? value) =>
-        value?.ToString(EffectiveFormat, PickerCulture) ?? string.Empty;
+    // Matches a typed quarter shorthand: "2026-Q3", "2026Q3", "2026 q3" -- 1-4 digit year, optional
+    // dash/whitespace, case-insensitive Q, quarter digit 1-4. Compiled because TryParseDate tries it
+    // on every keystroke's eventual Enter-commit in Quarter mode.
+    static readonly Regex _quarterPattern = new(@"^\s*(\d{1,4})\s*-?\s*[Qq]\s*([1-4])\s*$", RegexOptions.Compiled);
+
+    // Quarter mode's null-Format display: no .NET format token renders a quarter number, so this
+    // bypasses ToString(EffectiveFormat) entirely for that one case. Format explicitly set still
+    // routes through the normal ToString(EffectiveFormat) path below (used verbatim, per Format's
+    // doc comment).
+    string FormatDate(DateTime? value)
+    {
+        if (value is not { } v) return string.Empty;
+        if (Mode == DatePickerMode.Quarter && Format is null)
+        {
+            return $"{v.Year.ToString(PickerCulture)}-Q{QuarterOf(v).ToString(PickerCulture)}";
+        }
+        return v.ToString(EffectiveFormat, PickerCulture);
+    }
 
     // Exact effective format first, then the current culture's general parse -- then normalizes the
     // parsed result to Mode's own granularity (mirrors SetValueAsync's normalization so a typed
-    // commit and a click/select commit always land on the same shape of value).
+    // commit and a click/select commit always land on the same shape of value). Quarter mode (with
+    // Format left null, mirroring FormatDate's special case above) tries the "yyyy-Qn" shorthand
+    // first -- a plain typed date still falls through to the general parse below and normalizes to
+    // its own quarter, same as every other mode's typed-text path.
     bool TryParseDate(string text, out DateTime value)
     {
+        if (Mode == DatePickerMode.Quarter && Format is null)
+        {
+            var match = _quarterPattern.Match(text);
+            if (match.Success &&
+                int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year) &&
+                year is >= 1 and <= 9999)
+            {
+                var quarter = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
+                value = QuarterStart(year, quarter);
+                return true;
+            }
+        }
         if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out value) ||
             DateTime.TryParse(text, PickerCulture, DateTimeStyles.None, out value))
         {
@@ -385,10 +454,23 @@ public partial class DatePicker : IAsyncDisposable
         // Anchored to today at commit time -- mirrors what EditDate produces for a DateTime bound to
         // a Time input, where BindConverter/DateTime.TryParse("HH:mm:ss") yields today's date.
         DatePickerMode.Time => DateTime.Today + new TimeSpan(value.Hour, value.Minute, value.Second),
+        DatePickerMode.Year => new DateTime(value.Year, 1, 1),
+        DatePickerMode.Quarter => QuarterStart(value),
         _ => value.Date,
     };
 
     static DateTime FirstOfMonth(DateTime value) => new(value.Year, value.Month, 1);
+
+    static DateTime FirstOfYear(DateTime value) => new(value.Year, 1, 1);
+
+    // The quarter (1-4) `value`'s month falls in.
+    static int QuarterOf(DateTime value) => (value.Month - 1) / 3 + 1;
+
+    // The 1st of `quarter`'s (1-4) first month in `year`.
+    static DateTime QuarterStart(int year, int quarter) => new(year, (quarter - 1) * 3 + 1, 1);
+
+    // The 1st of the quarter containing `value`.
+    static DateTime QuarterStart(DateTime value) => QuarterStart(value.Year, QuarterOf(value));
 
     // The displayed month, clamped so the 42-cell grid can never overflow DateTime's range.
     static DateTime ClampView(DateTime firstOfMonth)
@@ -615,6 +697,231 @@ public partial class DatePicker : IAsyncDisposable
         _focusDay = null;
     }
 
+    // ----- Year mode: decade grid + navigation -------------------------------
+    // Mirrors the Month-mode section above one level up again (decade/year instead of year/month).
+    // Reuses wss-picker-month-btn/wss-picker-month-grid (so wss-picker.js's keyboard suppression and
+    // focusDay lookup work unchanged) plus a wss-picker-month-btn-outside modifier for the two
+    // dimmed adjacent-decade cells. Shares _focusDay/_pendingFocusDate the same way Month mode does.
+
+    // Clamps a decade-start candidate so the decade's own leading/trailing dimmed cells
+    // (decadeStart-1, decadeStart+10) always land inside DateTime's representable [1, 9999] year
+    // range -- the year-grid's equivalent of ClampView's one-month buffer for the day grid. The
+    // reachable extremes are the 10-19 decade (dimmed leading cell 9) and the 9980-9989 decade
+    // (dimmed trailing cell 9990); years 1-9 and 9991-9999 are unreachable via the GRID (though
+    // still typeable -- TryParseDate has no such margin), the same trade-off ClampView makes for
+    // the very first/last representable month.
+    static int ClampDecadeStart(int year) => Math.Clamp(year, 11, 9989) / 10 * 10;
+
+    // The decade the grid currently displays, floored to a multiple of 10.
+    int DecadeStart => ClampDecadeStart(_viewMonth.Year);
+
+    // "2020-2029" style, both years in PickerCulture digits.
+    string DecadeLabel => $"{DecadeStart.ToString(PickerCulture)}-{(DecadeStart + 9).ToString(PickerCulture)}";
+
+    // Is `year` one of the decade's own 10 years (as opposed to one of the 2 dimmed adjacent-decade
+    // cells)?
+    bool IsYearInDecade(int year) => year >= DecadeStart && year <= DecadeStart + 9;
+
+    string YearButtonClass(int year) =>
+        IsYearInDecade(year) ? "wss-picker-month-btn" : "wss-picker-month-btn wss-picker-month-btn-outside";
+
+    bool IsSelectedYear(int year) => Value is { } v && v.Year == year;
+
+    bool IsCurrentYear(int year) => year == DateTime.Today.Year;
+
+    // The year the grid's roving tabindex targets when no keyboard navigation has moved it yet: the
+    // bound value's year if it's one of the displayed decade's own years, else the current year if
+    // so, else the first enabled year of the decade -- mirrors DefaultFocusMonth.
+    DateTime DefaultFocusYear()
+    {
+        if (Value is { } v && IsYearInDecade(v.Year) && !IsYearDisabled(FirstOfYear(v))) return FirstOfYear(v);
+        var today = DateTime.Today;
+        if (IsYearInDecade(today.Year) && !IsYearDisabled(FirstOfYear(today))) return FirstOfYear(today);
+        return FirstEnabledYear() ?? new DateTime(DecadeStart, 1, 1);
+    }
+
+    // The first enabled year of the decade's own 10 years (never one of the dimmed adjacent-decade
+    // cells), or null if every year in the decade is disabled.
+    DateTime? FirstEnabledYear()
+    {
+        for (var y = DecadeStart; y <= DecadeStart + 9; y++)
+        {
+            var year = new DateTime(y, 1, 1);
+            if (!IsYearDisabled(year)) return year;
+        }
+        return null;
+    }
+
+    DateTime EffectiveFocusYear => _focusDay is { } f && IsYearInDecade(f.Year) ? f : DefaultFocusYear();
+
+    bool IsYearFocusStop(int year) => new DateTime(year, 1, 1) == EffectiveFocusYear;
+
+    // The 1st year of the 3-year row (within the *displayed* 12-cell decade grid, decadeStart-1
+    // through decadeStart+10) containing `year` -- shared by Home/End so they can never disagree
+    // about row bounds. Unlike MonthRowStart, this depends on the currently displayed decade
+    // (DecadeStart) rather than `year`'s own natural decade: the grid's two dimmed adjacent-decade
+    // cells belong to neighboring decades, so grouping purely by each year's own decade would split
+    // a row unevenly right at the boundary.
+    int YearRowStart(int year)
+    {
+        var offset = year - (DecadeStart - 1);
+        return DecadeStart - 1 + offset / 3 * 3;
+    }
+
+    // Maps a keydown's Key to the year it should move focus to, or null when the key isn't a
+    // navigation key. Plain int arithmetic (unlike NextFocusDay/NextFocusMonth's DateTime.AddX,
+    // this can't throw) -- clamped to DateTime's representable year range instead so a move at the
+    // very edge is a no-op there.
+    DateTime? NextFocusYear(DateTime current, string key)
+    {
+        var year = current.Year;
+        int? next = key switch
+        {
+            "ArrowLeft" => year - 1,
+            "ArrowRight" => year + 1,
+            "ArrowUp" => year - 3,
+            "ArrowDown" => year + 3,
+            "Home" => YearRowStart(year),
+            "End" => YearRowStart(year) + 2,
+            "PageUp" => year - 10,
+            "PageDown" => year + 10,
+            _ => (int?)null,
+        };
+        return next is { } y && y is >= 1 and <= 9999 ? new DateTime(y, 1, 1) : null;
+    }
+
+    // Grid keydown: moves the roving-tabindex year, retargeting the displayed decade when
+    // navigation crosses out of it. The actual DOM focus move happens in OnAfterRenderAsync via
+    // _pendingFocusDate, same as the day/month grids' keydown handlers.
+    void OnYearGridKeyDown(KeyboardEventArgs e)
+    {
+        var next = NextFocusYear(EffectiveFocusYear, e.Key);
+        if (next is null) return;
+
+        _focusDay = next.Value;
+        var nextDecade = ClampDecadeStart(next.Value.Year);
+        if (nextDecade != DecadeStart) _viewMonth = new DateTime(nextDecade, _viewMonth.Month, 1);
+        _pendingFocusDate = next.Value;
+    }
+
+    // Disables at the representable DateTime year range (via ClampDecadeStart's own margin) and at
+    // the Min/Max decade -- same shape as PrevYearDisabled/NextYearDisabled one granularity up.
+    bool PrevDecadeDisabled =>
+        ClampDecadeStart(DecadeStart - 10) == DecadeStart ||
+        (Min is { } min && DecadeStart <= ClampDecadeStart(min.Year));
+    bool NextDecadeDisabled =>
+        ClampDecadeStart(DecadeStart + 10) == DecadeStart ||
+        (Max is { } max && DecadeStart >= ClampDecadeStart(max.Year));
+
+    void PrevDecade()
+    {
+        _viewMonth = new DateTime(ClampDecadeStart(DecadeStart - 10), _viewMonth.Month, 1);
+        _focusDay = null; // recompute the roving-focus default against the newly shown decade
+    }
+
+    void NextDecade()
+    {
+        _viewMonth = new DateTime(ClampDecadeStart(DecadeStart + 10), _viewMonth.Month, 1);
+        _focusDay = null;
+    }
+
+    async Task OnYearClickAsync(int year)
+    {
+        // A grid pick supersedes any half-typed input text.
+        _edit = null;
+        await SetValueAsync(new DateTime(year, 1, 1));
+        _pendingInputFocus = true; // the clicked year button is about to unmount
+        await CloseAsync();
+    }
+
+    // ----- Quarter mode: grid + keyboard navigation --------------------------
+    // The header is Month mode's verbatim (YearHeaderFragment in DatePicker.razor) -- only the grid
+    // differs: a single row of 4 quarter buttons instead of a 3x4 month grid. Shares
+    // _focusDay/_pendingFocusDate the same way Month mode does; only one grid ever renders for a
+    // given Mode.
+
+    bool IsSelectedQuarter(int year, int quarter) => Value is { } v && v.Year == year && QuarterOf(v) == quarter;
+
+    bool IsCurrentQuarter(int year, int quarter) => year == DateTime.Today.Year && quarter == QuarterOf(DateTime.Today);
+
+    // Is `year` the one the quarter grid currently shows? (The grid always shows all 4 quarters of
+    // _viewMonth.Year -- no adjacent-year dimmed cells, unlike the year grid's decade.)
+    bool IsVisibleQuarterYear(int year) => year == _viewMonth.Year;
+
+    // The quarter the grid's roving tabindex targets when no keyboard navigation has moved it yet --
+    // mirrors DefaultFocusMonth/DefaultFocusYear one granularity over.
+    DateTime DefaultFocusQuarter()
+    {
+        if (Value is { } v && IsVisibleQuarterYear(v.Year) && !IsQuarterDisabled(QuarterStart(v))) return QuarterStart(v);
+        var today = DateTime.Today;
+        if (IsVisibleQuarterYear(today.Year) && !IsQuarterDisabled(QuarterStart(today))) return QuarterStart(today);
+        return FirstEnabledQuarter(_viewMonth.Year) ?? QuarterStart(_viewMonth.Year, 1);
+    }
+
+    // The first enabled quarter of `year`, or null if every quarter that year is disabled.
+    DateTime? FirstEnabledQuarter(int year)
+    {
+        for (var q = 1; q <= 4; q++)
+        {
+            var quarterStart = QuarterStart(year, q);
+            if (!IsQuarterDisabled(quarterStart)) return quarterStart;
+        }
+        return null;
+    }
+
+    DateTime EffectiveFocusQuarter => _focusDay is { } f && IsVisibleQuarterYear(f.Year) ? f : DefaultFocusQuarter();
+
+    bool IsQuarterFocusStop(int year, int quarter) => QuarterStart(year, quarter) == EffectiveFocusQuarter;
+
+    // Maps a keydown's Key to the quarter it should move focus to, or null when the key isn't a
+    // navigation key (Up/Down included -- a no-op in this single-row grid). Left/Right step a
+    // quarter (retargeting the view when they cross a year boundary, via the AddMonths(+/-3) below);
+    // Home/End jump to the year's first/last quarter; PageUp/PageDown step a year, keeping the same
+    // quarter. AddMonths/the DateTime constructor throw at the DateTime.MinValue/MaxValue edge --
+    // the caller treats that as the key being a no-op there, same as NextFocusMonth.
+    DateTime? NextFocusQuarter(DateTime current, string key)
+    {
+        try
+        {
+            return key switch
+            {
+                "ArrowLeft" => current.AddMonths(-3),
+                "ArrowRight" => current.AddMonths(3),
+                "Home" => QuarterStart(current.Year, 1),
+                "End" => QuarterStart(current.Year, 4),
+                "PageUp" => QuarterStart(current.Year - 1, QuarterOf(current)),
+                "PageDown" => QuarterStart(current.Year + 1, QuarterOf(current)),
+                _ => (DateTime?)null,
+            };
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    // Grid keydown: moves the roving-tabindex quarter, retargeting the displayed year when
+    // navigation crosses out of it. The actual DOM focus move happens in OnAfterRenderAsync via
+    // _pendingFocusDate, same as the other grids' keydown handlers.
+    void OnQuarterGridKeyDown(KeyboardEventArgs e)
+    {
+        var next = NextFocusQuarter(EffectiveFocusQuarter, e.Key);
+        if (next is null) return;
+
+        _focusDay = next.Value;
+        if (next.Value.Year != _viewMonth.Year) _viewMonth = next.Value;
+        _pendingFocusDate = next.Value;
+    }
+
+    async Task OnQuarterClickAsync(int year, int quarter)
+    {
+        // A grid pick supersedes any half-typed input text.
+        _edit = null;
+        await SetValueAsync(QuarterStart(year, quarter));
+        _pendingInputFocus = true; // the clicked quarter button is about to unmount
+        await CloseAsync();
+    }
+
     // ----- Interaction ------------------------------------------------------
 
     Task OnFieldClickAsync()
@@ -637,7 +944,14 @@ public partial class DatePicker : IAsyncDisposable
         _edit = null;
         _focusDay = null;
         _pendingInputFocus = false;
-        _viewMonth = ClampView(FirstOfMonth(Value ?? DateTime.Today));
+        var anchor = Value ?? DateTime.Today;
+        // Year mode's initial view only needs a year-granularity clamp (ClampDecadeStart already
+        // guarantees a safe decade below) -- routing it through ClampView's day-grid-oriented
+        // one-month buffer would sacrifice up to a whole year at the DateTime range's edges for a
+        // margin this mode doesn't need.
+        _viewMonth = Mode == DatePickerMode.Year
+            ? new DateTime(Math.Clamp(anchor.Year, 1, 9999), 1, 1)
+            : ClampView(FirstOfMonth(anchor));
     }
 
     Task CloseAsync()

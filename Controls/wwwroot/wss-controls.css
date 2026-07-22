@@ -2675,6 +2675,32 @@
     cursor: not-allowed;
 }
 
+/* ------------------------------------------- Year/Quarter mode (DatePicker)
+ * Mode="Year" reuses wss-picker-month-grid/-btn one level up (a decade of
+ * years instead of a year of months) -- wss-picker-month-btn-outside dims the
+ * 2 adjacent-decade cells the same way wss-picker-day-outside dims adjacent-
+ * month days. Mode="Quarter" reuses Month mode's header and wss-picker-month-
+ * btn, but needs its own single-row grid (4 columns, not 3). */
+
+.wss-picker-month-btn-outside {
+    color: var(--wss-color-placeholder);
+}
+
+.wss-picker-decade-label {
+    padding: 1px 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    font-weight: 600;
+    line-height: 22px;
+}
+
+.wss-picker-quarter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8px;
+}
+
 /* -------------------------------------------- Time/DateTime mode (DatePicker)
  * Mode="Time" renders only the row below plus the footer; Mode="DateTime"
  * appends the same two blocks under the day calendar. The adjacency selector

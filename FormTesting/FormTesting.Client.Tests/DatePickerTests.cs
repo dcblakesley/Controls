@@ -640,6 +640,18 @@ public class DatePickerTests : TestContext
             .Add(c => c.Value, Feb14));
         Assert.Equal("02/2026", monthCut.Find(".wss-picker-input-date").GetAttribute("value"));
         Assert.Equal("Select month", monthCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
+
+        var yearCut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14));
+        Assert.Equal("2026", yearCut.Find(".wss-picker-input-date").GetAttribute("value"));
+        Assert.Equal("Select year", yearCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
+
+        var quarterCut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 8, 20)));
+        Assert.Equal("2026-Q3", quarterCut.Find(".wss-picker-input-date").GetAttribute("value"));
+        Assert.Equal("Select quarter", quarterCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
     }
 
     // ----- Mode="Time" ----------------------------------------------------------
@@ -842,5 +854,442 @@ public class DatePickerTests : TestContext
 
         Assert.Equal(new DateTime(2026, 2, 20), value);
         Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    // ----- Mode="Year" ----------------------------------------------------------
+
+    // The Mode="Year" grid always renders exactly 12 buttons: decadeStart-1 .. decadeStart+10, in
+    // order -- index 0 and 11 are the dimmed adjacent-decade cells.
+    static IElement YearButton(IRenderedComponent<DatePicker> cut, int index) =>
+        cut.FindAll(".wss-picker-month-btn")[index];
+
+    [Fact]
+    public void Year_mode_renders_a_twelve_cell_decade_grid_with_two_outside_years()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14)); // 2026 -> decade 2020-2029
+
+        Open(cut);
+
+        var dialog = cut.Find(".wss-picker-dropdown");
+        Assert.Contains("wss-picker-dropdown-single", dialog.ClassList);
+        Assert.Empty(cut.FindAll(".wss-picker-week-header")); // no day-grid chrome in this mode
+
+        var buttons = cut.FindAll(".wss-picker-month-btn");
+        Assert.Equal(12, buttons.Count);
+
+        Assert.Equal("2019", buttons[0].TextContent);
+        Assert.Contains("wss-picker-month-btn-outside", buttons[0].ClassList);
+        Assert.Equal("2020", buttons[1].TextContent);
+        Assert.DoesNotContain("wss-picker-month-btn-outside", buttons[1].ClassList);
+        Assert.Equal("2029", buttons[10].TextContent);
+        Assert.DoesNotContain("wss-picker-month-btn-outside", buttons[10].ClassList);
+        Assert.Equal("2030", buttons[11].TextContent);
+        Assert.Contains("wss-picker-month-btn-outside", buttons[11].ClassList);
+
+        Assert.Equal("2020-2029", cut.Find(".wss-picker-decade-label").TextContent);
+        Assert.Equal("true", YearButton(cut, 7).GetAttribute("aria-pressed")); // 2026
+        Assert.Equal("2026", YearButton(cut, 7).GetAttribute("aria-label"));
+        Assert.Equal("2026-01-01", YearButton(cut, 7).GetAttribute("data-date"));
+    }
+
+    [Fact]
+    public void Year_click_commits_january_first_and_closes()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        YearButton(cut, 4).Click(); // 2023
+
+        Assert.Equal(new DateTime(2023, 1, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Clicking_an_outside_year_cell_commits_it_too()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        YearButton(cut, 11).Click(); // the dimmed trailing 2030 cell
+
+        Assert.Equal(new DateTime(2030, 1, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Year_mode_min_and_max_disable_years_outside_range_at_year_granularity()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2022, 6, 1))
+            .Add(c => c.Max, new DateTime(2027, 3, 1)));
+
+        Open(cut);
+
+        Assert.True(YearButton(cut, 2).HasAttribute("disabled"));  // 2021 -- entirely before Min's year
+        Assert.False(YearButton(cut, 3).HasAttribute("disabled")); // 2022 -- Min's own year
+        Assert.False(YearButton(cut, 8).HasAttribute("disabled")); // 2027 -- Max's own year
+        Assert.True(YearButton(cut, 9).HasAttribute("disabled"));  // 2028 -- entirely after Max's year
+    }
+
+    [Fact]
+    public void Year_mode_marks_the_current_year_as_aria_current()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, new DateTime(DateTime.Today.Year, 1, 1)));
+
+        Open(cut);
+
+        var currentYearText = DateTime.Today.Year.ToString(CultureInfo.InvariantCulture);
+        var currentButton = cut.FindAll(".wss-picker-month-btn").First(b => b.TextContent == currentYearText);
+        Assert.Equal("date", currentButton.GetAttribute("aria-current"));
+    }
+
+    [Fact]
+    public void Year_mode_arrow_keys_move_the_roving_tabindex()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14)); // 2026
+        Open(cut);
+
+        Assert.Equal("0", YearButton(cut, 7).GetAttribute("tabindex")); // 2026 by default
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        Assert.Equal("0", YearButton(cut, 8).GetAttribute("tabindex")); // 2027
+        Assert.Equal("-1", YearButton(cut, 7).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+        Assert.Equal("0", YearButton(cut, 7).GetAttribute("tabindex")); // back to 2026
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        Assert.Equal("0", YearButton(cut, 4).GetAttribute("tabindex")); // -3 -> 2023
+    }
+
+    [Fact]
+    public void Year_mode_home_and_end_move_to_the_start_and_end_of_the_focused_row()
+    {
+        // 2023 sits in the 2022-2024 row (rows group from the dimmed leading cell 2019: 2019-21,
+        // 2022-24, 2025-27, 2028-30).
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, new DateTime(2023, 6, 1)));
+        Open(cut);
+
+        Assert.Equal("0", YearButton(cut, 4).GetAttribute("tabindex")); // default focus = value's year
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "Home" });
+        Assert.Equal("0", YearButton(cut, 3).GetAttribute("tabindex")); // 2022
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "End" });
+        Assert.Equal("0", YearButton(cut, 5).GetAttribute("tabindex")); // 2024
+    }
+
+    [Fact]
+    public void Prev_and_next_decade_buttons_step_the_view()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14));
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.Equal(2, buttons.Count);
+        Assert.Equal("Previous decade", buttons[0].GetAttribute("aria-label"));
+        Assert.Equal("Next decade", buttons[1].GetAttribute("aria-label"));
+
+        buttons[0].Click(); // prev decade
+        Assert.Equal("2010-2019", cut.Find(".wss-picker-decade-label").TextContent);
+
+        cut.FindAll(".wss-picker-nav")[1].Click(); // next decade, back to 2020s
+        Assert.Equal("2020-2029", cut.Find(".wss-picker-decade-label").TextContent);
+    }
+
+    [Fact]
+    public void Prev_and_next_decade_buttons_disable_at_the_min_and_max_decade()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2020, 1, 1))
+            .Add(c => c.Max, new DateTime(2029, 12, 31)));
+
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.True(buttons[0].HasAttribute("disabled"));
+        Assert.True(buttons[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Prev_decade_button_disables_at_the_earliest_representable_decade()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, new DateTime(15, 1, 1))); // ClampDecadeStart's floor -> decade 10-19
+        Open(cut);
+
+        var buttons = cut.FindAll(".wss-picker-nav");
+        Assert.True(buttons[0].HasAttribute("disabled"));
+        Assert.False(buttons[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Year_mode_pagedown_and_pageup_flip_the_decade()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14)); // 2026, decade 2020-2029
+        Open(cut);
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" });
+        Assert.Equal("2030-2039", cut.Find(".wss-picker-decade-label").TextContent);
+
+        cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "PageUp" });
+        Assert.Equal("2020-2029", cut.Find(".wss-picker-decade-label").TextContent);
+    }
+
+    [Fact]
+    public void Typed_text_in_year_mode_parses_and_normalizes_to_january_first()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("2026"); // yyyy -- Year mode's default format
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(2026, 1, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    // ----- Mode="Quarter" --------------------------------------------------------
+
+    // The Mode="Quarter" grid always renders exactly 4 buttons, Q1..Q4 in order.
+    static IElement QuarterButton(IRenderedComponent<DatePicker> cut, int quarterNumber) =>
+        cut.FindAll(".wss-picker-quarter-grid .wss-picker-month-btn")[quarterNumber - 1];
+
+    [Fact]
+    public void Quarter_mode_renders_a_four_button_row_with_the_year_header()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3 2026
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-month-grid")); // the quarter grid, not the month grid
+
+        var buttons = cut.FindAll(".wss-picker-quarter-grid .wss-picker-month-btn");
+        Assert.Equal(4, buttons.Count);
+        Assert.Equal("Q1", buttons[0].TextContent);
+        Assert.Equal("Q4", buttons[3].TextContent);
+
+        var q3 = buttons[2];
+        Assert.Equal("2026-07-01", q3.GetAttribute("data-date"));
+        Assert.Equal("Q3 2026", q3.GetAttribute("aria-label"));
+        Assert.Equal("true", q3.GetAttribute("aria-pressed"));
+
+        Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Quarter_click_commits_the_quarter_start_and_closes()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 8, 20))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        QuarterButton(cut, 4).Click(); // Q4
+
+        Assert.Equal(new DateTime(2026, 10, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Quarter_mode_min_and_max_disable_quarters_outside_range_at_quarter_granularity()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 8, 20))
+            .Add(c => c.Min, new DateTime(2026, 4, 15))  // Q2
+            .Add(c => c.Max, new DateTime(2026, 9, 1))); // Q3
+
+        Open(cut);
+
+        Assert.True(QuarterButton(cut, 1).HasAttribute("disabled"));  // Q1 entirely before Min's quarter
+        Assert.False(QuarterButton(cut, 2).HasAttribute("disabled")); // Q2 -- Min's own quarter
+        Assert.False(QuarterButton(cut, 3).HasAttribute("disabled")); // Q3 -- Max's own quarter
+        Assert.True(QuarterButton(cut, 4).HasAttribute("disabled"));  // Q4 entirely after Max's quarter
+    }
+
+    [Fact]
+    public void Quarter_mode_marks_the_current_quarter_as_aria_current()
+    {
+        var currentQuarter = (DateTime.Today.Month - 1) / 3 + 1;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(DateTime.Today.Year, 1, 1)));
+
+        Open(cut);
+
+        Assert.Equal("date", QuarterButton(cut, currentQuarter).GetAttribute("aria-current"));
+    }
+
+    [Fact]
+    public void Quarter_mode_arrow_keys_move_the_roving_tabindex_and_cross_the_year()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 11, 1))); // Q4 2026
+        Open(cut);
+
+        Assert.Equal("0", QuarterButton(cut, 4).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        // Q4 2026 + 1 quarter -> Q1 2027, the view follows.
+        Assert.Equal("2027", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", QuarterButton(cut, 1).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+        Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", QuarterButton(cut, 4).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Quarter_mode_up_and_down_are_no_ops()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3
+        Open(cut);
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        Assert.Equal("0", QuarterButton(cut, 3).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        Assert.Equal("0", QuarterButton(cut, 3).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Quarter_mode_home_and_end_move_to_the_years_first_and_last_quarter()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3
+        Open(cut);
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "Home" });
+        Assert.Equal("0", QuarterButton(cut, 1).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "End" });
+        Assert.Equal("0", QuarterButton(cut, 4).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Quarter_mode_pageup_and_pagedown_step_a_year_keeping_the_same_quarter()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3 2026
+        Open(cut);
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" });
+        Assert.Equal("2027", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", QuarterButton(cut, 3).GetAttribute("tabindex")); // still Q3
+
+        cut.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "PageUp" });
+        Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Quarter_text_with_a_dash_parses_and_normalizes_to_the_quarter_start()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("2026-Q3");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(2026, 7, 1), value);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Quarter_text_without_a_dash_and_lowercase_q_also_parses()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("2026q3");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(2026, 7, 1), value);
+    }
+
+    [Fact]
+    public void Quarter_text_with_no_year_is_rejected()
+    {
+        var cut = RenderComponent<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Quarter));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("q3");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Null(cut.Instance.Value); // nothing committed
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // stays open
+    }
+
+    [Fact]
+    public void Typed_plain_date_in_quarter_mode_normalizes_to_its_quarter_start()
+    {
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("08/20/2026");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(2026, 7, 1), value);
+    }
+
+    [Fact]
+    public void Explicit_format_in_quarter_mode_is_used_verbatim()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter)
+            .Add(c => c.Format, "yyyy-MM")
+            .Add(c => c.Value, new DateTime(2026, 8, 20)));
+
+        // No .NET format token renders the quarter number -- an explicit Format formats Value
+        // verbatim via ToString (no quarter-start normalization applied for display), same as every
+        // other mode. (A value the picker itself commits is already quarter-start-shaped; this only
+        // differs for a raw Value a consumer binds in directly, as here.)
+        Assert.Equal("2026-08", cut.Find(".wss-picker-input-date").GetAttribute("value"));
     }
 }

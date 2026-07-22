@@ -55,25 +55,7 @@
             @if (Mode == DatePickerMode.Month)
             {
                 <div class="wss-picker-month">
-                    <div class="wss-picker-month-header">
-                        <button type="button" class="wss-picker-nav" aria-label="@PrevYearLabel"
-                                disabled="@PrevYearDisabled" @onclick="PrevYear">@PrevIcon</button>
-                        <div class="wss-picker-month-selects">
-                            <span class="wss-picker-select">
-                                <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
-                                        @onchange="OnYearSelectChanged">
-                                    @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
-                                    @for (var y = fromYear; y <= toYear; y++)
-                                    {
-                                        <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
-                                    }
-                                </select>
-                                @DownIcon
-                            </span>
-                        </div>
-                        <button type="button" class="wss-picker-nav" aria-label="@NextYearLabel"
-                                disabled="@NextYearDisabled" @onclick="NextYear">@NextIcon</button>
-                    </div>
+                    @YearHeaderFragment
                     <div class="wss-picker-month-grid" @ref="_gridRef" @onkeydown="OnMonthGridKeyDown">
                         @for (var m = 1; m <= 12; m++)
                         {
@@ -86,6 +68,56 @@
                                     aria-pressed="@(IsSelectedMonth(month) ? "true" : "false")"
                                     aria-current="@(IsCurrentMonth(month) ? "date" : null)"
                                     @onclick="@(() => OnMonthClickAsync(month))">@MonthName(m)</button>
+                        }
+                    </div>
+                </div>
+            }
+            else if (Mode == DatePickerMode.Year)
+            {
+                <div class="wss-picker-month">
+                    <div class="wss-picker-month-header">
+                        <button type="button" class="wss-picker-nav" aria-label="@PrevDecadeLabel"
+                                disabled="@PrevDecadeDisabled" @onclick="PrevDecade">@PrevIcon</button>
+                        <div class="wss-picker-month-selects">
+                            <span class="wss-picker-decade-label">@DecadeLabel</span>
+                        </div>
+                        <button type="button" class="wss-picker-nav" aria-label="@NextDecadeLabel"
+                                disabled="@NextDecadeDisabled" @onclick="NextDecade">@NextIcon</button>
+                    </div>
+                    <div class="wss-picker-month-grid" @ref="_gridRef" @onkeydown="OnYearGridKeyDown">
+                        @for (var i = -1; i <= 10; i++)
+                        {
+                            var year = DecadeStart + i;
+                            var yearStart = new DateTime(year, 1, 1);
+                            <button type="button" class="@YearButtonClass(year)"
+                                    disabled="@IsYearDisabled(yearStart)"
+                                    tabindex="@(IsYearFocusStop(year) ? "0" : "-1")"
+                                    data-date="@yearStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                    aria-label="@year.ToString(PickerCulture)"
+                                    aria-pressed="@(IsSelectedYear(year) ? "true" : "false")"
+                                    aria-current="@(IsCurrentYear(year) ? "date" : null)"
+                                    @onclick="@(() => OnYearClickAsync(year))">@year.ToString(PickerCulture)</button>
+                        }
+                    </div>
+                </div>
+            }
+            else if (Mode == DatePickerMode.Quarter)
+            {
+                <div class="wss-picker-month">
+                    @YearHeaderFragment
+                    <div class="wss-picker-quarter-grid" @ref="_gridRef" @onkeydown="OnQuarterGridKeyDown">
+                        @for (var q = 1; q <= 4; q++)
+                        {
+                            var quarter = q;
+                            var quarterStart = QuarterStart(_viewMonth.Year, quarter);
+                            <button type="button" class="wss-picker-month-btn"
+                                    disabled="@IsQuarterDisabled(quarterStart)"
+                                    tabindex="@(IsQuarterFocusStop(_viewMonth.Year, quarter) ? "0" : "-1")"
+                                    data-date="@quarterStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                    aria-label="@($"Q{quarter.ToString(PickerCulture)} {_viewMonth.Year.ToString(PickerCulture)}")"
+                                    aria-pressed="@(IsSelectedQuarter(_viewMonth.Year, quarter) ? "true" : "false")"
+                                    aria-current="@(IsCurrentQuarter(_viewMonth.Year, quarter) ? "date" : null)"
+                                    @onclick="@(() => OnQuarterClickAsync(_viewMonth.Year, quarter))">Q@(quarter.ToString(PickerCulture))</button>
                         }
                     </div>
                 </div>
@@ -168,6 +200,30 @@
 </div>
 
 @code {
+    // Month mode's header (prev-year nav / year select / next-year nav), shared verbatim with
+    // Quarter mode -- the 4-quarter grid still needs to know which year it's showing, and that's
+    // exactly what this header already picks. See DatePicker.razor.cs's "Month mode: grid + year
+    // navigation" section for PrevYear/NextYear/YearRange/OnYearSelectChanged.
+    RenderFragment YearHeaderFragment => @<div class="wss-picker-month-header">
+        <button type="button" class="wss-picker-nav" aria-label="@PrevYearLabel"
+                disabled="@PrevYearDisabled" @onclick="PrevYear">@PrevIcon</button>
+        <div class="wss-picker-month-selects">
+            <span class="wss-picker-select">
+                <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
+                        @onchange="OnYearSelectChanged">
+                    @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
+                    @for (var y = fromYear; y <= toYear; y++)
+                    {
+                        <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
+                    }
+                </select>
+                @DownIcon
+            </span>
+        </div>
+        <button type="button" class="wss-picker-nav" aria-label="@NextYearLabel"
+                disabled="@NextYearDisabled" @onclick="NextYear">@NextIcon</button>
+    </div>;
+
     // The three hour/minute/second selects, shared verbatim between Mode.Time (the whole panel) and
     // Mode.DateTime (appended below the day calendar) so the ~20 lines of near-identical <select>
     // blocks aren't duplicated in the markup above (mirrors EditBool's Checkbox/StyledCheckboxFragment
