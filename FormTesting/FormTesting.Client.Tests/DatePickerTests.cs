@@ -1595,4 +1595,166 @@ public class DatePickerTests : TestContext
         Assert.Equal(new DateTime(2026, 2, 10), value);
         Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
     }
+
+    // ----- DisabledDate / DisabledTime / HideDisabledTimeOptions -----------------
+
+    [Fact]
+    public void DisabledDate_disables_matching_day_cells_and_the_typed_commit_guard_rejects_them()
+    {
+        // Feb 14 2026 is a Saturday (per the fixture's own convention elsewhere in this class) --
+        // disable weekends and confirm both the cell attribute and the typed-text commit guard agree.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)));
+
+        Open(cut);
+
+        Assert.True(Day(cut, 14).HasAttribute("disabled"));  // Saturday
+        Assert.True(Day(cut, 15).HasAttribute("disabled"));  // Sunday
+        Assert.False(Day(cut, 16).HasAttribute("disabled")); // Monday
+
+        var input = cut.Find(".wss-picker-input-date");
+        input.Input("02/14/2026"); // a disabled Saturday
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(Feb14, cut.Instance.Value); // rejected -- unchanged
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // stays open
+    }
+
+    [Fact]
+    public void DisabledDate_at_month_granularity_disables_month_cells_using_the_month_start_argument()
+    {
+        var seenArgs = new List<DateTime>();
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d =>
+            {
+                seenArgs.Add(d);
+                return d.Month == 7;
+            })));
+
+        Open(cut);
+
+        Assert.True(MonthButton(cut, 7).HasAttribute("disabled"));
+        Assert.False(MonthButton(cut, 6).HasAttribute("disabled"));
+        Assert.Contains(new DateTime(2026, 7, 1), seenArgs); // the month START, not just any July date
+    }
+
+    [Fact]
+    public void Week_mode_click_is_rejected_when_disableddate_rejects_the_week_start_even_though_the_clicked_day_does_not()
+    {
+        // DisabledDate rejects ONLY the week start (Feb 8) -- the clicked day (Feb 10) evaluates the
+        // same predicate against ITS OWN day-granularity argument and comes back false, so its button
+        // stays enabled. Unlike Min/Max (where a disabled week always implies every day in it is also
+        // disabled), an arbitrary predicate can disagree between the two granularities -- the click
+        // path must still guard the week-start commit explicitly (see OnDayClickAsync).
+        DateTime? value = null;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d == FeblyWeekStart))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+
+        Assert.False(Day(cut, 10).HasAttribute("disabled")); // the clicked day's own button stays enabled
+
+        Day(cut, 10).Click();
+
+        Assert.Null(value); // the week-start commit itself is still rejected
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // nothing committed -- stays open
+    }
+
+    [Fact]
+    public void DisabledTime_disables_listed_hour_options_and_blocks_the_select_change_commit()
+    {
+        DateTime? value = new DateTime(2026, 2, 14, 10, 0, 0);
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, value)
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13])))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+
+        var options = TimeSelects(cut)[0].QuerySelectorAll("option");
+        Assert.Equal(24, options.Length); // rendered disabled, not hidden -- HideDisabledTimeOptions defaults false
+        Assert.True(options.Single(o => o.GetAttribute("value") == "13").HasAttribute("disabled"));
+        Assert.False(options.Single(o => o.GetAttribute("value") == "12").HasAttribute("disabled"));
+
+        TimeSelects(cut)[0].Change("13"); // ApplyTimePartAsync's hour path
+
+        Assert.Equal(new DateTime(2026, 2, 14, 10, 0, 0), value); // rejected -- unchanged
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void HideDisabledTimeOptions_omits_other_disabled_hours_from_the_select()
+    {
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 0, 0))
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13, 14])))
+            .Add(c => c.HideDisabledTimeOptions, true));
+
+        Open(cut);
+
+        var options = TimeSelects(cut)[0].QuerySelectorAll("option");
+        // Neither 13 nor 14 is the current value (10) -- both are omitted entirely.
+        Assert.DoesNotContain(options, o => o.GetAttribute("value") == "13");
+        Assert.DoesNotContain(options, o => o.GetAttribute("value") == "14");
+        Assert.Equal(22, options.Length); // 24 hours minus the 2 fully-hidden ones
+    }
+
+    [Fact]
+    public void The_current_values_time_option_stays_selected_and_disabled_under_both_hide_flag_states()
+    {
+        DisabledTimeParts DisableThirteen(DateTime? date) => new(Hours: [13]);
+
+        var shown = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 0, 0)) // the bound hour IS on the disabled list
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)DisableThirteen)
+            .Add(c => c.HideDisabledTimeOptions, false));
+        Open(shown);
+        var shownOption = TimeSelects(shown)[0].QuerySelectorAll("option").Single(o => o.GetAttribute("value") == "13");
+        Assert.True(shownOption.HasAttribute("disabled"));
+        Assert.NotNull(shownOption.GetAttribute("selected"));
+
+        var hidden = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 0, 0))
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)DisableThirteen)
+            .Add(c => c.HideDisabledTimeOptions, true));
+        Open(hidden);
+        var hiddenOptions = TimeSelects(hidden)[0].QuerySelectorAll("option");
+        // Still present -- the never-jump rule: a select never silently hides the bound value's own
+        // option, even though HideDisabledTimeOptions is filtering every OTHER disabled option out.
+        var hiddenOption = hiddenOptions.Single(o => o.GetAttribute("value") == "13");
+        Assert.True(hiddenOption.HasAttribute("disabled"));
+        Assert.NotNull(hiddenOption.GetAttribute("selected"));
+        Assert.Equal(24, hiddenOptions.Length); // only hour 13 is disabled, and it's the current value
+    }
+
+    [Fact]
+    public void DisabledTime_receives_null_date_part_when_value_is_null()
+    {
+        DateTime? seenDate = new DateTime(1, 1, 1); // sentinel, overwritten by the callback below
+        var sawInvocation = false;
+        var cut = RenderComponent<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(date =>
+            {
+                seenDate = date;
+                sawInvocation = true;
+                return null;
+            })));
+
+        Open(cut);
+
+        Assert.True(sawInvocation);
+        Assert.Null(seenDate);
+    }
 }

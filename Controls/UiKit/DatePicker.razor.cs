@@ -75,6 +75,42 @@ public partial class DatePicker : IAsyncDisposable
     /// <see cref="Min"/>; ignored in <see cref="DatePickerMode.Time"/>.</summary>
     [Parameter] public DateTime? Max { get; set; }
 
+    /// <summary>Extra disable predicate alongside <see cref="Min"/>/<see cref="Max"/> — a cell (or a
+    /// typed/clicked commit) is disabled when either says so. Called with the CELL'S
+    /// committed-value representative, at Mode's own granularity: the day at midnight in
+    /// <see cref="DatePickerMode.Date"/>/<see cref="DatePickerMode.DateTime"/> (including
+    /// <see cref="DatePickerMode.Week"/>'s individual day buttons, which stay day-granularity even
+    /// though the row's own selection/commit unit is the week); the 1st of the month at midnight in
+    /// <see cref="DatePickerMode.Month"/>; January 1st at midnight in <see cref="DatePickerMode.Year"/>;
+    /// the 1st of the quarter at midnight in <see cref="DatePickerMode.Quarter"/>; and the WEEK START
+    /// (not the individual day) for <see cref="DatePickerMode.Week"/>'s own commit guard — a
+    /// partially-disabled week's day buttons can still be enabled while the row's commit itself is
+    /// rejected, mirroring how <see cref="Min"/>/<see cref="Max"/> already split that mode. Ignored in
+    /// <see cref="DatePickerMode.Time"/> (no calendar cells exist there — see
+    /// <see cref="DisabledTime"/> for time-of-day restrictions). Called once per rendered cell on
+    /// every render (plus once per commit guard) — keep it cheap, no I/O.</summary>
+    [Parameter] public Func<DateTime, bool>? DisabledDate { get; set; }
+
+    /// <summary>Disables specific hour/minute/second option values in the
+    /// <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/> time row. Invoked with
+    /// the current date part — <see cref="Value"/>'s date, or null when <see cref="Value"/> is null —
+    /// once per render of the time row (not once per option) and once per commit guard (a time select
+    /// change via <c>ApplyTimePartAsync</c>, or a typed-text commit in either mode). A disabled hour/
+    /// minute/second renders its <c>&lt;option&gt;</c> with the <c>disabled</c> attribute (or is
+    /// omitted entirely — see <see cref="HideDisabledTimeOptions"/>) and rejects a commit that would
+    /// land on it (the select — or the typed text — reverts, same as a <see cref="Min"/>/<see cref="Max"/>
+    /// rejection). A null callback, a null <see cref="DisabledTimeParts"/> return, or a null
+    /// collection within it all mean nothing is disabled.</summary>
+    [Parameter] public Func<DateTime?, DisabledTimeParts?>? DisabledTime { get; set; }
+
+    /// <summary>When true, an option <see cref="DisabledTime"/> disables is omitted from its select
+    /// entirely instead of rendered disabled (AntD's <c>hideDisabledOptions</c>). Defaults to false.
+    /// NEVER-JUMP RULE, in force under either setting: the select's CURRENT value's own option is
+    /// always rendered — selected, and also marked <c>disabled</c> if <see cref="DisabledTime"/> says
+    /// so — even while every other disabled option is hidden, so a select can never silently show a
+    /// value that isn't the one actually bound.</summary>
+    [Parameter] public bool HideDisabledTimeOptions { get; set; }
+
     /// <summary>Display and primary parse format for the input. Typed text is parsed with this
     /// exact format first, then with the current culture's general date parsing. Null (default)
     /// picks <see cref="Mode"/>'s default: <c>Date</c> <c>MM/dd/yyyy</c> (the Figma spec) ·
@@ -317,45 +353,80 @@ public partial class DatePicker : IAsyncDisposable
             ? Value is { } v && WeekStart(v.Date) == WeekStart(day)
             : day == Value?.Date;
 
+    // DisabledDate is folded into every granularity's Is*Disabled helper below (not called
+    // separately anywhere else) so every consumer of them -- the cell disabled attributes, the
+    // DefaultFocus*/FirstEnabled* skip logic, and IsDisabledForCommit's typed-text guard -- picks it
+    // up automatically and can never disagree about what counts as disabled.
     bool IsDayDisabled(DateTime day) =>
-        (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date);
+        (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date) ||
+        (DisabledDate?.Invoke(day) ?? false);
 
     // Week-mode equivalent of IsDayDisabled/IsMonthDisabled, at week granularity: a whole week is
-    // disabled once its 7-day span falls entirely outside [Min, Max] -- the individual day buttons
-    // stay enabled per IsDayDisabled above (a partially-in-range week is still clickable; only the
-    // commit itself is guarded here, same split DateTime mode uses between day-cell and Min/Max-day
-    // checks). `weekStart` is already WeekStart-shaped.
+    // disabled once its 7-day span falls entirely outside [Min, Max] (or DisabledDate itself rejects
+    // the week start) -- the individual day buttons stay enabled per IsDayDisabled above (a
+    // partially-in-range week is still clickable; only the commit itself is guarded here, same split
+    // DateTime mode uses between day-cell and Min/Max-day checks). `weekStart` is already
+    // WeekStart-shaped -- this is the one place DisabledDate sees a week start rather than a day.
     bool IsWeekDisabledForCommit(DateTime weekStart) =>
-        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date);
+        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date) ||
+        (DisabledDate?.Invoke(weekStart) ?? false);
 
     // Month-mode equivalent of IsDayDisabled: a whole month is disabled once it falls entirely
     // outside [Min, Max] at month granularity — same granularity PrevMonthDisabled/NextMonthDisabled
     // use for the day-grid's own header nav, so the two panels never disagree about where Min/Max
     // stop navigation.
     bool IsMonthDisabled(DateTime month) =>
-        (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max));
+        (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max)) ||
+        (DisabledDate?.Invoke(month) ?? false);
 
     // Year-mode equivalent of IsMonthDisabled, one granularity up: a whole year is disabled once it
     // falls entirely outside [Min, Max] at year granularity. `year` is already FirstOfYear-shaped.
     bool IsYearDisabled(DateTime year) =>
-        (Min is { } min && year < FirstOfYear(min)) || (Max is { } max && year > FirstOfYear(max));
+        (Min is { } min && year < FirstOfYear(min)) || (Max is { } max && year > FirstOfYear(max)) ||
+        (DisabledDate?.Invoke(year) ?? false);
 
     // Quarter-mode equivalent of IsMonthDisabled, at quarter granularity: a whole quarter is
     // disabled once it falls entirely outside [Min, Max]'s own quarter. `quarterStart` is already
     // QuarterStart-shaped.
     bool IsQuarterDisabled(DateTime quarterStart) =>
-        (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max));
+        (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max)) ||
+        (DisabledDate?.Invoke(quarterStart) ?? false);
 
-    // Whether a parsed/committed value (already mode-normalized) falls outside [Min, Max] at Mode's
-    // own granularity. Date/DateTime check the day itself (Min/Max are date-only); Month checks
-    // month granularity; Year/Quarter check their own granularity; Time ignores bounds entirely --
-    // they're date-granularity and this control exposes no time bounds (EditDate has none either).
+    // Whether `value`'s time-of-day hits a DisabledTime-disabled hour/minute/second, evaluated
+    // against `value`'s own date part -- the same argument contract TimeRowFragment uses at render
+    // time, but against the value actually being committed rather than the (possibly stale) bound
+    // Value. Invokes DisabledTime exactly once, shared by ApplyTimePartAsync's select-change guard
+    // and IsDisabledForCommit's typed-text guard below so the two can never disagree. Null callback /
+    // null return / null lists = nothing disabled.
+    bool IsTimeDisabledForCommit(DateTime value)
+    {
+        var parts = DisabledTime?.Invoke(value.Date);
+        return parts is not null &&
+            (IsTimePartDisabled(parts.Hours, value.Hour) ||
+             IsTimePartDisabled(parts.Minutes, value.Minute) ||
+             IsTimePartDisabled(parts.Seconds, value.Second));
+    }
+
+    // Whether `value` is one of `disabled`'s listed values -- null (nothing disabled in that unit)
+    // always answers false. Shared by IsTimeDisabledForCommit above and TimeRowFragment's per-option
+    // render check in DatePicker.razor so the disabled attribute and the commit guard can never
+    // disagree about the same hour/minute/second.
+    static bool IsTimePartDisabled(IReadOnlyCollection<int>? disabled, int value) =>
+        disabled?.Contains(value) ?? false;
+
+    // Whether a parsed/committed value (already mode-normalized) falls outside [Min, Max]/DisabledDate
+    // at Mode's own granularity, or (Time/DateTime only) hits a DisabledTime-disabled hour/minute/
+    // second. Date/DateTime check the day itself (Min/Max are date-only) via IsDayDisabled (which
+    // already folds in DisabledDate); Month/Year/Quarter check their own granularity the same way;
+    // Week checks week granularity via IsWeekDisabledForCommit. DateTime and Time both additionally
+    // check IsTimeDisabledForCommit -- the other modes have no time-of-day concept, so DisabledTime
+    // never applies to them.
     bool IsDisabledForCommit(DateTime value) => Mode switch
     {
         DatePickerMode.Date => IsDayDisabled(value),
         DatePickerMode.Month => IsMonthDisabled(value),
-        DatePickerMode.DateTime => IsDayDisabled(value.Date),
-        DatePickerMode.Time => false,
+        DatePickerMode.DateTime => IsDayDisabled(value.Date) || IsTimeDisabledForCommit(value),
+        DatePickerMode.Time => IsTimeDisabledForCommit(value),
         DatePickerMode.Year => IsYearDisabled(value),
         DatePickerMode.Quarter => IsQuarterDisabled(value),
         DatePickerMode.Week => IsWeekDisabledForCommit(value),
@@ -1110,6 +1181,15 @@ public partial class DatePicker : IAsyncDisposable
 
     async Task OnDayClickAsync(DateTime day)
     {
+        // Week mode's day BUTTON stays at day granularity (IsDayDisabled(day), same as every other
+        // mode's day cell -- see IsDayDisabled's doc comment), but the click's actual commit lands on
+        // the week START, not the clicked day. With Min/Max alone those two checks can never disagree
+        // (a week whose start/end falls outside [Min, Max] means every day in it does too, so a
+        // disabled week never has an enabled day button to click), but DisabledDate is an arbitrary
+        // predicate -- it can reject a week start while leaving every individual day in that week
+        // enabled. Guard it here explicitly, mirroring the typed-text path's IsDisabledForCommit
+        // check, so a click can't slip past DisabledDate the way SetValueAsync itself never checks.
+        if (Mode == DatePickerMode.Week && IsWeekDisabledForCommit(WeekStart(day))) return;
         // A calendar pick supersedes any half-typed input text.
         _edit = null;
         // Mode.DateTime keeps whatever time-of-day is already committed (or midnight) instead of
@@ -1196,14 +1276,17 @@ public partial class DatePicker : IAsyncDisposable
 
     // Composes a new value from the current date part (Value's date, or DateTime.Today when unset --
     // Mode.Time discards this anyway) and the current time-of-day (Value's, or midnight) with one
-    // HH/mm/ss part replaced, then commits.
+    // HH/mm/ss part replaced, then commits -- unless DisabledTime rejects the composed H/m/s, in
+    // which case this no-ops (the select's own displayed value reverts to Value's on the next
+    // render, same revert semantics a Min/Max rejection gets elsewhere).
     Task ApplyTimePartAsync(int? hour = null, int? minute = null, int? second = null)
     {
         // A select change supersedes any half-typed input text, same as a day/month click.
         _edit = null;
         var date = Value?.Date ?? DateTime.Today;
         var time = Value?.TimeOfDay ?? TimeSpan.Zero;
-        return SetValueAsync(date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, second ?? time.Seconds));
+        var composed = date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, second ?? time.Seconds);
+        return IsTimeDisabledForCommit(composed) ? Task.CompletedTask : SetValueAsync(composed);
     }
 
     Task OnHourSelectChangedAsync(ChangeEventArgs e) =>

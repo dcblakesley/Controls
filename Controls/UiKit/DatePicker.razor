@@ -260,13 +260,23 @@
     // Mode.DateTime (appended below the day calendar) so the ~20 lines of near-identical <select>
     // blocks aren't duplicated in the markup above (mirrors EditBool's Checkbox/StyledCheckboxFragment
     // split). Each select's own @onchange commits immediately via ApplyTimePartAsync -- see
-    // DatePicker.razor.cs's "Time/DateTime mode" section.
+    // DatePicker.razor.cs's "Time/DateTime mode" section. DisabledTime is invoked exactly once for
+    // the whole fragment (not once per option) and cached in disabledParts below; each option then
+    // checks its own unit's list via IsTimePartDisabled. HideDisabledTimeOptions omits a disabled
+    // option instead of rendering it disabled -- except the select's OWN CURRENT value, which always
+    // renders (selected, and disabled too if it's on the list) so a select can never silently show a
+    // value that isn't the bound one (the never-jump rule documented on HideDisabledTimeOptions).
     RenderFragment TimeRowFragment => @<div class="wss-picker-time-row">
+        @{ var disabledParts = DisabledTime?.Invoke(Value?.Date); }
         <span class="wss-picker-select">
             <select aria-label="@HourSelectLabel" value="@DisplayHour" @onchange="OnHourSelectChangedAsync">
                 @for (var h = 0; h <= 23; h++)
                 {
-                    <option value="@h" selected="@(h == DisplayHour)">@h.ToString("00", CultureInfo.InvariantCulture)</option>
+                    var disabled = IsTimePartDisabled(disabledParts?.Hours, h);
+                    if (!disabled || !HideDisabledTimeOptions || h == DisplayHour)
+                    {
+                        <option value="@h" disabled="@disabled" selected="@(h == DisplayHour)">@h.ToString("00", CultureInfo.InvariantCulture)</option>
+                    }
                 }
             </select>
             @DownIcon
@@ -275,7 +285,11 @@
             <select aria-label="@MinuteSelectLabel" value="@DisplayMinute" @onchange="OnMinuteSelectChangedAsync">
                 @for (var m = 0; m <= 59; m++)
                 {
-                    <option value="@m" selected="@(m == DisplayMinute)">@m.ToString("00", CultureInfo.InvariantCulture)</option>
+                    var disabled = IsTimePartDisabled(disabledParts?.Minutes, m);
+                    if (!disabled || !HideDisabledTimeOptions || m == DisplayMinute)
+                    {
+                        <option value="@m" disabled="@disabled" selected="@(m == DisplayMinute)">@m.ToString("00", CultureInfo.InvariantCulture)</option>
+                    }
                 }
             </select>
             @DownIcon
@@ -284,7 +298,11 @@
             <select aria-label="@SecondSelectLabel" value="@DisplaySecond" @onchange="OnSecondSelectChangedAsync">
                 @for (var s = 0; s <= 59; s++)
                 {
-                    <option value="@s" selected="@(s == DisplaySecond)">@s.ToString("00", CultureInfo.InvariantCulture)</option>
+                    var disabled = IsTimePartDisabled(disabledParts?.Seconds, s);
+                    if (!disabled || !HideDisabledTimeOptions || s == DisplaySecond)
+                    {
+                        <option value="@s" disabled="@disabled" selected="@(s == DisplaySecond)">@s.ToString("00", CultureInfo.InvariantCulture)</option>
+                    }
                 }
             </select>
             @DownIcon
