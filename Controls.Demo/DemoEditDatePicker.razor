@@ -42,6 +42,29 @@
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditDatePicker @bind-Value="_model.MonthValue"
+                        Type="InputDateType.Month"
+                        Label="Month (DateOnly?)" />
+
+        <EditDatePicker @bind-Value="_model.TimeValue"
+                        Type="InputDateType.Time"
+                        Label="Time (TimeOnly?)" />
+
+        <EditDatePicker @bind-Value="_model.DateTimeValue"
+                        Type="InputDateType.DateTimeLocal"
+                        Label="Date + Time (DateTime?)" />
+
+        <EditDatePicker @bind-Value="_model.OffsetDate"
+                        Label="Date (DateTimeOffset?)" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_typesExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_typesModel</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -62,6 +85,14 @@
 
         [Required]
         public DateTime? Required { get; set; }
+
+        // Type generalizes the bound value to any of EditDatePicker<T>'s 8 shapes; these four
+        // demonstrate the non-DateTime? corners -- DateOnly? (Month), TimeOnly? (Time), plain
+        // DateTime? (DateTimeLocal), and DateTimeOffset? (the default Date mode).
+        public DateOnly? MonthValue { get; set; } = new DateOnly(2026, 2, 1);
+        public TimeOnly? TimeValue { get; set; } = new TimeOnly(9, 30, 15);
+        public DateTime? DateTimeValue { get; set; } = new DateTime(2026, 2, 14, 9, 30, 15);
+        public DateTimeOffset? OffsetDate { get; set; } = new DateTimeOffset(2026, 2, 14, 0, 0, 0, TimeSpan.Zero);
     }
 
     readonly string _basicExample = @"<EditDatePicker @bind-Value=""_model.BasicDate"" />";
@@ -87,4 +118,24 @@
 public DateTime? Required { get; set; }
 
 public DateTime? Disabled { get; set; } = new DateTime(2026, 2, 14);";
+
+    readonly string _typesExample = @"<EditDatePicker @bind-Value=""_model.MonthValue""
+                Type=""InputDateType.Month""
+                Label=""Month (DateOnly?)"" />
+
+<EditDatePicker @bind-Value=""_model.TimeValue""
+                Type=""InputDateType.Time""
+                Label=""Time (TimeOnly?)"" />
+
+<EditDatePicker @bind-Value=""_model.DateTimeValue""
+                Type=""InputDateType.DateTimeLocal""
+                Label=""Date + Time (DateTime?)"" />
+
+<EditDatePicker @bind-Value=""_model.OffsetDate""
+                Label=""Date (DateTimeOffset?)"" />";
+
+    readonly string _typesModel = @"public DateOnly? MonthValue { get; set; } = new DateOnly(2026, 2, 1);
+public TimeOnly? TimeValue { get; set; } = new TimeOnly(9, 30, 15);
+public DateTime? DateTimeValue { get; set; } = new DateTime(2026, 2, 14, 9, 30, 15);
+public DateTimeOffset? OffsetDate { get; set; } = new DateTimeOffset(2026, 2, 14, 0, 0, 0, TimeSpan.Zero);";
 }

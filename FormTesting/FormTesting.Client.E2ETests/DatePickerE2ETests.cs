@@ -6,7 +6,10 @@ namespace FormTesting.Client.E2ETests;
 /// E2E coverage for the single-date DatePicker UI-kit control (driven on the /uikit gallery,
 /// which pins its picker to Feb 2026 so screenshots and month assertions are deterministic).
 /// This suite owns the JS-interop behaviors bUnit can't execute: placePanel's placement and
-/// open-order stacking, initPicker's Enter handling, and the focus-out close.
+/// open-order stacking, initPicker's Enter handling, and the focus-out close. It also covers the
+/// Month/Time/DateTime <see cref="Controls.DatePickerMode"/> demos (#demo-month/#demo-time/
+/// #demo-datetime) -- specifically the month-grid keyboard nav-key scroll suppression and DOM
+/// focus follow that wss-picker.js owns, which bUnit can't exercise either.
 /// </summary>
 [Collection(PlaywrightCollection.Name)]
 public class DatePickerE2ETests : IAsyncLifetime
@@ -237,6 +240,136 @@ public class DatePickerE2ETests : IAsyncLifetime
 
         await Expect(Dropdown).Not.ToBeVisibleAsync();
         await Expect(Input).Not.ToBeFocusedAsync();
+    }
+
+    // --- Mode.Month demo (#demo-month, pinned Value=2026-02-01) ------------------------------
+
+    ILocator MonthPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-month") });
+    ILocator MonthField => MonthPicker.Locator(".wss-picker-input");
+    ILocator MonthInput => _page.Locator("#demo-month");
+    ILocator MonthDropdown => MonthPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenMonthAsync()
+    {
+        await MonthField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await MonthField.ClickAsync();
+        await Expect(MonthDropdown).ToBeVisibleAsync();
+        await Expect(MonthDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Month_click_commits_the_first_of_month_and_closes()
+    {
+        await GotoAsync();
+        await OpenMonthAsync();
+
+        // The demo pins Value=2026-02-01, so the year header shows 2026 with Feb selected. Pick a
+        // different month so the click is observably responsible for the resulting value.
+        await MonthDropdown.Locator("[data-date='2026-05-01']").ClickAsync();
+
+        await Expect(MonthDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='month-result']")).ToContainTextAsync("2026-05");
+        await Expect(MonthInput).ToHaveValueAsync("05/2026");
+        // The clicked month button is about to unmount -- focus returns to the text input.
+        await Expect(MonthInput).ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task Month_grid_ArrowRight_moves_focus_and_PageDown_moves_year_without_scrolling_the_page()
+    {
+        await GotoAsync();
+        await OpenMonthAsync();
+
+        // The demo pins Value=2026-02-01, which carries the roving tabindex on open.
+        var start = MonthDropdown.Locator("[data-date='2026-02-01']");
+        await start.FocusAsync();
+        var scrollBefore = await _page.EvaluateAsync<double>("window.scrollY");
+
+        await _page.Keyboard.PressAsync("ArrowRight");
+        await Expect(MonthDropdown.Locator("[data-date='2026-03-01']")).ToBeFocusedAsync();
+
+        // PageDown moves the displayed year by one, re-rendering the grid with new button instances
+        // (exercises the pending-focus-date handoff, same as the day grid's month-crossing move).
+        await _page.Keyboard.PressAsync("PageDown");
+        await Expect(MonthDropdown.Locator("[data-date='2027-03-01']")).ToBeFocusedAsync();
+
+        // wss-picker.js suppresses the native scroll-on-PageDown behavior for month buttons too.
+        var scrollAfter = await _page.EvaluateAsync<double>("window.scrollY");
+        Assert.Equal(scrollBefore, scrollAfter);
+    }
+
+    // --- Mode.Time demo (#demo-time, pinned Value time-of-day 09:30:15) ----------------------
+
+    ILocator TimePicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-time") });
+    ILocator TimeField => TimePicker.Locator(".wss-picker-input");
+    ILocator TimeInput => _page.Locator("#demo-time");
+    ILocator TimeDropdown => TimePicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenTimeAsync()
+    {
+        await TimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await TimeField.ClickAsync();
+        await Expect(TimeDropdown).ToBeVisibleAsync();
+        await Expect(TimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Time_mode_select_change_commits_immediately_and_ok_closes_returning_focus_to_the_input()
+    {
+        await GotoAsync();
+        await OpenTimeAsync();
+
+        await TimeDropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("14");
+
+        // A select change commits without closing -- only OK is the close signal in Time mode.
+        await Expect(TimeDropdown).ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='time-result']")).ToContainTextAsync("14:30:15");
+        await Expect(TimeInput).ToHaveValueAsync("14:30:15");
+
+        await TimeDropdown.Locator(".wss-picker-ok").ClickAsync();
+        await Expect(TimeDropdown).Not.ToBeVisibleAsync();
+        await Expect(TimeInput).ToBeFocusedAsync();
+    }
+
+    // --- Mode.DateTime demo (#demo-datetime, pinned Value=2026-02-14 09:30:15) ---------------
+
+    ILocator DateTimePicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-datetime") });
+    ILocator DateTimeField => DateTimePicker.Locator(".wss-picker-input");
+    ILocator DateTimeInput => _page.Locator("#demo-datetime");
+    ILocator DateTimeDropdown => DateTimePicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenDateTimeAsync()
+    {
+        await DateTimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await DateTimeField.ClickAsync();
+        await Expect(DateTimeDropdown).ToBeVisibleAsync();
+        await Expect(DateTimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    ILocator DateTimeDay(string dayText) =>
+        DateTimeDropdown.Locator(".wss-picker-day:not(.wss-picker-day-outside)", new() { HasTextString = dayText });
+
+    [Fact]
+    public async Task DateTime_mode_day_click_preserves_time_stays_open_then_time_select_preserves_date_then_ok_closes()
+    {
+        await GotoAsync();
+        await OpenDateTimeAsync();
+
+        // Day click sets the date part only, keeping the already-committed time-of-day
+        // (09:30:15), and the panel stays open for further adjustment.
+        await DateTimeDay("20").ClickAsync();
+
+        await Expect(DateTimeDropdown).ToBeVisibleAsync();
+        await Expect(DateTimeInput).ToHaveValueAsync("02/20/2026 09:30:15");
+
+        // A time select change keeps the date part just set (Feb 20), not the original Feb 14.
+        await DateTimeDropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("16");
+        await Expect(DateTimeDropdown).ToBeVisibleAsync();
+        await Expect(DateTimeInput).ToHaveValueAsync("02/20/2026 16:30:15");
+
+        await DateTimeDropdown.Locator(".wss-picker-ok").ClickAsync();
+        await Expect(DateTimeDropdown).Not.ToBeVisibleAsync();
+        await Expect(DateTimeInput).ToBeFocusedAsync();
     }
 
     [Fact]

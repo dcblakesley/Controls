@@ -239,6 +239,37 @@
         <p data-test-id="date-result">
             Selected: @(_singleDate?.ToString("yyyy-MM-dd") ?? "—")
         </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Mode</code> swaps what the panel offers — the bound <code>Value</code> stays
+            <code>DateTime?</code> in every mode. <code>Month</code> replaces the day calendar with a
+            year header + 3x4 month grid; <code>Time</code> drops the calendar for hour/minute/second
+            selects over an OK button; <code>DateTime</code> keeps the day calendar and appends that
+            same time row below it. Initial values are pinned for the same baseline-determinism reason.
+        </p>
+        <DatePicker @bind-Value="_monthValue"
+                    Mode="DatePickerMode.Month"
+                    Id="demo-month"
+                    Width="200px" />
+        <p data-test-id="month-result">
+            Selected: @(_monthValue?.ToString("yyyy-MM") ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_timeValue"
+                    Mode="DatePickerMode.Time"
+                    Id="demo-time"
+                    Width="200px" />
+        <p data-test-id="time-result">
+            Selected: @(_timeValue?.ToString("HH:mm:ss") ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_dateTimeValue"
+                    Mode="DatePickerMode.DateTime"
+                    Id="demo-datetime"
+                    Width="260px" />
+        <p data-test-id="datetime-result">
+            Selected: @(_dateTimeValue?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")
+        </p>
     </section>
 
     <section class="demo-section">
@@ -374,6 +405,11 @@
 
     // --- DatePicker demo --- (pinned for the same baseline-determinism reason)
     DateTime? _singleDate = new DateTime(2026, 2, 14);
+
+    // --- DatePicker Mode demos (Month/Time/DateTime) --- pinned for the same reason.
+    DateTime? _monthValue = new DateTime(2026, 2, 1);
+    DateTime? _timeValue = new DateTime(2026, 2, 14, 9, 30, 15);
+    DateTime? _dateTimeValue = new DateTime(2026, 2, 14, 9, 30, 15);
 
     // The Sales-Report-style shortcuts. Resolved at click time (DateTime.Today), so they stay
     // correct however long the page lives.

@@ -82,6 +82,63 @@ public class EditDatePickerE2ETests(AppFixture app, BrowserFixture browser) : Pa
     }
 
     [Fact]
+    public async Task Time_type_field_commits_the_selected_hour_into_the_bound_TimeOnly_value()
+    {
+        await NavigateAsync();
+
+        // Fourth section: the Type-generalization demo. TimeValue binds a TimeOnly? via
+        // Type="InputDateType.Time" -- Format is unset, so the picker's Mode.Time default
+        // "HH:mm:ss" is what the input displays.
+        // The Has locator must be page-rooted (Playwright re-roots it at each candidate element --
+        // see Required_picker_shows_validation_message_when_empty's comment on the same gotcha).
+        var section = Page.Locator("section.demo-section").Nth(3);
+        var input = section.Locator("#TimeValue");
+        var picker = section.Locator(".wss-picker", new() { Has = Page.Locator("#TimeValue") });
+        var field = picker.Locator(".wss-picker-input");
+        var dropdown = picker.Locator(".wss-picker-dropdown");
+
+        await field.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        // Pinned model value is 09:30:15 -- change the hour so the commit is observable.
+        await dropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("14");
+
+        // Time mode commits immediately without closing.
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(input).ToHaveValueAsync("14:30:15");
+
+        await dropdown.Locator(".wss-picker-ok").ClickAsync();
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Month_type_field_commits_the_first_of_the_picked_month_into_the_bound_DateOnly_value()
+    {
+        await NavigateAsync();
+
+        // Fourth section: MonthValue binds a DateOnly? via Type="InputDateType.Month", pinned to
+        // 2026-02-01 -- pick a different month so the click is observably responsible for the result.
+        // The Has locator must be page-rooted (same gotcha as the Time test above).
+        var section = Page.Locator("section.demo-section").Nth(3);
+        var input = section.Locator("#MonthValue");
+        var picker = section.Locator(".wss-picker", new() { Has = Page.Locator("#MonthValue") });
+        var field = picker.Locator(".wss-picker-input");
+        var dropdown = picker.Locator(".wss-picker-dropdown");
+
+        await field.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        await dropdown.Locator("[data-date='2026-05-01']").ClickAsync();
+
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+        // EditDatePicker's Format is unset, so the picker's Mode.Month default "MM/yyyy" applies --
+        // the bound DateOnly's Day is always 1, confirming the click committed the 1st of the month.
+        await Expect(input).ToHaveValueAsync("05/2026");
+    }
+
+    [Fact]
     public async Task Visual_baseline_basic_section()
     {
         await NavigateAsync();
