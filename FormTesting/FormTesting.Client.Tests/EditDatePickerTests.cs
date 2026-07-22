@@ -33,12 +33,21 @@ public class EditDatePickerTests : TestContext
             .First(b => !b.ClassList.Contains("wss-picker-day-outside") &&
                         b.TextContent == dayNumber.ToString("00", CultureInfo.InvariantCulture));
 
-    // Scoped to this file's DateOnly/DateTime (non-nullable) coverage -- PersonModel.BirthDate is
+    // Scoped to this file's non-DateTime?/non-nullable coverage -- PersonModel.BirthDate is
     // DateTime? only.
     class DateOnlyModel { public DateOnly ShipDate { get; set; } }
     class NullableDateOnlyModel { public DateOnly? ShipDate { get; set; } }
     class NonNullableDateTimeModel { public DateTime ShipDate { get; set; } }
+    class DateTimeOffsetModel { public DateTimeOffset ShipDate { get; set; } }
+    class NullableDateTimeOffsetModel { public DateTimeOffset? ShipDate { get; set; } }
+    class TimeOnlyModel { public TimeOnly ShipTime { get; set; } }
+    class NullableTimeOnlyModel { public TimeOnly? ShipTime { get; set; } }
     class UnsupportedTypeModel { public int ShipDate { get; set; } }
+
+    // The three hour/minute/second selects rendered by Type="Time"/"DateTimeLocal" -- mirrors
+    // DatePickerTests' TimeSelects helper.
+    static IReadOnlyList<IElement> TimeSelects(IRenderedFragment cut) =>
+        cut.FindAll(".wss-picker-time-row select");
 
     [Fact]
     public void Day_click_updates_the_bound_model_and_notifies_the_field()
@@ -461,6 +470,360 @@ public class EditDatePickerTests : TestContext
         }));
 
         Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    [Fact]
+    public void Nullable_DateOnly_day_click_round_trips_the_bound_model()
+    {
+        // Nullable_DateOnly_binding_round_trips_and_clears (above) only exercises the clear path --
+        // this covers the actual day-click round trip for the same bound shape.
+        var model = new NullableDateOnlyModel { ShipDate = new DateOnly(2020, 3, 5) };
+        Expression<Func<DateOnly?>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateOnly?>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly?>(this, v => model.ShipDate = v));
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateOnly(2020, 3, 20), model.ShipDate);
+    }
+
+    [Fact]
+    public void DateTimeOffset_binding_round_trips_through_the_picker()
+    {
+        var model = new DateTimeOffsetModel { ShipDate = new DateTimeOffset(2020, 3, 5, 0, 0, 0, TimeSpan.Zero) };
+        Expression<Func<DateTimeOffset>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTimeOffset>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTimeOffset>(this, v => model.ShipDate = v));
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        // FromPickerValue assumes the local offset for the picker's Unspecified-Kind value -- the
+        // commit is the LOCAL day-20 instant, not day 20 at the original UTC offset.
+        Assert.Equal(new DateTimeOffset(new DateTime(2020, 3, 20)), model.ShipDate);
+    }
+
+    [Fact]
+    public void NonNullable_DateTimeOffset_default_counts_as_semantically_empty_for_hiding()
+    {
+        var model = new DateTimeOffsetModel { ShipDate = default };
+        Expression<Func<DateTimeOffset>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTimeOffset>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    [Fact]
+    public void Nullable_DateTimeOffset_day_click_round_trips_the_bound_model()
+    {
+        var model = new NullableDateTimeOffsetModel { ShipDate = new DateTimeOffset(2020, 3, 5, 0, 0, 0, TimeSpan.Zero) };
+        Expression<Func<DateTimeOffset?>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTimeOffset?>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTimeOffset?>(this, v => model.ShipDate = v));
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTimeOffset(new DateTime(2020, 3, 20)), model.ShipDate);
+    }
+
+    [Fact]
+    public void Nullable_DateTimeOffset_clears_to_null()
+    {
+        var model = new NullableDateTimeOffsetModel { ShipDate = new DateTimeOffset(2020, 3, 5, 0, 0, 0, TimeSpan.Zero) };
+        Expression<Func<DateTimeOffset?>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTimeOffset?>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTimeOffset?>(this, v => model.ShipDate = v));
+            b.CloseComponent();
+        }));
+
+        cut.Find(".wss-picker-clear").Click();
+
+        Assert.Null(model.ShipDate);
+    }
+
+    [Fact]
+    public void TimeOnly_binding_round_trips_through_the_picker()
+    {
+        var model = new TimeOnlyModel { ShipTime = new TimeOnly(9, 30) };
+        Expression<Func<TimeOnly>> field = () => model.ShipTime;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.AddAttribute(1, "Value", model.ShipTime);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<TimeOnly>(this, v => model.ShipTime = v));
+            b.AddAttribute(4, "Type", InputDateType.Time);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("13"); // hour select
+
+        Assert.Equal(new TimeOnly(13, 30), model.ShipTime);
+    }
+
+    [Fact]
+    public void NonNullable_TimeOnly_default_counts_as_semantically_empty_for_hiding()
+    {
+        var model = new TimeOnlyModel { ShipTime = default };
+        Expression<Func<TimeOnly>> field = () => model.ShipTime;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.AddAttribute(1, "Value", model.ShipTime);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Time);
+            b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    [Fact]
+    public void Nullable_TimeOnly_binding_round_trips_and_clears()
+    {
+        var model = new NullableTimeOnlyModel { ShipTime = new TimeOnly(9, 30) };
+        Expression<Func<TimeOnly?>> field = () => model.ShipTime;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<TimeOnly?>>(0);
+            b.AddAttribute(1, "Value", model.ShipTime);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<TimeOnly?>(this, v => model.ShipTime = v));
+            b.AddAttribute(4, "Type", InputDateType.Time);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("13"); // hour select
+
+        Assert.Equal(new TimeOnly(13, 30), model.ShipTime);
+
+        cut.Find(".wss-picker-clear").Click();
+
+        Assert.Null(model.ShipTime);
+    }
+
+    // ----- Type forwarding to the picker's Mode ------------------------------------------------
+
+    [Fact]
+    public void Type_Month_renders_the_pickers_month_grid_instead_of_the_day_calendar()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Month);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.NotEmpty(cut.FindAll(".wss-picker-month-btn"));
+        Assert.Empty(cut.FindAll(".wss-picker-day"));
+    }
+
+    [Fact]
+    public void Type_Time_renders_the_pickers_time_row_instead_of_the_day_calendar()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Time);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.NotEmpty(TimeSelects(cut));
+        Assert.NotEmpty(cut.FindAll(".wss-picker-ok"));
+        Assert.Empty(cut.FindAll(".wss-picker-day"));
+    }
+
+    [Fact]
+    public void Type_DateTimeLocal_renders_the_day_calendar_plus_the_time_row()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.DateTimeLocal);
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.NotEmpty(cut.FindAll(".wss-picker-day"));
+        Assert.NotEmpty(TimeSelects(cut));
+    }
+
+    [Fact]
+    public void Month_and_time_labels_forward_to_the_pickers_nav_buttons_and_selects()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Month);
+            b.AddAttribute(4, "PrevYearLabel", "Custom prev year");
+            b.AddAttribute(5, "NextYearLabel", "Custom next year");
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        var navLabels = cut.FindAll(".wss-picker-nav").Select(n => n.GetAttribute("aria-label"));
+        Assert.Contains("Custom prev year", navLabels);
+        Assert.Contains("Custom next year", navLabels);
+    }
+
+    [Fact]
+    public void Time_labels_and_OkText_forward_to_the_pickers_selects_and_button()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Time);
+            b.AddAttribute(4, "HourSelectLabel", "Custom hour");
+            b.AddAttribute(5, "MinuteSelectLabel", "Custom minute");
+            b.AddAttribute(6, "SecondSelectLabel", "Custom second");
+            b.AddAttribute(7, "OkText", "Done");
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        var selects = TimeSelects(cut);
+        Assert.Equal("Custom hour", selects[0].GetAttribute("aria-label"));
+        Assert.Equal("Custom minute", selects[1].GetAttribute("aria-label"));
+        Assert.Equal("Custom second", selects[2].GetAttribute("aria-label"));
+        Assert.Equal("Done", cut.Find(".wss-picker-ok").TextContent);
+    }
+
+    // ----- Read-only display: effective DateFormat default by Type ----------------------------
+
+    [Fact]
+    public void Read_only_mode_defaults_to_HHmmss_for_Type_Time()
+    {
+        var model = new TimeOnlyModel { ShipTime = new TimeOnly(13, 45, 30) };
+        Expression<Func<TimeOnly>> field = () => model.ShipTime;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.AddAttribute(1, "Value", model.ShipTime);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Time);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("13:45:30", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Fact]
+    public void Read_only_mode_defaults_to_MMyyyy_for_Type_Month()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Month);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("03-2020", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Fact]
+    public void Read_only_mode_defaults_to_MMddyyyyHHmmss_for_Type_DateTimeLocal()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5, 13, 45, 30) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.DateTimeLocal);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("03-05-2020 13:45:30", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Fact]
+    public void Explicit_DateFormat_still_wins_over_the_Type_default()
+    {
+        var model = new TimeOnlyModel { ShipTime = new TimeOnly(13, 45, 30) };
+        Expression<Func<TimeOnly>> field = () => model.ShipTime;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.AddAttribute(1, "Value", model.ShipTime);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Time);
+            b.AddAttribute(4, "DateFormat", "h:mm tt");
+            b.AddAttribute(5, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("1:45 PM", cut.Find(".edit-readonly-value").TextContent);
     }
 
     [Fact]
