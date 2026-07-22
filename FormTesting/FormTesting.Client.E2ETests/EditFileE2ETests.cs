@@ -50,6 +50,25 @@ public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : PageTest
     }
 
     [Fact]
+    public async Task Clicking_the_drop_zone_away_from_the_top_edge_opens_the_file_chooser()
+    {
+        await NavigateAsync();
+        var dropZone = Page.Locator("section.demo-section").First.Locator(".edit-file-drop-zone");
+        var box = await dropZone.BoundingBoxAsync();
+
+        // Regression: the invisible <input type=file> only stretched over the zone via `inset: 0`,
+        // with nothing to outweigh a host app's own `input { height: ... }` reset for the `height`
+        // property specifically -- it shrank to that fixed height at the top of the zone, so a click
+        // anywhere lower (where the icon/text actually sit) missed the input and no picker opened.
+        var fileChooser = await Page.RunAndWaitForFileChooserAsync(() => dropZone.ClickAsync(new()
+        {
+            Position = new Position { X = box!.Width / 2, Y = box.Height - 8 },
+        }));
+
+        Assert.NotNull(fileChooser);
+    }
+
+    [Fact]
     public async Task Toggling_FormOptions_edit_mode_hides_the_drop_zone()
     {
         await NavigateAsync();

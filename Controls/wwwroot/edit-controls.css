@@ -659,6 +659,11 @@
 .edit-file-drop-zone input[type=file] {
     position: absolute;
     inset: 0;
+    /* Explicit, not just inset: a consumer's global `input { height: ... }` reset (common in a
+       host app's own baseline styles) sets the `height` property with nothing here to outweigh it,
+       shrinking this invisible click-catcher to that fixed height instead of covering the zone. */
+    width: 100%;
+    height: 100%;
     opacity: 0;
     cursor: pointer;
 }
