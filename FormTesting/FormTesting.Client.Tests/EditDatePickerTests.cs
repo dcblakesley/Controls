@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// bUnit tests for <see cref="EditDatePicker"/> — the form-control wrapper around the
+/// bUnit tests for <see cref="EditDatePicker{T}"/> — the form-control wrapper around the
 /// <see cref="DatePicker"/> UI-kit calendar dropdown. These cover the layer this control adds over
 /// DatePicker itself (EditContext binding, validation, label, read-only view, parameter forwarding);
 /// DatePicker's own open/close/navigation/keyboard behavior is already covered by
@@ -33,6 +33,13 @@ public class EditDatePickerTests : TestContext
             .First(b => !b.ClassList.Contains("wss-picker-day-outside") &&
                         b.TextContent == dayNumber.ToString("00", CultureInfo.InvariantCulture));
 
+    // Scoped to this file's DateOnly/DateTime (non-nullable) coverage -- PersonModel.BirthDate is
+    // DateTime? only.
+    class DateOnlyModel { public DateOnly ShipDate { get; set; } }
+    class NullableDateOnlyModel { public DateOnly? ShipDate { get; set; } }
+    class NonNullableDateTimeModel { public DateTime ShipDate { get; set; } }
+    class UnsupportedTypeModel { public int ShipDate { get; set; } }
+
     [Fact]
     public void Day_click_updates_the_bound_model_and_notifies_the_field()
     {
@@ -40,7 +47,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.BirthDate = v));
@@ -69,7 +76,7 @@ public class EditDatePickerTests : TestContext
             b.AddAttribute(1, "EditContext", editContext);
             b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
             {
-                content.OpenComponent<EditDatePicker>(0);
+                content.OpenComponent<EditDatePicker<DateTime?>>(0);
                 content.AddAttribute(1, "Value", model.BirthDate);
                 content.AddAttribute(2, "ValueExpression", field);
                 content.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.BirthDate = v));
@@ -92,7 +99,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -118,7 +125,7 @@ public class EditDatePickerTests : TestContext
             {
                 content.OpenComponent<DataAnnotationsValidator>(0);
                 content.CloseComponent();
-                content.OpenComponent<EditDatePicker>(1);
+                content.OpenComponent<EditDatePicker<DateTime?>>(1);
                 content.AddAttribute(2, "Value", model.BirthDate);
                 content.AddAttribute(3, "ValueExpression", field);
                 content.CloseComponent();
@@ -143,7 +150,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -162,7 +169,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -181,7 +188,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Label", "Date of Birth");
@@ -199,7 +206,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Label", "Date of Birth");
@@ -219,7 +226,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -237,7 +244,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "DateFormat", "yyyy-MM-dd");
@@ -262,7 +269,7 @@ public class EditDatePickerTests : TestContext
             Expression<Func<DateTime?>> field = () => model.BirthDate;
             var cut = Render(WithForm(model, b =>
             {
-                b.OpenComponent<EditDatePicker>(0);
+                b.OpenComponent<EditDatePicker<DateTime?>>(0);
                 b.AddAttribute(1, "Value", model.BirthDate);
                 b.AddAttribute(2, "ValueExpression", field);
                 b.AddAttribute(3, "DateFormat", "yyyy-MM-dd");
@@ -296,7 +303,7 @@ public class EditDatePickerTests : TestContext
                 b.AddAttribute(1, "Model", model);
                 b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
                 {
-                    content.OpenComponent<EditDatePicker>(0);
+                    content.OpenComponent<EditDatePicker<DateTime?>>(0);
                     content.AddAttribute(1, "Value", model.BirthDate);
                     content.AddAttribute(2, "ValueExpression", field);
                     content.CloseComponent();
@@ -321,7 +328,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
@@ -338,7 +345,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
@@ -355,7 +362,7 @@ public class EditDatePickerTests : TestContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker>(0);
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Min", new DateTime(2020, 1, 10));
@@ -370,5 +377,104 @@ public class EditDatePickerTests : TestContext
         Assert.True(Day(cut, 9).HasAttribute("disabled"));
         Assert.False(Day(cut, 10).HasAttribute("disabled"));
         Assert.True(Day(cut, 21).HasAttribute("disabled"));
+    }
+
+    // EditDatePicker<T> generalizes beyond the original DateTime?-only binding -- these cover the
+    // conversion bridge to/from the inner DatePicker's DateTime? (PickerValue/OnValueChanged/FromPickerValue).
+
+    [Fact]
+    public void DateOnly_binding_round_trips_through_the_picker()
+    {
+        var model = new DateOnlyModel { ShipDate = new DateOnly(2020, 3, 5) };
+        Expression<Func<DateOnly>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateOnly>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly>(this, v => model.ShipDate = v));
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateOnly(2020, 3, 20), model.ShipDate);
+    }
+
+    [Fact]
+    public void Nullable_DateOnly_binding_round_trips_and_clears()
+    {
+        var model = new NullableDateOnlyModel { ShipDate = new DateOnly(2020, 3, 5) };
+        Expression<Func<DateOnly?>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateOnly?>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly?>(this, v => model.ShipDate = v));
+            b.CloseComponent();
+        }));
+
+        cut.Find(".wss-picker-clear").Click();
+
+        Assert.Null(model.ShipDate);
+    }
+
+    [Fact]
+    public void NonNullable_DateTime_binding_round_trips_through_the_picker()
+    {
+        var model = new NonNullableDateTimeModel { ShipDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTime>(this, v => model.ShipDate = v));
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2020, 3, 20), model.ShipDate);
+    }
+
+    [Fact]
+    public void NonNullable_DateTime_default_counts_as_semantically_empty_for_hiding()
+    {
+        // Mirrors the DateTime? HidingMode_WhenNullOrDefault test above -- a non-nullable binding can
+        // never be null, so this is the only way to reach IsValueDefault's "DateTime dt => dt == default"
+        // branch for a non-nullable T.
+        var model = new NonNullableDateTimeModel { ShipDate = default };
+        Expression<Func<DateTime>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    [Fact]
+    public void Unsupported_bound_type_throws_on_render()
+    {
+        var model = new UnsupportedTypeModel { ShipDate = 5 };
+        Expression<Func<int>> field = () => model.ShipDate;
+
+        Assert.Throws<NotSupportedException>(() => Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<int>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        })));
     }
 }

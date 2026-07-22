@@ -260,7 +260,7 @@ public partial class EditDateRange : IEditControl, IDisposable
     /// Both Start and End null count as "default" for the strict Null hiding modes
     /// (<see cref="HidingMode.WhenNull"/>/<see cref="HidingMode.WhenReadOnlyAndNull"/>); both
     /// null-or-<c>default(DateTime)</c> count as "default" for the NullOrDefault modes — mirrors
-    /// <see cref="EditDatePicker"/>'s <c>IsValueDefault</c> override applied per field, since there's
+    /// <see cref="EditDatePicker{T}"/>'s <c>IsValueDefault</c> override applied per field, since there's
     /// no meaningful partial-range default distinct from "nothing entered".
     /// </summary>
     protected bool ShouldShowComponent()
@@ -272,7 +272,7 @@ public partial class EditDateRange : IEditControl, IDisposable
 
     /// <summary>
     /// True when a range endpoint is either unset or the uninitialized <c>default(DateTime)</c>
-    /// (0001-01-01) — the same semantically-empty value <see cref="EditDatePicker"/>'s
+    /// (0001-01-01) — the same semantically-empty value <see cref="EditDatePicker{T}"/>'s
     /// <c>IsValueDefault</c> override treats as empty (see <see cref="EditControlBase{TValue}.IsValueDefault"/>'s
     /// remarks for why a boxed default DateTime isn't caught by a plain null check).
     /// </summary>

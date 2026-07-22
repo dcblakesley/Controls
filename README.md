@@ -138,7 +138,7 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 - **`EditTextArea`** - Multi-line text input
 - **`EditNumber`** - Numeric input with validation
 - **`EditDate`** - Date picker component
-- **`EditDatePicker`** - Form-bound calendar-dropdown date field (the UI-kit `DatePicker` with full `EditForm` validation)
+- **`EditDatePicker`** - Form-bound calendar-dropdown date field (the UI-kit `DatePicker` with full `EditForm` validation); binds `DateTime`, `DateTime?`, `DateOnly`, or `DateOnly?`
 - **`EditDateRange`** - Form-bound date-range field (`@bind-Start`/`@bind-End`, per-field validation, backed by `DateRangePicker`)
 - **`EditBool`** - Checkbox for boolean values
 - **`EditBoolNullRadio`** - Three-state radio for nullable booleans

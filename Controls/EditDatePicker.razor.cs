@@ -4,7 +4,10 @@ namespace Controls;
 /// Edit control for a single date, backed by the <see cref="DatePicker"/> UI-kit calendar dropdown.
 /// Adds form binding, validation, label, read-only view, and <see cref="FormOptions"/> support (the
 /// same contract every other scalar control provides) on top of DatePicker's type-or-pick UX. For a
-/// native <c>&lt;input type="date"&gt;</c> use <see cref="EditDate{T}"/> instead.
+/// native <c>&lt;input type="date"&gt;</c> (or a <c>Time</c>/<c>DateTimeLocal</c>/<c>Month</c> input,
+/// or a <c>TimeOnly</c>/<c>DateTimeOffset</c> binding) use <see cref="EditDate{T}"/> instead — the
+/// underlying <see cref="DatePicker"/> is a date-only (midnight local) value, so <typeparamref name="T"/>
+/// is limited to <c>DateTime</c>, <c>DateTime?</c>, <c>DateOnly</c>, and <c>DateOnly?</c>.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,8 +19,13 @@ namespace Controls;
 /// <c>AdditionalAttributes</c> target), which also carries the EditContext state classes via
 /// <c>CssClass</c>.
 /// </para>
+/// <para>
+/// <see cref="Min"/>/<see cref="Max"/> stay <c>DateTime?</c> regardless of <typeparamref name="T"/> —
+/// only the bound value generalizes. A <c>DateOnly</c>-bound instance still sets them with a
+/// <c>DateTime</c> (e.g. <c>Min="@d.ToDateTime(TimeOnly.MinValue)"</c>).
+/// </para>
 /// </remarks>
-public partial class EditDatePicker : EditControlBase<DateTime?>
+public partial class EditDatePicker<T> : EditControlBase<T>
 {
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
@@ -26,7 +34,7 @@ public partial class EditDatePicker : EditControlBase<DateTime?>
     /// from your markup.
     /// </summary>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
-    [Parameter] public Expression<Func<DateTime?>>? Field { get; set; }
+    [Parameter] public Expression<Func<T>>? Field { get; set; }
 
     /// <inheritdoc cref="DatePicker.Min"/>
     [Parameter] public DateTime? Min { get; set; }
@@ -76,18 +84,45 @@ public partial class EditDatePicker : EditControlBase<DateTime?>
     {
         base.OnInitialized();
         InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditDatePicker)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
+            $"{nameof(EditDatePicker<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
     // The picker sets the value through its own ValueChanged callback, not string parsing — mirrors
     // EditSelectSearch's contract for a wrapped UI-kit engine. Binding to CurrentValueAsString (the
     // debug bound-value display excepted, which only ever reads it) is unsupported.
-    protected override bool TryParseValueFromString(string? value, out DateTime? result, out string validationErrorMessage)
+    protected override bool TryParseValueFromString(string? value, out T result, out string validationErrorMessage)
         => throw new NotSupportedException(
-            "EditDatePicker does not parse string input; it binds via the DatePicker value callback.");
+            $"{nameof(EditDatePicker<T>)} does not parse string input; it binds via the DatePicker value callback.");
 
-    // Setting CurrentValue runs the InputBase machinery: NotifyFieldChanged + validation + ValueChanged.
-    void OnValueChanged(DateTime? value) => CurrentValue = value;
+    // The inner <DatePicker> is DateTime?-only (a date-only midnight value) regardless of T -- these
+    // bridge CurrentValue to and from it. Boxing+pattern-match on the runtime type (not typeof(T) ==
+    // checks) mirrors EditDate<T>'s GetDisplayValue/IsValueDefault, which already rely on the CLR
+    // boxing a non-null Nullable<T> as its underlying T (so "DateTime dt" matches DateTime? too).
+    DateTime? PickerValue => CurrentValue switch
+    {
+        null => null,
+        DateTime dt => dt,
+        DateOnly d => d.ToDateTime(TimeOnly.MinValue),
+        _ => throw UnsupportedType()
+    };
+
+    // The reverse direction can't pattern-match on the incoming value (it's always DateTime?) --
+    // typeof(T) picks which of the four supported shapes to produce. typeof(T) == checks over a
+    // handful of concrete value types are fully trim/AOT-safe (no reflection over T's members).
+    void OnValueChanged(DateTime? value) => CurrentValue = FromPickerValue(value);
+
+    static T FromPickerValue(DateTime? value)
+    {
+        if (typeof(T) == typeof(DateTime)) return (T)(object)(value ?? default(DateTime));
+        if (typeof(T) == typeof(DateTime?)) return (T)(object)value!;
+        DateOnly? dateOnly = value is { } v ? DateOnly.FromDateTime(v) : null;
+        if (typeof(T) == typeof(DateOnly)) return (T)(object)(dateOnly ?? default(DateOnly));
+        if (typeof(T) == typeof(DateOnly?)) return (T)(object)dateOnly!;
+        throw UnsupportedType();
+    }
+
+    static NotSupportedException UnsupportedType() => new(
+        $"EditDatePicker<{typeof(T)}> is not supported -- supported types are DateTime, DateTime?, DateOnly, and DateOnly?.");
 
     // The validation-state ARIA goes through DatePicker's dedicated Aria* parameters (straight onto
     // its actual <input>); this splat carries only the consumer's own attributes plus the state
@@ -110,22 +145,32 @@ public partial class EditDatePicker : EditControlBase<DateTime?>
 
     string GetDisplayValue()
     {
-        if (CurrentValue is not { } value) return string.Empty;
         // Gregorian-forced like the picker's own display, so read-only and edit mode can never
         // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
         var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
         try
         {
-            return value.ToString(DateFormat, culture);
+            return CurrentValue switch
+            {
+                null => string.Empty,
+                DateTime dt => dt.ToString(DateFormat, culture),
+                DateOnly d => d.ToString(DateFormat, culture),
+                _ => string.Empty
+            };
         }
         catch (FormatException)
         {
-            return value.ToString(culture);
+            return CurrentValue?.ToString() ?? string.Empty;
         }
     }
 
-    // default(DateTime) (0001-01-01) counts as semantically empty for date controls -- mirrors
-    // EditDate<T>'s IsValueDefault override. Unlike EditDate<T>, CurrentValue here is always
-    // DateTime? (not a boxed generic T), so there's no switch needed to catch the type.
-    protected override bool IsValueDefault() => CurrentValue is null || CurrentValue == default(DateTime);
+    // default(DateTime)/default(DateOnly) count as semantically empty for date controls -- mirrors
+    // EditDate<T>'s IsValueDefault override, including the same boxed-Nullable<T> pattern-match trick
+    // (see PickerValue above) so DateTime?/DateOnly? null falls through to the EqualityComparer arm.
+    protected override bool IsValueDefault() => CurrentValue switch
+    {
+        DateTime dt => dt == default,
+        DateOnly d => d == default,
+        _ => EqualityComparer<T>.Default.Equals(CurrentValue, default!)
+    };
 }
