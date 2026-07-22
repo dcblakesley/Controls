@@ -511,6 +511,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **New** (UI Kit)
 - Hover tooltips (`data-tooltip`) — ported from the RPG Assistant app's `data-tooltip` convention. Not a component: a `data-tooltip="..."` attribute on any element gets a styled CSS-only hover/focus tooltip (arrow, slide-in, `:focus-visible` support, hidden under `hover: none`) via new rules in `wss-controls.css`, themed through `--wss-*` tokens plus the new `--wss-tooltip-gap` / `--wss-tooltip-z-index` knobs. The optional new `wss-tooltip.js` (a plain `<script>` tag, no interop) auto-places the bubble — above/below and left/right — based on the trigger's position within its nearest clipping ancestor or panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`), so it stays inside a Modal/Drawer instead of running past the edge. See [Hover tooltips](#hover-tooltips-data-tooltip).
 
+**Polish** (Edit Controls)
+- `LabelTooltip`'s popover (the form-label help-icon tooltip) is restyled to match the `data-tooltip` convention's visual language instead of its old solid-dark chip: a light card (bg/border/radius/box-shadow) with the same downward-pointing arrow, plus the same fade/slide-in transition. New `--edit-tooltip-gap` (default `3px`) and `--edit-tooltip-bg` (default `#fff`) knobs; `--edit-tooltip-z-index` unchanged. Behavior is untouched — still a real `<span role="tooltip">` wired via `aria-describedby`, Escape still dismisses it (WCAG 1.4.13) — this is a CSS-only reskin. Hover now opens after the same 0.35s hover-intent delay as `data-tooltip`; keyboard focus still shows it instantly (no delay), since there's no incidental-focus case to guard against.
+
 ### 10.6.6
 
 **Fixes / polish** (MFE-compatibility follow-up)
