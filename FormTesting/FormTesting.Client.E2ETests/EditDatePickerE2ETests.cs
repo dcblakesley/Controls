@@ -139,6 +139,62 @@ public class EditDatePickerE2ETests(AppFixture app, BrowserFixture browser) : Pa
     }
 
     [Fact]
+    public async Task Mode_Week_field_commits_the_week_start_into_the_bound_DateOnly_value()
+    {
+        await NavigateAsync();
+
+        // Fifth section: WeekValue binds a DateOnly? via Mode="DatePickerMode.Week", pinned to
+        // 2026-02-14 (a Saturday). The Has locator must be page-rooted (same gotcha as the Time/
+        // Month tests above).
+        var section = Page.Locator("section.demo-section").Nth(4);
+        var input = section.Locator("#WeekValue");
+        var picker = section.Locator(".wss-picker", new() { Has = Page.Locator("#WeekValue") });
+        var field = picker.Locator(".wss-picker-input");
+        var dropdown = picker.Locator(".wss-picker-dropdown");
+
+        await field.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        // Click a different day in the SAME week (Feb 11, Wednesday) so the commit is observably
+        // the week START (Feb 8), not the clicked day.
+        await dropdown.Locator("[data-date='2026-02-11']").ClickAsync();
+
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+        // EditDatePicker's Format is unset, so the picker's Mode.Week default "yyyy-Www" shorthand
+        // applies -- the exact week number depends on the culture's week rule, so this only asserts
+        // the shape (the week-start value itself is bUnit-covered at the model level).
+        await Expect(input).ToHaveValueAsync(new Regex(@"^2026-W\d{2}$"));
+    }
+
+    [Fact]
+    public async Task Use12Hours_field_displays_h_mm_tt_and_commits_the_shifted_24_hour_value()
+    {
+        await NavigateAsync();
+
+        // Sixth section: MeetingTime binds a TimeOnly? via Type="InputDateType.Time" with
+        // Use12Hours="true" and ShowSeconds="false", pinned to 14:30:00.
+        var section = Page.Locator("section.demo-section").Nth(5);
+        var input = section.Locator("#MeetingTime");
+        var picker = section.Locator(".wss-picker", new() { Has = Page.Locator("#MeetingTime") });
+        var field = picker.Locator(".wss-picker-input");
+        var dropdown = picker.Locator(".wss-picker-dropdown");
+
+        // The 12-hour, no-seconds effective format applies to the bound display before any interaction.
+        await Expect(input).ToHaveValueAsync("2:30 PM");
+
+        await field.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        await dropdown.Locator("select[aria-label='AM/PM']").SelectOptionAsync("AM");
+
+        // Time mode commits immediately without closing.
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(input).ToHaveValueAsync("2:30 AM");
+    }
+
+    [Fact]
     public async Task Visual_baseline_basic_section()
     {
         await NavigateAsync();

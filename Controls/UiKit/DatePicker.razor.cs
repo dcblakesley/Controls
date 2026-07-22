@@ -618,9 +618,14 @@ public partial class DatePicker : IAsyncDisposable
 
     // The first day of the calendar week containing `day`, per EffectiveFirstDayOfWeek. Shared by
     // GridDays (the 42-cell layout) and Home/End keyboard navigation so they can never disagree.
-    DateTime WeekStart(DateTime day)
+    DateTime WeekStart(DateTime day) => WeekStartCore(day, EffectiveFirstDayOfWeek);
+
+    // The instance-independent core of WeekStart, taking the resolved first-day-of-week directly --
+    // shared with FormatWeekDisplay below (EditDatePicker's read-only view calls that one without an
+    // instance to resolve EffectiveFirstDayOfWeek from).
+    static DateTime WeekStartCore(DateTime day, DayOfWeek firstDayOfWeek)
     {
-        var lead = ((int)day.DayOfWeek - (int)EffectiveFirstDayOfWeek + 7) % 7;
+        var lead = ((int)day.DayOfWeek - (int)firstDayOfWeek + 7) % 7;
         return day.AddDays(-lead);
     }
 
@@ -649,8 +654,11 @@ public partial class DatePicker : IAsyncDisposable
 
     // The ISO-ish week number of the calendar week starting on `weekStart`, per the current
     // culture's week rule (mirrors WeekdayHeaders/WeekStart in following PickerCulture throughout).
-    int WeekNumberOf(DateTime weekStart) =>
-        PickerCulture.Calendar.GetWeekOfYear(weekStart, PickerCulture.DateTimeFormat.CalendarWeekRule, EffectiveFirstDayOfWeek);
+    int WeekNumberOf(DateTime weekStart) => WeekNumberOfCore(weekStart, PickerCulture, EffectiveFirstDayOfWeek);
+
+    // The instance-independent core of WeekNumberOf -- shared with FormatWeekDisplay below.
+    static int WeekNumberOfCore(DateTime weekStart, CultureInfo culture, DayOfWeek firstDayOfWeek) =>
+        culture.Calendar.GetWeekOfYear(weekStart, culture.DateTimeFormat.CalendarWeekRule, firstDayOfWeek);
 
     // Is `weekStart` the row containing Value's week? Only meaningful in Mode.Week -- ShowWeekNumbers
     // in Date/DateTime mode renders the same rows layout with NO selection-styling change (day clicks
@@ -680,17 +688,41 @@ public partial class DatePicker : IAsyncDisposable
         if (value is not { } v) return string.Empty;
         if (Mode == DatePickerMode.Quarter && Format is null)
         {
-            return $"{v.Year.ToString(PickerCulture)}-Q{QuarterOf(v).ToString(PickerCulture)}";
+            return FormatQuarterDisplay(v, PickerCulture);
         }
         // Week mode's null-Format display: same rationale as Quarter's above -- no .NET token for a
-        // week number. The displayed year is the week START's calendar year (deterministic at
-        // year-boundary weeks, unlike v's own year, which can disagree with the week it's in).
+        // week number.
         if (Mode == DatePickerMode.Week && Format is null)
         {
-            var weekStart = WeekStart(v);
-            return $"{weekStart.Year.ToString(PickerCulture)}-W{WeekNumberOf(weekStart).ToString("00", PickerCulture)}";
+            return FormatWeekDisplay(v, PickerCulture, EffectiveFirstDayOfWeek);
         }
         return v.ToString(EffectiveFormat, PickerCulture);
+    }
+
+    // The Quarter/Week null-Format display strings, promoted to internal statics so EditDatePicker's
+    // read-only view (a different type entirely, with no DatePicker instance to call FormatDate on)
+    // can produce the identical "yyyy-Qn"/"yyyy-Www" text instead of duplicating this regex-adjacent
+    // formatting logic. Kept as the single source of truth: FormatDate above (and TryParseDate's own
+    // Week-mode search loop, via the instance WeekNumberOf/WeekStart wrappers) are the only other
+    // callers, so a future format tweak here can't drift between DatePicker and EditDatePicker.
+
+    /// <summary>Quarter mode's null-<see cref="Format"/> display for <paramref name="value"/> —
+    /// <c>"yyyy-Qn"</c> (e.g. "2026-Q3") in <paramref name="culture"/>'s digits. Internal: shared
+    /// with <see cref="EditDatePicker{T}"/>'s read-only view, not part of this control's public
+    /// surface.</summary>
+    internal static string FormatQuarterDisplay(DateTime value, CultureInfo culture) =>
+        $"{value.Year.ToString(culture)}-Q{QuarterOf(value).ToString(culture)}";
+
+    /// <summary>Week mode's null-<see cref="Format"/> display for <paramref name="value"/> —
+    /// <c>"yyyy-Www"</c> (e.g. "2026-W08") in <paramref name="culture"/>'s digits, where the year is
+    /// the WEEK START's calendar year (deterministic at year-boundary weeks, unlike
+    /// <paramref name="value"/>'s own year, which can disagree with the week it falls in). Internal:
+    /// shared with <see cref="EditDatePicker{T}"/>'s read-only view, not part of this control's
+    /// public surface.</summary>
+    internal static string FormatWeekDisplay(DateTime value, CultureInfo culture, DayOfWeek firstDayOfWeek)
+    {
+        var weekStart = WeekStartCore(value, firstDayOfWeek);
+        return $"{weekStart.Year.ToString(culture)}-W{WeekNumberOfCore(weekStart, culture, firstDayOfWeek).ToString("00", culture)}";
     }
 
     // Exact effective format first, then the current culture's general parse -- then normalizes the

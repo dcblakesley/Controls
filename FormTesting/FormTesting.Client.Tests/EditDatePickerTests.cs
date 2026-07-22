@@ -840,4 +840,242 @@ public class EditDatePickerTests : TestContext
             b.CloseComponent();
         })));
     }
+
+    // ----- Mode override (phase 2) -------------------------------------------------------------
+
+    [Fact]
+    public void Mode_Week_overrides_Type_and_renders_week_rows()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Mode", DatePickerMode.Week);
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.NotEmpty(cut.FindAll(".wss-picker-week-row"));
+        Assert.Empty(cut.FindAll(".wss-picker-grid")); // the flat 42-cell grid is replaced by rows
+    }
+
+    [Fact]
+    public void Mode_Year_overrides_Type_and_renders_the_decade_header()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Mode", DatePickerMode.Year);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.NotEmpty(cut.FindAll(".wss-picker-decade-label"));
+        Assert.Equal(12, cut.FindAll(".wss-picker-month-btn").Count); // 10 decade years + 2 dimmed
+    }
+
+    [Fact]
+    public void Type_alone_still_maps_to_Date_mode_when_Mode_is_unset()
+    {
+        // Regression guard: Mode defaults to null, so an EditDatePicker that never sets it (every
+        // other test in this file) must keep resolving Type -> PickerMode exactly as before.
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.NotEmpty(cut.FindAll(".wss-picker-day"));
+        Assert.Empty(cut.FindAll(".wss-picker-week-row"));
+        Assert.Empty(cut.FindAll(".wss-picker-decade-label"));
+    }
+
+    [Fact]
+    public void Mode_Week_DateOnly_binding_commits_the_week_start()
+    {
+        // March 2020: the 1st is a Sunday, so the Sunday-Saturday week containing March 5 (Thu) is
+        // March 1-7. Clicking March 7 (Sat) must commit March 1 -- the week START, not the click.
+        var model = new NullableDateOnlyModel { ShipDate = new DateOnly(2020, 3, 5) };
+        Expression<Func<DateOnly?>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateOnly?>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly?>(this, v => model.ShipDate = v));
+            b.AddAttribute(4, "Mode", DatePickerMode.Week);
+            b.AddAttribute(5, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+        Day(cut, 7).Click();
+
+        Assert.Equal(new DateOnly(2020, 3, 1), model.ShipDate);
+    }
+
+    // ----- Forwarded phase-2 parameters ---------------------------------------------------------
+
+    [Fact]
+    public void DisabledDate_forwards_and_disables_a_day_cell()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) }; // Thursday
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "DisabledDate", (Func<DateTime, bool>)(d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday));
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.True(Day(cut, 7).HasAttribute("disabled")); // Saturday, same week as the 5th
+        Assert.False(Day(cut, 5).HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Use12Hours_forwards_and_renders_the_period_select()
+    {
+        var model = new TimeOnlyModel { ShipTime = new TimeOnly(14, 0) };
+        Expression<Func<TimeOnly>> field = () => model.ShipTime;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.AddAttribute(1, "Value", model.ShipTime);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Time);
+            b.AddAttribute(4, "Use12Hours", true);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(4, selects.Count); // hour, minute, second, period
+        Assert.Equal("AM/PM", selects[3].GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void ShowToday_forwards_and_renders_the_today_link()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ShowToday", true);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.Equal("Today", cut.Find(".wss-picker-today-btn").TextContent);
+    }
+
+    // ----- Read-only display: Year/Quarter/Week and 12-hour Time -------------------------------
+
+    [Fact]
+    public void Read_only_mode_displays_just_the_year_for_Mode_Year()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Mode", DatePickerMode.Year);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal("2020", cut.Find(".edit-readonly-value").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Read_only_mode_displays_the_quarter_shorthand_for_Mode_Quarter()
+    {
+        var model = new PersonModel { BirthDate = new DateTime(2026, 8, 15) }; // Q3
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Mode", DatePickerMode.Quarter);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal("2026-Q3", cut.Find(".edit-readonly-value").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Read_only_mode_displays_the_week_shorthand_for_Mode_Week()
+    {
+        var value = new DateTime(2026, 2, 14);
+        const DayOfWeek firstDayOfWeek = DayOfWeek.Sunday;
+        var lead = ((int)value.DayOfWeek - (int)firstDayOfWeek + 7) % 7;
+        var weekStart = value.AddDays(-lead);
+        var rule = CultureInfo.CurrentCulture.DateTimeFormat.CalendarWeekRule;
+        var weekNumber = new GregorianCalendar().GetWeekOfYear(weekStart, rule, firstDayOfWeek);
+        var expected = $"{weekStart.Year}-W{weekNumber:00}";
+
+        var model = new PersonModel { BirthDate = value };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Mode", DatePickerMode.Week);
+            b.AddAttribute(4, "FirstDayOfWeek", firstDayOfWeek);
+            b.AddAttribute(5, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal(expected, cut.Find(".edit-readonly-value").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Read_only_mode_honors_Use12Hours_for_Type_Time()
+    {
+        var model = new TimeOnlyModel { ShipTime = new TimeOnly(14, 5, 9) };
+        Expression<Func<TimeOnly>> field = () => model.ShipTime;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.AddAttribute(1, "Value", model.ShipTime);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Type", InputDateType.Time);
+            b.AddAttribute(4, "Use12Hours", true);
+            b.AddAttribute(5, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("2:05:09 PM", cut.Find(".edit-readonly-value").TextContent);
+    }
 }

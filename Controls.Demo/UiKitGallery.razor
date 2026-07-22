@@ -270,6 +270,65 @@
         <p data-test-id="datetime-result">
             Selected: @(_dateTimeValue?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")
         </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Year</code>/<code>Quarter</code>/<code>Week</code> round out <code>Mode</code>'s
+            remaining granularities — initial values stay in the Feb 2026 family for the same
+            baseline-determinism reason as the demos above.
+        </p>
+        <DatePicker @bind-Value="_yearValue"
+                    Mode="DatePickerMode.Year"
+                    Id="demo-year"
+                    Width="160px" />
+        <p data-test-id="year-result">
+            Selected: @(_yearValue?.Year.ToString() ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_quarterValue"
+                    Mode="DatePickerMode.Quarter"
+                    Id="demo-quarter"
+                    Width="200px" />
+        <p data-test-id="quarter-result">
+            Selected: @(_quarterValue?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_weekValue"
+                    Mode="DatePickerMode.Week"
+                    FirstDayOfWeek="DayOfWeek.Sunday"
+                    Id="demo-week"
+                    Width="220px" />
+        <p data-test-id="week-result">
+            Selected: @(_weekValue?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Presets</code> adds a shortcut sidebar (resolved at click time, same contract as
+            <code>DateRangePicker.Presets</code> above) and <code>ShowToday</code> adds a footer
+            link — both commit a value and close the panel.
+        </p>
+        <DatePicker @bind-Value="_presetsValue"
+                    Presets="_datePresets"
+                    ShowToday="true"
+                    Id="demo-presets"
+                    Width="300px" />
+        <p data-test-id="presets-result">
+            Selected: @(_presetsValue?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Use12Hours</code> + <code>MinuteStep</code> + <code>ShowSeconds="false"</code>
+            together on a <code>Time</code> mode picker.
+        </p>
+        <DatePicker @bind-Value="_twelveHourValue"
+                    Mode="DatePickerMode.Time"
+                    Use12Hours="true"
+                    MinuteStep="15"
+                    ShowSeconds="false"
+                    Id="demo-12h"
+                    Width="200px" />
+        <p data-test-id="twelve-hour-result">
+            Selected: @(_twelveHourValue?.ToString("HH:mm") ?? "—")
+        </p>
     </section>
 
     <section class="demo-section">
@@ -410,6 +469,26 @@
     DateTime? _monthValue = new DateTime(2026, 2, 1);
     DateTime? _timeValue = new DateTime(2026, 2, 14, 9, 30, 15);
     DateTime? _dateTimeValue = new DateTime(2026, 2, 14, 9, 30, 15);
+
+    // --- DatePicker Mode demos (Year/Quarter/Week) + footer/12-hour demos --- pinned for the same
+    // reason (all fall in the Feb 2026 family already established above).
+    DateTime? _yearValue = new DateTime(2026, 2, 14);
+    DateTime? _quarterValue = new DateTime(2026, 2, 14);
+    DateTime? _weekValue = new DateTime(2026, 2, 14);
+    DateTime? _presetsValue = new DateTime(2026, 2, 14);
+    DateTime? _twelveHourValue = new DateTime(2026, 2, 14, 14, 30, 0);
+
+    // Resolved at click time (DateTime.Today), same contract as _rangePresets below.
+    static readonly DatePickerPreset[] _datePresets =
+    [
+        new("Today", static () => DateTime.Today),
+        new("Next Monday", static () =>
+        {
+            var today = DateTime.Today;
+            var daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+            return today.AddDays(daysUntilMonday == 0 ? 7 : daysUntilMonday);
+        }),
+    ];
 
     // The Sales-Report-style shortcuts. Resolved at click time (DateTime.Today), so they stay
     // correct however long the page lives.

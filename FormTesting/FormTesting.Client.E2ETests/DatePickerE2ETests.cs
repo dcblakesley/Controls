@@ -298,6 +298,43 @@ public class DatePickerE2ETests : IAsyncLifetime
         Assert.Equal(scrollBefore, scrollAfter);
     }
 
+    // --- Mode.Year demo (#demo-year, pinned Value=2026-02-14) --------------------------------
+
+    ILocator YearPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-year") });
+    ILocator YearField => YearPicker.Locator(".wss-picker-input");
+    ILocator YearDropdown => YearPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenYearAsync()
+    {
+        await YearField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await YearField.ClickAsync();
+        await Expect(YearDropdown).ToBeVisibleAsync();
+        await Expect(YearDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Year_grid_PageDown_flips_the_decade_with_focus_follow_and_no_page_scroll()
+    {
+        await GotoAsync();
+        await OpenYearAsync();
+
+        // The demo pins Value=2026-02-14, which carries the roving tabindex (2026-01-01, the year's
+        // own 1st) on open.
+        var start = YearDropdown.Locator("[data-date='2026-01-01']");
+        await start.FocusAsync();
+        var scrollBefore = await _page.EvaluateAsync<double>("window.scrollY");
+
+        // PageDown flips a whole decade (+10 years, 2020s -> 2030s) -- the grid re-renders with new
+        // button instances, exercising the pending-focus-date handoff (same as the day/month grids'
+        // month/year-crossing moves). Year cells reuse wss-picker-month-btn precisely so this is the
+        // same JS path wss-picker.js already suppresses scroll for -- no JS module change needed.
+        await _page.Keyboard.PressAsync("PageDown");
+        await Expect(YearDropdown.Locator("[data-date='2036-01-01']")).ToBeFocusedAsync();
+
+        var scrollAfter = await _page.EvaluateAsync<double>("window.scrollY");
+        Assert.Equal(scrollBefore, scrollAfter);
+    }
+
     // --- Mode.Time demo (#demo-time, pinned Value time-of-day 09:30:15) ----------------------
 
     ILocator TimePicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-time") });
@@ -370,6 +407,124 @@ public class DatePickerE2ETests : IAsyncLifetime
         await DateTimeDropdown.Locator(".wss-picker-ok").ClickAsync();
         await Expect(DateTimeDropdown).Not.ToBeVisibleAsync();
         await Expect(DateTimeInput).ToBeFocusedAsync();
+    }
+
+    // --- Mode.Week demo (#demo-week, pinned Value=2026-02-14, FirstDayOfWeek=Sunday) ----------
+
+    ILocator WeekPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-week") });
+    ILocator WeekField => WeekPicker.Locator(".wss-picker-input");
+    ILocator WeekInput => _page.Locator("#demo-week");
+    ILocator WeekDropdown => WeekPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenWeekAsync()
+    {
+        await WeekField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await WeekField.ClickAsync();
+        await Expect(WeekDropdown).ToBeVisibleAsync();
+        await Expect(WeekDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Week_mode_shows_the_selected_band_and_a_mid_week_click_commits_the_week_start()
+    {
+        await GotoAsync();
+        await OpenWeekAsync();
+
+        // The pinned Value=2026-02-14 (a Saturday) falls in the Feb 8 (Sun) - Feb 14 (Sat) week --
+        // the row carrying that band on open, before any click.
+        var selectedRow = WeekDropdown.Locator(".wss-picker-week-row-selected");
+        await Expect(selectedRow).ToHaveCountAsync(1);
+        await Expect(selectedRow.Locator("[data-date='2026-02-08']")).ToHaveCountAsync(1);
+        await Expect(selectedRow.Locator("[data-date='2026-02-14']")).ToHaveCountAsync(1);
+
+        // Clicking a MID-week day (Feb 11, Wednesday -- neither the row's first nor last day) must
+        // still commit that row's week START, not the clicked day.
+        await WeekDropdown.Locator("[data-date='2026-02-11']").ClickAsync();
+
+        await Expect(WeekDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='week-result']")).ToContainTextAsync("2026-02-08");
+        // Format null in Week mode shows the "yyyy-Www" shorthand, not the clicked day's own date.
+        await Expect(WeekInput).ToHaveValueAsync(new Regex(@"^2026-W\d{2}$"));
+    }
+
+    // --- Presets + ShowToday demo (#demo-presets, pinned Value=2026-02-14) --------------------
+
+    ILocator PresetsPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-presets") });
+    ILocator PresetsField => PresetsPicker.Locator(".wss-picker-input");
+    ILocator PresetsDropdown => PresetsPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenPresetsAsync()
+    {
+        await PresetsField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await PresetsField.ClickAsync();
+        await Expect(PresetsDropdown).ToBeVisibleAsync();
+        await Expect(PresetsDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Preset_click_commits_and_closes()
+    {
+        await GotoAsync();
+        await OpenPresetsAsync();
+
+        // "Today" resolves DateTime.Today at click time -- assert against the date the app itself
+        // reports rather than hardcoding "today" in the test (which would drift the day this runs).
+        var today = await _page.EvaluateAsync<string>("() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }");
+
+        await PresetsDropdown.Locator(".wss-picker-preset", new() { HasTextString = "Today" }).ClickAsync();
+
+        await Expect(PresetsDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='presets-result']")).ToContainTextAsync(today);
+    }
+
+    [Fact]
+    public async Task Today_link_commits_todays_date_and_closes()
+    {
+        await GotoAsync();
+        await OpenPresetsAsync();
+
+        var today = await _page.EvaluateAsync<string>("() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }");
+
+        await PresetsDropdown.Locator(".wss-picker-today-btn").ClickAsync();
+
+        await Expect(PresetsDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='presets-result']")).ToContainTextAsync(today);
+    }
+
+    // --- Use12Hours + MinuteStep=15 + ShowSeconds=false demo (#demo-12h, pinned 14:30) ---------
+
+    ILocator TwelveHourPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-12h") });
+    ILocator TwelveHourField => TwelveHourPicker.Locator(".wss-picker-input");
+    ILocator TwelveHourInput => _page.Locator("#demo-12h");
+    ILocator TwelveHourDropdown => TwelveHourPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenTwelveHourAsync()
+    {
+        await TwelveHourField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await TwelveHourField.ClickAsync();
+        await Expect(TwelveHourDropdown).ToBeVisibleAsync();
+        await Expect(TwelveHourDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Use12Hours_period_change_shifts_the_committed_value_and_input_by_12_hours()
+    {
+        await GotoAsync();
+        await OpenTwelveHourAsync();
+
+        // MinuteStep=15 restricts the minute select to the 0/15/30/45 lattice -- the pinned 14:30
+        // value sits on it, so no off-lattice "current value" option should be present.
+        var minuteOptions = await TwelveHourDropdown.Locator("select[aria-label='Minute'] option").AllTextContentsAsync();
+        Assert.Equal(["00", "15", "30", "45"], minuteOptions);
+
+        await Expect(TwelveHourInput).ToHaveValueAsync("2:30 PM");
+
+        await TwelveHourDropdown.Locator("select[aria-label='AM/PM']").SelectOptionAsync("AM");
+
+        // A period change commits without closing (matches every other Time-mode select).
+        await Expect(TwelveHourDropdown).ToBeVisibleAsync();
+        await Expect(TwelveHourInput).ToHaveValueAsync("2:30 AM");
+        await Expect(_page.Locator("[data-test-id='twelve-hour-result']")).ToContainTextAsync("02:30");
     }
 
     [Fact]

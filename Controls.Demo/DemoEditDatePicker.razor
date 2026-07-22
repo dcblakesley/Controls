@@ -65,6 +65,45 @@
         <pre class="code-block code-block-model"><code>@_typesModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditDatePicker @bind-Value="_model.WeekValue"
+                        Mode="DatePickerMode.Week"
+                        Label="Week (DateOnly?)" />
+
+        <EditDatePicker @bind-Value="_model.QuarterValue"
+                        Mode="DatePickerMode.Quarter"
+                        Label="Quarter (DateOnly?)" />
+
+        <EditDatePicker @bind-Value="_model.YearValue"
+                        Mode="DatePickerMode.Year"
+                        Label="Year (DateOnly?)" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_modeOverrideExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_modeOverrideModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDatePicker @bind-Value="_model.AppointmentDate"
+                        DisabledDate="IsWeekend"
+                        ShowToday="true"
+                        Label="Appointment Date (weekends disabled)" />
+
+        <EditDatePicker @bind-Value="_model.MeetingTime"
+                        Type="InputDateType.Time"
+                        Use12Hours="true"
+                        ShowSeconds="false"
+                        Label="Meeting Time (12-hour, no seconds)" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_footerAndTimeOptionsExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_footerAndTimeOptionsModel</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -93,7 +132,20 @@
         public TimeOnly? TimeValue { get; set; } = new TimeOnly(9, 30, 15);
         public DateTime? DateTimeValue { get; set; } = new DateTime(2026, 2, 14, 9, 30, 15);
         public DateTimeOffset? OffsetDate { get; set; } = new DateTimeOffset(2026, 2, 14, 0, 0, 0, TimeSpan.Zero);
+
+        // Mode overrides InputDateType has no equivalent for -- Week/Quarter/Year all bind the same
+        // DateOnly? shape Month already does above, no bridge changes needed.
+        public DateOnly? WeekValue { get; set; } = new DateOnly(2026, 2, 14);
+        public DateOnly? QuarterValue { get; set; } = new DateOnly(2026, 8, 15);
+        public DateOnly? YearValue { get; set; } = new DateOnly(2026, 1, 1);
+
+        // Feb 16, 2026 is a Monday -- clear of IsWeekend below, so the field opens showing a value
+        // its own DisabledDate predicate accepts.
+        public DateTime? AppointmentDate { get; set; } = new DateTime(2026, 2, 16);
+        public TimeOnly? MeetingTime { get; set; } = new TimeOnly(14, 30, 0);
     }
+
+    static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
     readonly string _basicExample = @"<EditDatePicker @bind-Value=""_model.BasicDate"" />";
 
@@ -138,4 +190,36 @@ public DateTime? Disabled { get; set; } = new DateTime(2026, 2, 14);";
 public TimeOnly? TimeValue { get; set; } = new TimeOnly(9, 30, 15);
 public DateTime? DateTimeValue { get; set; } = new DateTime(2026, 2, 14, 9, 30, 15);
 public DateTimeOffset? OffsetDate { get; set; } = new DateTimeOffset(2026, 2, 14, 0, 0, 0, TimeSpan.Zero);";
+
+    readonly string _modeOverrideExample = @"<EditDatePicker @bind-Value=""_model.WeekValue""
+                Mode=""DatePickerMode.Week""
+                Label=""Week (DateOnly?)"" />
+
+<EditDatePicker @bind-Value=""_model.QuarterValue""
+                Mode=""DatePickerMode.Quarter""
+                Label=""Quarter (DateOnly?)"" />
+
+<EditDatePicker @bind-Value=""_model.YearValue""
+                Mode=""DatePickerMode.Year""
+                Label=""Year (DateOnly?)"" />";
+
+    readonly string _modeOverrideModel = @"public DateOnly? WeekValue { get; set; } = new DateOnly(2026, 2, 14);
+public DateOnly? QuarterValue { get; set; } = new DateOnly(2026, 8, 15);
+public DateOnly? YearValue { get; set; } = new DateOnly(2026, 1, 1);";
+
+    readonly string _footerAndTimeOptionsExample = @"<EditDatePicker @bind-Value=""_model.AppointmentDate""
+                DisabledDate=""IsWeekend""
+                ShowToday=""true""
+                Label=""Appointment Date (weekends disabled)"" />
+
+<EditDatePicker @bind-Value=""_model.MeetingTime""
+                Type=""InputDateType.Time""
+                Use12Hours=""true""
+                ShowSeconds=""false""
+                Label=""Meeting Time (12-hour, no seconds)"" />";
+
+    readonly string _footerAndTimeOptionsModel = @"public DateTime? AppointmentDate { get; set; } = new DateTime(2026, 2, 16);
+public TimeOnly? MeetingTime { get; set; } = new TimeOnly(14, 30, 0);
+
+static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;";
 }

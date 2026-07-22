@@ -10,11 +10,14 @@ namespace Controls;
 /// <see cref="NotSupportedException"/> at render. <see cref="Type"/> selects what the calendar picks
 /// (the same parameter, name and meaning, as <see cref="EditDate{T}"/>'s) and maps onto the inner
 /// <see cref="DatePicker"/>'s <see cref="DatePickerMode"/>: <c>Date</c>→<c>Date</c>,
-/// <c>DateTimeLocal</c>→<c>DateTime</c>, <c>Month</c>→<c>Month</c>, <c>Time</c>→<c>Time</c>. For a
-/// native <c>&lt;input type="date"&gt;</c> (or <c>datetime-local</c>/<c>month</c>/<c>time</c>) use
-/// <see cref="EditDate{T}"/> instead — the two controls now support the identical set of bound types
-/// and <see cref="Type"/> values, so the choice is purely native input vs. the AntD-style calendar
-/// dropdown UX.
+/// <c>DateTimeLocal</c>→<c>DateTime</c>, <c>Month</c>→<c>Month</c>, <c>Time</c>→<c>Time</c>. The
+/// separate <see cref="Mode"/> parameter overrides that mapping outright — set it to reach
+/// <see cref="DatePickerMode.Week"/>, <see cref="DatePickerMode.Quarter"/>, or
+/// <see cref="DatePickerMode.Year"/>, none of which <see cref="Type"/> has an equivalent for (see the
+/// class remarks). For a native <c>&lt;input type="date"&gt;</c> (or <c>datetime-local</c>/<c>month</c>/
+/// <c>time</c>) use <see cref="EditDate{T}"/> instead — the two controls support the identical set of
+/// bound types and <see cref="Type"/> values, so the choice is purely native input vs. the AntD-style
+/// calendar dropdown UX.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -32,6 +35,16 @@ namespace Controls;
 /// <c>DateTime</c> (e.g. <c>Min="@d.ToDateTime(TimeOnly.MinValue)"</c>). They're date-granularity and
 /// ignored entirely when <see cref="Type"/> is <c>Time</c> (a time-of-day has no date-range concept) —
 /// same as the inner <see cref="DatePicker"/>'s own <see cref="DatePicker.Min"/>/<see cref="DatePicker.Max"/>.
+/// </para>
+/// <para>
+/// <see cref="Mode"/> is the ONE intentional asymmetry between this control and <see cref="EditDate{T}"/>:
+/// <see cref="EditDate{T}"/>'s <c>Type</c> drives a native <c>&lt;input&gt;</c>, and the HTML input
+/// types it maps onto (<c>date</c>/<c>datetime-local</c>/<c>month</c>/<c>time</c>) have no
+/// week/quarter/year equivalent to reach even in principle — there is nothing there for a
+/// <c>Mode</c>-shaped parameter to override. This control's calendar is a UI-kit component with no
+/// such ceiling, so it gets the escape hatch <see cref="EditDate{T}"/> structurally cannot offer.
+/// Week/Quarter/Year values still bind naturally to every one of this control's eight supported
+/// shapes with no bridge changes — they're all midnight date starts, exactly like <c>Date</c>/<c>Month</c>.
 /// </para>
 /// </remarks>
 public partial class EditDatePicker<T> : EditControlBase<T>
@@ -65,9 +78,14 @@ public partial class EditDatePicker<T> : EditControlBase<T>
     /// Date→Date, DateTimeLocal→DateTime, Month→Month, Time→Time (see the class remarks).</summary>
     [Parameter] public InputDateType Type { get; set; } = InputDateType.Date;
 
-    /// <summary> Format string for the read-only value display. Null (default) picks
-    /// <see cref="Type"/>'s default: Date "MM-dd-yyyy" (the original, unchanged default) · Month
-    /// "MM-yyyy" · DateTimeLocal "MM-dd-yyyy HH:mm:ss" · Time "HH:mm:ss".</summary>
+    /// <summary> Format string for the read-only value display. Null (default) picks the effective
+    /// mode's default (<see cref="Mode"/> when set, else <see cref="Type"/>'s mapping): Date
+    /// "MM-dd-yyyy" (the original, unchanged default) · Month "MM-yyyy" · DateTimeLocal "MM-dd-yyyy "
+    /// plus Time's own string · Time "HH:mm:ss" (<see cref="ShowSeconds"/> false drops ":ss";
+    /// <see cref="Use12Hours"/> switches to the 12-hour "h:mm tt"/"h:mm:ss tt" forms) · Year "yyyy" ·
+    /// Quarter/Week render the same "yyyy-Qn"/"yyyy-Www" shorthand the picker itself shows (no .NET
+    /// format token exists for either) — set <see cref="DateFormat"/> explicitly in those two modes
+    /// and it is used verbatim via <c>ToString</c> instead, which can't render the quarter/week digit.</summary>
     [Parameter] public string? DateFormat { get; set; }
 
     // Localizable accessibility strings, forwarded to the inner DatePicker. Defaults mirror
@@ -106,11 +124,69 @@ public partial class EditDatePicker<T> : EditControlBase<T>
     /// <inheritdoc cref="DatePicker.OkText"/>
     [Parameter] public string OkText { get; set; } = "OK";
 
+    /// <summary>
+    /// Overrides the inner <see cref="DatePicker"/>'s <see cref="DatePickerMode"/> directly. Null
+    /// (default) derives it from <see cref="Type"/> exactly as before (see <see cref="PickerMode"/>);
+    /// set this explicitly to reach <see cref="DatePickerMode.Week"/>, <see cref="DatePickerMode.Quarter"/>,
+    /// or <see cref="DatePickerMode.Year"/> — <see cref="InputDateType"/> has no equivalents for those
+    /// three (and <see cref="EditDate{T}"/>'s own <c>Type</c> stays untouched: it drives a native
+    /// <c>&lt;input&gt;</c>, which has no week/quarter/year picker mode to reach either — see the
+    /// class remarks for why this is the one intentional asymmetry between the two controls).
+    /// <see cref="Type"/> keeps controlling every OTHER default this control resolves (the effective
+    /// <see cref="Format"/>/<see cref="Placeholder"/>/<see cref="DateFormat"/>) via the SAME effective
+    /// mode this parameter feeds — so a consumer overriding <c>Mode</c> alone (leaving <c>Type</c> at
+    /// its default) still gets Week/Quarter/Year's own format/placeholder defaults, not Date's.
+    /// </summary>
+    [Parameter] public DatePickerMode? Mode { get; set; }
+
+    /// <inheritdoc cref="DatePicker.ShowWeekNumbers"/>
+    [Parameter] public bool ShowWeekNumbers { get; set; }
+    /// <inheritdoc cref="DatePicker.DisabledDate"/>
+    [Parameter] public Func<DateTime, bool>? DisabledDate { get; set; }
+    /// <inheritdoc cref="DatePicker.DisabledTime"/>
+    [Parameter] public Func<DateTime?, DisabledTimeParts?>? DisabledTime { get; set; }
+    /// <inheritdoc cref="DatePicker.HideDisabledTimeOptions"/>
+    [Parameter] public bool HideDisabledTimeOptions { get; set; }
+    /// <inheritdoc cref="DatePicker.ShowSeconds"/>
+    [Parameter] public bool ShowSeconds { get; set; } = true;
+    /// <inheritdoc cref="DatePicker.HourStep"/>
+    [Parameter] public int HourStep { get; set; } = 1;
+    /// <inheritdoc cref="DatePicker.MinuteStep"/>
+    [Parameter] public int MinuteStep { get; set; } = 1;
+    /// <inheritdoc cref="DatePicker.SecondStep"/>
+    [Parameter] public int SecondStep { get; set; } = 1;
+    /// <inheritdoc cref="DatePicker.Use12Hours"/>
+    [Parameter] public bool Use12Hours { get; set; }
+    /// <inheritdoc cref="DatePicker.PeriodSelectLabel"/>
+    [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
+    /// <inheritdoc cref="DatePicker.ShowToday"/>
+    [Parameter] public bool ShowToday { get; set; }
+    /// <inheritdoc cref="DatePicker.TodayText"/>
+    [Parameter] public string TodayText { get; set; } = "Today";
+    /// <inheritdoc cref="DatePicker.ShowNow"/>
+    [Parameter] public bool ShowNow { get; set; }
+    /// <inheritdoc cref="DatePicker.NowText"/>
+    [Parameter] public string NowText { get; set; } = "Now";
+    /// <inheritdoc cref="DatePicker.Presets"/>
+    [Parameter] public IReadOnlyList<DatePickerPreset>? Presets { get; set; }
+    /// <inheritdoc cref="DatePicker.PresetsLabel"/>
+    [Parameter] public string PresetsLabel { get; set; } = "Quick picks";
+    /// <inheritdoc cref="DatePicker.ExtraFooter"/>
+    [Parameter] public RenderFragment? ExtraFooter { get; set; }
+    /// <inheritdoc cref="DatePicker.DefaultViewDate"/>
+    [Parameter] public DateTime? DefaultViewDate { get; set; }
+    /// <inheritdoc cref="DatePicker.PrevDecadeLabel"/>
+    [Parameter] public string PrevDecadeLabel { get; set; } = "Previous decade";
+    /// <inheritdoc cref="DatePicker.NextDecadeLabel"/>
+    [Parameter] public string NextDecadeLabel { get; set; } = "Next decade";
+
     string EffectiveInputLabel => InputLabel ?? Label ?? _attributes.GetLabelText(_fieldIdentifier);
 
     // Type -> DatePickerMode. The inner DatePicker only knows Mode; Type is EditDatePicker's own
     // parameter name/shape (matching EditDate<T>'s Type exactly) so the two controls share one mental
-    // model for "what does this field pick" regardless of which UX backs it.
+    // model for "what does this field pick" regardless of which UX backs it. Mode (above) overrides
+    // this outright when set -- EffectiveMode is what actually reaches the picker and what every
+    // read-only-display default below keys off of.
     DatePickerMode PickerMode => Type switch
     {
         InputDateType.Date => DatePickerMode.Date,
@@ -120,14 +196,36 @@ public partial class EditDatePicker<T> : EditControlBase<T>
         _ => DatePickerMode.Date
     };
 
-    string EffectiveDateFormat => DateFormat ?? Type switch
+    DatePickerMode EffectiveMode => Mode ?? PickerMode;
+
+    // Mirrors DatePicker.TimeFormatString exactly (see its doc comment) rather than sharing it --
+    // it's one small string, and sharing it would mean exposing an internal instance member across
+    // two otherwise-independent classes for a three-line ternary. This value also feeds
+    // EffectiveDateFormat's own Time/DateTime default below.
+    string TimeFormatPart => Use12Hours
+        ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
+        : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
+
+    string EffectiveDateFormat => DateFormat ?? EffectiveMode switch
     {
-        InputDateType.Date => "MM-dd-yyyy",
-        InputDateType.Month => "MM-yyyy",
-        InputDateType.DateTimeLocal => "MM-dd-yyyy HH:mm:ss",
-        InputDateType.Time => "HH:mm:ss",
+        DatePickerMode.Date => "MM-dd-yyyy",
+        DatePickerMode.Month => "MM-yyyy",
+        DatePickerMode.DateTime => $"MM-dd-yyyy {TimeFormatPart}",
+        DatePickerMode.Time => TimeFormatPart,
+        DatePickerMode.Year => "yyyy",
+        // Quarter/Week have no .NET format token for their own display -- GetDisplayValue below
+        // special-cases them via DatePicker's shared FormatQuarterDisplay/FormatWeekDisplay instead
+        // of ever calling ToString(EffectiveDateFormat) for either. This "yyyy" is never actually
+        // rendered; it only matters if some future caller starts using EffectiveDateFormat directly.
+        DatePickerMode.Quarter => "yyyy",
+        DatePickerMode.Week => "yyyy",
         _ => "MM-dd-yyyy"
     };
+
+    // FirstDayOfWeek resolution mirrors DatePicker's own EffectiveFirstDayOfWeek (culture fallback),
+    // computed independently here for GetDisplayValue's Week special case -- there's no picker
+    // instance to ask once the control is in read-only mode (no <DatePicker> renders at all then).
+    DayOfWeek EffectiveFirstDayOfWeek(CultureInfo culture) => FirstDayOfWeek ?? culture.DateTimeFormat.FirstDayOfWeek;
 
     protected override void OnInitialized()
     {
@@ -214,14 +312,24 @@ public partial class EditDatePicker<T> : EditControlBase<T>
 
     string GetDisplayValue()
     {
+        if (CurrentValue is null) return string.Empty;
         // Gregorian-forced like the picker's own display, so read-only and edit mode can never
         // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
         var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
+        // Quarter/Week's null-DateFormat display has no .NET format token to route through
+        // ToString(EffectiveDateFormat) below -- reuses DatePicker's own FormatQuarterDisplay/
+        // FormatWeekDisplay (promoted internal statics, not duplicated regex/format logic here) via
+        // PickerValue, the same DateTime? bridge the picker itself would see. An explicit DateFormat
+        // still falls through to the verbatim ToString path, matching the picker's own Format contract.
+        if (DateFormat is null && PickerValue is { } pv)
+        {
+            if (EffectiveMode == DatePickerMode.Quarter) return DatePicker.FormatQuarterDisplay(pv, culture);
+            if (EffectiveMode == DatePickerMode.Week) return DatePicker.FormatWeekDisplay(pv, culture, EffectiveFirstDayOfWeek(culture));
+        }
         try
         {
             return CurrentValue switch
             {
-                null => string.Empty,
                 DateTime dt => dt.ToString(EffectiveDateFormat, culture),
                 DateTimeOffset dto => dto.ToString(EffectiveDateFormat, culture),
                 DateOnly d => d.ToString(EffectiveDateFormat, culture),
