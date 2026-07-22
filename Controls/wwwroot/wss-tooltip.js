@@ -1,23 +1,30 @@
-// Auto-places [data-tooltip] hover tooltips (see wss-controls.css) toward the center of their
+// Auto-places [data-tooltip] hover tooltips (see wss-controls.css) AND the LabelTooltip
+// component's popover (.edit-tooltip-container, see edit-controls.css) toward the center of their
 // container, cursor-aware, so authors never have to pick a direction. "Container" is the nearest
 // clipping ancestor or recognized panel boundary (a modal/drawer/popover panel) if there is one,
 // else the screen — so a tooltip inside a Modal aims at the modal's center, not the screen's, and
 // doesn't run past the modal's own edges. Runs on hover/focus via event delegation, then toggles
-// the placement classes the CSS in wss-controls.css already understands (wss-tooltip-top /
-// wss-tooltip-left / wss-tooltip-right). An element that carries an explicit placement class
-// (including the manual-only wss-tooltip-side-left / wss-tooltip-side-right) is treated as an
-// override and left untouched.
+// the placement classes both stylesheets understand (wss-tooltip-top / wss-tooltip-left /
+// wss-tooltip-right — one shared vocabulary, one placement engine). An element that carries an
+// explicit placement class (including the manual-only wss-tooltip-side-left /
+// wss-tooltip-side-right) is treated as an override and left untouched.
 //
-// Optional: the CSS tooltip works without this script (always opens below the element). Link it
-// as a plain <script> tag — no import/export statements, so it also works unchanged as a
-// side-effect ES module import — next to your other page scripts:
+// Optional for data-tooltip: the CSS tooltip works without this script (always opens below the
+// element). Link it as a plain <script> tag — no import/export statements, so it also works
+// unchanged as a side-effect ES module import — next to your other page scripts:
 //   <script src="_content/WssBlazorControls/wss-tooltip.js"></script>
+// LabelTooltip needs no wiring at all: the component lazily import()s this file itself on first
+// render, and the window.__wssTooltipAutoPlace guard below keeps the classic-script + module-
+// import combination from double-attaching the listeners.
 //
 // Why hover-time and not once on load: it re-derives placement every hover, so it follows the
 // element as the page scrolls or relayouts, and it survives Blazor re-renders resetting `class`
 // (we recompute before the tooltip's 0.35s reveal delay elapses).
 (function () {
     'use strict';
+
+    if (window.__wssTooltipAutoPlace) return;
+    window.__wssTooltipAutoPlace = true;
 
     // Classes this helper sets/clears. side-left/side-right are manual-only — their presence marks
     // an explicit override.
@@ -64,9 +71,12 @@
     }
 
     function place(el) {
-        // Tooltips are hidden entirely under hover:none (touch), so there is nothing to place.
-        if (window.matchMedia && window.matchMedia('(hover: none)').matches) return;
-        if (!el.getAttribute('data-tooltip')) return;
+        if (!el.classList.contains('edit-tooltip-container')) {
+            // data-tooltip bubbles are hidden entirely under hover:none (touch), so there is
+            // nothing to place. LabelTooltip still opens on tap-focus there, so it always places.
+            if (window.matchMedia && window.matchMedia('(hover: none)').matches) return;
+            if (!el.getAttribute('data-tooltip')) return;
+        }
         if (isManualOverride(el)) return;
 
         var r = el.getBoundingClientRect();
@@ -98,7 +108,7 @@
     function handle(e) {
         var t = e.target;
         if (!t || t.nodeType !== 1 || !t.closest) return;
-        var el = t.closest('[data-tooltip]');
+        var el = t.closest('[data-tooltip], .edit-tooltip-container');
         if (el) place(el);
     }
 

@@ -63,7 +63,8 @@ Install-Package WssBlazorControls
 
    Optional: add `<script src="_content/WssBlazorControls/wss-tooltip.js"></script>` if you use
    `data-tooltip` hover tooltips (see [Hover tooltips](#hover-tooltips-data-tooltip) below) and want
-   them to auto-place instead of always opening below the element.
+   them to auto-place instead of always opening below the element. `LabelTooltip` (the form-label
+   help icon) uses the same auto-placement but imports the module itself — no tag needed for it.
 
 4. **Use the controls** in your Blazor components:
 
@@ -232,6 +233,8 @@ CSS alone renders it below the element with a slide-in animation, an arrow, and 
 ```
 
 It re-derives placement on every hover/focus (via event delegation, so dynamically-added elements are covered with no extra wiring) and aims at the nearest clipping ancestor or recognized panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`) instead of the screen — so a tooltip inside a `Modal` stays within the modal instead of running past its edges. To force a specific direction yourself (and opt that element out of auto-placement), apply one of the placement classes directly: `wss-tooltip-top`, `wss-tooltip-left`, `wss-tooltip-right`, or the vertically-centered `wss-tooltip-side-left` / `wss-tooltip-side-right` (manual-only — the auto-placer never assigns these two). Tooltips are hidden entirely on touch devices (`hover: none`), since there is no hover to trigger them.
+
+The same script also places the form controls' `LabelTooltip` popover (the label help icon), using the same placement classes — that's the one shared placement engine for both tooltip kinds. `LabelTooltip` lazily imports the module itself on first render, so the script tag above is only needed for `data-tooltip` usage; the module guards against being loaded both ways.
 
 Theming uses the same `--wss-*` tokens as the rest of the kit (`--wss-color-bg`, `--wss-color-text`, `--wss-color-border`, `--wss-radius`, `--wss-shadow`), plus two tooltip-specific knobs: `--wss-tooltip-gap` (resting distance from the element to the pointer tip, default `24px`) and `--wss-tooltip-z-index` (default `10000`, matching `--edit-tooltip-z-index`).
 
@@ -510,6 +513,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **New** (UI Kit)
 - Hover tooltips (`data-tooltip`) — ported from the RPG Assistant app's `data-tooltip` convention. Not a component: a `data-tooltip="..."` attribute on any element gets a styled CSS-only hover/focus tooltip (arrow, slide-in, `:focus-visible` support, hidden under `hover: none`) via new rules in `wss-controls.css`, themed through `--wss-*` tokens plus the new `--wss-tooltip-gap` / `--wss-tooltip-z-index` knobs. The optional new `wss-tooltip.js` (a plain `<script>` tag, no interop) auto-places the bubble — above/below and left/right — based on the trigger's position within its nearest clipping ancestor or panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`), so it stays inside a Modal/Drawer instead of running past the edge. See [Hover tooltips](#hover-tooltips-data-tooltip).
+
+**Changed** (Edit Controls)
+- `LabelTooltip` (the form-label help-icon popover) is restyled to AntDesign's dark tooltip look — opaque dark chip, 6px radius, arrow, AntD's layered shadow, fade/slide-in — and now auto-places like `data-tooltip` instead of always opening above: the bubble opens below the trigger by default and aims toward the center of the nearest clipping ancestor / panel (flipping above, aligning left/right near an edge) via `wss-tooltip.js`, which `LabelTooltip` lazily imports itself — consumers add nothing, and without JS the CSS default (below, centered) still renders. Hover shows after the same 0.35s hover-intent delay as `data-tooltip`; keyboard focus stays instant; Escape-dismiss and all ARIA wiring are unchanged. Theming: `--color-tooltip-bg` / `--color-tooltip-text` / `--edit-tooltip-z-index` still honored (the arrow follows the bubble background automatically); new `--edit-tooltip-gap` (default `24px`, below) and `--edit-tooltip-gap-tight` (`3px`, above) knobs; the bubble no longer draws a `--border-color` border. Anything that relied on the old always-above placement will see the new placement.
 
 ### 10.6.6
 

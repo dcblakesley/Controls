@@ -14,6 +14,12 @@
        --edit-color-primary override. It stays a pure override knob — each usage site falls back to
        --edit-color-primary at the element: var(--edit-focus-ring, var(--edit-color-primary)). */
     --edit-focus-offset: 2px;
+    /* LabelTooltip placement gaps, mirroring --wss-tooltip-gap / --wss-tooltip-gap-tight in
+       wss-controls.css: the wide gap keeps a below-placed bubble clear of the pointer graphic
+       (which hangs below-right of the hotspot); the tight gap applies above the trigger, where
+       the cursor can't cover the bubble. */
+    --edit-tooltip-gap: 24px;
+    --edit-tooltip-gap-tight: 3px;
 }
 
 /* Visually hidden but available to screen readers (sr-only). Clip-based hiding (not an offscreen
@@ -346,6 +352,14 @@
 
 
 /************************************************ Tooltip *******************************************/
+/* LabelTooltip — the form-label help-icon popover. Look: AntDesign's dark tooltip (opaque dark
+   chip, white text, arrow, layered shadow, fade/slide-in). Placement: the wss- data-tooltip
+   convention — CSS alone opens the bubble below the trigger, and wss-tooltip.js (which
+   LabelTooltip lazily imports itself, so consumers add nothing) re-aims it toward the center of
+   the nearest clipping ancestor / panel by toggling the same wss-tooltip-top/left/right classes
+   it uses for [data-tooltip] elements. The class vocabulary is shared deliberately: one placement
+   engine for both tooltip kinds. The reveal itself stays aria-driven from C# (hover/focus show,
+   Escape dismisses — WCAG 1.4.13). */
 .edit-tooltip-container {
     position: relative;
     display: inline-block; /* Or block, depending on layout */
@@ -387,35 +401,139 @@
     }
 }
 
+/* Tight spacing above the trigger, where the cursor can never cover the bubble — same reasoning
+   as data-tooltip's wss-tooltip-top override in wss-controls.css. */
+.edit-tooltip-container.wss-tooltip-top {
+    --edit-tooltip-gap: var(--edit-tooltip-gap-tight);
+}
+
 .edit-tooltip-content {
     position: absolute;
-    bottom: 110%; /* Places the bottom of the popover at the top of the trigger */
+    /* Default placement: below the trigger, centered — data-tooltip's CSS-only default. The
+       wss-tooltip-* variants further down re-aim it when wss-tooltip.js assigns them. */
+    top: calc(100% + var(--edit-tooltip-gap) + 5px);
     left: 50%;
-    transform: translateX(-42%); /* Centers the popover horizontally */
+    /* transform carries only the static horizontal alignment and the separate translate property
+       carries only the slide-in offset, so the placement variants and the reveal/animation rules
+       below never have to restate each other's values. */
+    transform: translateX(-50%);
+    translate: 0 4px;
     display: none; /* Hidden by default */
-    /* Add styling for background, padding, border, etc. */
+    opacity: 0;
     color: var(--color-tooltip-text, #fff);
     background: var(--color-tooltip-bg, #262626);
-    border: 1px solid var(--border-color, #ccc);
-    border-radius: 4px;
-    padding: 4px 8px;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    /* The bubble sits inside a <button>, which centers text by default. */
+    text-align: start;
+    white-space: normal;
+    /* Let clicks/hover pass through to whatever the bubble transiently covers (a below-placed
+       bubble overlays the input) — the bubble is a hint, not an interactive surface. */
+    pointer-events: none;
     /* Consumer-overridable: MFE shells commonly stack drawers/modals above this (clarkConnect's
        drawer/modal chrome sits at 1082/1040), which otherwise buries the tooltip beneath them. */
     z-index: var(--edit-tooltip-z-index, 10000); /* Ensure it appears above other content */
     width: max-content; /* Adjust width based on content */
-    max-width: 400px; /* Prevent too wide popover */
-
-    box-shadow: 0px 9px 28px 8px rgba(0, 0, 0, 0.05), 0px 3px 6px -4px rgba(0, 0, 0, 0.12);
-    filter: drop-shadow(0px 6px 16px rgba(0, 0, 0, 0.08));
+    max-width: min(400px, 85vw); /* Prevent too wide popover */
+    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    transition: opacity 0.15s ease, translate 0.15s ease, display 0.15s allow-discrete;
 }
 
-.edit-tooltip-content[aria-hidden="false"] {
-    display: block; /* Show when aria-hidden is false */
+/* AntD-style arrow: a rotated square in the bubble's own background, anchored to the bubble so it
+   rides every placement and reveal transition for free. background:inherit tracks a themed
+   --color-tooltip-bg automatically; with the opaque chip the overlap seam is invisible. Centered
+   via margin (not transform) so the horizontal variants only have to move left/right. */
+.edit-tooltip-content::before {
+    content: '';
+    position: absolute;
+    top: -5px; /* bubble below the trigger -> tip points up */
+    left: 50%;
+    margin-left: -5px;
+    width: 10px;
+    height: 10px;
+    background: inherit;
+    transform: rotate(45deg);
 }
 
-.edit-tooltip-container:hover .edit-tooltip-content,
+/* ── Placement: above (wss-tooltip.js sets wss-tooltip-top) ── */
+.edit-tooltip-container.wss-tooltip-top .edit-tooltip-content {
+    top: auto;
+    bottom: calc(100% + var(--edit-tooltip-gap) + 5px);
+    translate: 0 -4px;
+}
+
+.edit-tooltip-container.wss-tooltip-top .edit-tooltip-content::before {
+    top: auto;
+    bottom: -5px; /* tip points down */
+}
+
+/* ── Horizontal alignment near a container's side edge ──
+   The arrow insets stay >= the 6px corner radius so the square never collides with the rounded
+   corner; on the 12px trigger icon that still lands the tip over the icon. */
+.edit-tooltip-container.wss-tooltip-left .edit-tooltip-content {
+    left: auto;
+    right: 0;
+    transform: none;
+}
+
+.edit-tooltip-container.wss-tooltip-left .edit-tooltip-content::before {
+    left: auto;
+    margin-left: 0;
+    right: 6px;
+}
+
+.edit-tooltip-container.wss-tooltip-right .edit-tooltip-content {
+    left: 0;
+    transform: none;
+}
+
+.edit-tooltip-container.wss-tooltip-right .edit-tooltip-content::before {
+    left: 6px;
+    margin-left: 0;
+}
+
+/* Reveal is aria-gated: C# flips aria-hidden on hover/focus, Escape re-hides. The :hover rule
+   adds data-tooltip's 0.35s hover-intent delay on top of that, so a mouse passing over the icon
+   on its way elsewhere doesn't flash the bubble; it outranks the bare aria rule on specificity
+   while the mouse is over the trigger. */
+.edit-tooltip-container:hover .edit-tooltip-content {
+    display: block;
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: 0.35s;
+}
+
+/* Keyboard focus and the bare aria flip show instantly — there's no incidental-focus case to
+   guard against. The focus rule sits after :hover so intent (focus) beats the hover delay when
+   both apply. */
+.edit-tooltip-content[aria-hidden="false"],
 .edit-tooltip-container:focus .edit-tooltip-content {
-    display: block; /* Show on hover or focus */
+    display: block;
+    opacity: 1;
+    translate: 0 0;
+}
+
+/* Starting styles for the enter transition (display: none -> block): without these the bubble
+   would jump straight to its final state the instant display flips, having no "before" state to
+   transition from. The offsets mirror each vertical placement's resting translate, so the bubble
+   always slides toward the trigger. */
+@starting-style {
+    .edit-tooltip-container:hover .edit-tooltip-content,
+    .edit-tooltip-container:focus .edit-tooltip-content,
+    .edit-tooltip-content[aria-hidden="false"] {
+        opacity: 0;
+        translate: 0 4px;
+    }
+
+    .edit-tooltip-container.wss-tooltip-top:hover .edit-tooltip-content,
+    .edit-tooltip-container.wss-tooltip-top:focus .edit-tooltip-content,
+    .edit-tooltip-container.wss-tooltip-top .edit-tooltip-content[aria-hidden="false"] {
+        opacity: 0;
+        translate: 0 -4px;
+    }
 }
 
 /* The dismissed state must beat the reveals above (WCAG 1.4.13): Escape sets aria-hidden="true"
@@ -424,6 +542,7 @@
    pre-hydration (JS-less) hover reveal is disabled, since aria-hidden starts "true". */
 .edit-tooltip-container:is(:hover, :focus) .edit-tooltip-content[aria-hidden="true"] {
     display: none;
+    opacity: 0;
 }
 
 /* WCAG 2.5.8: the visible icon is 12px — extend the pointer target to ~24px without moving

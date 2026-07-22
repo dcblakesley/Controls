@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
@@ -49,6 +50,47 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : PageTe
         await Page.Keyboard.PressAsync("Shift+Tab");
         await Page.Keyboard.PressAsync("Tab");
         await Expect(content).ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Tooltip_auto_places_toward_the_viewport_center()
+    {
+        await NavigateAsync();
+        var trigger = Page.Locator(".edit-tooltip-container").First;
+        var content = Page.Locator(".edit-tooltip-content").First;
+
+        // Near the top of the viewport the bubble must open BELOW the trigger — the data-tooltip
+        // placement convention (via wss-tooltip.js), replacing the old hardcoded always-above CSS.
+        // behavior:'instant' because the host page sets scroll-behavior:smooth, which would leave
+        // the geometry mid-animation.
+        await trigger.EvaluateAsync("el => el.scrollIntoView({ block: 'start', behavior: 'instant' })");
+        await trigger.FocusAsync();
+        await Expect(content).ToBeVisibleAsync();
+
+        var triggerBox = await trigger.BoundingBoxAsync();
+        var contentBox = await content.BoundingBoxAsync();
+        Assert.NotNull(triggerBox);
+        Assert.NotNull(contentBox);
+        Assert.True(contentBox.Y > triggerBox.Y + triggerBox.Height,
+            $"bubble top ({contentBox.Y}) should sit below the trigger bottom ({triggerBox.Y + triggerBox.Height})");
+
+        // Shrink the viewport and pin the same trigger to its bottom edge: the placer must now
+        // flip the bubble above (wss-tooltip-top). Placement recomputes on the next focusin, so
+        // blur first.
+        await trigger.BlurAsync();
+        var absoluteY = await trigger.EvaluateAsync<double>("el => el.getBoundingClientRect().top + window.scrollY");
+        await Page.SetViewportSizeAsync(1280, Math.Max(100, (int)absoluteY - 20));
+        await trigger.EvaluateAsync("el => el.scrollIntoView({ block: 'end', behavior: 'instant' })");
+        await trigger.FocusAsync();
+        await Expect(content).ToBeVisibleAsync();
+        await Expect(trigger).ToHaveClassAsync(new Regex(@"\bwss-tooltip-top\b"));
+
+        var flippedTriggerBox = await trigger.BoundingBoxAsync();
+        var flippedContentBox = await content.BoundingBoxAsync();
+        Assert.NotNull(flippedTriggerBox);
+        Assert.NotNull(flippedContentBox);
+        Assert.True(flippedContentBox.Y + flippedContentBox.Height < flippedTriggerBox.Y,
+            $"bubble bottom ({flippedContentBox.Y + flippedContentBox.Height}) should sit above the trigger top ({flippedTriggerBox.Y})");
     }
 
     [Fact]
