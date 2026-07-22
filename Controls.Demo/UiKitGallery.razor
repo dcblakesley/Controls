@@ -270,6 +270,25 @@
             <button type="button" class="wss-dialog-btn" data-test-id="disabled-popconfirm-child">Delete (disabled)</button>
         </Popconfirm>
     </section>
+
+    <section class="demo-section">
+        <h3>Hover Tooltip (<code>data-tooltip</code>)</h3>
+        <p style="margin:0; color:#666;">
+            Not a component — a <code>data-tooltip="..."</code> attribute on any element, styled by
+            plain CSS rules in <code>wss-controls.css</code>. The optional <code>wss-tooltip.js</code>
+            (linked in this demo's <code>App.razor</code>) auto-places the bubble based on the
+            trigger's position in its container; an explicit placement class (like the second button
+            below) opts out of auto-placement.
+        </p>
+        <div style="display:flex; gap:2rem; flex-wrap:wrap; padding: 2rem 0;">
+            <button class="wss-dialog-btn" data-tooltip="Auto-placed — flips/shifts based on position" data-test-id="tooltip-auto">
+                Hover me (auto)
+            </button>
+            <button class="wss-dialog-btn wss-tooltip-top" data-tooltip="Forced above via wss-tooltip-top" data-test-id="tooltip-forced-top">
+                Hover me (forced top)
+            </button>
+        </div>
+    </section>
 </div>
 
 @* WASM-only static-state toast hosts. *@

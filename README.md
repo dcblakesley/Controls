@@ -61,6 +61,10 @@ Install-Package WssBlazorControls
    never throw — see [FormDefaults.AssetBase](#formdefaults) to point that fallback import at the
    right origin.
 
+   Optional: add `<script src="_content/WssBlazorControls/wss-tooltip.js"></script>` if you use
+   `data-tooltip` hover tooltips (see [Hover tooltips](#hover-tooltips-data-tooltip) below) and want
+   them to auto-place instead of always opening below the element.
+
 4. **Use the controls** in your Blazor components:
 
 ```razor
@@ -207,8 +211,29 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Tabs` / `Tab`** - Underline tab strip with an optional bordered count chip per tab (`Count`); bind with `@bind-ActiveKey` (a `string?`). Tabs with `ChildContent` show the active pane below the strip; content-less tabs act as a bare filter strip. ARIA tabs pattern with automatic activation (arrows move + select with wrapping, roving tabindex; Home/End deliberately unhandled — Blazor can't `preventDefault` per key)
 - **`SearchInput`** - Search field: optional leading addon label chip (`AddonLabel`/`AddonContent`), text input (`@bind-Value`, per-keystroke), and an icon-only search button — `OnSearch` fires on Enter and on the button. Pill-rounded ends by default (`--wss-search-radius` to square them)
 - **Toasts & notifications** - two paths with identical rendering: **scoped / Server-safe** (`IMessageService` / `INotificationService` via `builder.Services.AddWssControlsToasts()` + `<MessageContainer />` / `<NotificationContainer />`), or **registration-free static for WASM** (`WasmMessageService` / `WasmNotificationService` + `<WasmMessageContainer />` / `<WasmNotificationContainer />`). On Blazor Server use the scoped path — the static `Wasm*` services hold process-static state that would bleed across users.
+- **Hover tooltips (`data-tooltip`)** - not a component: a `data-tooltip="..."` attribute on any element, styled by `wss-controls.css` (arrow + bubble, slide-in animation, keyboard-focus support). Pair with `wss-tooltip.js` for cursor-aware auto-placement — see below.
 
 > `Icon`, `Button`, `Checkbox`, and `Tag` are intentionally **not** part of this library.
+
+#### Hover tooltips (`data-tooltip`)
+
+Add `data-tooltip="Some help text"` to any element for a styled hover/focus tooltip — never the native `title` attribute, so every tooltip in the app gets consistent styling:
+
+```razor
+<button data-tooltip="Refresh the list">
+    <RefreshIcon />
+</button>
+```
+
+CSS alone renders it below the element with a slide-in animation, an arrow, and `:focus-visible` support (keyboard users get it too). Link the optional script for automatic placement — it flips above when the element sits in the lower part of its container, and shifts left/right near a side edge, so authors never have to pick a direction by hand:
+
+```html
+<script src="_content/WssBlazorControls/wss-tooltip.js"></script>
+```
+
+It re-derives placement on every hover/focus (via event delegation, so dynamically-added elements are covered with no extra wiring) and aims at the nearest clipping ancestor or recognized panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`) instead of the screen — so a tooltip inside a `Modal` stays within the modal instead of running past its edges. To force a specific direction yourself (and opt that element out of auto-placement), apply one of the placement classes directly: `wss-tooltip-top`, `wss-tooltip-left`, `wss-tooltip-right`, or the vertically-centered `wss-tooltip-side-left` / `wss-tooltip-side-right` (manual-only — the auto-placer never assigns these two). Tooltips are hidden entirely on touch devices (`hover: none`), since there is no hover to trigger them.
+
+Theming uses the same `--wss-*` tokens as the rest of the kit (`--wss-color-bg`, `--wss-color-text`, `--wss-color-border`, `--wss-radius`, `--wss-shadow`), plus two tooltip-specific knobs: `--wss-tooltip-gap` (resting distance from the element to the pointer tip, default `24px`) and `--wss-tooltip-z-index` (default `10000`, matching `--edit-tooltip-z-index`).
 
 #### Pill filter variant (`Select` / `EditSelectSearch`)
 
@@ -480,6 +505,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.6.7
+
+**New** (UI Kit)
+- Hover tooltips (`data-tooltip`) — ported from the RPG Assistant app's `data-tooltip` convention. Not a component: a `data-tooltip="..."` attribute on any element gets a styled CSS-only hover/focus tooltip (arrow, slide-in, `:focus-visible` support, hidden under `hover: none`) via new rules in `wss-controls.css`, themed through `--wss-*` tokens plus the new `--wss-tooltip-gap` / `--wss-tooltip-z-index` knobs. The optional new `wss-tooltip.js` (a plain `<script>` tag, no interop) auto-places the bubble — above/below and left/right — based on the trigger's position within its nearest clipping ancestor or panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`), so it stays inside a Modal/Drawer instead of running past the edge. See [Hover tooltips](#hover-tooltips-data-tooltip).
 
 ### 10.6.6
 

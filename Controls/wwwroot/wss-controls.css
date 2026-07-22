@@ -90,6 +90,16 @@
     --wss-color-error-border: #ffccc7;
     /* --wss-error-shadow: pure override knob, derived from --wss-color-error at each usage site
        (see the brand/interactive comment above). */
+
+    /* Hover tooltip (data-tooltip). --wss-tooltip-gap is the resting distance from the trigger to
+       the pointer tip — wide enough that the cursor (which sits below-and-right of the pointer
+       hotspot) never covers the bubble; --wss-tooltip-gap-tight applies instead for placements the
+       cursor can't cover anyway (above the element, or directly to its left). --wss-tooltip-z-index
+       matches --edit-tooltip-z-index's default (10000) so a hover tooltip clears any consumer
+       drawer/modal stacking context. */
+    --wss-tooltip-gap: 24px;
+    --wss-tooltip-gap-tight: 3px;
+    --wss-tooltip-z-index: 10000;
 }
 
 /*
@@ -890,6 +900,355 @@
 
 .wss-popover-right { left: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
 .wss-popover-right .wss-popover-arrow { left: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
+
+/* ============================================================================
+ * Hover Tooltip (data-tooltip)
+ * Convention: set data-tooltip="..." on any element for a hover/focus tooltip — never the native
+ * title attribute, so every tooltip in the app gets this styling. Pure CSS (::before arrow, ::after
+ * body); pair with the optional wss-tooltip.js for auto-placement (see its header comment) — CSS
+ * alone still works, just always opening below the element. Distinct from LabelTooltip
+ * (.edit-tooltip-* in edit-controls.css), which is a form-label help-icon popover, not a
+ * general-purpose hover tooltip.
+ * ============================================================================ */
+
+[data-tooltip] {
+    position: relative;
+}
+
+/* Tight spacing where the cursor never covers the tooltip — above the element, or directly to its
+   left. The wider --wss-tooltip-gap only matters below/right of the element, where the cursor
+   body sits. */
+[data-tooltip].wss-tooltip-top,
+[data-tooltip].wss-tooltip-side-left {
+    --wss-tooltip-gap: var(--wss-tooltip-gap-tight);
+}
+
+/* ── Arrow (::before) ── */
+[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    pointer-events: none;
+    opacity: 0;
+    display: none;
+    z-index: var(--wss-tooltip-z-index);
+    transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete;
+}
+
+/* ── Body (::after) ── */
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    padding: 0.35rem 0.6rem;
+    border-radius: var(--wss-radius);
+    background: var(--wss-color-bg);
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size-sm);
+    font-weight: 500;
+    /* Short tooltips stay one tight line (max-content); sentence-length ones wrap at the cap
+       instead of running as a single 800px line that clips at the viewport edge. */
+    white-space: normal;
+    width: max-content;
+    max-width: min(340px, 85vw);
+    pointer-events: none;
+    opacity: 0;
+    display: none;
+    z-index: var(--wss-tooltip-z-index);
+    border: 1px solid var(--wss-color-border);
+    box-shadow: var(--wss-shadow);
+    line-height: 1.25;
+    transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete;
+}
+
+/* ── Default placement: below ── */
+[data-tooltip]::before {
+    top: calc(100% + var(--wss-tooltip-gap));
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg) scale(0.8);
+    border-right: none;
+    border-bottom: none;
+}
+
+[data-tooltip]::after {
+    top: calc(100% + var(--wss-tooltip-gap) + 5px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+}
+
+/* ── Show on hover & focus ── */
+[data-tooltip]:hover::before,
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::before,
+[data-tooltip]:focus-visible::after {
+    opacity: 1;
+    display: block;
+    transition-delay: 0.35s;
+}
+
+/* ── Starting styles for the enter transition (display: none -> block) ──
+   Without these, the element would still jump straight to its final opacity/transform the
+   instant display flips to block, since there'd be no "before" state to transition from. */
+@starting-style {
+    [data-tooltip]:hover::before,
+    [data-tooltip]:focus-visible::before {
+        opacity: 0;
+        transform: translateX(-50%) rotate(45deg) scale(0.8);
+    }
+
+    [data-tooltip]:hover::after,
+    [data-tooltip]:focus-visible::after {
+        opacity: 0;
+        transform: translateX(-50%) translateY(4px);
+    }
+}
+
+[data-tooltip]:hover::before,
+[data-tooltip]:focus-visible::before {
+    transform: translateX(-50%) rotate(45deg) scale(1);
+    transition-delay: 0.35s;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+    transform: translateX(-50%) translateY(0);
+    transition-delay: 0.35s;
+}
+
+/* ── Placement: above ── */
+[data-tooltip].wss-tooltip-top::before {
+    top: auto;
+    bottom: calc(100% + var(--wss-tooltip-gap));
+    left: 50%;
+    transform: translateX(-50%) rotate(225deg) scale(0.8);
+    border-right: none;
+    border-bottom: none;
+}
+
+[data-tooltip].wss-tooltip-top::after {
+    top: auto;
+    bottom: calc(100% + var(--wss-tooltip-gap) + 5px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+}
+
+[data-tooltip].wss-tooltip-top:hover::before,
+[data-tooltip].wss-tooltip-top:focus-visible::before {
+    transform: translateX(-50%) rotate(225deg) scale(1);
+}
+
+[data-tooltip].wss-tooltip-top:hover::after,
+[data-tooltip].wss-tooltip-top:focus-visible::after {
+    transform: translateX(-50%) translateY(0);
+}
+
+@starting-style {
+    [data-tooltip].wss-tooltip-top:hover::before,
+    [data-tooltip].wss-tooltip-top:focus-visible::before {
+        opacity: 0;
+        transform: translateX(-50%) rotate(225deg) scale(0.8);
+    }
+
+    [data-tooltip].wss-tooltip-top:hover::after,
+    [data-tooltip].wss-tooltip-top:focus-visible::after {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-4px);
+    }
+}
+
+/* ── Horizontal alignment: left-aligned (for items near right edge) ── */
+[data-tooltip].wss-tooltip-left::after {
+    left: auto;
+    right: 0;
+    transform: translateY(4px);
+}
+
+[data-tooltip].wss-tooltip-left::before {
+    left: auto;
+    right: 12px;
+}
+
+[data-tooltip].wss-tooltip-left:hover::after,
+[data-tooltip].wss-tooltip-left:focus-visible::after {
+    transform: translateY(0);
+}
+
+@starting-style {
+    [data-tooltip].wss-tooltip-left:hover::after,
+    [data-tooltip].wss-tooltip-left:focus-visible::after {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+/* ── Horizontal alignment: right-aligned (for items near left edge) ── */
+[data-tooltip].wss-tooltip-right::after {
+    left: 0;
+    transform: translateY(4px);
+}
+
+[data-tooltip].wss-tooltip-right::before {
+    left: 12px;
+}
+
+[data-tooltip].wss-tooltip-right:hover::after,
+[data-tooltip].wss-tooltip-right:focus-visible::after {
+    transform: translateY(0);
+}
+
+@starting-style {
+    [data-tooltip].wss-tooltip-right:hover::after,
+    [data-tooltip].wss-tooltip-right:focus-visible::after {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+/* ── Combined: top + left/right alignment ── */
+[data-tooltip].wss-tooltip-top.wss-tooltip-left::after {
+    transform: translateY(-4px);
+}
+
+[data-tooltip].wss-tooltip-top.wss-tooltip-left:hover::after,
+[data-tooltip].wss-tooltip-top.wss-tooltip-left:focus-visible::after {
+    transform: translateY(0);
+}
+
+@starting-style {
+    [data-tooltip].wss-tooltip-top.wss-tooltip-left:hover::after,
+    [data-tooltip].wss-tooltip-top.wss-tooltip-left:focus-visible::after {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+[data-tooltip].wss-tooltip-top.wss-tooltip-right::after {
+    transform: translateY(-4px);
+}
+
+[data-tooltip].wss-tooltip-top.wss-tooltip-right:hover::after,
+[data-tooltip].wss-tooltip-top.wss-tooltip-right:focus-visible::after {
+    transform: translateY(0);
+}
+
+@starting-style {
+    [data-tooltip].wss-tooltip-top.wss-tooltip-right:hover::after,
+    [data-tooltip].wss-tooltip-top.wss-tooltip-right:focus-visible::after {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+}
+
+/* ── Placement: directly left of the element (vertically centered) ── */
+[data-tooltip].wss-tooltip-side-left::before {
+    top: 50%;
+    left: auto;
+    right: calc(100% + var(--wss-tooltip-gap));
+    transform: translateY(-50%) rotate(135deg) scale(0.8);
+}
+
+[data-tooltip].wss-tooltip-side-left::after {
+    top: 50%;
+    left: auto;
+    right: calc(100% + var(--wss-tooltip-gap) + 5px);
+    transform: translateY(-50%) translateX(-4px);
+}
+
+[data-tooltip].wss-tooltip-side-left:hover::before,
+[data-tooltip].wss-tooltip-side-left:focus-visible::before {
+    transform: translateY(-50%) rotate(135deg) scale(1);
+}
+
+[data-tooltip].wss-tooltip-side-left:hover::after,
+[data-tooltip].wss-tooltip-side-left:focus-visible::after {
+    transform: translateY(-50%) translateX(0);
+}
+
+@starting-style {
+    [data-tooltip].wss-tooltip-side-left:hover::before,
+    [data-tooltip].wss-tooltip-side-left:focus-visible::before {
+        opacity: 0;
+        transform: translateY(-50%) rotate(135deg) scale(0.8);
+    }
+
+    [data-tooltip].wss-tooltip-side-left:hover::after,
+    [data-tooltip].wss-tooltip-side-left:focus-visible::after {
+        opacity: 0;
+        transform: translateY(-50%) translateX(-4px);
+    }
+}
+
+/* ── Placement: directly right of the element (vertically centered) ── */
+[data-tooltip].wss-tooltip-side-right::before {
+    top: 50%;
+    right: auto;
+    left: calc(100% + var(--wss-tooltip-gap));
+    transform: translateY(-50%) rotate(-45deg) scale(0.8);
+}
+
+[data-tooltip].wss-tooltip-side-right::after {
+    top: 50%;
+    right: auto;
+    left: calc(100% + var(--wss-tooltip-gap) + 5px);
+    transform: translateY(-50%) translateX(4px);
+}
+
+[data-tooltip].wss-tooltip-side-right:hover::before,
+[data-tooltip].wss-tooltip-side-right:focus-visible::before {
+    transform: translateY(-50%) rotate(-45deg) scale(1);
+}
+
+[data-tooltip].wss-tooltip-side-right:hover::after,
+[data-tooltip].wss-tooltip-side-right:focus-visible::after {
+    transform: translateY(-50%) translateX(0);
+}
+
+@starting-style {
+    [data-tooltip].wss-tooltip-side-right:hover::before,
+    [data-tooltip].wss-tooltip-side-right:focus-visible::before {
+        opacity: 0;
+        transform: translateY(-50%) rotate(-45deg) scale(0.8);
+    }
+
+    [data-tooltip].wss-tooltip-side-right:hover::after,
+    [data-tooltip].wss-tooltip-side-right:focus-visible::after {
+        opacity: 0;
+        transform: translateY(-50%) translateX(4px);
+    }
+}
+
+/* ── Suppress when empty ──
+   !important: the base show rule sets display: block at (0,2,1), which otherwise beats this
+   (0,1,1) selector while hovering/focusing an element with an empty data-tooltip. */
+[data-tooltip=""]::before,
+[data-tooltip=""]::after {
+    display: none !important;
+}
+
+/* ── Suppress after a mouse click ──
+   A clicked control keeps both :hover (pointer hasn't moved) and :focus, so its tooltip would
+   otherwise linger indefinitely over whatever the click opened (popover, re-laid-out canvas).
+   Mouse clicks set :focus without :focus-visible, so this hides exactly the post-click case while
+   keyboard-focus tooltips (:focus-visible) keep working. Reappears on blur. */
+[data-tooltip]:focus:not(:focus-visible)::before,
+[data-tooltip]:focus:not(:focus-visible)::after {
+    display: none;
+}
+
+/* ── Suppress on touch devices ──
+   Touch users can't hover, so tooltips are useless to them. They'd also stay pinned via
+   :focus-visible after every tap, and the ::after pseudo-element silently contributes to
+   scrollWidth, producing phantom horizontal scroll. Hide them entirely on coarse-pointer devices. */
+@media (hover: none) {
+    /* !important: beats the :focus-visible show rule at (0,2,1), which sets display: block and
+       still matches after a tap — this selector alone is only (0,1,1). */
+    [data-tooltip]::before,
+    [data-tooltip]::after {
+        display: none !important;
+    }
+}
 
 /* ============================================================================
  * Pagination
