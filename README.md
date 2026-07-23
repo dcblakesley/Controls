@@ -148,8 +148,8 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 - **`EditSelect`** - Dropdown selection for objects
 - **`EditSelectEnum`** - Dropdown for enum values
 - **`EditSelectString`** - Dropdown for string values
-- **`EditSelectSearch`** - Searchable single-select (AntDesign-style: type-to-search, clear, virtualized)
-- **`EditMultiSelect`** - Multiple / tags select bound to a `List<T>` (AntDesign-style)
+- **`EditSelectSearch`** - Searchable single-select (AntDesign-style: type-to-search, clear, virtualized, option groups, loading state)
+- **`EditMultiSelect`** - Multiple / tags select bound to a `List<T>` (AntDesign-style, same parity features as `EditSelectSearch`)
 - **`EditRadio`** - Radio buttons for objects
 - **`EditRadioEnum`** - Radio buttons for enums
 - **`EditRadioString`** - Radio buttons for strings
@@ -198,7 +198,7 @@ Reach for `EditDisplay` when you want the same visual treatment as a read-only `
 
 A set of dependency-free, AntDesign-style general UI widgets (ported from `Standalone.Controls`). Unlike the `Edit*` controls these are **not** form-bound — they're plain components. They use the `wss-` CSS prefix and `--wss-*` theme tokens shipped in `wss-controls.css` (link it as shown in Quick Start). No service registration is required.
 
-- **`Select<T>`** - The dropdown engine behind `EditSelectSearch` / `EditMultiSelect`; usable standalone (single / multiple / tags, search, virtualized). `Prefix` renders leading content (typically an icon) in the trigger; `Variant="SelectVariant.Pill"` restyles the trigger as a rounded filter button (see below)
+- **`Select<T>`** - The dropdown engine behind `EditSelectSearch` / `EditMultiSelect`; usable standalone (single / multiple / tags, search, virtualized). `Prefix` renders leading content (typically an icon) in the trigger; `Variant="SelectVariant.Pill"` restyles the trigger as a rounded filter button, `SelectVariant.Borderless` shows no border/background until hover/focus (see below). `Loading`/`ShowArrow` control the arrow slot; `SelectOption.Group` renders AntD-style `OptGroup` headers; `FilterOption`, `EmptyContent`, `DropdownFooter`, and a controlled `Open`/`OpenChanged` round out the parity with Ant Design's `Select` (see [Select parity features](#select-parity-features-select--editselectsearch--editmultiselect))
 - **`Alert`** - Contextual message banner (success / info / warning / error, closable, description)
 - **`Skeleton`** - Loading placeholder with shimmer; announces `role="status"` / `aria-busy` with a visually-hidden `LoadingText` (default `"Loading"`) for screen readers
 - **`Popover`** - Click-triggered popover (4 placements)
@@ -259,6 +259,39 @@ Theming: the whole trigger (label, border, chevron, focus ring) derives from one
 ```
 
 `Prefix` also works on the outlined variant and on `EditMultiSelect`; `EditSelectSearch` forwards both `Variant` and `Prefix`.
+
+#### Select parity features (`Select` / `EditSelectSearch` / `EditMultiSelect`)
+
+All additive — existing markup is unchanged when these parameters go unused. `EditSelectSearch` and `EditMultiSelect` forward every one of them to the engine (grouping needs no wrapper wiring — it rides along on the `Options` they already forward); `EditMultiSelect` does **not** forward `Variant` (see the Pill section above), so `SelectVariant.Borderless` is single-select-only.
+
+- **`Loading` (`bool`, default false)** and **`ShowArrow` (`bool`, default true)** — `Loading` shows a spinner in the arrow's slot (and marks the control `aria-busy="true"`) even when `ShowArrow="false"`, matching Ant Design; `ShowArrow="false"` alone just hides the chevron. `ShowArrow` defaults to **true** (unlike Ant Design, which hides the arrow by default for a searchable multi-select) — kept always-on here so existing markup's DOM stays byte-identical.
+- **`SelectOption.Group` (`string?`)** — options render in `Options` order; a non-interactive header (`role="presentation"`, `aria-hidden`, never `role="option"`) appears once before the first option of each *contiguous* run sharing a `Group` value (the same group name in two separate runs gets two headers, mirroring a flat option list rather than a pre-nested `OptGroup` array). Keyboard navigation (arrows, Home/End, type-ahead) skips header rows entirely; a header is shown only while at least one of its options survives the current filter.
+  ```csharp
+  var options = new List<SelectOption<string?>>
+  {
+      new("us", "United States") { Group = "North America" },
+      new("ca", "Canada") { Group = "North America" },
+      new("gb", "United Kingdom") { Group = "Europe" },
+  };
+  ```
+- **`FilterOption` (`Func<string, SelectOption<TValue>, bool>?`)** — replaces the default case-insensitive `Label.Contains` match in `RebuildFiltered` when set, including when the search text is empty. Pass `(_, _) => true` to disable client-side filtering entirely for a pure server-driven `OnSearch` flow — every option in `Options` stays visible on the assumption the server already filtered them before reassigning `Options`.
+- **`EmptyContent` (`RenderFragment?`)** — a richer alternative to `EmptyText` for the no-match state; wins over `EmptyText` when set.
+- **`DropdownFooter` (`RenderFragment?`)** — Ant Design's `dropdownRender` equivalent: renders pinned after the option list, outside the virtualized list and outside listbox/option semantics (`role="presentation"`). Clicks inside it never select an option or close the dropdown on their own (propagation is stopped automatically) — wire your own handler, e.g. a button's `@onclick`, for any action including closing.
+  ```razor
+  <EditSelectSearch @bind-Value="model.Country" Options="_countries">
+      <EmptyContent><em>No matching country.</em></EmptyContent>
+      <DropdownFooter>
+          <button type="button" @onclick="AddCustomCountry">+ Add country</button>
+      </DropdownFooter>
+  </EditSelectSearch>
+  ```
+- **Controlled `Open`/`OpenChanged` (`bool` / `EventCallback<bool>`)** — two-way bindable via `@bind-Open`. While `OpenChanged` has a delegate (the controlled case), an externally-changed `Open` routes through the exact same internal open/close path as user interaction, so JS placement, focus, and scroll-into-view all still run; every open/close (external or internal) raises `OpenChanged` back, and an echo of a value the component just raised is recognized and ignored (no re-open/close loop). With no delegate on `OpenChanged` (the default, uncontrolled case) `Open` is inert and `DefaultOpen` alone governs the initial state, exactly as before.
+  ```razor
+  <button @onclick="() => _open = !_open">Toggle</button>
+  <EditSelectSearch @bind-Value="model.Country" Options="_countries" @bind-Open="_open" />
+  ```
+
+`wss-select.js`'s `placeDropdown` also clamps horizontally now: a dropdown wider than its trigger that would run off the right edge of the viewport anchors from the wrapper's right edge instead of its left, mirroring the existing above/below flip. No CSS/markup change — degrades to the existing `left: 0` default without JS.
 
 #### `Mode` example (`DatePicker` / `DateRangePicker`)
 
@@ -585,6 +618,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **New** (UI Kit)
 - Hover tooltips (`data-tooltip`) — ported from the RPG Assistant app's `data-tooltip` convention. Not a component: a `data-tooltip="..."` attribute on any element gets a styled CSS-only hover/focus tooltip (arrow, slide-in, `:focus-visible` support, hidden under `hover: none`) via new rules in `wss-controls.css`, themed through `--wss-*` tokens plus the new `--wss-tooltip-gap` / `--wss-tooltip-z-index` knobs. The optional new `wss-tooltip.js` (a plain `<script>` tag, no interop) auto-places the bubble — above/below and left/right — based on the trigger's position within its nearest clipping ancestor or panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`), so it stays inside a Modal/Drawer instead of running past the edge. See [Hover tooltips](#hover-tooltips-data-tooltip).
+- `Select`/`EditSelectSearch`/`EditMultiSelect` AntD 4.x parity batch: `Loading` (spinner in the arrow's slot + `aria-busy`) and `ShowArrow` (default true, unlike Ant Design's hide-for-searchable-multi default — kept on to preserve byte-identical DOM); `SelectOption.Group` renders an AntD-`OptGroup`-style header before each contiguous run of a shared group name in the flattened, virtualized dropdown (keyboard nav skips header rows; a header shows only while one of its options survives the filter); `FilterOption` replaces the default `Label.Contains` match (including for an empty search — `(_, _) => true` disables client filtering for a pure server-driven `OnSearch` flow); `EmptyContent` (richer alternative to `EmptyText`) and `DropdownFooter` (Ant Design's `dropdownRender`, pinned after the list, its own clicks never select/close); a two-way-bindable `Open`/`OpenChanged` (`@bind-Open`) that routes an externally-driven open/close through the same JS placement/focus path as user interaction, guarded against re-triggering on its own echoed value; `SelectVariant.Borderless` (single-select only — `EditMultiSelect` doesn't forward `Variant`); and `wss-select.js`'s `placeDropdown` now clamps horizontally (mirroring its existing above/below flip) when a wide dropdown would run off the right edge of the viewport. All additive — see [Select parity features](#select-parity-features-select--editselectsearch--editmultiselect).
 
 **Changed** (Edit Controls)
 - `LabelTooltip` (the form-label help-icon popover) is restyled to AntDesign's dark tooltip look — opaque dark chip, 6px radius, arrow, AntD's layered shadow, fade/slide-in — and now auto-places like `data-tooltip` instead of always opening above: the bubble opens below the trigger by default and aims toward the center of the nearest clipping ancestor / panel (flipping above, aligning left/right near an edge) via `wss-tooltip.js`, which `LabelTooltip` lazily imports itself — consumers add nothing, and without JS the CSS default (below, centered) still renders. Hover shows after the same 0.35s hover-intent delay as `data-tooltip`; keyboard focus stays instant. Theming: `--color-tooltip-bg` / `--color-tooltip-text` / `--edit-tooltip-z-index` still honored (the arrow follows the bubble background automatically); new `--edit-tooltip-gap` (default `24px`, below) and `--edit-tooltip-gap-tight` (`3px`, above) knobs; the bubble no longer draws a `--border-color` border. Anything that relied on the old always-above placement will see the new placement.
