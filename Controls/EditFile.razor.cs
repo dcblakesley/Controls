@@ -103,6 +103,11 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     // (a keyboard remove otherwise drops focus on <body>). Focused by id, so it survives the re-render.
     string? _pendingFocusId;
 
+    // Reentrancy guard for LoadFiles -- see its doc comment for the full rationale. Also gates the
+    // rendered <InputFile>'s `disabled` attribute (alongside IsDisabled in the .razor) so a real user
+    // can't fire a second change event while a batch is mid-flight.
+    bool _isLoadingFiles;
+
     bool _hasError => _uploadErrors.Count > 0 || IsInvalid;
 
     // The <InputFile> (and its drop zone) unmounts once the MaxFiles cap is reached — anything that
@@ -163,9 +168,48 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     static bool IsSameFile(IBrowserFile a, IBrowserFile b) =>
         a.Size == b.Size && a.LastModified == b.LastModified && a.Name == b.Name;
 
+    /// <summary>
+    /// Validates/dedupes/caps the files from one InputFile change event and buffers the accepted ones
+    /// into memory (see <see cref="BufferedBrowserFile"/>).
+    /// </summary>
+    /// <remarks>
+    /// <b>Re-entrancy:</b> this method suspends at <see cref="BeforeAdd"/> and again while buffering
+    /// each file's bytes -- both yield control back to Blazor's renderer. A second InputFile change
+    /// event firing before the first batch finishes would otherwise interleave with it against the
+    /// same <c>Value</c>/<c>EditContext</c>: <see cref="MaxFiles"/>/<see cref="MaxTotalBytes"/> are
+    /// both checked against a snapshot of <c>Value</c> read at the top of the method, so a second batch
+    /// racing the first bypasses both caps, and two concurrent <c>EditContext.NotifyFieldChanged</c>
+    /// calls for the same field can throw <see cref="ArgumentException"/>. <see cref="_isLoadingFiles"/>
+    /// is checked and set synchronously as the very first statement (no <c>await</c> before the set),
+    /// which is a complete guard under Blazor's cooperative single-threaded dispatcher: there is no
+    /// true multithreading to race against here, only interleaving at <c>await</c> points, so a
+    /// <see cref="SemaphoreSlim"/> (and the <c>IDisposable</c> plumbing it would need) would buy nothing
+    /// beyond what a plain bool already guarantees. This is a REJECT strategy, not a queue: a
+    /// re-entrant call returns immediately without touching <c>Value</c>, <c>_uploadErrors</c>, or the
+    /// <c>EditContext</c> -- it leaves the in-flight batch to finish on its own, and the rejected call's
+    /// files are silently dropped (not reported; the rejected batch never ran far enough to know what
+    /// it would even report). In practice a real user can't trigger this through the UI: the
+    /// &lt;InputFile&gt; is disabled for the duration of the batch (<c>_isLoadingFiles</c> gates
+    /// <c>disabled</c> in the .razor alongside <c>IsDisabled</c>), so this guards only against a
+    /// synthetic/automated double-fire (two change events dispatched back-to-back before the first
+    /// yields a render) -- exactly the hunter's repro.
+    /// </remarks>
     async Task LoadFiles(InputFileChangeEventArgs e)
     {
-        if (IsDisabled) return;
+        if (IsDisabled || _isLoadingFiles) return;
+        _isLoadingFiles = true;
+        try
+        {
+            await LoadFilesCore(e);
+        }
+        finally
+        {
+            _isLoadingFiles = false;
+        }
+    }
+
+    async Task LoadFilesCore(InputFileChangeEventArgs e)
+    {
         _hoverClass = string.Empty;
         _uploadErrors.Clear();
 

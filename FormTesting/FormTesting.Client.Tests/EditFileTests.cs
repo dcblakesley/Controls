@@ -592,17 +592,19 @@ public class EditFileTests : TestContext
         Assert.Contains("a.txt wurde abgelehnt.", cut.Find(".edit-validation-message").TextContent);
     }
 
-    // Minimal hand-written IBrowserFile -- lets the exception-propagation test below call LoadFiles
-    // directly (via reflection) without going through bUnit's InputFile/dispatcher plumbing, whose
-    // exception-surfacing behavior for a component event handler is not something to depend on here.
-    sealed class FakeBrowserFile : IBrowserFile
+    // Minimal hand-written IBrowserFile -- lets the reentrancy/exception-propagation tests below call
+    // LoadFiles directly (via reflection) without going through bUnit's InputFile/dispatcher plumbing,
+    // whose exception-surfacing/scheduling behavior for a component event handler is not something to
+    // depend on for those assertions. Name/size are overridable so the reentrancy tests can drive two
+    // distinguishable (or, for the duplicate-pick test, identical) files through overlapping calls.
+    sealed class FakeBrowserFile(string name = "a.txt", long size = 5) : IBrowserFile
     {
-        public string Name => "a.txt";
+        public string Name => name;
         public DateTimeOffset LastModified => DateTimeOffset.UtcNow;
-        public long Size => 5;
+        public long Size => size;
         public string ContentType => "text/plain";
         public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default) =>
-            new MemoryStream(new byte[5]);
+            new MemoryStream(new byte[size]);
     }
 
     [Fact]
@@ -625,6 +627,102 @@ public class EditFileTests : TestContext
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => task);
 
         Assert.Equal("boom", ex.Message);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Re-entrancy: a second InputFile change event firing while the first is still suspended
+    // inside BeforeAdd (the hunter's repro) must not corrupt shared state. Each test gates
+    // BeforeAdd on a shared, deliberately-uncompleted TaskCompletionSource, invokes LoadFiles
+    // directly via reflection (same rationale as the exception-propagation test above -- this is
+    // the exact method under test, not bUnit's InputFile/dispatcher plumbing) once for a "first"
+    // pick, then again -- while the first call is still suspended awaiting the gate -- for a
+    // "second", overlapping pick. The reentrancy guard is synchronous (set before any await), so
+    // the second call must return an already-completed Task without touching Value/_uploadErrors.
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Overlapping_LoadFiles_invocations_do_not_bypass_MaxFiles()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var gate = new TaskCompletionSource<bool>();
+        var cut = RenderEditFile(model, v => { changed = v; model.Files = v; }, maxFiles: 1,
+            beforeAdd: _ => gate.Task);
+
+        var editFile = cut.FindComponent<EditFile>().Instance;
+        var loadFiles = typeof(EditFile).GetMethod("LoadFiles", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var firstArgs = new InputFileChangeEventArgs([new FakeBrowserFile("a.txt")]);
+        var secondArgs = new InputFileChangeEventArgs([new FakeBrowserFile("b.txt")]);
+
+        var firstTask = (Task)loadFiles.Invoke(editFile, [firstArgs])!; // runs synchronously up to `await gate.Task` and suspends
+        var secondTask = (Task)loadFiles.Invoke(editFile, [secondArgs])!; // fires while the first is still in flight
+
+        Assert.True(secondTask.IsCompleted); // the guard short-circuits synchronously -- no interleaving with the first batch
+
+        gate.SetResult(true);
+        await firstTask;
+        await secondTask;
+
+        Assert.NotNull(changed);
+        Assert.Single(changed); // MaxFiles=1 held: the reentrant call never got a chance to add its own file
+        Assert.Equal("a.txt", changed[0].Name);
+    }
+
+    [Fact]
+    public async Task Overlapping_LoadFiles_invocations_do_not_bypass_MaxTotalBytes()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var gate = new TaskCompletionSource<bool>();
+        var cut = RenderEditFile(model, v => { changed = v; model.Files = v; },
+            maxFileSizeBytes: 4096, maxTotalBytes: 1024, beforeAdd: _ => gate.Task);
+
+        var editFile = cut.FindComponent<EditFile>().Instance;
+        var loadFiles = typeof(EditFile).GetMethod("LoadFiles", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var firstArgs = new InputFileChangeEventArgs([new FakeBrowserFile("a.txt", size: 1024)]);
+        var secondArgs = new InputFileChangeEventArgs([new FakeBrowserFile("b.txt", size: 1024)]);
+
+        var firstTask = (Task)loadFiles.Invoke(editFile, [firstArgs])!;
+        var secondTask = (Task)loadFiles.Invoke(editFile, [secondArgs])!;
+
+        Assert.True(secondTask.IsCompleted);
+
+        gate.SetResult(true);
+        await firstTask;
+        await secondTask;
+
+        Assert.NotNull(changed);
+        // Without the guard, the reentrant call's runningTotal snapshot (taken before the first
+        // call's Value assignment) would have let both 1 KB files through against a 1 KB cap.
+        Assert.Single(changed);
+        Assert.Equal("a.txt", changed[0].Name);
+    }
+
+    [Fact]
+    public async Task Overlapping_LoadFiles_invocations_with_the_same_file_do_not_crash()
+    {
+        // The hunter's third repro: two overlapping picks racing to add the same logical file used to
+        // risk an ArgumentException from EditContext.NotifyFieldChanged firing concurrently for the
+        // same field. With the guard, only one batch ever runs at a time, so this must complete clean.
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var gate = new TaskCompletionSource<bool>();
+        var cut = RenderEditFile(model, v => { changed = v; model.Files = v; }, beforeAdd: _ => gate.Task);
+
+        var editFile = cut.FindComponent<EditFile>().Instance;
+        var loadFiles = typeof(EditFile).GetMethod("LoadFiles", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var firstArgs = new InputFileChangeEventArgs([new FakeBrowserFile("a.txt")]);
+        var secondArgs = new InputFileChangeEventArgs([new FakeBrowserFile("a.txt")]); // same name/size/last-modified shape
+
+        var firstTask = (Task)loadFiles.Invoke(editFile, [firstArgs])!;
+        var secondTask = (Task)loadFiles.Invoke(editFile, [secondArgs])!;
+
+        gate.SetResult(true);
+        await firstTask;
+        await secondTask; // must not throw
+
+        Assert.NotNull(changed);
+        Assert.Single(changed); // the reentrant pick of "the same file" never ran far enough to duplicate or crash
     }
 
     [Fact]
