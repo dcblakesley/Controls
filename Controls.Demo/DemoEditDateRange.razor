@@ -39,6 +39,66 @@
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.MonthStart"
+                       @bind-End="_model.MonthEnd"
+                       Mode="DatePickerMode.Month"
+                       Label="Fiscal Range" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_monthExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_monthModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.WeekStart"
+                       @bind-End="_model.WeekEnd"
+                       Mode="DatePickerMode.Week"
+                       FirstDayOfWeek="DayOfWeek.Sunday"
+                       Label="Sprint Range" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_weekExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_weekModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.DateTimeStart"
+                       @bind-End="_model.DateTimeEnd"
+                       Mode="DatePickerMode.DateTime"
+                       Use12Hours="true"
+                       ShowSeconds="false"
+                       Label="Appointment Window" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_dateTimeExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_dateTimeModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.DisabledStart"
+                       @bind-End="_model.DisabledEnd"
+                       DisabledDate="IsWeekend"
+                       Label="Business Days" />
+
+        <EditDateRange @bind-Start="_model.DisabledStart"
+                       @bind-End="_model.DisabledEnd"
+                       Label="Business Days"
+                       IsEditMode=false />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_disabledExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_disabledModel</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -66,7 +126,25 @@
         public DateTime? RequiredStart { get; set; }
         [Required]
         public DateTime? RequiredEnd { get; set; }
+
+        // Mode overrides -- pinned dates, same rationale as DemoEditDatePickerModel's own Mode
+        // overrides.
+        public DateTime? MonthStart { get; set; } = new DateTime(2026, 2, 1);
+        public DateTime? MonthEnd { get; set; } = new DateTime(2026, 5, 1);
+
+        public DateTime? WeekStart { get; set; } = new DateTime(2026, 2, 8);
+        public DateTime? WeekEnd { get; set; } = new DateTime(2026, 3, 1);
+
+        public DateTime? DateTimeStart { get; set; } = new DateTime(2026, 2, 10, 9, 0, 0);
+        public DateTime? DateTimeEnd { get; set; } = new DateTime(2026, 2, 20, 17, 30, 0);
+
+        // Feb 2 and Feb 13, 2026 are both weekdays (Monday/Friday) -- clear of IsWeekend below, same
+        // convention as DemoEditDatePickerModel.AppointmentDate.
+        public DateTime? DisabledStart { get; set; } = new DateTime(2026, 2, 2);
+        public DateTime? DisabledEnd { get; set; } = new DateTime(2026, 2, 13);
     }
+
+    static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
     readonly string _basicExample = @"<EditDateRange @bind-Start=""_model.BasicStart""
                @bind-End=""_model.BasicEnd"" />";
@@ -84,4 +162,46 @@ public DateTime? RequiredStart { get; set; }
 
 [Required]
 public DateTime? RequiredEnd { get; set; }";
+
+    readonly string _monthExample = @"<EditDateRange @bind-Start=""_model.MonthStart""
+               @bind-End=""_model.MonthEnd""
+               Mode=""DatePickerMode.Month""
+               Label=""Fiscal Range"" />";
+
+    readonly string _monthModel = @"public DateTime? MonthStart { get; set; } = new DateTime(2026, 2, 1);
+public DateTime? MonthEnd { get; set; } = new DateTime(2026, 5, 1);";
+
+    readonly string _weekExample = @"<EditDateRange @bind-Start=""_model.WeekStart""
+               @bind-End=""_model.WeekEnd""
+               Mode=""DatePickerMode.Week""
+               FirstDayOfWeek=""DayOfWeek.Sunday""
+               Label=""Sprint Range"" />";
+
+    readonly string _weekModel = @"public DateTime? WeekStart { get; set; } = new DateTime(2026, 2, 8);
+public DateTime? WeekEnd { get; set; } = new DateTime(2026, 3, 1);";
+
+    readonly string _dateTimeExample = @"<EditDateRange @bind-Start=""_model.DateTimeStart""
+               @bind-End=""_model.DateTimeEnd""
+               Mode=""DatePickerMode.DateTime""
+               Use12Hours=""true""
+               ShowSeconds=""false""
+               Label=""Appointment Window"" />";
+
+    readonly string _dateTimeModel = @"public DateTime? DateTimeStart { get; set; } = new DateTime(2026, 2, 10, 9, 0, 0);
+public DateTime? DateTimeEnd { get; set; } = new DateTime(2026, 2, 20, 17, 30, 0);";
+
+    readonly string _disabledExample = @"<EditDateRange @bind-Start=""_model.DisabledStart""
+               @bind-End=""_model.DisabledEnd""
+               DisabledDate=""IsWeekend""
+               Label=""Business Days"" />
+
+<EditDateRange @bind-Start=""_model.DisabledStart""
+               @bind-End=""_model.DisabledEnd""
+               Label=""Business Days""
+               IsEditMode=false />";
+
+    readonly string _disabledModel = @"public DateTime? DisabledStart { get; set; } = new DateTime(2026, 2, 2);
+public DateTime? DisabledEnd { get; set; } = new DateTime(2026, 2, 13);
+
+static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;";
 }

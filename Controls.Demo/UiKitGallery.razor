@@ -221,6 +221,113 @@
         <p data-test-id="range-result">
             Selected: @(_rangeStart?.ToString("yyyy-MM-dd") ?? "—") → @(_rangeEnd?.ToString("yyyy-MM-dd") ?? "—")
         </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Mode</code> swaps what both linked panels select together -- the bound
+            <code>Start</code>/<code>End</code> stay <code>DateTime?</code> in every mode.
+            <code>Month</code> shows two consecutive years, each a 3x4 month grid; two clicks (one
+            per endpoint) commit their first-of-month starts. Initial values are pinned for the same
+            baseline-determinism reason as the single-date sibling's own Mode demos.
+        </p>
+        <DateRangePicker @bind-Start="_rangeMonthStart" @bind-End="_rangeMonthEnd"
+                         Mode="DatePickerMode.Month"
+                         Id="demo-range-month"
+                         Width="280px" />
+        <p data-test-id="range-month-result">
+            Selected: @(_rangeMonthStart?.ToString("yyyy-MM") ?? "—") → @(_rangeMonthEnd?.ToString("yyyy-MM") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Year</code> shows two consecutive decades, each a 3x4 year grid (10 of the decade
+            plus 2 dimmed adjacent-decade years).
+        </p>
+        <DateRangePicker @bind-Start="_rangeYearStart" @bind-End="_rangeYearEnd"
+                         Mode="DatePickerMode.Year"
+                         Id="demo-range-year"
+                         Width="220px" />
+        <p data-test-id="range-year-result">
+            Selected: @(_rangeYearStart?.Year.ToString() ?? "—") → @(_rangeYearEnd?.Year.ToString() ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Week</code> renders the same dual one-month calendars as <code>Date</code> plus a
+            leading week-number column in both -- always shown regardless of
+            <code>ShowWeekNumbers</code>. The ROW, not the day, is the selection unit: clicking any
+            day commits its week's start. <code>FirstDayOfWeek</code> is pinned for the same
+            baseline-determinism reason as the single-date sibling's own Week demo.
+        </p>
+        <DateRangePicker @bind-Start="_rangeWeekStart" @bind-End="_rangeWeekEnd"
+                         Mode="DatePickerMode.Week"
+                         FirstDayOfWeek="DayOfWeek.Sunday"
+                         Id="demo-range-week"
+                         Width="280px" />
+        <p data-test-id="range-week-result">
+            Selected: @(_rangeWeekStart?.ToString("yyyy-MM-dd") ?? "—") → @(_rangeWeekEnd?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Quarter</code> shows two consecutive years, each a single row of 4 quarter buttons.
+        </p>
+        <DateRangePicker @bind-Start="_rangeQuarterStart" @bind-End="_rangeQuarterEnd"
+                         Mode="DatePickerMode.Quarter"
+                         Id="demo-range-quarter"
+                         Width="240px" />
+        <p data-test-id="range-quarter-result">
+            Selected: @(_rangeQuarterStart?.ToString("yyyy-MM-dd") ?? "—") → @(_rangeQuarterEnd?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>DateTime</code>/<code>Time</code> abandon the dual-panel layout for a SINGLE panel
+            per-endpoint pick session ending in an OK button: picking the active endpoint's day/time
+            and clicking OK either advances to the other endpoint (the active underline moves,
+            nothing is committed yet) or -- once both sides are resolved -- commits both and closes.
+            <code>Use12Hours="false"</code> and seconds on for this one; both endpoints start empty
+            (<code>DefaultViewDate</code> pins the panel's initial month) so the advance step is
+            actually observable.
+        </p>
+        <DateRangePicker @bind-Start="_rangeDateTimeStart" @bind-End="_rangeDateTimeEnd"
+                         Mode="DatePickerMode.DateTime"
+                         Use12Hours="false"
+                         ShowSeconds="true"
+                         DefaultViewDate="@(new DateTime(2026, 2, 10))"
+                         Id="demo-range-datetime"
+                         Width="260px" />
+        <p data-test-id="range-datetime-result">
+            Selected: @(_rangeDateTimeStart?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—") → @(_rangeDateTimeEnd?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Time</code> drops the calendar entirely -- just the time row and OK, per endpoint.
+            <code>Use12Hours</code> + <code>MinuteStep="15"</code> + <code>ShowSeconds="false"</code>
+            together here.
+        </p>
+        <DateRangePicker @bind-Start="_rangeTimeStart" @bind-End="_rangeTimeEnd"
+                         Mode="DatePickerMode.Time"
+                         Use12Hours="true"
+                         MinuteStep="15"
+                         ShowSeconds="false"
+                         Id="demo-range-time"
+                         Width="220px" />
+        <p data-test-id="range-time-result">
+            Selected: @(_rangeTimeStart?.ToString("HH:mm") ?? "—") → @(_rangeTimeEnd?.ToString("HH:mm") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>DisabledDate</code> (weekends, here) rejects a cell/commit alongside
+            <code>Min</code>/<code>Max</code>; <code>ExtraFooter</code> renders its own strip below
+            the calendar in every mode (AntD's <code>renderExtraFooter</code>).
+        </p>
+        <DateRangePicker @bind-Start="_rangeDisabledStart" @bind-End="_rangeDisabledEnd"
+                         DisabledDate="IsWeekend"
+                         Id="demo-range-disabled"
+                         Width="300px">
+            <ExtraFooter>
+                <span data-test-id="range-disabled-extra-footer">Weekdays only — weekends are disabled.</span>
+            </ExtraFooter>
+        </DateRangePicker>
+        <p data-test-id="range-disabled-result">
+            Selected: @(_rangeDisabledStart?.ToString("yyyy-MM-dd") ?? "—") → @(_rangeDisabledEnd?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
     </section>
 
     <section class="demo-section">
@@ -461,6 +568,28 @@
     // months must not depend on the test run's date.
     DateTime? _rangeStart = new DateTime(2025, 1, 15);
     DateTime? _rangeEnd = new DateTime(2025, 2, 3);
+
+    // --- DateRangePicker Mode demos (Month/Year/Week/Quarter/DateTime/Time) + DisabledDate/
+    // ExtraFooter --- pinned for the same baseline-determinism reason as the demos above.
+    DateTime? _rangeMonthStart = new DateTime(2026, 2, 1);
+    DateTime? _rangeMonthEnd = new DateTime(2026, 8, 1);
+    DateTime? _rangeYearStart = new DateTime(2024, 1, 1);
+    DateTime? _rangeYearEnd = new DateTime(2027, 1, 1);
+    DateTime? _rangeWeekStart = new DateTime(2026, 2, 8);
+    DateTime? _rangeWeekEnd = new DateTime(2026, 3, 1);
+    DateTime? _rangeQuarterStart = new DateTime(2026, 1, 1);
+    DateTime? _rangeQuarterEnd = new DateTime(2026, 7, 1);
+    // Both endpoints start empty -- the pick session's OK-advances-then-commits flow (see the class
+    // remarks on DateRangePicker) is only observable when the OTHER endpoint isn't already resolved;
+    // DefaultViewDate keeps the panel's initial month deterministic despite that.
+    DateTime? _rangeDateTimeStart;
+    DateTime? _rangeDateTimeEnd;
+    DateTime? _rangeTimeStart = new DateTime(2026, 2, 14, 9, 30, 0);
+    DateTime? _rangeTimeEnd = new DateTime(2026, 2, 14, 14, 30, 0);
+    DateTime? _rangeDisabledStart = new DateTime(2026, 2, 2);
+    DateTime? _rangeDisabledEnd = new DateTime(2026, 2, 13);
+
+    static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
     // --- DatePicker demo --- (pinned for the same baseline-determinism reason)
     DateTime? _singleDate = new DateTime(2026, 2, 14);
