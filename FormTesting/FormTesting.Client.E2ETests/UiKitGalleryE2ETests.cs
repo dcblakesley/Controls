@@ -720,6 +720,133 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await Expect(rows.First).ToContainTextAsync("Item 25");
     }
 
+    [Fact]
+    public async Task Table_ScrollY_filter_OK_button_is_clickable_while_Loading_is_on()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "ScrollY (sticky header)" });
+        var toggle = section.Locator("[data-test-id=toggle-scrolly-loading]");
+        var mask = section.Locator(".wss-table-loading-mask");
+
+        // Open the filter FIRST, while the table is still interactive, then flip Loading on with the
+        // dropdown already open -- Loading masks the whole table (by design, the mask is meant to
+        // block interaction), so the trigger button itself is rightfully unreachable once Loading is
+        // already on; the bug this guards is that an ALREADY-open dropdown's OK button became
+        // unreachable too, which is never the intended behavior.
+        var filterButton = section.Locator(".wss-table-filter-trigger");
+        await filterButton.ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+        var ok = dropdown.Locator(".wss-table-filter-ok");
+
+        // A direct DOM .click() (not a coordinate-based Playwright click): the now-open dropdown can
+        // itself visually overlap the toggle button (it's placed right above the table) badly enough
+        // that even a forced coordinate click could still land on the dropdown instead -- that's an
+        // artifact of this demo's layout, not something this click needs to respect.
+        await toggle.EvaluateAsync("el => el.click()");
+        await Expect(mask).ToBeVisibleAsync();
+        await Expect(ok).ToBeVisibleAsync(); // still open, unaffected by the mask appearing
+
+        // Regression guard for the sticky-header stacking-context trap (Fix 1): confirm the topmost
+        // element at the OK button's own coordinates is the button itself, not the loading mask
+        // painting over it. Computed in ONE JS round trip scoped to the resolved element (rect +
+        // elementFromPoint together) rather than threading a separately-fetched bounding box back
+        // into a second call -- avoids a race against any still-in-flight Blazor Server render batch.
+        var topElementIsOk = await ok.EvaluateAsync<bool>(@"el => {
+            const r = el.getBoundingClientRect();
+            const x = r.left + r.width / 2;
+            const y = r.top + r.height / 2;
+            const top = document.elementFromPoint(x, y);
+            return top === el || el.contains(top);
+        }");
+        Assert.True(topElementIsOk);
+
+        // And an actual click lands on it -- Playwright's own actionability check would time out
+        // here if the mask were still intercepting the click.
+        await ok.ClickAsync();
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Table_ScrollY_filter_dropdown_tracks_the_trigger_on_page_scroll()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "ScrollY (sticky header)" });
+        var filterButton = section.Locator(".wss-table-filter-trigger");
+
+        // Position the trigger toward the CENTER of the viewport, not an edge -- the ScrollY demo is
+        // the last section on the page, and a trigger placed right at the top/bottom edge can cross
+        // the fixed dropdown's own above/below flip threshold (see placeFixedBelow's flip logic in
+        // wss-overlay.js) partway through a subsequent scroll, which changes the trigger-to-dropdown
+        // gap relationship for a reason that has nothing to do with this fix. A small scroll amount
+        // below keeps the trigger comfortably on-screen throughout, so the flip state can't change.
+        await filterButton.EvaluateAsync("el => el.scrollIntoView({ block: 'center' })");
+        await filterButton.ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).ToHaveCSSAsync("position", "fixed");
+
+        var triggerBefore = await filterButton.BoundingBoxAsync();
+        var dropdownBefore = await dropdown.BoundingBoxAsync();
+        Assert.NotNull(triggerBefore);
+        Assert.NotNull(dropdownBefore);
+
+        // window.scrollTo with an explicit behavior: 'instant' -- Bootstrap's reboot CSS sets
+        // `scroll-behavior: smooth` on :root, which makes scrollTo/scrollBy/scrollIntoView (when
+        // 'behavior' is left to default) animate asynchronously instead of jumping, so reading
+        // scrollY right back would still show the pre-scroll value; 'instant' explicitly overrides
+        // that CSS per spec. A wheel event over the trigger, separately, would scroll the TABLE's own
+        // ScrollY wrapper (overflow-y: auto) instead of the page, which wouldn't move a sticky
+        // header's viewport position at all.
+        var scrollDelta = await _page.EvaluateAsync<double>(@"() => {
+            const before = window.scrollY;
+            window.scrollTo({ top: Math.max(0, before - 100), behavior: 'instant' });
+            return before - window.scrollY;
+        }");
+        Assert.True(Math.Abs(scrollDelta) > 5, $"scrollDelta={scrollDelta}"); // the page genuinely scrolled
+
+        // The browser dispatches a programmatic scroll's 'scroll' event asynchronously (a later task,
+        // not synchronously within the script that called scrollTo), so the reposition it triggers
+        // may not have run yet the instant our EvaluateAsync call above returns -- poll briefly for
+        // the dropdown to catch up instead of reading a possibly-stale layout immediately.
+        float triggerDelta = 0, dropdownDelta = 0;
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            var triggerAfter = await filterButton.BoundingBoxAsync();
+            var dropdownAfter = await dropdown.BoundingBoxAsync();
+            Assert.NotNull(triggerAfter);
+            Assert.NotNull(dropdownAfter);
+            triggerDelta = triggerBefore!.Y - triggerAfter!.Y; // positive: moved up as the page scrolled down
+            dropdownDelta = dropdownBefore!.Y - dropdownAfter!.Y;
+            if (Math.Abs(triggerDelta - dropdownDelta) < 0.5) break;
+            await Task.Delay(50);
+        }
+        Assert.Equal(triggerDelta, dropdownDelta, 1); // tracked the trigger instead of staying stuck
+    }
+
+    [Fact]
+    public async Task Table_sortable_filterable_header_keeps_the_filter_button_inside_a_narrow_th()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "narrow fixed-width column" });
+        var th = section.Locator("thead th").First;
+        var filterButton = section.Locator(".wss-table-filter-trigger");
+        var sortTrigger = section.Locator(".wss-table-sort-trigger");
+
+        await Expect(filterButton).ToBeVisibleAsync();
+        await Expect(sortTrigger).ToBeVisibleAsync();
+
+        var thBox = await th.BoundingBoxAsync();
+        var filterBox = await filterButton.BoundingBoxAsync();
+        Assert.NotNull(thBox);
+        Assert.NotNull(filterBox);
+
+        // Before the fix, the sort label's unshrinkable min-content width pushed the filter button
+        // past the cell's right edge instead of letting the label truncate.
+        Assert.True(filterBox!.X + filterBox.Width <= thBox!.X + thBox.Width + 0.5);
+        Assert.True(filterBox.X >= thBox.X - 0.5);
+    }
+
     // Asserts an overlay panel is centred over its trigger and sits just above it (Top placement).
     // A precise geometric guard for anchoring — more reliable than a screenshot for an absolutely
     // -positioned overlay that can overflow the viewport when the trigger is near an edge.
