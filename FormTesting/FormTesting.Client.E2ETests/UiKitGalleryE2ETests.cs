@@ -465,8 +465,10 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     {
         await GotoAsync();
         await _page.Locator("button", new() { HasTextString = "Notification" }).ClickAsync();
-        await Expect(_page.Locator(".wss-notification")).ToBeVisibleAsync();
-        await Expect(_page.Locator(".wss-notification-message")).ToContainTextAsync("Notification");
+        // .First: the Placement demo section's second WasmNotificationContainer (bottom-left) reads
+        // the same static service, so this same toast also renders there.
+        await Expect(_page.Locator(".wss-notification").First).ToBeVisibleAsync();
+        await Expect(_page.Locator(".wss-notification-message").First).ToContainTextAsync("Notification");
     }
 
     // ---- AntD 4.x parity batch: Pagination + Table ----
@@ -845,6 +847,202 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         // past the cell's right edge instead of letting the label truncate.
         Assert.True(filterBox!.X + filterBox.Width <= thBox!.X + thBox.Width + 0.5);
         Assert.True(filterBox.X >= thBox.X - 0.5);
+    }
+
+    // ---- AntD 4.x parity batch 2: Modal/Drawer Keyboard+Centered+Extra, Popconfirm/Popover
+    // controlled Visible, Popconfirm async-confirm/OkDanger, notification Placement, Tabs
+    // Card/Centered/TabBarExtraContent, Alert Banner/Action, SearchInput AllowClear/EnterButtonText
+    // (appended -- existing sections/baselines above are untouched). ----
+
+    [Fact]
+    public async Task Modal_keyboard_false_blocks_escape_while_closable_stays_true()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "Centered, Keyboard, Extra" });
+        await section.Locator("[data-test-id=open-centered-modal]").ClickAsync();
+        var panel = _page.Locator(".wss-modal[role=dialog]", new() { HasTextString = "Centered modal" });
+        await Expect(panel).ToBeVisibleAsync();
+
+        // The header X (Closable, default true) is still there...
+        await Expect(panel.Locator(".wss-modal-close")).ToBeVisibleAsync();
+        // ...but Escape (Keyboard="false") does nothing -- decoupled from Closable.
+        await _page.Keyboard.PressAsync("Escape");
+        await Expect(panel).ToBeVisibleAsync();
+
+        // The X still closes it (Closable governs the X independently of Keyboard).
+        await panel.Locator(".wss-modal-close").ClickAsync();
+        await Expect(panel).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Modal_centered_adds_the_wrap_modifier_class()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "Centered, Keyboard, Extra" });
+        await section.Locator("[data-test-id=open-centered-modal]").ClickAsync();
+
+        await Expect(_page.Locator(".wss-modal-wrap")).ToHaveClassAsync(new Regex("wss-modal-wrap-centered"));
+        await _page.Keyboard.PressAsync("Escape"); // no-op (Keyboard=false); close via the X instead
+        await _page.Locator(".wss-modal-close").ClickAsync();
+    }
+
+    [Fact]
+    public async Task Drawer_extra_renders_a_working_button_beside_the_close_icon()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "Centered, Keyboard, Extra" });
+        await section.Locator("[data-test-id=open-extra-drawer]").ClickAsync();
+
+        var drawer = _page.Locator(".wss-drawer[role=dialog]", new() { HasTextString = "Drawer with Extra" });
+        await Expect(drawer).ToBeVisibleAsync();
+        var extraBtn = drawer.Locator("[data-test-id=drawer-extra-btn]");
+        await Expect(extraBtn).ToBeVisibleAsync();
+        await extraBtn.ClickAsync(); // just confirms it's a real, clickable, non-overlapping button
+
+        await Expect(drawer.Locator(".wss-drawer-close")).ToBeVisibleAsync();
+        await drawer.Locator(".wss-drawer-close").ClickAsync();
+        await Expect(drawer).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Popconfirm_controlled_Visible_button_opens_and_closes_it_with_JS_positioning()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "controlled Visible" });
+        var panel = section.Locator(".wss-popconfirm");
+
+        await Expect(panel).ToHaveCountAsync(0);
+        await section.Locator("[data-test-id=controlled-popconfirm-toggle]").ClickAsync();
+
+        // Visible AND positioned (not stuck at wss-measuring) -- proves the externally-driven open
+        // ran through the same JS placement path as a click, not just that _open flipped.
+        // NOTE: unlike Popover (below), this does NOT also assert focus landed on the OK button --
+        // investigating this batch's new controlled-Visible path surfaced a pre-existing race in
+        // Popconfirm's OnAfterRenderAsync (overlapping invocations around the position/focus state
+        // machine can leave _pendingFocus never consumed), so the OK button does not reliably gain
+        // focus on open in a real browser today. That's a latent defect in code this batch didn't
+        // touch (Popover's equivalent _panelRef.FocusAsync() DOES work) -- flagged for a follow-up,
+        // not fixed here (out of this batch's scope).
+        await Expect(panel).ToBeVisibleAsync();
+        await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        // Toggle again (still the same external button; the popup's own full-viewport backdrop would
+        // intercept a real coordinate-based click on our page-level toggle button, so dispatch the
+        // click event directly -- same technique as the Select controlled-Open e2e test).
+        await section.Locator("[data-test-id=controlled-popconfirm-toggle]").DispatchEventAsync("click");
+        await Expect(panel).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Popover_controlled_Visible_button_opens_it_and_JS_focuses_the_panel()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "controlled Visible" });
+        var panel = section.Locator(".wss-popover");
+
+        await Expect(panel).ToHaveCountAsync(0);
+        await section.Locator("[data-test-id=controlled-popover-toggle]").ClickAsync();
+
+        await Expect(panel).ToBeVisibleAsync();
+        await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await Expect(panel).ToBeFocusedAsync();
+
+        // The popup's own full-viewport backdrop would intercept a real coordinate-based click on
+        // our page-level toggle button, so dispatch the click event directly (same technique as the
+        // Select controlled-Open e2e test).
+        await section.Locator("[data-test-id=controlled-popover-toggle]").DispatchEventAsync("click");
+        await Expect(panel).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Popconfirm_async_confirm_disables_both_buttons_with_a_spinner_then_closes()
+    {
+        await GotoAsync();
+        await _page.Locator("[data-test-id=async-confirm-trigger]").ClickAsync();
+        var panel = _page.Locator(".wss-popconfirm", new() { HasTextString = "Permanently delete" });
+        await Expect(panel).ToBeVisibleAsync();
+
+        var okButton = panel.Locator(".wss-dialog-btn-primary");
+        await Expect(okButton).ToHaveClassAsync(new Regex("wss-dialog-btn-danger")); // OkDanger
+        await okButton.ClickAsync();
+
+        // Genuinely pending (the demo's OnConfirm awaits a 1s delay): both buttons disabled, spinner up.
+        await Expect(okButton).ToBeDisabledAsync();
+        await Expect(panel.Locator(".wss-dialog-btn").First).ToBeDisabledAsync();
+        await Expect(panel.Locator(".wss-icon-spin")).ToBeVisibleAsync();
+
+        // Closes on completion, and the demo's result text updates.
+        await Expect(panel).Not.ToBeVisibleAsync(new() { Timeout = 5_000 });
+        await Expect(_page.Locator("[data-test-id=async-confirm-result]")).ToContainTextAsync("deleted");
+    }
+
+    [Fact]
+    public async Task Notification_bottom_left_container_anchors_to_the_bottom_left_corner()
+    {
+        await GotoAsync();
+        await _page.Locator("[data-test-id=bottom-left-notification-btn]").ClickAsync();
+
+        var containers = _page.Locator(".wss-notification-container.wss-notification-bottomleft");
+        await Expect(containers).ToHaveCountAsync(1);
+        var box = await containers.BoundingBoxAsync();
+        Assert.NotNull(box);
+        var viewport = _page.ViewportSize;
+        Assert.NotNull(viewport);
+        // Anchored toward the bottom-left: comfortably in the left half, and its bottom edge sits
+        // near the viewport's own bottom (not pinned to the top like the default TopRight stack).
+        Assert.True(box!.X < viewport!.Width / 2, $"x={box.X}");
+        Assert.True(box.Y + box.Height > viewport.Height * 0.6, $"bottom={box.Y + box.Height}");
+    }
+
+    [Fact]
+    public async Task Tabs_card_section_renders_card_styling_and_the_extra_content_button()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "TabBarExtraContent, Centered, Card type" });
+        await Expect(section.Locator(".wss-tabs")).ToHaveClassAsync(new Regex("wss-tabs-card"));
+        await Expect(section.Locator(".wss-tabs-nav")).ToHaveClassAsync(new Regex("wss-tabs-nav-centered"));
+        await Expect(section.Locator("[data-test-id=tabs-extra-btn]")).ToBeVisibleAsync();
+
+        // Still a plain ARIA tab strip -- clicking a tab still switches the active pane.
+        await section.Locator("[role=tab]", new() { HasTextString = "Tab 2" }).ClickAsync();
+        await Expect(section.Locator("[role=tabpanel]")).ToContainTextAsync("Pane two");
+    }
+
+    [Fact]
+    public async Task Alert_banner_and_action_section_renders_as_expected()
+    {
+        await GotoAsync();
+        var alertSection = _page.Locator("section.demo-section").First;
+        var banner = alertSection.Locator(".wss-alert-banner");
+        await Expect(banner).ToBeVisibleAsync();
+        await Expect(banner).ToHaveClassAsync(new Regex("wss-alert-warning")); // default severity while Banner + no explicit Type
+
+        var actionBtn = alertSection.Locator("[data-test-id=alert-action-btn]");
+        await Expect(actionBtn).ToBeVisibleAsync();
+        // The section already has an earlier Closable alert (Error, no Action) -- scope to the one
+        // that actually has the action slot, and confirm it's still closable alongside Action.
+        var actionAlert = alertSection.Locator(".wss-alert:has([data-test-id=alert-action-btn])");
+        await Expect(actionAlert.Locator(".wss-alert-close")).ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task SearchInput_allow_clear_and_enter_button_text_section_works()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "AllowClear, EnterButtonText" });
+
+        var clearableInput = section.Locator("#demo-search-clearable");
+        var clearBtn = section.Locator(".wss-search-clear");
+        await Expect(clearBtn).ToBeVisibleAsync(); // pre-filled with "pre-filled"
+        await clearBtn.ClickAsync();
+        await Expect(clearableInput).ToHaveValueAsync("");
+        // The enter-button search starts empty (never had a value), so this was the only clear
+        // button on the page -- clearing it leaves none.
+        await Expect(clearBtn).ToHaveCountAsync(0);
+
+        var enterBtn = section.Locator(".wss-search:has(#demo-search-enter-button) .wss-search-btn-enter");
+        await Expect(enterBtn).ToBeVisibleAsync();
+        await Expect(enterBtn).ToContainTextAsync("Search");
     }
 
     // Asserts an overlay panel is centred over its trigger and sits just above it (Top placement).
