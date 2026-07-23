@@ -315,7 +315,7 @@
    "button" look for a radio group: joined bordered buttons, one highlighted as checked. This is a
    new opt-in render mode (like Select/DatePicker), NOT gated behind .edit-theme -- it carries its
    own styling regardless of whether the classic edit-theme chrome is applied elsewhere on the page,
-   so every token below is the plain generic --color-* bridge (resolves at any scope) rather than
+   so every token below is the plain generic --color-* bridge (resolves at :root only) rather than
    the .edit-theme-scoped --edit-color-*-disabled/-text tokens, which don't exist outside that class.
 
    Same technique as the styled checkbox: the real <input type="radio"> stays in the DOM (focusable,
@@ -340,6 +340,9 @@
     opacity: 0;
     cursor: pointer;
     z-index: 1;
+}
+.edit-radio-button-input:disabled {
+    cursor: not-allowed;
 }
 
 .edit-radio-button {
