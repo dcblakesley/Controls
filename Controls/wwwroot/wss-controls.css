@@ -47,6 +47,9 @@
     --wss-color-border: var(--border-color, #d9d9d9);
     --wss-color-split: #f0f0f0;
     --wss-color-mask: rgba(0, 0, 0, 0.45);
+    /* Table's Loading overlay — a much lighter tint than --wss-color-mask (Modal/Drawer's opaque
+       backdrop): the rows stay legible underneath, matching AntD's Spin-over-content look. */
+    --wss-color-bg-mask-light: rgba(255, 255, 255, 0.6);
     --wss-color-thead-bg: #fafafa;
     --wss-color-thead-split: rgba(0, 0, 0, 0.06);
     --wss-skeleton-base: rgba(0, 0, 0, 0.06);
@@ -1376,6 +1379,88 @@
     min-height: 32px;
     color: var(--wss-color-text);
     user-select: none;
+}
+
+/* AntD's total-text ("1-10 of 200 items"); leads the pager, before the prev button. */
+.wss-pagination-total {
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+}
+
+/* Page-size changer (PageSizeOptions) — a native <select>, kept dependency-free (no Select<T>/JS). */
+.wss-pagination-size-changer {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.wss-pagination-size-select {
+    height: 32px;
+    min-height: 32px;
+    margin: 0;
+    padding: 0 28px 0 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    font-family: inherit;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-radius);
+    appearance: none;
+    cursor: pointer;
+}
+
+.wss-pagination-size-arrow {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+    color: var(--wss-color-text-secondary);
+    pointer-events: none;
+}
+
+/* Quick jumper ("Go to [ ]") — a native text input, Enter commits. */
+.wss-pagination-jumper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+}
+
+.wss-pagination-jumper-input {
+    width: 50px;
+    height: 32px;
+    min-height: 32px;
+    box-sizing: border-box;
+    padding: 0 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    font-family: inherit;
+    text-align: center;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-radius);
+}
+
+/* AntD's compact pagination size: smaller buttons, tighter footprint. CSS-only (Small="true"). */
+.wss-pagination-sm .wss-pagination-item,
+.wss-pagination-sm .wss-pagination-prev,
+.wss-pagination-sm .wss-pagination-next,
+.wss-pagination-sm .wss-pagination-ellipsis {
+    min-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    padding: 0 4px;
+    font-size: var(--wss-font-size-sm);
+}
+
+.wss-pagination-sm .wss-pagination-size-select,
+.wss-pagination-sm .wss-pagination-jumper-input {
+    height: 24px;
+    min-height: 24px;
+    font-size: var(--wss-font-size-sm);
 }
 
 /* ============================================================================
@@ -3132,7 +3217,9 @@
 .wss-table-expand-btn:focus-visible,
 .wss-tabs-tab:focus-visible,
 .wss-search-btn:focus-visible,
-.wss-picker-clear:focus-visible {
+.wss-picker-clear:focus-visible,
+.wss-pagination-size-select:focus-visible,
+.wss-pagination-jumper-input:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 2px;
 }

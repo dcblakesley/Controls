@@ -1,9 +1,13 @@
 @namespace Controls
 
 <nav @attributes="AttributeSplat.Rest(AdditionalAttributes)"
-     class="wss-pagination @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+     class="wss-pagination @(Small ? "wss-pagination-sm" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
      style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
      aria-label="@AriaLabel">
+    @if (ShowTotal is not null)
+    {
+        <span class="wss-pagination-total">@TotalText</span>
+    }
     <button type="button" class="wss-pagination-prev @(Clamped <= 1 ? "wss-pagination-disabled" : null)"
             disabled="@(Clamped <= 1)" aria-label="@PreviousPageLabel" @onclick="@(() => GoAsync(Clamped - 1))">
         <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z"/></svg>
@@ -25,12 +29,36 @@
             disabled="@(Clamped >= PageCount)" aria-label="@NextPageLabel" @onclick="@(() => GoAsync(Clamped + 1))">
         <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z"/></svg>
     </button>
+    @if (EffectivePageSizeOptions.Count > 0)
+    {
+        <span class="wss-pagination-size-changer">
+            <select class="wss-pagination-size-select" aria-label="@PageSizeSelectLabel"
+                    @onchange="OnPageSizeSelectChangeAsync">
+                @foreach (var size in EffectivePageSizeOptions)
+                {
+                    <option value="@size" selected="@(size == PageSize)">@string.Format(CultureInfo.CurrentCulture, PageSizeLabelFormat, size)</option>
+                }
+            </select>
+            <svg class="wss-pagination-size-arrow" viewBox="64 64 896 896" fill="currentColor" aria-hidden="true"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"/></svg>
+        </span>
+    }
+    @if (ShowQuickJumper)
+    {
+        <span class="wss-pagination-jumper">
+            <span class="wss-pagination-jumper-label" aria-hidden="true">@QuickJumperLabel</span>
+            <input type="text" inputmode="numeric" class="wss-pagination-jumper-input"
+                   aria-label="@QuickJumperInputLabel"
+                   value="@_jumperText"
+                   @oninput="@(e => _jumperText = e.Value?.ToString() ?? string.Empty)"
+                   @onkeydown="OnJumperKeyDownAsync" />
+        </span>
+    }
 </nav>
 
 @code {
     /// <summary>Total number of items (not pages); the page count is derived from this and <see cref="PageSize"/>.</summary>
     [Parameter] public int Total { get; set; }
-    /// <summary>Items per page. Defaults to 10.</summary>
+    /// <summary>Items per page. Defaults to 10. Supports <c>@@bind-PageSize</c> (see <see cref="PageSizeChanged"/>); existing one-way usage (<c>PageSize="10"</c> with no handler) is unaffected.</summary>
     [Parameter] public int PageSize { get; set; } = 10;
     /// <summary>The current page (1-based). Fully controlled: the parent owns it and must update it from <see cref="CurrentChanged"/> (use <c>@bind-Current</c>).</summary>
     [Parameter] public int Current { get; set; } = 1;
@@ -39,6 +67,56 @@
 
     /// <summary> Pages to show either side of the current page before collapsing the rest behind an ellipsis. </summary>
     [Parameter] public int SiblingCount { get; set; } = 1;
+
+    /// <summary>
+    /// AntD's total-text ("1-10 of 200 items"): a formatter receiving the current page's first/last
+    /// item indexes (1-based, inclusive) and the overall <see cref="Total"/>. Null (default) renders
+    /// nothing — the leading <c>wss-pagination-total</c> span only appears when this is set.
+    /// </summary>
+    [Parameter] public Func<(int Start, int End, int Total), string>? ShowTotal { get; set; }
+
+    /// <summary>
+    /// Page-size options (e.g. <c>new[] { 10, 20, 50 }</c>). Null/empty (default) renders no
+    /// size-changer. When set, a native <c>&lt;select&gt;</c> renders after the next-page button;
+    /// <see cref="PageSize"/>'s own current value is folded in even if absent from this list, so the
+    /// select never shows a value that doesn't match what's actually bound. Changing the selection
+    /// re-clamps <see cref="Current"/> so the same data window stays roughly in view (new
+    /// <c>Current</c> = the old first item's 0-based index / the new size, + 1).
+    /// </summary>
+    [Parameter] public int[]? PageSizeOptions { get; set; }
+
+    /// <summary>Raised with the newly selected page size (see <see cref="PageSizeOptions"/>); supports <c>@@bind-PageSize</c>.</summary>
+    [Parameter] public EventCallback<int> PageSizeChanged { get; set; }
+
+    /// <summary>
+    /// <see cref="string.Format(IFormatProvider, string, object)"/> template for each size-changer
+    /// option's label; <c>{0}</c> is the page size. Override to localize (formatted with
+    /// <see cref="CultureInfo.CurrentCulture"/>). Default AntD-style "{0} / page".
+    /// </summary>
+    [Parameter] public string PageSizeLabelFormat { get; set; } = "{0} / page";
+
+    /// <summary>Accessible name of the size-changer <c>&lt;select&gt;</c>. Override to localize.</summary>
+    [Parameter] public string PageSizeSelectLabel { get; set; } = "Page size";
+
+    /// <summary>
+    /// AntD's "quick jumper": a "Go to [input]" box after the size-changer (or the next-page button
+    /// when no size-changer renders). Enter commits the typed page number, clamped to
+    /// <c>[1, PageCount]</c>, via <see cref="CurrentChanged"/>; the input then clears. Default false
+    /// (no jumper — current DOM unchanged).
+    /// </summary>
+    [Parameter] public bool ShowQuickJumper { get; set; }
+
+    /// <summary>Visible label text before the quick-jumper input. Override to localize.</summary>
+    [Parameter] public string QuickJumperLabel { get; set; } = "Go to";
+
+    /// <summary>Accessible name (<c>aria-label</c>) of the quick-jumper input. Override to localize.</summary>
+    [Parameter] public string QuickJumperInputLabel { get; set; } = "Go to page";
+
+    /// <summary>
+    /// AntD's compact "small" size: smaller pager buttons and tighter spacing (CSS-only —
+    /// <c>wss-pagination-sm</c>). Default false (the existing default size, unchanged).
+    /// </summary>
+    [Parameter] public bool Small { get; set; }
 
     /// <summary>
     /// Accessible name of the nav landmark. Give the two pagers distinct names when a page renders
@@ -124,10 +202,64 @@
         }
     }
 
+    // "1-10 of 200 items" style text (ShowTotal supplies the exact wording). Total <= 0 reports an
+    // empty (0, 0, 0) window rather than a negative/backwards range.
+    string? TotalText
+    {
+        get
+        {
+            if (ShowTotal is null) return null;
+            if (Total <= 0) return ShowTotal((0, 0, 0));
+            var start = (Clamped - 1) * PageSize + 1;
+            var end = Math.Min(Clamped * PageSize, Total);
+            return ShowTotal((start, end, Total));
+        }
+    }
+
+    // PageSizeOptions plus the CURRENT PageSize (even if a consumer left it out of the list) so the
+    // <select> always has a matching <option> — it can never silently show a value that isn't what's
+    // actually bound. Empty when PageSizeOptions itself is null/empty: no size-changer renders.
+    IReadOnlyList<int> EffectivePageSizeOptions =>
+        PageSizeOptions is { Length: > 0 }
+            ? PageSizeOptions.Append(PageSize).Distinct().OrderBy(x => x).ToList()
+            : Array.Empty<int>();
+
     async Task GoAsync(int page)
     {
         if (page < 1 || page > PageCount || page == Current) return;
         // Controlled component: the parent owns Current and feeds it back via CurrentChanged.
         await CurrentChanged.InvokeAsync(page);
+    }
+
+    async Task OnPageSizeSelectChangeAsync(ChangeEventArgs e)
+    {
+        if (e.Value is string s && int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size))
+            await ChangePageSizeAsync(size);
+    }
+
+    // AntD's own re-clamp rule: keep roughly the same data window in view rather than snapping back
+    // to page 1. The old first-visible item's 0-based index, divided by the new size, is the new
+    // page's 0-based index.
+    async Task ChangePageSizeAsync(int newSize)
+    {
+        if (newSize <= 0 || newSize == PageSize) return;
+        var firstItemIndex = (Clamped - 1) * PageSize;
+        var newCurrent = firstItemIndex / newSize + 1;
+        await PageSizeChanged.InvokeAsync(newSize);
+        if (newCurrent != Current)
+            await CurrentChanged.InvokeAsync(newCurrent);
+    }
+
+    string _jumperText = string.Empty;
+
+    async Task OnJumperKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key != "Enter") return;
+        if (int.TryParse(_jumperText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var page))
+        {
+            var clamped = Math.Clamp(page, 1, PageCount);
+            if (clamped != Current) await CurrentChanged.InvokeAsync(clamped);
+        }
+        _jumperText = string.Empty;
     }
 }
