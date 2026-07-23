@@ -639,6 +639,25 @@
             RecomputeSelectionFlags();
         }
 
+        // SelectionMode.Single is an exclusive choice: no matter how more than one item ended up in
+        // _selected -- a controlled SelectedItems handing in 2+ items (just above), or a runtime
+        // Multiple -> Single mode switch with several rows already checked from before the switch --
+        // at most one may remain. Keep the first (insertion-order) item: for the SelectedItems resync
+        // above that's the first item of SelectedItems itself (Dictionary preserves insertion order
+        // in practice, same assumption _selected.Values.ToList() already relies on elsewhere in this
+        // file); for an uncontrolled mode switch it's whichever row ToggleRow/ToggleAll inserted
+        // first. Only the user-driven SelectSingleAsync enforced this before -- these two parameter-
+        // driven entry points didn't, leaving multiple checked radios in one native name group.
+        var selectionClamped = false;
+        if (SelectionMode == SelectionMode.Single && _selected.Count > 1)
+        {
+            var first = _selected.Values.First();
+            _selected.Clear();
+            _selected[KeyFor(first)] = first;
+            selectionClamped = true;
+            RecomputeSelectionFlags();
+        }
+
         // Controlled expansion (layered over the uncontrolled _expanded set, same relationship as
         // SelectedItems/_selected above): only resyncs on a reference change, so re-passing the same
         // instance can't veto a toggle the Table just made and is about to raise back via
@@ -665,6 +684,13 @@
         }
 
         RebuildPageItems();
+
+        // The clamp above pruned real entries out of _selected -- the parent's own SelectedItems (if
+        // bound) must be told, so its list reflects reality instead of silently disagreeing with what
+        // the radios now show. Fire-and-forget: OnParametersSet is synchronous (Blazor's own
+        // lifecycle contract), and EventCallback.InvokeAsync is safe to not await here the same way
+        // Register/Unregister already fire StateHasChanged without awaiting anything.
+        if (selectionClamped) _ = SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
     }
 
     // Child columns register themselves (in document order) during their OnParametersSet, into a

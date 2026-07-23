@@ -921,6 +921,65 @@ public class UiKitTableTests : TestContext
         Assert.Equal("Bob", selected![0].Name);
     }
 
+    [Fact]
+    public void Runtime_switch_from_Multiple_to_Single_clamps_to_the_first_selected_row()
+    {
+        // Entry point (a): a runtime Multiple -> Single mode switch with more than one row already
+        // checked used to leave every checked box's radio-semantics counterpart checked too --
+        // multiple checked radios in one native name group, which is not a valid radio state.
+        List<Person>? selected = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice, Bob
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Multiple)
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        // Select both rows while still in Multiple mode.
+        cut.Find("thead input.wss-table-checkbox").Change(true);
+        Assert.Equal(2, selected!.Count);
+
+        // Switch to Single: exactly one radio must end up checked, and the parent must be told the
+        // selection was pruned (SelectedItemsChanged fires with the clamped, single-item list).
+        cut.SetParametersAndRender(p => p.Add(t => t.SelectionMode, SelectionMode.Single));
+
+        var radios = cut.FindAll("tbody input[type=radio].wss-table-radio");
+        Assert.Equal(2, radios.Count);
+        Assert.Single(radios, r => r.HasAttribute("checked"));
+        Assert.NotNull(selected);
+        Assert.Single(selected!);
+        Assert.Equal("Alice", selected![0].Name); // first (insertion-order) row kept
+    }
+
+    [Fact]
+    public void Controlled_SelectedItems_with_two_items_under_Single_clamps_to_the_first()
+    {
+        // Entry point (b): a controlled SelectedItems handing in 2+ items while SelectionMode is
+        // already Single used to render every matching row's radio checked -- only the user-driven
+        // SelectSingleAsync (picking a row by hand) enforced exclusivity before this fix.
+        List<Person>? selected = null;
+        var people = Sample(); // Alice, Bob
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .Add(t => t.SelectedItems, new List<Person> { people[0], people[1] }) // both -- invalid for Single
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var radios = cut.FindAll("tbody input[type=radio].wss-table-radio");
+        Assert.Single(radios, r => r.HasAttribute("checked"));
+        Assert.NotNull(selected);
+        Assert.Single(selected!);
+        Assert.Equal("Alice", selected![0].Name); // first item of SelectedItems kept
+    }
+
     // ----- Controlled expansion / OnExpand -----
 
     [Fact]
