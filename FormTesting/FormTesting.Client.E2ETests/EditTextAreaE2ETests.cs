@@ -68,13 +68,23 @@ public class EditTextAreaE2ETests(AppFixture app, BrowserFixture browser) : Page
             $"height ({grownBox.Height}px) should have grown past the initial MinRows height ({initialBox.Height}px)");
         await Expect(textarea).ToHaveCSSAsync("overflow-y", "hidden");
 
-        // Keep typing well past MaxRows="6" -- height must stop growing and gain a scrollbar.
-        await textarea.FillAsync(string.Join("\n", Enumerable.Range(1, 20).Select(i => $"line {i}")));
+        // Typing past MaxRows="6" grows the box up to the clamp (4 lines above was still under it)
+        // and gains a scrollbar...
+        await textarea.FillAsync(string.Join("\n", Enumerable.Range(1, 10).Select(i => $"line {i}")));
         await Page.WaitForTimeoutAsync(300);
         var clampedBox = await textarea.BoundingBoxAsync();
         Assert.NotNull(clampedBox);
         await Expect(textarea).ToHaveCSSAsync("overflow-y", "auto");
-        Assert.True(clampedBox.Height <= grownBox.Height + 2, // +2px slack for sub-pixel rounding
-            $"height ({clampedBox.Height}px) should have stopped growing once MaxRows was exceeded (was {grownBox.Height}px)");
+        Assert.True(clampedBox.Height > grownBox.Height,
+            $"height ({clampedBox.Height}px) should have grown to the MaxRows clamp (was {grownBox.Height}px at 4 lines)");
+
+        // ...and further content past the clamp must not grow it any more.
+        await textarea.FillAsync(string.Join("\n", Enumerable.Range(1, 20).Select(i => $"line {i}")));
+        await Page.WaitForTimeoutAsync(300);
+        var stillClampedBox = await textarea.BoundingBoxAsync();
+        Assert.NotNull(stillClampedBox);
+        await Expect(textarea).ToHaveCSSAsync("overflow-y", "auto");
+        Assert.True(stillClampedBox.Height <= clampedBox.Height + 2, // +2px slack for sub-pixel rounding
+            $"height ({stillClampedBox.Height}px) should have stopped growing once MaxRows was exceeded (was {clampedBox.Height}px)");
     }
 }

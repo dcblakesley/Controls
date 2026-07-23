@@ -87,9 +87,15 @@
         const maxHeight = maxRows ? lineHeight * maxRows + boxExtra : null;
 
         // Reset height first so scrollHeight reflects the content's natural size, not whatever
-        // (possibly larger, possibly stale) height is currently set.
+        // (possibly larger, possibly stale) height is currently set. While the value is empty,
+        // Chromium includes the rendered (possibly line-wrapped) placeholder in scrollHeight, which
+        // would size the box to the placeholder instead of minRows -- AntD's own autoSize measures a
+        // mirror of the value only, so strip the placeholder for the measurement and restore it after.
+        const placeholder = el.placeholder;
+        if (!el.value && placeholder) el.placeholder = '';
         el.style.height = 'auto';
         const contentHeight = el.scrollHeight - scrollPadding + boxExtra;
+        if (!el.value && placeholder) el.placeholder = placeholder;
 
         let target = Math.max(contentHeight, minHeight);
         let clampedAtMax = false;
