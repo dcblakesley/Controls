@@ -169,11 +169,12 @@ public partial class DateRangePicker : PickerBase
     /// category as its DM Sans font.)</summary>
     [Parameter] public DayOfWeek? FirstDayOfWeek { get; set; }
 
-    /// <summary>Shows a leading week-number column (AntD's <c>showWeek</c>) beside BOTH panels'
-    /// day grids in <see cref="DatePickerMode.Date"/> (and its <c>DateTime</c>/<c>Time</c>
-    /// fallback), with no other behavior change — a day click still commits that day, not its
-    /// week. Defaults to false. <see cref="DatePickerMode.Week"/> always renders this column
-    /// regardless of this parameter.</summary>
+    /// <summary>Shows a leading week-number column (AntD's <c>showWeek</c>) beside every rendered
+    /// day grid — both panels in <see cref="DatePickerMode.Date"/>, the single session calendar in
+    /// <see cref="DatePickerMode.DateTime"/> — with no other behavior change: a day click still
+    /// commits that day, not its week. Defaults to false. <see cref="DatePickerMode.Week"/> always
+    /// renders this column regardless of this parameter; <see cref="DatePickerMode.Time"/> has no
+    /// calendar, so it never applies.</summary>
     [Parameter] public bool ShowWeekNumbers { get; set; }
 
     /// <summary>HTML id applied to the start input — wires a consumer label / test hook.</summary>
