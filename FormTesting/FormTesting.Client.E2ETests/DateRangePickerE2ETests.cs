@@ -145,8 +145,8 @@ public class DateRangePickerE2ETests : IAsyncLifetime
         await Expect(Dropdown).Not.ToBeVisibleAsync();
         await Expect(_page.Locator("[data-test-id='range-result']"))
             .ToContainTextAsync("2025-01-20 → 2025-02-05");
-        await Expect(_page.Locator(".wss-picker-input-start")).ToHaveValueAsync("01/20/2025");
-        await Expect(_page.Locator(".wss-picker-input-end")).ToHaveValueAsync("02/05/2025");
+        await Expect(Picker.Locator(".wss-picker-input-start")).ToHaveValueAsync("01/20/2025");
+        await Expect(Picker.Locator(".wss-picker-input-end")).ToHaveValueAsync("02/05/2025");
     }
 
     [Fact]
@@ -170,7 +170,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
         await GotoAsync();
         await OpenAsync();
 
-        var startInput = _page.Locator(".wss-picker-input-start");
+        var startInput = Picker.Locator(".wss-picker-input-start");
         await startInput.FillAsync("03/05/2025");
         await startInput.PressAsync("Enter");
 
@@ -206,7 +206,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
         await GotoAsync();
         // Click the start input itself (not the composite field, whose center may land elsewhere)
         // so the focus origin for Shift+Tab is deterministic.
-        var startInput = _page.Locator(".wss-picker-input-start");
+        var startInput = Picker.Locator(".wss-picker-input-start");
         await startInput.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await startInput.ClickAsync();
         await Expect(Dropdown).ToBeVisibleAsync();
@@ -333,5 +333,304 @@ public class DateRangePickerE2ETests : IAsyncLifetime
             Type = ScreenshotType.Png,
         });
         VisualRegression.Assert(bytes, $"{GetType().Name}-field-closed");
+    }
+
+    // --- Mode.Month demo (#demo-range-month, pinned Start=2026-02-01, End=2026-08-01) --------------
+
+    ILocator MonthPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range-month") });
+    ILocator MonthField => MonthPicker.Locator(".wss-picker-input");
+    ILocator MonthDropdown => MonthPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenMonthAsync()
+    {
+        await MonthField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await MonthField.ClickAsync();
+        await Expect(MonthDropdown).ToBeVisibleAsync();
+        await Expect(MonthDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Month_mode_shows_dual_year_panels_and_two_clicks_commit_month_starts()
+    {
+        await GotoAsync();
+        await OpenMonthAsync();
+
+        // The demo pins Start=2026-02-01, so the left panel's year header shows 2026; the right
+        // panel is always the following year, 2027 -- dual panels, not a single one.
+        var yearSelects = MonthDropdown.Locator(".wss-picker-month-header select");
+        await Expect(yearSelects.Nth(0)).ToHaveValueAsync("2026");
+        await Expect(yearSelects.Nth(1)).ToHaveValueAsync("2027");
+
+        await MonthDropdown.Locator("[data-date='2026-05-01']").ClickAsync(); // first click: pending start
+        await Expect(MonthDropdown).ToBeVisibleAsync(); // still open -- a range pick needs a second click
+        await MonthDropdown.Locator("[data-date='2027-03-01']").ClickAsync(); // second click: commits + closes
+
+        await Expect(MonthDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='range-month-result']")).ToContainTextAsync("2026-05 → 2027-03");
+    }
+
+    // --- Mode.Year demo (#demo-range-year, pinned Start=2024-01-01, End=2027-01-01) ----------------
+
+    ILocator YearPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range-year") });
+    ILocator YearField => YearPicker.Locator(".wss-picker-input");
+    ILocator YearDropdown => YearPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenYearAsync()
+    {
+        await YearField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await YearField.ClickAsync();
+        await Expect(YearDropdown).ToBeVisibleAsync();
+        await Expect(YearDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Year_mode_shows_dual_decade_panels_and_two_clicks_commit_year_starts()
+    {
+        await GotoAsync();
+        await OpenYearAsync();
+
+        // The demo pins Start=2024-01-01, so the left panel's decade reads 2020-2029; the right
+        // panel is always the following decade, 2030-2039 -- dual panels, not a single one.
+        var decadeLabels = YearDropdown.Locator(".wss-picker-decade-label");
+        await Expect(decadeLabels.Nth(0)).ToHaveTextAsync("2020-2029");
+        await Expect(decadeLabels.Nth(1)).ToHaveTextAsync("2030-2039");
+
+        await YearDropdown.Locator("[data-date='2023-01-01']").ClickAsync(); // first click: pending start
+        await Expect(YearDropdown).ToBeVisibleAsync(); // still open -- a range pick needs a second click
+        await YearDropdown.Locator("[data-date='2032-01-01']").ClickAsync(); // second click: commits + closes
+
+        await Expect(YearDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='range-year-result']")).ToContainTextAsync("2023 → 2032");
+    }
+
+    // --- Mode.Week demo (#demo-range-week, pinned Start=2026-02-08, End=2026-03-01, both Sundays,
+    // FirstDayOfWeek=Sunday) -------------------------------------------------------------------------
+
+    ILocator WeekPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range-week") });
+    ILocator WeekField => WeekPicker.Locator(".wss-picker-input");
+    ILocator WeekDropdown => WeekPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenWeekAsync()
+    {
+        await WeekField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await WeekField.ClickAsync();
+        await Expect(WeekDropdown).ToBeVisibleAsync();
+        await Expect(WeekDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    // The in-panel day button for a given panel (0 = left/Feb, 1 = right/Mar) and ISO date --
+    // needed because the fixed 6-row/42-cell grid overlaps at this particular boundary (Feb and
+    // Mar 2026 both happen to start on a Sunday, so the left panel's own trailing weeks duplicate
+    // some of the right panel's leading dates -- see the test's own comment below).
+    ILocator WeekDay(int panel, string date) =>
+        WeekDropdown.Locator(".wss-picker-month").Nth(panel).Locator($"[data-date='{date}']");
+
+    [Fact]
+    public async Task Week_mode_shows_week_numbers_and_a_mid_week_click_commits_the_week_start_with_row_range_styling()
+    {
+        await GotoAsync();
+        await OpenWeekAsync();
+
+        // Mode.Week always renders the leading week-number column, regardless of ShowWeekNumbers.
+        await Expect(WeekDropdown.Locator(".wss-picker-week-no").First).ToBeVisibleAsync();
+
+        // The pinned Start=2026-02-08/End=2026-03-01 (both already week starts) paint the whole
+        // ROW, not a single cell -- the demo's Start anchors the left panel on Feb 2026, so the
+        // right panel shows Mar 2026 and both endpoint rows are visible without navigating. Feb
+        // 8's row is unambiguous (Start's own row, count 1); Mar 1's row shows up TWICE -- as the
+        // left (Feb) panel's own trailing week AND the right (Mar) panel's leading week, since
+        // Feb and Mar 2026 both happen to start on a Sunday, so the fixed 6-row/42-cell grid
+        // overlaps there (the same phenomenon the Date-mode day grid's own month-boundary
+        // regression coverage exercises one level down).
+        await Expect(WeekDropdown.Locator(".wss-picker-week-row-start")).ToHaveCountAsync(1);
+        await Expect(WeekDropdown.Locator(".wss-picker-week-row-start").Locator("[data-date='2026-02-08']")).ToHaveCountAsync(1);
+        await Expect(WeekDropdown.Locator(".wss-picker-week-row-end")).ToHaveCountAsync(2);
+
+        // A MID-week click (Feb 11, Wednesday -- neither the row's first nor last day) starts a
+        // fresh pick and must commit that row's week START (Feb 8), not the clicked day.
+        await WeekDay(0, "2026-02-11").ClickAsync();
+        await Expect(WeekDropdown).ToBeVisibleAsync(); // still open -- a range pick needs a second click
+
+        // Hovering a day in a different row (before the second click) previews the row-level band
+        // between the pending start's row and the hovered row.
+        await WeekDay(0, "2026-02-25").HoverAsync();
+        await Expect(WeekDropdown.Locator(
+            ".wss-picker-week-row-preview, .wss-picker-week-row-preview-start, .wss-picker-week-row-preview-end").First)
+            .ToBeVisibleAsync();
+
+        // Second click lands in the RIGHT (Mar) panel specifically -- Mar 11 also appears as a
+        // trailing/outside cell in the left panel's own grid (same overlap as above), so this
+        // must be panel-scoped to stay unambiguous.
+        await WeekDay(1, "2026-03-11").ClickAsync(); // second click: commits + closes
+
+        await Expect(WeekDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='range-week-result']")).ToContainTextAsync("2026-02-08 → 2026-03-08");
+    }
+
+    // --- Mode.Quarter demo (#demo-range-quarter, pinned Start=2026-01-01 [Q1], End=2026-07-01 [Q3]) --
+
+    ILocator QuarterPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range-quarter") });
+    ILocator QuarterField => QuarterPicker.Locator(".wss-picker-input");
+    ILocator QuarterDropdown => QuarterPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenQuarterAsync()
+    {
+        await QuarterField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await QuarterField.ClickAsync();
+        await Expect(QuarterDropdown).ToBeVisibleAsync();
+        await Expect(QuarterDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Quarter_mode_two_clicks_commit_quarter_starts()
+    {
+        await GotoAsync();
+        await OpenQuarterAsync();
+
+        // The demo pins Start=2026-01-01, so the left panel's year header shows 2026; the right
+        // panel is always the following year, 2027.
+        var yearSelects = QuarterDropdown.Locator(".wss-picker-month-header select");
+        await Expect(yearSelects.Nth(0)).ToHaveValueAsync("2026");
+        await Expect(yearSelects.Nth(1)).ToHaveValueAsync("2027");
+
+        await QuarterDropdown.Locator("[data-date='2026-04-01']").ClickAsync(); // Q2 2026: pending start
+        await Expect(QuarterDropdown).ToBeVisibleAsync(); // still open -- a range pick needs a second click
+        await QuarterDropdown.Locator("[data-date='2027-10-01']").ClickAsync(); // Q4 2027: commits + closes
+
+        await Expect(QuarterDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='range-quarter-result']")).ToContainTextAsync("2026-04-01 → 2027-10-01");
+    }
+
+    // --- Mode.DateTime demo (#demo-range-datetime, both endpoints start empty,
+    // DefaultViewDate=2026-02-10) ----------------------------------------------------------------
+
+    ILocator DateTimePicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range-datetime") });
+    ILocator DateTimeField => DateTimePicker.Locator(".wss-picker-input");
+    ILocator DateTimeDropdown => DateTimePicker.Locator(".wss-picker-dropdown");
+    // DOM order: the start input's slot is always first, the end input's slot always second.
+    ILocator DateTimeStartSlot => DateTimePicker.Locator(".wss-picker-input-slot").Nth(0);
+    ILocator DateTimeEndSlot => DateTimePicker.Locator(".wss-picker-input-slot").Nth(1);
+
+    async Task OpenDateTimeAsync()
+    {
+        await DateTimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await DateTimeField.ClickAsync();
+        await Expect(DateTimeDropdown).ToBeVisibleAsync();
+        await Expect(DateTimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task DateTime_mode_session_advances_from_start_to_end_then_commits_both_on_ok()
+    {
+        await GotoAsync();
+        await OpenDateTimeAsync();
+
+        // A SINGLE panel (not the dual-panel layout), with a day grid, a time row, and an OK
+        // footer below it -- and the START side's underline active (a field click always opens
+        // with the start side active).
+        await Expect(DateTimeDropdown).ToHaveClassAsync(new Regex("wss-picker-dropdown-single"));
+        await Expect(DateTimeDropdown.Locator("select[aria-label='Hour']")).ToHaveCountAsync(1);
+        await Expect(DateTimeDropdown.Locator(".wss-picker-ok")).ToBeVisibleAsync();
+        await Expect(DateTimeStartSlot).ToHaveClassAsync(new Regex("wss-picker-slot-active"));
+        await Expect(DateTimeEndSlot).Not.ToHaveClassAsync(new Regex("wss-picker-slot-active"));
+
+        // Pick a day and an hour for the START side, then OK.
+        await DateTimeDropdown.Locator("[data-date='2026-02-10']").ClickAsync();
+        await DateTimeDropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("9");
+        await DateTimeDropdown.Locator(".wss-picker-ok").ClickAsync();
+
+        // Nothing has reached the bound Start/End yet (both endpoints started empty) -- OK just
+        // advances the session: the active underline moves to the end side and the panel stays open.
+        await Expect(DateTimeDropdown).ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='range-datetime-result']")).ToContainTextAsync("— → —");
+        await Expect(DateTimeStartSlot).Not.ToHaveClassAsync(new Regex("wss-picker-slot-active"));
+        await Expect(DateTimeEndSlot).ToHaveClassAsync(new Regex("wss-picker-slot-active"));
+
+        // Pick a day and an hour for the END side, then OK -- both sides are now resolved, so this
+        // commits both together and closes.
+        await DateTimeDropdown.Locator("[data-date='2026-02-20']").ClickAsync();
+        await DateTimeDropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("17");
+        await DateTimeDropdown.Locator(".wss-picker-ok").ClickAsync();
+
+        await Expect(DateTimeDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='range-datetime-result']"))
+            .ToContainTextAsync("2026-02-10 09:00:00 → 2026-02-20 17:00:00");
+    }
+
+    // --- Mode.Time demo (#demo-range-time, Use12Hours + MinuteStep=15 + ShowSeconds=false,
+    // pinned 09:30/14:30) ------------------------------------------------------------------------
+
+    ILocator TimePicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range-time") });
+    ILocator TimeField => TimePicker.Locator(".wss-picker-input");
+    ILocator TimeDropdown => TimePicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenTimeAsync()
+    {
+        await TimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await TimeField.ClickAsync();
+        await Expect(TimeDropdown).ToBeVisibleAsync();
+        await Expect(TimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task Time_mode_renders_12_hour_options_on_the_15_minute_lattice_and_ok_commits()
+    {
+        await GotoAsync();
+        await OpenTimeAsync();
+
+        // No calendar at all in Time mode -- just the time row and OK footer.
+        await Expect(TimeDropdown.Locator(".wss-picker-grid, .wss-picker-grid-rows")).ToHaveCountAsync(0);
+        await Expect(TimeDropdown.Locator("select[aria-label='AM/PM']")).ToHaveCountAsync(1);
+        // ShowSeconds=false drops the seconds select entirely.
+        await Expect(TimeDropdown.Locator("select[aria-label='Second']")).ToHaveCountAsync(0);
+        // Use12Hours restricts the hour select to one 12-hour period's 12 values (the pinned 09:30
+        // start is AM), not the full 24-hour set.
+        await Expect(TimeDropdown.Locator("select[aria-label='Hour'] option")).ToHaveCountAsync(12);
+        // MinuteStep=15 restricts the minute select to the 0/15/30/45 lattice -- the pinned 09:30
+        // value sits on it, so no off-lattice "current value" option should be present.
+        var minuteOptions = await TimeDropdown.Locator("select[aria-label='Minute'] option").AllTextContentsAsync();
+        Assert.Equal(["00", "15", "30", "45"], minuteOptions);
+
+        // Nudge the START side's minute -- a select change commits to the pending session value
+        // without closing (only OK is the close signal in Time mode).
+        await TimeDropdown.Locator("select[aria-label='Minute']").SelectOptionAsync("15");
+        await Expect(TimeDropdown).ToBeVisibleAsync();
+
+        // Both endpoints are already resolved (pinned), so OK commits immediately and closes.
+        await TimeDropdown.Locator(".wss-picker-ok").ClickAsync();
+        await Expect(TimeDropdown).Not.ToBeVisibleAsync();
+        await Expect(_page.Locator("[data-test-id='range-time-result']")).ToContainTextAsync("09:15 → 14:30");
+    }
+
+    // --- DisabledDate (weekends) + ExtraFooter demo (#demo-range-disabled, pinned
+    // Start=2026-02-02 [Mon], End=2026-02-13 [Fri]) ------------------------------------------------
+
+    ILocator DisabledPicker => _page.Locator(".wss-picker", new() { Has = _page.Locator("#demo-range-disabled") });
+    ILocator DisabledField => DisabledPicker.Locator(".wss-picker-input");
+    ILocator DisabledDropdown => DisabledPicker.Locator(".wss-picker-dropdown");
+
+    async Task OpenDisabledAsync()
+    {
+        await DisabledField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+        await DisabledField.ClickAsync();
+        await Expect(DisabledDropdown).ToBeVisibleAsync();
+        await Expect(DisabledDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+    }
+
+    [Fact]
+    public async Task DisabledDate_disables_weekend_cells_and_ExtraFooter_content_is_visible()
+    {
+        await GotoAsync();
+        await OpenDisabledAsync();
+
+        // The demo pins Start=2026-02-02 (a Monday), so the left panel shows Feb 2026 -- Feb 7/8
+        // (Sat/Sun) are the first weekend cells in that panel and must be disabled (unclickable).
+        await Expect(DisabledDropdown.Locator("[data-date='2026-02-07']")).ToBeDisabledAsync();
+        await Expect(DisabledDropdown.Locator("[data-date='2026-02-08']")).ToBeDisabledAsync();
+        // A weekday stays enabled.
+        await Expect(DisabledDropdown.Locator("[data-date='2026-02-09']")).ToBeEnabledAsync();
+
+        await Expect(DisabledDropdown.Locator("[data-test-id='range-disabled-extra-footer']")).ToBeVisibleAsync();
+        await Expect(DisabledDropdown.Locator(".wss-picker-extra-footer")).ToContainTextAsync("Weekdays only");
     }
 }

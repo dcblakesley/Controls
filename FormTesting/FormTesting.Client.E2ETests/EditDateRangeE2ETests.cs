@@ -115,6 +115,80 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Pag
     }
 
     [Fact]
+    public async Task Month_mode_range_commit_round_trips_through_the_form()
+    {
+        await NavigateAsync();
+
+        // Fourth section: a single EditDateRange bound to MonthStart/MonthEnd (2026-02-01 ->
+        // 2026-05-01) via Mode="DatePickerMode.Month". Opening anchors the left panel on Start's
+        // year (2026), so both picks below land in the visible dual-panel grid without navigating.
+        var section = Page.Locator("section.demo-section").Nth(3);
+        var field = section.Locator(".wss-picker-input");
+        var startInput = section.Locator(".wss-picker-input-start");
+        var endInput = section.Locator(".wss-picker-input-end");
+        var dropdown = section.Locator(".wss-picker-dropdown");
+
+        await field.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        await dropdown.Locator("[data-date='2026-03-01']").ClickAsync(); // first click: pending start
+        await Expect(dropdown).ToBeVisibleAsync(); // still open -- a range pick needs a second click
+        await dropdown.Locator("[data-date='2027-01-01']").ClickAsync(); // second click: commits + closes
+
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+        // EditDateRange's Format is unset, so the picker's Mode.Month default "MM/yyyy" applies.
+        await Expect(startInput).ToHaveValueAsync("03/2026");
+        await Expect(endInput).ToHaveValueAsync("01/2027");
+    }
+
+    [Fact]
+    public async Task DateTime_mode_session_commit_updates_both_fields()
+    {
+        await NavigateAsync();
+
+        // Sixth section: a single EditDateRange bound to DateTimeStart/DateTimeEnd (both already
+        // committed: 2026-02-10 09:00 -> 2026-02-20 17:30) via Mode="DatePickerMode.DateTime",
+        // Use12Hours="true", ShowSeconds="false".
+        var section = Page.Locator("section.demo-section").Nth(5);
+        var startInput = section.Locator(".wss-picker-input-start");
+        var endInput = section.Locator(".wss-picker-input-end");
+        var dropdown = section.Locator(".wss-picker-dropdown");
+
+        // Both endpoints already have committed values, so touching just ONE side and hitting OK
+        // is enough to commit immediately -- the OTHER side's own already-resolved value rides
+        // along unchanged (see DateRangePicker.OnSessionOkAsync's doc comment on the dual-panel
+        // sibling; EditDateRange forwards straight through to the same UI-kit control). Exercise
+        // the START side first, focusing it directly so the session opens with it active.
+        await startInput.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        await dropdown.Locator("[data-date='2026-02-12']").ClickAsync();
+        await dropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("10"); // 10 AM -- within Start's own AM period
+        await dropdown.Locator(".wss-picker-ok").ClickAsync();
+
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+        // EditDateRange's Format is unset, so the picker's Mode.DateTime default
+        // "MM/dd/yyyy h:mm tt" applies (Use12Hours=true, ShowSeconds=false).
+        await Expect(startInput).ToHaveValueAsync("02/12/2026 10:00 AM");
+        await Expect(endInput).ToHaveValueAsync("02/20/2026 5:30 PM"); // End's own value rides along unchanged
+
+        // ...then the END side, proving the commit reaches BOTH bound fields independently.
+        await endInput.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        await dropdown.Locator("[data-date='2026-02-25']").ClickAsync();
+        await dropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("15"); // 3 PM -- within End's own PM period
+        await dropdown.Locator(".wss-picker-ok").ClickAsync();
+
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+        await Expect(startInput).ToHaveValueAsync("02/12/2026 10:00 AM"); // Start's own value rides along unchanged
+        await Expect(endInput).ToHaveValueAsync("02/25/2026 3:30 PM");
+    }
+
+    [Fact]
     public async Task Visual_baseline_basic_section()
     {
         await NavigateAsync();
