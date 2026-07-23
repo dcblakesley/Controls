@@ -337,13 +337,15 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     public async Task Server_paging_demo_swaps_the_page_on_pager_click()
     {
         await GotoAsync();
-        // The server-paging demo is the last table on the page (no selection column -> Id is col 0),
-        // and its standalone pager is the last .wss-pagination.
-        var table = _page.Locator(".wss-table").Last;
+        // Scoped by section (rather than .wss-table/.wss-pagination .Last) so appending further
+        // demo sections below this one -- each with their own Table/Pagination -- can never shift
+        // which element these ordinal-free locators resolve to.
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "server-side paging" });
+        var table = section.Locator(".wss-table");
         var firstId = table.Locator(".wss-table-tbody .wss-table-row").First.Locator("td").First;
         await Expect(firstId).ToHaveTextAsync("1"); // page 1 -> Row 1
 
-        await _page.Locator(".wss-pagination").Last
+        await section.Locator(".wss-pagination")
             .Locator(".wss-pagination-item", new() { HasTextString = "2" }).ClickAsync();
 
         await Expect(firstId).ToHaveTextAsync("11"); // page 2 -> Row 11 (PageSize 10), proving the fetch ran
@@ -463,6 +465,114 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await _page.Locator("button", new() { HasTextString = "Notification" }).ClickAsync();
         await Expect(_page.Locator(".wss-notification")).ToBeVisibleAsync();
         await Expect(_page.Locator(".wss-notification-message")).ToContainTextAsync("Notification");
+    }
+
+    // ---- AntD 4.x parity batch: Pagination + Table ----
+
+    [Fact]
+    public async Task Pagination_size_changer_and_quick_jumper_drive_the_pager()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "size changer, quick jumper" });
+        var pager = section.Locator(".wss-pagination").First;
+        var result = _page.Locator("[data-test-id=pagination-demo-result]");
+
+        await Expect(result).ToContainTextAsync("Page 1, size 10");
+        await Expect(pager.Locator(".wss-pagination-total")).ToContainTextAsync("1-10 of 95 items");
+
+        // Size changer: picking 20 re-clamps the page (first item index 0 -> floor(0/20)+1 = 1).
+        await pager.Locator(".wss-pagination-size-select").SelectOptionAsync("20");
+        await Expect(result).ToContainTextAsync("Page 1, size 20");
+        await Expect(pager.Locator(".wss-pagination-total")).ToContainTextAsync("1-20 of 95 items");
+
+        // Quick jumper: typing a page and pressing Enter jumps directly.
+        var jumperInput = pager.Locator(".wss-pagination-jumper-input");
+        await jumperInput.FillAsync("3");
+        await jumperInput.PressAsync("Enter");
+        await Expect(result).ToContainTextAsync("Page 3, size 20");
+        await Expect(jumperInput).ToHaveValueAsync(string.Empty); // clears after commit
+    }
+
+    [Fact]
+    public async Task Pagination_small_variant_renders_the_compact_modifier_class()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "size changer, quick jumper" });
+        // The second Pagination in this section demos Small -- distinguish it from the first pager
+        // (which also matches .wss-pagination) by its own modifier class.
+        var smallPager = section.Locator(".wss-pagination.wss-pagination-sm");
+        await Expect(smallPager).ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Table_loading_overlay_shows_and_hides_over_still_visible_rows()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "Loading overlay, disabled rows" });
+        var wrapper = section.Locator(".wss-table-wrapper");
+        var mask = section.Locator(".wss-table-loading-mask");
+        var toggle = _page.Locator("[data-test-id=toggle-table-loading]");
+
+        await Expect(mask).Not.ToBeVisibleAsync();
+        await Expect(wrapper).Not.ToHaveAttributeAsync("aria-busy", "true");
+
+        await toggle.ClickAsync();
+        await Expect(mask).ToBeVisibleAsync();
+        await Expect(wrapper).ToHaveAttributeAsync("aria-busy", "true");
+        // Rows stay rendered beneath the translucent mask, not replaced by it.
+        await Expect(section.Locator(".wss-table-tbody .wss-table-row").First).ToBeVisibleAsync();
+
+        await toggle.ClickAsync();
+        await Expect(mask).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Table_single_select_mode_uses_radios_and_disables_the_configured_row()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "Loading overlay, disabled rows" });
+        var radios = section.Locator("tbody input[type=radio].wss-table-radio");
+        var result = _page.Locator("[data-test-id=single-select-result]");
+
+        await Expect(radios).ToHaveCountAsync(3);
+        await Expect(section.Locator("thead input")).ToHaveCountAsync(0); // no select-all control
+        await Expect(radios.Nth(1)).ToBeDisabledAsync(); // row 2 (Bravo) is IsRowSelectable="false"
+
+        await radios.Nth(0).CheckAsync();
+        await Expect(result).ToContainTextAsync("Alpha");
+
+        await radios.Nth(2).CheckAsync();
+        await Expect(result).ToContainTextAsync("Charlie"); // picking another row replaces the selection
+        await Expect(radios.Nth(0)).Not.ToBeCheckedAsync();
+    }
+
+    [Fact]
+    public async Task Table_expand_row_by_click_toggles_the_detail_and_still_raises_OnRowClick()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "OnRowClick, ExpandRowByClick" });
+        var firstRow = section.Locator("tbody .wss-table-row").First;
+        var detail = section.Locator("[data-test-id=row-detail]");
+        var result = _page.Locator("[data-test-id=row-click-result]");
+
+        await Expect(detail).ToHaveCountAsync(0);
+
+        await firstRow.ClickAsync();
+        await Expect(result).ToContainTextAsync("First"); // OnRowClick fired
+        await Expect(detail).ToContainTextAsync("Detail for First"); // and expansion toggled
+
+        await firstRow.ClickAsync();
+        await Expect(detail).ToHaveCountAsync(0);
+    }
+
+    [Fact]
+    public async Task Table_ellipsis_footer_and_empty_content_section_visual_baseline()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "Ellipsis, EmptyContent, FooterContent" });
+        await Expect(section.Locator("[data-test-id=ellipsis-footer-total]")).ToContainTextAsync("$19.75");
+        await Expect(section.Locator("[data-test-id=empty-content]")).ToBeVisibleAsync();
+        await BaselineAsync(section, "table-ellipsis-footer-empty");
     }
 
     // Asserts an overlay panel is centred over its trigger and sits just above it (Top placement).

@@ -51,8 +51,10 @@ public class DatePickerE2ETests : IAsyncLifetime
         await Expect(_page.Locator("h1", new() { HasTextString = "UI Kit Gallery" }))
             .ToBeVisibleAsync(new() { Timeout = 15_000 });
         // Wait for the page height to be final before geometry-sensitive steps (see
-        // DateRangePickerE2ETests.GotoAsync for the full story on the late layout shifts).
-        await Expect(_page.Locator(".wss-table").Last.Locator(".wss-table-row"))
+        // DateRangePickerE2ETests.GotoAsync for the full story on the late layout shifts). Scoped by
+        // section (not .wss-table.Last) so appended sections below it can never shift the target.
+        await Expect(_page.Locator("section.demo-section", new() { HasTextString = "server-side paging" })
+                .Locator(".wss-table-row"))
             .ToHaveCountAsync(10, new() { Timeout = 15_000 });
         await _page.WaitForFunctionAsync(
             @"() => {

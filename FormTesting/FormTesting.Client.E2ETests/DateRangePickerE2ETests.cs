@@ -52,8 +52,10 @@ public class DateRangePickerE2ETests : IAsyncLifetime
         // the server-paging table demo fills its rows ~150ms after init, and that init can run
         // twice (prerender, then WASM hydration) — so a bare row-count wait can pass against the
         // prerendered DOM just before hydration resets it. Wait for the rows AND for the document
-        // height to hold still.
-        await Expect(_page.Locator(".wss-table").Last.Locator(".wss-table-row"))
+        // height to hold still. Scoped by section (not .wss-table.Last) so appended sections below
+        // it on the gallery page can never shift which table this resolves to.
+        await Expect(_page.Locator("section.demo-section", new() { HasTextString = "server-side paging" })
+                .Locator(".wss-table-row"))
             .ToHaveCountAsync(10, new() { Timeout = 15_000 });
         await _page.WaitForFunctionAsync(
             @"() => {
