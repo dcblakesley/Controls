@@ -95,6 +95,25 @@ public class UiKitLeafControlsTests : TestContext
     }
 
     [Fact]
+    public void Alert_stale_Type_is_reset_when_a_rerender_omits_it()
+    {
+        // Standard Blazor semantics: a ParameterView that omits Type leaves the backing property at
+        // whatever a PRIOR render set it to, unless the component resets it itself. Non-Banner alerts
+        // must not keep rendering a stale severity from an earlier render's Type once it's dropped.
+        var cut = RenderComponent<Alert>(p => p.Add(a => a.Type, AlertType.Error).Add(a => a.Message, "x"));
+        Assert.Contains("wss-alert-error", cut.Find(".wss-alert").ClassList);
+        Assert.Equal("alert", cut.Find(".wss-alert").GetAttribute("role"));
+
+        cut.SetParametersAndRender(p => p.Add(a => a.Message, "x")); // Type omitted this render
+
+        var alert = cut.Find(".wss-alert");
+        Assert.Contains("wss-alert-info", alert.ClassList);
+        Assert.DoesNotContain("wss-alert-error", alert.ClassList);
+        Assert.Equal("status", alert.GetAttribute("role"));
+        Assert.Equal("polite", alert.GetAttribute("aria-live"));
+    }
+
+    [Fact]
     public void Alert_action_renders_beside_the_close_button_only_when_set()
     {
         var plain = RenderComponent<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Closable, true));

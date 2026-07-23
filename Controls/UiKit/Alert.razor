@@ -83,6 +83,12 @@
     public override Task SetParametersAsync(ParameterView parameters)
     {
         _typeSet = parameters.TryGetValue<AlertType>(nameof(Type), out _);
+        // Standard Blazor semantics only assign parameters present in the incoming ParameterView --
+        // an omitted Type otherwise leaves the backing property holding whatever a PRIOR render set
+        // it to, so a non-Banner alert that stops passing Type would keep rendering a stale severity
+        // forever. Reset to the documented default here; base.SetParametersAsync below overwrites it
+        // right back if Type IS present this render.
+        if (!_typeSet) Type = AlertType.Info;
         return base.SetParametersAsync(parameters);
     }
 
