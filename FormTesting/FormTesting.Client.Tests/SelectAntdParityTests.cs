@@ -108,6 +108,29 @@ public class SelectAntdParityTests : TestContext
         Assert.Equal(2, cut.FindAll(".wss-select-item-option").Count);
     }
 
+    [Fact]
+    public void Swapping_FilterOption_with_Options_unchanged_refreshes_an_open_list_immediately()
+    {
+        // OnParametersSet previously only rebuilt _filtered on an Options/Values reference change; a
+        // swapped FilterOption delegate left an open list stale until the next keystroke/reopen.
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("Apple", false), ("Banana", false)))
+            .Add(s => s.FilterOption, (Func<string, SelectOption<string>, bool>)((_, o) => o.Value != "Banana"))
+            .Add(s => s.DefaultOpen, true));
+
+        var labels = cut.FindAll(".wss-select-item-option-content").Select(e => e.TextContent).ToList();
+        Assert.Contains("Apple", labels);
+        Assert.DoesNotContain("Banana", labels);
+
+        // New delegate reference, Options unchanged, no keystroke and no reopen in between.
+        cut.SetParametersAndRender(p => p
+            .Add(s => s.FilterOption, (Func<string, SelectOption<string>, bool>)((_, o) => o.Value != "Apple")));
+
+        labels = cut.FindAll(".wss-select-item-option-content").Select(e => e.TextContent).ToList();
+        Assert.DoesNotContain("Apple", labels);
+        Assert.Contains("Banana", labels);
+    }
+
     // ----- EmptyContent -----------------------------------------------------------------------------
 
     [Fact]

@@ -274,7 +274,7 @@ All additive — existing markup is unchanged when these parameters go unused. `
       new("gb", "United Kingdom") { Group = "Europe" },
   };
   ```
-- **`FilterOption` (`Func<string, SelectOption<TValue>, bool>?`)** — replaces the default case-insensitive `Label.Contains` match in `RebuildFiltered` when set, including when the search text is empty. Pass `(_, _) => true` to disable client-side filtering entirely for a pure server-driven `OnSearch` flow — every option in `Options` stays visible on the assumption the server already filtered them before reassigning `Options`.
+- **`FilterOption` (`Func<string, SelectOption<TValue>, bool>?`)** — replaces the default case-insensitive `Label.Contains` match in `RebuildFiltered` when set, including when the search text is empty. Pass `(_, _) => true` to disable client-side filtering entirely for a pure server-driven `OnSearch` flow — every option in `Options` stays visible on the assumption the server already filtered them before reassigning `Options`. Tracked by reference like `Options`/`Values`: reassigning it (even mid-open) re-filters immediately. Prefer a cached/readonly delegate — an inline lambda is a new reference every render and re-filters each parameter set, correct but wasteful against a huge option list.
 - **`EmptyContent` (`RenderFragment?`)** — a richer alternative to `EmptyText` for the no-match state; wins over `EmptyText` when set.
 - **`DropdownFooter` (`RenderFragment?`)** — Ant Design's `dropdownRender` equivalent: renders pinned after the option list, outside the virtualized list and outside listbox/option semantics (`role="presentation"`). Clicks inside it never select an option or close the dropdown on their own (propagation is stopped automatically) — wire your own handler, e.g. a button's `@onclick`, for any action including closing.
   ```razor
@@ -626,6 +626,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Fixes** (Edit Controls)
 - `EditRadioEnum<TEnum>`'s `HasOtherOption` free-text input now honors `IsOptionDisabled`: previously the input's `disabled` expression checked only `IsDisabled`, so a predicate disabling the Other enum value locked the radio button but left its paired text input editable. Both render modes (`Default` and `OptionType="Button"`) were affected. (`EditRadioString`'s `HasOther` input is unaffected — by design, `IsOptionDisabled` never applies to the built-in Other option there, since it has no corresponding `Options` entry.)
+
+**Fixes** (Select engine — `Select` / `EditSelectSearch` / `EditMultiSelect`)
+- `FilterOption` is now tracked by reference in the same change-guarded block as `Options`/`Values`: swapping the delegate (with `Options` unchanged) refreshes an already-open dropdown's filtered list immediately, instead of leaving it stale until the next keystroke or reopen.
 
 ### 10.6.6
 

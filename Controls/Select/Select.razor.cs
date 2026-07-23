@@ -149,7 +149,11 @@ public partial class Select<TValue> : IAsyncDisposable
     /// option with the current search text; return whether the option should remain visible. Pass
     /// <c>(_, _) => true</c> to disable client-side filtering entirely for a pure server-driven
     /// <see cref="OnSearch"/> flow (every option in <see cref="Options"/> stays visible — the server
-    /// is expected to have already filtered them before reassigning <see cref="Options"/>).</summary>
+    /// is expected to have already filtered them before reassigning <see cref="Options"/>). Treated
+    /// as an immutable-by-reference parameter like <see cref="Options"/>: reassigning it (even to an
+    /// equivalent delegate) re-filters an open list immediately. Prefer a cached/readonly delegate —
+    /// an inline lambda is a new reference every render and re-filters each parameter set, which is
+    /// correct but wasteful against a huge option list.</summary>
     [Parameter] public Func<string, SelectOption<TValue>, bool>? FilterOption { get; set; }
 
     /// <summary>Renders pinned below the option list (Ant Design's <c>dropdownRender</c>) — for
@@ -228,19 +232,30 @@ public partial class Select<TValue> : IAsyncDisposable
     IEnumerable<TValue>? _lastValues;
     int? _lastMaxTagCount;
     SelectMode _lastMode;
+    Func<string, SelectOption<TValue>, bool>? _lastFilterOption;
 
     protected override void OnParametersSet()
     {
         // Reference-guarded rebuilds: a parent re-render re-parameterizes this component on every
         // keystroke elsewhere in the form (delegate parameters defeat Blazor's change skip), and
         // the advertised use-case is tens of thousands of options — so the O(n) mirror/filter work
-        // only runs when its actual inputs change. Consequence: Options and Values are immutable
-        // parameters — reassign a new instance to refresh, don't mutate in place.
+        // only runs when its actual inputs change. Consequence: Options, Values and FilterOption are
+        // immutable parameters — reassign a new instance to refresh, don't mutate in place.
         var optionsChanged = !ReferenceEquals(Options, _lastOptions);
+        var filterOptionChanged = !ReferenceEquals(FilterOption, _lastFilterOption);
+        _lastFilterOption = FilterOption;
+
         if (optionsChanged)
         {
             _lastOptions = Options;
             RebuildLookup();
+            RebuildFiltered();
+        }
+        else if (filterOptionChanged)
+        {
+            // A swapped FilterOption delegate (with Options unchanged) leaves an open list stale
+            // until the next keystroke/reopen unless we rebuild here too — RebuildFiltered already
+            // re-ran above when Options also changed, so this is the else-only remaining case.
             RebuildFiltered();
         }
 
