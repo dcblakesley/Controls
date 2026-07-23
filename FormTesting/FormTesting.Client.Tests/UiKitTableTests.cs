@@ -815,6 +815,55 @@ public class UiKitTableTests : TestContext
         Assert.Contains("wss-table-sorter", button.Children[1].ClassList);
     }
 
+    // ----- Loading overlay -----
+
+    [Fact]
+    public void Loading_false_renders_no_overlay_and_no_aria_busy()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Empty(cut.FindAll(".wss-table-loading-mask"));
+        Assert.False(cut.Find(".wss-table-wrapper").HasAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public void Loading_true_renders_the_overlay_over_still_rendered_rows_with_aria_busy()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Loading, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Single(cut.FindAll(".wss-table-loading-mask"));
+        Assert.Equal("true", cut.Find(".wss-table-wrapper").GetAttribute("aria-busy"));
+        // Rows are still rendered beneath the mask, not replaced by it.
+        Assert.Equal(2, cut.FindAll("tbody .wss-table-row").Count);
+    }
+
+    // ----- EmptyContent -----
+
+    [Fact]
+    public void EmptyContent_wins_over_EmptyText_when_set()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, new List<Person>())
+            .Add(t => t.EmptyText, "Plain text")
+            .Add(t => t.EmptyContent, (RenderFragment)(b => b.AddMarkupContent(0, "<strong class=\"custom-empty\">Nothing to show</strong>")))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var placeholder = cut.Find(".wss-table-placeholder");
+        Assert.NotNull(placeholder.QuerySelector("strong.custom-empty"));
+        Assert.DoesNotContain("Plain text", placeholder.TextContent);
+    }
+
     // ----- Pager wire-through (ShowTotal / PageSizeOptions) -----
 
     [Fact]

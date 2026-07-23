@@ -25,7 +25,13 @@
                     AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")" />
     </div>
 }
-<div class="wss-table-wrapper">
+<div class="wss-table-wrapper" aria-busy="@(Loading ? "true" : null)">
+    @if (Loading)
+    {
+        <div class="wss-table-loading-mask" aria-hidden="true">
+            <span class="wss-table-loading-spinner">@LoadingIcon</span>
+        </div>
+    }
     <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName">
         @if (!string.IsNullOrEmpty(Caption))
         {
@@ -107,7 +113,9 @@
             @if (_items.Count == 0)
             {
                 <tr class="wss-table-row wss-table-placeholder">
-                    <td class="wss-table-cell" colspan="@TotalColumnCount">@EmptyText</td>
+                    <td class="wss-table-cell" colspan="@TotalColumnCount">
+                        @if (EmptyContent is not null) { @EmptyContent } else { @EmptyText }
+                    </td>
                 </tr>
             }
             else
@@ -186,6 +194,19 @@
     [Parameter] public TableSize Size { get; set; } = TableSize.Default;
     /// <summary>Placeholder text shown when there are no rows. Defaults to "No data".</summary>
     [Parameter] public string EmptyText { get; set; } = "No data";
+
+    /// <summary>
+    /// Richer alternative to <see cref="EmptyText"/> for the no-rows placeholder; wins over
+    /// <see cref="EmptyText"/> when set. Null (default) keeps the plain text.
+    /// </summary>
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+
+    /// <summary>
+    /// Shows a translucent mask + spinner over the table body while true (AntD's <c>Spin</c>-wrapped
+    /// table) — rows stay rendered beneath it, and <c>aria-busy="true"</c> is set on the table
+    /// wrapper. Pure CSS/markup, no JS. Default false (no overlay — current DOM unchanged).
+    /// </summary>
+    [Parameter] public bool Loading { get; set; }
 
     /// <summary>Optional accessible caption rendered above the table (also names it for screen readers).</summary>
     [Parameter] public string? Caption { get; set; }
@@ -309,6 +330,11 @@
     // AntD RightOutlined; the CSS rotates it 90° while the row is expanded.
     static readonly MarkupString ExpandChevron = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.9 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.1l450.8-352.1a31.96 31.96 0 000-50.2z\"/></svg>");
+
+    // Loading overlay spinner: EditIcons.LoadingSpinner ships with no animation baked in (a static
+    // glyph, by design) -- wss-icon-spin (wss-controls.css, the shared wss-msg-spin keyframe) is what
+    // actually rotates it, same technique as SearchInput.Loading.
+    static readonly MarkupString LoadingIcon = new($"<span class=\"wss-icon-spin\">{EditIcons.LoadingSpinner}</span>");
 
     bool HasRowDetail => RowDetail is not null;
     readonly HashSet<object> _expanded = new(); // row key -> expanded

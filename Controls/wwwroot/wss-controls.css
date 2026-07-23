@@ -1780,8 +1780,26 @@
  * ============================================================================ */
 
 .wss-table-wrapper {
+    position: relative; /* anchors the Loading overlay mask */
     width: 100%;
     overflow-x: auto;
+}
+
+/* Loading overlay (Table.Loading) -- rows stay rendered beneath a translucent mask, AntD's
+   Spin-wrapped-table look. Pure CSS/markup; no JS. */
+.wss-table-loading-mask {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wss-color-bg-mask-light);
+}
+
+.wss-table-loading-spinner {
+    font-size: 24px;
+    color: var(--wss-color-primary);
 }
 
 /* <caption> for the table — left-aligned, secondary color, matching the table font. */
