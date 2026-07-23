@@ -79,11 +79,15 @@
                         }
                     </th>
                 }
+                @* @key="col" (on every branch's <th> below): without it, Blazor's diff matches this
+                   loop's output POSITIONALLY across renders -- reordering/removing a column could
+                   reassign one column's rendered <th> (and its live TableColumnFilter/open-dropdown
+                   state) onto a DIFFERENT column instead of moving with its own column. *@
                 @foreach (var col in _columns)
                 {
                     @if (col.CanSort)
                     {
-                        <th scope="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)" aria-sort="@AriaSortFor(col)">
+                        <th scope="col" @key="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.FilterOpen ? "wss-table-cell-filter-open" : null)" aria-sort="@AriaSortFor(col)">
                             @if (col.TitleContent is null)
                             {
                                 @* col.CanFilter forks into its own branch (rather than always wrapping in
@@ -147,7 +151,7 @@
                     {
                         @if (col.CanFilter)
                         {
-                            <th scope="col" class="wss-table-cell">
+                            <th scope="col" @key="col" class="wss-table-cell @(col.FilterOpen ? "wss-table-cell-filter-open" : null)">
                                 <div class="wss-table-header-inner">
                                     <span class="wss-table-header-text">@col.HeaderFor()</span>
                                     <TableColumnFilter TItem="TItem" Column="col" Table="this"
@@ -158,7 +162,7 @@
                         }
                         else
                         {
-                            <th scope="col" class="wss-table-cell">@col.HeaderFor()</th>
+                            <th scope="col" @key="col" class="wss-table-cell">@col.HeaderFor()</th>
                         }
                     }
                 }
@@ -227,7 +231,7 @@
                         }
                         @foreach (var col in _columns)
                         {
-                            <td class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)">@col.CellFor(item)</td>
+                            <td @key="col" class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)">@col.CellFor(item)</td>
                         }
                     </tr>
                     @if (HasRowDetail && IsExpanded(item))
@@ -439,11 +443,15 @@
     [Parameter] public string? ScrollY { get; set; }
 
     /// <summary>
-    /// Raised after a column's filter is applied (OK) or cleared (Reset), with the column and its
-    /// new selected values (empty when cleared) — the uncontrolled equivalent of AntD's
+    /// Raised with the column and its new selected values (empty when cleared) on any of three
+    /// triggers: a column's filter is applied (OK), cleared (Reset), or a column that was actively
+    /// narrowing rows drops out of the rendered set (e.g. an <c>@@if</c> hiding it) — its filter is
+    /// force-cleared along with it, so the same "now empty" payload fires rather than leaving a
+    /// consumer's own filter summary silently stale. The uncontrolled equivalent of AntD's
     /// <c>onFilter</c>/<c>filteredValue</c> callback pair; there is no fully-controlled
     /// <c>filteredValue</c> parameter (see <see cref="Column{TItem}.FilterOptions"/>). Not raised
-    /// while a dropdown is merely open, or on an outside-click/Escape discard.
+    /// while a dropdown is merely open, on an outside-click/Escape discard, or on a no-op OK/Reset
+    /// (the applied selection is unchanged — e.g. clicking OK with nothing ticked).
     /// </summary>
     [Parameter] public EventCallback<(Column<TItem> Column, IReadOnlyList<string> SelectedValues)> OnFilterChanged { get; set; }
 
@@ -871,16 +879,22 @@
                 // A column that dropped out of the rendered set (@if false, or genuinely disposed)
                 // must not keep narrowing the row set for a filter the user can no longer see or
                 // clear -- clear its state (same treatment the active-sort-column-removed case
-                // below already gets) and fall into the recompute.
-                var removedWithFilter = false;
+                // below already gets) and fall into the recompute. A column that was actively
+                // NARROWING rows (FilterApplied non-empty) also needs OnFilterChanged raised with an
+                // empty payload once it's gone -- this is the third way a consumer's applied filter
+                // can go away (alongside OK and Reset, see RecomputeAfterFilterChangeAsync), and
+                // skipping it used to leave a consumer's own filter-summary display showing a value
+                // that no longer narrows anything.
+                var filterCleared = new List<Column<TItem>>();
                 foreach (var gone in previousColumns)
                 {
                     if (_columns.Contains(gone)) continue;
                     if (gone.FilterApplied.Count == 0 && gone.FilterPending.Count == 0 && !gone.FilterOpen) continue;
+                    var hadAppliedFilter = gone.FilterApplied.Count > 0;
                     gone.FilterApplied.Clear();
                     gone.FilterPending.Clear();
                     gone.FilterOpen = false;
-                    removedWithFilter = true;
+                    if (hadAppliedFilter) filterCleared.Add(gone);
                 }
 
                 // If the column driving the active sort is gone, drop the sort so the indicator and
@@ -894,12 +908,20 @@
 
                 // Re-derive the view before the body renders whenever either of the above actually
                 // changed something it depends on.
-                if (removedWithFilter || sortColumnRemoved)
+                if (filterCleared.Count > 0 || sortColumnRemoved)
                 {
-                    if (removedWithFilter) ApplyFilters();
+                    if (filterCleared.Count > 0) ApplyFilters();
                     ApplySort();
                     RebuildPageItems();
                 }
+
+                // Fire-and-forget, same reasoning as the selection-clamp notification in
+                // OnParametersSet below: StartCollectingColumns runs synchronously mid-render (from
+                // the @{ } block at the top of this file), so there's no `await` point available
+                // here -- EventCallback.InvokeAsync is safe to not await.
+                if (filterCleared.Count > 0 && OnFilterChanged.HasDelegate)
+                    foreach (var col in filterCleared)
+                        _ = OnFilterChanged.InvokeAsync((col, (IReadOnlyList<string>)Array.Empty<string>()));
             }
         }
         _collecting = new List<Column<TItem>>();
@@ -1119,37 +1141,46 @@
         StateHasChanged();
     }
 
-    // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline.
+    // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline. "changed"
+    // compares the about-to-be-overwritten Applied set against Pending BEFORE overwriting it -- a
+    // no-op OK (e.g. clicking it with nothing ticked, or re-ticking back to the exact set that was
+    // already applied) must not reset the page or fire a spurious "it changed" notification.
     internal async Task ApplyColumnFilterAsync(Column<TItem> column)
     {
+        var changed = !column.FilterApplied.SetEquals(column.FilterPending);
         column.FilterApplied.Clear();
         foreach (var v in column.FilterPending) column.FilterApplied.Add(v);
         column.FilterOpen = false;
-        await RecomputeAfterFilterChangeAsync(column);
+        await RecomputeAfterFilterChangeAsync(column, changed);
     }
 
     // Reset: clear both the staged and applied selection immediately (no OK needed) and re-run the
-    // pipeline the same way.
+    // pipeline the same way. A Reset on a column with no applied filter (nothing to clear) is a
+    // no-op by the same "changed" measure as OK above.
     internal async Task ResetColumnFilterAsync(Column<TItem> column)
     {
+        var changed = column.FilterApplied.Count > 0;
         column.FilterPending.Clear();
         column.FilterApplied.Clear();
         column.FilterOpen = false;
-        await RecomputeAfterFilterChangeAsync(column);
+        await RecomputeAfterFilterChangeAsync(column, changed);
     }
 
-    // Shared tail of OK/Reset: AntD resets to page 1 on a filter change (mirrors ToggleSort's own
-    // reset), then re-derives filtered -> sorted -> paged in that order and notifies the consumer.
-    // This is what keeps RebuildPageItems's guard correct with no separate tracked field for filter
-    // state -- see that guard's own comment.
-    async Task RecomputeAfterFilterChangeAsync(Column<TItem> column)
+    // Shared tail of OK/Reset (and, with an already-computed `changed`, the filtered-column-removal
+    // path in StartCollectingColumns below): AntD resets to page 1 only when the applied selection
+    // actually changed (mirrors ToggleSort's own reset) -- a no-op OK/Reset must not strand the user
+    // off whatever page they were reading. Re-derives filtered -> sorted -> paged either way (this is
+    // what keeps RebuildPageItems's guard correct with no separate tracked field for filter state --
+    // see that guard's own comment) and raises OnFilterChanged only when something actually changed,
+    // so a consumer's own filter-summary state never gets a spurious "it changed" notification.
+    async Task RecomputeAfterFilterChangeAsync(Column<TItem> column, bool changed)
     {
-        _page = 1;
+        if (changed) _page = 1;
         ApplyFilters();
         ApplySort();
         RebuildPageItems();
         StateHasChanged();
-        if (OnFilterChanged.HasDelegate)
+        if (changed && OnFilterChanged.HasDelegate)
             await OnFilterChanged.InvokeAsync((column, column.AppliedFilterValues));
     }
 }

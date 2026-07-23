@@ -2215,6 +2215,28 @@
     min-width: 0;
 }
 
+/* A sortable + filterable column's sort trigger is a flex ITEM of .wss-table-header-inner, but
+   .wss-table-sort-trigger's own width: 100% (further up) doesn't help it SHRINK -- a flex item's
+   default min-width is auto, which refuses to shrink below its content's min-content size. For a
+   nowrap label (the header cell sets white-space: nowrap) that's the label's full text width, so in
+   a narrow table-layout: fixed column the trigger never yields room to its sibling filter button,
+   pushing it out of the th instead. min-width: 0 lets the trigger shrink; flex/min-width: 0 on the
+   label inside it (a nested flex item of the trigger's own inline-flex layout -- same "auto refuses
+   to shrink" rule one level down) plus overflow/text-overflow lets the label truncate with an
+   ellipsis instead, so the fixed-size caret icons and filter button both stay visible. Scoped to the
+   header-inner context only -- a solo sort trigger with no filter button has nothing to yield room
+   to, so its label keeps wrapping/growing exactly as before. */
+.wss-table-header-inner .wss-table-sort-trigger {
+    min-width: 0;
+}
+
+.wss-table-header-inner .wss-table-sort-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* Column filtering (Column.FilterOptions/OnFilter): a funnel-icon button in the header cell,
    opening a checkbox/radio dropdown anchored to the header cell (already position: relative for
    the column-split separator above) -- the same backdrop-click-to-close pattern as
@@ -2369,6 +2391,27 @@
     /* Above body-row backgrounds (which paint at the default z-index: auto ~ 0), below
        .wss-table-loading-mask's z-index: 2 -- Loading still visually covers a ScrollY header. */
     z-index: 1;
+}
+
+/* Fix for a ScrollY + Loading interaction: position: sticky ALWAYS establishes a stacking context
+   (regardless of z-index value), so this cell's z-index: 1 above is a LOCAL rank -- every
+   descendant, including a filter dropdown positioned fixed with its own z-index in the thousands
+   (wss-overlay.js's nextZ, via placeFixedBelow/activateFixedDropdown below), is capped at that rank
+   when compared against a SIBLING of the whole .wss-table-wrapper subtree, like
+   .wss-table-loading-mask's z-index: 2. Raising the dropdown's own z-index can never escape this --
+   a nested stacking context's descendants are only ever compared against the context's own local
+   siblings, never directly against an ancestor's unrelated sibling (the classic z-index-nesting
+   gotcha: https://philipwalton.com/articles/what-no-one-told-you-about-z-index/). The only fix is
+   promoting the CELL ITSELF above the mask -- scoped to whichever column's filter is actually open
+   (Column.FilterOpen; Table.OpenColumnFilter guarantees at most one at a time), so every other
+   sticky header cell keeps the plain rank of 1. This is pure CSS/markup (Table.razor toggles the
+   class from Column.FilterOpen, already tracked in C# with no JS) -- it also happens to fix the
+   no-JS fallback (CSS position: absolute) for this SAME masking issue, though the separate
+   overflow-clip escape that fallback doesn't get still needs JS (see .wss-table-filter-dropdown's
+   own comment) -- so a no-JS + ScrollY + Loading dropdown that's tall enough to clip may still be
+   partly unusable, just not masked. */
+.wss-table-wrapper-scroll-y .wss-table-thead .wss-table-cell-filter-open {
+    z-index: 3;
 }
 
 /* ============================================================================

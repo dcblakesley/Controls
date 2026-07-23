@@ -298,12 +298,24 @@ export function placeFixedBelow(trigger, panel, gap) {
     if (!trigger || !panel) {
         return;
     }
+    // z-index is assigned ONCE per activation (nextZ() is a shared, ever-advancing counter -- re-
+    // running it on every scroll/resize reposition, as activateFixedDropdown below does repeatedly
+    // while the dropdown stays open, would needlessly burn through it and jitter the panel's rank
+    // relative to other overlays for no reason). Repositioning-only calls go through
+    // repositionFixedBelow directly instead.
+    panel.style.position = 'fixed';
+    panel.style.zIndex = nextZ();
+    repositionFixedBelow(trigger, panel, gap);
+}
+
+// The top/left math alone, split out of placeFixedBelow so activateFixedDropdown's scroll/resize
+// listener can re-run just the positioning on every reposition without also bumping z-index (see
+// placeFixedBelow's own comment on why that split matters). Not exported -- placeFixedBelow (initial
+// placement) and activateFixedDropdown (placement + live tracking) are the only two call shapes a
+// consumer of this module needs.
+function repositionFixedBelow(trigger, panel, gap) {
     gap = gap || 4;
     const margin = 8;
-
-    const z = nextZ();
-    panel.style.position = 'fixed';
-    panel.style.zIndex = z;
 
     const t = trigger.getBoundingClientRect();
     const pw = panel.offsetWidth;
@@ -323,6 +335,44 @@ export function placeFixedBelow(trigger, panel, gap) {
 
     panel.style.top = `${Math.round(top)}px`;
     panel.style.left = `${Math.round(left)}px`;
+}
+
+// placeFixedBelow only ever computes the position once, at open time -- with no listeners, the
+// fixed-positioned dropdown visibly detaches from its funnel-icon trigger the moment the PAGE (not
+// just the table's own ScrollY wrapper, which the trigger stays pinned against via position: sticky)
+// scrolls or the viewport resizes. This wires up live tracking for the lifetime of one open/close
+// cycle and returns a disposer handle -- the same { dispose() {...} } shape activateModal (above)
+// returns -- so the caller can release the listeners deterministically on close AND on component
+// dispose, with no leaked listeners either way (mirrors Modal.razor's handle-storage/dispose pattern
+// exactly -- see that component for the C# side of this contract).
+export function activateFixedDropdown(trigger, panel, gap) {
+    if (!trigger || !panel) {
+        return null;
+    }
+
+    placeFixedBelow(trigger, panel, gap); // initial placement + the one-time z-index assignment
+    const reposition = () => repositionFixedBelow(trigger, panel, gap);
+
+    // window + capture phase, not the panel/wrapper: a scrolling ANCESTOR container (the table's own
+    // ScrollY wrapper, or an outer page-layout scroll region) fires 'scroll' on ITSELF, and that
+    // event does not bubble per the DOM Standard -- but the CAPTURE phase still travels from window
+    // down to the actual target on every dispatch regardless of whether the event later bubbles, so
+    // a capture-phase listener on window sees every scroll in the document, bubbling or not. resize
+    // has no useful "which element" target at all -- window is the only place to hear it.
+    window.addEventListener('scroll', reposition, { capture: true, passive: true });
+    window.addEventListener('resize', reposition, { passive: true });
+
+    let disposed = false;
+    return {
+        dispose: () => {
+            if (disposed) {
+                return; // idempotent, mirrors activateModal's own dispose guard
+            }
+            disposed = true;
+            window.removeEventListener('scroll', reposition, { capture: true });
+            window.removeEventListener('resize', reposition);
+        }
+    };
 }
 
 // One-time picker wiring. Enter in a picker input commits the typed date via the component's own
