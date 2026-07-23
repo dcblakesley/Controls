@@ -8,15 +8,27 @@
 
         @if (ShowEditor)
         {
-            <EditInputShell IsInvalid=@IsInvalid>
+            <EditInputShell IsInvalid=@IsInvalid
+                            Prefix=@Prefix
+                            Suffix=@Suffix
+                            AllowClear=@AllowClear
+                            IsClearable=@IsClearable
+                            OnClear=@Clear
+                            CountText=@CountText
+                            ShowPasswordToggle=@IsPassword
+                            IsPasswordRevealed=@_passwordRevealed
+                            OnTogglePassword=@TogglePasswordVisibility>
                 <input @bind-value="CurrentValue"
                        @bind-value:event="oninput"
-                       style="padding-inline-end: 2rem"
+                       @ref="_inputRef"
+                       style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                        disabled=@IsDisabled
                        id=@_id
                        data-test-id=@_id
-                       class="edit-input edit-string-input @CssClass"
+                       class=@InputClass
                        placeholder=@Placeholder
+                       maxlength=@MaxLength
+                       type=@(IsPassword ? (_passwordRevealed ? "text" : "password") : null)
                        aria-invalid=@(IsInvalid ? "true" : null)
                        aria-required=@_isRequired
                        aria-describedby=@_describedBy

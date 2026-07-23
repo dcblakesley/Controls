@@ -351,17 +351,41 @@
     pointer-events: none;
     color: var(--edit-color-danger);
 }
+/* Inside EditInputShell's affix-mode suffix span, the icon is already a normal-flow sibling of the
+   clear/count/password items (spaced by .edit-input-suffix's own gap) -- the legacy pull-back above
+   assumes it's overlaying the editor's own trailing edge, which is only true in legacy mode. Without
+   this override the icon collided with (or sat under) whatever suffix item came before it. */
+.edit-input-suffix .edit-icon-invalid {
+    margin-inline-start: 0;
+}
+.edit-input-clear,
+.edit-input-password-toggle,
+.edit-input-count {
+    /* Unthemed color for the affix suffix's clear/password buttons and the count span -- same
+       secondary-text token .bound-value already uses, so a consumer running fully unthemed still
+       gets a legible (not black-on-black) icon/text instead of default button/text color. */
+    color: var(--color-text-secondary, #8c8c8c);
+}
 .edit-icon-eye,
 .edit-icon-eye-invisible,
 .edit-input-clear,
 .edit-input-password-toggle {
     /* EditString's mask show/hide toggle buttons, plus EditInputShell's affix-mode clear and
        password-toggle buttons — reset the native <button> chrome. One shared group so the reset
-       never has to be restated per button; extend this list rather than duplicating the rule. */
+       never has to be restated per button; extend this list rather than duplicating the rule.
+       inline-flex (not the reset block's concern) centers the 1em svg glyph inside the button box. */
+    display: inline-flex;
+    align-items: center;
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
+}
+/* Clear button only: a slightly darker hover state (AntD's own recipe) so it reads as interactive.
+   The password toggle has no hover-only color change -- its two icons (eye / eye-invisible) already
+   distinguish state visually. */
+.edit-input-clear:hover {
+    color: var(--color-text, #262626);
 }
 .edit-icon-eye:focus-visible,
 .edit-icon-eye-invisible:focus-visible,

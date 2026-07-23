@@ -134,7 +134,7 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 ## Available Controls
 
 ### Input Controls
-- **`EditString`** - Text input with masking and URL support
+- **`EditString`** - Text input with masking and URL support; also supports `Prefix`/`Suffix` affix content, `AllowClear`, `MaxLength`/`ShowCount`, and an `IsPassword` show/hide toggle (independent of the read-only `MaskText` feature) — these switch the input into an AntD-style affix layout via the shared internal `EditInputShell`, while plain markup stays byte-identical to the classic rendering
 - **`EditTextArea`** - Multi-line text input
 - **`EditNumber`** - Numeric input with validation
 - **`EditDate`** - Date picker component

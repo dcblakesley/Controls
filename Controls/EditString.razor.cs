@@ -33,7 +33,64 @@ public partial class EditString : EditControlBase<string?>
     /// <summary> Sets the autocomplete attribute on the input element. Defaults to "one-time-code" to prevent browser autofill/extensions from intercepting input events.</summary>
     [Parameter] public string Autocomplete { get; set; } = "one-time-code";
 
+    /// <summary> Optional leading affix content (e.g. a currency symbol or icon), rendered by <see cref="EditInputShell"/>. Setting this switches the control into the shell's AntD-style affix layout.</summary>
+    [Parameter] public RenderFragment? Prefix { get; set; }
+
+    /// <summary> Optional custom trailing affix content, rendered by <see cref="EditInputShell"/> after the clear button and character count but before the password toggle (locked order). Setting this switches the control into the shell's AntD-style affix layout.</summary>
+    [Parameter] public RenderFragment? Suffix { get; set; }
+
+    /// <summary> Shows a clear button (via <see cref="EditInputShell"/>) while the value is non-empty and the control is enabled. Clicking it sets the value to null and refocuses the input.</summary>
+    [Parameter] public bool AllowClear { get; set; }
+
+    /// <summary> Maximum number of characters, rendered as the input's <c>maxlength</c> attribute. Omitted (no browser-side cap) when null.</summary>
+    [Parameter] public int? MaxLength { get; set; }
+
+    /// <summary> Shows a character-count indicator (via <see cref="EditInputShell"/>): <c>"{length}"</c> alone, or <c>"{length} / {MaxLength}"</c> once <see cref="MaxLength"/> is set (AntD's format).</summary>
+    [Parameter] public bool ShowCount { get; set; }
+
+    /// <summary> Renders the input as <c>type="password"</c> with a show/hide toggle (via <see cref="EditInputShell"/>). Independent of the read-only <see cref="MaskText"/> feature.</summary>
+    [Parameter] public bool IsPassword { get; set; }
+
     bool _showMaskedValue;
+    bool _passwordRevealed;
+    // Captures the <input> so Clear() can refocus it directly -- unlike EditFile's RemoveFile, the
+    // input never unmounts here, so a plain ElementReference.FocusAsync (Select/PickerBase's pattern)
+    // is enough; no JsInteropEc by-id fallback needed.
+    ElementReference _inputRef;
+
+    /// <summary>
+    /// Whether the shell's clear button should render right now: <see cref="AllowClear"/> is set,
+    /// the control isn't disabled, and the current value is non-empty.
+    /// </summary>
+    bool IsClearable => AllowClear && !IsDisabled && !string.IsNullOrEmpty(CurrentValue);
+
+    /// <summary>
+    /// The shell's character-count text when <see cref="ShowCount"/> is set, else null (no count
+    /// span renders). AntD format: <c>"{length}"</c> alone, or <c>"{length} / {MaxLength}"</c> once
+    /// <see cref="MaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
+    /// treating null as zero.
+    /// </summary>
+    string? CountText => !ShowCount
+        ? null
+        : MaxLength is null
+            ? $"{CurrentValue?.Length ?? 0}"
+            : $"{CurrentValue?.Length ?? 0} / {MaxLength}";
+
+    /// <summary>
+    /// True once any affix parameter is in use -- the single computation site
+    /// <see cref="EditInputShell.UsesAffixLayout"/> defines, so this control and the shell always
+    /// agree on which layout renders.
+    /// </summary>
+    bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, IsPassword);
+
+    /// <summary>
+    /// The input's <c>class</c> attribute. Legacy mode reproduces today's exact string (so a
+    /// no-new-params render stays byte-identical); affix mode adds <c>edit-affix-input</c> per
+    /// <see cref="EditInputShell"/>'s contract.
+    /// </summary>
+    string InputClass => UseAffixLayout
+        ? $"edit-input edit-string-input edit-affix-input {CssClass}"
+        : $"edit-input edit-string-input {CssClass}";
 
     /// <summary>
     /// The href to render in read-only link mode: the <see cref="Url"/> when it is relative or uses an
@@ -74,6 +131,21 @@ public partial class EditString : EditControlBase<string?>
 
     // Empty string counts as "default" for the NullOrDefault hiding modes.
     protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
+
+    /// <summary>
+    /// The shell's clear button action: sets the value to null (via <see cref="InputBase{TValue}.CurrentValue"/>,
+    /// which raises <c>ValueChanged</c>/<c>NotifyFieldChanged</c> itself) and refocuses the input.
+    /// Focus is best-effort -- see <see cref="_inputRef"/>'s remarks.
+    /// </summary>
+    async Task Clear()
+    {
+        CurrentValue = null;
+        try { await _inputRef.FocusAsync(); }
+        catch { /* not focusable yet (prerender/tests) */ }
+    }
+
+    /// <summary> Toggles the password reveal state driving the shell's show/hide button.</summary>
+    void TogglePasswordVisibility() => _passwordRevealed = !_passwordRevealed;
 
     string? GetMaskValue()
     {

@@ -100,6 +100,45 @@
         <h3>Markup</h3>
         <pre class="code-block"><code>@_urlExample</code></pre>
     </section>
+
+    <section class="demo-section">
+        <h3>Prefix / Suffix</h3>
+
+        <EditString @bind-Value="_model.WithPrefixSuffix" Description="Prefix = $, Suffix = .00">
+            <Prefix>$</Prefix>
+            <Suffix>.00</Suffix>
+        </EditString>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_prefixSuffixExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>AllowClear</h3>
+
+        <EditString @bind-Value="_model.Clearable" AllowClear="true"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_allowClearExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>MaxLength + ShowCount</h3>
+
+        <EditString @bind-Value="_model.Counted" MaxLength="20" ShowCount="true"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_maxLengthExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>IsPassword</h3>
+
+        <EditString @bind-Value="_model.Password" IsPassword="true"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_passwordExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -132,6 +171,11 @@
         [Required] public string Required { get; set; } = "";
 
         public string Disabled { get; set; } = "";
+
+        public string WithPrefixSuffix { get; set; } = "19";
+        public string Clearable { get; set; } = "Clear me";
+        public string Counted { get; set; } = "";
+        public string Password { get; set; } = "";
     }
 
     readonly string _basicExample = @"<EditString @bind-Value=""_model.BasicString""/>
@@ -196,4 +240,19 @@ public string Disabled { get; set; } = """";";
     readonly string _urlExample = @"<EditString @bind-Value=""_model.UrlField""
            Url=""https://example.com""
            UrlTarget=""_blank""/>";
+
+    readonly string _prefixSuffixExample = @"<EditString @bind-Value=""_model.WithPrefixSuffix"">
+    <Prefix>$</Prefix>
+    <Suffix>.00</Suffix>
+</EditString>";
+
+    readonly string _allowClearExample = @"<EditString @bind-Value=""_model.Clearable""
+           AllowClear=""true""/>";
+
+    readonly string _maxLengthExample = @"<EditString @bind-Value=""_model.Counted""
+           MaxLength=""20""
+           ShowCount=""true""/>";
+
+    readonly string _passwordExample = @"<EditString @bind-Value=""_model.Password""
+           IsPassword=""true""/>";
 }
