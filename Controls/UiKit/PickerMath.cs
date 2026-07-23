@@ -69,6 +69,15 @@ internal static class PickerMath
     // the very first/last representable month.
     public static int ClampDecadeStart(int year) => Math.Clamp(year, 11, 9989) / 10 * 10;
 
+    // Range-mode equivalent of ClampDecadeStart for a picker showing TWO adjacent decades (D and
+    // D+10, e.g. DateRangePicker's Mode="Year"): D's own dimmed leading cell (D-1) needs the same
+    // >= 1 margin ClampDecadeStart already gives, but the SECOND panel's dimmed TRAILING cell
+    // ((D+10)+10 = D+20) also needs to stay <= 9999, which requires D <= 9979 before flooring (vs.
+    // ClampDecadeStart's own 9989) -- one extra decade of headroom for the second panel's own
+    // margin. The reachable extremes are the 10-19/20-29 decade pair (dimmed leading cell 9) and
+    // the 9970-9979/9980-9989 pair (dimmed trailing cell 9990 on the second panel).
+    public static int ClampDecadeStartForRange(int year) => Math.Clamp(year, 11, 9979) / 10 * 10;
+
     // The years offered by a year select: Min/Max years when set, otherwise ±10 around the
     // displayed year — always including the displayed year itself so the select never shows a
     // value that isn't in its option list.
@@ -109,6 +118,104 @@ internal static class PickerMath
         {
             return null;
         }
+    }
+
+    // Maps a keydown's Key to the month it should move focus to, or null when the key isn't a
+    // navigation key -- shared by DatePicker's Mode="Month" grid and DateRangePicker's Month range
+    // mode. The 3-column grid makes Up/Down a +/-3 (one row) step; Home/End jump to the first/last
+    // month of the focused row. AddMonths/AddYears throws at the DateTime.MinValue/MaxValue edge --
+    // the caller treats that as the key being a no-op there.
+    public static DateTime? NextFocusMonth(DateTime current, string key)
+    {
+        try
+        {
+            return key switch
+            {
+                "ArrowLeft" => current.AddMonths(-1),
+                "ArrowRight" => current.AddMonths(1),
+                "ArrowUp" => current.AddMonths(-3),
+                "ArrowDown" => current.AddMonths(3),
+                "Home" => MonthRowStart(current),
+                "End" => MonthRowStart(current).AddMonths(2),
+                "PageUp" => current.AddYears(-1),
+                "PageDown" => current.AddYears(1),
+                _ => (DateTime?)null,
+            };
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    // The 1st of the first month in the 3-month row containing `month` (rows are Jan-Mar, Apr-Jun,
+    // Jul-Sep, Oct-Dec) — shared by Home/End so they can never disagree about row bounds.
+    public static DateTime MonthRowStart(DateTime month) => new(month.Year, (month.Month - 1) / 3 * 3 + 1, 1);
+
+    // Maps a keydown's Key to the quarter it should move focus to, or null when the key isn't a
+    // navigation key (Up/Down included -- a no-op in a single-row quarter grid). Shared by
+    // DatePicker's Mode="Quarter" grid and DateRangePicker's Quarter range mode. Left/Right step a
+    // quarter (retargeting the view when they cross a year boundary is the caller's job -- see
+    // DatePicker.OnQuarterGridKeyDown / DateRangePicker.OnQuarterGridKeyDown); Home/End jump to the
+    // year's first/last quarter; PageUp/PageDown step a year, keeping the same quarter. AddMonths/
+    // the DateTime constructor throw at the DateTime.MinValue/MaxValue edge -- the caller treats
+    // that as the key being a no-op there, same as NextFocusMonth.
+    public static DateTime? NextFocusQuarter(DateTime current, string key)
+    {
+        try
+        {
+            return key switch
+            {
+                "ArrowLeft" => current.AddMonths(-3),
+                "ArrowRight" => current.AddMonths(3),
+                "Home" => QuarterStart(current.Year, 1),
+                "End" => QuarterStart(current.Year, 4),
+                "PageUp" => QuarterStart(current.Year - 1, QuarterOf(current)),
+                "PageDown" => QuarterStart(current.Year + 1, QuarterOf(current)),
+                _ => (DateTime?)null,
+            };
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return null;
+        }
+    }
+
+    // Maps a keydown's Key to the year it should move focus to, or null when the key isn't a
+    // navigation key. Shared by DatePicker's Mode="Year" grid and DateRangePicker's Year range
+    // mode -- `decadeStart` is the CALLER's currently-displayed decade (DatePicker has one;
+    // DateRangePicker picks whichever of its two panels' decades the current focus belongs to),
+    // used only for Home/End's row grouping. Plain int arithmetic (unlike NextFocusMonth/
+    // NextFocusQuarter's DateTime.AddX, this can't throw) -- clamped to DateTime's representable
+    // year range instead so a move at the very edge is a no-op there.
+    public static DateTime? NextFocusYear(DateTime current, string key, int decadeStart)
+    {
+        var year = current.Year;
+        int? next = key switch
+        {
+            "ArrowLeft" => year - 1,
+            "ArrowRight" => year + 1,
+            "ArrowUp" => year - 3,
+            "ArrowDown" => year + 3,
+            "Home" => YearRowStart(year, decadeStart),
+            "End" => YearRowStart(year, decadeStart) + 2,
+            "PageUp" => year - 10,
+            "PageDown" => year + 10,
+            _ => (int?)null,
+        };
+        return next is { } y && y is >= 1 and <= 9999 ? new DateTime(y, 1, 1) : null;
+    }
+
+    // The 1st year of the 3-year row (within the *displayed* 12-cell decade grid, decadeStart-1
+    // through decadeStart+10) containing `year` -- shared by Home/End so they can never disagree
+    // about row bounds. Depends on the currently displayed decade (`decadeStart`) rather than
+    // `year`'s own natural decade: the grid's two dimmed adjacent-decade cells belong to
+    // neighboring decades, so grouping purely by each year's own decade would split a row unevenly
+    // right at the boundary.
+    public static int YearRowStart(int year, int decadeStart)
+    {
+        var offset = year - (decadeStart - 1);
+        return decadeStart - 1 + offset / 3 * 3;
     }
 
     // The weekday header row, ordered to match GridDays' first-day-of-week so the header and grid
