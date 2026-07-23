@@ -16,11 +16,8 @@ namespace Controls;
 /// still updates the roving-tabindex state (just without the DOM focus follow or the native
 /// page-scroll suppression).
 /// </remarks>
-public partial class DateRangePicker : IAsyncDisposable
+public partial class DateRangePicker : PickerBase
 {
-    [Inject] IJSRuntime JS { get; set; } = default!;
-    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
-
     // ----- Parameters -------------------------------------------------------
 
     /// <summary>Start of the bound range (date-only; null = empty). Supports <c>@bind-Start</c>.</summary>
@@ -135,25 +132,15 @@ public partial class DateRangePicker : IAsyncDisposable
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     // ----- State ------------------------------------------------------------
+    // Shared JS-interop/overlay-lifecycle state (_wrapperRef, _panelRef, _module, _pickerModule,
+    // _open, _positioned, _disposed, _inputsWired, _openZIndex, _focusDay, _pendingFocusDate,
+    // _pendingInputFocus, _suppressOpenOnFocus) lives on PickerBase.
 
-    ElementReference _wrapperRef;
-    ElementReference _panelRef;
     ElementReference _startInputRef;
     ElementReference _endInputRef;
     // Index 0 = left panel's grid, 1 = right panel's — see the ant-design-blazor / procurement-hub
     // precedent for @ref into an array element inside a @for loop.
     readonly ElementReference[] _gridRefs = new ElementReference[2];
-    IJSObjectReference? _module;
-    IJSObjectReference? _pickerModule;
-    bool _open;
-    bool _positioned;
-    // Set first thing in DisposeAsync so an import that completes after disposal disposes its
-    // module instead of stranding it on a dead instance (see GetModuleAsync).
-    bool _disposed;
-    bool _inputsWired;
-    // The open-order z-index placePanel assigned this wrapper (null while closed). C# owns it so a
-    // Blazor re-render of the bound wrapper style re-asserts the value JS wrote to the DOM.
-    int? _openZIndex;
     // 0 = start, 1 = end. Drives the active-side underline while open.
     int _activeInput;
     // A new range pick is in progress: the first day is chosen, the second click commits. While
@@ -169,50 +156,6 @@ public partial class DateRangePicker : IAsyncDisposable
     // In-progress typed text per input (null = show the formatted bound value).
     string? _startEdit;
     string? _endEdit;
-    // The day the grids' roving tabindex currently targets (null = not yet keyboard-navigated;
-    // EffectiveFocusDay computes the AntD-style default in that case). Arrow-key navigation sets
-    // this, and it survives a month flip (unlike DOM focus, which the re-rendered grid loses) so
-    // subsequent arrow presses keep stepping from the right day.
-    DateTime? _focusDay;
-    // Set by grid keyboard navigation and consumed by the next OnAfterRenderAsync to move real DOM
-    // focus via JS. An ElementReference can't be captured here: a month-crossing move re-renders the
-    // grids with brand-new button instances, so the previously focused element is gone by the time
-    // OnAfterRenderAsync runs — this hands the *date* across the render instead, and wss-picker.js's
-    // focusDay looks up the new button by its data-date attribute (searched across both panels).
-    DateTime? _pendingFocusDate;
-    // Set true right before a CloseAsync() call triggered by a panel-originated action (a day
-    // click/preset click/Escape) — anything that means focus was on some now-unmounting element
-    // inside the wrapper. Consumed by the very next OnAfterRenderAsync's closing branch to move
-    // focus back to whichever input (_activeInput) was underlined when the panel closed, so it
-    // doesn't fall through to <body>. Left false (the default) for an outside/backdrop close, which
-    // must NOT steal focus from wherever the user actually clicked.
-    bool _pendingInputFocus;
-    // The inputs open the panel on focus (OnInputFocus), so the programmatic focus-reclaim above
-    // would immediately bounce the panel back open. Set around the FocusAsync call and consumed by
-    // OnInputFocus to swallow exactly that one reopen; cleared unconditionally after the call as a
-    // backstop so a swallowed/never-fired focus event can't eat a later genuine focus-open.
-    bool _suppressOpenOnFocus;
-
-    // ----- Inline icons (AntD glyphs, no icon-font dependency; matches Select) ----
-
-    static readonly MarkupString CalendarIcon = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v664c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32zm-40 656H184V460h656v380zM184 392V256h128v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h256v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h128v136H184z\"/></svg>");
-
-    static readonly MarkupString SwapRightIcon = new(
-        "<svg viewBox=\"0 0 1024 1024\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M873.1 596.2l-164-208A32 32 0 00684 376h-64.8c-6.7 0-10.4 7.7-6.3 13l144.3 183H152c-4.4 0-8 3.6-8 8v60c0 4.4 3.6 8 8 8h695.9c26.8 0 41.7-30.8 25.2-51.8z\"/></svg>");
-
-    static readonly MarkupString CloseCross = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 00203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z\"/></svg>");
-
-    static readonly MarkupString DownIcon = new(
-        "<svg class=\"wss-picker-select-arrow\" viewBox=\"64 64 896 896\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z\"/></svg>");
-
-    // Prev/next chevrons — the same AntD glyphs Pagination.razor uses for its prev/next buttons.
-    static readonly MarkupString PrevIcon = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z\"/></svg>");
-
-    static readonly MarkupString NextIcon = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z\"/></svg>");
 
     // ----- Display helpers (used by the .razor markup) ------------------------
 
@@ -235,7 +178,7 @@ public partial class DateRangePicker : IAsyncDisposable
         get
         {
             var width = string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
-            return _openZIndex is null ? width : $"{width}z-index:{_openZIndex};";
+            return ZIndexStyle(width);
         }
     }
 
@@ -295,69 +238,29 @@ public partial class DateRangePicker : IAsyncDisposable
     bool IsDayDisabled(DateTime day) =>
         (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date);
 
-    // The picker is a Gregorian-calendar control — see GregorianCultureHelper for the contract.
-    // Every picker-internal format and the typed-input parse route through this culture.
-    CultureInfo PickerCulture => GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
+    // PickerCulture lives on PickerBase (shared with DatePicker).
 
-    string MonthName(int month) =>
-        PickerCulture.DateTimeFormat.AbbreviatedMonthNames[month - 1];
+    string MonthName(int month) => PickerMath.MonthName(PickerCulture, month);
 
     // The years offered by a panel's year select: Min/Max years when set, otherwise ±10 around the
-    // displayed year — always including the displayed year itself so the select never shows a value
-    // that isn't in its option list.
-    (int From, int To) YearRange(int displayedYear)
-    {
-        var from = Min?.Year ?? displayedYear - 10;
-        var to = Max?.Year ?? displayedYear + 10;
-        if (displayedYear < from) from = displayedYear;
-        if (displayedYear > to) to = displayedYear;
-        // DateTime's year range is [1, 9999] — an unclamped ±10 offset (or a Min/Max year near
-        // either edge) can offer a year outside it, and constructing `new DateTime(year, ...)` for
-        // one throws (circuit-killing on Blazor Server). See OnYearSelectChanged for the matching
-        // clamp on the value actually selected.
-        return (Math.Clamp(from, 1, 9999), Math.Clamp(to, 1, 9999));
-    }
+    // displayed year — see PickerMath.YearRange for the full contract (including the [1, 9999]
+    // clamp -- OnYearSelectChanged applies the matching clamp to the value actually selected).
+    (int From, int To) YearRange(int displayedYear) => PickerMath.YearRange(displayedYear, Min, Max);
 
     DayOfWeek EffectiveFirstDayOfWeek =>
         FirstDayOfWeek ?? PickerCulture.DateTimeFormat.FirstDayOfWeek;
 
-    // The weekday header row, ordered to match GridDays' first-day-of-week so the header and grid
-    // can never disagree — both derive from WeekStart/EffectiveFirstDayOfWeek. AntD shows the CLDR
-    // "short" two-letter form ("Su"), which .NET doesn't expose (ShortestDayNames is the one-letter
-    // "narrow" form, ambiguous for Tue/Thu and Sat/Sun), so truncate AbbreviatedDayNames instead —
-    // already <= 2 chars in single-glyph cultures (ja, zh). Decorative only: aria-hidden, day
-    // buttons carry full "D"-format labels.
-    IEnumerable<string> WeekdayHeaders
-    {
-        get
-        {
-            var names = PickerCulture.DateTimeFormat.AbbreviatedDayNames;
-            for (var i = 0; i < 7; i++)
-            {
-                var name = names[((int)EffectiveFirstDayOfWeek + i) % 7];
-                yield return name.Length <= 2 ? name : name[..2];
-            }
-        }
-    }
+    // The weekday header row -- see PickerMath.WeekdayHeaders for the full contract (CLDR/narrow-form
+    // note included).
+    IEnumerable<string> WeekdayHeaders => PickerMath.WeekdayHeaders(PickerCulture, EffectiveFirstDayOfWeek);
 
     // The first day of the calendar week containing `day`, per EffectiveFirstDayOfWeek. Shared by
     // GridDays (the 42-cell layout) and Home/End keyboard navigation so they can never disagree.
-    DateTime WeekStart(DateTime day)
-    {
-        var lead = ((int)day.DayOfWeek - (int)EffectiveFirstDayOfWeek + 7) % 7;
-        return day.AddDays(-lead);
-    }
+    DateTime WeekStart(DateTime day) => PickerMath.WeekStart(day, EffectiveFirstDayOfWeek);
 
     // A fixed 6-row (42-cell) grid — covers every month/first-day combination, so the panel height
     // never jumps while navigating. Leading/trailing cells are the adjacent months' days.
-    IEnumerable<DateTime> GridDays(DateTime month)
-    {
-        var start = WeekStart(month);
-        for (var i = 0; i < 42; i++)
-        {
-            yield return start.AddDays(i);
-        }
-    }
+    IEnumerable<DateTime> GridDays(DateTime month) => PickerMath.GridDays(month, EffectiveFirstDayOfWeek);
 
     string FormatDate(DateTime? value) =>
         value?.ToString(Format, PickerCulture) ?? string.Empty;
@@ -373,16 +276,12 @@ public partial class DateRangePicker : IAsyncDisposable
         return false;
     }
 
-    static DateTime FirstOfMonth(DateTime value) => new(value.Year, value.Month, 1);
+    static DateTime FirstOfMonth(DateTime value) => PickerMath.FirstOfMonth(value);
 
     // The left panel's month, clamped so the +1-month right panel and the 42-cell grids can never
-    // overflow DateTime's range (offsetMonths carries the panel adjustment through the clamp).
-    static DateTime ClampView(DateTime firstOfMonth, int offsetMonths = 0)
-    {
-        var index = firstOfMonth.Year * 12 + (firstOfMonth.Month - 1) + offsetMonths;
-        index = Math.Clamp(index, 1 * 12 + 1, 9998 * 12 + 10); // 0001-02 .. 9998-11
-        return new DateTime(index / 12, index % 12 + 1, 1);
-    }
+    // overflow DateTime's range (offsetMonths carries the panel adjustment through the clamp) — see
+    // PickerMath.ClampView (this is the superset signature; DatePicker calls it with offset 0).
+    static DateTime ClampView(DateTime firstOfMonth, int offsetMonths = 0) => PickerMath.ClampView(firstOfMonth, offsetMonths);
 
     // Clamps a single day into [Min, Max] (each bound applied only when set).
     DateTime ClampToMinMax(DateTime day)
@@ -442,30 +341,9 @@ public partial class DateRangePicker : IAsyncDisposable
         day.Month == month.Month && day.Year == month.Year && day == EffectiveFocusDay;
 
     // Maps a keydown's Key to the day it should move focus to, or null when the key isn't a
-    // navigation key. AddDays/AddMonths throws at the DateTime.MinValue/MaxValue edge — the caller
-    // treats that as the key being a no-op there rather than letting the exception escape.
-    DateTime? NextFocusDay(DateTime current, string key)
-    {
-        try
-        {
-            return key switch
-            {
-                "ArrowLeft" => current.AddDays(-1),
-                "ArrowRight" => current.AddDays(1),
-                "ArrowUp" => current.AddDays(-7),
-                "ArrowDown" => current.AddDays(7),
-                "Home" => WeekStart(current),
-                "End" => WeekStart(current).AddDays(6),
-                "PageUp" => current.AddMonths(-1),
-                "PageDown" => current.AddMonths(1),
-                _ => (DateTime?)null,
-            };
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return null;
-        }
-    }
+    // navigation key -- see PickerMath.NextFocusDay for the arrow/Home/End/PageUp/PageDown map and
+    // its edge-of-range try/catch.
+    DateTime? NextFocusDay(DateTime current, string key) => PickerMath.NextFocusDay(current, key, EffectiveFirstDayOfWeek);
 
     // Grid keydown (wired to both panels' grids): moves the roving-tabindex day, retargeting
     // _viewMonth (the left panel — the right is always _viewMonth + 1) only when navigation lands
@@ -756,179 +634,16 @@ public partial class DateRangePicker : IAsyncDisposable
         _focusDay = null;
     }
 
-    // ----- JS interop (mirrors Select's module lifecycle) ---------------------
+    // ----- PickerBase hooks (JS-interop + overlay lifecycle) ------------------
+    // GetModuleAsync/GetPickerNavModuleAsync, the OnAfterRenderAsync template, and DisposeAsync all
+    // live on PickerBase -- these three hooks are this control's only customization of that shared
+    // template (two inputs to wire, two grids to init, whichever of start/end is active to reclaim
+    // focus onto).
 
-    // Imports the RCL-local module once, re-checking _disposed after the awaited import so a
-    // dispose that raced an in-flight import cleans up here instead of stranding the reference.
-    // Returns null when disposed or JS is unavailable (prerender, bUnit) — callers no-JS degrade.
-    async Task<IJSObjectReference?> GetModuleAsync()
-    {
-        if (_disposed) return null;
-        try
-        {
-            _module ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-        }
-        catch
-        {
-            return null; // no JS runtime / module (prerender, tests)
-        }
-        if (_disposed)
-        {
-            try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _module = null;
-            return null;
-        }
-        return _module;
-    }
+    protected override ValueTask WireInputsAsync(IJSObjectReference module) =>
+        module.InvokeVoidAsync("initPicker", _wrapperRef, _startInputRef, _endInputRef);
 
-    // Same contract as GetModuleAsync, for the separate wss-picker.js module (arrow-key page-scroll
-    // suppression + post-navigation DOM focus). A distinct module so a consumer that never drives the
-    // grids by keyboard doesn't pay for it, and so this stays decoupled from the unrelated overlay code.
-    async Task<IJSObjectReference?> GetPickerNavModuleAsync()
-    {
-        if (_disposed) return null;
-        try
-        {
-            _pickerModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-picker.js"));
-        }
-        catch
-        {
-            return null; // no JS runtime / module (prerender, tests)
-        }
-        if (_disposed)
-        {
-            try { await _pickerModule.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _pickerModule = null;
-            return null;
-        }
-        return _pickerModule;
-    }
+    protected override IEnumerable<ElementReference> GridRefs => _gridRefs;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // One-time input/wrapper wiring (Enter form-submit suppression + focus-out close). The
-        // inputs are always rendered (not inside the @if), so once is enough.
-        if (!_inputsWired)
-        {
-            _inputsWired = true;
-            var module = await GetModuleAsync();
-            if (module is not null)
-            {
-                try
-                {
-                    await module.InvokeVoidAsync("initPicker", _wrapperRef, _startInputRef, _endInputRef);
-                }
-                catch
-                {
-                    // No JS — Enter may implicitly submit an enclosing form; typing still commits
-                    // via the change event, and the backdrop still closes on click.
-                }
-            }
-        }
-
-        if (_open && !_positioned)
-        {
-            var module = await GetModuleAsync();
-            if (module is not null)
-            {
-                try
-                {
-                    // placePanel positions/flips the panel AND returns the open-order z-index it
-                    // wrote to the wrapper; mirror it so the bound style re-asserts it (see Select).
-                    var z = await module.InvokeAsync<int>("placePanel", _wrapperRef, _panelRef, "wss-picker-backdrop", 4);
-                    // 0 is the JS null-ref guard value — only positive values are real.
-                    _openZIndex = z > 0 ? z : null;
-                }
-                catch
-                {
-                    // No JS runtime / module — keep the CSS default (below, left-aligned) placement.
-                }
-            }
-
-            var navModule = await GetPickerNavModuleAsync();
-            if (navModule is not null)
-            {
-                try
-                {
-                    await navModule.InvokeVoidAsync("init", _gridRefs[0]);
-                    await navModule.InvokeVoidAsync("init", _gridRefs[1]);
-                }
-                catch
-                {
-                    // No JS — arrow keys still update the roving-tabindex state, just without the
-                    // native page-scroll suppression.
-                }
-            }
-
-            _positioned = true;
-            StateHasChanged(); // reveal now that it's positioned (drops wss-measuring)
-        }
-        else if (!_open && _positioned)
-        {
-            _positioned = false;
-            _openZIndex = null;
-            try
-            {
-                if (_module is not null) await _module.InvokeVoidAsync("clearZ", _wrapperRef);
-            }
-            catch
-            {
-                // No JS runtime / module — nothing was assigned, nothing to clear.
-            }
-
-            if (_pendingInputFocus)
-            {
-                // The panel subtree (whatever had focus) just unmounted — reclaim focus onto
-                // whichever input was active rather than leaving it stranded on <body>. Best-effort:
-                // FocusAsync throws if the element isn't actually focusable yet (prerender/tests).
-                _pendingInputFocus = false;
-                var target = _activeInput == 1 ? _endInputRef : _startInputRef;
-                _suppressOpenOnFocus = true;
-                try { await target.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
-                // Normally consumed by OnInputFocus during the call (the focus event outruns the
-                // interop ack on both runtimes); this backstop covers a failed/eventless focus.
-                _suppressOpenOnFocus = false;
-            }
-        }
-
-        if (_open && _pendingFocusDate is { } focusDate)
-        {
-            _pendingFocusDate = null;
-            var navModule = await GetPickerNavModuleAsync();
-            if (navModule is not null)
-            {
-                try
-                {
-                    // Searched against the whole panel (both grids) — whichever one currently shows
-                    // the date is the one that matches.
-                    await navModule.InvokeVoidAsync("focusDay", _panelRef,
-                        focusDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                }
-                catch
-                {
-                    // No JS — the roving-tabindex state still moved; only the DOM focus follow is lost.
-                }
-            }
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        // Set first: an import in flight (GetModuleAsync/GetPickerNavModuleAsync) re-checks this
-        // after its await and disposes its own late-assigned module rather than stranding it on this
-        // dead instance.
-        _disposed = true;
-        if (_module is not null)
-        {
-            try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _module = null;
-        }
-        if (_pickerModule is not null)
-        {
-            try { await _pickerModule.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _pickerModule = null;
-        }
-    }
+    protected override ElementReference FocusReclaimTarget => _activeInput == 1 ? _endInputRef : _startInputRef;
 }

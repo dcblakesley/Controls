@@ -214,7 +214,7 @@ public partial class EditDatePicker<T> : EditControlBase<T>
         DatePickerMode.Time => TimeFormatPart,
         DatePickerMode.Year => "yyyy",
         // Quarter/Week have no .NET format token for their own display -- GetDisplayValue below
-        // special-cases them via DatePicker's shared FormatQuarterDisplay/FormatWeekDisplay instead
+        // special-cases them via PickerMath's shared FormatQuarterDisplay/FormatWeekDisplay instead
         // of ever calling ToString(EffectiveDateFormat) for either. This "yyyy" is never actually
         // rendered; it only matters if some future caller starts using EffectiveDateFormat directly.
         DatePickerMode.Quarter => "yyyy",
@@ -317,14 +317,15 @@ public partial class EditDatePicker<T> : EditControlBase<T>
         // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
         var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
         // Quarter/Week's null-DateFormat display has no .NET format token to route through
-        // ToString(EffectiveDateFormat) below -- reuses DatePicker's own FormatQuarterDisplay/
-        // FormatWeekDisplay (promoted internal statics, not duplicated regex/format logic here) via
-        // PickerValue, the same DateTime? bridge the picker itself would see. An explicit DateFormat
-        // still falls through to the verbatim ToString path, matching the picker's own Format contract.
+        // ToString(EffectiveDateFormat) below -- reuses PickerMath's own FormatQuarterDisplay/
+        // FormatWeekDisplay (the single source of truth DatePicker's own display routes through too,
+        // not duplicated regex/format logic here) via PickerValue, the same DateTime? bridge the
+        // picker itself would see. An explicit DateFormat still falls through to the verbatim
+        // ToString path, matching the picker's own Format contract.
         if (DateFormat is null && PickerValue is { } pv)
         {
-            if (EffectiveMode == DatePickerMode.Quarter) return DatePicker.FormatQuarterDisplay(pv, culture);
-            if (EffectiveMode == DatePickerMode.Week) return DatePicker.FormatWeekDisplay(pv, culture, EffectiveFirstDayOfWeek(culture));
+            if (EffectiveMode == DatePickerMode.Quarter) return PickerMath.FormatQuarterDisplay(pv, culture);
+            if (EffectiveMode == DatePickerMode.Week) return PickerMath.FormatWeekDisplay(pv, culture, EffectiveFirstDayOfWeek(culture));
         }
         try
         {

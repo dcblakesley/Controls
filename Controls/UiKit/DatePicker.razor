@@ -1,4 +1,5 @@
 @namespace Controls
+@inherits PickerBase
 
 @* Backdrop: closes the dropdown on any outside click without needing JS interop. Rendered as the
    wrapper's previous sibling so placePanel can stack it just under the raised wrapper (the same
@@ -40,11 +41,11 @@
                    @onchange="@(() => CommitTextAsync())"
                    @onfocus="OnInputFocus" />
         </span>
-        <span class="wss-picker-suffix">@CalendarIcon</span>
+        <span class="wss-picker-suffix">@PickerIcons.CalendarIcon</span>
         @if (ShowClear)
         {
             <button type="button" class="wss-picker-clear" aria-label="@ClearLabel"
-                    @onclick="ClearAsync" @onclick:stopPropagation>@CloseCross</button>
+                    @onclick="ClearAsync" @onclick:stopPropagation>@PickerIcons.CloseCross</button>
         }
     </div>
 
@@ -102,12 +103,12 @@
                 <div class="wss-picker-month">
                     <div class="wss-picker-month-header">
                         <button type="button" class="wss-picker-nav" aria-label="@PrevDecadeLabel"
-                                disabled="@PrevDecadeDisabled" @onclick="PrevDecade">@PrevIcon</button>
+                                disabled="@PrevDecadeDisabled" @onclick="PrevDecade">@PickerIcons.PrevIcon</button>
                         <div class="wss-picker-month-selects">
                             <span class="wss-picker-decade-label">@DecadeLabel</span>
                         </div>
                         <button type="button" class="wss-picker-nav" aria-label="@NextDecadeLabel"
-                                disabled="@NextDecadeDisabled" @onclick="NextDecade">@NextIcon</button>
+                                disabled="@NextDecadeDisabled" @onclick="NextDecade">@PickerIcons.NextIcon</button>
                     </div>
                     <div class="wss-picker-month-grid" @ref="_gridRef" @onkeydown="OnYearGridKeyDown">
                         @for (var i = -1; i <= 10; i++)
@@ -195,7 +196,7 @@
                 <div class="wss-picker-month">
                     <div class="wss-picker-month-header">
                         <button type="button" class="wss-picker-nav" aria-label="@PrevMonthLabel"
-                                disabled="@PrevMonthDisabled" @onclick="PrevMonth">@PrevIcon</button>
+                                disabled="@PrevMonthDisabled" @onclick="PrevMonth">@PickerIcons.PrevIcon</button>
                         <div class="wss-picker-month-selects">
                             <span class="wss-picker-select">
                                 <select aria-label="@MonthSelectLabel" value="@_viewMonth.Month"
@@ -205,7 +206,7 @@
                                         <option value="@m" selected="@(m == _viewMonth.Month)">@MonthName(m)</option>
                                     }
                                 </select>
-                                @DownIcon
+                                @PickerIcons.DownIcon
                             </span>
                             <span class="wss-picker-select">
                                 <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
@@ -216,11 +217,11 @@
                                         <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
                                     }
                                 </select>
-                                @DownIcon
+                                @PickerIcons.DownIcon
                             </span>
                         </div>
                         <button type="button" class="wss-picker-nav" aria-label="@NextMonthLabel"
-                                disabled="@NextMonthDisabled" @onclick="NextMonth">@NextIcon</button>
+                                disabled="@NextMonthDisabled" @onclick="NextMonth">@PickerIcons.NextIcon</button>
                     </div>
                     <div class="@(ShowWeekRows ? "wss-picker-week-header wss-picker-week-header-weeks" : "wss-picker-week-header")" aria-hidden="true">
                         @if (ShowWeekRows)
@@ -324,7 +325,7 @@
     // navigation" section for PrevYear/NextYear/YearRange/OnYearSelectChanged.
     RenderFragment YearHeaderFragment => @<div class="wss-picker-month-header">
         <button type="button" class="wss-picker-nav" aria-label="@PrevYearLabel"
-                disabled="@PrevYearDisabled" @onclick="PrevYear">@PrevIcon</button>
+                disabled="@PrevYearDisabled" @onclick="PrevYear">@PickerIcons.PrevIcon</button>
         <div class="wss-picker-month-selects">
             <span class="wss-picker-select">
                 <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
@@ -335,11 +336,11 @@
                         <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
                     }
                 </select>
-                @DownIcon
+                @PickerIcons.DownIcon
             </span>
         </div>
         <button type="button" class="wss-picker-nav" aria-label="@NextYearLabel"
-                disabled="@NextYearDisabled" @onclick="NextYear">@NextIcon</button>
+                disabled="@NextYearDisabled" @onclick="NextYear">@PickerIcons.NextIcon</button>
     </div>;
 
     // The hour/minute/[second]/[period] selects, shared verbatim between Mode.Time (the whole panel)
@@ -369,7 +370,7 @@
                     }
                 }
             </select>
-            @DownIcon
+            @PickerIcons.DownIcon
         </span>
         <span class="wss-picker-select">
             <select aria-label="@MinuteSelectLabel" value="@DisplayMinute" @onchange="OnMinuteSelectChangedAsync">
@@ -382,7 +383,7 @@
                     }
                 }
             </select>
-            @DownIcon
+            @PickerIcons.DownIcon
         </span>
         @if (ShowSeconds)
         {
@@ -397,7 +398,7 @@
                         }
                     }
                 </select>
-                @DownIcon
+                @PickerIcons.DownIcon
             </span>
         }
         @if (Use12Hours)
@@ -407,7 +408,7 @@
                     <option value="AM" selected="@(!DisplayIsPM)">@PickerCulture.DateTimeFormat.AMDesignator</option>
                     <option value="PM" selected="@DisplayIsPM">@PickerCulture.DateTimeFormat.PMDesignator</option>
                 </select>
-                @DownIcon
+                @PickerIcons.DownIcon
             </span>
         }
     </div>;

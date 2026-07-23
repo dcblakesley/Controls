@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace Controls;
@@ -30,11 +29,8 @@ namespace Controls;
 /// everything remains clickable, and arrow-key grid navigation still updates the roving-tabindex
 /// state (just without the DOM focus follow or the native page-scroll suppression).
 /// </remarks>
-public partial class DatePicker : IAsyncDisposable
+public partial class DatePicker : PickerBase
 {
-    [Inject] IJSRuntime JS { get; set; } = default!;
-    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
-
     // ----- Parameters -------------------------------------------------------
 
     /// <summary>The bound date (date-only; null = empty). Supports <c>@bind-Value</c>.</summary>
@@ -135,7 +131,7 @@ public partial class DatePicker : IAsyncDisposable
 
     /// <summary>Shows the hour select in 12-hour form — <c>12, 1, 2, ... 11</c> for the currently
     /// selected AM/PM period — plus a trailing period select (<see cref="PeriodSelectLabel"/>) whose
-    /// two options are <see cref="PickerCulture"/>'s <c>AMDesignator</c>/<c>PMDesignator</c>, instead
+    /// two options are <see cref="PickerBase.PickerCulture"/>'s <c>AMDesignator</c>/<c>PMDesignator</c>, instead
     /// of the default single 24-hour (0-23) select. The bound <see cref="Value"/> always stays a
     /// 24-hour value — only the hour select's displayed text and the period select are 12-hour;
     /// changing the hour still commits its own 24-hour value verbatim (the option VALUES remain the
@@ -302,66 +298,16 @@ public partial class DatePicker : IAsyncDisposable
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     // ----- State ------------------------------------------------------------
+    // Shared JS-interop/overlay-lifecycle state (_wrapperRef, _panelRef, _module, _pickerModule,
+    // _open, _positioned, _disposed, _inputsWired, _openZIndex, _focusDay, _pendingFocusDate,
+    // _pendingInputFocus, _suppressOpenOnFocus) lives on PickerBase.
 
-    ElementReference _wrapperRef;
-    ElementReference _panelRef;
     ElementReference _inputRef;
     ElementReference _gridRef;
-    IJSObjectReference? _module;
-    IJSObjectReference? _pickerModule;
-    bool _open;
-    bool _positioned;
-    // Set first thing in DisposeAsync so an import that completes after disposal disposes its
-    // module instead of stranding it on a dead instance (see GetModuleAsync).
-    bool _disposed;
-    bool _inputWired;
-    // The open-order z-index placePanel assigned this wrapper (null while closed). C# owns it so a
-    // Blazor re-render of the bound wrapper style re-asserts the value JS wrote to the DOM.
-    int? _openZIndex;
     // First-of-month shown in the panel.
     DateTime _viewMonth = FirstOfMonth(DateTime.Today);
     // In-progress typed text (null = show the formatted bound value).
     string? _edit;
-    // The day the grid's roving tabindex currently targets (null = not yet keyboard-navigated;
-    // EffectiveFocusDay computes the AntD-style default in that case). Arrow-key navigation sets
-    // this, and it survives a month flip (unlike DOM focus, which the re-rendered grid loses) so
-    // subsequent arrow presses keep stepping from the right day.
-    DateTime? _focusDay;
-    // Set by grid keyboard navigation and consumed by the next OnAfterRenderAsync to move real DOM
-    // focus via JS. An ElementReference can't be captured here: a month-crossing move re-renders the
-    // grid with brand-new button instances, so the previously focused element is gone by the time
-    // OnAfterRenderAsync runs — this hands the *date* across the render instead, and wss-picker.js's
-    // focusDay looks up the new button by its data-date attribute.
-    DateTime? _pendingFocusDate;
-    // Set true right before a CloseAsync() call that was triggered by a panel-originated action
-    // (day click/Enter commit/Escape) — anything that means focus was on some now-unmounting element
-    // inside the wrapper. Consumed by the very next OnAfterRenderAsync's closing branch to move
-    // focus back to the text input, so it doesn't fall through to <body>. Left false (the default)
-    // for an outside/backdrop close, which must NOT steal focus from wherever the user clicked.
-    bool _pendingInputFocus;
-    // The input opens the panel on focus (OnInputFocus), so the programmatic focus-reclaim above
-    // would immediately bounce the panel back open. Set around the FocusAsync call and consumed by
-    // OnInputFocus to swallow exactly that one reopen; cleared unconditionally after the call as a
-    // backstop so a swallowed/never-fired focus event can't eat a later genuine focus-open.
-    bool _suppressOpenOnFocus;
-
-    // ----- Inline icons (AntD glyphs, no icon-font dependency; matches DateRangePicker) ----
-
-    static readonly MarkupString CalendarIcon = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v664c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32zm-40 656H184V460h656v380zM184 392V256h128v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h256v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h128v136H184z\"/></svg>");
-
-    static readonly MarkupString CloseCross = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M563.8 512l262.5-312.9c4.4-5.2.7-13.1-6.1-13.1h-79.8c-4.7 0-9.2 2.1-12.3 5.7L511.6 449.8 295.1 191.7c-3-3.6-7.5-5.7-12.3-5.7H203c-6.8 0-10.5 7.9-6.1 13.1L459.4 512 196.9 824.9A7.95 7.95 0 00203 838h79.8c4.7 0 9.2-2.1 12.3-5.7l216.5-258.1 216.5 258.1c3 3.6 7.5 5.7 12.3 5.7h79.8c6.8 0 10.5-7.9 6.1-13.1L563.8 512z\"/></svg>");
-
-    static readonly MarkupString DownIcon = new(
-        "<svg class=\"wss-picker-select-arrow\" viewBox=\"64 64 896 896\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z\"/></svg>");
-
-    // Prev/next chevrons — the same AntD glyphs Pagination.razor uses for its prev/next buttons.
-    static readonly MarkupString PrevIcon = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z\"/></svg>");
-
-    static readonly MarkupString NextIcon = new(
-        "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z\"/></svg>");
 
     // ----- Display helpers (used by the .razor markup) ------------------------
 
@@ -384,7 +330,7 @@ public partial class DatePicker : IAsyncDisposable
         get
         {
             var width = string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
-            return _openZIndex is null ? width : $"{width}z-index:{_openZIndex};";
+            return ZIndexStyle(width);
         }
     }
 
@@ -551,12 +497,9 @@ public partial class DatePicker : IAsyncDisposable
         _ => IsDayDisabled(value),
     };
 
-    // The picker is a Gregorian-calendar control — see GregorianCultureHelper for the contract.
-    // Every picker-internal format and the typed-input parse route through this culture.
-    CultureInfo PickerCulture => GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
+    // PickerCulture lives on PickerBase (shared with DateRangePicker).
 
-    string MonthName(int month) =>
-        PickerCulture.DateTimeFormat.AbbreviatedMonthNames[month - 1];
+    string MonthName(int month) => PickerMath.MonthName(PickerCulture, month);
 
     // Time-row display (Mode.Time/Mode.DateTime): the bound value's time-of-day, or midnight when
     // unset. There is no separate "in-progress" time state -- a select change commits immediately
@@ -578,66 +521,24 @@ public partial class DatePicker : IAsyncDisposable
     int EffectiveSecondStep => Math.Max(1, SecondStep);
 
     // The years offered by the year select: Min/Max years when set, otherwise ±10 around the
-    // displayed year — always including the displayed year itself so the select never shows a
-    // value that isn't in its option list.
-    (int From, int To) YearRange(int displayedYear)
-    {
-        var from = Min?.Year ?? displayedYear - 10;
-        var to = Max?.Year ?? displayedYear + 10;
-        if (displayedYear < from) from = displayedYear;
-        if (displayedYear > to) to = displayedYear;
-        // DateTime's year range is [1, 9999] — an unclamped ±10 offset (or a Min/Max year near
-        // either edge) can offer a year outside it, and constructing `new DateTime(year, ...)` for
-        // one throws (circuit-killing on Blazor Server). See OnYearSelectChanged for the matching
-        // clamp on the value actually selected.
-        return (Math.Clamp(from, 1, 9999), Math.Clamp(to, 1, 9999));
-    }
+    // displayed year — see PickerMath.YearRange for the full contract (including the [1, 9999]
+    // clamp -- OnYearSelectChanged applies the matching clamp to the value actually selected).
+    (int From, int To) YearRange(int displayedYear) => PickerMath.YearRange(displayedYear, Min, Max);
 
     DayOfWeek EffectiveFirstDayOfWeek =>
         FirstDayOfWeek ?? PickerCulture.DateTimeFormat.FirstDayOfWeek;
 
-    // The weekday header row, ordered to match GridDays' first-day-of-week so the header and grid
-    // can never disagree — both derive from WeekStart/EffectiveFirstDayOfWeek. AntD shows the CLDR
-    // "short" two-letter form ("Su"), which .NET doesn't expose (ShortestDayNames is the one-letter
-    // "narrow" form, ambiguous for Tue/Thu and Sat/Sun), so truncate AbbreviatedDayNames instead —
-    // already <= 2 chars in single-glyph cultures (ja, zh). Decorative only: aria-hidden, day
-    // buttons carry full "D"-format labels.
-    IEnumerable<string> WeekdayHeaders
-    {
-        get
-        {
-            var names = PickerCulture.DateTimeFormat.AbbreviatedDayNames;
-            for (var i = 0; i < 7; i++)
-            {
-                var name = names[((int)EffectiveFirstDayOfWeek + i) % 7];
-                yield return name.Length <= 2 ? name : name[..2];
-            }
-        }
-    }
+    // The weekday header row -- see PickerMath.WeekdayHeaders for the full contract (CLDR/narrow-form
+    // note included).
+    IEnumerable<string> WeekdayHeaders => PickerMath.WeekdayHeaders(PickerCulture, EffectiveFirstDayOfWeek);
 
     // The first day of the calendar week containing `day`, per EffectiveFirstDayOfWeek. Shared by
     // GridDays (the 42-cell layout) and Home/End keyboard navigation so they can never disagree.
-    DateTime WeekStart(DateTime day) => WeekStartCore(day, EffectiveFirstDayOfWeek);
-
-    // The instance-independent core of WeekStart, taking the resolved first-day-of-week directly --
-    // shared with FormatWeekDisplay below (EditDatePicker's read-only view calls that one without an
-    // instance to resolve EffectiveFirstDayOfWeek from).
-    static DateTime WeekStartCore(DateTime day, DayOfWeek firstDayOfWeek)
-    {
-        var lead = ((int)day.DayOfWeek - (int)firstDayOfWeek + 7) % 7;
-        return day.AddDays(-lead);
-    }
+    DateTime WeekStart(DateTime day) => PickerMath.WeekStart(day, EffectiveFirstDayOfWeek);
 
     // A fixed 6-row (42-cell) grid — covers every month/first-day combination, so the panel height
     // never jumps while navigating. Leading/trailing cells are the adjacent months' days.
-    IEnumerable<DateTime> GridDays(DateTime month)
-    {
-        var start = WeekStart(month);
-        for (var i = 0; i < 42; i++)
-        {
-            yield return start.AddDays(i);
-        }
-    }
+    IEnumerable<DateTime> GridDays(DateTime month) => PickerMath.GridDays(month, EffectiveFirstDayOfWeek);
 
     // Whether the day grid renders as 6 week-number rows (Mode.Week always; ShowWeekNumbers's
     // column in Date/DateTime mode) instead of the flat 42-cell layout. Only one grid ever renders
@@ -653,11 +554,7 @@ public partial class DatePicker : IAsyncDisposable
 
     // The ISO-ish week number of the calendar week starting on `weekStart`, per the current
     // culture's week rule (mirrors WeekdayHeaders/WeekStart in following PickerCulture throughout).
-    int WeekNumberOf(DateTime weekStart) => WeekNumberOfCore(weekStart, PickerCulture, EffectiveFirstDayOfWeek);
-
-    // The instance-independent core of WeekNumberOf -- shared with FormatWeekDisplay below.
-    static int WeekNumberOfCore(DateTime weekStart, CultureInfo culture, DayOfWeek firstDayOfWeek) =>
-        culture.Calendar.GetWeekOfYear(weekStart, culture.DateTimeFormat.CalendarWeekRule, firstDayOfWeek);
+    int WeekNumberOf(DateTime weekStart) => PickerMath.WeekNumberOf(weekStart, PickerCulture, EffectiveFirstDayOfWeek);
 
     // Is `weekStart` the row containing Value's week? Only meaningful in Mode.Week -- ShowWeekNumbers
     // in Date/DateTime mode renders the same rows layout with NO selection-styling change (day clicks
@@ -668,16 +565,6 @@ public partial class DatePicker : IAsyncDisposable
     string WeekRowClass(DateTime weekStart) =>
         IsSelectedWeekRow(weekStart) ? "wss-picker-week-row wss-picker-week-row-selected" : "wss-picker-week-row";
 
-    // Matches a typed quarter shorthand: "2026-Q3", "2026Q3", "2026 q3" -- 1-4 digit year, optional
-    // dash/whitespace, case-insensitive Q, quarter digit 1-4. Compiled because TryParseDate tries it
-    // on every keystroke's eventual Enter-commit in Quarter mode.
-    static readonly Regex _quarterPattern = new(@"^\s*(\d{1,4})\s*-?\s*[Qq]\s*([1-4])\s*$", RegexOptions.Compiled);
-
-    // Matches a typed week shorthand: "2026-W08", "2026W8", "2026 w08" -- 1-4 digit year, optional
-    // dash/whitespace, case-insensitive W, 1-2 digit week number. Compiled for the same reason as
-    // _quarterPattern above.
-    static readonly Regex _weekPattern = new(@"^\s*(\d{1,4})\s*-?\s*[Ww]\s*(\d{1,2})\s*$", RegexOptions.Compiled);
-
     // Quarter mode's null-Format display: no .NET format token renders a quarter number, so this
     // bypasses ToString(EffectiveFormat) entirely for that one case. Format explicitly set still
     // routes through the normal ToString(EffectiveFormat) path below (used verbatim, per Format's
@@ -687,99 +574,35 @@ public partial class DatePicker : IAsyncDisposable
         if (value is not { } v) return string.Empty;
         if (Mode == DatePickerMode.Quarter && Format is null)
         {
-            return FormatQuarterDisplay(v, PickerCulture);
+            return PickerMath.FormatQuarterDisplay(v, PickerCulture);
         }
         // Week mode's null-Format display: same rationale as Quarter's above -- no .NET token for a
         // week number.
         if (Mode == DatePickerMode.Week && Format is null)
         {
-            return FormatWeekDisplay(v, PickerCulture, EffectiveFirstDayOfWeek);
+            return PickerMath.FormatWeekDisplay(v, PickerCulture, EffectiveFirstDayOfWeek);
         }
         return v.ToString(EffectiveFormat, PickerCulture);
-    }
-
-    // The Quarter/Week null-Format display strings, promoted to internal statics so EditDatePicker's
-    // read-only view (a different type entirely, with no DatePicker instance to call FormatDate on)
-    // can produce the identical "yyyy-Qn"/"yyyy-Www" text instead of duplicating this regex-adjacent
-    // formatting logic. Kept as the single source of truth: FormatDate above (and TryParseDate's own
-    // Week-mode search loop, via the instance WeekNumberOf/WeekStart wrappers) are the only other
-    // callers, so a future format tweak here can't drift between DatePicker and EditDatePicker.
-
-    /// <summary>Quarter mode's null-<see cref="Format"/> display for <paramref name="value"/> —
-    /// <c>"yyyy-Qn"</c> (e.g. "2026-Q3") in <paramref name="culture"/>'s digits. Internal: shared
-    /// with <see cref="EditDatePicker{T}"/>'s read-only view, not part of this control's public
-    /// surface.</summary>
-    internal static string FormatQuarterDisplay(DateTime value, CultureInfo culture) =>
-        $"{value.Year.ToString(culture)}-Q{QuarterOf(value).ToString(culture)}";
-
-    /// <summary>Week mode's null-<see cref="Format"/> display for <paramref name="value"/> —
-    /// <c>"yyyy-Www"</c> (e.g. "2026-W08") in <paramref name="culture"/>'s digits, where the year is
-    /// the WEEK START's calendar year (deterministic at year-boundary weeks, unlike
-    /// <paramref name="value"/>'s own year, which can disagree with the week it falls in). Internal:
-    /// shared with <see cref="EditDatePicker{T}"/>'s read-only view, not part of this control's
-    /// public surface.</summary>
-    internal static string FormatWeekDisplay(DateTime value, CultureInfo culture, DayOfWeek firstDayOfWeek)
-    {
-        var weekStart = WeekStartCore(value, firstDayOfWeek);
-        return $"{weekStart.Year.ToString(culture)}-W{WeekNumberOfCore(weekStart, culture, firstDayOfWeek).ToString("00", culture)}";
     }
 
     // Exact effective format first, then the current culture's general parse -- then normalizes the
     // parsed result to Mode's own granularity (mirrors SetValueAsync's normalization so a typed
     // commit and a click/select commit always land on the same shape of value). Quarter mode (with
     // Format left null, mirroring FormatDate's special case above) tries the "yyyy-Qn" shorthand
-    // first -- a plain typed date still falls through to the general parse below and normalizes to
-    // its own quarter, same as every other mode's typed-text path. Week mode's "yyyy-Www" shorthand
-    // mirrors that, resolved as the exact inverse of FormatDate's display: walk the week starts
-    // whose calendar year is the typed year and return the one GetWeekOfYear numbers N. Plain
-    // arithmetic from WeekStart(Jan 1) can't do this -- under CalendarWeekRule.FirstDay a year that
-    // doesn't begin on FirstDayOfWeek numbers its partial first week 1, so every later week start is
-    // one ahead of the (N-1)*7 offset and a displayed week wouldn't round-trip. A week number the
-    // display never produces for that year (e.g. W01 when Jan 1's week started in December) finds no
-    // match and falls through to the general parse below, same as any other malformed text.
+    // first via PickerMath.TryParseQuarterShorthand -- a plain typed date still falls through to the
+    // general parse below and normalizes to its own quarter, same as every other mode's typed-text
+    // path. Week mode's "yyyy-Www" shorthand (PickerMath.TryParseWeekShorthand) mirrors that -- see
+    // its doc comment for why plain WeekStart(Jan 1) arithmetic can't invert FormatDate's display.
     bool TryParseDate(string text, out DateTime value)
     {
-        if (Mode == DatePickerMode.Quarter && Format is null)
+        if (Mode == DatePickerMode.Quarter && Format is null && PickerMath.TryParseQuarterShorthand(text, out value))
         {
-            var match = _quarterPattern.Match(text);
-            if (match.Success &&
-                int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year) &&
-                year is >= 1 and <= 9999)
-            {
-                var quarter = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
-                value = QuarterStart(year, quarter);
-                return true;
-            }
+            return true;
         }
-        if (Mode == DatePickerMode.Week && Format is null)
+        if (Mode == DatePickerMode.Week && Format is null &&
+            PickerMath.TryParseWeekShorthand(text, PickerCulture, EffectiveFirstDayOfWeek, out value))
         {
-            var match = _weekPattern.Match(text);
-            if (match.Success &&
-                int.TryParse(match.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var year) &&
-                year is >= 1 and <= 9999)
-            {
-                var week = int.Parse(match.Groups[2].Value, CultureInfo.InvariantCulture);
-                try
-                {
-                    // First week start whose calendar year is `year` (WeekStart(Jan 1) itself may
-                    // belong to the prior December), then at most 53 boundary steps.
-                    var s = WeekStart(new DateTime(year, 1, 1));
-                    if (s.Year < year) s = s.AddDays(7);
-                    for (; s.Year == year; s = s.AddDays(7))
-                    {
-                        if (WeekNumberOf(s) == week)
-                        {
-                            value = s;
-                            return true;
-                        }
-                    }
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    // WeekStart/AddDays overflowed at the DateTime range edge (year 1 / 9999) --
-                    // fall through to the general parse below, same as any other malformed text.
-                }
-            }
+            return true;
         }
         if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out value) ||
             DateTime.TryParse(text, PickerCulture, DateTimeStyles.None, out value))
@@ -791,44 +614,25 @@ public partial class DatePicker : IAsyncDisposable
     }
 
     // Central per-mode normalization, shared by TryParseDate and SetValueAsync so every commit path
-    // (click, typed text, select change) agrees on the same shape of value.
-    DateTime NormalizeForMode(DateTime value) => Mode switch
-    {
-        DatePickerMode.Date => value.Date,
-        DatePickerMode.Month => FirstOfMonth(value),
-        // ShowSeconds false zeroes the second here too (not just in ApplyTimePartAsync's own compose
-        // step) so a typed-text commit -- which never goes through ApplyTimePartAsync -- can't leave
-        // a stale nonzero second in place.
-        DatePickerMode.DateTime => new DateTime(value.Year, value.Month, value.Day, value.Hour, value.Minute, ShowSeconds ? value.Second : 0),
-        // Anchored to today at commit time -- mirrors what EditDate produces for a DateTime bound to
-        // a Time input, where BindConverter/DateTime.TryParse("HH:mm:ss") yields today's date.
-        DatePickerMode.Time => DateTime.Today + new TimeSpan(value.Hour, value.Minute, ShowSeconds ? value.Second : 0),
-        DatePickerMode.Year => new DateTime(value.Year, 1, 1),
-        DatePickerMode.Quarter => QuarterStart(value),
-        DatePickerMode.Week => WeekStart(value),
-        _ => value.Date,
-    };
+    // (click, typed text, select change) agrees on the same shape of value. See PickerMath.NormalizeForMode
+    // for the per-mode rules (ShowSeconds zeroing, the Time-mode Today anchor, etc.).
+    DateTime NormalizeForMode(DateTime value) => PickerMath.NormalizeForMode(Mode, EffectiveFirstDayOfWeek, ShowSeconds, value);
 
-    static DateTime FirstOfMonth(DateTime value) => new(value.Year, value.Month, 1);
+    static DateTime FirstOfMonth(DateTime value) => PickerMath.FirstOfMonth(value);
 
     static DateTime FirstOfYear(DateTime value) => new(value.Year, 1, 1);
 
     // The quarter (1-4) `value`'s month falls in.
-    static int QuarterOf(DateTime value) => (value.Month - 1) / 3 + 1;
+    static int QuarterOf(DateTime value) => PickerMath.QuarterOf(value);
 
     // The 1st of `quarter`'s (1-4) first month in `year`.
-    static DateTime QuarterStart(int year, int quarter) => new(year, (quarter - 1) * 3 + 1, 1);
+    static DateTime QuarterStart(int year, int quarter) => PickerMath.QuarterStart(year, quarter);
 
     // The 1st of the quarter containing `value`.
-    static DateTime QuarterStart(DateTime value) => QuarterStart(value.Year, QuarterOf(value));
+    static DateTime QuarterStart(DateTime value) => PickerMath.QuarterStart(value);
 
     // The displayed month, clamped so the 42-cell grid can never overflow DateTime's range.
-    static DateTime ClampView(DateTime firstOfMonth)
-    {
-        var index = firstOfMonth.Year * 12 + (firstOfMonth.Month - 1);
-        index = Math.Clamp(index, 1 * 12 + 1, 9998 * 12 + 10); // 0001-02 .. 9998-11
-        return new DateTime(index / 12, index % 12 + 1, 1);
-    }
+    static DateTime ClampView(DateTime firstOfMonth) => PickerMath.ClampView(firstOfMonth);
 
     // ----- Roving-tabindex keyboard navigation -------------------------------
 
@@ -874,30 +678,9 @@ public partial class DatePicker : IAsyncDisposable
         day.Month == _viewMonth.Month && day.Year == _viewMonth.Year && day == EffectiveFocusDay;
 
     // Maps a keydown's Key to the day it should move focus to, or null when the key isn't a
-    // navigation key. AddDays/AddMonths throws at the DateTime.MinValue/MaxValue edge — the caller
-    // treats that as the key being a no-op there rather than letting the exception escape.
-    DateTime? NextFocusDay(DateTime current, string key)
-    {
-        try
-        {
-            return key switch
-            {
-                "ArrowLeft" => current.AddDays(-1),
-                "ArrowRight" => current.AddDays(1),
-                "ArrowUp" => current.AddDays(-7),
-                "ArrowDown" => current.AddDays(7),
-                "Home" => WeekStart(current),
-                "End" => WeekStart(current).AddDays(6),
-                "PageUp" => current.AddMonths(-1),
-                "PageDown" => current.AddMonths(1),
-                _ => (DateTime?)null,
-            };
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return null;
-        }
-    }
+    // navigation key -- see PickerMath.NextFocusDay for the arrow/Home/End/PageUp/PageDown map and
+    // its edge-of-range try/catch.
+    DateTime? NextFocusDay(DateTime current, string key) => PickerMath.NextFocusDay(current, key, EffectiveFirstDayOfWeek);
 
     // Grid keydown: moves the roving-tabindex day, retargeting the displayed month when navigation
     // crosses out of it (clamped exactly like the month/year selects). A day that lands disabled
@@ -1053,14 +836,10 @@ public partial class DatePicker : IAsyncDisposable
     // focusDay lookup work unchanged) plus a wss-picker-month-btn-outside modifier for the two
     // dimmed adjacent-decade cells. Shares _focusDay/_pendingFocusDate the same way Month mode does.
 
-    // Clamps a decade-start candidate so the decade's own leading/trailing dimmed cells
-    // (decadeStart-1, decadeStart+10) always land inside DateTime's representable [1, 9999] year
-    // range -- the year-grid's equivalent of ClampView's one-month buffer for the day grid. The
-    // reachable extremes are the 10-19 decade (dimmed leading cell 9) and the 9980-9989 decade
-    // (dimmed trailing cell 9990); years 1-9 and 9991-9999 are unreachable via the GRID (though
-    // still typeable -- TryParseDate has no such margin), the same trade-off ClampView makes for
-    // the very first/last representable month.
-    static int ClampDecadeStart(int year) => Math.Clamp(year, 11, 9989) / 10 * 10;
+    // Clamps a decade-start candidate so the decade's own leading/trailing dimmed cells always land
+    // inside DateTime's representable year range -- see PickerMath.ClampDecadeStart for the full
+    // rationale.
+    static int ClampDecadeStart(int year) => PickerMath.ClampDecadeStart(year);
 
     // The decade the grid currently displays, floored to a multiple of 10.
     int DecadeStart => ClampDecadeStart(_viewMonth.Year);
@@ -1574,176 +1353,16 @@ public partial class DatePicker : IAsyncDisposable
         await CloseAsync();
     }
 
-    // ----- JS interop (mirrors DateRangePicker's module lifecycle) -------------
+    // ----- PickerBase hooks (JS-interop + overlay lifecycle) ------------------
+    // GetModuleAsync/GetPickerNavModuleAsync, the OnAfterRenderAsync template, and DisposeAsync all
+    // live on PickerBase -- these three hooks are this control's only customization of that shared
+    // template (one input to wire, one grid to init, one input to reclaim focus onto).
 
-    // Imports the RCL-local module once, re-checking _disposed after the awaited import so a
-    // dispose that raced an in-flight import cleans up here instead of stranding the reference.
-    // Returns null when disposed or JS is unavailable (prerender, bUnit) — callers no-JS degrade.
-    async Task<IJSObjectReference?> GetModuleAsync()
-    {
-        if (_disposed) return null;
-        try
-        {
-            _module ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-        }
-        catch
-        {
-            return null; // no JS runtime / module (prerender, tests)
-        }
-        if (_disposed)
-        {
-            try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _module = null;
-            return null;
-        }
-        return _module;
-    }
+    // initPicker's second input slot is null-safe — this picker has only the one.
+    protected override ValueTask WireInputsAsync(IJSObjectReference module) =>
+        module.InvokeVoidAsync("initPicker", _wrapperRef, _inputRef, null);
 
-    // Same contract as GetModuleAsync, for the separate wss-picker.js module (arrow-key page-scroll
-    // suppression + post-navigation DOM focus). A distinct module so a consumer that never drives the
-    // grid by keyboard doesn't pay for it, and so this stays decoupled from the unrelated overlay code.
-    async Task<IJSObjectReference?> GetPickerNavModuleAsync()
-    {
-        if (_disposed) return null;
-        try
-        {
-            _pickerModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-picker.js"));
-        }
-        catch
-        {
-            return null; // no JS runtime / module (prerender, tests)
-        }
-        if (_disposed)
-        {
-            try { await _pickerModule.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _pickerModule = null;
-            return null;
-        }
-        return _pickerModule;
-    }
+    protected override IEnumerable<ElementReference> GridRefs => new[] { _gridRef };
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // One-time input/wrapper wiring (Enter form-submit suppression + focus-out close). The
-        // input is always rendered (not inside the @if), so once is enough. initPicker's second
-        // input slot is null-safe — this picker has only the one.
-        if (!_inputWired)
-        {
-            _inputWired = true;
-            var module = await GetModuleAsync();
-            if (module is not null)
-            {
-                try
-                {
-                    await module.InvokeVoidAsync("initPicker", _wrapperRef, _inputRef, null);
-                }
-                catch
-                {
-                    // No JS — Enter may implicitly submit an enclosing form; typing still commits
-                    // via the change event, and the backdrop still closes on click.
-                }
-            }
-        }
-
-        if (_open && !_positioned)
-        {
-            var module = await GetModuleAsync();
-            if (module is not null)
-            {
-                try
-                {
-                    // placePanel positions/flips the panel AND returns the open-order z-index it
-                    // wrote to the wrapper; mirror it so the bound style re-asserts it (see Select).
-                    var z = await module.InvokeAsync<int>("placePanel", _wrapperRef, _panelRef, "wss-picker-backdrop", 4);
-                    // 0 is the JS null-ref guard value — only positive values are real.
-                    _openZIndex = z > 0 ? z : null;
-                }
-                catch
-                {
-                    // No JS runtime / module — keep the CSS default (below, left-aligned) placement.
-                }
-            }
-
-            var navModule = await GetPickerNavModuleAsync();
-            if (navModule is not null)
-            {
-                try
-                {
-                    await navModule.InvokeVoidAsync("init", _gridRef);
-                }
-                catch
-                {
-                    // No JS — arrow keys still update the roving-tabindex state, just without the
-                    // native page-scroll suppression.
-                }
-            }
-
-            _positioned = true;
-            StateHasChanged(); // reveal now that it's positioned (drops wss-measuring)
-        }
-        else if (!_open && _positioned)
-        {
-            _positioned = false;
-            _openZIndex = null;
-            try
-            {
-                if (_module is not null) await _module.InvokeVoidAsync("clearZ", _wrapperRef);
-            }
-            catch
-            {
-                // No JS runtime / module — nothing was assigned, nothing to clear.
-            }
-
-            if (_pendingInputFocus)
-            {
-                // The panel subtree (whatever had focus) just unmounted — reclaim focus onto the
-                // input rather than leaving it stranded on <body>. Best-effort: FocusAsync throws if
-                // the element isn't actually focusable yet (prerender/tests).
-                _pendingInputFocus = false;
-                _suppressOpenOnFocus = true;
-                try { await _inputRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
-                // Normally consumed by OnInputFocus during the call (the focus event outruns the
-                // interop ack on both runtimes); this backstop covers a failed/eventless focus.
-                _suppressOpenOnFocus = false;
-            }
-        }
-
-        if (_open && _pendingFocusDate is { } focusDate)
-        {
-            _pendingFocusDate = null;
-            var navModule = await GetPickerNavModuleAsync();
-            if (navModule is not null)
-            {
-                try
-                {
-                    await navModule.InvokeVoidAsync("focusDay", _panelRef,
-                        focusDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                }
-                catch
-                {
-                    // No JS — the roving-tabindex state still moved; only the DOM focus follow is lost.
-                }
-            }
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        // Set first: an import in flight (GetModuleAsync/GetPickerNavModuleAsync) re-checks this
-        // after its await and disposes its own late-assigned module rather than stranding it on this
-        // dead instance.
-        _disposed = true;
-        if (_module is not null)
-        {
-            try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _module = null;
-        }
-        if (_pickerModule is not null)
-        {
-            try { await _pickerModule.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _pickerModule = null;
-        }
-    }
+    protected override ElementReference FocusReclaimTarget => _inputRef;
 }
