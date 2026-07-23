@@ -1230,7 +1230,9 @@ public class UiKitTableTests : TestContext
                 .Add(c => c.Property, x => x.Name)));
 
         Assert.Empty(cut.FindAll(".wss-table-loading-mask"));
-        Assert.False(cut.Find(".wss-table-wrapper").HasAttribute("aria-busy"));
+        // aria-busy lives on the root (it now spans the pagers too, not just the wrapper) -- see the
+        // pager-masking tests below.
+        Assert.False(cut.Find(".wss-table-root").HasAttribute("aria-busy"));
     }
 
     [Fact]
@@ -1244,9 +1246,41 @@ public class UiKitTableTests : TestContext
                 .Add(c => c.Property, x => x.Name)));
 
         Assert.Single(cut.FindAll(".wss-table-loading-mask"));
-        Assert.Equal("true", cut.Find(".wss-table-wrapper").GetAttribute("aria-busy"));
+        Assert.Equal("true", cut.Find(".wss-table-root").GetAttribute("aria-busy"));
         // Rows are still rendered beneath the mask, not replaced by it.
         Assert.Equal(2, cut.FindAll("tbody .wss-table-row").Count);
+    }
+
+    [Fact]
+    public void Loading_true_masks_the_pager_too_not_just_the_table_body()
+    {
+        // The mask used to live inside .wss-table-wrapper (absolute/inset:0 against it), so it never
+        // covered the pager blocks, which are wrapper siblings -- the pager stayed visually
+        // uncovered and clickable while Loading. It's now anchored to .wss-table-root (the common
+        // ancestor of both pagers and the wrapper), so it renders as a root-level element sitting
+        // structurally over the whole component, pager included.
+        var people = Enumerable.Range(1, 3).Select(i => new Person($"P{i}", i)).ToList();
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.PageSize, 1) // force a pager to render
+            .Add(t => t.Loading, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var root = cut.Find(".wss-table-root");
+        // The mask is a direct child of the root -- a sibling of the pager and the wrapper, not
+        // nested inside the wrapper -- so its inset:0/z-index covers the pager area too.
+        Assert.Contains(root.Children, c => c.ClassList.Contains("wss-table-loading-mask"));
+        Assert.DoesNotContain(cut.Find(".wss-table-wrapper").Children, c => c.ClassList.Contains("wss-table-loading-mask"));
+        Assert.NotEmpty(cut.FindAll(".wss-table-pagination"));
+
+        // Not asserted here: "clicking next-page does nothing while loading". bUnit invokes the
+        // clicked element's own Blazor event handler directly -- it doesn't hit-test overlapping
+        // absolutely-positioned elements the way a real browser does, so a pager button click would
+        // "work" in bUnit regardless of the mask sitting visually on top of it in a real DOM. The
+        // real click-blocking behavior is a browser-level effect of this structural placement, not
+        // something bUnit can observe; it's implicit in the DOM shape asserted above.
     }
 
     // ----- EmptyContent -----

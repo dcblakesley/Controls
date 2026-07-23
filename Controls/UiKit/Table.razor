@@ -13,10 +13,22 @@
 </CascadingValue>
 
 @* Single root block so the table + pager don't pick up extra spacing from a parent's
-   flex/grid gap stacking on top of the pager's own margin. *@
+   flex/grid gap stacking on top of the pager's own margin. It's also the positioning context for
+   the Loading mask below (see .wss-table-root in wss-controls.css) so the mask covers the pagers
+   too, not just the body -- AntD's Spin wraps the whole table+pagination area, not just the rows. *@
 <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
      class="wss-table-root @AttributeSplat.ConsumerClass(AdditionalAttributes)"
-     style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
+     style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
+     aria-busy="@(Loading ? "true" : null)">
+@if (Loading)
+{
+    @* inset:0 against .wss-table-root (not .wss-table-wrapper) so this spans both pagers plus the
+       body -- a click anywhere in that area hits this element (it renders on top via z-index),
+       never the pager/body controls beneath it. *@
+    <div class="wss-table-loading-mask" aria-hidden="true">
+        <span class="wss-table-loading-spinner">@LoadingIcon</span>
+    </div>
+}
 @if (ShowTopPager)
 {
     <div class="wss-table-pagination wss-table-pagination-top wss-table-pagination-@PagerAlignName">
@@ -25,13 +37,7 @@
                     AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")" />
     </div>
 }
-<div class="wss-table-wrapper" aria-busy="@(Loading ? "true" : null)">
-    @if (Loading)
-    {
-        <div class="wss-table-loading-mask" aria-hidden="true">
-            <span class="wss-table-loading-spinner">@LoadingIcon</span>
-        </div>
-    }
+<div class="wss-table-wrapper">
     <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName @(AnyColumnEllipsis ? "wss-table-fixed" : null)">
         @if (!string.IsNullOrEmpty(Caption))
         {
@@ -225,9 +231,11 @@
     [Parameter] public RenderFragment? EmptyContent { get; set; }
 
     /// <summary>
-    /// Shows a translucent mask + spinner over the table body while true (AntD's <c>Spin</c>-wrapped
-    /// table) — rows stay rendered beneath it, and <c>aria-busy="true"</c> is set on the table
-    /// wrapper. Pure CSS/markup, no JS. Default false (no overlay — current DOM unchanged).
+    /// Shows a translucent mask + spinner over the whole component -- both pagers plus the table
+    /// body -- while true (AntD's <c>Spin</c>-wrapped table) — rows stay rendered beneath it, the
+    /// pagers become click-inert (the mask sits on top of them too), and <c>aria-busy="true"</c> is
+    /// set on the <c>wss-table-root</c> element. Pure CSS/markup, no JS. Default false (no overlay —
+    /// current DOM unchanged).
     /// </summary>
     [Parameter] public bool Loading { get; set; }
 

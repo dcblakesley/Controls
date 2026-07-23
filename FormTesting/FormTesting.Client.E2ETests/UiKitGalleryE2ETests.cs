@@ -509,16 +509,17 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     {
         await GotoAsync();
         var section = _page.Locator("section.demo-section", new() { HasTextString = "Loading overlay, disabled rows" });
-        var wrapper = section.Locator(".wss-table-wrapper");
+        // aria-busy now lives on .wss-table-root (it spans the pagers too, not just the wrapper).
+        var root = section.Locator(".wss-table-root");
         var mask = section.Locator(".wss-table-loading-mask");
         var toggle = _page.Locator("[data-test-id=toggle-table-loading]");
 
         await Expect(mask).Not.ToBeVisibleAsync();
-        await Expect(wrapper).Not.ToHaveAttributeAsync("aria-busy", "true");
+        await Expect(root).Not.ToHaveAttributeAsync("aria-busy", "true");
 
         await toggle.ClickAsync();
         await Expect(mask).ToBeVisibleAsync();
-        await Expect(wrapper).ToHaveAttributeAsync("aria-busy", "true");
+        await Expect(root).ToHaveAttributeAsync("aria-busy", "true");
         // Rows stay rendered beneath the translucent mask, not replaced by it.
         await Expect(section.Locator(".wss-table-tbody .wss-table-row").First).ToBeVisibleAsync();
 

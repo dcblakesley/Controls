@@ -1779,14 +1779,20 @@
  * Table
  * ============================================================================ */
 
+.wss-table-root {
+    position: relative; /* anchors the Loading overlay mask so it spans the pagers too, not just the body */
+}
+
 .wss-table-wrapper {
-    position: relative; /* anchors the Loading overlay mask */
     width: 100%;
     overflow-x: auto;
 }
 
 /* Loading overlay (Table.Loading) -- rows stay rendered beneath a translucent mask, AntD's
-   Spin-wrapped-table look. Pure CSS/markup; no JS. */
+   Spin-wrapped-table look. Anchored to .wss-table-root (not .wss-table-wrapper) so inset:0 covers
+   both pagers plus the body: a click anywhere in that area lands on this element (it renders above
+   the pagers/body via z-index), so the pager stays visually dimmed and click-inert while loading.
+   Pure CSS/markup; no JS. */
 .wss-table-loading-mask {
     position: absolute;
     inset: 0;
