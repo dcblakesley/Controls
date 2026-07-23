@@ -344,4 +344,62 @@ internal static class PickerMath
         var weekStart = WeekStart(value, firstDayOfWeek);
         return $"{weekStart.Year.ToString(culture)}-W{WeekNumberOf(weekStart, culture, firstDayOfWeek).ToString("00", culture)}";
     }
+
+    // ----- Time-row option building (shared by DatePicker's Time/DateTime panel and
+    // DateRangePicker's Time/DateTime pick session) -----------------------------------------------
+
+    /// <summary>The option values a stepped time select offers before <c>DisabledTime</c> hides/
+    /// disables any of them: every <paramref name="step"/>-th value from 0 to <paramref name="max"/>
+    /// inclusive, plus <paramref name="current"/> itself if it isn't naturally on that lattice -- the
+    /// NEVER-JUMP RULE for HourStep/MinuteStep/SecondStep, composing with <c>DisabledTime</c>'s own
+    /// (see <c>HideDisabledTimeOptions</c>) so a select can never silently show a value that isn't
+    /// the one actually bound. A <see cref="SortedSet{T}"/> both dedupes (<paramref name="current"/>
+    /// may already be on the lattice) and keeps the option list in its natural ascending reading
+    /// order even though <paramref name="current"/> wasn't necessarily added in numeric order.
+    /// <paramref name="step"/> is trusted to already be &gt;= 1.</summary>
+    public static IEnumerable<int> SteppedOptions(int max, int step, int current)
+    {
+        var options = new SortedSet<int>();
+        for (var v = 0; v <= max; v += step) options.Add(v);
+        options.Add(current);
+        return options;
+    }
+
+    /// <summary>The hour values a time row's hour select offers, before <c>DisabledTime</c> hides/
+    /// disables any of them: every <paramref name="step"/>-th 24-hour value (0, step, 2*step, ... &lt;=
+    /// 23) via <see cref="SteppedOptions"/>, further filtered under <paramref name="use12Hours"/> to
+    /// just the hours belonging to <paramref name="currentHour"/>'s own AM/PM period.
+    /// <see cref="SteppedOptions"/>'s own never-jump already guarantees <paramref name="currentHour"/>
+    /// survives that filter -- its period is computed from itself, so it can never be filtered OUT.
+    /// The result is ascending 24h order, which -- within one period -- is already exactly the
+    /// "12, 1, 2, ... 11" 12-hour reading order (h%12 rises in step with h in both halves of the
+    /// day; see <see cref="HourOptionText"/> for the label itself).</summary>
+    public static IEnumerable<int> HourOptions(int step, int currentHour, bool use12Hours)
+    {
+        var options = SteppedOptions(23, step, currentHour);
+        return use12Hours ? options.Where(h => (h >= 12) == (currentHour >= 12)) : options;
+    }
+
+    /// <summary>The hour select's option TEXT for <paramref name="h"/> (always a 24h value):
+    /// zero-padded 24h ("00".."23") normally, or the plain (non-zero-padded) 12-hour reading
+    /// ("12", "1".."11") under <paramref name="use12Hours"/> -- matching the unpadded "h" custom
+    /// format specifier a picker's own time format string uses for the same mode.</summary>
+    public static string HourOptionText(int h, bool use12Hours, CultureInfo culture) => use12Hours
+        ? (h % 12 == 0 ? 12 : h % 12).ToString(culture)
+        : h.ToString("00", CultureInfo.InvariantCulture);
+
+    /// <summary>Whether <paramref name="value"/> is one of <paramref name="disabled"/>'s listed
+    /// values -- null (nothing disabled in that unit) always answers false. Shared by a picker's own
+    /// commit guard and its time row's per-option render check so the two can never disagree about
+    /// the same hour/minute/second.</summary>
+    public static bool IsTimePartDisabled(IReadOnlyCollection<int>? disabled, int value) =>
+        disabled?.Contains(value) ?? false;
+
+    /// <summary>The Time/DateTime portion of a picker's default (null-<c>Format</c>) format string:
+    /// <paramref name="showSeconds"/> false drops ":ss"; <paramref name="use12Hours"/> switches the
+    /// 24-hour "HH" to the unpadded 12-hour "h" plus a trailing "tt" designator (matching
+    /// <see cref="HourOptionText"/>'s own unpadded 12-hour option text).</summary>
+    public static string TimeFormatString(bool use12Hours, bool showSeconds) => use12Hours
+        ? (showSeconds ? "h:mm:ss tt" : "h:mm tt")
+        : (showSeconds ? "HH:mm:ss" : "HH:mm");
 }

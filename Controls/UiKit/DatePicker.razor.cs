@@ -357,12 +357,9 @@ public partial class DatePicker : PickerBase
     };
 
     // The Time/DateTime portion of EffectiveFormat -- broken out because DateTime mode's format is
-    // just "MM/dd/yyyy " plus this exact string. ShowSeconds drops ":ss"; Use12Hours switches the
-    // 24-hour "HH" to the unpadded 12-hour "h" plus a trailing "tt" designator (matching
-    // HourOptionText's own unpadded 12-hour option text below).
-    string TimeFormatString => Use12Hours
-        ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
-        : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
+    // just "MM/dd/yyyy " plus this exact string. See PickerMath.TimeFormatString for the
+    // ShowSeconds/Use12Hours contract (shared with DateRangePicker's own Time/DateTime session).
+    string TimeFormatString => PickerMath.TimeFormatString(Use12Hours, ShowSeconds);
 
     string EffectivePlaceholder => Placeholder ?? Mode switch
     {
@@ -474,9 +471,10 @@ public partial class DatePicker : PickerBase
     // Whether `value` is one of `disabled`'s listed values -- null (nothing disabled in that unit)
     // always answers false. Shared by IsTimeDisabledForCommit above and TimeRowFragment's per-option
     // render check in DatePicker.razor so the disabled attribute and the commit guard can never
-    // disagree about the same hour/minute/second.
+    // disagree about the same hour/minute/second. See PickerMath.IsTimePartDisabled for the pure
+    // implementation, shared with DateRangePicker's own Time/DateTime session.
     static bool IsTimePartDisabled(IReadOnlyCollection<int>? disabled, int value) =>
-        disabled?.Contains(value) ?? false;
+        PickerMath.IsTimePartDisabled(disabled, value);
 
     // Whether a parsed/committed value (already mode-normalized) falls outside [Min, Max]/DisabledDate
     // at Mode's own granularity, or (Time/DateTime only) hits a DisabledTime-disabled hour/minute/
@@ -1228,46 +1226,17 @@ public partial class DatePicker : PickerBase
         return ApplyTimePartAsync(hour: DisplayHour % 12 + (isPM ? 12 : 0));
     }
 
-    // The hour values the hour select offers, before DisabledTime hides/disables any of them: every
-    // EffectiveHourStep-th 24-hour value (0, step, 2*step, ... <= 23) via SteppedOptions, further
-    // filtered under Use12Hours to just the hours belonging to the CURRENTLY DISPLAYED AM/PM period.
-    // SteppedOptions' own never-jump already guarantees DisplayHour survives that filter -- its period
-    // (DisplayIsPM) is computed from DisplayHour itself, so it can never be filtered OUT.  The result
-    // is ascending 24h order, which -- within one period -- is already exactly the "12, 1, 2, ... 11"
-    // 12-hour reading order the Use12Hours doc comment promises (h%12 rises in step with h in both
-    // halves of the day; see HourOptionText for the label itself).
-    IEnumerable<int> HourOptions()
-    {
-        var options = SteppedOptions(23, EffectiveHourStep, DisplayHour);
-        return Use12Hours ? options.Where(h => (h >= 12) == DisplayIsPM) : options;
-    }
+    // The hour/minute/second values each select offers, before DisabledTime hides/disables any of
+    // them -- see PickerMath.HourOptions/SteppedOptions for the full contract (never-jump rule,
+    // Use12Hours period filtering), shared with DateRangePicker's own Time/DateTime session.
+    IEnumerable<int> HourOptions() => PickerMath.HourOptions(EffectiveHourStep, DisplayHour, Use12Hours);
 
-    IEnumerable<int> MinuteOptions() => SteppedOptions(59, EffectiveMinuteStep, DisplayMinute);
+    IEnumerable<int> MinuteOptions() => PickerMath.SteppedOptions(59, EffectiveMinuteStep, DisplayMinute);
 
-    IEnumerable<int> SecondOptions() => SteppedOptions(59, EffectiveSecondStep, DisplaySecond);
+    IEnumerable<int> SecondOptions() => PickerMath.SteppedOptions(59, EffectiveSecondStep, DisplaySecond);
 
-    // The option values a stepped time select offers before DisabledTime hides/disables any of them:
-    // every `step`-th value from 0 to `max` inclusive, plus `current` itself if it isn't naturally on
-    // that lattice -- the NEVER-JUMP RULE for HourStep/MinuteStep/SecondStep, composing with
-    // DisabledTime's own (see HideDisabledTimeOptions) so a select can never silently show a value
-    // that isn't the one actually bound. A SortedSet both dedupes (current may already be on the
-    // lattice) and keeps the option list in its natural ascending reading order even though `current`
-    // wasn't necessarily added in numeric order. `step` is trusted to already be >= 1 -- see
-    // EffectiveHourStep/EffectiveMinuteStep/EffectiveSecondStep.
-    static IEnumerable<int> SteppedOptions(int max, int step, int current)
-    {
-        var options = new SortedSet<int>();
-        for (var v = 0; v <= max; v += step) options.Add(v);
-        options.Add(current);
-        return options;
-    }
-
-    // The hour select's option TEXT for `h` (always a 24h value): zero-padded 24h ("00".."23")
-    // normally, or the plain (non-zero-padded) 12-hour reading ("12", "1".."11") under Use12Hours --
-    // matching the unpadded "h" custom format specifier TimeFormatString uses for the same mode.
-    string HourOptionText(int h) => Use12Hours
-        ? (h % 12 == 0 ? 12 : h % 12).ToString(PickerCulture)
-        : h.ToString("00", CultureInfo.InvariantCulture);
+    // The hour select's option TEXT for `h` -- see PickerMath.HourOptionText's doc comment.
+    string HourOptionText(int h) => PickerMath.HourOptionText(h, Use12Hours, PickerCulture);
 
     // The OK button is Time/DateTime mode's close signal -- both modes commit incrementally (time
     // selects, and in DateTime a day click too) without closing, so nothing needs committing here.
