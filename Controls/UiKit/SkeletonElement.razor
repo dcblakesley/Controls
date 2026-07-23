@@ -1,0 +1,31 @@
+@namespace Controls
+
+@* AntD's standalone Skeleton.Button / Skeleton.Input shapes, as one minimal component rather than
+   N separate ones — Kind picks the shape, reusing Skeleton's own shimmer CSS/keyframe. *@
+<span @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+      class="wss-skeleton-element wss-skeleton-element-@KindName @(Active ? "wss-skeleton-active" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+      style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
+      role="status" aria-busy="true">
+    <span class="wss-sr-only">@LoadingText</span>
+    <span class="wss-skeleton-element-block" aria-hidden="true"></span>
+</span>
+
+@code {
+    /// <summary>Which standalone shape to render. Defaults to <see cref="SkeletonElementKind.Button"/>.</summary>
+    [Parameter] public SkeletonElementKind Kind { get; set; } = SkeletonElementKind.Button;
+
+    /// <summary>Show the shimmer animation. Defaults to true.</summary>
+    [Parameter] public bool Active { get; set; } = true;
+
+    /// <summary>Screen-reader text announced while loading (the placeholder itself is hidden from AT).</summary>
+    [Parameter] public string LoadingText { get; set; } = "Loading";
+
+    /// <summary>
+    /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
+    /// applied to the component's root element. <c>class</c> and <c>style</c> merge with the
+    /// component's own; the rest are splatted verbatim.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    string KindName => Kind.ToString().ToLowerInvariant();
+}

@@ -81,3 +81,36 @@ public enum DatePickerMode
     Quarter,
     Week
 }
+
+/// <summary>Shape of a <see cref="Skeleton"/>'s <see cref="Skeleton.Avatar"/> placeholder.</summary>
+public enum SkeletonAvatarShape
+{
+    Circle,
+    Square
+}
+
+/// <summary>Which standalone shape a <see cref="SkeletonElement"/> renders.</summary>
+public enum SkeletonElementKind
+{
+    Button,
+    Input
+}
+
+/// <summary>Visual style of a <see cref="Tabs"/> strip.</summary>
+public enum TabsType
+{
+    /// <summary>Underline tab strip (the existing default look).</summary>
+    Line,
+    /// <summary>AntD's boxed "card" tabs — CSS-only, keyboard/ARIA unchanged.</summary>
+    Card
+}
+
+/// <summary>Corner of the viewport a <see cref="NotificationListView"/> (and its two container
+/// hosts) anchors to.</summary>
+public enum NotificationPlacement
+{
+    TopRight,
+    TopLeft,
+    BottomRight,
+    BottomLeft
+}

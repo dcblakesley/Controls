@@ -27,6 +27,18 @@
         <button class="wss-dialog-btn" @onclick="@(() => _skeletonLoading = !_skeletonLoading)">
             Toggle loading (@(_skeletonLoading ? "on" : "off"))
         </button>
+
+        <p style="margin:0; color:#666;">
+            <code>Avatar</code>/<code>AvatarShape</code> add a placeholder block beside the
+            title/paragraph; the standalone <code>SkeletonElement</code> covers AntD's
+            <code>Skeleton.Button</code>/<code>Skeleton.Input</code> shapes.
+        </p>
+        <Skeleton Avatar="true" Rows="2" />
+        <Skeleton Avatar="true" AvatarShape="SkeletonAvatarShape.Square" Rows="2" />
+        <div style="display:flex; gap:12px; align-items:center;">
+            <SkeletonElement Kind="SkeletonElementKind.Button" />
+            <SkeletonElement Kind="SkeletonElementKind.Input" />
+        </div>
     </section>
 
     <section class="demo-section">

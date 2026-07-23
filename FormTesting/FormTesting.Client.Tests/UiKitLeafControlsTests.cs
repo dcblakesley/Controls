@@ -151,6 +151,53 @@ public class UiKitLeafControlsTests : TestContext
     }
 
     [Fact]
+    public void Skeleton_without_avatar_renders_no_header_or_content_wrapper()
+    {
+        var cut = RenderComponent<Skeleton>();
+        Assert.Empty(cut.FindAll(".wss-skeleton-header"));
+        Assert.Empty(cut.FindAll(".wss-skeleton-content"));
+        Assert.NotEmpty(cut.FindAll(".wss-skeleton-title"));
+    }
+
+    [Fact]
+    public void Skeleton_avatar_renders_a_circle_by_default_and_a_square_when_requested()
+    {
+        var circle = RenderComponent<Skeleton>(p => p.Add(s => s.Avatar, true));
+        Assert.NotNull(circle.Find(".wss-skeleton-avatar"));
+        Assert.DoesNotContain("wss-skeleton-avatar-square", circle.Find(".wss-skeleton-avatar").ClassList);
+        Assert.Contains("wss-skeleton-with-avatar", circle.Find(".wss-skeleton").ClassList);
+        // Title/paragraph still render, now inside the content wrapper.
+        Assert.NotEmpty(circle.FindAll(".wss-skeleton-content .wss-skeleton-title"));
+
+        var square = RenderComponent<Skeleton>(p => p
+            .Add(s => s.Avatar, true)
+            .Add(s => s.AvatarShape, SkeletonAvatarShape.Square));
+        Assert.Contains("wss-skeleton-avatar-square", square.Find(".wss-skeleton-avatar").ClassList);
+    }
+
+    [Fact]
+    public void SkeletonElement_renders_button_by_default_and_the_requested_kind()
+    {
+        var button = RenderComponent<SkeletonElement>();
+        Assert.Contains("wss-skeleton-element-button", button.Find(".wss-skeleton-element").ClassList);
+        Assert.Contains("wss-skeleton-active", button.Find(".wss-skeleton-element").ClassList);
+
+        var input = RenderComponent<SkeletonElement>(p => p.Add(s => s.Kind, SkeletonElementKind.Input).Add(s => s.Active, false));
+        Assert.Contains("wss-skeleton-element-input", input.Find(".wss-skeleton-element").ClassList);
+        Assert.DoesNotContain("wss-skeleton-active", input.Find(".wss-skeleton-element").ClassList);
+    }
+
+    [Fact]
+    public void SkeletonElement_announces_busy_status_with_screen_reader_text()
+    {
+        var cut = RenderComponent<SkeletonElement>();
+        var root = cut.Find(".wss-skeleton-element");
+        Assert.Equal("status", root.GetAttribute("role"));
+        Assert.Equal("true", root.GetAttribute("aria-busy"));
+        Assert.Equal("Loading", cut.Find(".wss-sr-only").TextContent);
+    }
+
+    [Fact]
     public void Popover_shows_content_after_trigger_click()
     {
         var cut = RenderComponent<Popover>(p => p

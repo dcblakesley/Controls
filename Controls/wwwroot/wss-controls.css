@@ -850,6 +850,33 @@
     display: block;
 }
 
+/* Skeleton.Avatar: header (avatar) + content (title/paragraph) side by side. */
+.wss-skeleton-with-avatar {
+    display: flex;
+    align-items: flex-start;
+}
+
+.wss-skeleton-header {
+    margin-inline-end: 16px;
+}
+
+.wss-skeleton-avatar {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    background: var(--wss-skeleton-base);
+    border-radius: 50%;
+}
+
+.wss-skeleton-avatar-square {
+    border-radius: var(--wss-radius);
+}
+
+.wss-skeleton-content {
+    flex: 1;
+    min-width: 0;
+}
+
 .wss-skeleton-title {
     width: 38%;
     height: 16px;
@@ -877,7 +904,9 @@
 
 /* Shimmer */
 .wss-skeleton-active .wss-skeleton-title,
-.wss-skeleton-active .wss-skeleton-paragraph > li {
+.wss-skeleton-active .wss-skeleton-paragraph > li,
+.wss-skeleton-active .wss-skeleton-avatar,
+.wss-skeleton-element.wss-skeleton-active .wss-skeleton-element-block {
     background: linear-gradient(90deg, var(--wss-skeleton-base) 25%, var(--wss-skeleton-shine) 37%, var(--wss-skeleton-base) 63%);
     background-size: 400% 100%;
     animation: wss-skeleton-loading 1.4s ease infinite;
@@ -886,6 +915,28 @@
 @keyframes wss-skeleton-loading {
     0% { background-position: 100% 50%; }
     100% { background-position: 0 50%; }
+}
+
+/* SkeletonElement: standalone Skeleton.Button / Skeleton.Input shapes. */
+.wss-skeleton-element {
+    display: inline-block;
+}
+
+.wss-skeleton-element-block {
+    display: inline-block;
+    background: var(--wss-skeleton-base);
+    border-radius: var(--wss-radius);
+}
+
+.wss-skeleton-element-button .wss-skeleton-element-block {
+    width: 64px;
+    height: 32px;
+}
+
+.wss-skeleton-element-input .wss-skeleton-element-block {
+    width: 100%;
+    min-width: 100px;
+    height: 32px;
 }
 
 /* ============================================================================
@@ -3594,6 +3645,8 @@
     .wss-notification,
     .wss-skeleton-active .wss-skeleton-title,
     .wss-skeleton-active .wss-skeleton-paragraph > li,
+    .wss-skeleton-active .wss-skeleton-avatar,
+    .wss-skeleton-element.wss-skeleton-active .wss-skeleton-element-block,
     .wss-msg-icon-loading,
     .wss-icon-spin {
         animation: none;
@@ -3602,7 +3655,9 @@
     /* Halting the shimmer alone freezes the gradient mid-sweep; restore the flat base fill so
        reduced-motion users see a solid skeleton rather than a frozen off-centre shine band. */
     .wss-skeleton-active .wss-skeleton-title,
-    .wss-skeleton-active .wss-skeleton-paragraph > li {
+    .wss-skeleton-active .wss-skeleton-paragraph > li,
+    .wss-skeleton-active .wss-skeleton-avatar,
+    .wss-skeleton-element.wss-skeleton-active .wss-skeleton-element-block {
         background: var(--wss-skeleton-base);
     }
 }

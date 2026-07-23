@@ -5,20 +5,41 @@
     @* role=status + aria-busy announce the loading state; the bars are decorative (aria-hidden) so a
        screen reader hears the loading text, not a string of empty elements. *@
     <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
-         class="wss-skeleton @(Active ? "wss-skeleton-active" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+         class="wss-skeleton @(Active ? "wss-skeleton-active" : null) @(Avatar ? "wss-skeleton-with-avatar" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
          style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
          role="status" aria-busy="true">
         <span class="wss-sr-only">@LoadingText</span>
-        @if (Title)
+        @if (Avatar)
         {
-            <div class="wss-skeleton-title" aria-hidden="true"></div>
+            <div class="wss-skeleton-header">
+                <span class="wss-skeleton-avatar @(AvatarShape == SkeletonAvatarShape.Square ? "wss-skeleton-avatar-square" : null)" aria-hidden="true"></span>
+            </div>
+            <div class="wss-skeleton-content">
+                @if (Title)
+                {
+                    <div class="wss-skeleton-title" aria-hidden="true"></div>
+                }
+                <ul class="wss-skeleton-paragraph" aria-hidden="true">
+                    @for (var i = 0; i < Rows; i++)
+                    {
+                        <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
+                    }
+                </ul>
+            </div>
         }
-        <ul class="wss-skeleton-paragraph" aria-hidden="true">
-            @for (var i = 0; i < Rows; i++)
+        else
+        {
+            @if (Title)
             {
-                <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
+                <div class="wss-skeleton-title" aria-hidden="true"></div>
             }
-        </ul>
+            <ul class="wss-skeleton-paragraph" aria-hidden="true">
+                @for (var i = 0; i < Rows; i++)
+                {
+                    <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
+                }
+            </ul>
+        }
     </div>
 }
 else
@@ -38,6 +59,14 @@ else
 
     /// <summary>Number of paragraph lines.</summary>
     [Parameter] public int Rows { get; set; } = 3;
+
+    /// <summary>Shows an avatar placeholder block beside the title/paragraph (AntD's
+    /// <c>Skeleton avatar</c>). Wraps the title/paragraph in <c>wss-skeleton-content</c> and adds a
+    /// <c>wss-skeleton-header</c> avatar block — only when set (unset markup is unchanged).</summary>
+    [Parameter] public bool Avatar { get; set; }
+
+    /// <summary>Shape of the <see cref="Avatar"/> placeholder. Defaults to <see cref="SkeletonAvatarShape.Circle"/>.</summary>
+    [Parameter] public SkeletonAvatarShape AvatarShape { get; set; } = SkeletonAvatarShape.Circle;
 
     /// <summary>Screen-reader text announced while loading (the bars themselves are hidden from AT).</summary>
     [Parameter] public string LoadingText { get; set; } = "Loading";
