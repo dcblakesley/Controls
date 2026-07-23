@@ -2671,6 +2671,28 @@
     background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
 }
 
+/* --------------------------------------- Week range mode (DateRangePicker)
+ * Mode="Week" reuses the same wss-picker-grid-rows/wss-picker-week-row/wss-picker-week-no markup as
+ * DatePicker's own Week mode above (doubled across two panels, same as every other range mode), but
+ * the range/hover-preview classing lands on the ROW instead of individual wss-picker-cell/-day
+ * elements (a week row has no gap between its own 7 day cells for CellClass's per-cell band to
+ * bridge, and a per-cell band would only ever touch the single day equal to a week-start endpoint --
+ * see WeekRowClass's own doc comment). wss-picker-week-row-start/-end get the same full committed-
+ * range tint as -in-range (unlike the day grid's half-inset endpoint cells, a solid row needs no
+ * split -- there's no adjacent same-tint cell on either side to "butt up against"); the preview trio
+ * mirrors wss-picker-cell-preview*'s lighter shade one level up. */
+.wss-picker-week-row-start,
+.wss-picker-week-row-end,
+.wss-picker-week-row-in-range {
+    background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
+}
+
+.wss-picker-week-row-preview-start,
+.wss-picker-week-row-preview-end,
+.wss-picker-week-row-preview {
+    background: var(--wss-picker-preview-bg, color-mix(in srgb, var(--wss-color-primary) 5%, #fff));
+}
+
 /* ------------------------------------------------- Month mode (DatePicker)
  * Mode="Month" replaces the day calendar with a 3x4 grid of month buttons.
  * Distinct classes from the day cells above (DateRangePicker gives

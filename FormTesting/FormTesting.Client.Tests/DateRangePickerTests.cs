@@ -714,11 +714,12 @@ public class DateRangePickerTests : TestContext
     }
 
     [Fact]
-    public void DateTime_time_and_week_modes_render_as_date_for_now()
+    public void DateTime_and_time_modes_render_as_date_for_now()
     {
-        // Phase 1a only implements Date/Month/Quarter/Year -- DateTime/Time/Week fold to Date until
-        // a later phase (see Mode's own doc comment). Guards EffectiveMode's fallback switch.
-        foreach (var mode in new[] { DatePickerMode.DateTime, DatePickerMode.Time, DatePickerMode.Week })
+        // DateTime/Time fold to Date until a later phase (see Mode's own doc comment); Week is its
+        // own mode as of this phase (see the "Mode=Week" region below). Guards EffectiveMode's
+        // fallback switch.
+        foreach (var mode in new[] { DatePickerMode.DateTime, DatePickerMode.Time })
         {
             var cut = RenderComponent<DateRangePicker>(p => p.Add(c => c.Mode, mode).Add(c => c.Start, Jan15));
             Open(cut);
@@ -1321,5 +1322,253 @@ public class DateRangePickerTests : TestContext
         var currentButton = panels[0].QuerySelectorAll(".wss-picker-month-btn")
             .First(b => b.TextContent == currentYearText);
         Assert.Equal("date", currentButton.GetAttribute("aria-current"));
+    }
+
+    // ===================================================================================
+    // Mode="Week" / ShowWeekNumbers
+    // ===================================================================================
+    // Jan15/Feb3 (this class's own fixtures) anchor Start/End the same way every other Date-family
+    // test above does: Start=Jan15 opens on the Jan/Feb 2025 panel pair. With Sunday as the first
+    // day of the week, Jan 2025's 6 rows are Dec29-Jan4, Jan5-11, Jan12-18, Jan19-25, Jan26-Feb1,
+    // Feb2-8; Feb 2025's are Jan26-Feb1, Feb2-8, Feb9-15, Feb16-22, Feb23-Mar1, Mar2-8 -- Jan15
+    // falls in Jan's row 2 (Jan12-18), Feb3 in Feb's row 1 (Feb2-8).
+
+    [Fact]
+    public void Week_mode_dual_panels_render_week_number_rows()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-grid")); // the rows layout, not the flat grid, in EITHER panel
+        Assert.Equal(12, cut.FindAll(".wss-picker-week-row").Count); // 6 rows x 2 panels
+        Assert.Equal(12, cut.FindAll(".wss-picker-week-no").Count);
+        Assert.Equal(84, cut.FindAll(".wss-picker-cell").Count); // 42 x 2 panels
+        Assert.Equal(84, cut.FindAll(".wss-picker-day").Count);
+        Assert.Equal(2, cut.FindAll(".wss-picker-week-no-header").Count); // one per panel's weekday header
+    }
+
+    [Fact]
+    public void Two_week_clicks_commit_the_week_start_range_and_close()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        Day(cut, 0, 10).Click(); // Jan 10 -- week Jan5-11 -- pending start
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+        Day(cut, 1, 20).Click(); // Feb 20 -- week Feb16-22 -- commits and closes
+
+        Assert.Equal(new DateTime(2025, 1, 5), start);
+        Assert.Equal(new DateTime(2025, 2, 16), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void A_backwards_week_pick_swaps_the_endpoints()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        Day(cut, 1, 20).Click(); // Feb 20 (week Feb16-22) first...
+        Day(cut, 0, 10).Click(); // ...then Jan 10 (week Jan5-11) -- swapped on commit
+
+        Assert.Equal(new DateTime(2025, 1, 5), start);
+        Assert.Equal(new DateTime(2025, 2, 16), end);
+    }
+
+    [Fact]
+    public void Week_mode_row_level_classes_mark_endpoints_and_in_range_across_both_panels()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 5))   // week start itself -- Jan's row 1
+            .Add(c => c.End, new DateTime(2025, 2, 16)));  // week start itself -- Feb's row 3
+
+        Open(cut);
+
+        var leftRows = cut.FindAll(".wss-picker-month")[0].QuerySelectorAll(".wss-picker-week-row");
+        var rightRows = cut.FindAll(".wss-picker-month")[1].QuerySelectorAll(".wss-picker-week-row");
+
+        Assert.Contains("wss-picker-week-row-start", leftRows[1].ClassList);   // Jan5-11
+        Assert.DoesNotContain("wss-picker-week-row-in-range", leftRows[1].ClassList);
+        Assert.Contains("wss-picker-week-row-in-range", leftRows[2].ClassList); // Jan12-18
+        Assert.Contains("wss-picker-week-row-in-range", leftRows[4].ClassList); // Jan26-Feb1
+        Assert.Contains("wss-picker-week-row-in-range", rightRows[0].ClassList); // Jan26-Feb1 (same week, right panel)
+        Assert.Contains("wss-picker-week-row-in-range", rightRows[1].ClassList); // Feb2-8
+        Assert.Contains("wss-picker-week-row-in-range", rightRows[2].ClassList); // Feb9-15
+        Assert.Contains("wss-picker-week-row-end", rightRows[3].ClassList);    // Feb16-22
+        // A row clearly outside the range gets no range/endpoint class at all.
+        Assert.DoesNotContain("wss-picker-week-row-start", leftRows[0].ClassList);
+        Assert.DoesNotContain("wss-picker-week-row-in-range", leftRows[0].ClassList);
+        Assert.DoesNotContain("wss-picker-week-row-end", leftRows[0].ClassList);
+
+        // Every day in an endpoint row is pressed, and per-day/per-cell classing is suppressed --
+        // the ROW carries the range styling, not individual cells.
+        Assert.Equal("true", Day(cut, 0, 5).GetAttribute("aria-pressed"));
+        Assert.Equal("true", Day(cut, 0, 11).GetAttribute("aria-pressed"));
+        Assert.DoesNotContain("wss-picker-day-selected", Day(cut, 0, 5).ClassList);
+        Assert.Empty(cut.FindAll(".wss-picker-cell-in-range"));
+        Assert.Empty(cut.FindAll(".wss-picker-cell-range-start"));
+    }
+
+    [Fact]
+    public void Week_mode_keeps_day_buttons_enabled_in_a_partially_in_range_week()
+    {
+        // Min falls mid-week (Jan 7, within the Jan5-11 row): Jan 5-6 are disabled at day
+        // granularity, but the Jan5-11 week itself still straddles Min, so every other day in it --
+        // including the click target below -- stays enabled; only the week-granularity commit guard
+        // (exercised by the typed-text test below) would ever reject the whole week.
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15) // anchors the view on the Jan/Feb 2025 panel pair
+            .Add(c => c.Min, new DateTime(2025, 1, 7))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+
+        Assert.True(Day(cut, 0, 5).HasAttribute("disabled"));
+        Assert.False(Day(cut, 0, 10).HasAttribute("disabled"));
+
+        Day(cut, 0, 10).Click(); // pending start = Jan 5, even though Jan5-6 precede Min
+        Day(cut, 1, 20).Click();
+
+        Assert.Equal(new DateTime(2025, 1, 5), start);
+        Assert.Equal(new DateTime(2025, 2, 16), end);
+    }
+
+    [Fact]
+    public void Week_mode_min_and_max_disable_typed_commit_at_week_granularity()
+    {
+        // Min = Jan 5, 2025 (itself a Sunday, so also that week's own start); Max = Feb 22, 2025
+        // (the Saturday ending the Feb16-22 week). Typed plain dates (not the "yyyy-Www" shorthand)
+        // so the assertions don't depend on the week-number arithmetic's own boundary behavior --
+        // only IsWeekDisabledForCommit's guard is under test here.
+        DateTime? Commit(string text)
+        {
+            DateTime? value = null;
+            var cut = RenderComponent<DateRangePicker>(p => p
+                .Add(c => c.Mode, DatePickerMode.Week)
+                .Add(c => c.Format, "MM/dd/yyyy")
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.Min, new DateTime(2025, 1, 5))
+                .Add(c => c.Max, new DateTime(2025, 2, 22))
+                .Add(c => c.StartChanged, (DateTime? v) => value = v));
+            var input = cut.Find(".wss-picker-input-start");
+            input.Input(text);
+            input.Change(text);
+            return value;
+        }
+
+        Assert.Null(Commit("12/29/2024"));                            // week Dec29-Jan4 -- entirely before Min
+        Assert.Equal(new DateTime(2025, 1, 5), Commit("01/08/2025"));  // Min's own week (Jan5-11)
+        Assert.Equal(new DateTime(2025, 2, 16), Commit("02/18/2025")); // Max's own week (Feb16-22)
+        Assert.Null(Commit("02/25/2025"));                             // week Feb23-Mar1 -- entirely after Max
+    }
+
+    [Fact]
+    public void Week_shorthand_start_and_end_parse_and_commit_the_correct_endpoint()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        // 2023-01-01 is itself a Sunday, so the week-1 arithmetic needs no prior-year-shift
+        // adjustment -- a clean case to assert the shorthand's parse against a known date (mirrors
+        // DatePickerTests' identical fixture).
+        var startInput = cut.Find(".wss-picker-input-start");
+        startInput.Input("2023-W08");
+        startInput.Change("2023-W08");
+        var endInput = cut.Find(".wss-picker-input-end");
+        endInput.Input("2023w9");
+        endInput.Change("2023w9");
+
+        Assert.Equal(new DateTime(2023, 2, 19), start); // the Sunday starting week 8 of 2023
+        Assert.Equal(new DateTime(2023, 2, 26), end);   // the Sunday starting week 9 of 2023
+    }
+
+    [Fact]
+    public void Effective_format_and_placeholder_default_for_week_mode()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)); // week start Jan 12, 2025
+
+        var weekStart = new DateTime(2025, 1, 12);
+        var rule = CultureInfo.CurrentCulture.DateTimeFormat.CalendarWeekRule;
+        var weekNo = new GregorianCalendar().GetWeekOfYear(weekStart, rule, DayOfWeek.Sunday);
+        var expected = $"2025-W{weekNo.ToString("00", CultureInfo.InvariantCulture)}";
+
+        Assert.Equal(expected, cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void ShowWeekNumbers_in_date_mode_adds_the_column_to_both_panels_without_changing_commit_semantics()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.ShowWeekNumbers, true)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-grid")); // the rows layout, not the flat grid
+        Assert.Equal(12, cut.FindAll(".wss-picker-week-row").Count); // 6 rows x 2 panels
+        Assert.Equal(2, cut.FindAll(".wss-picker-week-no-header").Count);
+        // No week-selection row styling outside Mode.Week -- ShowWeekNumbers only adds the column.
+        Assert.Empty(cut.FindAll(".wss-picker-week-row-start"));
+        Assert.Empty(cut.FindAll(".wss-picker-week-row-in-range"));
+        Assert.Contains("wss-picker-day-selected", Day(cut, 0, 15).ClassList); // single-day styling unaffected
+
+        Day(cut, 0, 10).Click(); // a day click still commits that DAY, not its week start -- pending start
+        Day(cut, 1, 20).Click();
+
+        Assert.Equal(new DateTime(2025, 1, 10), start);
+        Assert.Equal(new DateTime(2025, 2, 20), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Week_mode_arrow_keys_still_move_the_roving_tabindex()
+    {
+        // Start is already a week start (Jan 12, 2025, a Sunday) -- DisplayRange normalizes Start to
+        // its own week start for the default-focus comparison, so an already-week-start value keeps
+        // the assertion unambiguous (a mid-week Start would default-focus its WEEK START, not the
+        // literal bound day -- see DefaultFocusDay's DisplayRange-based comparison).
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 12)));
+
+        Open(cut);
+        Assert.Equal("0", Day(cut, 0, 12).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-grid-rows").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+        Assert.Equal("0", Day(cut, 0, 13).GetAttribute("tabindex"));
     }
 }

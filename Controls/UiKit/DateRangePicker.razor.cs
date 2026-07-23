@@ -9,10 +9,13 @@ namespace Controls;
 /// <c>Date</c> (default) shows two consecutive one-month calendars; <c>Month</c> shows two
 /// consecutive years, each a 3x4 grid of month buttons; <c>Quarter</c> shows two consecutive
 /// years, each a single row of 4 quarter buttons; <c>Year</c> shows two consecutive decades, each
-/// a 3x4 grid of year buttons (10 of the decade plus 2 dimmed adjacent-decade years).
-/// <c>DateTime</c>/<c>Time</c> render as <c>Date</c> in this release -- time-of-day support arrives
-/// in a later phase of this same effort, before any NuGet release ships it, so no consumer ever
-/// sees the fallback. <c>Week</c> is a later sub-phase too and also renders as <c>Date</c> for now.
+/// a 3x4 grid of year buttons (10 of the decade plus 2 dimmed adjacent-decade years); <c>Week</c>
+/// shows the exact same dual one-month calendars as <c>Date</c> plus a leading week-number column
+/// in both -- there the ROW, not the day, is the selection unit: clicking any day commits its
+/// week's start (per <see cref="EffectiveFirstDayOfWeek"/>), and the range band/hover-preview tint
+/// whole rows instead of individual cells. <c>DateTime</c>/<c>Time</c> render as <c>Date</c> in
+/// this release -- time-of-day support arrives in a later phase of this same effort, before any
+/// NuGet release ships it, so no consumer ever sees the fallback.
 /// Picking the second unit of a range (or a preset) commits the range and closes; typed input
 /// commits on Enter or blur.
 /// </summary>
@@ -54,8 +57,7 @@ public partial class DateRangePicker : PickerBase
 
     /// <summary>What both panels select together. Defaults to <see cref="DatePickerMode.Date"/>.
     /// <see cref="DatePickerMode.DateTime"/> and <see cref="DatePickerMode.Time"/> behave as
-    /// <c>Date</c> in this release -- time-of-day support is a later phase of this same effort.
-    /// <see cref="DatePickerMode.Week"/> also behaves as <c>Date</c> for now (a later sub-phase).</summary>
+    /// <c>Date</c> in this release -- time-of-day support is a later phase of this same effort.</summary>
     [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Date;
 
     /// <summary>Optional shortcuts rendered as a sidebar in the dropdown. Each consumer supplies its
@@ -103,6 +105,13 @@ public partial class DateRangePicker : PickerBase
     /// Monday start is the AntD kit's default-locale artifact, not a design decision — same
     /// category as its DM Sans font.)</summary>
     [Parameter] public DayOfWeek? FirstDayOfWeek { get; set; }
+
+    /// <summary>Shows a leading week-number column (AntD's <c>showWeek</c>) beside BOTH panels'
+    /// day grids in <see cref="DatePickerMode.Date"/> (and its <c>DateTime</c>/<c>Time</c>
+    /// fallback), with no other behavior change — a day click still commits that day, not its
+    /// week. Defaults to false. <see cref="DatePickerMode.Week"/> always renders this column
+    /// regardless of this parameter.</summary>
+    [Parameter] public bool ShowWeekNumbers { get; set; }
 
     /// <summary>HTML id applied to the start input — wires a consumer label / test hook.</summary>
     [Parameter] public string? Id { get; set; }
@@ -212,13 +221,18 @@ public partial class DateRangePicker : PickerBase
     // ----- Mode-derived helpers ----------------------------------------------
 
     /// <summary><see cref="Mode"/> folded to what this release actually implements:
-    /// <see cref="DatePickerMode.DateTime"/>/<see cref="DatePickerMode.Time"/>/
-    /// <see cref="DatePickerMode.Week"/> all read as <see cref="DatePickerMode.Date"/> (see
-    /// <see cref="Mode"/>'s own doc comment). Every internal branch reads this, never the raw
+    /// <see cref="DatePickerMode.DateTime"/>/<see cref="DatePickerMode.Time"/> read as
+    /// <see cref="DatePickerMode.Date"/> (see <see cref="Mode"/>'s own doc comment).
+    /// <see cref="DatePickerMode.Week"/> is its own mode below -- it reuses every Date-mode
+    /// day-grid mechanism (view anchoring, focus/keyboard nav, Min/Max day-granularity cell
+    /// disabling) via this switch's default arm, differing only in the markup (a week-number rows
+    /// layout instead of the flat grid — see <see cref="ShowWeekRows"/>) and the commit granularity
+    /// (a day click resolves to its WEEK START before reaching <see cref="OnUnitClickAsync"/> — see
+    /// <see cref="OnWeekDayClickAsync"/>). Every internal branch reads this, never the raw
     /// <see cref="Mode"/> parameter, so a later phase only has to change this one switch.</summary>
     DatePickerMode EffectiveMode => Mode switch
     {
-        DatePickerMode.DateTime or DatePickerMode.Time or DatePickerMode.Week => DatePickerMode.Date,
+        DatePickerMode.DateTime or DatePickerMode.Time => DatePickerMode.Date,
         _ => Mode,
     };
 
@@ -256,6 +270,11 @@ public partial class DateRangePicker : PickerBase
         DatePickerMode.Month => "MM/yyyy",
         DatePickerMode.Year => "yyyy",
         DatePickerMode.Quarter => "yyyy",
+        // Bland placeholder value, same rationale as Quarter's: no .NET format token renders a week
+        // number, so FormatDate/TryParseDate bypass ToString(EffectiveFormat) for Week entirely (see
+        // their own Week special cases below) -- this only matters as TryParseDate's exact-format
+        // fallback attempt, tried after the "yyyy-Www" shorthand.
+        DatePickerMode.Week => "yyyy",
         _ => "MM/dd/yyyy",
     };
 
@@ -290,8 +309,13 @@ public partial class DateRangePicker : PickerBase
 
     string CellClass(DateTime day)
     {
-        var (s, e) = DisplayRange;
         var cls = "wss-picker-cell";
+        // Week mode's range/preview banding paints whole ROWS (see WeekRowClass) -- a per-cell band
+        // here would (mis)apply to only whichever single day happens to equal a week-start endpoint
+        // (the row's own first cell), so this bypasses the day-granularity classing entirely for
+        // that mode, mirroring DayClass's own bypass below.
+        if (EffectiveMode == DatePickerMode.Week) return cls;
+        var (s, e) = DisplayRange;
         if (s is { } a && e is { } b && a != b)
         {
             if (day == a) cls += " wss-picker-cell-range-start";
@@ -317,7 +341,47 @@ public partial class DateRangePicker : PickerBase
         var cls = "wss-picker-day";
         if (day.Month != month.Month) cls += " wss-picker-day-outside";
         if (day == DateTime.Today) cls += " wss-picker-day-today";
-        if (IsEndpoint(day)) cls += " wss-picker-day-selected";
+        // Week mode suppresses the single-day selected look -- the ROW is the selection unit there
+        // (see WeekRowClass/IsWeekRowEndpoint), mirroring DatePicker.DayClass's own suppression.
+        if (EffectiveMode != DatePickerMode.Week && IsEndpoint(day)) cls += " wss-picker-day-selected";
+        return cls;
+    }
+
+    // Week mode's row-wide "is this row an endpoint" check -- every day sharing a week with the
+    // start or end endpoint is aria-pressed, not just the single day that happens to equal the week
+    // start itself, mirroring DatePicker.IsDaySelected one level up (day -> row).
+    bool IsWeekRowEndpoint(DateTime weekStart)
+    {
+        var (s, e) = DisplayRange;
+        return weekStart == s || weekStart == e;
+    }
+
+    // Week mode's row-level equivalent of CellClass -- the range/hover-preview band paints the
+    // WHOLE row instead of individual cells (a week row has no gap between its own 7 day cells for
+    // a continuous band to bridge, unlike Month/Quarter/Year's gapped grid, but a per-cell band
+    // would still only touch the single day equal to a week-start endpoint -- see CellClass's own
+    // bypass above). Endpoint rows and rows strictly between them get distinct classes so a
+    // consumer/test can tell them apart, mirroring CellClass's range-start/range-end/in-range split
+    // and UnitBtnClass's committed-vs-hover-preview split.
+    string WeekRowClass(DateTime weekStart)
+    {
+        var cls = "wss-picker-week-row";
+        if (EffectiveMode != DatePickerMode.Week) return cls; // ShowWeekNumbers-only: no range styling
+        var (s, e) = DisplayRange;
+        if (s is { } a && e is { } b && a != b)
+        {
+            if (weekStart == a) cls += " wss-picker-week-row-start";
+            else if (weekStart == b) cls += " wss-picker-week-row-end";
+            else if (weekStart > a && weekStart < b) cls += " wss-picker-week-row-in-range";
+        }
+        else if (_selecting && _pendingStart is { } p && _hoverDay is { } h && p != h)
+        {
+            var lo = p < h ? p : h;
+            var hi = p < h ? h : p;
+            if (weekStart == lo) cls += " wss-picker-week-row-preview-start";
+            else if (weekStart == hi) cls += " wss-picker-week-row-preview-end";
+            else if (weekStart > lo && weekStart < hi) cls += " wss-picker-week-row-preview";
+        }
         return cls;
     }
 
@@ -361,14 +425,26 @@ public partial class DateRangePicker : PickerBase
     bool IsQuarterDisabled(DateTime quarterStart) =>
         (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max));
 
+    // Week-mode equivalent of IsDayDisabled, at week granularity: a whole week is disabled once its
+    // 7-day span falls entirely outside [Min, Max] -- the individual day buttons stay enabled per
+    // IsDayDisabled above (a partially-in-range week is still clickable; only the commit itself is
+    // guarded here) -- mirrors DatePicker.IsWeekDisabledForCommit. `weekStart` is already
+    // WeekStart-shaped.
+    bool IsWeekDisabledForCommit(DateTime weekStart) =>
+        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date);
+
     // Dispatches to the Mode-appropriate disabled check -- shared by the grid `disabled` attributes,
     // the DefaultFocus*/FirstEnabled* skip logic, and the typed-text commit guard, so they can never
-    // disagree about what counts as disabled.
+    // disagree about what counts as disabled. Week's own day CELLS deliberately stay on the default
+    // (day-granularity IsDayDisabled) arm below -- only the typed-text commit guard (which receives
+    // an already-week-normalized unit from TryParseDate) needs the week-granularity check, so it's
+    // called out explicitly.
     bool IsUnitDisabled(DateTime unit) => EffectiveMode switch
     {
         DatePickerMode.Month => IsMonthDisabled(unit),
         DatePickerMode.Quarter => IsQuarterDisabled(unit),
         DatePickerMode.Year => IsYearDisabled(unit),
+        DatePickerMode.Week => IsWeekDisabledForCommit(unit),
         _ => IsDayDisabled(unit),
     };
 
@@ -397,14 +473,36 @@ public partial class DateRangePicker : PickerBase
     // never jumps while navigating. Leading/trailing cells are the adjacent months' days.
     IEnumerable<DateTime> GridDays(DateTime month) => PickerMath.GridDays(month, EffectiveFirstDayOfWeek);
 
+    // Whether a panel's day grid renders as 6 week-number rows (Mode.Week always; ShowWeekNumbers's
+    // column in Date mode and its DateTime/Time fallback) instead of the flat 42-cell layout --
+    // mirrors DatePicker.ShowWeekRows. Only the day-grid ("else") branch of the .razor markup ever
+    // checks this -- Month/Quarter/Year have their own branches.
+    bool ShowWeekRows => EffectiveMode == DatePickerMode.Week || ShowWeekNumbers;
+
+    // GridDays(month) grouped into 6 rows of 7 -- used by the week-rows layout. Each row's first
+    // entry is that row's own week start (GridDays begins on a week boundary and advances a whole
+    // week at a time), which the markup reuses directly for the row's week-number cell and
+    // WeekRowClass's range/preview check -- mirrors DatePicker.GridWeekRows.
+    DateTime[][] GridWeekRows(DateTime month) => [.. GridDays(month).Chunk(7)];
+
+    // The ISO-ish week number of the calendar week starting on `weekStart` -- mirrors
+    // DatePicker.WeekNumberOf.
+    int WeekNumberOf(DateTime weekStart) => PickerMath.WeekNumberOf(weekStart, PickerCulture, EffectiveFirstDayOfWeek);
+
     // Quarter mode's null-Format display: no .NET format token renders a quarter number, so this
     // bypasses ToString(EffectiveFormat) entirely for that one case -- mirrors DatePicker.FormatDate.
+    // Week mode's null-Format display bypasses it the same way -- no .NET token for a week number
+    // either.
     string FormatDate(DateTime? value)
     {
         if (value is not { } v) return string.Empty;
         if (EffectiveMode == DatePickerMode.Quarter && Format is null)
         {
             return PickerMath.FormatQuarterDisplay(v, PickerCulture);
+        }
+        if (EffectiveMode == DatePickerMode.Week && Format is null)
+        {
+            return PickerMath.FormatWeekDisplay(v, PickerCulture, EffectiveFirstDayOfWeek);
         }
         return v.ToString(EffectiveFormat, PickerCulture);
     }
@@ -415,10 +513,16 @@ public partial class DateRangePicker : PickerBase
     // Format left null, mirroring FormatDate's special case above) tries the "yyyy-Qn" shorthand
     // first via PickerMath.TryParseQuarterShorthand -- a plain typed date still falls through to the
     // general parse below and normalizes to its own quarter, same as every other mode's typed-text
-    // path -- mirrors DatePicker.TryParseDate.
+    // path -- mirrors DatePicker.TryParseDate. Week mode's "yyyy-Www" shorthand
+    // (PickerMath.TryParseWeekShorthand) mirrors that the same way.
     bool TryParseDate(string text, out DateTime value)
     {
         if (EffectiveMode == DatePickerMode.Quarter && Format is null && PickerMath.TryParseQuarterShorthand(text, out value))
+        {
+            return true;
+        }
+        if (EffectiveMode == DatePickerMode.Week && Format is null &&
+            PickerMath.TryParseWeekShorthand(text, PickerCulture, EffectiveFirstDayOfWeek, out value))
         {
             return true;
         }
@@ -927,6 +1031,27 @@ public partial class DateRangePicker : PickerBase
         await CloseAsync();
     }
 
+    // Week mode's day-grid click: the button stays at day granularity (IsDayDisabled(day), same as
+    // every other mode's day cell), but the click's actual pending-start/commit unit is the week
+    // START, not the clicked day -- mirrors DatePicker.OnDayClickAsync's Week guard. With Min/Max
+    // alone the day-cell and week-start checks can never disagree (a week whose start/end falls
+    // outside [Min, Max] means every day in it does too), but a future DisabledDate predicate could
+    // reject a week start while leaving every individual day in that week enabled -- guarded here
+    // explicitly so a click can't slip past it. The day-grid markup calls this in Week mode instead
+    // of OnUnitClickAsync directly (see OnGridDayClickAsync).
+    Task OnWeekDayClickAsync(DateTime day)
+    {
+        var weekStart = WeekStart(day);
+        return IsWeekDisabledForCommit(weekStart) ? Task.CompletedTask : OnUnitClickAsync(weekStart);
+    }
+
+    // Shared by both day-grid layouts (flat and week-rows): resolves the clicked day to whatever
+    // OnUnitClickAsync should actually receive -- the week START in Week mode (see
+    // OnWeekDayClickAsync), or the day itself everywhere else (Date mode, including with
+    // ShowWeekNumbers's column -- a day click there still commits that day, not its week).
+    Task OnGridDayClickAsync(DateTime day) =>
+        EffectiveMode == DatePickerMode.Week ? OnWeekDayClickAsync(day) : OnUnitClickAsync(day);
+
     // Hover-range preview: only tracked while a pick is in progress, so hovering the other 83 cells
     // of an idle grid never triggers a render.
     void OnUnitPointerEnter(DateTime unit)
@@ -934,6 +1059,12 @@ public partial class DateRangePicker : PickerBase
         if (!_selecting || _hoverDay == unit) return;
         _hoverDay = unit;
     }
+
+    // Week mode's pointer-enter equivalent of OnGridDayClickAsync -- tracks the hovered WEEK START
+    // (so WeekRowClass's preview comparison stays at the same granularity as _pendingStart), not the
+    // hovered day itself.
+    void OnGridDayPointerEnter(DateTime day) =>
+        OnUnitPointerEnter(EffectiveMode == DatePickerMode.Week ? WeekStart(day) : day);
 
     void OnGridPointerLeave()
     {

@@ -271,7 +271,11 @@
                                     <span class="wss-picker-nav wss-picker-nav-placeholder" aria-hidden="true"></span>
                                 }
                             </div>
-                            <div class="wss-picker-week-header" aria-hidden="true">
+                            <div class="@(ShowWeekRows ? "wss-picker-week-header wss-picker-week-header-weeks" : "wss-picker-week-header")" aria-hidden="true">
+                                @if (ShowWeekRows)
+                                {
+                                    <div class="wss-picker-week-no-header"></div>
+                                }
                                 @foreach (var name in WeekdayHeaders)
                                 {
                                     <div class="wss-picker-week-day">@name</div>
@@ -281,24 +285,56 @@
                                unconditionally would re-render the component (a SignalR round trip per cell on
                                Blazor Server) for every cell the idle pointer crosses. An EventCallback without
                                a delegate is omitted from the render tree entirely. *@
-                            <div class="wss-picker-grid" @ref="_gridRefs[panel]"
-                                 @onkeydown="OnGridKeyDown"
-                                 @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
-                                @foreach (var day in GridDays(month))
-                                {
-                                    var d = day;
-                                    <div class="@CellClass(d)">
-                                        <button type="button" class="@DayClass(d, month)"
-                                                disabled="@IsDayDisabled(d)"
-                                                tabindex="@(IsFocusStop(d, month) ? "0" : "-1")"
-                                                data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                                aria-label="@d.ToString("D", PickerCulture)"
-                                                aria-pressed="@(IsEndpoint(d) ? "true" : "false")"
-                                                @onclick="@(() => OnUnitClickAsync(d))"
-                                                @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnUnitPointerEnter(d)) : default)">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
-                                    </div>
-                                }
-                            </div>
+                            @if (ShowWeekRows)
+                            {
+                                <div class="wss-picker-grid-rows" @ref="_gridRefs[panel]"
+                                     @onkeydown="OnGridKeyDown"
+                                     @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
+                                    @foreach (var row in GridWeekRows(month))
+                                    {
+                                        var weekStart = row[0];
+                                        <div class="@WeekRowClass(weekStart)">
+                                            <div class="wss-picker-week-no" aria-hidden="true">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
+                                            @foreach (var day in row)
+                                            {
+                                                var d = day;
+                                                var pressed = EffectiveMode == DatePickerMode.Week ? IsWeekRowEndpoint(weekStart) : IsEndpoint(d);
+                                                <div class="@CellClass(d)">
+                                                    <button type="button" class="@DayClass(d, month)"
+                                                            disabled="@IsDayDisabled(d)"
+                                                            tabindex="@(IsFocusStop(d, month) ? "0" : "-1")"
+                                                            data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                                            aria-label="@d.ToString("D", PickerCulture)"
+                                                            aria-pressed="@(pressed ? "true" : "false")"
+                                                            @onclick="@(() => OnGridDayClickAsync(d))"
+                                                            @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnGridDayPointerEnter(d)) : default)">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="wss-picker-grid" @ref="_gridRefs[panel]"
+                                     @onkeydown="OnGridKeyDown"
+                                     @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
+                                    @foreach (var day in GridDays(month))
+                                    {
+                                        var d = day;
+                                        <div class="@CellClass(d)">
+                                            <button type="button" class="@DayClass(d, month)"
+                                                    disabled="@IsDayDisabled(d)"
+                                                    tabindex="@(IsFocusStop(d, month) ? "0" : "-1")"
+                                                    data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                                    aria-label="@d.ToString("D", PickerCulture)"
+                                                    aria-pressed="@(IsEndpoint(d) ? "true" : "false")"
+                                                    @onclick="@(() => OnGridDayClickAsync(d))"
+                                                    @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnGridDayPointerEnter(d)) : default)">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
+                                        </div>
+                                    }
+                                </div>
+                            }
                         </div>
                     }
                 }
