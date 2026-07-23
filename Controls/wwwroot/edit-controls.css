@@ -688,6 +688,11 @@
                                    under the editor thanks to the wrapper's flex-wrap: wrap)
           edit-tooltip-container (optional)
              edit-tooltip-content (optional)
+
+    Slice S4: edit-input-affix-wrapper additionally carries edit-input-affix-disabled (host's
+    IsDisabled) and a Size token (edit-input-sm / edit-input-lg) alongside edit-input-affix-invalid;
+    the editor carries the same Size token in both legacy and affix mode. All inert unless an
+    ancestor carries .edit-theme (see this file's opt-in theme section, appended at the end).
 */
 
 /********************************************** EditFile ************************************************/
@@ -864,4 +869,195 @@
 
 .edit-file-list--readonly .edit-file-item {
     cursor: default;
+}
+
+/* ============================================================================
+ * Opt-in AntD 4.x theme for the classic edit inputs (slice S4 of the AntD input-parity work)
+ *
+ * Ancestor class `.edit-theme` -- apply it to any element the consumer owns (a whole page, a
+ * single form, or an MFE's own render-tree root) to opt every `.edit-input`-bearing descendant
+ * into the same AntD 4.x recipe `wss-select-selector` uses (wss-controls.css's Select section).
+ * Nothing outside a `.edit-theme` ancestor is touched -- every selector below is scoped under it,
+ * so an unthemed consumer's markup and CSS are completely unaffected by this section existing.
+ *
+ * Render-tree-scoped, not global: a consumer can wrap only part of a page, or nest a second
+ * `.edit-theme` with its own overridden tokens, and each scope resolves independently -- matching
+ * this workspace's MFE design constraint (see CLAUDE.md). Tokens are declared ON `.edit-theme`
+ * (not :root) for that same reason.
+ *
+ * Derived (color-mix) values are NEVER declared as tokens here -- only computed at each usage site
+ * (see wss-controls.css's header comment and CLAUDE.md's CSS section): a var() inside a custom
+ * property is substituted once, where the property is declared, so baking a derived value into a
+ * `.edit-theme` token would freeze the lookup at the class's declaration site and ignore a deeper
+ * scope's override. --edit-color-primary-hover, --edit-primary-shadow, and --edit-error-shadow are
+ * therefore pure override knobs, deliberately undeclared below -- each usage site falls back
+ * through the generic --color-*-hover bridge to a color-mix computed from --edit-color-primary (or
+ * the existing --edit-color-danger for the error variants).
+ *
+ * --edit-color-primary is intentionally RE-declared here (same custom property name as the
+ * library-wide :root token above, different fallback: AntD blue #1890ff, matching
+ * --wss-color-primary, instead of the legacy #0066cc). Reusing the name means the plain
+ * :focus-visible ring that radio/checkbox still use (untouched by this section -- see below) also
+ * reads --edit-color-primary, so it picks up the same AntD-consistent blue automatically inside a
+ * themed scope, with zero changes to the radio/checkbox rules themselves. A consumer's own
+ * --color-primary still wins at any scope either way. --edit-color-danger is NOT re-declared --
+ * its :root fallback (#cf1322) is already darkened off AntD's #ff4d4f for WCAG 1.4.3, and that
+ * accessible red should apply here too.
+ *
+ * Scope of what gets themed: EditString/EditNumber/EditTextArea/EditDate's editor and EditSelect's
+ * native <select> all carry plain `.edit-input` and get the full box chrome. EditBool's checkbox
+ * ALSO carries `.edit-input` (both its plain and UseStyledCheckbox inputs are native
+ * type="checkbox") but must not be boxed like a text field -- excluded below via
+ * `:not([type="checkbox"])`. EditRadio/EditCheckedStringList/EditCheckedEnumList's inputs carry
+ * their own `.edit-radio-input`/`.edit-checkedList-checkbox` classes, never `.edit-input` (verified
+ * against the current markup), so they're untouched without any extra exclusion. EditFile's
+ * buttons carry no `.edit-input`-family class at all. Native <select> keeps its default
+ * `appearance: auto` -- this section never sets `appearance`, so the browser's own dropdown arrow
+ * is untouched; replacing it is out of scope. Number inputs keep their native spinner buttons
+ * (documented deviation -- no custom handler buttons here).
+ * ============================================================================ */
+
+.edit-theme {
+    --edit-color-primary: var(--color-primary, #1890ff);
+    --edit-color-border: var(--border-color, #d9d9d9);
+    --edit-color-bg-disabled: var(--color-bg-disabled, #f5f5f5);
+    --edit-color-placeholder: #bfbfbf;
+    --edit-color-text-disabled: rgba(0, 0, 0, 0.25);
+    /* Secondary-text tint for the affix suffix's clear/count/password items and the textarea's
+       below-the-editor count -- overrides the unthemed fallback (#8c8c8c via the generic
+       --color-text-secondary bridge) at those same selectors, further down. */
+    --edit-color-text-secondary: rgba(0, 0, 0, 0.45);
+    --edit-radius: 2px;
+    --edit-control-height: 32px;
+    --edit-control-height-sm: 24px;
+    --edit-control-height-lg: 40px;
+    --edit-font-size: 14px;
+    --edit-font-size-lg: 16px;
+}
+
+/* Base editor chrome. Targets the legacy-mode editor itself, EditSelect's native <select>, and
+   EditDate's <input> (all carry plain `.edit-input`) *and*, in affix mode, the wrapper
+   (`.edit-input-affix-wrapper`) -- never the naked inner `.edit-affix-input` (stripped back to
+   invisible further down, since it also carries `.edit-input`) or a checkbox (see the class
+   remarks above). */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]),
+.edit-theme .edit-input-affix-wrapper {
+    box-sizing: border-box;
+    /* min-height (not height): a fixed height would either clip a multi-row EditTextArea or fight
+       its AutoSize JS -- letting rows/autosize (or just content) grow the box past this floor
+       matches AntD's own TextArea sizing and needs no textarea-specific override. */
+    min-height: var(--edit-control-height);
+    padding: 4px 11px;
+    font-size: var(--edit-font-size);
+    font-family: inherit;
+    background: var(--color-bg, #fff);
+    border: 1px solid var(--edit-color-border);
+    border-radius: var(--edit-radius);
+    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+/* Hover. :not(:disabled) mirrors wss-select-selector's own disabled guard -- a disabled control's
+   background/cursor own its story below, undisturbed by an interactive border tint. */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):hover,
+.edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):hover {
+    border-color: var(--edit-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--edit-color-primary) 82%, #fff)));
+}
+
+/* Focus. AntD applies the border+glow on plain :focus/:focus-within, not only :focus-visible -- the
+   wrapper has no focus of its own (the naked inner editor is what actually receives it), so
+   :focus-within is its equivalent. */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
+.edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
+    border-color: var(--edit-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--edit-color-primary) 82%, #fff)));
+    box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+}
+
+/* This glow is the theme's WCAG 2.4.7 indicator for text editors -- suppress the library's plain
+   outline ring here so the two don't double up (the naked inner editor gets its own rule too, or
+   it'd show a ring redundant with the wrapper's glow). Radio/checkbox are untouched -- they still
+   just get the plain `.edit-input:focus-visible`-family ring declared outside this section. */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):focus-visible,
+.edit-theme .edit-affix-input:focus-visible {
+    outline: none;
+}
+
+/* Invalid: static red border always. Reuses the library's existing --edit-color-danger (see the
+   class remarks above) rather than a second error token. */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]).invalid,
+.edit-theme .edit-input-affix-wrapper.edit-input-affix-invalid {
+    border-color: var(--edit-color-danger);
+}
+
+/* The focus-time glow flips to danger here. This rule's specificity exactly TIES the plain focus
+   rule above (0,6,0 for the editor / 0,4,0 for the wrapper -- .invalid substitutes 1-for-1 for that
+   rule's :not(:disabled)), mirroring the fix at wss-controls.css:174-188. It must stay declared
+   after the plain rule, or a re-ordered stylesheet would silently win back the primary-blue glow on
+   an invalid-but-focused field. */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]).invalid:focus,
+.edit-theme .edit-input-affix-wrapper.edit-input-affix-invalid:focus-within {
+    border-color: var(--edit-color-danger);
+    box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
+}
+
+/* Disabled: dimmed bg/text, no-entry cursor. The hover/focus rules above already exclude disabled,
+   so there's no competing border-color change to guard against here. */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):disabled,
+.edit-theme .edit-input-affix-wrapper.edit-input-affix-disabled {
+    color: var(--edit-color-text-disabled);
+    background: var(--edit-color-bg-disabled);
+    cursor: not-allowed;
+}
+
+.edit-theme .edit-input::placeholder {
+    color: var(--edit-color-placeholder);
+}
+
+/* The naked inner editor in affix mode: the wrapper above owns the box (border/radius/background/
+   hover/focus-within glow/disabled); this element must paint no chrome of its own, or two boxes
+   would show. color/font: inherit so it still matches the wrapper's (themed or disabled) text
+   color/size despite carrying none of its own. */
+.edit-theme .edit-input-affix-wrapper .edit-affix-input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: inherit;
+}
+
+/* Symmetric AntD-style spacing flanking the naked inner editor -- unthemed, prefix/suffix sit flush
+   against it (edit-controls.css's earlier .edit-input-prefix/.edit-input-suffix rule only spaces
+   THEIR OWN children apart -- e.g. multiple suffix items -- not the editor itself). */
+.edit-theme .edit-input-prefix {
+    margin-inline-end: 4px;
+}
+.edit-theme .edit-input-suffix {
+    margin-inline-start: 4px;
+}
+
+.edit-theme .edit-input-clear,
+.edit-theme .edit-input-count,
+.edit-theme .edit-input-password-toggle,
+.edit-theme .edit-textarea-count {
+    color: var(--edit-color-text-secondary);
+}
+
+/* Sizes. :not(.edit-affix-input) so the redundant size class a host also puts on the naked inner
+   editor in affix mode (Size maps to the editor's class in BOTH modes) is a no-op there -- sizing
+   the box is the wrapper's job in affix mode. */
+.edit-theme .edit-input-sm:not(.edit-affix-input),
+.edit-theme .edit-input-affix-wrapper.edit-input-sm {
+    min-height: var(--edit-control-height-sm);
+    padding: 0 7px;
+}
+
+.edit-theme .edit-input-lg:not(.edit-affix-input),
+.edit-theme .edit-input-affix-wrapper.edit-input-lg {
+    min-height: var(--edit-control-height-lg);
+    font-size: var(--edit-font-size-lg);
 }

@@ -14,6 +14,8 @@
                InputNumber. (Comment deliberately outside the tag — a Razor comment inside an
                attribute list compiles into a literal attribute name and breaks setAttribute.) *@
             <EditInputShell IsInvalid=@IsInvalid
+                            IsDisabled=@IsDisabled
+                            WrapperClass=@(EditInputShell.SizeClass(Size))
                             Prefix=@Prefix
                             Suffix=@Suffix>
                 <input type="number"

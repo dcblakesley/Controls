@@ -93,5 +93,6 @@ public enum CurrentView
     MultiSelect,
     String,
     TextArea,
-    File
+    File,
+    Theme
 }

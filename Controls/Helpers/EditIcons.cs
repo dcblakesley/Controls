@@ -25,8 +25,10 @@ internal static class EditIcons
     public static readonly MarkupString ClearCircle = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm165.4 618.2l-66-.3L512 563.4l-99.3 118.4-66.1.3c-4.4 0-8-3.5-8-8 0-1.9.7-3.7 1.9-5.2l130.1-155L340.5 359a8.32 8.32 0 0 1-1.9-5.2c0-4.4 3.6-8 8-8l66.1.3L512 464.6l99.3-118.4 66-.3c4.4 0 8 3.5 8 8 0 1.9-.7 3.7-1.9 5.2L553.5 514l130 155c1.2 1.5 1.9 3.3 1.9 5.2 0 4.4-3.6 8-8 8z\"></path></svg>");
 
-    /// <summary>AntD "LoadingOutlined" — a static glyph; rotation is applied by the consumer via the
-    /// <c>edit-icon-spin</c> CSS class, not baked into the markup here.</summary>
+    /// <summary>AntD "LoadingOutlined" — a static glyph; rotation is applied by the consumer via a
+    /// CSS spin class, not baked into the markup here. <see cref="Controls.SearchInput"/>'s
+    /// <c>Loading</c> state (slice S4) is the current consumer -- it wraps this in
+    /// <c>wss-icon-spin</c> (wss-controls.css, reusing the existing <c>wss-msg-spin</c> keyframe).</summary>
     public static readonly MarkupString LoadingSpinner = new(
         "<svg viewBox=\"0 0 1024 1024\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M988 548c-19.9 0-36-16.1-36-36 0-59.4-11.6-117-34.6-171.3a440.45 440.45 0 00-94.3-139.9 437.71 437.71 0 00-139.9-94.3C629 83.6 571.4 72 512 72c-19.9 0-36-16.1-36-36s16.1-36 36-36c69.1 0 136.2 13.5 199.3 40.3C772.3 66 827 103 874 150c47 47 83.9 101.8 109.7 162.7 26.7 63.1 40.2 130.2 40.2 199.3.1 19.9-16 36-35.9 36z\"></path></svg>");
 }

@@ -9,6 +9,8 @@
         @if (ShowEditor)
         {
             <EditInputShell IsInvalid=@IsInvalid
+                            IsDisabled=@IsDisabled
+                            WrapperClass=@(EditInputShell.SizeClass(Size))
                             Prefix=@Prefix
                             Suffix=@Suffix
                             AllowClear=@AllowClear

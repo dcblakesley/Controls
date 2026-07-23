@@ -152,11 +152,15 @@
             a bare filter strip (no pane content); give a <code>Tab</code> child content to render
             the active pane below the strip.
         </p>
-        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
             <SearchInput @bind-Value="_poSearch" AddonLabel="POs" OnSearch="@(v => _lastSearch = $"POs: {v}")"
                          Id="demo-search-pos" Width="240px" />
             <SearchInput @bind-Value="_skuSearch" AddonLabel="SKUs" OnSearch="@(v => _lastSearch = $"SKUs: {v}")"
-                         Id="demo-search-skus" Width="240px" />
+                         Id="demo-search-skus" Width="240px" Loading="@_skuSearchLoading" />
+            <button class="wss-dialog-btn" type="button" data-test-id="toggle-sku-search-loading"
+                    @onclick="@(() => _skuSearchLoading = !_skuSearchLoading)">
+                Toggle SKU search Loading
+            </button>
         </div>
         <Tabs @bind-ActiveKey="_activeTab" Id="demo-tabs" TablistLabel="Shipment filters">
             <Tab Key="overdue" Title="Overdue" Count="12" />
@@ -544,6 +548,7 @@
     string? _poSearch;
     string? _skuSearch;
     string _lastSearch = "—";
+    bool _skuSearchLoading;
 
     // --- Pill-select demo ---
     string _shipmentFilter = "all";

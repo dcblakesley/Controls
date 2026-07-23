@@ -2049,6 +2049,13 @@
 .wss-msg-icon-error { color: var(--wss-color-error); }
 .wss-msg-icon-loading { color: var(--wss-color-primary); animation: wss-msg-spin 1s linear infinite; }
 
+/* Generic reusable spin utility -- reuses the wss-msg-spin keyframe below rather than defining a
+   second, identical one. First consumer: SearchInput's Loading state (wraps EditIcons.LoadingSpinner,
+   which ships with no animation baked in -- see its doc comment in Controls/Helpers/EditIcons.cs). */
+.wss-icon-spin {
+    animation: wss-msg-spin 1s linear infinite;
+}
+
 @keyframes wss-msg-in {
     from { transform: translateY(-100%); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
@@ -3128,7 +3135,8 @@
     .wss-notification,
     .wss-skeleton-active .wss-skeleton-title,
     .wss-skeleton-active .wss-skeleton-paragraph > li,
-    .wss-msg-icon-loading {
+    .wss-msg-icon-loading,
+    .wss-icon-spin {
         animation: none;
     }
 

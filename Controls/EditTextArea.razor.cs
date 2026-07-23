@@ -46,6 +46,17 @@ public partial class EditTextArea : EditControlBase<string?>
     /// <summary> AutoSize's maximum height, in text rows. Null means unbounded -- the textarea keeps growing with its content. Inert (no effect) while <see cref="AutoSize"/> is false.</summary>
     [Parameter] public int? MaxRows { get; set; }
 
+    /// <summary>
+    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
+    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the textarea's class in both legacy
+    /// and affix mode, and to the shell's affix wrapper in affix mode (via
+    /// <see cref="EditInputShell.WrapperClass"/>). Only padding/font change for a textarea -- height
+    /// is never locked (<see cref="Rows"/>/<see cref="AutoSize"/> still govern it). Unthemed these are
+    /// inert hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes them.
+    /// <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
+    /// </summary>
+    [Parameter] public SelectSize Size { get; set; }
+
     [Inject] IJSRuntime JS { get; set; } = default!;
 
     // Captures the <textarea> so Clear() can refocus it directly -- same reasoning as
@@ -92,6 +103,8 @@ public partial class EditTextArea : EditControlBase<string?>
             var classes = "edit-input edit-textarea-input";
             if (UseAffixLayout) classes += " edit-affix-input";
             if (AutoSize) classes += " edit-textarea-autosize";
+            var sizeClass = EditInputShell.SizeClass(Size);
+            if (sizeClass is not null) classes += $" {sizeClass}";
             return $"{classes} {CssClass}";
         }
     }

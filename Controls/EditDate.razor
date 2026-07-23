@@ -8,11 +8,13 @@
 
         @if (ShowEditor)
         {
-            <EditInputShell IsInvalid=@IsInvalid>
+            <EditInputShell IsInvalid=@IsInvalid
+                            IsDisabled=@IsDisabled
+                            WrapperClass=@(EditInputShell.SizeClass(Size))>
                 <input type=@HtmlInputType
                        @bind-value=@CurrentValueAsString
                        @bind-value:event="onchange"
-                       class=@($"edit-input edit-date-input {CssClass}")
+                       class=@InputClass
                        style="padding-inline-end: 2rem"
                        id=@_id
                        data-test-id=@_id

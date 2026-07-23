@@ -34,6 +34,15 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// <summary> Optional custom trailing affix content, rendered by <see cref="EditInputShell"/> after the (absent, for EditNumber) clear button and character count. Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Suffix { get; set; }
 
+    /// <summary>
+    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
+    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the input's class in both legacy and
+    /// affix mode, and to the shell's affix wrapper in affix mode (via <see cref="EditInputShell.WrapperClass"/>).
+    /// Unthemed these are inert hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes
+    /// them. <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
+    /// </summary>
+    [Parameter] public SelectSize Size { get; set; }
+
     /// <summary> Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal places).</summary>
     [Parameter] public string? Format { get; set; }
 
@@ -49,13 +58,23 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, false, null, false);
 
     /// <summary>
-    /// The input's <c>class</c> attribute. Legacy mode reproduces today's exact string (so a
-    /// no-new-params render stays byte-identical); affix mode adds <c>edit-affix-input</c> per
-    /// <see cref="EditInputShell"/>'s contract.
+    /// The input's <c>class</c> attribute. Legacy mode with <see cref="Size"/> at its default
+    /// reproduces today's exact string (so a no-new-params render stays byte-identical); affix mode
+    /// adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a non-default
+    /// <see cref="Size"/> appends its <see cref="EditInputShell.SizeClass"/> token.
     /// </summary>
-    string InputClass => UseAffixLayout
-        ? $"edit-input edit-number-input edit-affix-input {CssClass}"
-        : $"edit-input edit-number-input {CssClass}";
+    string InputClass
+    {
+        get
+        {
+            var classes = UseAffixLayout
+                ? "edit-input edit-number-input edit-affix-input"
+                : "edit-input edit-number-input";
+            var sizeClass = EditInputShell.SizeClass(Size);
+            if (sizeClass is not null) classes += $" {sizeClass}";
+            return $"{classes} {CssClass}";
+        }
+    }
 
     protected override void OnInitialized()
     {

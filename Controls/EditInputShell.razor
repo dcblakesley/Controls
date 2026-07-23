@@ -13,12 +13,17 @@
      suffix span — its own line under the editor, matching AntD TextArea's showCount placement —
      and is omitted from inside <span class="edit-input-suffix">.
 
+   Slice S4 additions (opt-in `.edit-theme`, Size): the affix wrapper also carries
+   `edit-input-affix-disabled` while <see cref="IsDisabled"/> is set, and whatever
+   <see cref="WrapperClass"/> the host passes (its Size token) -- both no-ops unthemed, styled only
+   under `.edit-theme` (see edit-controls.css's opt-in theme section).
+
    See CLAUDE.md's CSS section and edit-controls.css's "Input + InvalidIcon wrapper" comment for the
    structural contract this markup must not silently drift from. *@
 
 @if (UseAffixLayout)
 {
-    <div class="edit-input-affix-wrapper @(IsInvalid ? "edit-input-affix-invalid" : null)">
+    <div class="edit-input-affix-wrapper @(IsInvalid ? "edit-input-affix-invalid" : null) @(IsDisabled ? "edit-input-affix-disabled" : null) @WrapperClass">
         @if (Prefix is not null)
         {
             <span class="edit-input-prefix">@Prefix</span>

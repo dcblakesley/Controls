@@ -1,3 +1,4 @@
+using Controls.Helpers;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace Controls;
@@ -9,7 +10,8 @@ namespace Controls;
 /// Enter and on the button; <see cref="Value"/> supports <c>@bind-Value</c> (updates per keystroke).
 /// </summary>
 /// <remarks>Not a form control (no <c>InputBase</c>/validation wiring) — it's a filter/toolbar
-/// widget. For a validated form text field use <c>EditString</c>.</remarks>
+/// widget. For a validated form text field use <c>EditString</c>. <see cref="Loading"/> swaps the
+/// button glyph for a spinner while a search is in flight.</remarks>
 public partial class SearchInput
 {
     /// <summary>The search text. Supports <c>@bind-Value</c>; updates on every keystroke.</summary>
@@ -32,6 +34,14 @@ public partial class SearchInput
 
     /// <summary>Disables the input and the search button.</summary>
     [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// While true, the search button shows a spinning <see cref="EditIcons.LoadingSpinner"/> instead
+    /// of its search glyph, is itself <c>disabled</c>, and carries <c>aria-busy="true"</c>. Enter and
+    /// the button both no-op (<see cref="RaiseSearchAsync"/> checks this the same way it checks
+    /// <see cref="Disabled"/>) -- the input itself stays enabled/editable while a search is pending.
+    /// </summary>
+    [Parameter] public bool Loading { get; set; }
 
     /// <summary>Control width as a CSS length (e.g. "240px", "100%"). Null (default) keeps the stylesheet width.</summary>
     [Parameter] public string? Width { get; set; }
@@ -57,6 +67,13 @@ public partial class SearchInput
     // AntD SearchOutlined glyph (no icon-font dependency, matching the kit's other inline icons).
     static readonly MarkupString SearchIcon = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M909.6 854.5L649.9 594.8C690.2 542.7 712 479 712 412c0-80.2-31.3-155.4-87.9-212.1-56.6-56.7-132-87.9-212.1-87.9s-155.5 31.3-212.1 87.9C143.2 256.5 112 331.8 112 412c0 80.1 31.3 155.5 87.9 212.1C256.5 680.8 331.8 712 412 712c67 0 130.6-21.8 182.7-62l259.7 259.6a8.2 8.2 0 0011.6 0l43.6-43.5a8.2 8.2 0 000-11.6zM570.4 570.4C528 612.7 471.8 636 412 636s-116-23.3-158.4-65.6C211.3 528 188 471.8 188 412s23.3-116.1 65.6-158.4C296 211.3 352.2 188 412 188s116.1 23.2 158.4 65.6S636 352.2 636 412s-23.3 116.1-65.6 158.4z\"/></svg>");
+
+    // EditIcons.LoadingSpinner ships with no spin animation baked in (a static glyph, by design --
+    // see its doc comment); wrapping it in .wss-icon-spin (wss-controls.css, reusing the existing
+    // wss-msg-spin keyframe rather than defining a second one) is what actually rotates it. Built
+    // once via MarkupString's ToString() override (returns .Value, the raw SVG markup) rather than
+    // per-render string concatenation.
+    static readonly MarkupString LoadingIcon = new($"<span class=\"wss-icon-spin\">{EditIcons.LoadingSpinner}</span>");
 
     string? WidthStyle => string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
 
@@ -89,7 +106,7 @@ public partial class SearchInput
 
     async Task RaiseSearchAsync()
     {
-        if (Disabled) return;
+        if (Disabled || Loading) return;
         if (OnSearch.HasDelegate) await OnSearch.InvokeAsync(Value);
     }
 }

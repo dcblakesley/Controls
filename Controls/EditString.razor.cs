@@ -51,6 +51,15 @@ public partial class EditString : EditControlBase<string?>
     /// <summary> Renders the input as <c>type="password"</c> with a show/hide toggle (via <see cref="EditInputShell"/>). Independent of the read-only <see cref="MaskText"/> feature.</summary>
     [Parameter] public bool IsPassword { get; set; }
 
+    /// <summary>
+    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
+    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the input's class in both legacy and
+    /// affix mode, and to the shell's affix wrapper in affix mode (via <see cref="EditInputShell.WrapperClass"/>).
+    /// Unthemed these are inert hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes
+    /// them. <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
+    /// </summary>
+    [Parameter] public SelectSize Size { get; set; }
+
     bool _showMaskedValue;
     bool _passwordRevealed;
     // Captures the <input> so Clear() can refocus it directly -- unlike EditFile's RemoveFile, the
@@ -84,13 +93,23 @@ public partial class EditString : EditControlBase<string?>
     bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, IsPassword);
 
     /// <summary>
-    /// The input's <c>class</c> attribute. Legacy mode reproduces today's exact string (so a
-    /// no-new-params render stays byte-identical); affix mode adds <c>edit-affix-input</c> per
-    /// <see cref="EditInputShell"/>'s contract.
+    /// The input's <c>class</c> attribute. Legacy mode with <see cref="Size"/> at its default
+    /// reproduces today's exact string (so a no-new-params render stays byte-identical); affix mode
+    /// adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a non-default
+    /// <see cref="Size"/> appends its <see cref="EditInputShell.SizeClass"/> token.
     /// </summary>
-    string InputClass => UseAffixLayout
-        ? $"edit-input edit-string-input edit-affix-input {CssClass}"
-        : $"edit-input edit-string-input {CssClass}";
+    string InputClass
+    {
+        get
+        {
+            var classes = UseAffixLayout
+                ? "edit-input edit-string-input edit-affix-input"
+                : "edit-input edit-string-input";
+            var sizeClass = EditInputShell.SizeClass(Size);
+            if (sizeClass is not null) classes += $" {sizeClass}";
+            return $"{classes} {CssClass}";
+        }
+    }
 
     /// <summary>
     /// The href to render in read-only link mode: the <see cref="Url"/> when it is relative or uses an

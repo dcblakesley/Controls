@@ -70,6 +70,24 @@ public partial class EditInputShell
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>
+    /// Whether the host control is currently disabled — added as <c>edit-input-affix-disabled</c> to
+    /// the affix wrapper. There's no <c>:disabled</c> pseudo-class for a wrapper <c>div</c>, so the
+    /// four hosts (EditString/EditNumber/EditTextArea/EditDate) pass their own <c>IsDisabled</c>
+    /// through unconditionally and the <c>.edit-theme</c> opt-in theme keys off this class instead —
+    /// the same C#-owned-class approach <c>Select</c>'s <c>wss-select-disabled</c> uses. No effect in
+    /// legacy mode (the wrapper doesn't render there; the editor's own native <c>:disabled</c> covers
+    /// unthemed and themed styling).
+    /// </summary>
+    [Parameter] public bool IsDisabled { get; set; }
+
+    /// <summary>
+    /// Extra class(es) appended to the affix wrapper's class list — e.g. a host's <see cref="SizeClass"/>
+    /// token, so <c>edit-input-sm</c>/<c>edit-input-lg</c> land on the themed wrapper the same way
+    /// they land on the editor. No effect in legacy mode (the wrapper doesn't render there).
+    /// </summary>
+    [Parameter] public string? WrapperClass { get; set; }
+
+    /// <summary>
     /// True when any affix feature is in use — the single computation site both the shell and its
     /// hosts must agree on. Hosts call this with their own parameter values (before setting any of
     /// them, so today's controls always get <c>false</c>) to decide whether to drop the inline
@@ -78,6 +96,20 @@ public partial class EditInputShell
     /// </summary>
     public static bool UsesAffixLayout(RenderFragment? prefix, RenderFragment? suffix, bool allowClear, string? countText, bool showPasswordToggle) =>
         prefix is not null || suffix is not null || allowClear || countText is not null || showPasswordToggle;
+
+    /// <summary>
+    /// Maps <see cref="SelectSize"/> (shared with the <c>Select</c> family) to the <c>.edit-theme</c>
+    /// size class token, or null for <see cref="SelectSize.Default"/> (adds no class, so a
+    /// no-new-params render stays byte-identical). Single computation site for all four Size-bearing
+    /// hosts (EditString/EditNumber/EditTextArea/EditDate) — each appends this to its own editor
+    /// class string and passes it through as <see cref="WrapperClass"/>.
+    /// </summary>
+    public static string? SizeClass(SelectSize size) => size switch
+    {
+        SelectSize.Small => "edit-input-sm",
+        SelectSize.Large => "edit-input-lg",
+        _ => null
+    };
 
     bool UseAffixLayout => UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, ShowPasswordToggle);
 }

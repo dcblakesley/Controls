@@ -1,0 +1,204 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>Theme (<code>.edit-theme</code>) Demo</h1>
+
+<p style="max-width: 60ch;">
+    <code>.edit-theme</code> is an opt-in ancestor class (slice S4 of the AntD input-parity work) --
+    apply it to any element you own (a whole page, a single form, or an MFE's own render-tree root)
+    to give every <code>EditString</code>/<code>EditNumber</code>/<code>EditTextArea</code>/
+    <code>EditDate</code>/<code>EditSelect*</code> beneath it the AntD 4.x box chrome (border,
+    radius, hover, focus glow) that <code>Select</code>/<code>EditSelectSearch</code> already use.
+    It's render-tree-scoped, not global: nothing outside the <code>&lt;div class="edit-theme"&gt;</code>
+    below is affected, and unthemed controls elsewhere on this same page keep their default look.
+</p>
+
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref="_form">
+    <ObjectGraphDataAnnotationsValidator />
+
+    <div class="edit-theme flex-row flex-wrap">
+
+        <section class="demo-section">
+            <h3>EditString</h3>
+
+            <EditString @bind-Value="_model.BasicString" Description="Plain" />
+
+            <EditString @bind-Value="_model.PrefixSuffixString" Description="Prefix = $, Suffix = .00">
+                <Prefix>$</Prefix>
+                <Suffix>.00</Suffix>
+            </EditString>
+
+            <EditString @bind-Value="_model.ClearableString" Description="AllowClear" AllowClear="true" />
+
+            <EditString @bind-Value="_model.CountedString" Description="MaxLength + ShowCount" MaxLength="30" ShowCount="true" />
+
+            <EditString @bind-Value="_model.PasswordString" Description="IsPassword" IsPassword="true" />
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_stringExample</code></pre>
+        </section>
+
+        <section class="demo-section">
+            <h3>EditNumber</h3>
+
+            <EditNumber @bind-Value="_model.BoundedNumber" Description="Min/Max" Min="0" Max="100" Placeholder="0-100" />
+
+            <EditNumber @bind-Value="_model.NumberWithPrefix" Description="Prefix = $">
+                <Prefix>$</Prefix>
+            </EditNumber>
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_numberExample</code></pre>
+        </section>
+
+        <section class="demo-section">
+            <h3>EditTextArea</h3>
+
+            <EditTextArea @bind-Value="_model.TextAreaValue"
+                          Description="AutoSize + ShowCount"
+                          AutoSize="true" MinRows="2" MaxRows="6"
+                          MaxLength="300" ShowCount="true" />
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_textAreaExample</code></pre>
+        </section>
+
+        <section class="demo-section">
+            <h3>EditDate</h3>
+
+            <EditDate @bind-Value="_model.DateValue" />
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_dateExample</code></pre>
+        </section>
+
+        <section class="demo-section">
+            <h3>EditSelectEnum</h3>
+
+            <EditSelectEnum @bind-Value="_model.SelectValue" />
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_selectExample</code></pre>
+        </section>
+
+        <section class="demo-section">
+            <h3>Sizes (Small / Default / Large)</h3>
+
+            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                <EditString @bind-Value="_model.SmallSize" Label="Small" Size="SelectSize.Small" />
+                <EditString @bind-Value="_model.DefaultSize" Label="Default" />
+                <EditString @bind-Value="_model.LargeSize" Label="Large" Size="SelectSize.Large" />
+            </div>
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_sizesExample</code></pre>
+        </section>
+
+        <section class="demo-section">
+            <h3>Disabled</h3>
+
+            <EditString @bind-Value="_model.DisabledString" Label="Disabled EditString" IsDisabled="true" />
+            <EditNumber @bind-Value="_model.DisabledNumber" Label="Disabled EditNumber" IsDisabled="true" />
+
+            <EditString @bind-Value="_model.DisabledClearable" Label="Disabled + AllowClear (affix wrapper)"
+                        AllowClear="true" IsDisabled="true" />
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_disabledExample</code></pre>
+        </section>
+
+        <section class="demo-section">
+            <h3>Validation error</h3>
+            <p style="margin:0; color:#666;">
+                <code>[Required]</code>, left empty -- validated on every render below, so the red
+                border/focus-glow show immediately without needing to interact with the field.
+            </p>
+
+            <EditString @bind-Value="_model.RequiredString" Label="Required EditString" />
+
+            <h3>Markup</h3>
+            <pre class="code-block"><code>@_validationExample</code></pre>
+
+            <h3>Model</h3>
+            <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+        </section>
+
+    </div>
+</EditForm>
+
+@code {
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    readonly DemoEditThemeModel _model = new();
+
+    public class DemoEditThemeModel
+    {
+        public string BasicString { get; set; } = "Hello";
+        public string PrefixSuffixString { get; set; } = "19";
+        public string ClearableString { get; set; } = "Clear me";
+        public string CountedString { get; set; } = "Hi";
+        public string PasswordString { get; set; } = "secret";
+
+        public int BoundedNumber { get; set; } = 40;
+        public decimal NumberWithPrefix { get; set; } = 19.99m;
+
+        public string TextAreaValue { get; set; } = "Type more to grow me -- try pasting a few lines.";
+
+        public DateTime DateValue { get; set; } = DateTime.Today;
+
+        public Animal SelectValue { get; set; }
+
+        public string SmallSize { get; set; } = "";
+        public string DefaultSize { get; set; } = "";
+        public string LargeSize { get; set; } = "";
+
+        public string DisabledString { get; set; } = "Can't touch this";
+        public int DisabledNumber { get; set; } = 42;
+        public string DisabledClearable { get; set; } = "Also can't touch this";
+
+        [Required] public string RequiredString { get; set; } = "";
+    }
+
+    readonly string _stringExample = @"<div class=""edit-theme"">
+    <EditString @bind-Value=""_model.BasicString"" />
+
+    <EditString @bind-Value=""_model.PrefixSuffixString"">
+        <Prefix>$</Prefix>
+        <Suffix>.00</Suffix>
+    </EditString>
+
+    <EditString @bind-Value=""_model.ClearableString"" AllowClear=""true"" />
+
+    <EditString @bind-Value=""_model.CountedString"" MaxLength=""30"" ShowCount=""true"" />
+
+    <EditString @bind-Value=""_model.PasswordString"" IsPassword=""true"" />
+</div>";
+
+    readonly string _numberExample = @"<EditNumber @bind-Value=""_model.BoundedNumber"" Min=""0"" Max=""100"" Placeholder=""0-100"" />
+
+<EditNumber @bind-Value=""_model.NumberWithPrefix"">
+    <Prefix>$</Prefix>
+</EditNumber>";
+
+    readonly string _textAreaExample = @"<EditTextArea @bind-Value=""_model.TextAreaValue""
+              AutoSize=""true"" MinRows=""2"" MaxRows=""6""
+              MaxLength=""300"" ShowCount=""true"" />";
+
+    readonly string _dateExample = @"<EditDate @bind-Value=""_model.DateValue"" />";
+
+    readonly string _selectExample = @"<EditSelectEnum @bind-Value=""_model.SelectValue"" />";
+
+    readonly string _sizesExample = @"<EditString @bind-Value=""_model.SmallSize"" Size=""SelectSize.Small"" />
+<EditString @bind-Value=""_model.DefaultSize"" />
+<EditString @bind-Value=""_model.LargeSize"" Size=""SelectSize.Large"" />";
+
+    readonly string _disabledExample = @"<EditString @bind-Value=""_model.DisabledString"" IsDisabled=""true"" />
+<EditNumber @bind-Value=""_model.DisabledNumber"" IsDisabled=""true"" />
+
+<EditString @bind-Value=""_model.DisabledClearable"" AllowClear=""true"" IsDisabled=""true"" />";
+
+    readonly string _validationExample = @"<EditString @bind-Value=""_model.RequiredString"" />";
+
+    readonly string _validationModel = @"[Required]
+public string RequiredString { get; set; } = """";";
+}

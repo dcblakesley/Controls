@@ -25,6 +25,32 @@ public partial class EditDate<[DynamicallyAccessedMembers(DynamicallyAccessedMem
     /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
 
+    /// <summary>
+    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
+    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the input's class. EditDate never
+    /// enters the shell's affix mode (no Prefix/Suffix/clear/count/password params), so the wrapper
+    /// class is passed through for consistency but never actually renders. Unthemed these are inert
+    /// hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes them.
+    /// <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
+    /// </summary>
+    [Parameter] public SelectSize Size { get; set; }
+
+    /// <summary>
+    /// The input's <c>class</c> attribute. <see cref="Size"/> at its default reproduces today's exact
+    /// string (byte-identical legacy DOM); otherwise appends <see cref="EditInputShell.SizeClass"/>'s
+    /// token.
+    /// </summary>
+    string InputClass
+    {
+        get
+        {
+            var classes = "edit-input edit-date-input";
+            var sizeClass = EditInputShell.SizeClass(Size);
+            if (sizeClass is not null) classes += $" {sizeClass}";
+            return $"{classes} {CssClass}";
+        }
+    }
+
     protected override void OnInitialized()
     {
         base.OnInitialized();

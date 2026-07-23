@@ -32,5 +32,6 @@
            @onkeydown="OnKeyDownAsync" />
 
     <button type="button" class="wss-search-btn" aria-label="@SearchButtonLabel"
-            disabled="@Disabled" @onclick="RaiseSearchAsync">@SearchIcon</button>
+            disabled="@(Disabled || Loading)" aria-busy="@(Loading ? "true" : null)"
+            @onclick="RaiseSearchAsync">@(Loading ? LoadingIcon : SearchIcon)</button>
 </div>
