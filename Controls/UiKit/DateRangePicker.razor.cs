@@ -95,10 +95,11 @@ public partial class DateRangePicker : PickerBase
     /// exact format first, then with the current culture's general date parsing. Null (default)
     /// picks <see cref="Mode"/>'s default (same values as <see cref="DatePicker.Format"/>'s):
     /// <c>Date</c> <c>MM/dd/yyyy</c> (the Figma spec) · <c>Month</c> <c>MM/yyyy</c> · <c>Year</c>
-    /// <c>yyyy</c>. <c>Quarter</c> has no .NET format token for a quarter number: left null, it
-    /// renders/parses <c>yyyy-Qn</c> (e.g. "2026-Q3") via a hand-rolled special case instead of
+    /// <c>yyyy</c>. <c>Quarter</c> and <c>Week</c> have no .NET format token for a quarter number or
+    /// an ISO-style week number: left null, they render/parse <c>yyyy-Qn</c> (e.g. "2026-Q3") /
+    /// <c>yyyy-Www</c> (e.g. "2026-W08") via a hand-rolled special case instead of
     /// <see cref="DateTime.ToString(string)"/>; set explicitly, it is used verbatim via
-    /// <c>ToString</c> and therefore can't render the quarter digit itself.</summary>
+    /// <c>ToString</c> and therefore can't render the quarter/week digits itself.</summary>
     [Parameter] public string? Format { get; set; }
 
     /// <summary>Placeholder for the start input. Null (default) shows the uppercased
@@ -118,9 +119,10 @@ public partial class DateRangePicker : PickerBase
     /// <summary>Field width as a CSS length (e.g. "280px", "100%"). Null (default) keeps the stylesheet width.</summary>
     [Parameter] public string? Width { get; set; }
 
-    /// <summary>First day of the week for the calendar grids (<see cref="DatePickerMode.Date"/>
-    /// only). Null (default) follows <see cref="CultureInfo.CurrentCulture"/>. (The Figma mock's
-    /// Monday start is the AntD kit's default-locale artifact, not a design decision — same
+    /// <summary>First day of the week for the calendar grids (<see cref="DatePickerMode.Date"/> and
+    /// <see cref="DatePickerMode.Week"/> only -- the latter also uses it to compute each row's own
+    /// week start). Null (default) follows <see cref="CultureInfo.CurrentCulture"/>. (The Figma
+    /// mock's Monday start is the AntD kit's default-locale artifact, not a design decision — same
     /// category as its DM Sans font.)</summary>
     [Parameter] public DayOfWeek? FirstDayOfWeek { get; set; }
 
