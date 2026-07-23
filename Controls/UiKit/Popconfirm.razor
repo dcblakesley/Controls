@@ -68,7 +68,10 @@
     /// <see cref="Task"/> is already complete) keeps today's immediate-close feel. A genuinely
     /// pending <see cref="Task"/> (checked via <see cref="Task.IsCompleted"/> right after invoking)
     /// instead keeps the popup open with both buttons disabled and a spinner in the OK button until
-    /// it completes; an exception closes the popup and rethrows (never swallowed).
+    /// it completes; an exception closes the popup and rethrows (never swallowed). While pending,
+    /// Escape, the backdrop, and the (already-disabled) Cancel button all wait/no-op rather than
+    /// closing the popup and firing <see cref="OnCancel"/> out from under the still-running task --
+    /// see <see cref="Visible"/> for the equivalent guard on an external controlled close.
     /// </summary>
     [Parameter] public EventCallback OnConfirm { get; set; }
     /// <summary>Raised when the popup is cancelled (Cancel button or Escape inside the panel).</summary>
@@ -87,8 +90,12 @@
     /// change routes through the same open/close path as user interaction (JS placement/focus still
     /// run), and every open/close (external or internal) raises <see cref="VisibleChanged"/> back. An
     /// echo of a value this component just raised is recognized and ignored. Ignored (and never
-    /// echoed back as true) while <see cref="Disabled"/>. With no delegate on
-    /// <see cref="VisibleChanged"/> (the default, uncontrolled case), this parameter is inert.
+    /// echoed back as true) while <see cref="Disabled"/>. Also ignored while a genuinely pending
+    /// <see cref="OnConfirm"/> task holds the popup open (the pending-confirm lock) -- an external
+    /// <c>Visible = false</c> during that window waits rather than closing the popup out from under
+    /// the in-flight task; the popup closes itself (raising <see cref="VisibleChanged"/>) once the
+    /// task settles. With no delegate on <see cref="VisibleChanged"/> (the default, uncontrolled
+    /// case), this parameter is inert.
     /// </summary>
     [Parameter] public bool Visible { get; set; }
     /// <summary>Raised on every open/close (external or internal). Supports <c>@bind-Visible</c>; see <see cref="Visible"/>.</summary>
@@ -157,7 +164,13 @@
         await SetOpenAsync(!_open);
     }
 
-    async Task CloseAsync() => await SetOpenAsync(false);
+    // Pending-confirm lock: a backdrop click while _confirmLoading waits/no-ops instead of closing
+    // out from under the in-flight OnConfirm task -- see CancelAsync.
+    async Task CloseAsync()
+    {
+        if (_confirmLoading) return;
+        await SetOpenAsync(false);
+    }
 
     // Escape only: Enter/Space activation comes from the child's native click (or the JS fallback
     // synthesizing one for plain content) bubbling into @onclick — handling the keys here as well
@@ -215,6 +228,12 @@
 
     async Task CancelAsync()
     {
+        // Pending-confirm lock: while a genuinely pending OnConfirm has both buttons disabled and a
+        // spinner running, Escape (routed here via OnPanelKeyDown) and the Cancel button (already
+        // `disabled` in markup, but guarded here too for a programmatic/test dispatch) wait/no-op
+        // instead of closing and firing OnCancel while OnConfirm keeps running unobserved. The popup
+        // closes itself -- via ConfirmAsync's own SetOpenAsync(false) -- once the task settles.
+        if (_confirmLoading) return;
         await SetOpenAsync(false);
         if (OnCancel.HasDelegate) await OnCancel.InvokeAsync();
     }
@@ -225,7 +244,7 @@
     // popup regardless of control mode.
     protected override async Task OnParametersSetAsync()
     {
-        if (Disabled && _open)
+        if (Disabled && _open && !_confirmLoading)
         {
             await SetOpenAsync(false); // close through the normal path so VisibleChanged fires
         }
@@ -248,6 +267,16 @@
             // observed/honored, so it must still read as "new" once Disabled clears -- otherwise a
             // consumer holding Visible=true the whole time through a Disabled episode would compare
             // equal against this stale recording when Disabled clears and never reopen.
+            return;
+        }
+
+        if (_confirmLoading)
+        {
+            // A pending OnConfirm holds the popup open regardless of external intent (mirrors the
+            // Escape/backdrop lock in CancelAsync/CloseAsync) -- an external Visible=false here would
+            // otherwise close the popup out from under the in-flight task. Not recorded for the same
+            // reason as the Disabled branch above: ConfirmAsync's own SetOpenAsync(false) once the
+            // task resolves raises VisibleChanged and re-syncs _lastVisibleParam correctly on its own.
             return;
         }
 

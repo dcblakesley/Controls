@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
 
@@ -116,6 +117,83 @@ public class PopconfirmPopoverParityTests : TestContext
 
         // Drain the background dispatch so the test doesn't leave an unobserved faulted task.
         try { await clickTask; } catch { /* already asserted above */ }
+    }
+
+    [Fact]
+    public async Task Popconfirm_pending_confirm_locks_out_Escape_backdrop_and_Cancel_then_closes_once_on_completion()
+    {
+        var tcs = new TaskCompletionSource();
+        var cancelled = false;
+        var raised = new List<bool>();
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, async () => { await tcs.Task; }))
+            .Add(pc => pc.OnCancel, EventCallback.Factory.Create(this, () => cancelled = true))
+            .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, v => raised.Add(v)))
+            .AddChildContent("<button>del</button>"));
+
+        cut.Find(".wss-popconfirm-trigger").Click();
+        var okButton = cut.FindAll(".wss-popconfirm-buttons .wss-dialog-btn")[1];
+
+        var clickTask = Task.Run(() => okButton.Click());
+        cut.WaitForState(() => cut.FindAll(".wss-popconfirm-buttons .wss-dialog-btn-primary")
+            .FirstOrDefault()?.HasAttribute("disabled") == true, TimeSpan.FromSeconds(5));
+        raised.Clear(); // drop the open notification -- only care about what happens from here
+
+        // Escape while pending -- still open, OnCancel not fired.
+        cut.Find(".wss-popconfirm").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        Assert.NotEmpty(cut.FindAll(".wss-popconfirm"));
+        Assert.False(cancelled);
+        Assert.Empty(raised);
+
+        // Backdrop click while pending -- same.
+        cut.Find(".wss-popconfirm-backdrop").Click();
+        Assert.NotEmpty(cut.FindAll(".wss-popconfirm"));
+        Assert.False(cancelled);
+        Assert.Empty(raised);
+
+        // Cancel button click while pending -- same (defense-in-depth beyond the `disabled` attribute).
+        cut.FindAll(".wss-popconfirm-buttons .wss-dialog-btn")[0].Click();
+        Assert.NotEmpty(cut.FindAll(".wss-popconfirm"));
+        Assert.False(cancelled);
+        Assert.Empty(raised);
+
+        tcs.SetResult();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".wss-popconfirm")), TimeSpan.FromSeconds(5));
+        await clickTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal([false], raised); // exactly one close notification, from ConfirmAsync completing
+        Assert.False(cancelled); // never routed through CancelAsync/OnCancel
+    }
+
+    [Fact]
+    public async Task Popconfirm_pending_confirm_ignores_an_external_Visible_false_request()
+    {
+        var raised = new List<bool>();
+        var tcs = new TaskCompletionSource();
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .Add(pc => pc.Visible, true)
+            .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, v => raised.Add(v)))
+            .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, async () => { await tcs.Task; }))
+            .AddChildContent("<button>del</button>"));
+
+        Assert.NotEmpty(cut.FindAll(".wss-popconfirm")); // controlled Visible=true opens on first render
+
+        var okButton = cut.FindAll(".wss-popconfirm-buttons .wss-dialog-btn")[1];
+        var clickTask = Task.Run(() => okButton.Click());
+        cut.WaitForState(() => cut.FindAll(".wss-popconfirm-buttons .wss-dialog-btn-primary")
+            .FirstOrDefault()?.HasAttribute("disabled") == true, TimeSpan.FromSeconds(5));
+        raised.Clear();
+
+        // External Visible=false while a confirm is pending -- must wait, not close out from under it.
+        cut.SetParametersAndRender(p => p.Add(pc => pc.Visible, false));
+        Assert.NotEmpty(cut.FindAll(".wss-popconfirm"));
+        Assert.Empty(raised);
+
+        tcs.SetResult();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".wss-popconfirm")), TimeSpan.FromSeconds(5));
+        await clickTask.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal([false], raised); // closes itself once the task completes
     }
 
     // ----- Popconfirm: controlled Visible/VisibleChanged ---------------------------------------
