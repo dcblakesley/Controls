@@ -751,6 +751,13 @@
     padding: 15px 15px 15px 24px;
 }
 
+/* Alert.Banner: full-width, borderless, square-cornered (AntD's `Alert banner`). */
+.wss-alert-banner {
+    width: 100%;
+    border: none;
+    border-radius: 0;
+}
+
 .wss-alert-icon {
     display: inline-flex;
     margin-right: 8px;
@@ -781,6 +788,15 @@
     font-size: var(--wss-font-size);
 }
 
+/* Alert.Action: groups the action slot + close button on the trailing edge (only rendered when
+   Action is set — see Alert.razor's else-branch for the plain close-button-only markup). */
+.wss-alert-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 8px;
+}
+
 .wss-alert-close {
     display: inline-flex;
     align-items: center;
@@ -791,6 +807,10 @@
     background: transparent;
     border: none;
     cursor: pointer;
+}
+
+.wss-alert-actions .wss-alert-close {
+    margin-left: 0; /* the actions wrapper's own gap already spaces it from the action slot */
 }
 
 .wss-alert-close:hover {

@@ -13,6 +13,10 @@
         <Alert Type="AlertType.Warning" Message="Warning — check this." />
         <Alert Type="AlertType.Error" Message="Error — something failed." Closable="true" />
         <Alert Type="AlertType.Info" Message="With description" Description="A longer explanation under the message." />
+        <Alert Banner="true" Message="Banner mode — full-width, no border/radius, defaults to warning severity." />
+        <Alert Message="With an action slot" Closable="true">
+            <Action><button class="wss-dialog-btn wss-dialog-btn-sm" data-test-id="alert-action-btn">Undo</button></Action>
+        </Alert>
     </section>
 
     <section class="demo-section">

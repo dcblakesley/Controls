@@ -59,6 +59,68 @@ public class UiKitLeafControlsTests : TestContext
     }
 
     [Fact]
+    public void Alert_banner_adds_the_modifier_class_only_when_set()
+    {
+        var plain = RenderComponent<Alert>(p => p.Add(a => a.Message, "x"));
+        Assert.DoesNotContain("wss-alert-banner", plain.Find(".wss-alert").ClassList);
+
+        var banner = RenderComponent<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Banner, true));
+        Assert.Contains("wss-alert-banner", banner.Find(".wss-alert").ClassList);
+    }
+
+    [Fact]
+    public void Alert_banner_with_no_explicit_Type_defaults_to_warning_severity()
+    {
+        var cut = RenderComponent<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Banner, true));
+        Assert.Contains("wss-alert-warning", cut.Find(".wss-alert").ClassList);
+    }
+
+    [Fact]
+    public void Alert_banner_with_an_explicit_Type_is_left_alone()
+    {
+        var cut = RenderComponent<Alert>(p => p
+            .Add(a => a.Message, "x")
+            .Add(a => a.Banner, true)
+            .Add(a => a.Type, AlertType.Info)); // explicit, even though it equals the non-banner default
+
+        Assert.Contains("wss-alert-info", cut.Find(".wss-alert").ClassList);
+        Assert.DoesNotContain("wss-alert-warning", cut.Find(".wss-alert").ClassList);
+    }
+
+    [Fact]
+    public void Alert_non_banner_still_defaults_to_info()
+    {
+        var cut = RenderComponent<Alert>(p => p.Add(a => a.Message, "x"));
+        Assert.Contains("wss-alert-info", cut.Find(".wss-alert").ClassList);
+    }
+
+    [Fact]
+    public void Alert_action_renders_beside_the_close_button_only_when_set()
+    {
+        var plain = RenderComponent<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Closable, true));
+        Assert.Empty(plain.FindAll(".wss-alert-actions"));
+        Assert.NotNull(plain.Find(".wss-alert-close"));
+
+        var withAction = RenderComponent<Alert>(p => p
+            .Add(a => a.Message, "x")
+            .Add(a => a.Closable, true)
+            .Add(a => a.Action, b => b.AddContent(0, "Undo")));
+        Assert.Contains("Undo", withAction.Find(".wss-alert-action").TextContent);
+        Assert.NotNull(withAction.Find(".wss-alert-actions .wss-alert-close"));
+    }
+
+    [Fact]
+    public void Alert_action_without_closable_renders_no_close_button()
+    {
+        var cut = RenderComponent<Alert>(p => p
+            .Add(a => a.Message, "x")
+            .Add(a => a.Action, b => b.AddContent(0, "Undo")));
+
+        Assert.Contains("Undo", cut.Find(".wss-alert-action").TextContent);
+        Assert.Empty(cut.FindAll(".wss-alert-close"));
+    }
+
+    [Fact]
     public void Skeleton_loading_renders_requested_rows()
     {
         var cut = RenderComponent<Skeleton>(p => p.Add(s => s.Rows, 4));
