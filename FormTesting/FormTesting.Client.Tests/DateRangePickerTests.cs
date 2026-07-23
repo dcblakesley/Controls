@@ -713,19 +713,499 @@ public class DateRangePickerTests : TestContext
         }
     }
 
+    // ===================================================================================
+    // Mode="DateTime" -- single-panel pick session (calendar + time row + OK)
+    // ===================================================================================
+    // With time enabled the dual-panel layout is abandoned entirely (see the class remarks): a
+    // single panel edits one endpoint at a time, ending in an OK that confirms the active endpoint
+    // and either advances to the other or (once both are resolved) commits and closes. These tests
+    // use RenderComponent directly rather than the shared RenderPicker helper, since RenderPicker
+    // pins Format to the Date-mode default -- DateTime/Time need their own time-aware default (or an
+    // explicit override) instead.
+
+    static IReadOnlyList<IElement> TimeSelects(IRenderedComponent<DateRangePicker> cut) =>
+        cut.FindAll(".wss-picker-time-row select");
+
+    // The single session panel's own in-month day button -- unlike Day(cut, panel, dayNumber) above,
+    // there is only ever ONE `.wss-picker-month` panel in this mode, so no panel index is needed.
+    static IElement SessionDay(IRenderedComponent<DateRangePicker> cut, int dayNumber) =>
+        cut.FindAll(".wss-picker-day")
+            .First(b => !b.ClassList.Contains("wss-picker-day-outside") &&
+                        b.TextContent == dayNumber.ToString("00", CultureInfo.InvariantCulture));
+
     [Fact]
-    public void DateTime_and_time_modes_render_as_date_for_now()
+    public void Datetime_mode_renders_a_single_calendar_time_row_and_ok_not_dual_panels()
     {
-        // DateTime/Time fold to Date until a later phase (see Mode's own doc comment); Week is its
-        // own mode as of this phase (see the "Mode=Week" region below). Guards EffectiveMode's
-        // fallback switch.
-        foreach (var mode in new[] { DatePickerMode.DateTime, DatePickerMode.Time })
-        {
-            var cut = RenderComponent<DateRangePicker>(p => p.Add(c => c.Mode, mode).Add(c => c.Start, Jan15));
-            Open(cut);
-            Assert.NotEmpty(cut.FindAll(".wss-picker-grid")); // the day grid, not a month/quarter/year grid
-            Assert.Equal(4, cut.FindAll(".wss-picker-month-header select").Count); // month+year selects, doubled
-        }
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-panels")); // no dual-panel wrapper
+        Assert.Single(cut.FindAll(".wss-picker-month")); // exactly one calendar panel
+        Assert.Equal(42, cut.FindAll(".wss-picker-day").Count); // the same fixed 6-row grid as Date mode
+        Assert.Equal(3, TimeSelects(cut).Count); // hour/minute/second
+        Assert.NotEmpty(cut.FindAll(".wss-picker-ok"));
+        Assert.Contains("wss-picker-dropdown-single", cut.Find(".wss-picker-dropdown").ClassList);
+    }
+
+    [Fact]
+    public void Datetime_mode_day_click_sets_the_pending_date_without_firing_either_callback()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15) // anchors the single panel on a known month
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        SessionDay(cut, 20).Click();
+
+        Assert.Null(start);
+        Assert.Null(end);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // still open -- nothing committed yet
+        Assert.Equal("01/20/2025 00:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value")); // preview, midnight default
+    }
+
+    [Fact]
+    public void Datetime_mode_day_click_preserves_the_active_endpoints_pending_time_of_day()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 45, 30)));
+
+        Open(cut);
+        SessionDay(cut, 20).Click(); // a fresh day pick keeps the already-committed time-of-day
+
+        Assert.Equal("01/20/2025 13:45:30", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Datetime_mode_ok_on_a_fresh_start_side_advances_to_the_end_side_without_committing()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut); // active = start (field click)
+        Assert.Contains("wss-picker-slot-active", cut.FindAll(".wss-picker-input-slot")[0].ClassList);
+
+        SessionDay(cut, 10).Click();
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Null(start); // End is still unresolved -- nothing committed
+        Assert.Null(end);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // stays open -- awaiting the end side
+        Assert.Contains("wss-picker-slot-active", cut.FindAll(".wss-picker-input-slot")[1].ClassList); // underline moved
+    }
+
+    [Fact]
+    public void Datetime_mode_second_ok_commits_both_endpoints_and_closes()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15) // anchors the single panel on January 2025
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        SessionDay(cut, 10).Click();
+        TimeSelects(cut)[0].Change("9"); // hour, start side
+        cut.Find(".wss-picker-ok").Click(); // confirms start; End unset -- advances
+
+        SessionDay(cut, 20).Click(); // same panel (still January) -- end side
+        TimeSelects(cut)[0].Change("14"); // hour, end side
+        cut.Find(".wss-picker-ok").Click(); // both resolved -- commits + closes
+
+        Assert.Equal(new DateTime(2025, 1, 10, 9, 0, 0), start);
+        Assert.Equal(new DateTime(2025, 1, 20, 14, 0, 0), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Datetime_mode_a_backwards_pair_swaps_on_the_final_ok()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        SessionDay(cut, 20).Click(); // start side picks the LATER day first...
+        TimeSelects(cut)[0].Change("14");
+        cut.Find(".wss-picker-ok").Click();
+
+        SessionDay(cut, 10).Click(); // ...end side picks the EARLIER day
+        TimeSelects(cut)[0].Change("9");
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Equal(new DateTime(2025, 1, 10, 9, 0, 0), start); // swapped to the earlier value
+        Assert.Equal(new DateTime(2025, 1, 20, 14, 0, 0), end);
+    }
+
+    [Fact]
+    public void Datetime_mode_escape_mid_session_discards_pending_state_and_keeps_committed_values()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3));
+
+        Open(cut);
+        SessionDay(cut, 20).Click();
+        TimeSelects(cut)[0].Change("14");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+        Assert.Equal(Jan15, cut.Instance.Start);
+        Assert.Equal(Feb3, cut.Instance.End);
+
+        // Reopening starts a brand-new session -- no ghost of the discarded pick survives.
+        Open(cut);
+        Assert.Equal("01/15/2025 00:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Datetime_mode_time_selects_compose_hour_minute_and_second_into_the_pending_value()
+    {
+        DateTime? start = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("13"); // hour
+        TimeSelects(cut)[1].Change("45"); // minute
+        TimeSelects(cut)[2].Change("30"); // second
+
+        Assert.Null(start); // nothing committed yet
+        Assert.Equal("01/15/2025 13:45:30", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Datetime_mode_showseconds_false_hides_the_seconds_select()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.ShowSeconds, false));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(2, selects.Count);
+        Assert.Equal("Hour", selects[0].GetAttribute("aria-label"));
+        Assert.Equal("Minute", selects[1].GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Datetime_mode_showseconds_false_zeroes_a_stale_second_on_time_select_change()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.ShowSeconds, false)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 10, 30, 45))); // a stale 45 seconds
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("13"); // only hour/minute selects exist -- no seconds to change
+
+        Assert.Equal("01/15/2025 13:30:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Datetime_mode_use12hours_renders_a_period_select_and_round_trips_pm()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Use12Hours, true)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 9, 0, 0))); // 9 AM
+
+        Open(cut);
+        var selects = TimeSelects(cut);
+        Assert.Equal(4, selects.Count); // hour, minute, second, period
+        Assert.Equal("AM", selects[3].QuerySelector("option[selected]")!.GetAttribute("value"));
+
+        selects[3].Change("PM");
+
+        Assert.Equal("01/15/2025 21:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value")); // 9 -> 21
+    }
+
+    [Fact]
+    public void Datetime_mode_minutestep_filters_options_and_keeps_an_off_lattice_value_visible()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.MinuteStep, 15)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 10, 37, 0))); // off-lattice bound minute
+
+        Open(cut);
+
+        var options = TimeSelects(cut)[1].QuerySelectorAll("option");
+        Assert.Equal(["0", "15", "30", "37", "45"], options.Select(o => o.GetAttribute("value")));
+        Assert.Equal("37", options.Single(o => o.HasAttribute("selected")).GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Datetime_mode_steps_below_one_clamp_to_one_instead_of_throwing()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.HourStep, 0)
+            .Add(c => c.MinuteStep, -5)
+            .Add(c => c.SecondStep, -1)
+            .Add(c => c.Start, Jan15));
+
+        Open(cut);
+
+        var selects = TimeSelects(cut);
+        Assert.Equal(24, selects[0].QuerySelectorAll("option").Length);
+        Assert.Equal(60, selects[1].QuerySelectorAll("option").Length);
+        Assert.Equal(60, selects[2].QuerySelectorAll("option").Length);
+    }
+
+    [Fact]
+    public void Startdisabledtime_and_enddisabledtime_each_drive_the_time_row_for_their_own_side()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15) // End left unset so the first OK switches sides, not commits
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13])))
+            .Add(c => c.EndDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [8]))));
+
+        Open(cut); // active = start
+
+        var startHourOptions = TimeSelects(cut)[0].QuerySelectorAll("option");
+        Assert.True(startHourOptions.Single(o => o.GetAttribute("value") == "13").HasAttribute("disabled"));
+        Assert.False(startHourOptions.Single(o => o.GetAttribute("value") == "8").HasAttribute("disabled"));
+
+        cut.Find(".wss-picker-ok").Click(); // confirms start -- switches to the end side
+
+        var endHourOptions = TimeSelects(cut)[0].QuerySelectorAll("option");
+        Assert.True(endHourOptions.Single(o => o.GetAttribute("value") == "8").HasAttribute("disabled"));
+        Assert.False(endHourOptions.Single(o => o.GetAttribute("value") == "13").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Startdisabledtime_rejects_a_select_change_that_lands_on_a_disabled_hour()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 10, 0, 0))
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13]))));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("13"); // rejected -- pending stays at the committed hour
+
+        Assert.Equal("01/15/2025 10:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Hidedisabledtimeoptions_omits_other_disabled_hours_but_keeps_the_current_value_visible()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 0, 0)) // the bound hour IS on the disabled list
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13, 14])))
+            .Add(c => c.HideDisabledTimeOptions, true));
+
+        Open(cut);
+
+        var options = TimeSelects(cut)[0].QuerySelectorAll("option");
+        Assert.DoesNotContain(options, o => o.GetAttribute("value") == "14"); // fully hidden -- not the current value
+        var thirteen = options.Single(o => o.GetAttribute("value") == "13"); // never-jump rule -- stays visible
+        Assert.True(thirteen.HasAttribute("disabled"));
+        Assert.NotNull(thirteen.GetAttribute("selected"));
+        Assert.Equal(23, options.Length); // 24 hours minus the one fully-hidden one
+    }
+
+    [Fact]
+    public void Typed_datetime_text_commits_the_endpoint_immediately_bypassing_the_session()
+    {
+        DateTime? start = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        var input = cut.Find(".wss-picker-input-start");
+        input.Input("02/14/2026 13:45:30"); // DateTime mode's default format
+        input.Change("02/14/2026 13:45:30");
+
+        Assert.Equal(new DateTime(2026, 2, 14, 13, 45, 30), start);
+    }
+
+    [Fact]
+    public void Datetime_mode_min_and_max_still_disable_calendar_days()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.Min, new DateTime(2025, 1, 10))
+            .Add(c => c.Max, new DateTime(2025, 1, 20)));
+
+        Open(cut);
+
+        Assert.True(SessionDay(cut, 9).HasAttribute("disabled"));
+        Assert.False(SessionDay(cut, 10).HasAttribute("disabled"));
+        Assert.False(SessionDay(cut, 20).HasAttribute("disabled"));
+        Assert.True(SessionDay(cut, 21).HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Datetime_mode_tints_the_span_between_the_other_endpoint_and_the_pending_day()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)); // End left unset
+
+        Open(cut);
+        SessionDay(cut, 10).Click();
+        cut.Find(".wss-picker-ok").Click(); // confirm start (Jan 10), advance to the end side
+
+        SessionDay(cut, 20).Click(); // pending end day -- tints the span between Jan 10 and Jan 20
+
+        Assert.NotEmpty(cut.FindAll(".wss-picker-cell-preview"));
+    }
+
+    [Fact]
+    public void Datetime_mode_ok_is_disabled_until_a_day_is_picked()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday));
+
+        Open(cut);
+        Assert.True(cut.Find(".wss-picker-ok").HasAttribute("disabled"));
+
+        SessionDay(cut, 10).Click();
+        Assert.False(cut.Find(".wss-picker-ok").HasAttribute("disabled"));
+    }
+
+    // ===================================================================================
+    // Mode="Time" -- pick session with no calendar
+    // ===================================================================================
+
+    [Fact]
+    public void Time_mode_renders_the_time_row_only_with_no_calendar()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-day"));
+        Assert.Empty(cut.FindAll(".wss-picker-month-header"));
+        Assert.Equal(3, TimeSelects(cut).Count);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-ok"));
+    }
+
+    [Fact]
+    public void Time_mode_ok_is_disabled_until_something_is_resolved()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+
+        Open(cut);
+
+        Assert.True(cut.Find(".wss-picker-ok").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Time_mode_full_pick_session_preserves_each_endpoints_own_date_and_defaults_to_today()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 8, 0, 0)) // an existing date to preserve
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut); // active = start
+        TimeSelects(cut)[0].Change("13");
+        cut.Find(".wss-picker-ok").Click(); // confirms start; End unset -- switches to the end side
+
+        Assert.Null(start); // still nothing committed
+
+        TimeSelects(cut)[0].Change("9"); // end side -- no existing date, defaults to today
+        cut.Find(".wss-picker-ok").Click(); // both resolved -- commits + closes
+
+        Assert.Equal(new DateTime(2025, 1, 15, 13, 0, 0), start); // its own existing date preserved
+        Assert.Equal(DateTime.Today.Year, end!.Value.Year);
+        Assert.Equal(DateTime.Today.Month, end.Value.Month);
+        Assert.Equal(DateTime.Today.Day, end.Value.Day);
+        Assert.Equal(9, end.Value.Hour);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Time_mode_typed_commit_preserves_the_endpoints_own_date_and_ignores_min_and_max()
+    {
+        DateTime? start = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 8, 0, 0))
+            .Add(c => c.Min, DateTime.Today.AddDays(1)) // would reject Jan 15 if Min/Max applied
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        var input = cut.Find(".wss-picker-input-start");
+        input.Input("13:45:30");
+        input.Change("13:45:30");
+
+        Assert.Equal(new DateTime(2025, 1, 15, 13, 45, 30), start); // date preserved, Min ignored
+    }
+
+    [Fact]
+    public void Time_mode_typed_commit_defaults_to_today_when_the_endpoint_has_no_existing_value()
+    {
+        DateTime? start = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        var input = cut.Find(".wss-picker-input-start");
+        input.Input("13:45:30");
+        input.Change("13:45:30");
+
+        Assert.NotNull(start);
+        Assert.Equal(DateTime.Today.Year, start!.Value.Year);
+        Assert.Equal(DateTime.Today.Month, start.Value.Month);
+        Assert.Equal(DateTime.Today.Day, start.Value.Day);
+        Assert.Equal(13, start.Value.Hour);
     }
 
     // ===================================================================================

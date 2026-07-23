@@ -13,19 +13,38 @@ namespace Controls;
 /// shows the exact same dual one-month calendars as <c>Date</c> plus a leading week-number column
 /// in both -- there the ROW, not the day, is the selection unit: clicking any day commits its
 /// week's start (per <see cref="EffectiveFirstDayOfWeek"/>), and the range band/hover-preview tint
-/// whole rows instead of individual cells. <c>DateTime</c>/<c>Time</c> render as <c>Date</c> in
-/// this release -- time-of-day support arrives in a later phase of this same effort, before any
-/// NuGet release ships it, so no consumer ever sees the fallback.
-/// Picking the second unit of a range (or a preset) commits the range and closes; typed input
-/// commits on Enter or blur.
+/// whole rows instead of individual cells. Picking the second unit of a range (or a preset) commits
+/// the range and closes; typed input commits on Enter or blur.
 /// </summary>
 /// <remarks>
+/// <para>
+/// <c>DateTime</c>/<c>Time</c> abandon the dual-panel layout the moment time is involved -- AntD
+/// does the same, since two independent per-side clocks alongside a linked two-month calendar reads
+/// as more controls than the picker actually needs. Instead a SINGLE panel edits one endpoint at a
+/// time, matching whichever input (<see cref="_activeInput"/>) is active: <c>DateTime</c> shows a
+/// one-month calendar (prev/next nav on BOTH sides, like <see cref="DatePicker"/>'s own single
+/// panel) with the time row and an OK button below it; <c>Time</c> shows just the time row and OK.
+/// A day click sets the active endpoint's PENDING date (preserving its pending/committed
+/// time-of-day); a time-row change sets its pending time part the same way
+/// <see cref="DatePicker"/>'s own time row composes one, but writes to the pending value instead of
+/// committing immediately -- nothing reaches <see cref="Start"/>/<see cref="End"/> (or fires
+/// <see cref="StartChanged"/>/<see cref="EndChanged"/>) until OK. OK confirms the ACTIVE endpoint's
+/// pending value (falling back to its already-committed value if the session never touched it) and
+/// then: if the OTHER endpoint has neither a pending nor a committed value, switches the session to
+/// it (the active underline moves, the panel re-anchors); otherwise both endpoints are now
+/// resolved, so it commits them together (swapping a backwards pair, same as every other mode) and
+/// closes. Escape/backdrop discards the whole in-progress session and reverts both inputs to their
+/// last committed values. Typed input keeps the ordinary per-endpoint immediate-commit route
+/// (Enter/blur), bypassing the session entirely.
+/// </para>
+/// <para>
 /// Not a form control (no <c>InputBase</c>/validation wiring) — bind with <c>@bind-Start</c> /
 /// <c>@bind-End</c>. JS interop (viewport flip/clamp, form-submit suppression, focus-out close,
 /// arrow-key page-scroll suppression) degrades gracefully: without JS the dropdown opens below the
 /// field at the CSS default placement, everything remains clickable, and arrow-key grid navigation
 /// still updates the roving-tabindex state (just without the DOM focus follow or the native
 /// page-scroll suppression).
+/// </para>
 /// </remarks>
 public partial class DateRangePicker : PickerBase
 {
@@ -56,8 +75,9 @@ public partial class DateRangePicker : PickerBase
     [Parameter] public Expression<Func<DateTime?>>? Field { get; set; }
 
     /// <summary>What both panels select together. Defaults to <see cref="DatePickerMode.Date"/>.
-    /// <see cref="DatePickerMode.DateTime"/> and <see cref="DatePickerMode.Time"/> behave as
-    /// <c>Date</c> in this release -- time-of-day support is a later phase of this same effort.</summary>
+    /// <see cref="DatePickerMode.DateTime"/> and <see cref="DatePickerMode.Time"/> replace the
+    /// dual-panel layout with a single per-endpoint pick session ending in an OK button -- see the
+    /// class remarks for the full flow.</summary>
     [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Date;
 
     /// <summary>Optional shortcuts rendered as a sidebar in the dropdown. Each consumer supplies its
@@ -156,10 +176,11 @@ public partial class DateRangePicker : PickerBase
     /// <summary>Accessible name of the preset sidebar list. Override to localize.</summary>
     [Parameter] public string PresetsLabel { get; set; } = "Quick ranges";
     /// <summary>Accessible name of the previous-month button (<see cref="DatePickerMode.Date"/>'s
-    /// left panel only). Override to localize.</summary>
+    /// left panel, or <see cref="DatePickerMode.DateTime"/>'s single panel). Override to
+    /// localize.</summary>
     [Parameter] public string PrevMonthLabel { get; set; } = "Previous month";
     /// <summary>Accessible name of the next-month button (<see cref="DatePickerMode.Date"/>'s right
-    /// panel only). Override to localize.</summary>
+    /// panel, or <see cref="DatePickerMode.DateTime"/>'s single panel). Override to localize.</summary>
     [Parameter] public string NextMonthLabel { get; set; } = "Next month";
     /// <summary>Accessible name of the previous-year button (<see cref="DatePickerMode.Month"/>/
     /// <see cref="DatePickerMode.Quarter"/>'s left panel only). Override to localize.</summary>
@@ -173,6 +194,69 @@ public partial class DateRangePicker : PickerBase
     /// <summary>Accessible name of the next-decade button (<see cref="DatePickerMode.Year"/>'s
     /// right panel only). Override to localize.</summary>
     [Parameter] public string NextDecadeLabel { get; set; } = "Next decade";
+
+    // ----- Time/DateTime pick session: time-row options + OK footer -----------------------------
+    // Mirror DatePicker's own equivalents one-for-one (defaults included) -- see DatePicker's own
+    // doc comments for the full contract; only re-stated here where the per-endpoint (rather than
+    // single-Value) framing changes the meaning.
+
+    /// <summary>Whether the <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>
+    /// time row includes a seconds select. Defaults to true. False drops the seconds select entirely
+    /// and normalization zeroes the second on every commit, so a stale second from before the flip
+    /// was toggled can never survive a commit.</summary>
+    [Parameter] public bool ShowSeconds { get; set; } = true;
+
+    /// <summary>Step between the hour select's offered values (24-hour space, even under
+    /// <see cref="Use12Hours"/>): the select lists 0, <c>HourStep</c>, 2*<c>HourStep</c>, and so on up
+    /// to 23. Defaults to 1 (every hour). Values less than 1 are clamped to 1 at the point of use, not
+    /// thrown. NEVER-JUMP RULE, composing with <see cref="StartDisabledTime"/>/<see cref="EndDisabledTime"/>'s
+    /// own (see <see cref="HideDisabledTimeOptions"/>): if the active endpoint's hour isn't on the
+    /// step lattice, its own option is still rendered (selected) so the select can never silently
+    /// jump to a different hour.</summary>
+    [Parameter] public int HourStep { get; set; } = 1;
+    /// <summary>Same contract as <see cref="HourStep"/>, for the minute select (0-59). Defaults to 1.</summary>
+    [Parameter] public int MinuteStep { get; set; } = 1;
+    /// <summary>Same contract as <see cref="HourStep"/>, for the second select (0-59). Defaults to 1.
+    /// Has no effect when <see cref="ShowSeconds"/> is false.</summary>
+    [Parameter] public int SecondStep { get; set; } = 1;
+
+    /// <summary>Shows the hour select in 12-hour form plus a trailing period select
+    /// (<see cref="PeriodSelectLabel"/>), instead of the default single 24-hour select -- see
+    /// <see cref="DatePicker.Use12Hours"/> for the full contract (option values stay 24-hour; only
+    /// the displayed text and the period select are 12-hour). Defaults to false.</summary>
+    [Parameter] public bool Use12Hours { get; set; }
+
+    /// <summary>Disables specific hour/minute/second option values in the START endpoint's time row
+    /// (the row shown while it's the active endpoint) -- see <see cref="DatePicker.DisabledTime"/>
+    /// for the full per-option contract (invoked with the active endpoint's own date part, disabled
+    /// options render disabled or are omitted per <see cref="HideDisabledTimeOptions"/>, and a
+    /// pending/typed commit landing on a disabled part is rejected).</summary>
+    [Parameter] public Func<DateTime?, DisabledTimeParts?>? StartDisabledTime { get; set; }
+    /// <summary>Same contract as <see cref="StartDisabledTime"/>, for the END endpoint.</summary>
+    [Parameter] public Func<DateTime?, DisabledTimeParts?>? EndDisabledTime { get; set; }
+
+    /// <summary>When true, an option <see cref="StartDisabledTime"/>/<see cref="EndDisabledTime"/>
+    /// disables is omitted from its select entirely instead of rendered disabled (AntD's
+    /// <c>hideDisabledOptions</c>). Defaults to false. NEVER-JUMP RULE, in force under either
+    /// setting: the select's CURRENT value's own option is always rendered -- selected, and also
+    /// marked <c>disabled</c> if the active endpoint's callback says so -- even while every other
+    /// disabled option is hidden.</summary>
+    [Parameter] public bool HideDisabledTimeOptions { get; set; }
+
+    /// <summary>Accessible name of the hour select (<see cref="DatePickerMode.Time"/>/
+    /// <see cref="DatePickerMode.DateTime"/>'s time row). Override to localize.</summary>
+    [Parameter] public string HourSelectLabel { get; set; } = "Hour";
+    /// <summary>Accessible name of the minute select. Override to localize.</summary>
+    [Parameter] public string MinuteSelectLabel { get; set; } = "Minute";
+    /// <summary>Accessible name of the second select. Override to localize.</summary>
+    [Parameter] public string SecondSelectLabel { get; set; } = "Second";
+    /// <summary>Accessible name of the AM/PM period select (<see cref="Use12Hours"/>). Override to
+    /// localize.</summary>
+    [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
+    /// <summary>Visible text of the OK button that confirms the active endpoint and (once both are
+    /// resolved) commits and closes the <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>
+    /// pick session. Override to localize.</summary>
+    [Parameter] public string OkText { get; set; } = "OK";
 
     // Validation-state ARIA passthrough onto the actual inputs, for form wrappers (EditDateRange).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio, doubled because the two
@@ -226,35 +310,61 @@ public partial class DateRangePicker : PickerBase
     // The unit currently under the pointer while _selecting — drives the hover-range preview tint
     // between _pendingStart and this unit. Never set (or read) outside a pick in progress.
     DateTime? _hoverDay;
-    // First-of-month shown in the left panel in Mode.Date (and its DateTime/Time/Week fallback);
-    // the right panel is always _viewMonth + 1 month. In Mode.Month/Quarter, only _viewMonth.Year
-    // matters -- it's the left panel's year (see LeftYear/RightYear). In Mode.Year, only
-    // _viewMonth.Year matters too -- ClampDecadeStartForRange floors it to the left panel's decade
-    // (see LeftDecadeStart/RightDecadeStart). One field serves all four grain because exactly one
-    // of these readings is ever active for a given Mode, and each mode's own mutations (nav
-    // buttons, selects, keyboard crossing) only ever touch it through the matching property.
+    // First-of-month shown in the left panel in Mode.Date (and its Week fallback); the right panel
+    // is always _viewMonth + 1 month. In Mode.Month/Quarter, only _viewMonth.Year matters -- it's
+    // the left panel's year (see LeftYear/RightYear). In Mode.Year, only _viewMonth.Year matters too
+    // -- ClampDecadeStartForRange floors it to the left panel's decade (see LeftDecadeStart/
+    // RightDecadeStart). In Mode.DateTime it's the SINGLE pick-session panel's own month (no pair,
+    // no offset -- see SessionPrevMonthDisabled/SessionNextMonthDisabled and OnSessionOkAsync's own
+    // re-anchor, which is why AnchorView's -panel trick is never used for this mode). Mode.Time has
+    // no calendar, so this field is simply unused there. One field serves every grain because
+    // exactly one of these readings is ever active for a given Mode, and each mode's own mutations
+    // (nav buttons, selects, keyboard crossing) only ever touch it through the matching property.
     DateTime _viewMonth = FirstOfMonth(DateTime.Today);
     // In-progress typed text per input (null = show the formatted bound value).
     string? _startEdit;
     string? _endEdit;
 
+    // ----- Time/DateTime pick session state ----------------------------------
+    // A session edits ONE endpoint at a time (whichever _activeInput points at). Neither field ever
+    // reaches Start/End (or fires StartChanged/EndChanged) until OK resolves both sides -- see
+    // OnSessionOkAsync. Null means "this endpoint hasn't been touched THIS session" -- every read
+    // site falls back to the endpoint's own committed Start/End (see ActiveSessionValue), so opening
+    // on an already-committed pair and hitting OK twice in a row (touching neither field) still
+    // resolves and closes correctly. Reset (both to null) on Open/Close/Escape/ClearAsync/
+    // FinishTextCommit, mirroring _pendingStart's own reset sites for the date-only two-click flow
+    // above -- these two flows never coexist (Mode is fixed per instance), so there's no risk of the
+    // two kinds of "in-progress pick" state colliding.
+    DateTime? _pendingSessionStart;
+    DateTime? _pendingSessionEnd;
+
     // ----- Mode-derived helpers ----------------------------------------------
 
-    /// <summary><see cref="Mode"/> folded to what this release actually implements:
-    /// <see cref="DatePickerMode.DateTime"/>/<see cref="DatePickerMode.Time"/> read as
-    /// <see cref="DatePickerMode.Date"/> (see <see cref="Mode"/>'s own doc comment).
-    /// <see cref="DatePickerMode.Week"/> is its own mode below -- it reuses every Date-mode
-    /// day-grid mechanism (view anchoring, focus/keyboard nav, Min/Max day-granularity cell
-    /// disabling) via this switch's default arm, differing only in the markup (a week-number rows
-    /// layout instead of the flat grid — see <see cref="ShowWeekRows"/>) and the commit granularity
-    /// (a day click resolves to its WEEK START before reaching <see cref="OnUnitClickAsync"/> — see
-    /// <see cref="OnWeekDayClickAsync"/>). Every internal branch reads this, never the raw
-    /// <see cref="Mode"/> parameter, so a later phase only has to change this one switch.</summary>
+    /// <summary><see cref="Mode"/> folded for every CALENDAR-SHAPE concern (which day/month/quarter/
+    /// year grid layout renders, its Min/Max/DisabledDate granularity, its keyboard nav): the
+    /// <see cref="DatePickerMode.DateTime"/> pick session's single calendar is day-shaped exactly
+    /// like <see cref="DatePickerMode.Date"/>'s (see the class remarks), and <see cref="DatePickerMode.Time"/>
+    /// renders no calendar at all so this fold is simply never consulted for it. This is NOT used
+    /// for the pick-session's own state machine, its per-endpoint time-of-day handling, or
+    /// normalization -- those read the raw <see cref="Mode"/> directly (see <see cref="IsSessionMode"/>,
+    /// <see cref="NormalizeForMode"/>) since DateTime/Time need genuinely different behavior there,
+    /// not a fold onto Date. <see cref="DatePickerMode.Week"/> is its own mode below -- it reuses
+    /// every Date-mode day-grid mechanism (view anchoring, focus/keyboard nav, Min/Max
+    /// day-granularity cell disabling) via this switch's default arm, differing only in the markup
+    /// (a week-number rows layout instead of the flat grid — see <see cref="ShowWeekRows"/>) and the
+    /// commit granularity (a day click resolves to its WEEK START before reaching
+    /// <see cref="OnUnitClickAsync"/> — see <see cref="OnWeekDayClickAsync"/>).</summary>
     DatePickerMode EffectiveMode => Mode switch
     {
         DatePickerMode.DateTime or DatePickerMode.Time => DatePickerMode.Date,
         _ => Mode,
     };
+
+    /// <summary>Whether <see cref="Mode"/> is the single-panel pick session
+    /// (<see cref="DatePickerMode.DateTime"/>/<see cref="DatePickerMode.Time"/>) rather than one of
+    /// the dual-panel modes -- gates the .razor markup's top-level branch between the two entirely
+    /// separate layouts, and every session-only helper below assumes this is true.</summary>
+    bool IsSessionMode => Mode is DatePickerMode.DateTime or DatePickerMode.Time;
 
     // ----- Display helpers (used by the .razor markup) ------------------------
 
@@ -284,8 +394,11 @@ public partial class DateRangePicker : PickerBase
     // Format/Placeholder resolution: an explicit value always wins; null falls through to Mode's
     // default -- same per-mode defaults DatePicker's own EffectiveFormat uses (Quarter's bland
     // "yyyy" included; see DatePicker.EffectiveFormat's doc comment for why). All internal
-    // display/parse code routes through this (never the raw Format parameter).
-    string EffectiveFormat => Format ?? EffectiveMode switch
+    // display/parse code routes through this (never the raw Format parameter). Switches on the raw
+    // Mode (not EffectiveMode) so DateTime/Time get their own time-aware format instead of
+    // EffectiveMode's Date fold's plain "MM/dd/yyyy" -- every other arm is unaffected, since
+    // EffectiveMode only ever differs from Mode for those two.
+    string EffectiveFormat => Format ?? Mode switch
     {
         DatePickerMode.Month => "MM/yyyy",
         DatePickerMode.Year => "yyyy",
@@ -295,15 +408,31 @@ public partial class DateRangePicker : PickerBase
         // their own Week special cases below) -- this only matters as TryParseDate's exact-format
         // fallback attempt, tried after the "yyyy-Www" shorthand.
         DatePickerMode.Week => "yyyy",
+        // Mirrors DatePicker.EffectiveFormat's own DateTime/Time defaults exactly (same
+        // TimeFormatString helper, shared via PickerMath).
+        DatePickerMode.DateTime => $"MM/dd/yyyy {TimeFormatString}",
+        DatePickerMode.Time => TimeFormatString,
         _ => "MM/dd/yyyy",
     };
 
+    // The Time/DateTime portion of EffectiveFormat -- see PickerMath.TimeFormatString for the
+    // ShowSeconds/Use12Hours contract (shared with DatePicker's own identical property).
+    string TimeFormatString => PickerMath.TimeFormatString(Use12Hours, ShowSeconds);
+
     string DefaultPlaceholder => EffectiveFormat.ToUpperInvariant();
 
-    // While a fresh pick is in progress the field previews it (start = the pending unit, end
-    // empties); a discarded pick falls back to the committed values automatically.
-    string StartDisplay => _startEdit ?? FormatDate(_selecting ? _pendingStart : Start);
-    string EndDisplay => _endEdit ?? (_selecting ? string.Empty : FormatDate(End));
+    // While a fresh pick is in progress the field previews it -- the date-only two-click flow shows
+    // just the pending start (end empties, since a fresh pick fully replaces the old range); the
+    // Time/DateTime pick session shows EACH side's own resolved value (pending-this-session, or
+    // already committed) independently, since a session only ever touches the ACTIVE endpoint and
+    // the other side's own display should keep showing whatever it already resolved to (its own
+    // preview if picked earlier this session, otherwise its committed value) -- see the class
+    // remarks. A discarded pick (Escape/backdrop) falls back to the committed values automatically
+    // once _pendingStart/_pendingSessionStart/_pendingSessionEnd are cleared.
+    string StartDisplay => _startEdit ?? FormatDate(IsSessionMode ? (_pendingSessionStart ?? Start) : (_selecting ? _pendingStart : Start));
+    string EndDisplay => _endEdit ?? (IsSessionMode
+        ? FormatDate(_pendingSessionEnd ?? End)
+        : (_selecting ? string.Empty : FormatDate(End)));
 
     bool ShowClear => AllowClear && !Disabled && (Start is not null || End is not null);
 
@@ -479,6 +608,35 @@ public partial class DateRangePicker : PickerBase
         _ => IsDayDisabled(unit),
     };
 
+    // ----- Time/DateTime pick session: disabled checks ------------------------------------------
+    // A SEPARATE dispatcher from IsUnitDisabled above (which stays exactly as-is for the dual-panel
+    // modes it already served) -- DateTime/Time need the raw Mode, not EffectiveMode's Date fold:
+    // IsUnitDisabled's default arm would call IsDayDisabled(unit) with `unit` still carrying its
+    // time-of-day, and a Max exactly on a day would then spuriously disable that whole day (any
+    // nonzero time of day compares greater than Max.Date's own midnight) -- mirrors
+    // DatePicker.IsDisabledForCommit's identical `IsDayDisabled(value.Date)` split. Time mode ignores
+    // Min/Max/DisabledDate entirely (no date-range concept -- mirrors DatePicker.IsDisabledForCommit's
+    // Time arm) and only guards the per-endpoint time-of-day.
+    bool IsCommitDisabled(int endpoint, DateTime value) => Mode switch
+    {
+        DatePickerMode.DateTime => IsDayDisabled(value.Date) || IsEndpointTimeDisabled(endpoint, value),
+        DatePickerMode.Time => IsEndpointTimeDisabled(endpoint, value),
+        _ => IsUnitDisabled(value),
+    };
+
+    // Whether `value`'s time-of-day hits a disabled hour/minute/second for the given endpoint (0 =
+    // start, using StartDisabledTime; 1 = end, using EndDisabledTime) -- evaluated against `value`'s
+    // own date part, mirroring DatePicker.IsTimeDisabledForCommit's identical single-Value check, one
+    // endpoint at a time. Null callback / null return / null lists = nothing disabled.
+    bool IsEndpointTimeDisabled(int endpoint, DateTime value)
+    {
+        var parts = (endpoint == 0 ? StartDisabledTime : EndDisabledTime)?.Invoke(value.Date);
+        return parts is not null &&
+            (PickerMath.IsTimePartDisabled(parts.Hours, value.Hour) ||
+             PickerMath.IsTimePartDisabled(parts.Minutes, value.Minute) ||
+             PickerMath.IsTimePartDisabled(parts.Seconds, value.Second));
+    }
+
     // PickerCulture lives on PickerBase (shared with DatePicker).
 
     string MonthName(int month) => PickerMath.MonthName(PickerCulture, month);
@@ -567,8 +725,38 @@ public partial class DateRangePicker : PickerBase
     }
 
     // Central per-mode normalization, shared by TryParseDate and SetRangeAsync so every commit path
-    // (click, typed text, select change, preset) agrees on the same shape of value.
-    DateTime NormalizeForMode(DateTime value) => PickerMath.NormalizeForMode(EffectiveMode, EffectiveFirstDayOfWeek, true, value);
+    // (click, typed text, select change, preset) agrees on the same shape of value. DateTime/Time
+    // both route through PickerMath's DateTime-shaped case (preserve date+time, zero the second when
+    // !ShowSeconds) rather than its OWN Time case (which re-stamps to the LITERAL current day,
+    // discarding whatever date was composed): the per-endpoint date resolution ("this endpoint's
+    // existing committed date, or today when unset") already happens at the compose step
+    // (ApplySessionTimePartAsync/TryParseTimePart), mirroring DatePicker's own
+    // `Value?.Date ?? DateTime.Today` one endpoint at a time -- by the time a value reaches here its
+    // date is already correct, so re-stamping it here (as PickerMath's Time case does for the
+    // single-Value DatePicker) would discard that per-endpoint resolution instead of preserving it.
+    DateTime NormalizeForMode(DateTime value) => PickerMath.NormalizeForMode(
+        Mode is DatePickerMode.DateTime or DatePickerMode.Time ? DatePickerMode.DateTime : EffectiveMode,
+        EffectiveFirstDayOfWeek, ShowSeconds, value);
+
+    // Time mode's typed-text parse: extracts just the time-of-day from the general parse (.NET's own
+    // default-date fallback for a bare time string fills in TODAY, which is exactly wrong here -- see
+    // the doc comment below) and composes it against `existingValue`'s own date (or today when
+    // null) -- mirrors ApplySessionTimePartAsync's identical existing-date-or-today resolution, but
+    // for a typed commit instead of a time-select change. Unlike DatePicker's own Time mode (which
+    // always re-stamps to the literal current day on every commit, single-Value), each ENDPOINT here
+    // keeps its own date across a typed time-only commit -- see NormalizeForMode's doc comment for
+    // why routing through PickerMath's DateTime case (not its Time case) is what makes that possible.
+    bool TryParseTimePart(string text, DateTime? existingValue, out DateTime value)
+    {
+        if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out var parsed) ||
+            DateTime.TryParse(text, PickerCulture, DateTimeStyles.None, out parsed))
+        {
+            value = NormalizeForMode((existingValue?.Date ?? DateTime.Today) + parsed.TimeOfDay);
+            return true;
+        }
+        value = default;
+        return false;
+    }
 
     static DateTime FirstOfMonth(DateTime value) => PickerMath.FirstOfMonth(value);
     static DateTime FirstOfYear(DateTime value) => PickerMath.FirstOfYear(value);
@@ -736,6 +924,53 @@ public partial class DateRangePicker : PickerBase
     {
         _viewMonth = ClampView(_viewMonth.AddMonths(1));
         _focusDay = null;
+    }
+
+    // ----- Time/DateTime pick session: single-panel prev/next-disabled -------
+    // PrevMonthDisabled/NextMonthDisabled above assume _viewMonth is the LEFT of a pair (Next stops
+    // one month early so the +1 right panel doesn't cross Max) -- wrong for this session's own lone
+    // panel, which shows exactly _viewMonth with no partner. Mirrors DatePicker.PrevMonthDisabled/
+    // NextMonthDisabled (also a single panel) instead. PrevMonth()/NextMonth() themselves are reused
+    // verbatim -- they only ever shift _viewMonth, with no pair-aware logic to get wrong.
+    bool SessionPrevMonthDisabled =>
+        ClampView(_viewMonth.AddMonths(-1)) == _viewMonth ||
+        (Min is { } min && _viewMonth <= FirstOfMonth(min));
+    bool SessionNextMonthDisabled =>
+        ClampView(_viewMonth.AddMonths(1)) == _viewMonth ||
+        (Max is { } max && _viewMonth >= FirstOfMonth(max));
+
+    // ----- Time/DateTime pick session: single-panel day-grid focus -----------
+    // Mirrors DatePicker's own IsVisible/DefaultFocusDay/EffectiveFocusDay/IsFocusStop/OnGridKeyDown
+    // one-for-one, but scoped to the ONE panel this session's calendar shows. The dual-panel
+    // IsVisible/DefaultFocusDay/EffectiveFocusDay/IsFocusStop/OnGridKeyDown above all check BOTH
+    // _viewMonth and _viewMonth.AddMonths(1) (there being two panels) -- reusing them here would let
+    // the roving tabindex land on a day this single panel never renders (the "next" month), leaving
+    // the grid with zero tabbable cells (a keyboard trap), so this session gets its own single-month
+    // versions instead.
+
+    bool IsSessionVisible(DateTime day) => FirstOfMonth(day) == _viewMonth;
+
+    DateTime SessionDefaultFocusDay()
+    {
+        if (ActiveSessionValue is { } active && IsSessionVisible(active.Date) && !IsDayDisabled(active.Date)) return active.Date;
+        if (IsSessionVisible(DateTime.Today) && !IsDayDisabled(DateTime.Today)) return DateTime.Today;
+        return FirstEnabledDay(_viewMonth) ?? _viewMonth;
+    }
+
+    DateTime SessionEffectiveFocusDay => _focusDay is { } f && IsSessionVisible(f) ? f : SessionDefaultFocusDay();
+
+    bool IsSessionFocusStop(DateTime day) =>
+        day.Month == _viewMonth.Month && day.Year == _viewMonth.Year && day == SessionEffectiveFocusDay;
+
+    void OnSessionGridKeyDown(KeyboardEventArgs e)
+    {
+        var next = NextFocusDay(SessionEffectiveFocusDay, e.Key);
+        if (next is null) return;
+
+        _focusDay = next.Value;
+        var nextMonth = FirstOfMonth(next.Value);
+        if (nextMonth != _viewMonth) _viewMonth = ClampView(nextMonth);
+        _pendingFocusDate = next.Value;
     }
 
     // ----- Mode.Month/Quarter: prev/next year navigation ----------------------
@@ -977,16 +1212,30 @@ public partial class DateRangePicker : PickerBase
 
     // Callers own _activeInput (the field click and each input's focus set it before opening).
     // Anchors on the start of the current value; with only an end set, put that end in the right
-    // panel so it's visible on open -- see AnchorView.
+    // panel so it's visible on open -- see AnchorView. IsSessionMode gets its own single-panel
+    // anchor: AnchorView's -panel offset assumes a paired right panel one month ahead, which this
+    // session's lone calendar doesn't have (Time mode has no calendar at all, so anchoring is
+    // skipped entirely there).
     void Open()
     {
         _open = true;
         _selecting = false;
         _pendingStart = null;
         _hoverDay = null;
+        _pendingSessionStart = null;
+        _pendingSessionEnd = null;
         _startEdit = _endEdit = null;
         _focusDay = null;
         _pendingInputFocus = false;
+        if (IsSessionMode)
+        {
+            if (Mode == DatePickerMode.DateTime)
+            {
+                var sessionAnchor = (_activeInput == 0 ? Start : End) ?? (_activeInput == 0 ? End : Start) ?? DateTime.Today;
+                _viewMonth = ClampView(FirstOfMonth(sessionAnchor));
+            }
+            return;
+        }
         var anchor = Start ?? End ?? DateTime.Today;
         AnchorView(anchor, Start is null && End is not null ? 1 : 0);
     }
@@ -997,6 +1246,8 @@ public partial class DateRangePicker : PickerBase
         _selecting = false;
         _pendingStart = null;
         _hoverDay = null;
+        _pendingSessionStart = null;
+        _pendingSessionEnd = null;
         _startEdit = _endEdit = null;
         _focusDay = null;
         _pendingFocusDate = null;
@@ -1141,10 +1392,19 @@ public partial class DateRangePicker : PickerBase
         _selecting = false;
         _pendingStart = null;
         _hoverDay = null;
+        _pendingSessionStart = null;
+        _pendingSessionEnd = null;
         _startEdit = _endEdit = null;
         await SetRangeAsync(null, null);
     }
 
+    // Typed input keeps the SAME per-endpoint immediate-commit route in every mode, including
+    // DateTime/Time -- Enter/blur parses and commits that one endpoint right away via SetRangeAsync,
+    // discarding any in-progress pick SESSION exactly like FinishTextCommit already discards the
+    // date-only two-click flow's own pending state (see its doc comment). Time mode's own parse
+    // (TryParseTimePart) is a genuinely different shape (time-only text, existing-date-or-today
+    // resolution) from the generic TryParseDate path every other mode (DateTime included -- its
+    // typed text already carries a full date+time) shares.
     async Task CommitStartTextAsync()
     {
         if (_startEdit is null) return;
@@ -1156,10 +1416,18 @@ public partial class DateRangePicker : PickerBase
             FinishTextCommit();
             return;
         }
+        if (Mode == DatePickerMode.Time)
+        {
+            if (!TryParseTimePart(text, Start, out var time) || IsCommitDisabled(0, time)) return;
+            await SetRangeAsync(time, End);
+            FinishTextCommit();
+            return;
+        }
         // Invalid or out-of-range text reverts to the formatted bound value (edit state cleared above).
-        if (!TryParseDate(text, out var unit) || IsUnitDisabled(unit)) return;
+        if (!TryParseDate(text, out var unit)) return;
+        if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(0, unit) : IsUnitDisabled(unit)) return;
         await SetRangeAsync(unit, End);
-        AnchorView(unit, 0);
+        if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 0);
         FinishTextCommit();
     }
 
@@ -1174,21 +1442,31 @@ public partial class DateRangePicker : PickerBase
             FinishTextCommit();
             return;
         }
-        if (!TryParseDate(text, out var unit) || IsUnitDisabled(unit)) return;
+        if (Mode == DatePickerMode.Time)
+        {
+            if (!TryParseTimePart(text, End, out var time) || IsCommitDisabled(1, time)) return;
+            await SetRangeAsync(Start, time);
+            FinishTextCommit();
+            return;
+        }
+        if (!TryParseDate(text, out var unit)) return;
+        if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(1, unit) : IsUnitDisabled(unit)) return;
         await SetRangeAsync(Start, unit);
-        AnchorView(unit, 1);
+        if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 1);
         FinishTextCommit();
     }
 
     // A successful typed commit (a parsed date or an explicit clear) finalizes the field: any
-    // in-progress calendar pick is discarded so the display reflects the bound values instead of
-    // contradicting them, and so a later day click starts a fresh pick rather than resurrecting the
-    // discarded pending start.
+    // in-progress calendar pick (or Time/DateTime pick session) is discarded so the display reflects
+    // the bound values instead of contradicting them, and so a later day click/time change starts
+    // fresh rather than resurrecting the discarded pending state.
     void FinishTextCommit()
     {
         _selecting = false;
         _pendingStart = null;
         _hoverDay = null;
+        _pendingSessionStart = null;
+        _pendingSessionEnd = null;
     }
 
     // Central commit: normalizes both endpoints to Mode's own granularity, swaps a backwards pair,
@@ -1226,6 +1504,173 @@ public partial class DateRangePicker : PickerBase
         var shown = _viewMonth.AddMonths(panel);
         _viewMonth = ClampView(new DateTime(year, shown.Month, 1), -panel);
         _focusDay = null;
+    }
+
+    // ----- Time/DateTime pick session: interaction ----------------------------
+    // See the class remarks for the full session flow. Every member below is IsSessionMode-only --
+    // the dual-panel members above (OnUnitClickAsync, CellClass, DayClass, IsEndpoint, ...) are
+    // untouched and never invoked while Mode is DateTime/Time (the .razor markup branches on
+    // IsSessionMode before choosing which set of members to call).
+
+    // The ACTIVE endpoint's own resolved value: this session's own pending pick if it's touched that
+    // endpoint yet, else whatever's already committed. Every session read/write site goes through
+    // this (or its `other`-side mirror image, spelled out inline at each call site) so a session that
+    // never touches an already-committed endpoint still resolves correctly on OK.
+    DateTime? ActiveSessionValue => _activeInput == 0 ? (_pendingSessionStart ?? Start) : (_pendingSessionEnd ?? End);
+
+    int SessionDisplayHour => ActiveSessionValue?.Hour ?? 0;
+    int SessionDisplayMinute => ActiveSessionValue?.Minute ?? 0;
+    int SessionDisplaySecond => ActiveSessionValue?.Second ?? 0;
+    bool SessionDisplayIsPM => SessionDisplayHour >= 12;
+
+    // HourStep/MinuteStep/SecondStep clamped to >= 1 at the point of use (never thrown) -- mirrors
+    // DatePicker.EffectiveHourStep/EffectiveMinuteStep/EffectiveSecondStep.
+    int EffectiveHourStep => Math.Max(1, HourStep);
+    int EffectiveMinuteStep => Math.Max(1, MinuteStep);
+    int EffectiveSecondStep => Math.Max(1, SecondStep);
+
+    // The option values the time row's selects offer, before DisabledTime hides/disables any of them
+    // -- see PickerMath.HourOptions/SteppedOptions/HourOptionText for the full contract (never-jump
+    // rule, Use12Hours period filtering), shared verbatim with DatePicker's own time row.
+    IEnumerable<int> SessionHourOptions() => PickerMath.HourOptions(EffectiveHourStep, SessionDisplayHour, Use12Hours);
+    IEnumerable<int> SessionMinuteOptions() => PickerMath.SteppedOptions(59, EffectiveMinuteStep, SessionDisplayMinute);
+    IEnumerable<int> SessionSecondOptions() => PickerMath.SteppedOptions(59, EffectiveSecondStep, SessionDisplaySecond);
+    string SessionHourOptionText(int h) => PickerMath.HourOptionText(h, Use12Hours, PickerCulture);
+
+    // Whichever endpoint's DisabledTime callback drives the CURRENTLY VISIBLE time row -- the active
+    // side's own (see the class remarks: "the active side's callback drives the visible time row").
+    Func<DateTime?, DisabledTimeParts?>? ActiveDisabledTime => _activeInput == 0 ? StartDisabledTime : EndDisabledTime;
+
+    // Composes a new PENDING value for the active endpoint from its current date part (its own
+    // session/committed value's date, or today when neither exists) and its current time-of-day
+    // (ditto) with one H/m/s part replaced -- mirrors DatePicker.ApplyTimePartAsync's identical
+    // compose, but writes to the pending session value instead of committing immediately (nothing
+    // reaches Start/End until OK -- see the class remarks). Rejects (no-ops) when the composed value
+    // hits the active endpoint's own DisabledTime list, same guard DatePicker's version applies
+    // before ever letting a disabled time become the bound value.
+    Task ApplySessionTimePartAsync(int? hour = null, int? minute = null, int? second = null)
+    {
+        _startEdit = _endEdit = null;
+        var date = ActiveSessionValue?.Date ?? DateTime.Today;
+        var time = ActiveSessionValue?.TimeOfDay ?? TimeSpan.Zero;
+        var seconds = ShowSeconds ? second ?? time.Seconds : 0;
+        var composed = date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, seconds);
+        if (IsEndpointTimeDisabled(_activeInput, composed)) return Task.CompletedTask;
+        if (_activeInput == 0) _pendingSessionStart = composed; else _pendingSessionEnd = composed;
+        return Task.CompletedTask;
+    }
+
+    Task OnSessionHourSelectChangedAsync(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var hour)
+            ? ApplySessionTimePartAsync(hour: hour)
+            : Task.CompletedTask;
+
+    Task OnSessionMinuteSelectChangedAsync(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var minute)
+            ? ApplySessionTimePartAsync(minute: minute)
+            : Task.CompletedTask;
+
+    Task OnSessionSecondSelectChangedAsync(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var second)
+            ? ApplySessionTimePartAsync(second: second)
+            : Task.CompletedTask;
+
+    // Use12Hours' period select -- mirrors DatePicker.OnPeriodSelectChangedAsync's identical shift.
+    Task OnSessionPeriodSelectChangedAsync(ChangeEventArgs e)
+    {
+        var isPM = string.Equals(e.Value?.ToString(), "PM", StringComparison.Ordinal);
+        return ApplySessionTimePartAsync(hour: SessionDisplayHour % 12 + (isPM ? 12 : 0));
+    }
+
+    // DateTime mode's day click: sets the active endpoint's PENDING date, preserving its own
+    // pending/committed time-of-day (null time -- no session value and no committed value yet --
+    // becomes midnight, the same default DatePicker's own DateTime day-click uses). No disabled
+    // guard here -- same convention as every other grid click handler in this file: a disabled
+    // button's `disabled` attribute already prevents the browser from ever dispatching this click.
+    Task OnSessionDayClickAsync(DateTime day)
+    {
+        _startEdit = _endEdit = null;
+        var time = ActiveSessionValue?.TimeOfDay ?? TimeSpan.Zero;
+        var composed = day.Date + time;
+        if (_activeInput == 0) _pendingSessionStart = composed; else _pendingSessionEnd = composed;
+        _focusDay = day;
+        return Task.CompletedTask;
+    }
+
+    // The OTHER endpoint's own resolved value (this session's own pending pick for it, if any, else
+    // its committed value) -- the mirror image of ActiveSessionValue, used by OK's own resolve/switch
+    // decision and by the calendar's range-tint/selected-day classing below.
+    DateTime? OtherSessionValue => _activeInput == 0 ? (_pendingSessionEnd ?? End) : (_pendingSessionStart ?? Start);
+
+    // Whether `day` is either endpoint's own resolved day (active or other) -- drives
+    // aria-pressed/selected styling on the session's single calendar.
+    bool IsSessionEndpoint(DateTime day) =>
+        day == ActiveSessionValue?.Date || day == OtherSessionValue?.Date;
+
+    string SessionDayClass(DateTime day)
+    {
+        var cls = "wss-picker-day";
+        if (day.Month != _viewMonth.Month) cls += " wss-picker-day-outside";
+        if (day == DateTime.Today) cls += " wss-picker-day-today";
+        if (IsSessionEndpoint(day)) cls += " wss-picker-day-selected";
+        return cls;
+    }
+
+    // Range tint while picking the second endpoint: bands between the OTHER endpoint's own resolved
+    // day and the ACTIVE endpoint's own pending day, reusing CellClass's existing preview classes at
+    // day granularity (see the class remarks) -- deliberately simple (no live pointer-hover tracking,
+    // unlike the dual-panel Date mode's own two-click pick): the band only appears once a day has
+    // actually been picked for the active side THIS session.
+    string SessionCellClass(DateTime day)
+    {
+        var cls = "wss-picker-cell";
+        var other = OtherSessionValue?.Date;
+        var active = _activeInput == 0 ? _pendingSessionStart?.Date : _pendingSessionEnd?.Date;
+        if (other is { } o && active is { } a && o != a)
+        {
+            var lo = o < a ? o : a;
+            var hi = o < a ? a : o;
+            if (day == lo) cls += " wss-picker-cell-preview-start";
+            else if (day == hi) cls += " wss-picker-cell-preview-end";
+            else if (day > lo && day < hi) cls += " wss-picker-cell-preview";
+        }
+        return cls;
+    }
+
+    // The OK button: confirms the ACTIVE endpoint's resolved value (pending, or its already-committed
+    // fallback -- see ActiveSessionValue) into this session's own pending state. If the OTHER
+    // endpoint has neither a pending nor a committed value, the session isn't done -- switch to it
+    // (the active underline moves; DateTime mode re-anchors its single calendar on the target's own
+    // value, falling back to the just-confirmed one so the panel always shows something relevant).
+    // Otherwise both endpoints are now resolved, so commit them together (SetRangeAsync swaps a
+    // backwards pair, same as every other mode) and close. Guarded by ActiveSessionValue being
+    // non-null -- mirrors the OK button's own `disabled` attribute (see the .razor markup) so a
+    // caller that invokes this directly can never commit nothing.
+    async Task OnSessionOkAsync()
+    {
+        var activeValue = ActiveSessionValue;
+        if (activeValue is null) return;
+
+        if (_activeInput == 0) _pendingSessionStart = activeValue; else _pendingSessionEnd = activeValue;
+
+        var otherValue = OtherSessionValue;
+        if (otherValue is null)
+        {
+            _activeInput = 1 - _activeInput;
+            if (Mode == DatePickerMode.DateTime)
+            {
+                var anchor = (_activeInput == 0 ? Start : End) ?? activeValue.Value;
+                _viewMonth = ClampView(FirstOfMonth(anchor));
+            }
+            _focusDay = null;
+            return;
+        }
+
+        var start = _activeInput == 0 ? activeValue.Value : otherValue.Value;
+        var end = _activeInput == 0 ? otherValue.Value : activeValue.Value;
+        await SetRangeAsync(start, end);
+        _pendingInputFocus = true; // the OK button is about to unmount
+        await CloseAsync();
     }
 
     // ----- PickerBase hooks (JS-interop + overlay lifecycle) ------------------
