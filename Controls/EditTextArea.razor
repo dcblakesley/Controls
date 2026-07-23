@@ -7,7 +7,7 @@
 
         @if (ShowEditor)
         {
-            <div class="edit-input-with-icon">
+            <EditInputShell IsInvalid=@IsInvalid>
                 <textarea @bind-value=@CurrentValue
                           @bind-value:event="oninput"
                           style="padding-inline-end: 2rem"
@@ -21,8 +21,7 @@
                           aria-invalid=@(IsInvalid ? "true" : null)
                           aria-describedby=@_describedBy
                           aria-errormessage=@(IsInvalid ? _errorMsgId : null)></textarea>
-                <InvalidIcon IsInvalid=@IsInvalid />
-            </div>
+            </EditInputShell>
         }
         else
         {

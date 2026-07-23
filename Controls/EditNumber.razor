@@ -13,7 +13,7 @@
                per-keystroke binding flashed "must be a number" mid-typing. Matches Microsoft's
                InputNumber. (Comment deliberately outside the tag — a Razor comment inside an
                attribute list compiles into a literal attribute name and breaks setAttribute.) *@
-            <div class="edit-input-with-icon">
+            <EditInputShell IsInvalid=@IsInvalid>
                 <input type="number"
                        style="padding-inline-end: 2rem"
                        disabled=@IsDisabled
@@ -26,8 +26,7 @@
                        aria-invalid=@(IsInvalid ? "true" : null)
                        aria-describedby=@_describedBy
                        aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
-                <InvalidIcon IsInvalid=@IsInvalid />
-            </div>
+            </EditInputShell>
         }
         else
         {

@@ -316,6 +316,25 @@
     align-items: center;
 }
 
+/* Affix mode (EditInputShell.UsesAffixLayout — any of Prefix/Suffix/AllowClear/CountText/
+   ShowPasswordToggle in use): replaces .edit-input-with-icon above. Unthemed, this only supplies the
+   layout structure (flex row + inline-flex/gap on the prefix/suffix spans) — no borders, background,
+   or padding here, so an unthemed consumer sees the same "library controls appearance" it always has.
+   The AntD-recipe chrome (border/radius/height/hover/focus glow) is added by the opt-in `.edit-theme`
+   section (S4), which also gives the naked inner editor (`.edit-affix-input`) its box back. */
+.edit-input-affix-wrapper {
+    display: flex;
+    align-items: center;
+}
+.edit-input-prefix,
+.edit-input-suffix {
+    /* inline-flex + gap so multiple suffix items (clear button, count, custom Suffix, password
+       toggle, InvalidIcon) space themselves without each one hand-rolling its own margin. */
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .edit-icon-invalid {
     /* The x-circle that shows up when a textbox has validation errors. The SVG uses
        fill="currentColor", so this color drives it — keeping it in sync with the consumer's danger.
@@ -333,15 +352,21 @@
     color: var(--edit-color-danger);
 }
 .edit-icon-eye,
-.edit-icon-eye-invisible {
-    /* EditString mask show/hide toggle buttons — reset the native <button> chrome. */
+.edit-icon-eye-invisible,
+.edit-input-clear,
+.edit-input-password-toggle {
+    /* EditString's mask show/hide toggle buttons, plus EditInputShell's affix-mode clear and
+       password-toggle buttons — reset the native <button> chrome. One shared group so the reset
+       never has to be restated per button; extend this list rather than duplicating the rule. */
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
 }
 .edit-icon-eye:focus-visible,
-.edit-icon-eye-invisible:focus-visible {
+.edit-icon-eye-invisible:focus-visible,
+.edit-input-clear:focus-visible,
+.edit-input-password-toggle:focus-visible {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
@@ -596,9 +621,20 @@
           edit-label-description
           edit-readonly-value
           edit-validation-message
-          edit-input-with-icon (only EditString / EditNumber / EditDate / EditTextArea)
+          edit-input-with-icon (EditString / EditNumber / EditDate / EditTextArea; legacy mode —
+                                no Prefix/Suffix/AllowClear/CountText/ShowPasswordToggle in use)
               edit-control (input, textarea, InputDate, etc.)
               edit-icon-invalid (only when validation fails)
+          -- or, once a control passes affix content (EditInputShell.UsesAffixLayout) --
+          edit-input-affix-wrapper
+              edit-input-prefix (optional)
+              edit-control (input, textarea, InputDate, etc. — edit-affix-input in .edit-theme)
+              edit-input-suffix
+                  edit-input-clear (button, only while clearable)
+                  edit-input-count (optional)
+                  [custom Suffix content] (optional)
+                  edit-input-password-toggle (button, optional)
+                  edit-icon-invalid (only when validation fails)
           edit-tooltip-container (optional)
              edit-tooltip-content (optional)
 */

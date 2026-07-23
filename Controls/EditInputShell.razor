@@ -1,0 +1,58 @@
+@* Shared wrapper around a single editor element (<input>/<textarea>/<InputDate>) for EditString,
+   EditNumber, EditTextArea, and EditDate. Renders one of two structures:
+
+   - Legacy mode (no affix content requested): today's plain markup —
+     <div class="edit-input-with-icon">ChildContent<InvalidIcon /></div>. The host keeps its own
+     inline `padding-inline-end: 2rem` on the editor in this mode.
+   - Affix mode (Prefix/Suffix/AllowClear/CountText/ShowPasswordToggle in use): the AntD-style
+     affix wrapper, with the clear button, count, custom suffix, password toggle, and InvalidIcon
+     inside a single trailing <span class="edit-input-suffix"> in that locked order. The host drops
+     its inline padding and adds the `edit-affix-input` class to the editor in this mode (see
+     <see cref="UsesAffixLayout"/>).
+
+   See CLAUDE.md's CSS section and edit-controls.css's "Input + InvalidIcon wrapper" comment for the
+   structural contract this markup must not silently drift from. *@
+
+@if (UseAffixLayout)
+{
+    <div class="edit-input-affix-wrapper @(IsInvalid ? "edit-input-affix-invalid" : null)">
+        @if (Prefix is not null)
+        {
+            <span class="edit-input-prefix">@Prefix</span>
+        }
+        @ChildContent
+        <span class="edit-input-suffix">
+            @if (IsClearable)
+            {
+                <button type="button" class="edit-input-clear" aria-label="Clear" @onclick="OnClear">
+                    @EditIcons.ClearCircle
+                </button>
+            }
+            @if (CountText is not null)
+            {
+                <span class="edit-input-count">@CountText</span>
+            }
+            @if (Suffix is not null)
+            {
+                @Suffix
+            }
+            @if (ShowPasswordToggle)
+            {
+                <button type="button" class="edit-input-password-toggle"
+                        aria-label="@(IsPasswordRevealed ? "Hide value" : "Show value")"
+                        aria-pressed="@(IsPasswordRevealed ? "true" : "false")"
+                        @onclick="OnTogglePassword">
+                    @(IsPasswordRevealed ? EditIcons.Eye : EditIcons.EyeInvisible)
+                </button>
+            }
+            <InvalidIcon IsInvalid=@IsInvalid />
+        </span>
+    </div>
+}
+else
+{
+    <div class="edit-input-with-icon">
+        @ChildContent
+        <InvalidIcon IsInvalid=@IsInvalid />
+    </div>
+}
