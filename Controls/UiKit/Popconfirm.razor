@@ -239,17 +239,19 @@
         }
 
         if (_lastVisibleParam == Visible) return; // unchanged since we last observed/raised it (includes our own echo)
-        // Recorded even when Disabled below goes on to suppress the request, so a repeated forced
-        // Visible=true while still disabled keeps comparing equal here instead of being retried forever.
-        _lastVisibleParam = Visible;
 
         if (Disabled)
         {
             // Ignore an external Visible=true request while disabled (the close above already
             // handled an external Visible=false against an open popup -- nothing further to do).
+            // Deliberately NOT recorded into _lastVisibleParam: this request was suppressed, not
+            // observed/honored, so it must still read as "new" once Disabled clears -- otherwise a
+            // consumer holding Visible=true the whole time through a Disabled episode would compare
+            // equal against this stale recording when Disabled clears and never reopen.
             return;
         }
 
+        _lastVisibleParam = Visible;
         if (Visible == _open) return; // already in the requested state
         await SetOpenAsync(Visible);
     }

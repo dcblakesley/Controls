@@ -229,6 +229,33 @@ public class PopconfirmPopoverParityTests : TestContext
         Assert.Contains(false, raised);
     }
 
+    [Fact]
+    public void Popconfirm_re_enabling_with_Visible_still_true_reopens()
+    {
+        // Hunter's repro: open -> Disabled=true (force-closes) -> Disabled=false with Visible
+        // untouched (still true) -> must reopen. The bug: the Disabled-suppressed branch recorded
+        // _lastVisibleParam = Visible BEFORE returning, so re-enabling with a persistent Visible=true
+        // compared equal against that stale recording and never took effect.
+        var raised = new List<bool>();
+        var cut = RenderComponent<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .Add(pc => pc.Disabled, false)
+            .Add(pc => pc.Visible, true)
+            .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, v => raised.Add(v)))
+            .AddChildContent("<button>del</button>"));
+
+        Assert.NotEmpty(cut.FindAll(".wss-popconfirm")); // opened normally while enabled
+
+        cut.SetParametersAndRender(p => p.Add(pc => pc.Disabled, true)); // force-closes; Visible stays true
+        Assert.Empty(cut.FindAll(".wss-popconfirm"));
+        Assert.Contains(false, raised);
+
+        cut.SetParametersAndRender(p => p.Add(pc => pc.Disabled, false)); // Visible still true, untouched
+
+        Assert.NotEmpty(cut.FindAll(".wss-popconfirm")); // reopens
+        Assert.Contains(true, raised);
+    }
+
     // ----- Popover: controlled Visible/VisibleChanged -------------------------------------------
 
     [Fact]
