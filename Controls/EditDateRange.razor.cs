@@ -116,8 +116,14 @@ public partial class EditDateRange : IEditControl, IDisposable
     [Parameter] public DateTime? Min { get; set; }
     /// <inheritdoc cref="DateRangePicker.Max"/>
     [Parameter] public DateTime? Max { get; set; }
-    /// <inheritdoc cref="DateRangePicker.Format"/>
-    [Parameter] public string Format { get; set; } = "MM/dd/yyyy";
+    /// <summary>
+    /// Display and primary parse format forwarded to the inner <see cref="DateRangePicker"/>. Null
+    /// (default) picks <see cref="Mode"/>'s own default there (see <see cref="DateRangePicker.Format"/>)
+    /// instead of a fixed literal -- unlike this parameter's own former hardcoded "MM/dd/yyyy" default,
+    /// which would otherwise silently override every OTHER mode's per-mode default (e.g. Month's
+    /// "MM/yyyy") the moment <see cref="Mode"/> forwarded anything but <see cref="DatePickerMode.Date"/>.
+    /// </summary>
+    [Parameter] public string? Format { get; set; }
     /// <inheritdoc cref="DateRangePicker.StartPlaceholder"/>
     [Parameter] public string? StartPlaceholder { get; set; }
     /// <inheritdoc cref="DateRangePicker.EndPlaceholder"/>
@@ -129,8 +135,45 @@ public partial class EditDateRange : IEditControl, IDisposable
     /// <inheritdoc cref="DateRangePicker.FirstDayOfWeek"/>
     [Parameter] public DayOfWeek? FirstDayOfWeek { get; set; }
 
-    /// <summary> Format string for the read-only "start - end" value display. Defaults to "MM-dd-yyyy" (matches <see cref="EditDate{T}"/>'s default).</summary>
-    [Parameter] public string DateFormat { get; set; } = "MM-dd-yyyy";
+    /// <inheritdoc cref="DateRangePicker.Mode"/>
+    [Parameter] public DatePickerMode Mode { get; set; } = DatePickerMode.Date;
+    /// <inheritdoc cref="DateRangePicker.ShowWeekNumbers"/>
+    [Parameter] public bool ShowWeekNumbers { get; set; }
+    /// <inheritdoc cref="DateRangePicker.DisabledDate"/>
+    [Parameter] public Func<DateTime, bool>? DisabledDate { get; set; }
+    /// <inheritdoc cref="DateRangePicker.StartDisabledTime"/>
+    [Parameter] public Func<DateTime?, DisabledTimeParts?>? StartDisabledTime { get; set; }
+    /// <inheritdoc cref="DateRangePicker.EndDisabledTime"/>
+    [Parameter] public Func<DateTime?, DisabledTimeParts?>? EndDisabledTime { get; set; }
+    /// <inheritdoc cref="DateRangePicker.HideDisabledTimeOptions"/>
+    [Parameter] public bool HideDisabledTimeOptions { get; set; }
+    /// <inheritdoc cref="DateRangePicker.ShowSeconds"/>
+    [Parameter] public bool ShowSeconds { get; set; } = true;
+    /// <inheritdoc cref="DateRangePicker.HourStep"/>
+    [Parameter] public int HourStep { get; set; } = 1;
+    /// <inheritdoc cref="DateRangePicker.MinuteStep"/>
+    [Parameter] public int MinuteStep { get; set; } = 1;
+    /// <inheritdoc cref="DateRangePicker.SecondStep"/>
+    [Parameter] public int SecondStep { get; set; } = 1;
+    /// <inheritdoc cref="DateRangePicker.Use12Hours"/>
+    [Parameter] public bool Use12Hours { get; set; }
+    /// <inheritdoc cref="DateRangePicker.OkText"/>
+    [Parameter] public string OkText { get; set; } = "OK";
+    /// <inheritdoc cref="DateRangePicker.ExtraFooter"/>
+    [Parameter] public RenderFragment? ExtraFooter { get; set; }
+    /// <inheritdoc cref="DateRangePicker.DefaultViewDate"/>
+    [Parameter] public DateTime? DefaultViewDate { get; set; }
+
+    /// <summary> Format string for the read-only "start - end" value display. Null (default) picks
+    /// <see cref="Mode"/>'s own default (mirrors <see cref="EditDatePicker{T}.DateFormat"/>'s identical
+    /// per-mode contract): <c>Date</c> "MM-dd-yyyy" (the original, unchanged default) · <c>Month</c>
+    /// "MM-yyyy" · <c>DateTime</c> "MM-dd-yyyy " plus <c>Time</c>'s own string · <c>Time</c> "HH:mm:ss"
+    /// (<see cref="ShowSeconds"/> false drops ":ss"; <see cref="Use12Hours"/> switches to the 12-hour
+    /// "h:mm tt"/"h:mm:ss tt" forms) · <c>Year</c> "yyyy" · <c>Quarter</c>/<c>Week</c> render the same
+    /// "yyyy-Qn"/"yyyy-Www" shorthand the picker itself shows (no .NET format token exists for either)
+    /// — set <see cref="DateFormat"/> explicitly in those two modes and it is used verbatim via
+    /// <c>ToString</c> instead, which can't render the quarter/week digit.</summary>
+    [Parameter] public string? DateFormat { get; set; }
 
     /// <summary>
     /// Captures unmatched attributes (a consumer's <c>class</c>/<c>style</c>/<c>data-*</c>) so they can
@@ -174,6 +217,22 @@ public partial class EditDateRange : IEditControl, IDisposable
     [Parameter] public string PrevMonthLabel { get; set; } = "Previous month";
     /// <inheritdoc cref="DateRangePicker.NextMonthLabel"/>
     [Parameter] public string NextMonthLabel { get; set; } = "Next month";
+    /// <inheritdoc cref="DateRangePicker.PrevYearLabel"/>
+    [Parameter] public string PrevYearLabel { get; set; } = "Previous year";
+    /// <inheritdoc cref="DateRangePicker.NextYearLabel"/>
+    [Parameter] public string NextYearLabel { get; set; } = "Next year";
+    /// <inheritdoc cref="DateRangePicker.PrevDecadeLabel"/>
+    [Parameter] public string PrevDecadeLabel { get; set; } = "Previous decade";
+    /// <inheritdoc cref="DateRangePicker.NextDecadeLabel"/>
+    [Parameter] public string NextDecadeLabel { get; set; } = "Next decade";
+    /// <inheritdoc cref="DateRangePicker.HourSelectLabel"/>
+    [Parameter] public string HourSelectLabel { get; set; } = "Hour";
+    /// <inheritdoc cref="DateRangePicker.MinuteSelectLabel"/>
+    [Parameter] public string MinuteSelectLabel { get; set; } = "Minute";
+    /// <inheritdoc cref="DateRangePicker.SecondSelectLabel"/>
+    [Parameter] public string SecondSelectLabel { get; set; } = "Second";
+    /// <inheritdoc cref="DateRangePicker.PeriodSelectLabel"/>
+    [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
 
     // Standard derived state — mirrors EditControlListBase's fields, duplicated per bound field.
     string _id = string.Empty;
@@ -388,23 +447,61 @@ public partial class EditDateRange : IEditControl, IDisposable
         }
     }
 
+    // Mirrors EditDatePicker.TimeFormatPart exactly (see its doc comment) -- one small string, not
+    // worth sharing across the two otherwise-independent classes. Feeds EffectiveDateFormat's own
+    // Time/DateTime default below.
+    string TimeFormatPart => Use12Hours
+        ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
+        : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
+
+    // Mirrors EditDatePicker.EffectiveDateFormat one-for-one, keyed off this control's own Mode
+    // (there's no separate Type/Mode fork here -- Mode is the only lever). Quarter/Week's "yyyy" is
+    // never actually rendered -- FormatOne bypasses ToString(EffectiveDateFormat) for both via
+    // PickerMath's shared FormatQuarterDisplay/FormatWeekDisplay (see FormatOne below).
+    string EffectiveDateFormat => DateFormat ?? Mode switch
+    {
+        DatePickerMode.Date => "MM-dd-yyyy",
+        DatePickerMode.Month => "MM-yyyy",
+        DatePickerMode.DateTime => $"MM-dd-yyyy {TimeFormatPart}",
+        DatePickerMode.Time => TimeFormatPart,
+        DatePickerMode.Year => "yyyy",
+        DatePickerMode.Quarter => "yyyy",
+        DatePickerMode.Week => "yyyy",
+        _ => "MM-dd-yyyy"
+    };
+
+    // FirstDayOfWeek resolution mirrors DateRangePicker's own EffectiveFirstDayOfWeek (culture
+    // fallback), computed independently here for FormatOne's Week special case -- there's no picker
+    // instance to ask once the control is in read-only mode (no <DateRangePicker> renders at all then).
+    DayOfWeek EffectiveFirstDayOfWeek(CultureInfo culture) => FirstDayOfWeek ?? culture.DateTimeFormat.FirstDayOfWeek;
+
     string GetDisplayValue()
     {
-        var start = FormatOne(Start);
-        var end = FormatOne(End);
+        // Gregorian-forced like the picker's own display, so read-only and edit mode can never
+        // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
+        var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
+        var start = FormatOne(Start, culture);
+        var end = FormatOne(End, culture);
         if (start.Length == 0 && end.Length == 0) return string.Empty;
         return $"{start} - {end}";
     }
 
-    string FormatOne(DateTime? value)
+    string FormatOne(DateTime? value, CultureInfo culture)
     {
         if (value is not { } v) return string.Empty;
-        // Gregorian-forced like the picker's own display, so read-only and edit mode can never
-        // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
-        var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
+        // Quarter/Week's null-DateFormat display has no .NET format token to route through
+        // ToString(EffectiveDateFormat) below -- reuses PickerMath's own FormatQuarterDisplay/
+        // FormatWeekDisplay (the single source of truth DateRangePicker's own display routes through
+        // too, not duplicated regex/format logic here). An explicit DateFormat still falls through to
+        // the verbatim ToString path, matching the picker's own Format contract.
+        if (DateFormat is null)
+        {
+            if (Mode == DatePickerMode.Quarter) return PickerMath.FormatQuarterDisplay(v, culture);
+            if (Mode == DatePickerMode.Week) return PickerMath.FormatWeekDisplay(v, culture, EffectiveFirstDayOfWeek(culture));
+        }
         try
         {
-            return v.ToString(DateFormat, culture);
+            return v.ToString(EffectiveDateFormat, culture);
         }
         catch (FormatException)
         {

@@ -532,4 +532,155 @@ public class EditDateRangeTests : TestContext
 
         Assert.NotEmpty(cut.FindAll(".edit-control-wrapper"));
     }
+
+    // ----- Forwarded DateRangePicker parameters -------------------------------------------------
+
+    [Fact]
+    public void Mode_Month_forwards_and_renders_the_month_dual_panels()
+    {
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Mode", DatePickerMode.Month);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.Equal(2, cut.FindAll(".wss-picker-month").Count); // dual panels, forwarded via Mode
+        Assert.NotEmpty(cut.FindAll(".wss-picker-month-btn")); // month-grid buttons, not day cells
+        Assert.Empty(cut.FindAll(".wss-picker-day"));
+    }
+
+    [Fact]
+    public void DisabledDate_forwards_and_disables_a_day_cell()
+    {
+        var model = new RangeModel { Start = Jan15 }; // Wednesday
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "DisabledDate", (Func<DateTime, bool>)(d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday));
+            b.AddAttribute(6, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.True(Day(cut, 0, 18).HasAttribute("disabled")); // Jan 18, 2025 is a Saturday
+        Assert.False(Day(cut, 0, 15).HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void ExtraFooter_forwards_and_renders_in_the_dropdown()
+    {
+        var model = new RangeModel { Start = Jan15 };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "ExtraFooter", (RenderFragment)(rb => rb.AddMarkupContent(0, "<span class=\"my-extra\">extra</span>")));
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        Assert.Equal("extra", cut.Find(".wss-picker-extra-footer .my-extra").TextContent);
+    }
+
+    [Fact]
+    public void Use12Hours_forwards_and_reaches_the_datetime_session_time_row()
+    {
+        var model = new RangeModel();
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Mode", DatePickerMode.DateTime);
+            b.AddAttribute(6, "Use12Hours", true);
+            b.CloseComponent();
+        }));
+
+        Open(cut);
+
+        var selects = cut.FindAll(".wss-picker-time-row select");
+        Assert.Equal(4, selects.Count); // hour, minute, second, period
+        Assert.Equal("AM/PM", selects[3].GetAttribute("aria-label"));
+    }
+
+    // ----- Read-only display: mode-aware default DateFormat + Quarter/DateTime special cases -----
+
+    [Fact]
+    public void Read_only_mode_displays_the_quarter_shorthand_for_Mode_Quarter()
+    {
+        var model = new RangeModel { Start = new DateTime(2026, 8, 15), End = new DateTime(2026, 11, 1) }; // Q3, Q4
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Mode", DatePickerMode.Quarter);
+            b.AddAttribute(6, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        // No DateFormat set -- Quarter's own default bypasses ToString entirely (no .NET token for a
+        // quarter number) via PickerMath.FormatQuarterDisplay, mirroring EditDatePicker's own display.
+        Assert.Equal("2026-Q3 - 2026-Q4", cut.Find(".edit-readonly-value").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Read_only_mode_includes_time_of_day_for_Mode_DateTime_with_no_DateFormat_set()
+    {
+        var model = new RangeModel
+        {
+            Start = new DateTime(2025, 1, 15, 9, 30, 0),
+            End = new DateTime(2025, 2, 3, 17, 45, 0),
+        };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Mode", DatePickerMode.DateTime);
+            b.AddAttribute(6, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        // DateTime's own default DateFormat ("MM-dd-yyyy HH:mm:ss") flows through when unset -- a
+        // plain Date-mode default here would silently drop the time-of-day.
+        var text = cut.Find(".edit-readonly-value").TextContent;
+        Assert.Contains("09:30:00", text);
+        Assert.Contains("17:45:00", text);
+    }
 }
