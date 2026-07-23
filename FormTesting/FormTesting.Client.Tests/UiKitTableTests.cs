@@ -815,6 +815,68 @@ public class UiKitTableTests : TestContext
         Assert.Contains("wss-table-sorter", button.Children[1].ClassList);
     }
 
+    // ----- Pager wire-through (ShowTotal / PageSizeOptions) -----
+
+    [Fact]
+    public void ShowTotal_forwards_to_the_embedded_pager()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.PageSize, 1)
+            .Add(t => t.ShowTotal, (Func<(int Start, int End, int Total), string>)(w => $"{w.Start}-{w.End} of {w.Total}"))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Equal("1-1 of 2", cut.Find(".wss-pagination-total").TextContent);
+    }
+
+    [Fact]
+    public void PageSizeOptions_forwards_a_size_changer_that_reslices_the_table()
+    {
+        var people = Enumerable.Range(1, 20).Select(i => new Person($"P{i}", i)).ToList();
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.PageSize, 5)
+            .Add(t => t.PageSizeOptions, new[] { 5, 10 })
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Equal(5, cut.FindAll("tbody .wss-table-row").Count);
+
+        cut.Find(".wss-pagination-size-select").Change("10");
+
+        Assert.Equal(10, cut.FindAll("tbody .wss-table-row").Count);
+    }
+
+    [Fact]
+    public void PageSizeOptions_change_preserves_selection_across_the_reslice()
+    {
+        var people = Enumerable.Range(1, 20).Select(i => new Person($"P{i}", i)).ToList();
+        List<Person>? selected = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.PageSize, 5)
+            .Add(t => t.PageSizeOptions, new[] { 5, 10 })
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody input.wss-table-checkbox")[0].Change(true); // select P1
+        Assert.Single(selected!);
+
+        cut.Find(".wss-pagination-size-select").Change("10");
+
+        // The selection (keyed by row identity) survives the page-size change untouched.
+        Assert.Single(selected!);
+        Assert.Equal("P1", selected![0].Name);
+        Assert.True(cut.FindAll("tbody input.wss-table-checkbox")[0].HasAttribute("checked"));
+    }
+
     [Fact]
     public void Toggling_UseStyledCheckbox_reapplies_the_indeterminate_state()
     {

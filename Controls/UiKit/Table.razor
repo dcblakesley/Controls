@@ -20,7 +20,8 @@
 @if (ShowTopPager)
 {
     <div class="wss-table-pagination wss-table-pagination-top wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange"
+        <Pagination Total="_items.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
+                    ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
                     AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")" />
     </div>
 }
@@ -167,7 +168,8 @@
 @if (ShowBottomPager)
 {
     <div class="wss-table-pagination wss-table-pagination-bottom wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_items.Count" PageSize="PageSize" Current="_page" CurrentChanged="OnPageChange"
+        <Pagination Total="_items.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
+                    ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
                     AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (bottom)" : "Pagination")" />
     </div>
 }
@@ -188,8 +190,30 @@
     /// <summary>Optional accessible caption rendered above the table (also names it for screen readers).</summary>
     [Parameter] public string? Caption { get; set; }
 
-    /// <summary>Rows per page; 0 (default) shows all rows without pagination.</summary>
+    /// <summary>
+    /// Rows per page; 0 (default) shows all rows without pagination. This is the INITIAL effective
+    /// page size only when <see cref="PageSizeOptions"/>'s size-changer is in play — picking a
+    /// different size there updates the table's own internal page size (see <see cref="_pageSize"/>)
+    /// without requiring this parameter itself to be two-way bound; an explicit change to this
+    /// parameter still always wins, discarding any prior size-changer pick.
+    /// </summary>
     [Parameter] public int PageSize { get; set; }
+
+    /// <summary>
+    /// AntD's total-text ("1-10 of 200 items"), forwarded to the embedded <see cref="Pagination"/>
+    /// (both pagers under <see cref="PagerPosition.Both"/>). Null (default) renders nothing.
+    /// </summary>
+    [Parameter] public Func<(int Start, int End, int Total), string>? ShowTotal { get; set; }
+
+    /// <summary>
+    /// Page-size options, forwarded to the embedded <see cref="Pagination"/>'s size-changer (both
+    /// pagers under <see cref="PagerPosition.Both"/> share one selection). Null/empty (default)
+    /// renders no size-changer. Picking a size re-slices the table (see <see cref="PageSize"/>) and
+    /// re-clamps the current page the same way the standalone <see cref="Pagination"/> does; the
+    /// selection (<see cref="_selected"/>) is keyed by <see cref="RowKey"/> identity, so it survives
+    /// the re-slice untouched regardless of which page a selected row ends up on.
+    /// </summary>
+    [Parameter] public int[]? PageSizeOptions { get; set; }
 
     /// <summary>Horizontal alignment of the pager. Defaults to <see cref="PagerAlign.Right"/> (AntD default).</summary>
     [Parameter] public PagerAlign PagerAlign { get; set; } = PagerAlign.Right;
@@ -265,6 +289,14 @@
     IEnumerable<TItem>? _lastDataSource;
     IEnumerable<TItem>? _lastSelectedItems;
     int _page = 1;
+
+    // Mirrors the PageSize parameter so the embedded Pagination's size-changer (PageSizeOptions) can
+    // override the effective page size without PageSize itself needing to be two-way bound. Resyncs
+    // whenever the *parameter* changes (see OnParametersSet) -- an explicit consumer change to
+    // PageSize always wins, discarding any earlier size-changer pick.
+    int _pageSize;
+    int _lastPageSizeParam = -1; // sentinel so the very first OnParametersSet always syncs
+
     Column<TItem>? _sortColumn;
     SortDirection _sortDirection = SortDirection.None;
     ElementReference _selectAllRef;
@@ -295,7 +327,7 @@
 
     string PagerAlignName => PagerAlign.ToString().ToLowerInvariant();
 
-    bool IsPaged => PageSize > 0;
+    bool IsPaged => _pageSize > 0;
 
     bool HasPager => IsPaged && _items.Count > 0;
     bool ShowTopPager => HasPager && PagerPosition is PagerPosition.Top or PagerPosition.Both;
@@ -338,10 +370,10 @@
         // RowKey is deliberately NOT tracked: an inline lambda parameter is a new delegate every
         // render, and the documented contract is a pure, stable key selector — tracking it would
         // defeat this skip for the most common usage.
-        if (ReferenceEquals(_sorted, _keyedSorted) && _page == _keyedPage && PageSize == _keyedPageSize)
+        if (ReferenceEquals(_sorted, _keyedSorted) && _page == _keyedPage && _pageSize == _keyedPageSize)
             return;
 
-        _pageItems = IsPaged ? _sorted.Skip((_page - 1) * PageSize).Take(PageSize).ToList() : _sorted;
+        _pageItems = IsPaged ? _sorted.Skip((_page - 1) * _pageSize).Take(_pageSize).ToList() : _sorted;
 
         // Row @key values, disambiguated: fully-equal rows (equal records/strings, or RowKey
         // collisions) would be duplicate sibling @keys, which Blazor rejects with an exception that
@@ -366,7 +398,7 @@
 
         _keyedSorted = _sorted;
         _keyedPage = _page;
-        _keyedPageSize = PageSize;
+        _keyedPageSize = _pageSize;
 
         // Page membership changed, so the header-checkbox state may have too.
         RecomputeSelectionFlags();
@@ -430,6 +462,14 @@
 
     protected override void OnParametersSet()
     {
+        // See _pageSize's remarks: resync only when the PARAMETER itself changed, so a size-changer
+        // pick (OnPageSizeChange, below) survives an unrelated parent re-render.
+        if (PageSize != _lastPageSizeParam)
+        {
+            _pageSize = PageSize;
+            _lastPageSizeParam = PageSize;
+        }
+
         // Treat the collections as immutable parameters (the Blazor-idiomatic contract) and only
         // re-copy when the reference changes, mirroring Select's Options guard. Reassign DataSource /
         // SelectedItems (rather than mutating in place) to refresh.
@@ -464,7 +504,7 @@
 
         if (IsPaged)
         {
-            var pageCount = Math.Max(1, (int)Math.Ceiling((double)_items.Count / PageSize));
+            var pageCount = Math.Max(1, (int)Math.Ceiling((double)_items.Count / _pageSize));
             if (_page > pageCount) _page = pageCount;
             if (_page < 1) _page = 1;
         }
@@ -564,6 +604,18 @@
     // Pagination.CurrentChanged is an EventCallback, so Blazor re-renders this component
     // automatically once this handler returns — no explicit StateHasChanged needed.
     void OnPageChange(int page) { _page = page; RebuildPageItems(); }
+
+    // The embedded Pagination's size-changer (PageSizeOptions) picked a new size: re-slice at that
+    // size. Pagination itself separately raises CurrentChanged (its own re-clamp rule) when the
+    // current page needs to move, which OnPageChange above then applies -- so the two calls together
+    // land on the correct final page/size before the next render, same as the documented
+    // compose-with-a-standalone-Pagination server-paging pattern.
+    void OnPageSizeChange(int newSize)
+    {
+        if (newSize <= 0 || newSize == _pageSize) return;
+        _pageSize = newSize;
+        RebuildPageItems();
+    }
 
     bool IsSelected(TItem item) => _selected.ContainsKey(KeyFor(item));
 
