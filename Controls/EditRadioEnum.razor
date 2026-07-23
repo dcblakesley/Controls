@@ -50,7 +50,7 @@
                                 <input type="text"
                                        value="@OtherValue"
                                        @oninput="@(OnOtherValueChanged)"
-                                       disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, lastOption) || IsDisabled)"
+                                       disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, lastOption) || IsOptionDisabledFor(lastOption))"
                                        class="edit-input edit-radio-other-input"
                                        aria-label="Custom text value input"
                                        placeholder=@OtherPlaceholder
@@ -88,7 +88,7 @@
                                             <input type="text"
                                                    value="@OtherValue"
                                                    @oninput="@(OnOtherValueChanged)"
-                                                   disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsDisabled)"
+                                                   disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsOptionDisabledFor(option))"
                                                    class="edit-input edit-radio-other-input"
                                                    aria-label="Custom text value input"
                                                    placeholder=@OtherPlaceholder

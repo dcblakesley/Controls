@@ -193,6 +193,47 @@ public class PerOptionDisabledTests : TestContext
     }
 
     [Fact]
+    public void EditRadioEnum_IsOptionDisabled_disables_the_Other_text_input_too_default_mode()
+    {
+        // Regression: the Other option's paired free-text input checked only
+        // `!Equals(CurrentValue, option) || IsDisabled` and never consulted IsOptionDisabled -- so a
+        // predicate-disabled Other radio left its text box editable. Value is set to Critical (the
+        // Other value here) so the input's "currently selected" branch is exercised.
+        var model = new PersonModel { Priority = Priority.Critical };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "HasOtherOption", true);
+            b.AddAttribute(4, "IsOptionDisabled", (Func<Priority?, bool>)(p => p == Priority.Critical));
+            b.CloseComponent();
+        }));
+
+        Assert.True(cut.Find("input.edit-radio-other-input").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void EditRadioEnum_IsOptionDisabled_disables_the_Other_text_input_too_button_mode()
+    {
+        var model = new PersonModel { Priority = Priority.Critical };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "OptionType", RadioOptionType.Button);
+            b.AddAttribute(4, "HasOtherOption", true);
+            b.AddAttribute(5, "IsOptionDisabled", (Func<Priority?, bool>)(p => p == Priority.Critical));
+            b.CloseComponent();
+        }));
+
+        Assert.True(cut.Find("input.edit-radio-other-input").HasAttribute("disabled"));
+    }
+
+    [Fact]
     public void EditRadioEnum_group_IsDisabled_wins_even_when_predicate_returns_false()
     {
         var model = new PersonModel { Priority = Priority.Low };
