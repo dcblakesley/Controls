@@ -3536,6 +3536,28 @@
     border-color: var(--wss-color-primary);
 }
 
+/* SearchInput.AllowClear: a flex sibling between the input and the search button (only rendered
+   while there's a value to clear — see SearchInput.razor.cs's ShowClear). */
+.wss-search-clear {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    margin-inline-start: -1px;
+    padding: 0 8px;
+    color: var(--wss-color-text-secondary);
+    font-size: 14px;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-inline-end: none;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.wss-search-clear:hover {
+    color: var(--wss-color-text);
+}
+
 .wss-search-btn {
     display: inline-flex;
     flex: none;
@@ -3560,8 +3582,30 @@
     border-color: var(--wss-color-primary);
 }
 
+/* SearchInput.EnterButtonText: a labeled primary button instead of the icon-only default
+   (AntD's enterButton="Search"). */
+.wss-search-btn-enter {
+    padding: 0 16px;
+    font-size: var(--wss-font-size);
+    color: var(--wss-color-on-primary);
+    background: var(--wss-color-primary);
+    border-color: var(--wss-color-primary);
+}
+
+.wss-search-btn-enter:hover:not(:disabled) {
+    color: var(--wss-color-on-primary);
+    background: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+}
+
 .wss-search-disabled .wss-search-input,
 .wss-search-btn:disabled {
+    color: var(--wss-color-text-disabled);
+    background: var(--wss-color-bg-disabled);
+    cursor: not-allowed;
+}
+
+.wss-search-disabled .wss-search-clear {
     color: var(--wss-color-text-disabled);
     background: var(--wss-color-bg-disabled);
     cursor: not-allowed;
@@ -3589,6 +3633,7 @@
 .wss-table-expand-btn:focus-visible,
 .wss-tabs-tab:focus-visible,
 .wss-search-btn:focus-visible,
+.wss-search-clear:focus-visible,
 .wss-picker-clear:focus-visible,
 .wss-pagination-size-select:focus-visible,
 .wss-pagination-jumper-input:focus-visible {

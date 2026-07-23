@@ -54,8 +54,27 @@ public partial class SearchInput
     /// addon instead (see <see cref="AddonLabelledBy"/>).</summary>
     [Parameter] public string? InputLabel { get; set; }
 
-    /// <summary>Accessible name of the icon-only search button. Override to localize.</summary>
+    /// <summary>Accessible name of the icon-only search button. Override to localize. Ignored (no
+    /// <c>aria-label</c> is rendered) while <see cref="EnterButtonText"/> is set — the button's own
+    /// visible text is its accessible name then.</summary>
     [Parameter] public string SearchButtonLabel { get; set; } = "Search";
+
+    /// <summary>
+    /// Shows a clear (×) button between the input and the search button whenever there's a
+    /// non-empty <see cref="Value"/> and the control isn't <see cref="Disabled"/> (AntD's
+    /// <c>allowClear</c>). Defaults to false.
+    /// </summary>
+    [Parameter] public bool AllowClear { get; set; }
+
+    /// <summary>Accessible name of the clear button. Override to localize.</summary>
+    [Parameter] public string ClearButtonLabel { get; set; } = "Clear";
+
+    /// <summary>
+    /// When set, the search button renders this text instead of its search-glyph icon (AntD's
+    /// <c>enterButton="Search"</c>), styled as a primary button (<c>wss-search-btn-enter</c>). Null
+    /// (default) keeps the icon-only button.
+    /// </summary>
+    [Parameter] public string? EnterButtonText { get; set; }
 
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
@@ -76,6 +95,10 @@ public partial class SearchInput
     static readonly MarkupString LoadingIcon = new($"<span class=\"wss-icon-spin\">{EditIcons.LoadingSpinner}</span>");
 
     string? WidthStyle => string.IsNullOrEmpty(Width) ? null : $"width:{Width};";
+
+    bool ShowClear => AllowClear && !Disabled && !string.IsNullOrEmpty(Value);
+
+    bool HasEnterButtonText => !string.IsNullOrEmpty(EnterButtonText);
 
     /// <summary>
     /// The input's accessible name via <c>aria-label</c>: <see cref="InputLabel"/> if set, else
@@ -108,5 +131,13 @@ public partial class SearchInput
     {
         if (Disabled || Loading) return;
         if (OnSearch.HasDelegate) await OnSearch.InvokeAsync(Value);
+    }
+
+    // Clears the text only -- matches AntD's Input allowClear (no implicit OnSearch/submit).
+    async Task ClearAsync()
+    {
+        if (Disabled) return;
+        Value = null;
+        await ValueChanged.InvokeAsync(Value);
     }
 }

@@ -31,7 +31,28 @@
            @oninput="OnInputAsync"
            @onkeydown="OnKeyDownAsync" />
 
-    <button type="button" class="wss-search-btn" aria-label="@SearchButtonLabel"
+    @if (ShowClear)
+    {
+        <button type="button" class="wss-search-clear" aria-label="@ClearButtonLabel" @onclick="ClearAsync">
+            @EditIcons.ClearCircle
+        </button>
+    }
+
+    <button type="button" class="wss-search-btn @(HasEnterButtonText ? "wss-search-btn-enter" : null)"
+            aria-label="@(HasEnterButtonText ? null : SearchButtonLabel)"
             disabled="@(Disabled || Loading)" aria-busy="@(Loading ? "true" : null)"
-            @onclick="RaiseSearchAsync">@(Loading ? LoadingIcon : SearchIcon)</button>
+            @onclick="RaiseSearchAsync">
+        @if (Loading)
+        {
+            @LoadingIcon
+        }
+        else if (HasEnterButtonText)
+        {
+            @EnterButtonText
+        }
+        else
+        {
+            @SearchIcon
+        }
+    </button>
 </div>

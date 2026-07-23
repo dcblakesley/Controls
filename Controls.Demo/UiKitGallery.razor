@@ -187,6 +187,21 @@
     </section>
 
     <section class="demo-section">
+        <h3>SearchInput — AllowClear, EnterButtonText</h3>
+        <p style="margin:0; color:#666;">
+            <code>AllowClear</code> shows a × between the input and the search button whenever
+            there's text; <code>EnterButtonText</code> swaps the icon-only button for a labeled
+            primary button (AntD's <code>enterButton="Search"</code>).
+        </p>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+            <SearchInput @bind-Value="_clearableSearch" AllowClear="true" Placeholder="Clearable..."
+                         Id="demo-search-clearable" Width="220px" />
+            <SearchInput @bind-Value="_enterButtonSearch" EnterButtonText="Search" AllowClear="true"
+                         Id="demo-search-enter-button" Width="240px" />
+        </div>
+    </section>
+
+    <section class="demo-section">
         <h3>Select — pill filter variant</h3>
         <p style="margin:0; color:#666;">
             <code>Variant="SelectVariant.Pill"</code> turns the Select trigger into a rounded
@@ -728,6 +743,10 @@
     string? _skuSearch;
     string _lastSearch = "—";
     bool _skuSearchLoading;
+
+    // --- SearchInput AllowClear/EnterButtonText demo ---
+    string? _clearableSearch = "pre-filled";
+    string? _enterButtonSearch;
 
     // --- Pill-select demo ---
     string _shipmentFilter = "all";

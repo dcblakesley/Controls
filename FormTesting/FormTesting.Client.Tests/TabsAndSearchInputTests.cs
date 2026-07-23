@@ -311,6 +311,62 @@ public class TabsAndSearchInputTests : TestContext
     }
 
     [Fact]
+    public void SearchInput_allow_clear_renders_only_with_a_non_empty_value_and_clears_it()
+    {
+        string? value = "abc";
+        var cut = RenderComponent<SearchInput>(p => p
+            .Add(s => s.AllowClear, true)
+            .Add(s => s.Value, value)
+            .Add(s => s.ValueChanged, (string? v) => value = v));
+
+        Assert.NotNull(cut.Find(".wss-search-clear"));
+        cut.Find(".wss-search-clear").Click();
+        Assert.Null(value);
+
+        // Re-render with the now-empty value: the clear button disappears.
+        cut.SetParametersAndRender(p => p.Add(s => s.Value, (string?)null));
+        Assert.Empty(cut.FindAll(".wss-search-clear"));
+    }
+
+    [Fact]
+    public void SearchInput_without_allow_clear_never_renders_the_clear_button()
+    {
+        var cut = RenderComponent<SearchInput>(p => p.Add(s => s.Value, "abc"));
+        Assert.Empty(cut.FindAll(".wss-search-clear"));
+    }
+
+    [Fact]
+    public void SearchInput_allow_clear_is_suppressed_while_disabled()
+    {
+        var cut = RenderComponent<SearchInput>(p => p
+            .Add(s => s.AllowClear, true)
+            .Add(s => s.Disabled, true)
+            .Add(s => s.Value, "abc"));
+
+        Assert.Empty(cut.FindAll(".wss-search-clear"));
+    }
+
+    [Fact]
+    public void SearchInput_enter_button_text_renders_text_instead_of_the_icon()
+    {
+        var cut = RenderComponent<SearchInput>(p => p.Add(s => s.EnterButtonText, "Search"));
+
+        var btn = cut.Find(".wss-search-btn");
+        Assert.Contains("wss-search-btn-enter", btn.ClassList);
+        Assert.Contains("Search", btn.TextContent);
+        Assert.Null(btn.GetAttribute("aria-label")); // visible text is the accessible name instead
+    }
+
+    [Fact]
+    public void SearchInput_without_enter_button_text_keeps_the_icon_only_button()
+    {
+        var cut = RenderComponent<SearchInput>();
+        var btn = cut.Find(".wss-search-btn");
+        Assert.DoesNotContain("wss-search-btn-enter", btn.ClassList);
+        Assert.Equal("Search", btn.GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void SearchInput_empty_AddonLabel_with_AddonContent_still_uses_aria_labelledby()
     {
         // AddonLabel = "" (not null) is the edge case: InputLabel ?? AddonLabel alone would
