@@ -94,6 +94,21 @@
         <pre class="code-block"><code>@_indeterminateStyledExample</code></pre>
     </section>
 
+    <section class="demo-section">
+        @* Regression coverage: flipping IsLabelHidden at runtime moves the checkbox between two
+           different branches of EditBool.razor's markup (wrapped in a <label> vs. a sibling of a
+           visually-hidden one) while Indeterminate stays true throughout -- proves the JS mirror
+           re-syncs across that structural change instead of leaving a stale DOM `indeterminate`. *@
+        <EditBool @bind-Value="_model.SelectAllLabelToggle"
+                  Indeterminate="true"
+                  IsLabelHidden="_model.IsLabelToggleHidden"
+                  Label="Select all (label-hide toggle)" />
+        <button type="button" @onclick="ToggleLabelHidden">Toggle hide label</button>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_labelToggleExample</code></pre>
+    </section>
+
 </EditForm>
 
 
@@ -148,8 +163,14 @@ public bool StyledCheckboxRequired { get; set; }";
           UseStyledCheckbox=""true""
           Label=""Select all (styled)"" />";
 
+    readonly string _labelToggleExample = @"<EditBool @bind-Value=""_model.SelectAllLabelToggle""
+          Indeterminate=""true""
+          IsLabelHidden=""_model.IsLabelToggleHidden""
+          Label=""Select all (label-hide toggle)"" />";
+
     void ToggleIndeterminate() => _model.IsIndeterminate = !_model.IsIndeterminate;
     void ToggleIndeterminateStyled() => _model.IsIndeterminateStyled = !_model.IsIndeterminateStyled;
+    void ToggleLabelHidden() => _model.IsLabelToggleHidden = !_model.IsLabelToggleHidden;
 
     public class DemoEditBoolModel
     {
@@ -169,5 +190,8 @@ public bool StyledCheckboxRequired { get; set; }";
         public bool IsIndeterminate { get; set; } = true;
         public bool SelectAllStyled { get; set; }
         public bool IsIndeterminateStyled { get; set; } = true;
+
+        public bool SelectAllLabelToggle { get; set; }
+        public bool IsLabelToggleHidden { get; set; }
     }
 }

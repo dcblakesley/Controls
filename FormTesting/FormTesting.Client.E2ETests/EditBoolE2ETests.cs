@@ -160,4 +160,29 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         await Expect(section).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(section, "indeterminate-styled-section");
     }
+
+    [Fact]
+    public async Task Indeterminate_survives_a_runtime_IsLabelHidden_flip()
+    {
+        // EditBool.razor renders the checkbox in two different tree positions depending on
+        // ShouldHideLabel (wrapped inside the visible <label> vs. as a sibling of a visually-hidden
+        // one) -- flipping that parameter at runtime remounts the <input>, which resets the DOM
+        // `indeterminate` property to false. The mirror in EditBool.razor.cs must notice the remount
+        // and re-apply Indeterminate rather than trusting its stale "already synced" flag.
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Nth(8);
+        var checkbox = section.Locator("input[type=checkbox]").First;
+
+        Assert.True(await checkbox.EvaluateAsync<bool>("el => el.indeterminate"));
+
+        await section.Locator("button", new() { HasTextString = "Toggle hide label" }).ClickAsync();
+
+        checkbox = section.Locator("input[type=checkbox]").First;
+        Assert.True(await checkbox.EvaluateAsync<bool>("el => el.indeterminate"));
+
+        // Flip back -- the mirror must re-sync on the return trip too, not just the first flip.
+        await section.Locator("button", new() { HasTextString = "Toggle hide label" }).ClickAsync();
+        checkbox = section.Locator("input[type=checkbox]").First;
+        Assert.True(await checkbox.EvaluateAsync<bool>("el => el.indeterminate"));
+    }
 }

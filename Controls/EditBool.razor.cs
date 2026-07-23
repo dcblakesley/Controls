@@ -66,6 +66,11 @@ public partial class EditBool : EditControlBase<bool>
     // checkbox in every form, so skipping the no-op call here matters far more than there.
     bool _lastIndeterminate;
     bool? _lastUseStyledCheckbox;
+    // Tracks ShouldHideLabel for the same reason as _lastUseStyledCheckbox: EditBool.razor renders
+    // the checkbox fragment from two structurally different branches depending on this (wrapped
+    // inside the visible <label> vs. a sibling of a visually-hidden one), so a runtime flip remounts
+    // a fresh <input> (indeterminate == false) even though the fragment reference didn't change.
+    bool? _lastShouldHideLabel;
     bool _disposed;
 
     protected override void OnInitialized()
@@ -118,10 +123,12 @@ public partial class EditBool : EditControlBase<bool>
     // indeterminate is a DOM property with no HTML attribute, so it can only be set from JS. Runs
     // after a render only when the mixed state actually changed (skipping a JS round-trip per
     // render), and re-applies whenever the checkbox itself was just (re)created — either because it
-    // wasn't rendered at all last pass (ShouldShowComponent/ShowEditor toggled) or because the
-    // styled/unstyled fragment swapped (a fresh <input> comes back with indeterminate == false either
-    // way). Degrades to a plain checkbox with no JS runtime (server prerender, tests) — mirrors
-    // Table.OnAfterRenderAsync's identical mirror-and-best-effort pattern.
+    // wasn't rendered at all last pass (ShouldShowComponent/ShowEditor toggled), because the
+    // styled/unstyled fragment swapped, or because ShouldHideLabel flipped (EditBool.razor renders
+    // the same fragment from a structurally different branch in that case) — a fresh <input> comes
+    // back with indeterminate == false in all three cases. Degrades to a plain checkbox with no JS
+    // runtime (server prerender, tests) — mirrors Table.OnAfterRenderAsync's identical
+    // mirror-and-best-effort pattern.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
@@ -141,6 +148,16 @@ public partial class EditBool : EditControlBase<bool>
             // tears down the old one and mounts a fresh one (indeterminate == false), same reasoning.
             _lastIndeterminate = false;
             _lastUseStyledCheckbox = useStyledCheckbox;
+        }
+
+        var shouldHideLabel = ShouldHideLabel;
+        if (shouldHideLabel != _lastShouldHideLabel)
+        {
+            // Same remount reasoning as above, triggered by the label-hiding branch instead of the
+            // styled/unstyled one -- either one recreates the <input>, so either one must force a
+            // re-sync.
+            _lastIndeterminate = false;
+            _lastShouldHideLabel = shouldHideLabel;
         }
 
         if (_lastIndeterminate == Indeterminate) return;
