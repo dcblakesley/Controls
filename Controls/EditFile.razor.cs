@@ -33,7 +33,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// Accepted file "accept tokens", mirroring the native <c>&lt;input accept&gt;</c>/Ant Design's
     /// <c>accept</c>: each entry is either a bare/dotted extension (<c>"pdf"</c>/<c>".pdf"</c>), a full
     /// MIME type (<c>"application/pdf"</c>), or a MIME wildcard (<c>"image/*"</c>) -- detected by
-    /// whether the token contains <c>/</c>. Empty = all types accepted.
+    /// whether the token contains <c>/</c>. Empty = all types accepted. A bare <c>"*"</c> or full
+    /// <c>"*/*"</c> token explicitly accepts everything too (equivalent to leaving the list empty, but
+    /// usable alongside other tokens in the same array -- it ORs in, it doesn't short-circuit them).
+    /// Leading/trailing whitespace on any token is ignored.
     /// </summary>
     [Parameter] public string[] AllowedExtensions { get; set; } = [];
 
@@ -123,13 +126,35 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     // silently rejects every file, since Path.GetExtension always returns the dot.
     static bool IsMimeToken(string token) => token.Contains('/');
 
-    string[] NormalizedExtensions => [.. AllowedExtensions.Select(x => IsMimeToken(x) ? x : (x.StartsWith('.') ? x : $".{x}"))];
+    // "*" and "*/*" are both meant as "accept everything" (the native <input accept> / AntD
+    // convention), but neither survived the two shape-specific normalizers below: a bare "*" isn't a
+    // MIME token, so it became the meaningless extension ".*" (matches no file, since Path.GetExtension
+    // never returns "*"); "*/*" IS a MIME token ending "/*", so the wildcard branch stripped its
+    // trailing "*" and compared ContentType.StartsWith("*/") -- also never true. Both silently rejected
+    // every file instead of accepting everything. Checked ahead of both branches below.
+    static bool IsAcceptAllToken(string token) => token is "*" or "*/*";
+
+    // Trimmed once here (the render-facing shape) and once in MatchesAcceptToken (the match-time
+    // shape) -- surrounding whitespace in a consumer's token (e.g. a hand-formatted array) otherwise
+    // fails both the `accept` attribute and the match silently, with no error to explain why.
+    string[] NormalizedExtensions => [.. AllowedExtensions.Select(x =>
+    {
+        var trimmed = x.Trim();
+        if (trimmed == "*") return "*/*"; // normalize to the actual MIME wildcard-of-wildcards for `accept`
+        return IsMimeToken(trimmed) ? trimmed : (trimmed.StartsWith('.') ? trimmed : $".{trimmed}");
+    })];
 
     // True when `file` satisfies accept token `token`, whichever of the three shapes it's written in:
-    // bare/dotted extension, full MIME type ("application/pdf"), or MIME wildcard ("image/*"). MIME
-    // matching reads the browser-reported IBrowserFile.ContentType (not sniffed) case-insensitively.
+    // bare/dotted extension, full MIME type ("application/pdf"), or MIME wildcard ("image/*") -- or the
+    // accept-everything shapes ("*"/"*/*"), checked first since neither fits the extension/MIME
+    // branches below. MIME matching reads the browser-reported IBrowserFile.ContentType (not sniffed)
+    // case-insensitively.
     static bool MatchesAcceptToken(IBrowserFile file, string token)
     {
+        token = token.Trim();
+        if (IsAcceptAllToken(token))
+            return true;
+
         if (!IsMimeToken(token))
         {
             var normalized = token.StartsWith('.') ? token : $".{token}";

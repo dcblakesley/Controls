@@ -546,6 +546,91 @@ public class EditFileTests : TestContext
     }
 
     // ------------------------------------------------------------------------------------------
+    // Accept-all tokens ("*" / "*/*") and whitespace tolerance in accept tokens.
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Bare_star_accept_token_accepts_anything_and_renders_as_the_MIME_wildcard()
+    {
+        // Before the fix, a bare "*" normalized to the extension ".*" -- which Path.GetExtension never
+        // returns -- so it silently rejected every file instead of accepting everything.
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: ["*"]);
+
+        Assert.Equal("*/*", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.pdf", contentType: "application/pdf"),
+            InputFileContent.CreateFromText("2", "b.exe", contentType: "application/octet-stream"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(2, changed.Count);
+    }
+
+    [Fact]
+    public void Star_slash_star_accept_token_accepts_anything()
+    {
+        // Before the fix, "*/*" was treated as a MIME wildcard ("image/*"-shaped): stripping its
+        // trailing "*" left ContentType.StartsWith("*/"), which is never true.
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: ["*/*"]);
+
+        Assert.Equal("*/*", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt", contentType: "text/plain"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+    }
+
+    [Fact]
+    public void Accept_all_token_ORs_with_the_rest_of_a_mixed_AllowedExtensions_list()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        // ".pdf" alone wouldn't match this file -- only the "*" entry does, proving the two tokens OR
+        // together rather than the accept-all token requiring the array to contain nothing else.
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: [".pdf", "*"]);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.bin", contentType: "application/octet-stream"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+    }
+
+    [Fact]
+    public void Whitespace_around_an_extension_accept_token_is_trimmed_not_rejected()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: [" .pdf "]);
+
+        Assert.Equal(".pdf", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.pdf", contentType: "application/pdf"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+    }
+
+    [Fact]
+    public void Whitespace_around_a_MIME_wildcard_accept_token_is_trimmed_not_rejected()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: [" image/* "]);
+
+        Assert.Equal("image/*", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.png", contentType: "image/png"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+    }
+
+    // ------------------------------------------------------------------------------------------
     // BeforeAdd: async per-file gate between the built-in checks and buffering.
     // ------------------------------------------------------------------------------------------
 
