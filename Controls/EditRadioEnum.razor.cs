@@ -25,6 +25,14 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// <summary> The labels around each radio button</summary>
     [Parameter] public string? LabelClass { get; set; }
 
+    /// <summary>
+    /// Optional per-option disable predicate, called with each enum value being rendered (including
+    /// the "Other" option's enum value when <see cref="HasOtherOption"/> is set). An option is
+    /// disabled when this returns true OR the whole group's <c>IsDisabled</c> is true. Null
+    /// (default) disables nothing beyond <c>IsDisabled</c>.
+    /// </summary>
+    [Parameter] public Func<TEnum, bool>? IsOptionDisabled { get; set; }
+
     // Other Option
     /// <summary> When true, includes an "Other" option with a text input field. The last enum value is treated as the "Other" option.</summary>
     [Parameter] public bool HasOtherOption { get; set; } = false;
@@ -78,6 +86,13 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     bool IsOtherSelected => HasOtherOption && _cachedOptions is { Count: > 0 } && Value?.Equals(_cachedOptions[^1]) == true;
 
     List<TEnum?> GetOptions() => _cachedOptions!;
+
+    // GetOptions() carries TEnum? (see BuildOptions' final Cast<TEnum?>()) even though every entry is
+    // a real enum value -- the "is TEnum" pattern unwraps that safely for the Func<TEnum, bool>?
+    // predicate's exact signature (matching EditCheckedEnumList's, whose options list has no such
+    // wrapper). A null option (shouldn't occur in practice) is simply never disabled by the predicate.
+    bool IsOptionDisabledFor(TEnum? option) =>
+        IsDisabled || (option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true);
 
     List<TEnum?> BuildOptions()
     {

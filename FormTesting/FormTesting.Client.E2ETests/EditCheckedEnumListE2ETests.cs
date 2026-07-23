@@ -42,4 +42,18 @@ public class EditCheckedEnumListE2ETests(AppFixture app, BrowserFixture browser)
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
+
+    [Fact]
+    public async Task IsOptionDisabled_disables_only_the_matching_checkbox()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Last;
+        // Animal enum order: Cat, Dog, Bird, Fish -- Dog (index 1) is disabled by the demo's predicate.
+        var checkboxes = section.Locator("input[type=checkbox]");
+
+        await Expect(checkboxes.Nth(0)).ToBeEnabledAsync();  // Cat
+        await Expect(checkboxes.Nth(1)).ToBeDisabledAsync(); // Dog
+        await Expect(checkboxes.Nth(2)).ToBeEnabledAsync();  // Bird
+        await Expect(checkboxes.Nth(3)).ToBeEnabledAsync();  // Fish
+    }
 }

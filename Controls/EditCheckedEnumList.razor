@@ -25,6 +25,7 @@
                                : "edit-checkedList-checkboxes-container-vertical")>
                     @foreach (var option in GetOptions())
                     {
+                        var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
                         <label @key="option" class=@($"edit-checkbox-label{(useStyledCheckbox ? " edit-checkbox-label-styled" : "")} {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
                             @if (useStyledCheckbox)
                             {
@@ -32,8 +33,8 @@
                                     <input type="checkbox"
                                            value=@option
                                            checked="@(Value?.Contains(option) == true)"
-                                           disabled=@IsDisabled
-                                           aria-disabled=@(IsDisabled ? "true" : null)
+                                           disabled=@isOptionDisabled
+                                           aria-disabled=@(isOptionDisabled ? "true" : null)
                                            aria-invalid=@(isInvalid ? "true" : null) aria-describedby=@_describedBy
                                            tabindex="0"
                                            @onchange="() => ToggleAsync(option)"
@@ -48,8 +49,8 @@
                                 <input type="checkbox"
                                        value=@option
                                        checked="@(Value?.Contains(option) == true)"
-                                       disabled=@IsDisabled
-                                       aria-disabled=@(IsDisabled ? "true" : null)
+                                       disabled=@isOptionDisabled
+                                       aria-disabled=@(isOptionDisabled ? "true" : null)
                                        aria-invalid=@(isInvalid ? "true" : null) aria-describedby=@_describedBy
                                        tabindex="0"
                                        @onchange="() => ToggleAsync(option)"

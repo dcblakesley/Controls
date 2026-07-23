@@ -122,6 +122,15 @@
         <h3>Markup</h3>
         <pre class="code-block"><code>@_dynamicRequiredExample</code></pre>
     </section>
+
+    <section class="demo-section">
+        <EditRadioEnum @bind-Value="_model.PerOptionDisabled"
+                       IsOptionDisabled="@(a => a == Animal.Bird)"
+                       Description="Bird is individually disabled via IsOptionDisabled." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_perOptionDisabledExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -145,6 +154,7 @@
         public Animal? Nullable { get; set; } = null;
 
         public Animal? SometimesRequired { get; set; }
+        public Animal PerOptionDisabled { get; set; }
 
         [DisplayName("Other / Custom Value")]
         public Bird Other { get; set; }
@@ -213,4 +223,7 @@ public Animal? Required { get; set; } = null;";
     readonly string _dynamicRequiredExample = @"<EditBool @bind-Value=""IsCurrentlyRequired""/>
 <EditRadioEnum @bind-Value=""_model.SometimesRequired""
               IsRequired=@IsCurrentlyRequired/>";
+
+    readonly string _perOptionDisabledExample = @"<EditRadioEnum @bind-Value=""_model.PerOptionDisabled""
+              IsOptionDisabled=""@(a => a == Animal.Bird)"" />";
 }

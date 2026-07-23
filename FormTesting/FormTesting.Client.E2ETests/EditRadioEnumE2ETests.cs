@@ -30,4 +30,18 @@ public class EditRadioEnumE2ETests(AppFixture app, BrowserFixture browser) : Pag
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
+
+    [Fact]
+    public async Task IsOptionDisabled_disables_only_the_matching_radio()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Last;
+        // Animal enum order: Cat, Dog, Bird, Fish -- Bird (index 2) is disabled by the demo's predicate.
+        var radios = section.Locator("input[type=radio]");
+
+        await Expect(radios.Nth(0)).ToBeEnabledAsync();  // Cat
+        await Expect(radios.Nth(1)).ToBeEnabledAsync();  // Dog
+        await Expect(radios.Nth(2)).ToBeDisabledAsync(); // Bird
+        await Expect(radios.Nth(3)).ToBeEnabledAsync();  // Fish
+    }
 }

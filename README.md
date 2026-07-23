@@ -424,6 +424,18 @@ Two caveats for mixed estates:
 }
 ```
 
+### Per-option disabling
+
+`EditRadioString`, `EditRadioEnum`, `EditCheckedStringList`, and `EditCheckedEnumList` all take an `IsOptionDisabled` predicate — called once per rendered option, disabling that option in addition to (not instead of) the whole-group `IsDisabled`:
+
+```razor
+<EditRadioString @bind-Value="model.Department"
+                 Options="@departments"
+                 IsOptionDisabled="@(d => d == "Sales")" />
+```
+
+The predicate's parameter type matches the control: `Func<string, bool>?` for the string controls, `Func<TEnum, bool>?` for the enum controls. Null (the default) disables nothing beyond `IsDisabled`. `EditRadioString`'s built-in "Other" radio has no corresponding `Options` entry, so the predicate never applies to it; `EditRadioEnum`'s "Other" (the last enum value, when `HasOtherOption` is set) is a real enum value and composes normally.
+
 ### Custom-Styled Checkbox (border-radius)
 
 No current browser (Chromium or Safari/WebKit) honors `border-radius` on a native `<input type="checkbox">` once `accent-color` is set (see [caniuse: accent-color](https://caniuse.com/mdn-css_properties_accent-color)). When a design spec calls for a shaped checkbox, opt in with `UseStyledCheckbox`:
@@ -549,6 +561,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **New** (Edit Controls)
 - `EditBool.Indeterminate` (`bool`, default `false`) — AntD's visual-only "mixed" checkbox state (does not change the bound value). Applied via JS after render (there's no HTML attribute for the `indeterminate` DOM property) through a new shared `wss-checkbox.js` module; the UI-kit `Table`'s header "select all" checkbox now imports the same helper instead of its own copy (`wss-table.js` re-exports it, so its module path is unchanged). Works with or without `UseStyledCheckbox`; degrades to a plain checked/unchecked box with no JS runtime. See [Indeterminate ("mixed") state](#indeterminate-mixed-state).
+- `IsOptionDisabled` (per-option disabling) on `EditCheckedStringList` (`Func<string, bool>?`), `EditCheckedEnumList<TEnum>` (`Func<TEnum, bool>?`), `EditRadioString` (`Func<string, bool>?`), and `EditRadioEnum<TEnum>` (`Func<TEnum, bool>?`) — disables the matching option in addition to (not instead of) the whole-group `IsDisabled`. Null (default) disables nothing. See [Per-option disabling](#per-option-disabling).
 
 **New** (UI Kit)
 - Hover tooltips (`data-tooltip`) — ported from the RPG Assistant app's `data-tooltip` convention. Not a component: a `data-tooltip="..."` attribute on any element gets a styled CSS-only hover/focus tooltip (arrow, slide-in, `:focus-visible` support, hidden under `hover: none`) via new rules in `wss-controls.css`, themed through `--wss-*` tokens plus the new `--wss-tooltip-gap` / `--wss-tooltip-z-index` knobs. The optional new `wss-tooltip.js` (a plain `<script>` tag, no interop) auto-places the bubble — above/below and left/right — based on the trigger's position within its nearest clipping ancestor or panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`), so it stays inside a Modal/Drawer instead of running past the edge. See [Hover tooltips](#hover-tooltips-data-tooltip).

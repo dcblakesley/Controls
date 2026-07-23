@@ -31,4 +31,22 @@ public class EditCheckedStringListE2ETests(AppFixture app, BrowserFixture browse
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
+
+    [Fact]
+    public async Task IsOptionDisabled_disables_only_the_matching_checkboxes()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Last;
+        var checkboxes = section.Locator("input[type=checkbox]");
+
+        await Expect(checkboxes.Nth(0)).ToBeEnabledAsync();  // Apple
+        await Expect(checkboxes.Nth(1)).ToBeDisabledAsync(); // Banana
+        await Expect(checkboxes.Nth(2)).ToBeEnabledAsync();  // Orange
+        await Expect(checkboxes.Nth(3)).ToBeDisabledAsync(); // Grape
+        await Expect(checkboxes.Nth(4)).ToBeEnabledAsync();  // Mango
+
+        // An enabled sibling still toggles normally.
+        await checkboxes.Nth(0).CheckAsync();
+        await Expect(checkboxes.Nth(0)).ToBeCheckedAsync();
+    }
 }

@@ -60,9 +60,19 @@
         <EditRadioString @bind-Value="_model.HorizontalLayout"
                          Options="@_basicOptions"
                          IsHorizontal="true" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_horizontalExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRadioString @bind-Value="_model.PerOptionDisabled"
+                         Options="@_basicOptions"
+                         IsOptionDisabled="@(o => o == "Green")"
+                         Description="Green is individually disabled via IsOptionDisabled." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_perOptionDisabledExample</code></pre>
     </section>
 </EditForm>
 
@@ -85,6 +95,7 @@
         public string Required { get; set; } = "";
 
         public string Disabled { get; set; } = "";
+        public string PerOptionDisabled { get; set; } = "";
     }
 
     readonly string _basicExample = @"<EditRadioString @bind-Value=""_model.BasicOption""
@@ -130,6 +141,10 @@ public string Disabled { get; set; } = """";";
     readonly string _horizontalExample = @"<EditRadioString @bind-Value=""_model.HorizontalLayout""
                 Options=""@_basicOptions""
                 IsHorizontal=""true"" />";
+
+    readonly string _perOptionDisabledExample = @"<EditRadioString @bind-Value=""_model.PerOptionDisabled""
+                Options=""@_basicOptions""
+                IsOptionDisabled=""@(o => o == \""Green\"")"" />";
 }
 
 <style>

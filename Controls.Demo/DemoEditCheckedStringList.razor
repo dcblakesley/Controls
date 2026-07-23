@@ -51,6 +51,16 @@
         <pre class="code-block"><code>@_styledCheckboxExample</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditCheckedStringList @bind-Value="_model.PerOptionDisabled"
+                               Options="@_basicItems"
+                               IsOptionDisabled="@(o => o == "Banana" || o == "Grape")"
+                               Description="Banana and Grape are individually disabled via IsOptionDisabled." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_perOptionDisabledExample</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -83,6 +93,7 @@
 
         public List<string> Disabled { get; set; } = [];
         public List<string> StyledCheckboxes { get; set; } = [];
+        public List<string> PerOptionDisabled { get; set; } = [];
     }
 
     readonly string _basicExample = @"<EditCheckedStringList @bind-Value=""_model.BasicList""
@@ -126,6 +137,10 @@ public List<string> Disabled { get; set; } = [];";
     readonly string _styledCheckboxExample = @"<EditCheckedStringList @bind-Value=""_model.StyledCheckboxes""
                       Options=""@_basicItems""
                       UseStyledCheckbox=""true"" />";
+
+    readonly string _perOptionDisabledExample = @"<EditCheckedStringList @bind-Value=""_model.PerOptionDisabled""
+                      Options=""@_basicItems""
+                      IsOptionDisabled=""@(o => o == \""Banana\"" || o == \""Grape\"")"" />";
 
     // For demonstration, providing some basic items
     private List<string> GetBasicItems() => new() { "Apple", "Banana", "Cherry" };

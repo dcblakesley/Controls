@@ -30,4 +30,18 @@ public class EditRadioStringE2ETests(AppFixture app, BrowserFixture browser) : P
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
+
+    [Fact]
+    public async Task IsOptionDisabled_disables_only_the_matching_radio()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Last;
+        // _basicOptions order: Red, Green, Blue, Yellow -- Green (index 1) is disabled by the demo's predicate.
+        var radios = section.Locator("input[type=radio]");
+
+        await Expect(radios.Nth(0)).ToBeEnabledAsync();  // Red
+        await Expect(radios.Nth(1)).ToBeDisabledAsync(); // Green
+        await Expect(radios.Nth(2)).ToBeEnabledAsync();  // Blue
+        await Expect(radios.Nth(3)).ToBeEnabledAsync();  // Yellow
+    }
 }

@@ -27,6 +27,13 @@ public partial class EditCheckedEnumList<TEnum> : EditControlListBase<TEnum>
     [Parameter] public bool IsHorizontal { get; set; }
 
     /// <summary>
+    /// Optional per-option disable predicate, called with each enum value being rendered. An option
+    /// is disabled when this returns true OR the whole group's <c>IsDisabled</c> is true. Null
+    /// (default) disables nothing beyond <c>IsDisabled</c>.
+    /// </summary>
+    [Parameter] public Func<TEnum, bool>? IsOptionDisabled { get; set; }
+
+    /// <summary>
     /// When true, each checkbox renders with a custom-drawn box (hidden native input + a sibling
     /// element that draws the visual state) instead of the bare native checkbox — same opt-in as
     /// <see cref="EditBool.UseStyledCheckbox"/>. Null (default) falls through to <see cref="FormOptions"/>,

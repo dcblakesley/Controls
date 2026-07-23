@@ -28,9 +28,10 @@
 
                         @foreach (var option in Options)
                         {
+                            var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
                             <label class=@($"{LabelClass} edit-radio-label")>
                                 <InputRadio Value=@option
-                                            disabled=@IsDisabled
+                                            disabled=@isOptionDisabled
                                             id=@($"rb-{_id}-{option.ToId()}")
                                             data-test-id=@($"rb-{_id}-{option.ToId()}")
                                             class=@($"edit-radio-input {CssClass}") />

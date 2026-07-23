@@ -26,6 +26,14 @@ public partial class EditRadioString : EditControlBase<string?>
     /// <summary> The labels around each radio button</summary>
     [Parameter] public string? LabelClass { get; set; }
 
+    /// <summary>
+    /// Optional per-option disable predicate, called with each entry in <see cref="Options"/>. An
+    /// option is disabled when this returns true OR the whole group's <c>IsDisabled</c> is
+    /// true. Null (default) disables nothing beyond <c>IsDisabled</c>. Does not apply to the
+    /// built-in "Other" radio (<see cref="HasOther"/>), which has no corresponding options entry.
+    /// </summary>
+    [Parameter] public Func<string, bool>? IsOptionDisabled { get; set; }
+
     string _otherText = "";
     // Internal radio value for the built-in "Other" option. Deliberately NOT the display text
     // "Other" — a consumer options list may legitimately contain "Other" as a real option, and the

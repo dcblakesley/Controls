@@ -94,6 +94,15 @@
         <pre class="code-block"><code>@_styledCheckboxExample</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditCheckedEnumList @bind-Value="_model.PerOptionDisabled"
+                             IsOptionDisabled="@(a => a == Animal.Dog)"
+                             Description="Dog is individually disabled via IsOptionDisabled." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_perOptionDisabledExample</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -129,6 +138,8 @@
         public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];
 
         public List<Animal> StyledCheckboxes { get; set; } = [];
+
+        public List<Animal> PerOptionDisabled { get; set; } = [];
     }
 
     readonly string _basicExample = @"<EditCheckedEnumList @bind-Value=""_model.BasicEnumList"" />";
@@ -180,4 +191,7 @@ public List<Animal> Disabled { get; set; } = [Animal.Cat, Animal.Dog];";
 
     readonly string _styledCheckboxExample = @"<EditCheckedEnumList @bind-Value=""_model.StyledCheckboxes""
                     UseStyledCheckbox=""true"" />";
+
+    readonly string _perOptionDisabledExample = @"<EditCheckedEnumList @bind-Value=""_model.PerOptionDisabled""
+                    IsOptionDisabled=""@(a => a == Animal.Dog)"" />";
 }
