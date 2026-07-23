@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components.Web;
+
 namespace Controls;
 
 /// <summary>
@@ -11,9 +13,13 @@ public class ActionColumn<TItem> : Column<TItem>
     {
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "wss-table-actions");
+        // Table.OnRowClick / ExpandRowByClick must not fire from an action button click -- stopping
+        // propagation here (rather than requiring every consumer button to do it) covers the whole
+        // cell, matching the same guard already on the selection/expand cells.
+        builder.AddEventStopPropagationAttribute(2, "onclick", true);
         if (ChildContent != null)
         {
-            builder.AddContent(2, ChildContent(item));
+            builder.AddContent(3, ChildContent(item));
         }
         builder.CloseElement();
     };

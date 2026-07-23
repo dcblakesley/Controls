@@ -50,6 +50,19 @@ public class PropertyColumn<TItem, TProp> : Column<TItem>
         var text = value is IFormattable formattable && !string.IsNullOrEmpty(Format)
             ? formattable.ToString(Format, null)
             : value?.ToString();
-        builder.AddContent(0, text);
+
+        // Ellipsis wraps the text in a title-bearing <span> so the truncated value stays
+        // discoverable on hover; left as bare text (unchanged DOM) when Ellipsis is unset.
+        if (Ellipsis)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "title", text);
+            builder.AddContent(2, text);
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.AddContent(0, text);
+        }
     };
 }

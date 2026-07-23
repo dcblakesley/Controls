@@ -32,7 +32,7 @@
             <span class="wss-table-loading-spinner">@LoadingIcon</span>
         </div>
     }
-    <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName">
+    <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName @(AnyColumnEllipsis ? "wss-table-fixed" : null)">
         @if (!string.IsNullOrEmpty(Caption))
         {
             <caption class="wss-table-caption">@Caption</caption>
@@ -46,24 +46,29 @@
                 }
                 @if (Selectable)
                 {
+                    @* Single mode has no "select all" concept for an exclusive choice -- the empty
+                       cell just keeps column alignment with the body's radio cells. *@
                     <th scope="col" class="wss-table-cell wss-table-selection-cell">
-                        @* The label matches the actual scope: ToggleAll only affects the current page. *@
-                        @if (EffectiveUseStyledCheckbox)
+                        @if (SelectionMode == SelectionMode.Multiple)
                         {
-                            <span class="wss-table-checkbox-wrap">
-                                <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled"
+                            @* The label matches the actual scope: ToggleAll only affects the current page. *@
+                            @if (EffectiveUseStyledCheckbox)
+                            {
+                                <span class="wss-table-checkbox-wrap">
+                                    <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled"
+                                           aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
+                                           checked="@_allSelected" disabled="@_headerSelectAllDisabled"
+                                           @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
+                                    <span class="wss-table-checkbox-box" aria-hidden="true"></span>
+                                </span>
+                            }
+                            else
+                            {
+                                <input type="checkbox" class="wss-table-checkbox"
                                        aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
-                                       checked="@_allSelected"
+                                       checked="@_allSelected" disabled="@_headerSelectAllDisabled"
                                        @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
-                                <span class="wss-table-checkbox-box" aria-hidden="true"></span>
-                            </span>
-                        }
-                        else
-                        {
-                            <input type="checkbox" class="wss-table-checkbox"
-                                   aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
-                                   checked="@_allSelected"
-                                   @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
+                            }
                         }
                     </th>
                 }
@@ -123,40 +128,52 @@
                 @for (var rowIdx = 0; rowIdx < _pageItems.Count; rowIdx++)
                 {
                     var item = _pageItems[rowIdx];
-                    <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null)" @key="_pageKeys[rowIdx]">
+                    <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null) @(RowIsClickable ? "wss-table-row-clickable" : null)"
+                        @key="_pageKeys[rowIdx]" @onclick="@(() => OnRowClickedAsync(item))">
                         @if (HasRowDetail)
                         {
-                            <td class="wss-table-cell wss-table-expand-cell">
+                            <td class="wss-table-cell wss-table-expand-cell" @onclick:stopPropagation="true">
                                 <button type="button"
                                         class="wss-table-expand-btn @(IsExpanded(item) ? "wss-table-expand-btn-expanded" : null)"
                                         aria-expanded="@(IsExpanded(item) ? "true" : "false")"
                                         aria-label="@(IsExpanded(item) ? CollapseRowLabel : ExpandRowLabel)"
-                                        @onclick="@(() => ToggleExpand(item))">
+                                        @onclick="@(() => ToggleExpandAsync(item))">
                                     @ExpandChevron
                                 </button>
                             </td>
                         }
                         @if (Selectable)
                         {
-                            <td class="wss-table-cell wss-table-selection-cell">
-                                @if (EffectiveUseStyledCheckbox)
+                            <td class="wss-table-cell wss-table-selection-cell" @onclick:stopPropagation="true">
+                                @if (SelectionMode == SelectionMode.Multiple)
                                 {
-                                    <span class="wss-table-checkbox-wrap">
-                                        <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled" aria-label="Select row" checked="@IsSelected(item)"
+                                    @if (EffectiveUseStyledCheckbox)
+                                    {
+                                        <span class="wss-table-checkbox-wrap">
+                                            <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled" aria-label="Select row" checked="@IsSelected(item)"
+                                                   disabled="@(!IsRowSelectableFor(item))"
+                                                   @onchange="@(e => ToggleRow(item, e.Value is true))" />
+                                            <span class="wss-table-checkbox-box" aria-hidden="true"></span>
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <input type="checkbox" class="wss-table-checkbox" aria-label="Select row" checked="@IsSelected(item)"
+                                               disabled="@(!IsRowSelectableFor(item))"
                                                @onchange="@(e => ToggleRow(item, e.Value is true))" />
-                                        <span class="wss-table-checkbox-box" aria-hidden="true"></span>
-                                    </span>
+                                    }
                                 }
                                 else
                                 {
-                                    <input type="checkbox" class="wss-table-checkbox" aria-label="Select row" checked="@IsSelected(item)"
-                                           @onchange="@(e => ToggleRow(item, e.Value is true))" />
+                                    <input type="radio" class="wss-table-radio" name="@_radioGroupName" aria-label="Select row" checked="@IsSelected(item)"
+                                           disabled="@(!IsRowSelectableFor(item))"
+                                           @onchange="@(() => SelectSingleAsync(item))" />
                                 }
                             </td>
                         }
                         @foreach (var col in _columns)
                         {
-                            <td class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)">@col.CellFor(item)</td>
+                            <td class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)">@col.CellFor(item)</td>
                         }
                     </tr>
                     @if (HasRowDetail && IsExpanded(item))
@@ -260,12 +277,64 @@
     [Parameter] public bool Selectable { get; set; }
 
     /// <summary>
+    /// Per-row selection predicate; null (default) means every row is selectable. A row for which
+    /// this returns false renders its selection checkbox/radio <c>disabled</c> and is excluded from
+    /// the header "select all" — both which rows it toggles and the indeterminate/all-selected math
+    /// count only selectable rows on the page.
+    /// </summary>
+    [Parameter] public Func<TItem, bool>? IsRowSelectable { get; set; }
+
+    /// <summary>
+    /// <see cref="Controls.SelectionMode.Multiple"/> (default) renders the existing checkbox column
+    /// (header select-all + per-row checkboxes, 0-or-more <see cref="SelectedItems"/>).
+    /// <see cref="Controls.SelectionMode.Single"/> renders radio-semantics selection instead (one
+    /// native <c>&lt;input type="radio"&gt;</c> per row, sharing one group so picking a row
+    /// deselects any other; at most one item in <see cref="SelectedItems"/>) and the header cell
+    /// renders empty — no select-all makes sense for an exclusive choice — kept only to preserve
+    /// column alignment. <see cref="SelectedItems"/>/<see cref="SelectedItemsChanged"/> are unchanged
+    /// either way.
+    /// </summary>
+    [Parameter] public SelectionMode SelectionMode { get; set; } = SelectionMode.Multiple;
+
+    /// <summary>
     /// Expandable rows: when set, every row gets a leading expand-chevron column that toggles this
     /// detail template, rendered as a full-width row directly beneath it (e.g. a nested child
     /// <see cref="Table{TItem}"/>). Expansion state is keyed by <see cref="RowKey"/> identity, so
     /// it survives paging and sorting; rows that leave the data are forgotten.
     /// </summary>
     [Parameter] public RenderFragment<TItem>? RowDetail { get; set; }
+
+    /// <summary>
+    /// Optionally-controlled expansion, layered over the internal (uncontrolled-by-default)
+    /// expansion set: keys (per <see cref="RowKey"/>, or the item itself when unset) of the rows
+    /// that should render expanded. Reassign a new collection to drive expansion from the parent —
+    /// like <see cref="SelectedItems"/>, the Table only re-syncs on a reference change, and every
+    /// toggle (chevron click or <see cref="ExpandRowByClick"/>) still raises
+    /// <see cref="ExpandedRowKeysChanged"/> even when this is left null (uncontrolled).
+    /// </summary>
+    [Parameter] public IEnumerable<object>? ExpandedRowKeys { get; set; }
+
+    /// <summary>Raised with the full current set of expanded row keys after every toggle. Supports <c>@@bind-ExpandedRowKeys</c>.</summary>
+    [Parameter] public EventCallback<IEnumerable<object>> ExpandedRowKeysChanged { get; set; }
+
+    /// <summary>Raised with the toggled row and its new expanded state after every expand/collapse.</summary>
+    [Parameter] public EventCallback<(TItem Item, bool Expanded)> OnExpand { get; set; }
+
+    /// <summary>
+    /// When true (and <see cref="RowDetail"/> is set), clicking anywhere on a row — other than the
+    /// selection checkbox/radio, the expand chevron, or inside an <see cref="ActionColumn{TItem}"/>
+    /// cell, all of which stop propagation — toggles that row's expansion, the same toggle the
+    /// chevron button performs. Composes with <see cref="OnRowClick"/>: both fire from the same click.
+    /// </summary>
+    [Parameter] public bool ExpandRowByClick { get; set; }
+
+    /// <summary>
+    /// Raised when a row is clicked (same propagation guards as <see cref="ExpandRowByClick"/> —
+    /// excludes the selection checkbox/radio, the expand chevron, and <see cref="ActionColumn{TItem}"/>
+    /// cells). Always raised regardless of <see cref="ExpandRowByClick"/>; when both are set, a click
+    /// also toggles that row's expansion.
+    /// </summary>
+    [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
 
     /// <summary>Accessible name of a collapsed row's expand button. Override to localize.</summary>
     [Parameter] public string ExpandRowLabel { get; set; } = "Expand row";
@@ -352,13 +421,23 @@
 
     bool HasRowDetail => RowDetail is not null;
     readonly HashSet<object> _expanded = new(); // row key -> expanded
+    IEnumerable<object>? _lastExpandedRowKeys;
 
     bool IsExpanded(TItem item) => _expanded.Contains(KeyFor(item));
 
-    void ToggleExpand(TItem item)
+    // Uncontrolled by default (ExpandedRowKeys null): _expanded is mutated directly and stays the
+    // source of truth for rendering, same relationship SelectedItems/_selected already has.
+    // OnExpand/ExpandedRowKeysChanged always raise regardless, so a parent can observe every toggle
+    // even without opting into full control.
+    async Task ToggleExpandAsync(TItem item)
     {
         var key = KeyFor(item);
-        if (!_expanded.Add(key)) _expanded.Remove(key);
+        bool nowExpanded;
+        if (_expanded.Add(key)) nowExpanded = true;
+        else { _expanded.Remove(key); nowExpanded = false; }
+
+        if (OnExpand.HasDelegate) await OnExpand.InvokeAsync((item, nowExpanded));
+        if (ExpandedRowKeysChanged.HasDelegate) await ExpandedRowKeysChanged.InvokeAsync(_expanded.ToList());
     }
 
     // Every leading fixed column plus the data columns — the colspan of the placeholder and
@@ -560,6 +639,17 @@
             RecomputeSelectionFlags();
         }
 
+        // Controlled expansion (layered over the uncontrolled _expanded set, same relationship as
+        // SelectedItems/_selected above): only resyncs on a reference change, so re-passing the same
+        // instance can't veto a toggle the Table just made and is about to raise back via
+        // ExpandedRowKeysChanged.
+        if (ExpandedRowKeys is not null && !ReferenceEquals(ExpandedRowKeys, _lastExpandedRowKeys))
+        {
+            _expanded.Clear();
+            foreach (var k in ExpandedRowKeys) _expanded.Add(k);
+            _lastExpandedRowKeys = ExpandedRowKeys;
+        }
+
         if (!Selectable) _lastIndeterminate = null; // the header checkbox is recreated when re-enabled
 
         // The styled/unstyled header-checkbox branches (see EffectiveUseStyledCheckbox) render
@@ -659,6 +749,10 @@
 
     bool IsSelected(TItem item) => _selected.ContainsKey(KeyFor(item));
 
+    // Null (the default) means every row is selectable, matching the pre-IsRowSelectable behavior
+    // exactly (the check below is always true, so RecomputeSelectionFlags/ToggleAll never skip a row).
+    bool IsRowSelectableFor(TItem item) => IsRowSelectable is null || IsRowSelectable(item);
+
     // Header-checkbox state, cached so rendering doesn't rescan the page (formerly computed
     // properties re-evaluated up to three times per render — O(page) each, with a KeyFor boxing
     // per probe). _someSelected means some but not all of the current page is selected: the header
@@ -667,22 +761,32 @@
     bool _allSelected;
     bool _someSelected;
 
-    // Single pass with early exit: once both a selected and an unselected row have been seen, the
-    // outcome (mixed) is decided. Called from every point where the page membership or the
+    // Disables the header "select all" when IsRowSelectable is in play and no row on the page can be
+    // selected (including an empty page). Stays false whenever IsRowSelectable is null (the default),
+    // regardless of how many rows are on the page -- an empty/all-selectable page must not gain a
+    // disabled attribute it never had before this feature existed.
+    bool _headerSelectAllDisabled;
+
+    // Single pass with early exit: once both a selected and an unselected SELECTABLE row have been
+    // seen, the outcome (mixed) is decided. Called from every point where the page membership or the
     // selection changes: a real RebuildPageItems rebuild, ToggleRow, ToggleAll, and the controlled
     // SelectedItems re-sync in OnParametersSet.
     void RecomputeSelectionFlags()
     {
         var anySelected = false;
         var anyUnselected = false;
+        var anySelectable = false;
         foreach (var item in _pageItems)
         {
+            if (!IsRowSelectableFor(item)) continue;
+            anySelectable = true;
             if (IsSelected(item)) anySelected = true; else anyUnselected = true;
             if (anySelected && anyUnselected) break;
         }
 
         _allSelected = anySelected && !anyUnselected; // an empty page reports neither flag
         _someSelected = anySelected && anyUnselected;
+        _headerSelectAllDisabled = IsRowSelectable is not null && !anySelectable;
     }
 
     bool? _lastIndeterminate;
@@ -750,14 +854,49 @@
         await SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
     }
 
-    // Select-all toggles the current page's rows (matching Ant Design behaviour).
+    // Select-all toggles the current page's SELECTABLE rows only (matching Ant Design behaviour); a
+    // row IsRowSelectable rejects is left exactly as it was, in or out of the selection.
     async Task ToggleAll(bool on)
     {
         foreach (var i in _pageItems)
         {
+            if (!IsRowSelectableFor(i)) continue;
             if (on) _selected[KeyFor(i)] = i; else _selected.Remove(KeyFor(i));
         }
         RecomputeSelectionFlags();
         await SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
     }
+
+    // ----- SelectionMode.Single (radio-semantics selection) -----
+
+    // A per-instance native <input type="radio"> group name so this table's rows form one exclusive
+    // choice without colliding with any other Table on the page (e.g. a nested RowDetail child table).
+    readonly string _radioGroupName = $"wss-table-radio-{Guid.NewGuid():N}";
+
+    async Task SelectSingleAsync(TItem item)
+    {
+        if (!IsRowSelectableFor(item)) return;
+        _selected.Clear();
+        _selected[KeyFor(item)] = item;
+        RecomputeSelectionFlags();
+        await SelectedItemsChanged.InvokeAsync(_selected.Values.ToList());
+    }
+
+    // ----- Row click / expand-by-click -----
+
+    // Whether a row should look/behave clickable -- only when a consumer actually wired something,
+    // so an untouched Table gets no pointer cursor / clickable styling by default.
+    bool RowIsClickable => ExpandRowByClick || OnRowClick.HasDelegate;
+
+    async Task OnRowClickedAsync(TItem item)
+    {
+        if (ExpandRowByClick && HasRowDetail) await ToggleExpandAsync(item);
+        await OnRowClick.InvokeAsync(item);
+    }
+
+    // Any column requesting Ellipsis truncation needs table-layout: fixed for max-width: 0 +
+    // overflow: hidden to actually clip (auto layout sizes columns from content and ignores it) --
+    // see the wss-table-fixed CSS rule. Untouched (no column sets Ellipsis) keeps the table's
+    // existing auto layout exactly as before.
+    bool AnyColumnEllipsis => _columns.Any(c => c.Ellipsis);
 }

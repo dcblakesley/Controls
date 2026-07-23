@@ -31,6 +31,18 @@ public class Column<TItem> : ComponentBase, IDisposable
     /// </summary>
     [Parameter] public Comparison<TItem>? SortBy { get; set; }
 
+    /// <summary>
+    /// Truncates overflowing cell text with an ellipsis instead of wrapping/overflowing (CSS-only —
+    /// the Table adds <c>wss-table-cell-ellipsis</c> to the cell and switches the whole table to
+    /// <c>table-layout: fixed</c> when any column requests it, since truncation needs a bounded
+    /// column width). <see cref="PropertyColumn{TItem,TProp}"/> additionally sets a <c>title</c>
+    /// attribute with the full computed text so it stays discoverable on hover; a plain
+    /// <see cref="Column{TItem}"/>/<see cref="ActionColumn{TItem}"/>'s <see cref="ChildContent"/> is
+    /// arbitrary markup, not a string this base class computed, so it gets the truncation styling
+    /// only, no <c>title</c>.
+    /// </summary>
+    [Parameter] public bool Ellipsis { get; set; }
+
     // Re-register on every render so the Table re-collects its columns in document order each pass.
     // This makes conditionally-rendered columns (@if) drop and re-appear in their declared position
     // instead of leaving a stale registration or appending a duplicate. The Table only adds during

@@ -51,6 +51,15 @@ public enum PagerPosition
     Both
 }
 
+/// <summary>Row-selection behavior of a <see cref="Table{TItem}"/>.</summary>
+public enum SelectionMode
+{
+    /// <summary>Checkbox column: 0-or-more rows selected (the existing default).</summary>
+    Multiple,
+    /// <summary>Radio-semantics column: at most one row selected.</summary>
+    Single
+}
+
 /// <summary>Sort state of a <see cref="Table{TItem}"/> column.</summary>
 public enum SortDirection
 {

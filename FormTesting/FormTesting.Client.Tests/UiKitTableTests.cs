@@ -815,6 +815,329 @@ public class UiKitTableTests : TestContext
         Assert.Contains("wss-table-sorter", button.Children[1].ClassList);
     }
 
+    // ----- IsRowSelectable -----
+
+    [Fact]
+    public void IsRowSelectable_disables_the_matching_row_checkbox_and_excludes_it_from_select_all()
+    {
+        var people = Sample(); // Alice(30), Bob(25)
+        List<Person>? selected = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.IsRowSelectable, (Person x) => x.Name != "Bob")
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var rowCheckboxes = cut.FindAll("tbody input.wss-table-checkbox");
+        Assert.False(rowCheckboxes[0].HasAttribute("disabled")); // Alice: selectable
+        Assert.True(rowCheckboxes[1].HasAttribute("disabled"));  // Bob: not selectable
+
+        // Select-all only selects the selectable row (Alice); Bob is left out entirely.
+        cut.Find("thead input.wss-table-checkbox").Change(true);
+        Assert.Single(selected!);
+        Assert.Equal("Alice", selected![0].Name);
+
+        // The header still reports fully-checked (not mixed) because Bob doesn't count.
+        Assert.True(cut.Find("thead input.wss-table-checkbox").HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void IsRowSelectable_rejecting_every_row_on_the_page_disables_the_header_checkbox()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .Add(t => t.IsRowSelectable, (Person _) => false)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.True(cut.Find("thead input.wss-table-checkbox").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void IsRowSelectable_null_leaves_no_disabled_attribute_anywhere()
+    {
+        // Guards the byte-identical-DOM contract: untouched (default null), no row or header
+        // checkbox gains a disabled attribute regardless of page contents.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.All(cut.FindAll("input.wss-table-checkbox"), cb => Assert.False(cb.HasAttribute("disabled")));
+    }
+
+    // ----- SelectionMode.Single -----
+
+    [Fact]
+    public void SelectionMode_Single_renders_radios_and_an_empty_header_cell()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Empty(cut.FindAll("thead input")); // no select-all control
+        var headerCell = cut.Find("thead .wss-table-selection-cell");
+        Assert.Equal(string.Empty, headerCell.TextContent.Trim());
+
+        var radios = cut.FindAll("tbody input[type=radio].wss-table-radio");
+        Assert.Equal(2, radios.Count);
+        Assert.Empty(cut.FindAll("tbody input.wss-table-checkbox"));
+    }
+
+    [Fact]
+    public void SelectionMode_Single_picking_a_row_replaces_any_previous_selection()
+    {
+        List<Person>? selected = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice, Bob
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var radios = cut.FindAll("tbody input[type=radio].wss-table-radio");
+        radios[0].Change(true); // pick Alice
+        Assert.Single(selected!);
+        Assert.Equal("Alice", selected![0].Name);
+
+        radios = cut.FindAll("tbody input[type=radio].wss-table-radio");
+        radios[1].Change(true); // pick Bob -- replaces Alice, never both
+        Assert.Single(selected!);
+        Assert.Equal("Bob", selected![0].Name);
+    }
+
+    // ----- Controlled expansion / OnExpand -----
+
+    [Fact]
+    public void OnExpand_fires_with_the_item_and_new_state_uncontrolled()
+    {
+        (Person Item, bool Expanded)? raised = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.OnExpand, EventCallback.Factory.Create<(Person, bool)>(this, v => raised = v))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody .wss-table-expand-btn")[0].Click();
+        Assert.NotNull(raised);
+        Assert.Equal("Alice", raised!.Value.Item.Name);
+        Assert.True(raised.Value.Expanded);
+
+        cut.FindAll("tbody .wss-table-expand-btn")[0].Click();
+        Assert.False(raised.Value.Expanded);
+    }
+
+    [Fact]
+    public void ExpandedRowKeys_controls_which_rows_render_expanded()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice, Bob
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandedRowKeys, new List<object> { "Bob" })
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var detail = cut.Find(".wss-table-expanded-row .wss-table-expanded-cell");
+        Assert.Contains("Detail for Bob", detail.TextContent);
+
+        cut.SetParametersAndRender(p => p.Add(t => t.ExpandedRowKeys, new List<object> { "Alice" }));
+        detail = cut.Find(".wss-table-expanded-row .wss-table-expanded-cell");
+        Assert.Contains("Detail for Alice", detail.TextContent);
+    }
+
+    [Fact]
+    public void ExpandedRowKeysChanged_raises_the_full_expanded_set_after_a_toggle()
+    {
+        IEnumerable<object>? changed = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandedRowKeysChanged,
+                EventCallback.Factory.Create<IEnumerable<object>>(this, v => changed = v)));
+
+        cut.FindAll("tbody .wss-table-expand-btn")[0].Click();
+        Assert.Equal(new object[] { "Alice" }, changed);
+    }
+
+    // ----- OnRowClick / ExpandRowByClick -----
+
+    [Fact]
+    public void OnRowClick_fires_with_the_clicked_item()
+    {
+        Person? clicked = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody .wss-table-row")[1].Click();
+        Assert.Equal("Bob", clicked!.Name);
+        Assert.Contains("wss-table-row-clickable", cut.FindAll("tbody .wss-table-row")[1].ClassList);
+    }
+
+    [Fact]
+    public void ExpandRowByClick_toggles_expansion_from_a_row_click_and_OnRowClick_still_fires()
+    {
+        Person? clicked = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandRowByClick, true)
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody .wss-table-row")[0].Click();
+
+        Assert.Equal("Alice", clicked!.Name); // OnRowClick still fires
+        Assert.Single(cut.FindAll(".wss-table-expanded-row")); // and expansion toggled
+    }
+
+    [Fact]
+    public void Clicking_the_expand_chevron_does_not_also_toggle_via_ExpandRowByClick()
+    {
+        // The chevron's own click stops propagation, so a row click driven by ExpandRowByClick
+        // cannot ALSO fire for the same physical click and immediately re-collapse the row.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandRowByClick, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody .wss-table-expand-btn")[0].Click();
+        Assert.Single(cut.FindAll(".wss-table-expanded-row"));
+    }
+
+    [Fact]
+    public void Clicking_the_selection_checkbox_does_not_raise_OnRowClick()
+    {
+        Person? clicked = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        // bUnit models stopPropagation by cutting the bubble path entirely: the click reaches no
+        // onclick handler at all (the cell itself has none, only the stopPropagation directive), so
+        // bUnit throws instead of bubbling into the row. That exception IS the assertion that the
+        // row's OnRowClick can't be reached from here (same pattern as the existing sortable-header
+        // TitleContent test).
+        Assert.Throws<Bunit.MissingEventHandlerException>(() => cut.Find("tbody .wss-table-selection-cell").Click());
+        Assert.Null(clicked);
+    }
+
+    [Fact]
+    public void Clicking_inside_an_ActionColumn_cell_does_not_raise_OnRowClick()
+    {
+        Person? clicked = null;
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name))
+            .AddChildContent<ActionColumn<Person>>(cp => cp
+                .Add(c => c.ChildContent, (RenderFragment<Person>)(_ => b => b.AddMarkupContent(0, "<button type=\"button\">Edit</button>")))));
+
+        Assert.Throws<Bunit.MissingEventHandlerException>(() => cut.Find("tbody .wss-table-actions").Click());
+        Assert.Null(clicked);
+    }
+
+    [Fact]
+    public void Rows_are_not_clickable_looking_when_neither_OnRowClick_nor_ExpandRowByClick_is_set()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.All(cut.FindAll("tbody .wss-table-row"),
+            row => Assert.DoesNotContain("wss-table-row-clickable", row.ClassList));
+    }
+
+    // ----- Column.Ellipsis -----
+
+    [Fact]
+    public void Ellipsis_false_leaves_the_cell_as_bare_text_with_no_title_and_no_fixed_layout()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.DoesNotContain("wss-table-fixed", cut.Find("table.wss-table").ClassList);
+        var cell = cut.FindAll("tbody .wss-table-cell").First(c => c.TextContent.Contains("Alice"));
+        Assert.Null(cell.QuerySelector("span"));
+    }
+
+    [Fact]
+    public void Ellipsis_true_adds_the_truncation_class_fixed_layout_and_a_title_span_for_PropertyColumn()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.Ellipsis, true)));
+
+        Assert.Contains("wss-table-fixed", cut.Find("table.wss-table").ClassList);
+        var cell = cut.FindAll("tbody .wss-table-cell").First(c => c.TextContent.Contains("Alice"));
+        Assert.Contains("wss-table-cell-ellipsis", cell.ClassList);
+        var span = cell.QuerySelector("span");
+        Assert.NotNull(span);
+        Assert.Equal("Alice", span!.GetAttribute("title"));
+    }
+
+    [Fact]
+    public void Ellipsis_on_a_custom_Column_gets_the_truncation_class_but_no_title()
+    {
+        // Custom ChildContent is arbitrary markup, not a string the base class computed -- no title.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Ellipsis, true)
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Name))));
+
+        var cell = cut.FindAll("tbody .wss-table-cell").First(c => c.TextContent.Contains("Alice"));
+        Assert.Contains("wss-table-cell-ellipsis", cell.ClassList);
+        Assert.False(cell.HasAttribute("title"));
+        Assert.Null(cell.QuerySelector("span"));
+    }
+
     // ----- Loading overlay -----
 
     [Fact]

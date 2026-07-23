@@ -1914,6 +1914,29 @@
     cursor: pointer;
 }
 
+/* SelectionMode.Single's radio-semantics selection -- same footprint/theming as the checkbox. */
+.wss-table-radio {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--wss-color-primary);
+    cursor: pointer;
+}
+
+/* IsRowSelectable disabling a row (or the header select-all with nothing left to select). */
+.wss-table-checkbox:disabled,
+.wss-table-radio:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.wss-table-checkbox-input-styled:disabled {
+    cursor: not-allowed;
+}
+
+.wss-table-checkbox-input-styled:disabled + .wss-table-checkbox-box {
+    opacity: 0.4;
+}
+
 /* Opt-in custom-styled checkbox (Table's UseStyledCheckbox="true") — the UI-kit analogue of
    EditBool's edit-checkbox-wrap/edit-checkbox-box, using the wss- prefix and --wss-* tokens instead
    of the edit- prefix and --edit-/--color- tokens. (Careful: an asterisk-slash sequence in this
@@ -2150,6 +2173,24 @@
 
 .wss-table-small .wss-table-cell {
     padding: 8px 8px;
+}
+
+/* Column.Ellipsis: auto layout (the default) sizes columns from content and ignores max-width, so
+   truncation needs a bounded column width -- added only when >=1 column requests Ellipsis. */
+.wss-table-fixed {
+    table-layout: fixed;
+}
+
+.wss-table-cell-ellipsis {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 0; /* only meaningful combined with table-layout: fixed (.wss-table-fixed) */
+}
+
+/* OnRowClick / ExpandRowByClick: only added when a consumer actually wires one of them. */
+.wss-table-row-clickable {
+    cursor: pointer;
 }
 
 /* ============================================================================
