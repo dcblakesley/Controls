@@ -490,6 +490,102 @@
             </button>
         </div>
     </section>
+
+    @* ---- AntD 4.x parity batch: Pagination + Table (appended -- existing sections/baselines above
+       are untouched; ordinal Playwright locators for THOSE sections use .First, so they're safe). ---- *@
+
+    <section class="demo-section">
+        <h3>Pagination — total text, size changer, quick jumper</h3>
+        <p style="margin:0; color:#666;">
+            <code>ShowTotal</code> renders the "x-y of z items" text; <code>PageSizeOptions</code>
+            adds a native <code>&lt;select&gt;</code> size-changer (<code>@@bind-PageSize</code>) that
+            re-clamps the current page to keep roughly the same data window in view;
+            <code>ShowQuickJumper</code> adds a "Go to" input (Enter commits, then clears). All
+            dependency-free -- no JS module, no <code>Select&lt;T&gt;</code>.
+        </p>
+        <Pagination Total="95" @bind-PageSize="_paginationDemoPageSize" @bind-Current="_paginationDemoPage"
+                    PageSizeOptions="@(new[] { 10, 20, 50 })" ShowQuickJumper="true"
+                    ShowTotal="@(w => $"{w.Start}-{w.End} of {w.Total} items")" />
+        <p data-test-id="pagination-demo-result">Page @_paginationDemoPage, size @_paginationDemoPageSize</p>
+
+        <p style="margin:0; color:#666;"><code>Small</code> -- the AntD compact size (CSS-only).</p>
+        <Pagination Total="30" PageSize="10" @bind-Current="_smallPaginationPage" Small="true" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — Loading overlay, disabled rows, single-select</h3>
+        <p style="margin:0; color:#666;">
+            <code>Loading</code> shows a translucent mask + spinner over the body (rows stay rendered
+            beneath it, <code>aria-busy</code> on the wrapper). <code>IsRowSelectable</code> disables
+            row 2's control and excludes it from the header select-all math.
+            <code>SelectionMode.Single</code> renders radio-semantics selection instead of checkboxes
+            -- the header cell is empty (no "select all" for an exclusive choice).
+        </p>
+        <button class="wss-dialog-btn" data-test-id="toggle-table-loading" @onclick="@(() => _tableLoadingDemo = !_tableLoadingDemo)">
+            Toggle Loading (@(_tableLoadingDemo ? "on" : "off"))
+        </button>
+        <Table TItem="Row" DataSource="_singleSelectRows" Selectable="true" SelectionMode="SelectionMode.Single"
+               IsRowSelectable="@(r => r.Id != 2)" Loading="_tableLoadingDemo"
+               SelectedItems="_singleSelected" SelectedItemsChanged="@(s => _singleSelected = s.ToList())">
+            <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" />
+            <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+        </Table>
+        <p data-test-id="single-select-result">Selected: @(_singleSelected.Count == 0 ? "(none)" : _singleSelected[0].Name)</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — OnRowClick, ExpandRowByClick, controlled expansion</h3>
+        <p style="margin:0; color:#666;">
+            <code>ExpandRowByClick</code> toggles a row's <code>RowDetail</code> on a whole-row click
+            (clicks on the chevron/checkbox/action cells stop propagation, so they don't double-fire);
+            <code>OnRowClick</code> always fires independently. <code>ExpandedRowKeys</code>/
+            <code>ExpandedRowKeysChanged</code> makes expansion parent-controlled.
+        </p>
+        <Table TItem="Row" DataSource="_clickRows" RowKey="@(r => r.Id)" ExpandRowByClick="true"
+               OnRowClick="@(r => _lastRowClicked = r.Name)"
+               ExpandedRowKeys="_clickExpandedKeys" ExpandedRowKeysChanged="@(k => _clickExpandedKeys = k.ToList())">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+            </ChildContent>
+            <RowDetail Context="r">
+                <p data-test-id="row-detail">Detail for @r.Name</p>
+            </RowDetail>
+        </Table>
+        <p data-test-id="row-click-result">Last row clicked: @_lastRowClicked</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — Ellipsis, EmptyContent, FooterContent</h3>
+        <p style="margin:0; color:#666;">
+            <code>Ellipsis</code> truncates long text with a hover <code>title</code>
+            (<code>PropertyColumn</code> only) -- the table switches to <code>table-layout: fixed</code>
+            only while a column requests it. <code>FooterContent</code> renders a consumer-supplied
+            summary row in a <code>&lt;tfoot&gt;</code>, unaffected by paging/sorting.
+            <code>EmptyContent</code> replaces <code>EmptyText</code> with richer markup when there
+            are no rows.
+        </p>
+        <div style="max-width: 320px;">
+            <Table TItem="Row" DataSource="_ellipsisRows">
+                <ChildContent>
+                    <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" Ellipsis="true" />
+                    <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" />
+                </ChildContent>
+                <FooterContent>
+                    <tr>
+                        <td class="wss-table-cell">Total</td>
+                        <td class="wss-table-cell" data-test-id="ellipsis-footer-total">@_ellipsisRows.Sum(r => r.Price).ToString("C2")</td>
+                    </tr>
+                </FooterContent>
+            </Table>
+        </div>
+
+        <Table TItem="Row" DataSource="@(new List<Row>())">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+            </ChildContent>
+            <EmptyContent><em data-test-id="empty-content">No rows match your filter.</em></EmptyContent>
+        </Table>
+    </section>
 </div>
 
 @* WASM-only static-state toast hosts. *@
@@ -702,6 +798,37 @@
             .ToList(); // a new reference so the Table re-copies its DataSource
         _serverTotal = _serverBackingStore.Count;
     }
+
+    // --- Pagination parity-batch demo (ShowTotal / PageSizeOptions / ShowQuickJumper / Small) ---
+    int _paginationDemoPageSize = 10;
+    int _paginationDemoPage = 1;
+    int _smallPaginationPage = 1;
+
+    // --- Table: Loading / IsRowSelectable / SelectionMode.Single demo ---
+    bool _tableLoadingDemo;
+    readonly List<Row> _singleSelectRows =
+    [
+        new(1, "Alpha", 10m),
+        new(2, "Bravo (not selectable)", 20m),
+        new(3, "Charlie", 30m),
+    ];
+    List<Row> _singleSelected = new();
+
+    // --- Table: OnRowClick / ExpandRowByClick / controlled expansion demo ---
+    readonly List<Row> _clickRows =
+    [
+        new(1, "First", 5m),
+        new(2, "Second", 15m),
+    ];
+    string _lastRowClicked = "(none)";
+    List<object> _clickExpandedKeys = new();
+
+    // --- Table: Ellipsis / EmptyContent / FooterContent demo ---
+    readonly List<Row> _ellipsisRows =
+    [
+        new(1, "A very long item name that should truncate with an ellipsis", 12.5m),
+        new(2, "Short", 7.25m),
+    ];
 
     public record Row(int Id, string Name, decimal Price);
 }
