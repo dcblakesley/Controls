@@ -11,12 +11,12 @@
        ARIA). wss-overlay.js mirrors the popup ARIA onto that child (skipped while Disabled), or
        promotes this span to the button role when the content has nothing focusable. *@
     <span class="wss-popconfirm-trigger" @ref="_triggerRef"
-          @onclick="Toggle" @onkeydown="OnTriggerKeyDown" @onkeydown:stopPropagation="@_open">@ChildContent</span>
+          @onclick="ToggleAsync" @onkeydown="OnTriggerKeyDownAsync" @onkeydown:stopPropagation="@_open">@ChildContent</span>
     @if (_open)
     {
         @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap on a focusable/
            interactive target chain — without it a backdrop tap never reaches @onclick on touch. *@
-        <div class="wss-popconfirm-backdrop" tabindex="-1" @onclick="Close"></div>
+        <div class="wss-popconfirm-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
         <div class="wss-popconfirm wss-popconfirm-@(_resolvedPlacement ?? PlacementName) @(_positioned ? null : "wss-measuring")"
              @ref="_panelRef" role="dialog" aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"
              aria-label="@(HasTitle ? null : AriaLabel)"
@@ -34,8 +34,17 @@
                     }
                 </div>
                 <div class="wss-popconfirm-buttons">
-                    <button type="button" class="wss-dialog-btn wss-dialog-btn-sm" @onclick="CancelAsync">@CancelText</button>
-                    <button type="button" @ref="_okButtonRef" class="wss-dialog-btn wss-dialog-btn-sm wss-dialog-btn-primary" @onclick="ConfirmAsync">@OkText</button>
+                    <button type="button" class="wss-dialog-btn wss-dialog-btn-sm" disabled="@_confirmLoading" @onclick="CancelAsync">@CancelText</button>
+                    <button type="button" @ref="_okButtonRef"
+                            class="wss-dialog-btn wss-dialog-btn-sm wss-dialog-btn-primary @(OkDanger ? "wss-dialog-btn-danger" : null)"
+                            disabled="@_confirmLoading" aria-busy="@(_confirmLoading ? "true" : null)"
+                            @onclick="ConfirmAsync">
+                        @if (_confirmLoading)
+                        {
+                            <span class="wss-icon-spin">@EditIcons.LoadingSpinner</span>
+                        }
+                        @OkText
+                    </button>
                 </div>
             </div>
             <span class="wss-popconfirm-arrow"></span>
@@ -54,14 +63,36 @@
     [Parameter] public string OkText { get; set; } = "OK";
     /// <summary>Text of the cancel button. Defaults to "Cancel".</summary>
     [Parameter] public string CancelText { get; set; } = "Cancel";
-    /// <summary>Raised when the confirm button is clicked (the popup closes first).</summary>
+    /// <summary>
+    /// Raised when the confirm button is clicked. A synchronous handler (or one whose returned
+    /// <see cref="Task"/> is already complete) keeps today's immediate-close feel. A genuinely
+    /// pending <see cref="Task"/> (checked via <see cref="Task.IsCompleted"/> right after invoking)
+    /// instead keeps the popup open with both buttons disabled and a spinner in the OK button until
+    /// it completes; an exception closes the popup and rethrows (never swallowed).
+    /// </summary>
     [Parameter] public EventCallback OnConfirm { get; set; }
     /// <summary>Raised when the popup is cancelled (Cancel button or Escape inside the panel).</summary>
     [Parameter] public EventCallback OnCancel { get; set; }
     /// <summary>Preferred side of the trigger for the popup; flips to the opposite side when it would leave the viewport. Defaults to <see cref="PopupPlacement.Top"/>.</summary>
     [Parameter] public PopupPlacement Placement { get; set; } = PopupPlacement.Top;
-    /// <summary>When true, clicking the trigger does not open the popup.</summary>
+    /// <summary>When true, clicking the trigger does not open the popup; an already-open popup
+    /// closes immediately when this becomes true (any control mode), and an externally-forced
+    /// <see cref="Visible"/> = true is ignored while this is true.</summary>
     [Parameter] public bool Disabled { get; set; }
+    /// <summary>Danger (red primary) styling on the OK button — AntD's <c>okButtonProps={{ danger: true }}</c> shorthand.</summary>
+    [Parameter] public bool OkDanger { get; set; }
+    /// <summary>
+    /// Controls the popup's open state (two-way bindable via <c>@bind-Visible</c>). While
+    /// <see cref="VisibleChanged"/> has a delegate, this becomes the source of truth: an external
+    /// change routes through the same open/close path as user interaction (JS placement/focus still
+    /// run), and every open/close (external or internal) raises <see cref="VisibleChanged"/> back. An
+    /// echo of a value this component just raised is recognized and ignored. Ignored (and never
+    /// echoed back as true) while <see cref="Disabled"/>. With no delegate on
+    /// <see cref="VisibleChanged"/> (the default, uncontrolled case), this parameter is inert.
+    /// </summary>
+    [Parameter] public bool Visible { get; set; }
+    /// <summary>Raised on every open/close (external or internal). Supports <c>@bind-Visible</c>; see <see cref="Visible"/>.</summary>
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }
     /// <summary>
@@ -82,6 +113,13 @@
     bool _positioned;
     bool _pendingFocus;
     bool _disposed;
+    bool _confirmLoading;
+    // The last Visible value this component has observed OR itself raised via
+    // RaiseVisibleChangedAsync. Null until the first time VisibleChanged carries a delegate —
+    // mirrors Select's controlled Open/OpenChanged design (_lastOpenParam) so a controlled
+    // consumer's @bind-Visible field echoing its own value back in isn't mistaken for a fresh
+    // external open/close request.
+    bool? _lastVisibleParam;
     // Last (open, disabled) pair pushed to syncTrigger. syncTrigger re-resolves the trigger child on
     // every call, so we only re-invoke it when this pair changes (plus the first render) — otherwise
     // every ancestor re-render would cost one interop round trip per instance (e.g. a Popconfirm per
@@ -96,20 +134,37 @@
 
     bool HasTitle => TitleContent != null || !string.IsNullOrEmpty(Title);
 
-    void Toggle()
+    // Single choke point for every open/close, internal or externally-driven: applies _open (the
+    // one source of truth OnAfterRenderAsync's JS placement/focus logic reacts to, regardless of
+    // who changed it) and notifies VisibleChanged. Mirrors Select's OpenAsync/CloseAsync +
+    // RaiseOpenChangedAsync split.
+    async Task SetOpenAsync(bool open)
     {
-        if (Disabled) return;
-        _open = !_open;
+        if (open == _open) return;
+        _open = open;
+        await RaiseVisibleChangedAsync();
     }
 
-    void Close() => _open = false;
+    Task RaiseVisibleChangedAsync()
+    {
+        _lastVisibleParam = _open;
+        return VisibleChanged.HasDelegate ? VisibleChanged.InvokeAsync(_open) : Task.CompletedTask;
+    }
+
+    async Task ToggleAsync()
+    {
+        if (Disabled) return;
+        await SetOpenAsync(!_open);
+    }
+
+    async Task CloseAsync() => await SetOpenAsync(false);
 
     // Escape only: Enter/Space activation comes from the child's native click (or the JS fallback
     // synthesizing one for plain content) bubbling into @onclick — handling the keys here as well
     // would double-toggle when a button child's keystroke both clicks and bubbles.
-    void OnTriggerKeyDown(KeyboardEventArgs e)
+    async Task OnTriggerKeyDownAsync(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape") Close();
+        if (e.Key == "Escape") await CloseAsync();
     }
 
     // Escape from inside the panel cancels — the panel is a sibling of the trigger, so its keydown
@@ -119,16 +174,84 @@
         if (e.Key == "Escape") await CancelAsync();
     }
 
+    // Sync (or already-completed) handlers keep the immediate-close feel; a genuinely pending Task
+    // keeps the popup open with a busy OK button until it resolves. Checking Task.IsCompleted right
+    // after InvokeAsync (before awaiting) is what tells the two apart — EventCallback.InvokeAsync
+    // runs the handler synchronously up to its first real await, same as any Task-returning method.
     async Task ConfirmAsync()
     {
-        _open = false;
-        if (OnConfirm.HasDelegate) await OnConfirm.InvokeAsync();
+        if (_confirmLoading) return; // a second click/Enter while already pending is a no-op
+        if (!OnConfirm.HasDelegate)
+        {
+            await SetOpenAsync(false);
+            return;
+        }
+
+        var task = OnConfirm.InvokeAsync();
+        if (task.IsCompleted)
+        {
+            await SetOpenAsync(false);
+            await task; // observe/propagate a synchronous exception, same as before this feature
+            return;
+        }
+
+        _confirmLoading = true;
+        StateHasChanged();
+        try
+        {
+            await task;
+            await SetOpenAsync(false);
+        }
+        catch
+        {
+            await SetOpenAsync(false); // close before rethrowing -- never left open on failure
+            throw;                     // never swallowed
+        }
+        finally
+        {
+            _confirmLoading = false;
+        }
     }
 
     async Task CancelAsync()
     {
-        _open = false;
+        await SetOpenAsync(false);
         if (OnCancel.HasDelegate) await OnCancel.InvokeAsync();
+    }
+
+    // Controlled Visible/VisibleChanged, mirroring Select's controlled Open/OpenChanged design
+    // (see SelectControlledOpenTests for the pattern this is copied from). Disabled invariant
+    // enforced first and unconditionally, so it also catches a Disabled flip on an already-open
+    // popup regardless of control mode.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Disabled && _open)
+        {
+            await SetOpenAsync(false); // close through the normal path so VisibleChanged fires
+        }
+
+        if (!VisibleChanged.HasDelegate)
+        {
+            // Uncontrolled (the default): Visible is inert. Reset so a consumer that later wires
+            // VisibleChanged starts a fresh controlled session instead of comparing against a stale value.
+            _lastVisibleParam = null;
+            return;
+        }
+
+        if (_lastVisibleParam == Visible) return; // unchanged since we last observed/raised it (includes our own echo)
+        // Recorded even when Disabled below goes on to suppress the request, so a repeated forced
+        // Visible=true while still disabled keeps comparing equal here instead of being retried forever.
+        _lastVisibleParam = Visible;
+
+        if (Disabled)
+        {
+            // Ignore an external Visible=true request while disabled (the close above already
+            // handled an external Visible=false against an open popup -- nothing further to do).
+            return;
+        }
+
+        if (Visible == _open) return; // already in the requested state
+        await SetOpenAsync(Visible);
     }
 
     // After the panel opens, nudge it to stay within the viewport (flip/shift). Degrades to the

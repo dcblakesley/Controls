@@ -81,6 +81,44 @@
             <button class="wss-dialog-btn">Delete</button>
         </Popconfirm>
         <p>Last action: @_confirmResult</p>
+
+        <p style="margin:0; color:#666;">
+            <code>OkDanger</code> styles the OK button as danger; a genuinely-async
+            <code>OnConfirm</code> keeps the popup open with both buttons disabled and a spinner
+            until it resolves (a real API call stands in for the 1s delay here).
+        </p>
+        <Popconfirm Title="Permanently delete this record?" OkDanger="true" OkText="Delete"
+                    OnConfirm="SimulateAsyncConfirmAsync">
+            <button class="wss-dialog-btn" data-test-id="async-confirm-trigger">Delete (async)</button>
+        </Popconfirm>
+        <p data-test-id="async-confirm-result">Async result: @_asyncConfirmResult</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Popconfirm &amp; Popover — controlled Visible</h3>
+        <p style="margin:0; color:#666;">
+            <code>@@bind-Visible</code> lets the parent own the open state — the same controlled
+            design as <code>Select</code>'s <code>@@bind-Open</code>.
+        </p>
+        <div style="display:flex; gap:1rem; align-items:center;">
+            <button class="wss-dialog-btn" data-test-id="controlled-popconfirm-toggle"
+                    @onclick="@(() => _controlledPopconfirmVisible = !_controlledPopconfirmVisible)">
+                @(_controlledPopconfirmVisible ? "Close" : "Open") Popconfirm externally
+            </button>
+            <Popconfirm Title="Controlled from outside" @bind-Visible="_controlledPopconfirmVisible">
+                <button class="wss-dialog-btn" data-test-id="controlled-popconfirm-trigger">Trigger</button>
+            </Popconfirm>
+        </div>
+        <div style="display:flex; gap:1rem; align-items:center;">
+            <button class="wss-dialog-btn" data-test-id="controlled-popover-toggle"
+                    @onclick="@(() => _controlledPopoverVisible = !_controlledPopoverVisible)">
+                @(_controlledPopoverVisible ? "Close" : "Open") Popover externally
+            </button>
+            <Popover Title="Controlled from outside" @bind-Visible="_controlledPopoverVisible">
+                <ChildContent><button class="wss-dialog-btn" data-test-id="controlled-popover-trigger">Trigger</button></ChildContent>
+                <Content><div>Popover body.</div></Content>
+            </Popover>
+        </div>
     </section>
 
     <section class="demo-section">
@@ -715,6 +753,18 @@
     bool _modalVisible;
     bool _drawerVisible;
     string _confirmResult = "(none)";
+
+    // --- Popconfirm async confirm-loading demo ---
+    string _asyncConfirmResult = "(none)";
+    async Task SimulateAsyncConfirmAsync()
+    {
+        await Task.Delay(1000); // stands in for a real API call
+        _asyncConfirmResult = "deleted";
+    }
+
+    // --- Popconfirm/Popover controlled Visible demo ---
+    bool _controlledPopconfirmVisible;
+    bool _controlledPopoverVisible;
     // Swapped-trigger demo: flips the Popover's ChildContent between a non-focusable <span> and a
     // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.
     bool _triggerBusy;

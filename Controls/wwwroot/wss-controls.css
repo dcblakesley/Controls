@@ -1579,6 +1579,19 @@
     opacity: 0.65;
 }
 
+/* Popconfirm.OkDanger: red/danger primary, alongside the existing wss-dialog-btn-primary. */
+.wss-dialog-btn-danger {
+    color: var(--wss-color-on-primary);
+    background: var(--wss-color-error);
+    border-color: var(--wss-color-error);
+}
+
+.wss-dialog-btn-danger:hover:not(:disabled) {
+    color: var(--wss-color-on-primary);
+    background: var(--wss-color-error-hover, color-mix(in srgb, var(--wss-color-error) 82%, #fff));
+    border-color: var(--wss-color-error-hover, color-mix(in srgb, var(--wss-color-error) 82%, #fff));
+}
+
 .wss-dialog-btn-sm {
     height: 24px;
     padding: 0 7px;
