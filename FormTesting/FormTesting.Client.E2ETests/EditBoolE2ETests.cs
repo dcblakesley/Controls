@@ -109,4 +109,55 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         await Expect(section).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(section, "styled-checkbox-section");
     }
+
+    [Fact]
+    public async Task Indeterminate_sets_the_DOM_property_without_checking_the_box()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Nth(6);
+        var checkbox = section.Locator("input[type=checkbox]").First;
+
+        // The demo starts with Indeterminate=true and the value unchecked.
+        await Expect(checkbox).Not.ToBeCheckedAsync();
+        Assert.True(await checkbox.EvaluateAsync<bool>("el => el.indeterminate"));
+
+        // Toggling the parameter off clears the DOM property (JS re-applied, not just skipped).
+        await section.Locator("button", new() { HasTextString = "Toggle indeterminate" }).ClickAsync();
+        await Expect(checkbox).Not.ToBeCheckedAsync();
+        Assert.False(await checkbox.EvaluateAsync<bool>("el => el.indeterminate"));
+
+        // Indeterminate is visual-only: clicking the checkbox still toggles the bound value normally.
+        await checkbox.CheckAsync();
+        await Expect(checkbox).ToBeCheckedAsync();
+    }
+
+    [Fact]
+    public async Task Indeterminate_styled_checkbox_draws_the_mixed_square_not_the_checkmark()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Nth(7);
+        var input = section.Locator("input.edit-checkbox-input-styled").First;
+        var box = section.Locator(".edit-checkbox-box").First;
+        await Expect(input).ToBeVisibleAsync();
+
+        Assert.True(await input.EvaluateAsync<bool>("el => el.indeterminate"));
+        var mixedBoxColor = await box.EvaluateAsync<string>("el => getComputedStyle(el).backgroundColor");
+        var mixedSquareColor = await box.EvaluateAsync<string>("el => getComputedStyle(el, '::after').backgroundColor");
+        // AntD's mixed state keeps the box unfilled -- the primary color only appears in the ::after square.
+        Assert.NotEqual(mixedBoxColor, mixedSquareColor);
+
+        // Checking it (still indeterminate) then flips to the filled/checkmark look once Indeterminate
+        // is toggled off, matching Table's identical header-checkbox behavior.
+        await section.Locator("button", new() { HasTextString = "Toggle indeterminate" }).ClickAsync();
+        Assert.False(await input.EvaluateAsync<bool>("el => el.indeterminate"));
+    }
+
+    [Fact]
+    public async Task Visual_baseline_indeterminate_styled_section()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Nth(7);
+        await Expect(section).ToBeVisibleAsync();
+        await ExpectMatchesBaselineAsync(section, "indeterminate-styled-section");
+    }
 }

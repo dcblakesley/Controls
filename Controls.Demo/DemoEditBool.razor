@@ -73,6 +73,27 @@
         <pre class="code-block code-block-model"><code>@_styledCheckboxValidationModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditBool @bind-Value="_model.SelectAll"
+                  Indeterminate="_model.IsIndeterminate"
+                  Label="Select all" />
+        <button type="button" @onclick="ToggleIndeterminate">Toggle indeterminate</button>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_indeterminateExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditBool @bind-Value="_model.SelectAllStyled"
+                  Indeterminate="_model.IsIndeterminateStyled"
+                  UseStyledCheckbox="true"
+                  Label="Select all (styled)" />
+        <button type="button" @onclick="ToggleIndeterminateStyled">Toggle indeterminate</button>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_indeterminateStyledExample</code></pre>
+    </section>
+
 </EditForm>
 
 
@@ -118,6 +139,18 @@ public bool MustBeTrue { get; set; }";
     readonly string _styledCheckboxValidationModel = @"[MustBeTrue(ErrorMessage = ""You must agree"")]
 public bool StyledCheckboxRequired { get; set; }";
 
+    readonly string _indeterminateExample = @"<EditBool @bind-Value=""_model.SelectAll""
+          Indeterminate=""_model.IsIndeterminate""
+          Label=""Select all"" />";
+
+    readonly string _indeterminateStyledExample = @"<EditBool @bind-Value=""_model.SelectAllStyled""
+          Indeterminate=""_model.IsIndeterminateStyled""
+          UseStyledCheckbox=""true""
+          Label=""Select all (styled)"" />";
+
+    void ToggleIndeterminate() => _model.IsIndeterminate = !_model.IsIndeterminate;
+    void ToggleIndeterminateStyled() => _model.IsIndeterminateStyled = !_model.IsIndeterminateStyled;
+
     public class DemoEditBoolModel
     {
         public bool BasicCheckbox { get; set; }
@@ -131,5 +164,10 @@ public bool StyledCheckboxRequired { get; set; }";
 
         [MustBeTrue(ErrorMessage = "You must agree")]
         public bool StyledCheckboxRequired { get; set; }
+
+        public bool SelectAll { get; set; }
+        public bool IsIndeterminate { get; set; } = true;
+        public bool SelectAllStyled { get; set; }
+        public bool IsIndeterminateStyled { get; set; } = true;
     }
 }

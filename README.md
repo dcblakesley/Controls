@@ -436,6 +436,16 @@ The real `<input>` stays in the DOM — focusable, keyboard-operable, full nativ
 
 `EditCheckedStringList` and `EditCheckedEnumList` take the same `UseStyledCheckbox` (`bool?`) parameter and apply it to every option's checkbox; the UI-kit `Table` (see [UI Kit](#ui-kit-non-form-controls)) takes it too, applied to the header/row selection checkboxes including the indeterminate "mixed" glyph.
 
+#### Indeterminate ("mixed") state
+
+`EditBool.Indeterminate` (`bool`, default `false`) is AntD's visual-only "mixed" checkbox state — useful for a "select all" checkbox whose children are only partially selected:
+
+```razor
+<EditBool @bind-Value="model.SelectAll" Indeterminate="@someButNotAllSelected" />
+```
+
+It never changes the bound value — only a real click does, exactly like AntD's `indeterminate` prop. There is no HTML attribute for it (it's a DOM property), so it's applied via JS after render through the same `wss-checkbox.js` helper the UI-kit `Table`'s header "select all" checkbox uses; with no JS runtime (server prerender, unit tests) the checkbox just shows its plain checked/unchecked state. Works with or without `UseStyledCheckbox` — the native checkbox gets the browser's own mixed-state dash, the styled checkbox draws the same unfilled-box-plus-centered-square look as `Table`'s.
+
 #### Turning it on for a whole app or MFE
 
 Setting `UseStyledCheckbox="true"` on every control individually doesn't scale. Instead, set it once — either on the cascaded `FormOptions` for one form/section, or on [`FormDefaults`](#formdefaults) for everything under an app or micro-frontend root — and leave the per-control parameter unset everywhere:
@@ -536,6 +546,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Changelog
 
 ### 10.6.7
+
+**New** (Edit Controls)
+- `EditBool.Indeterminate` (`bool`, default `false`) — AntD's visual-only "mixed" checkbox state (does not change the bound value). Applied via JS after render (there's no HTML attribute for the `indeterminate` DOM property) through a new shared `wss-checkbox.js` module; the UI-kit `Table`'s header "select all" checkbox now imports the same helper instead of its own copy (`wss-table.js` re-exports it, so its module path is unchanged). Works with or without `UseStyledCheckbox`; degrades to a plain checked/unchecked box with no JS runtime. See [Indeterminate ("mixed") state](#indeterminate-mixed-state).
 
 **New** (UI Kit)
 - Hover tooltips (`data-tooltip`) — ported from the RPG Assistant app's `data-tooltip` convention. Not a component: a `data-tooltip="..."` attribute on any element gets a styled CSS-only hover/focus tooltip (arrow, slide-in, `:focus-visible` support, hidden under `hover: none`) via new rules in `wss-controls.css`, themed through `--wss-*` tokens plus the new `--wss-tooltip-gap` / `--wss-tooltip-z-index` knobs. The optional new `wss-tooltip.js` (a plain `<script>` tag, no interop) auto-places the bubble — above/below and left/right — based on the trigger's position within its nearest clipping ancestor or panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`), so it stays inside a Modal/Drawer instead of running past the edge. See [Hover tooltips](#hover-tooltips-data-tooltip).

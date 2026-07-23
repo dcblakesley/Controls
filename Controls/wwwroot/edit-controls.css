@@ -188,6 +188,30 @@
     mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 
+/* :indeterminate is a real CSS pseudo-class that reflects the DOM property EditBool sets via JS
+   (see wss-checkbox.js) -- no JS-driven class needed to draw the mixed state. Mirrors
+   .wss-table-checkbox-input-styled:indeterminate -- antd's mixed state keeps the box unfilled
+   (default border/bg) with a centered 8x8 primary square, not a filled box with a dash. */
+.edit-checkbox-input-styled:indeterminate + .edit-checkbox-box {
+    background: var(--color-bg, #fff);
+    border-color: var(--border-color, #d9d9d9);
+}
+
+.edit-checkbox-input-styled:indeterminate + .edit-checkbox-box::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    background: var(--edit-color-primary);
+    transform: translate(-50%, -50%);
+    /* If a consumer ever sets checked and indeterminate together, the checked rule's mask would
+       otherwise clip this square into a check shape. */
+    -webkit-mask: none;
+    mask: none;
+}
+
 .edit-checkbox-input-styled:focus-visible + .edit-checkbox-box {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
