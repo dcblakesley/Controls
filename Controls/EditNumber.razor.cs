@@ -19,11 +19,43 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// <summary> The increment/decrement step for the number input. Defaults to 1.0.</summary>
     [Parameter] public decimal Step { get; set; } = 1.0m;
 
+    /// <summary> The minimum allowed value, rendered as the input's <c>min</c> attribute (InvariantCulture, same type discipline as <see cref="Step"/>). Omitted (no browser-side floor) when null.</summary>
+    [Parameter] public decimal? Min { get; set; }
+
+    /// <summary> The maximum allowed value, rendered as the input's <c>max</c> attribute (InvariantCulture, same type discipline as <see cref="Step"/>). Omitted (no browser-side ceiling) when null.</summary>
+    [Parameter] public decimal? Max { get; set; }
+
+    /// <summary> Placeholder text to display in the input when empty.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary> Optional leading affix content (e.g. a currency symbol or icon), rendered by <see cref="EditInputShell"/>. Setting this switches the control into the shell's AntD-style affix layout.</summary>
+    [Parameter] public RenderFragment? Prefix { get; set; }
+
+    /// <summary> Optional custom trailing affix content, rendered by <see cref="EditInputShell"/> after the (absent, for EditNumber) clear button and character count. Setting this switches the control into the shell's AntD-style affix layout.</summary>
+    [Parameter] public RenderFragment? Suffix { get; set; }
+
     /// <summary> Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal places).</summary>
     [Parameter] public string? Format { get; set; }
 
     /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a number.";
+
+    /// <summary>
+    /// True once <see cref="Prefix"/> or <see cref="Suffix"/> is in use -- the single computation
+    /// site <see cref="EditInputShell.UsesAffixLayout"/> defines, so this control and the shell
+    /// always agree on which layout renders. EditNumber never sets AllowClear/CountText/IsPassword
+    /// (no clear/count/password toggle for numbers), so those arguments are always false/null here.
+    /// </summary>
+    bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, false, null, false);
+
+    /// <summary>
+    /// The input's <c>class</c> attribute. Legacy mode reproduces today's exact string (so a
+    /// no-new-params render stays byte-identical); affix mode adds <c>edit-affix-input</c> per
+    /// <see cref="EditInputShell"/>'s contract.
+    /// </summary>
+    string InputClass => UseAffixLayout
+        ? $"edit-input edit-number-input edit-affix-input {CssClass}"
+        : $"edit-input edit-number-input {CssClass}";
 
     protected override void OnInitialized()
     {

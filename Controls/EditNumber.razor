@@ -13,15 +13,20 @@
                per-keystroke binding flashed "must be a number" mid-typing. Matches Microsoft's
                InputNumber. (Comment deliberately outside the tag — a Razor comment inside an
                attribute list compiles into a literal attribute name and breaks setAttribute.) *@
-            <EditInputShell IsInvalid=@IsInvalid>
+            <EditInputShell IsInvalid=@IsInvalid
+                            Prefix=@Prefix
+                            Suffix=@Suffix>
                 <input type="number"
-                       style="padding-inline-end: 2rem"
+                       style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                        disabled=@IsDisabled
                        id=@_id
                        data-test-id=@_id
                        step=@Step.ToString(CultureInfo.InvariantCulture)
+                       min=@(Min?.ToString(CultureInfo.InvariantCulture))
+                       max=@(Max?.ToString(CultureInfo.InvariantCulture))
+                       placeholder=@Placeholder
                        @bind-value=@CurrentValueAsString
-                       class=@($"edit-input edit-number-input {CssClass}")
+                       class=@InputClass
                        aria-required=@_isRequired
                        aria-invalid=@(IsInvalid ? "true" : null)
                        aria-describedby=@_describedBy

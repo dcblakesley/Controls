@@ -63,12 +63,40 @@
                       IsDisabled="true"/>
 
         <EditTextArea @bind-Value="_model.Required"/>
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
-        
+
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>AllowClear</h3>
+
+        <EditTextArea @bind-Value="_model.Clearable" AllowClear="true"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_allowClearExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>MaxLength + ShowCount</h3>
+
+        <EditTextArea @bind-Value="_model.Counted" MaxLength="200" ShowCount="true"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_maxLengthExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>AutoSize</h3>
+
+        <EditTextArea @bind-Value="_model.AutoSized" AutoSize="true" MinRows="2" MaxRows="6"
+                      Placeholder="Type several lines -- the box grows until it hits 6 rows, then scrolls."/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_autoSizeExample</code></pre>
     </section>
 </EditForm>
 
@@ -95,6 +123,10 @@
         [Required] public string Required { get; set; } = "";
 
         public string Disabled { get; set; } = "This textarea is disabled";
+
+        public string Clearable { get; set; } = "Clear me";
+        public string Counted { get; set; } = "";
+        public string AutoSized { get; set; } = "";
     }
 
     readonly string _basicExample = @"<EditTextArea @bind-Value=""_model.BasicTextArea"" />
@@ -138,8 +170,21 @@
 
 <EditTextArea @bind-Value=""_model.Required""/>";
 
-    readonly string _validationModel = @"[Required] 
+    readonly string _validationModel = @"[Required]
 public string Required { get; set; } = """";
 
 public string Disabled { get; set; } = ""This textarea is disabled"";";
+
+    readonly string _allowClearExample = @"<EditTextArea @bind-Value=""_model.Clearable""
+             AllowClear=""true""/>";
+
+    readonly string _maxLengthExample = @"<EditTextArea @bind-Value=""_model.Counted""
+             MaxLength=""200""
+             ShowCount=""true""/>";
+
+    readonly string _autoSizeExample = @"<EditTextArea @bind-Value=""_model.AutoSized""
+             AutoSize=""true""
+             MinRows=""2""
+             MaxRows=""6""
+             Placeholder=""Type several lines...""/>";
 }

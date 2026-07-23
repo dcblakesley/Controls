@@ -8,7 +8,10 @@
      affix wrapper, with the clear button, count, custom suffix, password toggle, and InvalidIcon
      inside a single trailing <span class="edit-input-suffix"> in that locked order. The host drops
      its inline padding and adds the `edit-affix-input` class to the editor in this mode (see
-     <see cref="UsesAffixLayout"/>).
+     <see cref="UsesAffixLayout"/>). When <see cref="CountBelow"/> is also set (EditTextArea), the
+     count instead renders as a second, trailing <span class="edit-textarea-count"> sibling of the
+     suffix span — its own line under the editor, matching AntD TextArea's showCount placement —
+     and is omitted from inside <span class="edit-input-suffix">.
 
    See CLAUDE.md's CSS section and edit-controls.css's "Input + InvalidIcon wrapper" comment for the
    structural contract this markup must not silently drift from. *@
@@ -28,7 +31,7 @@
                     @EditIcons.ClearCircle
                 </button>
             }
-            @if (CountText is not null)
+            @if (CountText is not null && !CountBelow)
             {
                 <span class="edit-input-count">@CountText</span>
             }
@@ -47,6 +50,10 @@
             }
             <InvalidIcon IsInvalid=@IsInvalid />
         </span>
+        @if (CountText is not null && CountBelow)
+        {
+            <span class="edit-textarea-count">@CountText</span>
+        }
     </div>
 }
 else

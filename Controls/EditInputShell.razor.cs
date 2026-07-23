@@ -39,6 +39,17 @@ public partial class EditInputShell
     /// and switches the shell into affix-mode layout. Null renders no count span.</summary>
     [Parameter] public string? CountText { get; set; }
 
+    /// <summary>
+    /// Textarea-only layout: when true and <see cref="CountText"/> is non-null, the count renders as
+    /// <c>&lt;span class="edit-textarea-count"&gt;</c> after the suffix span — a direct child of the
+    /// affix wrapper, landing on its own line under the editor — instead of inside
+    /// <c>edit-input-suffix</c> alongside the clear/password buttons. Matches AntD <c>TextArea</c>'s
+    /// <c>showCount</c> placement (below-right) versus <c>Input</c>'s (inline, trailing). No effect
+    /// when <see cref="CountText"/> is null; doesn't itself switch on affix-mode layout (CountText
+    /// already does that).
+    /// </summary>
+    [Parameter] public bool CountBelow { get; set; }
+
     /// <summary>Whether to render the password show/hide toggle button. True switches the shell into
     /// affix-mode layout.</summary>
     [Parameter] public bool ShowPasswordToggle { get; set; }

@@ -325,6 +325,11 @@
 .edit-input-affix-wrapper {
     display: flex;
     align-items: center;
+    /* wrap (not nowrap): EditTextArea's below-the-editor count span (.edit-textarea-count, set to
+       flex-basis: 100% below) needs to fall onto its own line under the editor rather than squeeze
+       into the same row. Harmless for every other (single-line) affix input — nothing else in this
+       wrapper sets flex-basis: 100%, so nothing else is forced to wrap. */
+    flex-wrap: wrap;
 }
 .edit-input-prefix,
 .edit-input-suffix {
@@ -398,6 +403,24 @@
 
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input { }
+
+/* AntD TextArea showCount: the count renders below the editor, right-aligned, on its own line --
+   unlike EditString's inline .edit-input-count (see EditInputShell's CountBelow parameter). This
+   only works because it's a direct child of the (flex-wrap: wrap) .edit-input-affix-wrapper above:
+   flex-basis: 100% claims the full row width, forcing the wrap and landing this span alone on it. */
+.edit-textarea-count {
+    flex-basis: 100%;
+    text-align: end;
+    color: var(--color-text-secondary, #8c8c8c);
+}
+
+/* EditTextArea's AutoSize=true: the browser's manual resize grip fights a JS-driven height (the user
+   drags it, then the next keystroke's resize snaps it back) -- AntD disables the handle the same way
+   while autosizing. Class is only added while AutoSize is true; a plain fixed-Rows textarea keeps
+   its native resize handle. */
+.edit-textarea-autosize {
+    resize: none;
+}
 
 
 /************************************************ Tooltip *******************************************/
@@ -655,10 +678,14 @@
               edit-control (input, textarea, InputDate, etc. — edit-affix-input in .edit-theme)
               edit-input-suffix
                   edit-input-clear (button, only while clearable)
-                  edit-input-count (optional)
+                  edit-input-count (optional; omitted here in favor of edit-textarea-count below when
+                                    the host sets EditInputShell.CountBelow — see EditTextArea)
                   [custom Suffix content] (optional)
                   edit-input-password-toggle (button, optional)
                   edit-icon-invalid (only when validation fails)
+              edit-textarea-count (optional -- EditTextArea's ShowCount via CountBelow=true; a second
+                                   direct child of the wrapper, after edit-input-suffix, own line
+                                   under the editor thanks to the wrapper's flex-wrap: wrap)
           edit-tooltip-container (optional)
              edit-tooltip-content (optional)
 */

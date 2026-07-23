@@ -53,6 +53,55 @@
         if (el && typeof el.focus === 'function') el.focus();
     };
 
+    // Auto-size a <textarea> to fit its content, clamped between minRows and maxRows (maxRows
+    // null/0 = unbounded). Stateless: no listeners are attached here, and nothing is cached between
+    // calls -- EditTextArea re-invokes this on every input event and once after first render while
+    // AutoSize is true. Silently returns if the element isn't found (stale id, unmounted mid-call).
+    ns.autoSizeTextArea = function (id, minRows, maxRows) {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const style = getComputedStyle(el);
+        // getComputedStyle reports the initial "normal" (or any other non-numeric value) when no
+        // line-height is set -- fall back to the standard ~1.5x font-size ratio used elsewhere.
+        let lineHeight = parseFloat(style.lineHeight);
+        if (!lineHeight || Number.isNaN(lineHeight)) {
+            const fontSize = parseFloat(style.fontSize) || 14;
+            lineHeight = fontSize * 1.5;
+        }
+
+        const paddingTop = parseFloat(style.paddingTop) || 0;
+        const paddingBottom = parseFloat(style.paddingBottom) || 0;
+        const borderTop = parseFloat(style.borderTopWidth) || 0;
+        const borderBottom = parseFloat(style.borderBottomWidth) || 0;
+
+        // scrollHeight always includes padding (both box-sizing modes) but never border. What
+        // `style.height` actually controls depends on box-sizing though: content-box height excludes
+        // padding/border (the box model adds them on top); border-box height includes them. boxExtra
+        // is the amount to add back so every height figure below is expressed in "what style.height
+        // should be set to" units, regardless of which box-sizing mode is in play.
+        const boxExtra = style.boxSizing === 'border-box' ? paddingTop + paddingBottom + borderTop + borderBottom : 0;
+        const scrollPadding = paddingTop + paddingBottom;
+
+        const minHeight = lineHeight * (minRows || 1) + boxExtra;
+        const maxHeight = maxRows ? lineHeight * maxRows + boxExtra : null;
+
+        // Reset height first so scrollHeight reflects the content's natural size, not whatever
+        // (possibly larger, possibly stale) height is currently set.
+        el.style.height = 'auto';
+        const contentHeight = el.scrollHeight - scrollPadding + boxExtra;
+
+        let target = Math.max(contentHeight, minHeight);
+        let clampedAtMax = false;
+        if (maxHeight !== null && target > maxHeight) {
+            target = maxHeight;
+            clampedAtMax = true;
+        }
+
+        el.style.height = target + 'px';
+        el.style.overflowY = clampedAtMax ? 'auto' : 'hidden';
+    };
+
     ns.log = function (text) { console.log(text); };
     ns.logError = function (text) { console.log('%c' + text, 'background: red'); };
     ns.logWarn = function (text) { console.log('%c' + text, 'background: orange'); };

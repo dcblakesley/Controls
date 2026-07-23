@@ -45,6 +45,23 @@ public static class JsInteropEc
         await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.focusById", id);
 
     /// <summary>
+    /// Resizes the textarea with the given id to fit its content, clamped between
+    /// <paramref name="minRows"/> and <paramref name="maxRows"/> (null = unbounded). Stateless —
+    /// <see cref="EditTextArea"/> calls this again after every input and once after first render
+    /// while its <c>AutoSize</c> parameter is true. Best-effort — a no-op when the id isn't found or
+    /// JS is unavailable (prerender / tests); see the class remarks for the missing-global
+    /// (cross-origin MFE) fallback.
+    /// </summary>
+    /// <param name="jsRuntime">The JS runtime to invoke through.</param>
+    /// <param name="id">The textarea's element id.</param>
+    /// <param name="minRows">The minimum height, expressed in text rows.</param>
+    /// <param name="maxRows">The maximum height, expressed in text rows, or null for unbounded.</param>
+    /// <param name="formDefaults">The cascaded <see cref="Controls.FormDefaults"/> in scope, if any --
+    /// see <see cref="FocusFirstInvalidField"/>.</param>
+    public static async Task AutoSizeTextArea(IJSRuntime jsRuntime, string id, int minRows, int? maxRows, FormDefaults? formDefaults = null) =>
+        await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.autoSizeTextArea", id, minRows, maxRows);
+
+    /// <summary>
     /// Logs a message to the browser console. Best-effort; see the class remarks.
     /// </summary>
     /// <param name="jsRuntime">The JS runtime to invoke through.</param>

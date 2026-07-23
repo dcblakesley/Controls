@@ -7,15 +7,23 @@
 
         @if (ShowEditor)
         {
-            <EditInputShell IsInvalid=@IsInvalid>
+            <EditInputShell IsInvalid=@IsInvalid
+                            AllowClear=@AllowClear
+                            IsClearable=@IsClearable
+                            OnClear=@Clear
+                            CountText=@CountText
+                            CountBelow="true">
                 <textarea @bind-value=@CurrentValue
                           @bind-value:event="oninput"
-                          style="padding-inline-end: 2rem"
+                          @bind-value:after="OnValueChangedAsync"
+                          @ref="_textAreaRef"
+                          style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                           disabled=@IsDisabled
                           id=@_id
                           data-test-id=@_id
-                          class=@($"edit-input edit-textarea-input {CssClass}")
-                          rows=@Rows
+                          class=@InputClass
+                          rows=@EffectiveRows
+                          maxlength=@MaxLength
                           placeholder=@Placeholder
                           aria-required=@_isRequired
                           aria-invalid=@(IsInvalid ? "true" : null)

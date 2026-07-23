@@ -52,6 +52,27 @@
 		<h3>Model</h3>
 		<pre class="code-block code-block-model"><code>@_validationModel</code></pre>
 	</section>
+
+	<section class="demo-section">
+		<h3>Min / Max / Placeholder</h3>
+
+		<EditNumber @bind-Value="_model.Bounded" Min="0" Max="100" Placeholder="0-100"/>
+
+		<h3>Markup</h3>
+		<pre class="code-block"><code>@_boundedExample</code></pre>
+	</section>
+
+	<section class="demo-section">
+		<h3>Prefix / Suffix</h3>
+
+		<EditNumber @bind-Value="_model.WithPrefixSuffix" Description="Prefix = $, Suffix = USD">
+			<Prefix>$</Prefix>
+			<Suffix>USD</Suffix>
+		</EditNumber>
+
+		<h3>Markup</h3>
+		<pre class="code-block"><code>@_prefixSuffixExample</code></pre>
+	</section>
 </EditForm>
 
 @code {
@@ -77,6 +98,9 @@
 		[Range(float.MinValue, 3.14159)] public float MaxValue { get; set; } = 6;
 
 		[Range(100.5, 110.85)] public double RangeValue { get; set; } = 33;
+
+		public int Bounded { get; set; }
+		public decimal WithPrefixSuffix { get; set; } = 19;
 	}
 
 	readonly string _basicExample = @"<EditNumber @bind-Value=""_model.Int"" />
@@ -128,5 +152,15 @@ public float MaxValue { get; set; } = 6;
 
 [Range(100.5, 110.85)]
 public double RangeValue { get; set; } = 33;";
+
+	readonly string _boundedExample = @"<EditNumber @bind-Value=""_model.Bounded""
+          Min=""0""
+          Max=""100""
+          Placeholder=""0-100"" />";
+
+	readonly string _prefixSuffixExample = @"<EditNumber @bind-Value=""_model.WithPrefixSuffix"">
+    <Prefix>$</Prefix>
+    <Suffix>USD</Suffix>
+</EditNumber>";
 
 }
