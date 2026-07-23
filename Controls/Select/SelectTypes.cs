@@ -31,7 +31,11 @@ public enum SelectVariant
     /// Usually paired with <see cref="Select{TValue}.Prefix"/> for a leading icon,
     /// <c>ShowSearch="false"</c> and <c>AllowClear="false"</c>. Designed for
     /// <see cref="SelectMode.Single"/> (multiple/tags render as a stadium-shaped tag box).</summary>
-    Pill
+    Pill,
+
+    /// <summary>No border/background until hover or focus (Ant Design's <c>variant="borderless"</c>) —
+    /// reads as plain text until the user interacts with it. CSS-only; behavior is unchanged.</summary>
+    Borderless
 }
 
 /// <summary>A single selectable option for <see cref="Select{TValue}"/> (and the Edit* select wrappers).</summary>
@@ -57,4 +61,10 @@ public class SelectOption<TValue>
 
     /// <summary>When true the option cannot be selected.</summary>
     public bool Disabled { get; set; }
+
+    /// <summary>Optional group name. Options are rendered in <see cref="Select{TValue}.Options"/>
+    /// order; a non-interactive header renders once before the first option of each contiguous run
+    /// sharing the same <see cref="Group"/> (mirroring Ant Design's <c>OptGroup</c>). Null/empty
+    /// (the default) renders the option with no header, wherever it falls in the list.</summary>
+    public string? Group { get; set; }
 }

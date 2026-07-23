@@ -49,6 +49,7 @@ export function placeDropdown(wrapper, dropdown, gap) {
     wrapper.style.zIndex = z + 1;
     const w = wrapper.getBoundingClientRect();
     const dropdownHeight = dropdown.offsetHeight;
+    const dropdownWidth = dropdown.offsetWidth;
     const roomBelow = window.innerHeight - w.bottom;
     const roomAbove = w.top;
     if (roomBelow < dropdownHeight + gap && roomAbove > roomBelow) {
@@ -58,6 +59,20 @@ export function placeDropdown(wrapper, dropdown, gap) {
         dropdown.style.bottom = 'auto';
         dropdown.style.top = `calc(100% + ${gap}px)`;
     }
+
+    // Horizontal clamp: the dropdown normally hangs from the wrapper's left edge (CSS `left: 0`).
+    // A dropdown wider than its trigger (long option labels, or the pill variant's content-driven
+    // width) can run off the right edge of the viewport near it — mirror the vertical flip above by
+    // anchoring from the wrapper's right edge instead whenever that would happen. Keeps the CSS
+    // default (left: 0) whenever there's room, so this only ever moves the panel further on-screen.
+    if (w.left + dropdownWidth > window.innerWidth) {
+        dropdown.style.left = 'auto';
+        dropdown.style.right = '0';
+    } else {
+        dropdown.style.right = 'auto';
+        dropdown.style.left = '0';
+    }
+
     // Hand the wrapper's z-index back so C# can re-assert it on every bound-style re-render.
     return z + 1;
 }

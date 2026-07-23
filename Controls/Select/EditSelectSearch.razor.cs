@@ -29,6 +29,12 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <summary> Allow type-to-search filtering. Defaults to true.</summary>
     [Parameter] public bool ShowSearch { get; set; } = true;
 
+    /// <inheritdoc cref="Select{TValue}.ShowArrow"/>
+    [Parameter] public bool ShowArrow { get; set; } = true;
+
+    /// <inheritdoc cref="Select{TValue}.Loading"/>
+    [Parameter] public bool Loading { get; set; }
+
     /// <summary> Visual size (small / default / large).</summary>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
@@ -44,11 +50,29 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <summary> Text shown when no options match. Defaults to "No data".</summary>
     [Parameter] public string EmptyText { get; set; } = "No data";
 
+    /// <inheritdoc cref="Select{TValue}.EmptyContent"/>
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+
+    /// <inheritdoc cref="Select{TValue}.FilterOption"/>
+    [Parameter] public Func<string, SelectOption<TValue>, bool>? FilterOption { get; set; }
+
+    /// <inheritdoc cref="Select{TValue}.DropdownFooter"/>
+    [Parameter] public RenderFragment? DropdownFooter { get; set; }
+
     /// <summary> Debounce (ms) before filtering after a keystroke; 0 = immediate.</summary>
     [Parameter] public int DebounceMilliseconds { get; set; }
 
     /// <summary> Raised with the current search text whenever it changes.</summary>
     [Parameter] public EventCallback<string> OnSearch { get; set; }
+
+    /// <inheritdoc cref="Select{TValue}.DefaultOpen"/>
+    [Parameter] public bool DefaultOpen { get; set; }
+
+    /// <inheritdoc cref="Select{TValue}.Open"/>
+    [Parameter] public bool Open { get; set; }
+
+    /// <inheritdoc cref="Select{TValue}.OpenChanged"/>
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
     /// <inheritdoc cref="Select{TValue}.ClearSelectionLabel"/>
     [Parameter] public string ClearSelectionLabel { get; set; } = "Clear selection";

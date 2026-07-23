@@ -58,7 +58,7 @@ public partial class Select<TValue> : IAsyncDisposable
     readonly List<TValue> _selected = [];
     readonly HashSet<TValue> _selectedSet = new(_comparer);
     readonly List<SelectOption<TValue>> _tagOptions = [];
-    List<SelectOption<TValue>> _filtered = [];
+    List<SelectRow> _filtered = [];
     int _hiddenTagCount;
     readonly List<(SelectOption<TValue> Option, int Index)> _visibleTags = [];
 
@@ -71,6 +71,26 @@ public partial class Select<TValue> : IAsyncDisposable
     Dictionary<TValue, SelectOption<TValue>> _lookup = new(_comparer);
 #pragma warning restore CS8714
     IEnumerable<SelectOption<TValue>>? _lastOptions;
+
+    // A row in the flattened, virtualized dropdown list: either a selectable option or a
+    // non-interactive group header (SelectOption.Group). Both occupy exactly one RowHeight slot, so
+    // Virtualize/scroll-into-view math stays valid whether or not any option is grouped. Keyboard
+    // navigation (MoveActive*/FindLabelPrefix) skips header rows; they carry no Option.
+    sealed class SelectRow
+    {
+        public SelectOption<TValue>? Option { get; }
+        public string? Header { get; }
+        public bool IsHeader => Header is not null;
+
+        SelectRow(SelectOption<TValue>? option, string? header)
+        {
+            Option = option;
+            Header = header;
+        }
+
+        public static SelectRow ForOption(SelectOption<TValue> option) => new(option, null);
+        public static SelectRow ForHeader(string header) => new(null, header);
+    }
 
     // ----- Parameters -------------------------------------------------------
 
@@ -98,6 +118,15 @@ public partial class Select<TValue> : IAsyncDisposable
     [Parameter] public bool AllowClear { get; set; } = true;
     /// <summary>Enables type-to-search filtering of the options. Defaults to true; when false, typed letters jump to matching options instead (native-select-style type-ahead).</summary>
     [Parameter] public bool ShowSearch { get; set; } = true;
+    /// <summary>Shows the trigger's chevron arrow. Defaults to true (unlike Ant Design, which hides
+    /// it by default for a searchable multi-select) — kept always-on by default here so existing
+    /// markup's DOM stays byte-identical. When <see cref="Loading"/> is also true, the spinner takes
+    /// the arrow's slot regardless of this flag.</summary>
+    [Parameter] public bool ShowArrow { get; set; } = true;
+    /// <summary>Shows a spinner in the arrow's slot (replacing it) and marks the control
+    /// <c>aria-busy</c> — for a pending server-driven search/load. Takes the arrow slot even when
+    /// <see cref="ShowArrow"/> is false, matching Ant Design.</summary>
+    [Parameter] public bool Loading { get; set; }
     /// <summary>Control height/padding variant. Defaults to <see cref="SelectSize.Default"/>.</summary>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
     /// <summary>Trigger appearance. <see cref="SelectVariant.Pill"/> renders the filter-button pill;
@@ -112,9 +141,41 @@ public partial class Select<TValue> : IAsyncDisposable
     [Parameter] public int? MaxTagCount { get; set; }
     /// <summary>Text shown in the dropdown when no options match. Defaults to "No data".</summary>
     [Parameter] public string EmptyText { get; set; } = "No data";
+    /// <summary>Richer alternative to <see cref="EmptyText"/> for the no-match state — wins over
+    /// <see cref="EmptyText"/> when set.</summary>
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
 
-    /// <summary>Render the dropdown open on first display.</summary>
+    /// <summary>Replaces the default case-insensitive <c>Label.Contains</c> filter. Called once per
+    /// option with the current search text; return whether the option should remain visible. Pass
+    /// <c>(_, _) => true</c> to disable client-side filtering entirely for a pure server-driven
+    /// <see cref="OnSearch"/> flow (every option in <see cref="Options"/> stays visible — the server
+    /// is expected to have already filtered them before reassigning <see cref="Options"/>).</summary>
+    [Parameter] public Func<string, SelectOption<TValue>, bool>? FilterOption { get; set; }
+
+    /// <summary>Renders pinned below the option list (Ant Design's <c>dropdownRender</c>) — for
+    /// "Add item" affordances etc. Sits outside the virtualized list and outside listbox/option
+    /// semantics (<c>role="presentation"</c>): clicks inside it never select an option or close the
+    /// dropdown on their own (stop propagation is applied automatically) — wire your own handler
+    /// (e.g. a button's <c>@onclick</c>) for any action, including closing.</summary>
+    [Parameter] public RenderFragment? DropdownFooter { get; set; }
+
+    /// <summary>Render the dropdown open on first display. Ignored once <see cref="OpenChanged"/>
+    /// has a delegate (the controlled case — see <see cref="Open"/>); applies only to the
+    /// uncontrolled case.</summary>
     [Parameter] public bool DefaultOpen { get; set; }
+
+    /// <summary>Controls the dropdown's open state (two-way bindable via <c>@bind-Open</c>). While
+    /// <see cref="OpenChanged"/> has a delegate, this parameter becomes the source of truth: external
+    /// changes are routed through the same internal open/close path as user interaction, so JS
+    /// placement, focus, and scroll-into-view all still run, and every open/close (external or
+    /// internal) raises <see cref="OpenChanged"/> back. An echo of a value this component just raised
+    /// is recognized and ignored (no re-open/close loop). With no delegate on <see cref="OpenChanged"/>
+    /// (the default/uncontrolled case), this parameter is inert and <see cref="DefaultOpen"/> governs
+    /// the initial state as before.</summary>
+    [Parameter] public bool Open { get; set; }
+    /// <summary>Raised whenever the dropdown opens or closes, whether user- or externally-driven.
+    /// Supports <c>@bind-Open</c>; see <see cref="Open"/>.</summary>
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
     /// <summary>Raised with the current search text whenever it changes.</summary>
     [Parameter] public EventCallback<string> OnSearch { get; set; }
@@ -199,6 +260,33 @@ public partial class Select<TValue> : IAsyncDisposable
         _lastMaxTagCount = MaxTagCount;
     }
 
+    // The last Open value this component has observed OR itself raised via RaiseOpenChangedAsync.
+    // Null until the first time OpenChanged carries a delegate. Comparing against this (rather than
+    // against _open directly) is what lets a controlled consumer's @bind-Open field echo back its own
+    // value without the echo being mistaken for a fresh external open/close request (see below).
+    bool? _lastOpenParam;
+
+    // Controlled Open/OpenChanged: async because routing an externally-driven change through
+    // OpenAsync/CloseAsync (JS placement, focus) requires awaiting them, which OnParametersSet
+    // (sync) cannot do. Runs after OnParametersSet on every parameter set, uncontrolled or not.
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!OpenChanged.HasDelegate)
+        {
+            // Uncontrolled (the default): Open/OpenChanged are inert and DefaultOpen alone governs
+            // the initial state (set once in OnInitialized). Reset so a consumer that later wires
+            // OpenChanged starts a fresh controlled session instead of comparing against a stale value.
+            _lastOpenParam = null;
+            return;
+        }
+
+        if (_lastOpenParam == Open) return; // unchanged since we last observed/raised it (includes our own echo)
+        _lastOpenParam = Open;
+
+        if (Open == _open) return; // already in the requested state
+        if (Open) await OpenAsync(); else await CloseAsync();
+    }
+
     // ----- Display helpers (used by the .razor markup) ----------------------
 
     string WrapperClass
@@ -213,6 +301,7 @@ public partial class Select<TValue> : IAsyncDisposable
             if (Size == SelectSize.Small) classes.Add("wss-select-sm");
             if (Size == SelectSize.Large) classes.Add("wss-select-lg");
             if (Variant == SelectVariant.Pill) classes.Add("wss-select-pill");
+            if (Variant == SelectVariant.Borderless) classes.Add("wss-select-borderless");
             if (!string.IsNullOrEmpty(CssClass)) classes.Add(CssClass);
             return string.Join(" ", classes);
         }
@@ -271,9 +360,10 @@ public partial class Select<TValue> : IAsyncDisposable
     }
 
     // The keyboard-highlighted option (compared by reference so each rendered row
-    // is an O(1) check rather than needing its index in the filtered list).
+    // is an O(1) check rather than needing its index in the filtered list). Null when the active
+    // index lands on a header row, which keyboard navigation is never supposed to let happen.
     SelectOption<TValue>? ActiveOption =>
-        _activeIndex >= 0 && _activeIndex < _filtered.Count ? _filtered[_activeIndex] : null;
+        _activeIndex >= 0 && _activeIndex < _filtered.Count ? _filtered[_activeIndex].Option : null;
 
     string OptionClass(SelectOption<TValue> option)
     {
@@ -310,17 +400,65 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
+    // True when an option matches the current search text: FilterOption (when set) replaces the
+    // default case-insensitive Label.Contains check entirely — including when the search text is
+    // empty, so a consumer's "(_, _) => true" reliably disables client filtering for a pure
+    // server-driven OnSearch flow. With no FilterOption, empty search text short-circuits to "show
+    // everything" exactly as before (byte-identical behavior when the new parameter is unused).
+    bool MatchesFilter(SelectOption<TValue> option)
+    {
+        if (FilterOption is not null) return FilterOption(_searchText, option);
+        if (string.IsNullOrEmpty(_searchText)) return true;
+        return (option.Label ?? string.Empty).Contains(_searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Builds the flattened row list the (virtualized) dropdown renders: a plain pass-through of
+    // matching options when none carry a Group (identical output/order to the pre-grouping engine),
+    // interleaved with a non-interactive header before the first option of each contiguous run of a
+    // shared Group otherwise. A header appears only when at least one option in its run survives the
+    // filter (RebuildFiltered's caller re-enters here on every keystroke/tag change, so this whole
+    // pass is O(n) — the same complexity the old Where().ToList() already was).
     void RebuildFiltered()
     {
-        IEnumerable<SelectOption<TValue>> source = AllOptions;
+        var rows = new List<SelectRow>();
+        string? pendingGroup = null;
+        List<SelectOption<TValue>>? pendingBuffer = null;
 
-        if (!string.IsNullOrEmpty(_searchText))
+        void FlushPendingGroup()
         {
-            source = source.Where(o =>
-                (o.Label ?? string.Empty).Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+            if (pendingGroup is null || pendingBuffer is null) return;
+            var matched = pendingBuffer.Where(MatchesFilter).ToList();
+            if (matched.Count > 0)
+            {
+                rows.Add(SelectRow.ForHeader(pendingGroup));
+                foreach (var o in matched) rows.Add(SelectRow.ForOption(o));
+            }
+            pendingGroup = null;
+            pendingBuffer = null;
         }
 
-        _filtered = source.ToList();
+        foreach (var o in AllOptions)
+        {
+            var group = string.IsNullOrEmpty(o.Group) ? null : o.Group;
+            if (group is null)
+            {
+                FlushPendingGroup();
+                if (MatchesFilter(o)) rows.Add(SelectRow.ForOption(o));
+            }
+            else if (group == pendingGroup)
+            {
+                pendingBuffer!.Add(o);
+            }
+            else
+            {
+                FlushPendingGroup();
+                pendingGroup = group;
+                pendingBuffer = [o];
+            }
+        }
+        FlushPendingGroup();
+
+        _filtered = rows;
         if (_activeIndex >= _filtered.Count) _activeIndex = _filtered.Count - 1;
         if (_activeIndex < 0) _activeIndex = 0;
     }
@@ -380,18 +518,19 @@ public partial class Select<TValue> : IAsyncDisposable
         _focused = true;
         RebuildFiltered();
         SetInitialActive();
+        await RaiseOpenChangedAsync();
         await FocusInputAsync();
     }
 
     // Highlight the current selection when the dropdown opens (falling back to the first enabled
     // option, never a disabled one) — so a long list opens at the user's value instead of the top,
-    // and Enter always has a selectable target.
+    // and Enter always has a selectable target. Never lands on a header row.
     void SetInitialActive()
     {
         _activeIndex = 0;
         var selectedIdx = IsMultiple
-            ? (_selected.Count > 0 ? _filtered.FindIndex(o => !o.Disabled && _selectedSet.Contains(o.Value)) : -1)
-            : (HasSingleValue ? _filtered.FindIndex(o => !o.Disabled && _comparer.Equals(o.Value, Value)) : -1);
+            ? (_selected.Count > 0 ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _selectedSet.Contains(r.Option.Value)) : -1)
+            : (HasSingleValue ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _comparer.Equals(r.Option.Value, Value)) : -1);
         if (selectedIdx >= 0)
         {
             _activeIndex = selectedIdx;
@@ -415,7 +554,17 @@ public partial class Select<TValue> : IAsyncDisposable
         RebuildFiltered();
         // No StateHasChanged: every caller (wrapper/option/backdrop click, Escape keydown) is an
         // event handler, after which Blazor re-renders automatically.
-        return Task.CompletedTask;
+        return RaiseOpenChangedAsync();
+    }
+
+    // Notifies OpenChanged of the _open value OpenAsync/CloseAsync just applied, and records it as
+    // the last-observed Open value (see OnParametersSetAsync) so a parameter echo of this same value
+    // — the controlled consumer's @bind-Open field round-tripping back in — is recognized as a
+    // no-op instead of being mistaken for a fresh external request and re-processed.
+    Task RaiseOpenChangedAsync()
+    {
+        _lastOpenParam = _open;
+        return OpenChanged.HasDelegate ? OpenChanged.InvokeAsync(_open) : Task.CompletedTask;
     }
 
     async Task OnInputAsync(ChangeEventArgs e)
@@ -609,10 +758,11 @@ public partial class Select<TValue> : IAsyncDisposable
 
             case "Enter":
                 // A disabled active option (e.g. every match is disabled) falls through — in Tags
-                // mode the typed text still commits instead of the keystroke dying on it.
-                if (_open && _activeIndex >= 0 && _activeIndex < _filtered.Count && !_filtered[_activeIndex].Disabled)
+                // mode the typed text still commits instead of the keystroke dying on it. The active
+                // index never lands on a header row, but the IsHeader check guards the Option! below.
+                if (_open && _activeIndex >= 0 && _activeIndex < _filtered.Count && !_filtered[_activeIndex].IsHeader && !_filtered[_activeIndex].Option!.Disabled)
                 {
-                    await SelectAsync(_filtered[_activeIndex]);
+                    await SelectAsync(_filtered[_activeIndex].Option!);
                 }
                 else if (Mode == SelectMode.Tags && !string.IsNullOrWhiteSpace(_searchText))
                 {
@@ -672,7 +822,8 @@ public partial class Select<TValue> : IAsyncDisposable
         for (var i = 0; i < _filtered.Count; i++)
         {
             next = (next + delta + _filtered.Count) % _filtered.Count;
-            if (!_filtered[next].Disabled)
+            var row = _filtered[next];
+            if (!row.IsHeader && !row.Option!.Disabled)
             {
                 _activeIndex = next;
                 return;
@@ -680,14 +831,16 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    // Move the highlight to the first non-disabled option at/after `start`, stepping by `direction`.
+    // Move the highlight to the first non-header, non-disabled option at/after `start`, stepping by
+    // `direction`.
     void MoveActiveTo(int start, int direction)
     {
         if (_filtered.Count == 0) return;
         var i = Math.Clamp(start, 0, _filtered.Count - 1);
         while (i >= 0 && i < _filtered.Count)
         {
-            if (!_filtered[i].Disabled) { _activeIndex = i; return; }
+            var row = _filtered[i];
+            if (!row.IsHeader && !row.Option!.Disabled) { _activeIndex = i; return; }
             i += direction;
         }
     }
@@ -716,7 +869,9 @@ public partial class Select<TValue> : IAsyncDisposable
         for (var i = 0; i < _filtered.Count; i++)
         {
             var idx = (startFrom + i) % _filtered.Count;
-            var o = _filtered[idx];
+            var row = _filtered[idx];
+            if (row.IsHeader) continue;
+            var o = row.Option!;
             if (!o.Disabled && (o.Label ?? string.Empty).StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                 return idx;
         }

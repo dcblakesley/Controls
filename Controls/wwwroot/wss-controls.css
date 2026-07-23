@@ -520,6 +520,23 @@
     cursor: not-allowed;
 }
 
+/* Group header row (SelectOption.Group) -- shares .wss-select-item's sizing/padding (so it still
+   costs exactly one RowHeight for the Virtualize/scroll-into-view math) but reads as a label, not
+   an option: muted, bold, non-interactive. */
+.wss-select-item-group-label {
+    color: var(--wss-color-text-secondary);
+    font-size: var(--wss-font-size-sm);
+    font-weight: 600;
+    cursor: default;
+}
+
+/* dropdownRender-equivalent footer, pinned after the option list. */
+.wss-select-dropdown-footer {
+    padding: 4px 12px;
+    border-top: 1px solid var(--wss-color-split);
+    cursor: auto;
+}
+
 /* ----------------------------------------------------------- Sizes */
 
 .wss-select-sm.wss-select-single .wss-select-selector {
@@ -675,6 +692,40 @@
 
 .wss-select-pill .wss-select-item-option-state {
     display: none;
+}
+
+/* ----------------------------------------------------------- Borderless variant */
+
+/* SelectVariant.Borderless: no border/background at rest -- reads as plain text until the user
+   hovers or focuses/opens it, when the same subtle hover tint (no ring) appears. CSS-only; behavior
+   (keyboard nav, type-ahead, outside-click/Escape close) is unchanged. */
+.wss-select-borderless .wss-select-selector {
+    background: transparent;
+    border-color: transparent;
+}
+
+.wss-select-borderless:not(.wss-select-disabled):hover .wss-select-selector,
+.wss-select-borderless.wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
+.wss-select-borderless:not(.wss-select-disabled) .wss-select-selector:focus-within {
+    background: var(--wss-color-bg-hover);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+/* Disabled drops back to the standard disabled palette (matching the Pill variant's own
+   disabled override) -- the disabled affordance must stay visible regardless of variant. */
+.wss-select-borderless.wss-select-disabled .wss-select-selector {
+    background: var(--wss-color-bg-disabled);
+}
+
+/* Invalid still needs a visible cue since there is no border to redden. */
+.wss-select-borderless.invalid .wss-select-selector {
+    background: var(--wss-color-error-bg);
+}
+
+.wss-select-borderless.invalid.wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
+.wss-select-borderless.invalid:not(.wss-select-disabled) .wss-select-selector:focus-within {
+    box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
 }
 
 /* ============================================================================

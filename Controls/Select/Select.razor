@@ -10,7 +10,7 @@
     <div class="wss-select-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
 }
 
-<div class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation>
+<div class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation aria-busy="@(Loading ? "true" : null)">
 
     <div class="wss-select-selector">
 
@@ -130,7 +130,17 @@
                 @onclick="ClearAsync" @onclick:stopPropagation>@CloseCross</button>
     }
 
-    <span class="wss-select-arrow">@ArrowDown</span>
+    @* Loading takes the arrow's slot regardless of ShowArrow (matches Ant Design); otherwise the
+       arrow renders only when ShowArrow is on — both cases match the pre-existing single
+       "always-shown arrow" markup exactly when neither parameter is used. *@
+    @if (Loading)
+    {
+        <span class="wss-select-arrow"><span class="wss-icon-spin">@EditIcons.LoadingSpinner</span></span>
+    }
+    else if (ShowArrow)
+    {
+        <span class="wss-select-arrow">@ArrowDown</span>
+    }
 
     @if (_open)
     {
@@ -140,28 +150,60 @@
         <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" tabindex="-1" @ref="_dropdownRef" role="listbox" aria-label="@ListboxLabel" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
             @if (_filtered.Count == 0)
             {
-                <div class="wss-select-item-empty">@EmptyText</div>
+                <div class="wss-select-item-empty">
+                    @if (EmptyContent is not null)
+                    {
+                        @EmptyContent
+                    }
+                    else
+                    {
+                        @EmptyText
+                    }
+                </div>
             }
             else
             {
                 @* Virtualized: only the rows in view are added to the DOM, so the
-                   dropdown stays fast even with tens of thousands of options. *@
-                <Virtualize Items="_filtered" Context="option" ItemSize="RowHeight" OverscanCount="4">
-                    <div class="@OptionClass(option)"
-                         @key="option"
-                         role="option"
-                         id="@(ReferenceEquals(option, ActiveOption) ? $"{BaseId}-active" : null)"
-                         aria-selected="@(IsSelected(option.Value) ? "true" : "false")"
-                         aria-disabled="@(option.Disabled ? "true" : null)"
-                         @onclick="@(e => SelectAsync(option))"
-                         @onclick:stopPropagation>
-                        <span class="wss-select-item-option-content">@option.Label</span>
-                        @if (IsSelected(option.Value))
-                        {
-                            <span class="wss-select-item-option-state">@CheckMark</span>
-                        }
-                    </div>
+                   dropdown stays fast even with tens of thousands of options. Each row is either a
+                   selectable option or (SelectOption.Group) a non-interactive header — both cost one
+                   RowHeight slot so the virtualization/scroll-into-view math stays valid either way. *@
+                <Virtualize Items="_filtered" Context="row" ItemSize="RowHeight" OverscanCount="4">
+                    @if (row.IsHeader)
+                    {
+                        @* Not an option: role="presentation" keeps it out of the listbox's accessible
+                           option list (never role="option"), and it is never clickable/hover-highlighted
+                           or a keyboard-navigation stop (Move*/FindLabelPrefix skip IsHeader rows). *@
+                        <div class="wss-select-item wss-select-item-group-label" @key="row" role="presentation" aria-hidden="true">@row.Header</div>
+                    }
+                    else
+                    {
+                        var option = row.Option!;
+                        <div class="@OptionClass(option)"
+                             @key="option"
+                             role="option"
+                             id="@(ReferenceEquals(option, ActiveOption) ? $"{BaseId}-active" : null)"
+                             aria-selected="@(IsSelected(option.Value) ? "true" : "false")"
+                             aria-disabled="@(option.Disabled ? "true" : null)"
+                             @onclick="@(e => SelectAsync(option))"
+                             @onclick:stopPropagation>
+                            <span class="wss-select-item-option-content">@option.Label</span>
+                            @if (IsSelected(option.Value))
+                            {
+                                <span class="wss-select-item-option-state">@CheckMark</span>
+                            }
+                        </div>
+                    }
                 </Virtualize>
+            }
+            @* Ant Design's dropdownRender equivalent: pinned after the list, outside Virtualize and
+               outside listbox/option semantics (role="presentation"). stopPropagation keeps a click
+               inside it from bubbling to the wrapper's OnWrapperClickAsync (which would otherwise
+               toggle a non-searchable select closed) — it never selects an option or closes on its own. *@
+            @if (DropdownFooter is not null)
+            {
+                <div class="wss-select-dropdown-footer" role="presentation" @onclick:stopPropagation>
+                    @DropdownFooter
+                </div>
             }
         </div>
     }
