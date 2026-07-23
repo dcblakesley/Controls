@@ -489,7 +489,18 @@
         // RowKey is deliberately NOT tracked: an inline lambda parameter is a new delegate every
         // render, and the documented contract is a pure, stable key selector — tracking it would
         // defeat this skip for the most common usage.
-        if (ReferenceEquals(_sorted, _keyedSorted) && _page == _keyedPage && _pageSize == _keyedPageSize)
+        // IsRowSelectable/SelectionMode ARE tracked despite neither touching page/sort/data: both
+        // feed RecomputeSelectionFlags (disabled rows excluded from the select-all math, and Single
+        // mode's header cell renders no select-all at all), so a runtime change to either must not
+        // let this guard skip the recompute below -- otherwise _headerSelectAllDisabled/_allSelected/
+        // _someSelected (and the JS indeterminate re-sync that reads _someSelected) go stale. Calling
+        // RecomputeSelectionFlags unconditionally instead would restore correctness for free, but it's
+        // O(page size) when paged and O(all rows) when not (see IsPaged) -- re-walking every row on
+        // every parent re-render defeats the whole point of this guard (see
+        // Parent_rerender_with_unchanged_data_does_not_rewalk_rows), so the two extra fields are
+        // cheaper than losing that contract.
+        if (ReferenceEquals(_sorted, _keyedSorted) && _page == _keyedPage && _pageSize == _keyedPageSize
+            && ReferenceEquals(IsRowSelectable, _keyedIsRowSelectable) && SelectionMode == _keyedSelectionMode)
             return;
 
         _pageItems = IsPaged ? _sorted.Skip((_page - 1) * _pageSize).Take(_pageSize).ToList() : _sorted;
@@ -518,8 +529,11 @@
         _keyedSorted = _sorted;
         _keyedPage = _page;
         _keyedPageSize = _pageSize;
+        _keyedIsRowSelectable = IsRowSelectable;
+        _keyedSelectionMode = SelectionMode;
 
-        // Page membership changed, so the header-checkbox state may have too.
+        // Page membership (or IsRowSelectable/SelectionMode) changed, so the header-checkbox state
+        // may have too.
         RecomputeSelectionFlags();
     }
 
@@ -529,6 +543,8 @@
     List<TItem>? _keyedSorted;
     int _keyedPage;
     int _keyedPageSize;
+    Func<TItem, bool>? _keyedIsRowSelectable;
+    SelectionMode _keyedSelectionMode;
 
     bool IsActive(Column<TItem> col, SortDirection direction) =>
         ReferenceEquals(_sortColumn, col) && _sortDirection == direction;

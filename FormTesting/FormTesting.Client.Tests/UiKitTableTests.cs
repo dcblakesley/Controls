@@ -874,6 +874,27 @@ public class UiKitTableTests : TestContext
         Assert.All(cut.FindAll("input.wss-table-checkbox"), cb => Assert.False(cb.HasAttribute("disabled")));
     }
 
+    [Fact]
+    public void Runtime_IsRowSelectable_change_with_nothing_else_changed_still_disables_the_header_checkbox()
+    {
+        // RebuildPageItems's memo guard used to compare only _sorted/_page/_pageSize, so a runtime
+        // IsRowSelectable (or SelectionMode) change alone -- nothing else different -- let it skip
+        // the rebuild and, with it, RecomputeSelectionFlags: the header checkbox's disabled/
+        // indeterminate state went stale.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.False(cut.Find("thead input.wss-table-checkbox").HasAttribute("disabled"));
+
+        cut.SetParametersAndRender(p => p.Add(t => t.IsRowSelectable, (Person _) => false));
+
+        Assert.True(cut.Find("thead input.wss-table-checkbox").HasAttribute("disabled"));
+    }
+
     // ----- SelectionMode.Single -----
 
     [Fact]
