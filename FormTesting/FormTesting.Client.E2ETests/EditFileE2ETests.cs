@@ -87,4 +87,23 @@ public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
+
+    [Fact]
+    public async Task Button_variant_has_no_drop_zone_and_lists_a_real_file_pick()
+    {
+        await NavigateAsync();
+        // Heading-scoped rather than positional -- resilient to future sections being inserted
+        // between this one and the ones the other tests in this class index by Nth().
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "Compact button" });
+
+        await Expect(section.Locator(".edit-file-drop-zone")).Not.ToBeVisibleAsync();
+        var selectBtn = section.Locator(".edit-file-select-btn");
+        await Expect(selectBtn).ToBeVisibleAsync();
+        await Expect(selectBtn).ToContainTextAsync("Select Files");
+
+        await section.Locator("input[type=file]").SetInputFilesAsync(TextFile("picked.txt"));
+
+        await Expect(section.Locator(".edit-file-item")).ToHaveCountAsync(1);
+        await Expect(section.Locator(".edit-file-name")).ToHaveTextAsync("picked.txt");
+    }
 }

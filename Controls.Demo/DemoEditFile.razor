@@ -29,6 +29,31 @@
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <h3>Accept: MIME wildcard (images only)</h3>
+        <EditFile @bind-Value="_model.MimeFiles"
+                  AllowedExtensions="@(["image/*"])" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_mimeExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>BeforeAdd hook</h3>
+        <EditFile @bind-Value="_model.GatedFiles" BeforeAdd="RejectBlockedFiles" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_beforeAddExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>Compact button (Variant="Button")</h3>
+        <EditFile @bind-Value="_model.ButtonFiles" Variant="EditFileVariant.Button" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonExample</code></pre>
+    </section>
+
     <button type="submit">Submit</button>
 </EditForm>
 
@@ -48,10 +73,33 @@
 [MinLength(1, ErrorMessage = ""At least one file is required."")]
 public List<IBrowserFile> RequiredFiles { get; set; } = [];";
 
+    readonly string _mimeExample = @"<EditFile @bind-Value=""_model.Files""
+          AllowedExtensions=""@([&quot;image/*&quot;])"" />";
+
+    readonly string _beforeAddExample = @"<EditFile @bind-Value=""_model.Files""
+          BeforeAdd=""RejectBlockedFiles"" />
+
+@code {
+    Task<bool> RejectBlockedFiles(IBrowserFile file) =>
+        Task.FromResult(!file.Name.Contains(""blocked""));
+}";
+
+    readonly string _buttonExample = @"<EditFile @bind-Value=""_model.Files""
+          Variant=""EditFileVariant.Button"" />";
+
+    // Demo-only stand-in for a real gate (server-side dedupe check, content sniffing): rejects any
+    // file whose name contains "blocked", so renaming a file to include that word before picking it
+    // demonstrates the rejection message without needing a backend.
+    Task<bool> RejectBlockedFiles(IBrowserFile file) =>
+        Task.FromResult(!file.Name.Contains("blocked"));
+
     public class DemoEditFileModel
     {
         public List<IBrowserFile> BasicFiles { get; set; } = [];
         public List<IBrowserFile> FilteredFiles { get; set; } = [];
+        public List<IBrowserFile> MimeFiles { get; set; } = [];
+        public List<IBrowserFile> GatedFiles { get; set; } = [];
+        public List<IBrowserFile> ButtonFiles { get; set; } = [];
 
         [Required]
         [MinLength(1, ErrorMessage = "At least one file is required.")]
