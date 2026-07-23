@@ -1,5 +1,6 @@
 using System.Globalization;
 using AngleSharp.Dom;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
@@ -2163,5 +2164,129 @@ public class DateRangePickerTests : TestContext
 
         Assert.Equal(new DateTime(2025, 1, 12), start);
         Assert.Equal(new DateTime(2025, 2, 16), end);
+    }
+
+    // ----- ExtraFooter / DefaultViewDate / preset time-of-day ------------------------------------
+
+    [Fact]
+    public void ExtraFooter_renders_below_the_dual_panels_in_date_mode()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.ExtraFooter, (RenderFragment)(b => b.AddMarkupContent(0, "<span class=\"my-extra\">extra</span>"))));
+
+        Open(cut);
+
+        Assert.Equal("extra", cut.Find(".wss-picker-extra-footer .my-extra").TextContent);
+        // Exactly one strip -- shared across both panels, not duplicated per panel.
+        Assert.Single(cut.FindAll(".wss-picker-extra-footer"));
+    }
+
+    [Fact]
+    public void ExtraFooter_renders_alongside_the_ok_footer_in_datetime_session_mode()
+    {
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.ExtraFooter, (RenderFragment)(b => b.AddMarkupContent(0, "<span class=\"my-extra\">extra</span>"))));
+
+        Open(cut);
+
+        Assert.Equal("extra", cut.Find(".wss-picker-extra-footer .my-extra").TextContent);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-ok")); // the existing OK footer still renders too
+    }
+
+    [Fact]
+    public void DefaultViewDate_drives_both_panels_view_when_both_endpoints_are_null()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.DefaultViewDate, new DateTime(2030, 8, 1)));
+
+        Open(cut);
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("8", selects[0].QuerySelector("option[selected]")!.GetAttribute("value")); // left month
+        Assert.Equal("2030", selects[1].QuerySelector("option[selected]")!.GetAttribute("value")); // left year
+        Assert.Equal("9", selects[2].QuerySelector("option[selected]")!.GetAttribute("value")); // right month
+        Assert.Equal("2030", selects[3].QuerySelector("option[selected]")!.GetAttribute("value")); // right year
+    }
+
+    [Fact]
+    public void DefaultViewDate_is_ignored_once_start_is_set()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.DefaultViewDate, new DateTime(2030, 8, 1)));
+
+        Open(cut);
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("1", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("2025", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void DefaultViewDate_is_ignored_once_only_end_is_set()
+    {
+        // Only End set anchors the RIGHT panel on it (existing "Start is null && End is not null ->
+        // panel 1" rule) -- DefaultViewDate must still be ignored, not layered in.
+        var cut = RenderPicker(p => p
+            .Add(c => c.End, Feb3)
+            .Add(c => c.DefaultViewDate, new DateTime(2030, 8, 1)));
+
+        Open(cut);
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("2", selects[2].QuerySelector("option[selected]")!.GetAttribute("value")); // right = Feb
+        Assert.Equal("2025", selects[3].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Preset_in_datetime_mode_preserves_times_and_commits_normalized_values()
+    {
+        // Regression guard: OnPresetClickAsync used to truncate both endpoints to .Date before
+        // normalizing, which silently zeroed a DateTime/Time preset's resolved time-of-day.
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v)
+            .Add(c => c.Presets, new[]
+            {
+                new DateRangePreset("Fixed", new DateTime(2025, 1, 10, 9, 30, 15), new DateTime(2025, 1, 20, 14, 45, 0)),
+            }));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal(new DateTime(2025, 1, 10, 9, 30, 15), start);
+        Assert.Equal(new DateTime(2025, 1, 20, 14, 45, 0), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown")); // still closes, like every other mode's preset
+    }
+
+    [Fact]
+    public void Preset_in_time_mode_preserves_times_and_commits_normalized_values()
+    {
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v)
+            .Add(c => c.Presets, new[]
+            {
+                new DateRangePreset("Fixed", new DateTime(2025, 1, 10, 9, 30, 15), new DateTime(2025, 1, 20, 14, 45, 0)),
+            }));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        // Time mode's NormalizeForMode routes through DateRangePicker's own DateTime-shaped fold
+        // (see NormalizeForMode's doc comment), which preserves the preset's own resolved date --
+        // unlike DatePicker's single-Value Time mode, which always re-stamps to the literal today.
+        Assert.Equal(new DateTime(2025, 1, 10, 9, 30, 15), start);
+        Assert.Equal(new DateTime(2025, 1, 20, 14, 45, 0), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
     }
 }

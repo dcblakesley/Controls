@@ -84,6 +84,29 @@ public partial class DateRangePicker : PickerBase
     /// own list (nothing is built in); clicking one commits its resolved range and closes.</summary>
     [Parameter] public IReadOnlyList<DateRangePreset>? Presets { get; set; }
 
+    /// <summary>Extra content rendered in its own strip (<c>wss-picker-extra-footer</c>) — mirrors
+    /// <see cref="DatePicker.ExtraFooter"/>'s placement/markup exactly (AntD's <c>renderExtraFooter</c>).
+    /// Renders in EVERY mode: below the dual-panel calendar (this control has no footer of its own
+    /// there — see the remark below) in <see cref="DatePickerMode.Date"/>/<see cref="DatePickerMode.Week"/>/
+    /// <see cref="DatePickerMode.Month"/>/<see cref="DatePickerMode.Quarter"/>/<see cref="DatePickerMode.Year"/>,
+    /// and above the OK footer in the <see cref="DatePickerMode.DateTime"/>/<see cref="DatePickerMode.Time"/>
+    /// pick session — the same composition <see cref="DatePicker"/>'s own DateTime mode uses for its
+    /// time row + OK footer.</summary>
+    /// <remarks>
+    /// Deliberately no <c>ShowToday</c>/<c>ShowNow</c> here, unlike <see cref="DatePicker"/>: AntD's
+    /// RangePicker has no Today/Now-link equivalent in its own footer — <see cref="Presets"/> is the
+    /// range picker's quick-affordance instead, so there's no existing footer row for those links to
+    /// share with this one in the dual-panel modes.
+    /// </remarks>
+    [Parameter] public RenderFragment? ExtraFooter { get; set; }
+
+    /// <summary>The month/year/decade both panels open showing when <see cref="Start"/> and
+    /// <see cref="End"/> are both null (AntD's <c>defaultPickerValue</c>) — ignored once either
+    /// endpoint is set. <see cref="Open"/>'s view anchor is <c>Start ?? End ?? DefaultViewDate ?? DateTime.Today</c>
+    /// in every mode, normalized to Mode's own unit/panel the same way an explicit Start/End anchor
+    /// already is (see <see cref="AnchorView"/>).</summary>
+    [Parameter] public DateTime? DefaultViewDate { get; set; }
+
     /// <summary>Earliest selectable value (inclusive), at <see cref="Mode"/>'s own granularity --
     /// same day/month/quarter/year "whole unit before this is disabled" contract
     /// <see cref="DatePicker.Min"/> documents. Presets clamp to it (at day granularity) before
@@ -1231,12 +1254,15 @@ public partial class DateRangePicker : PickerBase
         {
             if (Mode == DatePickerMode.DateTime)
             {
-                var sessionAnchor = (_activeInput == 0 ? Start : End) ?? (_activeInput == 0 ? End : Start) ?? DateTime.Today;
+                var sessionAnchor = (_activeInput == 0 ? Start : End) ?? (_activeInput == 0 ? End : Start) ?? DefaultViewDate ?? DateTime.Today;
                 _viewMonth = ClampView(FirstOfMonth(sessionAnchor));
             }
             return;
         }
-        var anchor = Start ?? End ?? DateTime.Today;
+        // DefaultViewDate (AntD's defaultPickerValue) only matters when NEITHER endpoint is set to
+        // anchor on -- an already-set Start/End always wins, same precedence DatePicker.Open's
+        // identical anchor uses.
+        var anchor = Start ?? End ?? DefaultViewDate ?? DateTime.Today;
         AnchorView(anchor, Start is null && End is not null ? 1 : 0);
     }
 
@@ -1366,17 +1392,35 @@ public partial class DateRangePicker : PickerBase
     {
         _startEdit = _endEdit = null;
         var (start, end) = preset.Resolve();
-        start = start.Date;
-        end = end.Date;
+
+        // Time-of-day matters for DateTime/Time -- unlike every other mode's plain dates, truncating
+        // to .Date below would silently discard a resolved time (e.g. a "Last 3 hours" preset).
+        // These two modes also skip the day-granularity Min/Max clamp that follows: NormalizeForMode
+        // already preserves date+time for them (see its own doc comment), mirroring
+        // DatePicker.OnPresetClickAsync's own no-clamp, guard-only shape for every one of its modes --
+        // the guard itself becomes IsCommitDisabled (which understands DisabledTime/the time-of-day),
+        // not IsUnitDisabled (which folds both into a day-only check via EffectiveMode).
+        var isTimeAware = Mode is DatePickerMode.DateTime or DatePickerMode.Time;
+        if (!isTimeAware)
+        {
+            start = start.Date;
+            end = end.Date;
+        }
         if (end < start) (start, end) = (end, start);
-        start = ClampToMinMax(start);
-        end = ClampToMinMax(end);
-        if (end < start) end = start;
+        if (!isTimeAware)
+        {
+            start = ClampToMinMax(start);
+            end = ClampToMinMax(end);
+            if (end < start) end = start;
+        }
 
         var normalizedStart = NormalizeForMode(start);
         var normalizedEnd = NormalizeForMode(end);
         if (normalizedEnd < normalizedStart) (normalizedStart, normalizedEnd) = (normalizedEnd, normalizedStart);
-        if (IsUnitDisabled(normalizedStart) || IsUnitDisabled(normalizedEnd)) return;
+        var disabled = isTimeAware
+            ? IsCommitDisabled(0, normalizedStart) || IsCommitDisabled(1, normalizedEnd)
+            : IsUnitDisabled(normalizedStart) || IsUnitDisabled(normalizedEnd);
+        if (disabled) return;
 
         _selecting = false;
         _pendingStart = null;

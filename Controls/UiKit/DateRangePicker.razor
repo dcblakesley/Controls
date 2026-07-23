@@ -178,6 +178,10 @@
                         }
                     }
                     @SessionTimeRowFragment
+                    @if (ExtraFooter is not null)
+                    {
+                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
+                    }
                     <div class="wss-picker-footer">
                         <button type="button" class="wss-picker-ok" disabled="@(ActiveSessionValue is null)"
                                 @onclick="OnSessionOkAsync">@OkText</button>
@@ -439,6 +443,10 @@
                     }
                 }
             </div>
+            @if (ExtraFooter is not null)
+            {
+                <div class="wss-picker-extra-footer">@ExtraFooter</div>
+            }
             }
         </div>
     }
