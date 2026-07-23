@@ -3455,10 +3455,33 @@
     line-height: var(--wss-line-height);
 }
 
+/* Tabs.TabBarExtraContent: groups the strip + the extra slot on one row (only rendered when
+   TabBarExtraContent is set — see Tabs.razor's else-branch for the plain-strip-only markup). */
+.wss-tabs-nav-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.wss-tabs-nav-wrapper .wss-tabs-nav {
+    flex: 1;
+    min-width: 0;
+}
+
+.wss-tabs-nav-extra {
+    flex: none;
+}
+
 .wss-tabs-nav {
     display: flex;
     gap: 32px;
     border-bottom: 1px solid var(--wss-color-split);
+}
+
+/* Tabs.Centered: centers the tab buttons within the strip. */
+.wss-tabs-nav-centered {
+    justify-content: center;
 }
 
 .wss-tabs-tab {
@@ -3512,6 +3535,27 @@
 .wss-tabs-panel {
     padding-top: 16px;
     outline: none;
+}
+
+/* Tabs.Type="Card": AntD's boxed "card" tabs -- individual bordered tabs instead of the underline
+   strip, the active tab visually joined to the panel below it. CSS-only; keyboard/ARIA unchanged. */
+.wss-tabs-card .wss-tabs-nav {
+    gap: 2px;
+}
+
+.wss-tabs-card .wss-tabs-tab {
+    margin-bottom: -1px;
+    padding: 8px 16px;
+    background: var(--wss-color-bg-disabled);
+    border: 1px solid var(--wss-color-border);
+    border-bottom: none;
+    border-radius: var(--wss-radius) var(--wss-radius) 0 0;
+}
+
+.wss-tabs-card .wss-tabs-tab-active {
+    background: var(--wss-color-bg);
+    border-bottom: 1px solid var(--wss-color-bg); /* paints over the strip's own border -> "joined" */
+    font-weight: 600;
 }
 
 /* ============================================================================

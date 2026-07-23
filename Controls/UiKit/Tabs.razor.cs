@@ -34,6 +34,18 @@ public partial class Tabs
     /// <summary>HTML id root for the ARIA tab/panel wiring. A stable generated id is used when omitted.</summary>
     [Parameter] public string? Id { get; set; }
 
+    /// <summary>Right-aligned slot in the tab strip (AntD's <c>tabBarExtraContent</c>) — grouped with
+    /// the strip in a <c>wss-tabs-nav-wrapper</c> only when set (unset markup is unchanged).</summary>
+    [Parameter] public RenderFragment? TabBarExtraContent { get; set; }
+
+    /// <summary>Centers the tab buttons within the strip instead of the default left alignment.</summary>
+    [Parameter] public bool Centered { get; set; }
+
+    /// <summary>Visual style of the strip. Defaults to <see cref="TabsType.Line"/> (the existing
+    /// underline look); <see cref="TabsType.Card"/> is AntD's boxed tabs (CSS-only — keyboard/ARIA
+    /// are identical either way).</summary>
+    [Parameter] public TabsType Type { get; set; } = TabsType.Line;
+
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the root <c>div.wss-tabs</c>. <c>class</c> and <c>style</c> merge with the

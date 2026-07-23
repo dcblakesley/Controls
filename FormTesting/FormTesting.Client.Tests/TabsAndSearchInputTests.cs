@@ -217,6 +217,52 @@ public class TabsAndSearchInputTests : TestContext
     }
 
     [Fact]
+    public void TabBarExtraContent_renders_beside_the_strip_only_when_set()
+    {
+        var plain = RenderTabs();
+        Assert.Empty(plain.FindAll(".wss-tabs-nav-wrapper"));
+        Assert.NotNull(plain.Find(".wss-tabs-nav"));
+
+        var withExtra = RenderComponent<Tabs>(p =>
+        {
+            p.Add(t => t.TabBarExtraContent, b => b.AddContent(0, "Extra action"));
+            p.AddChildContent<Tab>(tp => tp.Add(c => c.Key, "a").Add(c => c.Title, "A"));
+        });
+        Assert.Contains("Extra action", withExtra.Find(".wss-tabs-nav-extra").TextContent);
+        Assert.NotNull(withExtra.Find(".wss-tabs-nav-wrapper .wss-tabs-nav"));
+    }
+
+    [Fact]
+    public void Centered_adds_the_nav_modifier_class_only_when_set()
+    {
+        var plain = RenderTabs();
+        Assert.DoesNotContain("wss-tabs-nav-centered", plain.Find(".wss-tabs-nav").ClassList);
+
+        var centered = RenderComponent<Tabs>(p =>
+        {
+            p.Add(t => t.Centered, true);
+            p.AddChildContent<Tab>(tp => tp.Add(c => c.Key, "a").Add(c => c.Title, "A"));
+        });
+        Assert.Contains("wss-tabs-nav-centered", centered.Find(".wss-tabs-nav").ClassList);
+    }
+
+    [Fact]
+    public void Type_card_adds_the_root_modifier_class_only_when_set()
+    {
+        var plain = RenderTabs();
+        Assert.DoesNotContain("wss-tabs-card", plain.Find(".wss-tabs").ClassList);
+
+        var card = RenderComponent<Tabs>(p =>
+        {
+            p.Add(t => t.Type, TabsType.Card);
+            p.AddChildContent<Tab>(tp => tp.Add(c => c.Key, "a").Add(c => c.Title, "A"));
+        });
+        Assert.Contains("wss-tabs-card", card.Find(".wss-tabs").ClassList);
+        // Keyboard/ARIA are identical to Line -- still a plain tab, just CSS-different.
+        Assert.Equal("tab", card.Find("[role=tab]").GetAttribute("role"));
+    }
+
+    [Fact]
     public void Active_pane_renders_with_the_tabpanel_wiring()
     {
         var cut = RenderTabs(activeKey: "missing", withPanes: true);

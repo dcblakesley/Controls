@@ -237,6 +237,23 @@
     </section>
 
     <section class="demo-section">
+        <h3>Tabs — TabBarExtraContent, Centered, Card type</h3>
+        <p style="margin:0; color:#666;">
+            <code>TabBarExtraContent</code> adds a right-aligned strip slot; <code>Centered</code>
+            centers the tab buttons; <code>Type="TabsType.Card"</code> switches to AntD's boxed
+            card-style tabs (CSS-only — keyboard/ARIA unchanged).
+        </p>
+        <Tabs @bind-ActiveKey="_cardTab" Id="demo-tabs-card" Type="TabsType.Card" Centered="true">
+            <TabBarExtraContent><button class="wss-dialog-btn wss-dialog-btn-sm" data-test-id="tabs-extra-btn">+ Add</button></TabBarExtraContent>
+            <ChildContent>
+                <Tab Key="one" Title="Tab 1"><p>Pane one.</p></Tab>
+                <Tab Key="two" Title="Tab 2"><p>Pane two.</p></Tab>
+                <Tab Key="three" Title="Tab 3"><p>Pane three.</p></Tab>
+            </ChildContent>
+        </Tabs>
+    </section>
+
+    <section class="demo-section">
         <h3>SearchInput — AllowClear, EnterButtonText</h3>
         <p style="margin:0; color:#666;">
             <code>AllowClear</code> shows a × between the input and the search button whenever
@@ -801,6 +818,7 @@
 
     // --- Tabs + SearchInput demo ---
     string? _activeTab = "missing";
+    string? _cardTab = "one";
     string? _poSearch;
     string? _skuSearch;
     string _lastSearch = "—";
