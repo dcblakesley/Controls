@@ -2747,6 +2747,21 @@
     padding: 8px;
 }
 
+/* ------------------------------------------ Range mode (DateRangePicker Month/Quarter/Year)
+ * DateRangePicker's Month/Quarter/Year modes reuse wss-picker-month-btn/-grid/-quarter-grid
+ * verbatim (doubled across two panels) but tint the button's own background directly instead of
+ * the day grid's wss-picker-cell::before band -- these grids' own 8px gap between cells means a
+ * continuous band wouldn't visually connect anyway, unlike the day grid's edge-to-edge cells. An
+ * endpoint needs no new class: aria-pressed="true" already gives it the filled/primary look via
+ * the existing wss-picker-month-btn[aria-pressed="true"] rule above. */
+.wss-picker-month-btn-in-range {
+    background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
+}
+
+.wss-picker-month-btn-preview {
+    background: var(--wss-picker-preview-bg, color-mix(in srgb, var(--wss-color-primary) 5%, #fff));
+}
+
 /* -------------------------------------------- Time/DateTime mode (DatePicker)
  * Mode="Time" renders only the row below plus the footer; Mode="DateTime"
  * appends the same two blocks under the day calendar. The adjacency selector
