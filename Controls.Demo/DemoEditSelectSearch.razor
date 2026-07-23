@@ -70,12 +70,68 @@
         <button type="submit">Submit</button>
         <div class="submit-count">Submits: @_submitCount</div>
     </section>
+
+    <section class="demo-section">
+        <h3>Loading &amp; ShowArrow</h3>
+        <p><code>Loading</code> shows a spinner in the arrow's slot (and marks the control <code>aria-busy</code>) even when <code>ShowArrow="false"</code>; otherwise <code>ShowArrow="false"</code> simply hides the chevron.</p>
+        <EditSelectSearch @bind-Value="_model.LoadingCountry" Options="_countries" Loading="true" Width="220px" />
+        <EditSelectSearch @bind-Value="_model.NoArrowCountry" Options="_countries" ShowArrow="false" Width="220px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Option groups</h3>
+        <p><code>SelectOption.Group</code> renders a non-interactive header before each contiguous run of a shared group name (Ant Design's <code>OptGroup</code>).</p>
+        <EditSelectSearch @bind-Value="_model.GroupedCountry" Options="_groupedCountries" Width="260px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Custom FilterOption</h3>
+        <p>Matches the option's value (its ISO code) as well as its label — try typing "us" or "United".</p>
+        <EditSelectSearch @bind-Value="_model.FilterCountry"
+                          Options="_countries"
+                          FilterOption="@((text, o) => (o.Label ?? "").Contains(text, StringComparison.OrdinalIgnoreCase) || (o.Value ?? "").Contains(text, StringComparison.OrdinalIgnoreCase))"
+                          Width="260px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>EmptyContent &amp; DropdownFooter</h3>
+        <p>Type a filter that matches nothing to see the richer <code>EmptyContent</code>; <code>DropdownFooter</code> renders a pinned affordance whose clicks don't select an option or close the dropdown.</p>
+        <EditSelectSearch @bind-Value="_model.FooterCountry" Options="_countries" Width="260px">
+            <EmptyContent><em>No matching country — try another search.</em></EmptyContent>
+            <DropdownFooter>
+                <button type="button" class="demo-dropdown-footer-btn" @onclick="() => _footerClicks++">+ Request a country</button>
+            </DropdownFooter>
+        </EditSelectSearch>
+        <div class="footer-click-count">Footer clicks: @_footerClicks</div>
+    </section>
+
+    <section class="demo-section">
+        <h3>Borderless variant</h3>
+        <p><code>Variant="SelectVariant.Borderless"</code> shows no border/background until hover or focus.</p>
+        <EditSelectSearch @bind-Value="_model.BorderlessCountry" Options="_countries" Variant="SelectVariant.Borderless" Width="220px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Controlled Open</h3>
+        <p><code>@@bind-Open</code> two-way binds the dropdown's open state — external code can open/close it and JS placement still runs.</p>
+        <button type="button" @onclick="() => _controlledOpen = !_controlledOpen">@(_controlledOpen ? "Close" : "Open") externally</button>
+        <EditSelectSearch @bind-Value="_model.ControlledCountry" Options="_countries" @bind-Open="_controlledOpen" Width="260px" />
+        <div class="controlled-open-state">Open: @_controlledOpen</div>
+    </section>
+
+    <section class="demo-section">
+        <h3>JS horizontal clamp</h3>
+        <p>A narrow trigger with long option labels makes the dropdown wider than the trigger; positioned near the right edge of the viewport, it shifts to stay on-screen instead of running off it.</p>
+        <EditSelectSearch @bind-Value="_model.ClampChoice" Options="_wideOptions" Width="90px" />
+    </section>
 </EditForm>
 
 @code {
     readonly Model _model = new();
     EditForm? _form;
     int _submitCount;
+    int _footerClicks;
+    bool _controlledOpen;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     readonly List<SelectOption<string?>> _countries =
@@ -95,6 +151,25 @@
     readonly List<SelectOption<int>> _bigOptions =
         Enumerable.Range(1, 1000).Select(i => new SelectOption<int>(i, $"Option {i}")).ToList();
 
+    readonly List<SelectOption<string?>> _groupedCountries =
+    [
+        new("us", "United States") { Group = "North America" },
+        new("ca", "Canada") { Group = "North America" },
+        new("mx", "Mexico") { Group = "North America" },
+        new("gb", "United Kingdom") { Group = "Europe" },
+        new("fr", "France") { Group = "Europe" },
+        new("de", "Germany") { Group = "Europe" },
+        new("jp", "Japan") { Group = "Asia" },
+        new("in", "India") { Group = "Asia" },
+        new("au", "Australia") { Group = "Oceania" },
+    ];
+
+    readonly List<SelectOption<int>> _wideOptions =
+    [
+        new(1, "A very long option label that makes the dropdown much wider than its narrow trigger"),
+        new(2, "Another lengthy option label to keep the dropdown's natural width wide"),
+    ];
+
     public class Model
     {
         [Description("Pick your country")]
@@ -110,6 +185,22 @@
         public string? FormCountry { get; set; }
 
         public string? PillCountry { get; set; } = "us";
+
+        public string? LoadingCountry { get; set; } = "us";
+
+        public string? NoArrowCountry { get; set; } = "ca";
+
+        public string? GroupedCountry { get; set; }
+
+        public string? FilterCountry { get; set; }
+
+        public string? FooterCountry { get; set; }
+
+        public string? BorderlessCountry { get; set; } = "fr";
+
+        public string? ControlledCountry { get; set; }
+
+        public int ClampChoice { get; set; }
     }
 
     readonly string _example = @"<EditSelectSearch @bind-Value=""_model.Country""

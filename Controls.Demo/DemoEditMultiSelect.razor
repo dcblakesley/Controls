@@ -57,11 +57,49 @@
         <h3>Markup</h3>
         <pre class="code-block"><code>@_example</code></pre>
     </section>
+
+    <section class="demo-section">
+        <h3>Loading &amp; ShowArrow</h3>
+        <p><code>Loading</code> shows a spinner in the arrow's slot (and marks the control <code>aria-busy</code>) even when <code>ShowArrow="false"</code>; otherwise <code>ShowArrow="false"</code> simply hides the chevron.</p>
+        <EditMultiSelect @bind-Value="_model.LoadingColors" Options="_colors" Loading="true" Width="240px" />
+        <EditMultiSelect @bind-Value="_model.NoArrowColors" Options="_colors" ShowArrow="false" Width="240px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Option groups</h3>
+        <p><code>SelectOption.Group</code> renders a non-interactive header before each contiguous run of a shared group name.</p>
+        <EditMultiSelect @bind-Value="_model.GroupedColors" Options="_groupedColors" Width="320px" />
+    </section>
+
+    <section class="demo-section">
+        <h3>Custom FilterOption &amp; EmptyContent/DropdownFooter</h3>
+        <p><code>FilterOption</code> matches the option's value as well as its label; type a filter that matches nothing to see <code>EmptyContent</code>, and <code>DropdownFooter</code> renders a pinned affordance whose clicks don't select or close.</p>
+        <EditMultiSelect @bind-Value="_model.FilterColors"
+                         Options="_colors"
+                         FilterOption="@((text, o) => (o.Label ?? "").Contains(text, StringComparison.OrdinalIgnoreCase) || (o.Value ?? "").Contains(text, StringComparison.OrdinalIgnoreCase))"
+                         Width="320px">
+            <EmptyContent><em>No matching color — try another search.</em></EmptyContent>
+            <DropdownFooter>
+                <button type="button" class="demo-dropdown-footer-btn" @onclick="() => _footerClicks++">+ Request a color</button>
+            </DropdownFooter>
+        </EditMultiSelect>
+        <div class="footer-click-count">Footer clicks: @_footerClicks</div>
+    </section>
+
+    <section class="demo-section">
+        <h3>Controlled Open</h3>
+        <p><code>@@bind-Open</code> two-way binds the dropdown's open state — external code can open/close it and JS placement still runs.</p>
+        <button type="button" @onclick="() => _controlledOpen = !_controlledOpen">@(_controlledOpen ? "Close" : "Open") externally</button>
+        <EditMultiSelect @bind-Value="_model.ControlledColors" Options="_colors" @bind-Open="_controlledOpen" Width="320px" />
+        <div class="controlled-open-state">Open: @_controlledOpen</div>
+    </section>
 </EditForm>
 
 @code {
     readonly Model _model = new();
     EditForm? _form;
+    int _footerClicks;
+    bool _controlledOpen;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     readonly List<SelectOption<string>> _colors =
@@ -81,6 +119,16 @@
         new("csharp", "csharp")
     ];
 
+    readonly List<SelectOption<string>> _groupedColors =
+    [
+        new("red", "Red") { Group = "Warm" },
+        new("orange", "Orange") { Group = "Warm" },
+        new("yellow", "Yellow") { Group = "Warm" },
+        new("blue", "Blue") { Group = "Cool" },
+        new("green", "Green") { Group = "Cool" },
+        new("purple", "Purple") { Group = "Cool" },
+    ];
+
     public class Model
     {
         public List<string> Colors { get; set; } = ["green"];
@@ -92,6 +140,16 @@
         [Required(ErrorMessage = "Pick at least two colors")]
         [MinLength(2, ErrorMessage = "Pick at least two colors")]
         public List<string> RequiredColors { get; set; } = [];
+
+        public List<string> LoadingColors { get; set; } = ["red"];
+
+        public List<string> NoArrowColors { get; set; } = ["blue"];
+
+        public List<string> GroupedColors { get; set; } = [];
+
+        public List<string> FilterColors { get; set; } = [];
+
+        public List<string> ControlledColors { get; set; } = [];
     }
 
     readonly string _example = @"<EditMultiSelect @bind-Value=""_model.Colors""
