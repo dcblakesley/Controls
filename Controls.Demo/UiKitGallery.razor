@@ -195,6 +195,18 @@
             <button class="wss-dialog-btn" @onclick="@(() => WasmMessageService.Success("Saved!"))">Message</button>
             <button class="wss-dialog-btn" @onclick="@(() => WasmNotificationService.Info("Notification", "With a description."))">Notification</button>
         </div>
+
+        <p style="margin:0; color:#666;">
+            <code>Placement</code> is set on the CONTAINER (not the service) — a second
+            <code>WasmNotificationContainer</code> here, anchored bottom-left. Both containers
+            render the same static service's items (so a notification appears in both corners at
+            once here); a real app would typically use one container per placement it needs.
+        </p>
+        <button class="wss-dialog-btn" data-test-id="bottom-left-notification-btn"
+                @onclick="@(() => WasmNotificationService.Warning("Bottom-left", "Anchored via Placement.", 4))">
+            Bottom-left notification
+        </button>
+        <WasmNotificationContainer Placement="NotificationPlacement.BottomLeft" />
     </section>
 
     <section class="demo-section">

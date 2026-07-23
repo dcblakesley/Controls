@@ -4,9 +4,16 @@
 
 @* Scoped (Server-safe) host. Requires builder.Services.AddWssControlsToasts() and an injected
    INotificationService. Drop one at the app root; call INotificationService from your components. *@
-<NotificationListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" />
+<NotificationListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" Placement="Placement" />
 
 @code {
+    /// <summary>
+    /// Which corner of the viewport the stack anchors to. Defaults to <see cref="NotificationPlacement.TopRight"/>.
+    /// Set per container instance (render-tree-scoped, MFE-safe) — not a service-level setting, so
+    /// different MFEs sharing one process can each anchor their own container independently.
+    /// </summary>
+    [Parameter] public NotificationPlacement Placement { get; set; } = NotificationPlacement.TopRight;
+
     protected override void OnInitialized() => Service.OnChange += HandleChange;
 
     void HandleChange() => InvokeAsync(StateHasChanged);

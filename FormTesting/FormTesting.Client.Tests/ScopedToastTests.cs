@@ -39,6 +39,17 @@ public class ScopedToastTests : TestContext
     }
 
     [Fact]
+    public void NotificationContainer_forwards_Placement_to_the_shared_list_view()
+    {
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<INotificationService>().Info("x", duration: 0);
+
+        var cut = RenderComponent<NotificationContainer>(p => p.Add(c => c.Placement, NotificationPlacement.BottomLeft));
+
+        Assert.Contains("wss-notification-bottomleft", cut.Find(".wss-notification-container").ClassList);
+    }
+
+    [Fact]
     public void Disposed_MessageContainer_unsubscribes_from_the_service()
     {
         Services.AddWssControlsToasts();

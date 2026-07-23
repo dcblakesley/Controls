@@ -5,7 +5,7 @@
 @* Two always-present live regions (polite for normal severities, assertive for errors) rather
    than one region whose politeness flips on an error — see MessageListView for the rationale.
    display:contents regions keep the container's flex/gap layout unchanged. *@
-<div class="wss-notification-container">
+<div class="wss-notification-container @PlacementClass">
     <div class="wss-notification-region" role="status" aria-live="polite" aria-atomic="false">
         @foreach (var n in Items)
         {
@@ -31,6 +31,24 @@
 
     /// <summary>Invoked with the item id when its close button is clicked.</summary>
     [Parameter] public EventCallback<Guid> OnRemove { get; set; }
+
+    /// <summary>
+    /// Which corner of the viewport the stack anchors to. Defaults to <see cref="NotificationPlacement.TopRight"/>
+    /// (unchanged markup/behavior from before this parameter existed). Bottom placements need no
+    /// reordering of <see cref="Items"/> to stack newest-nearest-the-edge — the container just
+    /// anchors from the opposite side and the existing column layout does the rest (the last-added
+    /// item is always nearest the container's own bottom edge, which coincides with the anchor when
+    /// anchored from the bottom).
+    /// </summary>
+    [Parameter] public NotificationPlacement Placement { get; set; } = NotificationPlacement.TopRight;
+
+    string? PlacementClass => Placement switch
+    {
+        NotificationPlacement.TopLeft => "wss-notification-topleft",
+        NotificationPlacement.BottomRight => "wss-notification-bottomright",
+        NotificationPlacement.BottomLeft => "wss-notification-bottomleft",
+        _ => null,
+    };
 
     RenderFragment Row(NotificationItem n) => @<div class="wss-notification" @key="n.Id">
         <span class="wss-notification-icon wss-notification-icon-@n.Type.ToString().ToLowerInvariant()">@Icon(n.Type)</span>

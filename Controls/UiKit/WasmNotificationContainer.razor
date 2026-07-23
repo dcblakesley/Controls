@@ -2,9 +2,15 @@
 @implements IDisposable
 
 @* WASM-only host: reads the static WasmNotificationService. For Blazor Server use NotificationContainer. *@
-<NotificationListView Items="WasmNotificationService.Items" OnRemove="@(id => WasmNotificationService.Remove(id))" />
+<NotificationListView Items="WasmNotificationService.Items" OnRemove="@(id => WasmNotificationService.Remove(id))" Placement="Placement" />
 
 @code {
+    /// <summary>
+    /// Which corner of the viewport the stack anchors to. Defaults to <see cref="NotificationPlacement.TopRight"/>.
+    /// Set per container instance (render-tree-scoped) — not on the static service.
+    /// </summary>
+    [Parameter] public NotificationPlacement Placement { get; set; } = NotificationPlacement.TopRight;
+
     protected override void OnInitialized() => WasmNotificationService.OnChange += HandleChange;
 
     void HandleChange() => InvokeAsync(StateHasChanged);

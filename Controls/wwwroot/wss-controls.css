@@ -2600,6 +2600,37 @@
     gap: 16px;
 }
 
+/* NotificationListView.Placement: anchor from the requested corner instead of the default
+   top-right. Column layout + DOM append order does the rest for "newest nearest the edge" on
+   every placement -- no item reordering needed (see the Placement parameter's own doc comment). */
+.wss-notification-topleft {
+    right: auto;
+    left: 24px;
+}
+
+.wss-notification-bottomright {
+    top: auto;
+    bottom: 24px;
+}
+
+.wss-notification-bottomleft {
+    top: auto;
+    bottom: 24px;
+    right: auto;
+    left: 24px;
+}
+
+/* Left placements slide in from the left instead of the default right. */
+.wss-notification-topleft .wss-notification,
+.wss-notification-bottomleft .wss-notification {
+    animation-name: wss-notification-in-left;
+}
+
+@keyframes wss-notification-in-left {
+    from { transform: translateX(-100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
 /* Live-region grouping wrappers; display:contents keeps the notifications in the container's flex column. */
 .wss-notification-region {
     display: contents;

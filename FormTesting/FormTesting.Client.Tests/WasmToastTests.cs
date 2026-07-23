@@ -45,4 +45,44 @@ public class WasmToastTests : TestContext
             WasmNotificationService.Clear();
         }
     }
+
+    [Fact]
+    public void NotificationContainer_default_placement_adds_no_modifier_class()
+    {
+        WasmNotificationService.Clear();
+        try
+        {
+            WasmNotificationService.Info("x", duration: 0);
+            var cut = RenderComponent<WasmNotificationContainer>();
+
+            var container = cut.Find(".wss-notification-container");
+            Assert.DoesNotContain("wss-notification-topleft", container.ClassList);
+            Assert.DoesNotContain("wss-notification-bottomright", container.ClassList);
+            Assert.DoesNotContain("wss-notification-bottomleft", container.ClassList);
+        }
+        finally
+        {
+            WasmNotificationService.Clear();
+        }
+    }
+
+    [Theory]
+    [InlineData(NotificationPlacement.TopLeft, "wss-notification-topleft")]
+    [InlineData(NotificationPlacement.BottomRight, "wss-notification-bottomright")]
+    [InlineData(NotificationPlacement.BottomLeft, "wss-notification-bottomleft")]
+    public void NotificationContainer_forwards_Placement_to_its_class(NotificationPlacement placement, string expectedClass)
+    {
+        WasmNotificationService.Clear();
+        try
+        {
+            WasmNotificationService.Info("x", duration: 0);
+            var cut = RenderComponent<WasmNotificationContainer>(p => p.Add(c => c.Placement, placement));
+
+            Assert.Contains(expectedClass, cut.Find(".wss-notification-container").ClassList);
+        }
+        finally
+        {
+            WasmNotificationService.Clear();
+        }
+    }
 }
