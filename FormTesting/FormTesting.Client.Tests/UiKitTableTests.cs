@@ -864,6 +864,49 @@ public class UiKitTableTests : TestContext
         Assert.DoesNotContain("Plain text", placeholder.TextContent);
     }
 
+    // ----- FooterContent (summary row) -----
+
+    [Fact]
+    public void FooterContent_renders_in_a_tfoot_after_the_body_and_is_unaffected_by_paging()
+    {
+        var people = Enumerable.Range(1, 3).Select(i => new Person($"P{i}", i * 10)).ToList();
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.PageSize, 2)
+            .Add(t => t.FooterContent, (RenderFragment)(b =>
+            {
+                b.OpenElement(0, "tr");
+                b.OpenElement(1, "td");
+                b.AddAttribute(2, "class", "wss-table-cell");
+                b.AddContent(3, "Total: 60");
+                b.CloseElement();
+                b.CloseElement();
+            }))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var tfoot = cut.Find("tfoot.wss-table-tfoot");
+        Assert.Contains("Total: 60", tfoot.TextContent);
+
+        // The footer sits after the tbody in document order.
+        var table = cut.Find("table.wss-table");
+        var tagNames = table.Children.Select(c => c.TagName.ToLowerInvariant()).ToArray();
+        Assert.Equal("tfoot", tagNames.Last());
+    }
+
+    [Fact]
+    public void FooterContent_null_renders_no_tfoot()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Empty(cut.FindAll("tfoot"));
+    }
+
     // ----- Pager wire-through (ShowTotal / PageSizeOptions) -----
 
     [Fact]

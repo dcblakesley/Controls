@@ -170,6 +170,12 @@
                 }
             }
         </tbody>
+        @if (FooterContent is not null)
+        {
+            <tfoot class="wss-table-tfoot">
+                @FooterContent
+            </tfoot>
+        }
     </table>
 </div>
 
@@ -207,6 +213,14 @@
     /// wrapper. Pure CSS/markup, no JS. Default false (no overlay — current DOM unchanged).
     /// </summary>
     [Parameter] public bool Loading { get; set; }
+
+    /// <summary>
+    /// Summary/footer row(s), rendered in a <c>&lt;tfoot&gt;</c> after the body — unaffected by
+    /// paging/sorting (it isn't part of <c>DataSource</c>). The consumer supplies the full
+    /// <c>&lt;tr&gt;</c>/<c>&lt;td&gt;</c> structure (and is responsible for its own <c>colspan</c> —
+    /// the Table does not inject one). Null (default) renders no <c>&lt;tfoot&gt;</c>.
+    /// </summary>
+    [Parameter] public RenderFragment? FooterContent { get; set; }
 
     /// <summary>Optional accessible caption rendered above the table (also names it for screen readers).</summary>
     [Parameter] public string? Caption { get; set; }

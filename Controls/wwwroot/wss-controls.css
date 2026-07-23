@@ -1863,6 +1863,13 @@
     color: var(--wss-color-text-disabled);
 }
 
+/* Summary/footer row (Table.FooterContent) -- the consumer supplies the <tr>/<td> structure
+   (typically re-using .wss-table-cell); this just separates it visually from the body. */
+.wss-table-tfoot .wss-table-cell {
+    font-weight: 500;
+    border-top: 2px solid var(--wss-color-split);
+}
+
 .wss-table-pagination {
     display: flex;
     justify-content: flex-end; /* default; overridden by the align modifier classes below */
