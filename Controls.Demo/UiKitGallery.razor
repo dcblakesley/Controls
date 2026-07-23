@@ -586,6 +586,46 @@
             <EmptyContent><em data-test-id="empty-content">No rows match your filter.</em></EmptyContent>
         </Table>
     </section>
+
+    <section class="demo-section">
+        <h3>Table — column filtering (FilterOptions/OnFilter)</h3>
+        <p style="margin:0; color:#666;">
+            The funnel icon opens a checkbox dropdown: checking multiple values in one column is an
+            OR (Name matches ANY checked value), and two filterable columns AND together (Name AND
+            Price). <code>OK</code> applies and closes; <code>Reset</code> clears that column
+            immediately; clicking outside the dropdown discards any pending checkbox changes without
+            applying them. <code>OnFilterChanged</code> observes every apply/reset.
+        </p>
+        <Table TItem="Row" DataSource="_filterDemoRows" OnFilterChanged="OnDemoFilterChanged">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)"
+                                FilterOptions="_nameFilterOptions" OnFilter="@((Row r, string v) => r.Name == v)" />
+                <Column TItem="Row" Title="Price" FilterOptions="_priceFilterOptions"
+                        OnFilter="@((Row r, string v) => v == "low" ? r.Price < 20 : r.Price >= 20)">
+                    @context.Price.ToString("C2")
+                </Column>
+            </ChildContent>
+        </Table>
+        <p data-test-id="filter-demo-result">@_filterChangedMessage</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — ScrollY (sticky header)</h3>
+        <p style="margin:0; color:#666;">
+            <code>ScrollY</code> bounds the table body to a fixed height with its own vertical
+            scrollbar and a sticky header (AntD's <code>scroll.y</code> equivalent) -- the header
+            cells stay pinned in place while the rows scroll beneath them. The Name column's filter
+            dropdown here (6 options) is taller than the scrolled area, so it escapes the wrapper's
+            overflow clip via fixed positioning (JS) instead of the default CSS-anchored placement.
+        </p>
+        <Table TItem="Row" DataSource="_scrollYRows" ScrollY="160px">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)"
+                                FilterOptions="_scrollYFilterOptions" OnFilter="@((Row r, string v) => r.Name == v)" />
+                <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" />
+            </ChildContent>
+        </Table>
+    </section>
 </div>
 
 @* WASM-only static-state toast hosts. *@
@@ -828,6 +868,37 @@
     [
         new(1, "A very long item name that should truncate with an ellipsis", 12.5m),
         new(2, "Short", 7.25m),
+    ];
+
+    // --- Table: column filtering (FilterOptions/OnFilter) demo ---
+    readonly List<Row> _filterDemoRows = Enumerable.Range(1, 10).Select(i => new Row(i, $"Item {i}", i * 5m)).ToList();
+    static readonly List<TableFilterOption> _nameFilterOptions =
+    [
+        new("Item 2", "Item 2"),
+        new("Item 5", "Item 5"),
+        new("Item 8", "Item 8"),
+    ];
+    static readonly List<TableFilterOption> _priceFilterOptions =
+    [
+        new("Under $20", "low"),
+        new("$20 and over", "high"),
+    ];
+    string _filterChangedMessage = "(no filter applied yet)";
+    void OnDemoFilterChanged((Column<Row> Column, IReadOnlyList<string> SelectedValues) e) =>
+        _filterChangedMessage = e.SelectedValues.Count == 0
+            ? $"{e.Column.HeaderText}: cleared"
+            : $"{e.Column.HeaderText}: {string.Join(", ", e.SelectedValues)}";
+
+    // --- Table: ScrollY (sticky header) demo ---
+    readonly List<Row> _scrollYRows = Enumerable.Range(1, 30).Select(i => new Row(i, $"Item {i}", i * 3m)).ToList();
+    static readonly List<TableFilterOption> _scrollYFilterOptions =
+    [
+        new("Item 1", "Item 1"),
+        new("Item 5", "Item 5"),
+        new("Item 10", "Item 10"),
+        new("Item 15", "Item 15"),
+        new("Item 20", "Item 20"),
+        new("Item 25", "Item 25"),
     ];
 
     public record Row(int Id, string Name, decimal Price);

@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace FormTesting.Client.E2ETests;
 
 /// <summary>
@@ -574,6 +576,148 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await Expect(section.Locator("[data-test-id=ellipsis-footer-total]")).ToContainTextAsync("$19.75");
         await Expect(section.Locator("[data-test-id=empty-content]")).ToBeVisibleAsync();
         await BaselineAsync(section, "table-ellipsis-footer-empty");
+    }
+
+    [Fact]
+    public async Task Table_filter_OK_narrows_the_rows_and_shows_the_active_icon_state()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "column filtering" });
+        var filterButton = section.Locator(".wss-table-filter-trigger[aria-label='Filter Name']");
+        var rows = section.Locator("tbody .wss-table-row");
+
+        await Expect(rows).ToHaveCountAsync(10);
+        await Expect(filterButton).Not.ToHaveClassAsync(new Regex("wss-table-filter-active"));
+
+        await filterButton.ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(filterButton).ToHaveAttributeAsync("aria-expanded", "true");
+
+        await dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Item 5" }).Locator("input").CheckAsync();
+        await dropdown.Locator(".wss-table-filter-ok").ClickAsync();
+
+        await Expect(dropdown).Not.ToBeVisibleAsync(); // OK applies and closes
+        await Expect(rows).ToHaveCountAsync(1);
+        await Expect(rows.First).ToContainTextAsync("Item 5");
+        await Expect(filterButton).ToHaveClassAsync(new Regex("wss-table-filter-active"));
+        await Expect(_page.Locator("[data-test-id=filter-demo-result]")).ToContainTextAsync("Name: Item 5");
+    }
+
+    [Fact]
+    public async Task Table_filter_AND_across_two_columns_then_Reset_restores_every_row()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "column filtering" });
+        var rows = section.Locator("tbody .wss-table-row");
+
+        // Name in {Item 2, Item 5, Item 8} AND Price >= $20 (Item 5 = $25, Item 8 = $40 qualify;
+        // Item 2 = $10 doesn't) -> AND narrows to Item 5 + Item 8 only.
+        var nameFilter = section.Locator(".wss-table-filter-trigger[aria-label='Filter Name']");
+        await nameFilter.ClickAsync();
+        var nameDropdown = section.Locator(".wss-table-filter-dropdown");
+        await nameDropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Item 2" }).Locator("input").CheckAsync();
+        await nameDropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Item 5" }).Locator("input").CheckAsync();
+        await nameDropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Item 8" }).Locator("input").CheckAsync();
+        await nameDropdown.Locator(".wss-table-filter-ok").ClickAsync();
+        await Expect(rows).ToHaveCountAsync(3);
+
+        var priceFilter = section.Locator(".wss-table-filter-trigger[aria-label='Filter Price']");
+        await priceFilter.ClickAsync();
+        var priceDropdown = section.Locator(".wss-table-filter-dropdown");
+        await priceDropdown.Locator(".wss-table-filter-item", new() { HasTextString = "$20 and over" }).Locator("input").CheckAsync();
+        await priceDropdown.Locator(".wss-table-filter-ok").ClickAsync();
+
+        await Expect(rows).ToHaveCountAsync(2);
+        await Expect(section.Locator("tbody")).ToContainTextAsync("Item 5");
+        await Expect(section.Locator("tbody")).ToContainTextAsync("Item 8");
+        await Expect(section.Locator("tbody")).Not.ToContainTextAsync("Item 2");
+
+        // Reset the Name column only -- Price's filter stays applied.
+        await priceFilter.ClickAsync(); // re-open Price to confirm it's still marked active
+        await Expect(priceFilter).ToHaveClassAsync(new Regex("wss-table-filter-active"));
+        await _page.Keyboard.PressAsync("Escape"); // close without changing anything
+
+        await nameFilter.ClickAsync();
+        await section.Locator(".wss-table-filter-dropdown .wss-table-filter-reset").ClickAsync();
+        await Expect(nameFilter).Not.ToHaveClassAsync(new Regex("wss-table-filter-active"));
+        await Expect(_page.Locator("[data-test-id=filter-demo-result]")).ToContainTextAsync("Name: cleared");
+
+        // Price filter alone now drives the row set (Item 4/6/7/8/9/10 are all >= $20 alongside 5/8).
+        await Expect(rows).Not.ToHaveCountAsync(10);
+    }
+
+    [Fact]
+    public async Task Table_filter_dropdown_outside_click_closes_without_applying_pending_changes()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "column filtering" });
+        var filterButton = section.Locator(".wss-table-filter-trigger[aria-label='Filter Name']");
+        var rows = section.Locator("tbody .wss-table-row");
+
+        await filterButton.ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Item 2" }).Locator("input").CheckAsync();
+
+        // Click the invisible backdrop (anywhere outside the dropdown) instead of OK.
+        await section.Locator(".wss-table-filter-backdrop").ClickAsync(new() { Position = new Position { X = 5, Y = 5 } });
+
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+        await Expect(rows).ToHaveCountAsync(10); // unfiltered -- nothing was applied
+        await Expect(filterButton).Not.ToHaveClassAsync(new Regex("wss-table-filter-active"));
+
+        // Re-opening must not resurrect the discarded check -- it re-syncs from the (still empty)
+        // applied selection, not from whatever was left pending.
+        await filterButton.ClickAsync();
+        var reopened = section.Locator(".wss-table-filter-dropdown .wss-table-filter-item", new() { HasTextString = "Item 2" }).Locator("input");
+        await Expect(reopened).Not.ToBeCheckedAsync();
+    }
+
+    [Fact]
+    public async Task Table_ScrollY_header_stays_sticky_while_the_body_scrolls()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "ScrollY (sticky header)" });
+        var wrapper = section.Locator(".wss-table-wrapper");
+        var headerCell = section.Locator("thead th").First;
+
+        await Expect(wrapper).ToHaveClassAsync(new Regex("wss-table-wrapper-scroll-y"));
+        await Expect(headerCell).ToHaveCSSAsync("position", "sticky");
+
+        var beforeTop = await headerCell.EvaluateAsync<double>("el => el.getBoundingClientRect().top");
+
+        var scrollTop = await wrapper.EvaluateAsync<double>("el => { el.scrollTop = 400; return el.scrollTop; }");
+        Assert.True(scrollTop > 0); // the wrapper is genuinely scrollable, and it scrolled
+
+        var afterTop = await headerCell.EvaluateAsync<double>("el => el.getBoundingClientRect().top");
+        Assert.Equal(beforeTop, afterTop, 3); // sticky: the header's viewport position doesn't move
+    }
+
+    [Fact]
+    public async Task Table_ScrollY_filter_dropdown_escapes_the_wrapper_overflow_clip()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "ScrollY (sticky header)" });
+        var filterButton = section.Locator(".wss-table-filter-trigger");
+        var rows = section.Locator("tbody .wss-table-row");
+
+        await filterButton.ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+
+        // JS repositions the dropdown to position: fixed once ScrollY makes clipping possible (see
+        // wss-overlay.js's placeFixedBelow) -- confirms the escape path actually ran, not just that
+        // the dropdown "happened to fit" within the 160px wrapper.
+        await Expect(dropdown).ToHaveCSSAsync("position", "fixed");
+
+        // The dropdown (6 options + footer) is taller than the 160px ScrollY wrapper -- if it were
+        // still clipped by the wrapper's overflow instead of escaping, checking/clicking an option
+        // near the bottom of the list would fail Playwright's actionability checks.
+        await dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Item 25" }).Locator("input").CheckAsync();
+        await dropdown.Locator(".wss-table-filter-ok").ClickAsync();
+
+        await Expect(rows).ToHaveCountAsync(1);
+        await Expect(rows.First).ToContainTextAsync("Item 25");
     }
 
     // Asserts an overlay panel is centred over its trigger and sits just above it (Top placement).
