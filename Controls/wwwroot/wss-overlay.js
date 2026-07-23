@@ -235,6 +235,36 @@ export function focusTrigger(el) {
     try { (child || el).focus(); } catch { /* gone */ }
 }
 
+// Focus an element, escaping a race with Blazor's own render-batch focus-restore (blazor.web.js):
+// opening a popup via a controlled Visible bound from a SEPARATE trigger elsewhere on the page (its
+// own click just re-rendered that trigger's text) leaves that trigger as document.activeElement --
+// a plain el.focus() called synchronously (or microtask-chained, which every awaited JS interop
+// call effectively is) off the popup's own later render batch loses a race against Blazor
+// re-asserting focus back onto that still-recorded "was focused before this batch" element, and the
+// popup's focus() call silently never sticks even though it throws no error. How many of Blazor's
+// own render batches are still competing isn't knowable from here (it scales with how much else is
+// on the page), so this retries focus() once per animation frame, verifying via document.activeElement
+// each time, until it actually sticks or maxFrames is exhausted (~160ms at 60fps -- generous but
+// still imperceptible; a focus ring landing a frame or two late is unnoticeable, unlike it never
+// landing at all). Confirmed needed for focusing a <button> (Popconfirm's OK button via an
+// externally-controlled Visible); a plain FocusAsync() on a non-form div (Popover's panel) has not
+// shown this race.
+export function focusDeferred(el, maxFrames) {
+    if (!el) {
+        return;
+    }
+    maxFrames = maxFrames || 10;
+    let attempts = 0;
+    const tryFocus = () => {
+        try { el.focus(); } catch { /* gone */ }
+        attempts++;
+        if (document.activeElement !== el && attempts < maxFrames) {
+            requestAnimationFrame(tryFocus);
+        }
+    };
+    requestAnimationFrame(tryFocus);
+}
+
 // --- DateRangePicker ---------------------------------------------------------------------------
 // Field-anchored panel placement — wss-select.js/placeDropdown's model (flip above when there's no
 // room below, open-order z stacking, return the wrapper z for C# to mirror into the bound style),

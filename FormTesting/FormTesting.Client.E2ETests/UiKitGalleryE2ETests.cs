@@ -915,21 +915,47 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await section.Locator("[data-test-id=controlled-popconfirm-toggle]").ClickAsync();
 
         // Visible AND positioned (not stuck at wss-measuring) -- proves the externally-driven open
-        // ran through the same JS placement path as a click, not just that _open flipped.
-        // NOTE: unlike Popover (below), this does NOT also assert focus landed on the OK button --
-        // investigating this batch's new controlled-Visible path surfaced a pre-existing race in
-        // Popconfirm's OnAfterRenderAsync (overlapping invocations around the position/focus state
-        // machine can leave _pendingFocus never consumed), so the OK button does not reliably gain
-        // focus on open in a real browser today. That's a latent defect in code this batch didn't
-        // touch (Popover's equivalent _panelRef.FocusAsync() DOES work) -- flagged for a follow-up,
-        // not fixed here (out of this batch's scope).
+        // ran through the same JS placement path as a click, not just that _open flipped. The OK
+        // button also gains focus -- a prior investigation of this controlled-Visible path had
+        // surfaced two compounding issues: an activation race in OnAfterRenderAsync (overlapping
+        // invocations around the position/focus state machine could leave _pendingFocus never
+        // consumed), now guarded by an _activationSeq sequence token (mirroring Modal's); and,
+        // independently, a Blazor render-batch focus-restore race specific to focusing a <button>
+        // from this externally-driven path, fixed by routing the focus call through
+        // wss-overlay.js's focusDeferred instead of a direct FocusAsync() (see its doc comment).
+        // Popover's equivalent _panelRef.FocusAsync() below was never affected by the second issue.
         await Expect(panel).ToBeVisibleAsync();
         await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await Expect(panel.Locator(".wss-dialog-btn-primary")).ToBeFocusedAsync();
 
         // Toggle again (still the same external button; the popup's own full-viewport backdrop would
         // intercept a real coordinate-based click on our page-level toggle button, so dispatch the
         // click event directly -- same technique as the Select controlled-Open e2e test).
         await section.Locator("[data-test-id=controlled-popconfirm-toggle]").DispatchEventAsync("click");
+        await Expect(panel).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Popconfirm_rapid_close_reopen_still_positions_and_focuses_deterministically()
+    {
+        // Exercises the race the _activationSeq token guards against: a close immediately followed
+        // by a reopen, back-to-back, before the first attempt's place() JS round trip can resolve --
+        // this used to be able to leave stale _positioned/_pendingFocus state that skipped the next
+        // open's own measure/focus.
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "controlled Visible" });
+        var panel = section.Locator(".wss-popconfirm");
+        var toggle = section.Locator("[data-test-id=controlled-popconfirm-toggle]");
+
+        await toggle.ClickAsync();               // open
+        await toggle.DispatchEventAsync("click"); // close
+        await toggle.DispatchEventAsync("click"); // reopen, with no settling time in between
+
+        await Expect(panel).ToBeVisibleAsync();
+        await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await Expect(panel.Locator(".wss-dialog-btn-primary")).ToBeFocusedAsync();
+
+        await toggle.DispatchEventAsync("click");
         await Expect(panel).Not.ToBeVisibleAsync();
     }
 

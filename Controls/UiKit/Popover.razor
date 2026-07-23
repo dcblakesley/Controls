@@ -90,6 +90,11 @@
     // Side the panel actually rendered on after the viewport flip. Null until measured (falls back to
     // the preferred PlacementName). Owned by C# so the re-render that drops `wss-measuring` keeps it.
     string? _resolvedPlacement;
+    // Sequence token guarding the place() await below (mirrors Modal's _activationSeq, commit
+    // 04361e1, and Popconfirm's equivalent field): a close/reopen while a positioning attempt is in
+    // flight starts a NEW attempt with a fresh token, so the stale attempt's continuation recognizes
+    // it's superseded and skips writing _positioned/_pendingFocus/_resolvedPlacement.
+    int _activationSeq;
     readonly string _id = $"wss-popover-{Guid.NewGuid():N}";
     // The last Visible value this component has observed OR itself raised via
     // RaiseVisibleChangedAsync. Null until the first time VisibleChanged carries a delegate —
@@ -184,6 +189,11 @@
 
         if (_open && !_positioned)
         {
+            // Sequence token: a close (and possibly a reopen, which starts a *new* positioning
+            // attempt) while this attempt's place() call is in flight makes this one stale -- see
+            // _activationSeq's declaration.
+            var seq = ++_activationSeq;
+            string? resolved = null;
             try
             {
                 _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
@@ -193,12 +203,21 @@
                     _module = null;
                     return;
                 }
-                _resolvedPlacement = await _module.InvokeAsync<string>("place", _triggerRef, _panelRef, "wss-popover", PlacementName, 10, 8);
+                resolved = await _module.InvokeAsync<string>("place", _triggerRef, _panelRef, "wss-popover", PlacementName, 10, 8);
             }
             catch
             {
                 // No JS runtime / module — keep the CSS default placement.
             }
+
+            if (_disposed || seq != _activationSeq || !_open)
+            {
+                // Superseded by a close/reopen (or disposed) while place() was in flight -- the
+                // current activation's own OnAfterRenderAsync pass owns writing this state instead.
+                return;
+            }
+
+            _resolvedPlacement = resolved;
             _positioned = true;
             _pendingFocus = true;
             StateHasChanged(); // reveal the panel now that it's positioned (drops wss-measuring)
