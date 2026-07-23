@@ -32,12 +32,13 @@
 @if (ShowTopPager)
 {
     <div class="wss-table-pagination wss-table-pagination-top wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_items.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
+        <Pagination Total="_filtered.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
                     ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
                     AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")" />
     </div>
 }
-<div class="wss-table-wrapper">
+<div class="wss-table-wrapper @(ScrollY is not null ? "wss-table-wrapper-scroll-y" : null)"
+     style="@(ScrollY is not null ? $"max-height:{ScrollY};" : null)">
     <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName @(AnyColumnEllipsis ? "wss-table-fixed" : null)">
         @if (!string.IsNullOrEmpty(Caption))
         {
@@ -85,13 +86,34 @@
                         <th scope="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null)" aria-sort="@AriaSortFor(col)">
                             @if (col.TitleContent is null)
                             {
-                                <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
-                                    <span class="wss-table-sort-label">@col.HeaderFor()</span>
-                                    <span class="wss-table-sorter" aria-hidden="true">
-                                        <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
-                                        <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
-                                    </span>
-                                </button>
+                                @* col.CanFilter forks into its own branch (rather than always wrapping in
+                                   wss-table-header-inner) so the overwhelmingly common non-filterable case keeps
+                                   the exact original single-<button> DOM -- an existing bUnit test pins that shape. *@
+                                @if (col.CanFilter)
+                                {
+                                    <div class="wss-table-header-inner">
+                                        <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
+                                            <span class="wss-table-sort-label">@col.HeaderFor()</span>
+                                            <span class="wss-table-sorter" aria-hidden="true">
+                                                <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
+                                                <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
+                                            </span>
+                                        </button>
+                                        <TableColumnFilter TItem="TItem" Column="col" Table="this"
+                                                            FilterButtonLabelFormat="@FilterButtonLabelFormat"
+                                                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
+                                        <span class="wss-table-sort-label">@col.HeaderFor()</span>
+                                        <span class="wss-table-sorter" aria-hidden="true">
+                                            <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
+                                            <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
+                                        </span>
+                                    </button>
+                                }
                             }
                             else
                             {
@@ -100,7 +122,9 @@
                                    HTML, and the template's clicks would bubble into ToggleSort. Split into a flex row
                                    instead: a plain (non-focusable) clickable content area preserves "click the header
                                    to sort", and the button carries only the caret glyphs plus its own accessible name
-                                   (the button has no visible content of its own here). *@
+                                   (the button has no visible content of its own here). This div already renders
+                                   unconditionally here, so the filter control just joins it as one more child --
+                                   no CanFilter fork needed in this branch. *@
                                 <div class="wss-table-sort-header">
                                     <div class="wss-table-sort-content" @onclick="@(() => ToggleSort(col))">@col.HeaderFor()</div>
                                     <button type="button" class="wss-table-sort-trigger wss-table-sort-trigger-icon" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
@@ -109,20 +133,44 @@
                                             <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
                                         </span>
                                     </button>
+                                    @if (col.CanFilter)
+                                    {
+                                        <TableColumnFilter TItem="TItem" Column="col" Table="this"
+                                                            FilterButtonLabelFormat="@FilterButtonLabelFormat"
+                                                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />
+                                    }
                                 </div>
                             }
                         </th>
                     }
                     else
                     {
-                        <th scope="col" class="wss-table-cell">@col.HeaderFor()</th>
+                        @if (col.CanFilter)
+                        {
+                            <th scope="col" class="wss-table-cell">
+                                <div class="wss-table-header-inner">
+                                    <span class="wss-table-header-text">@col.HeaderFor()</span>
+                                    <TableColumnFilter TItem="TItem" Column="col" Table="this"
+                                                        FilterButtonLabelFormat="@FilterButtonLabelFormat"
+                                                        ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />
+                                </div>
+                            </th>
+                        }
+                        else
+                        {
+                            <th scope="col" class="wss-table-cell">@col.HeaderFor()</th>
+                        }
                     }
                 }
             </tr>
         </thead>
         <tbody class="wss-table-tbody">
-            @if (_items.Count == 0)
+            @if (_pageItems.Count == 0)
             {
+                @* Not "_items.Count == 0": the placeholder must also show once a column filter
+                   narrows every row out of view, not just when the DataSource itself is empty. Safe
+                   against "a valid page that happens to be empty" -- the IsPaged clamp below keys off
+                   _filtered.Count, so _pageItems is only ever empty when _filtered truly is. *@
                 <tr class="wss-table-row wss-table-placeholder">
                     <td class="wss-table-cell" colspan="@TotalColumnCount">
                         @if (EmptyContent is not null) { @EmptyContent } else { @EmptyText }
@@ -205,7 +253,7 @@
 @if (ShowBottomPager)
 {
     <div class="wss-table-pagination wss-table-pagination-bottom wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_items.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
+        <Pagination Total="_filtered.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
                     ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
                     AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (bottom)" : "Pagination")" />
     </div>
@@ -382,6 +430,34 @@
     [Parameter] public Func<TItem, object>? RowKey { get; set; }
 
     /// <summary>
+    /// Bounds the table body to a fixed height with its own vertical scrollbar and a sticky header
+    /// (AntD's <c>scroll.y</c> equivalent) — any CSS length (e.g. <c>"320px"</c>). Null (default)
+    /// renders the existing unconstrained wrapper with no scroll container of its own. This is
+    /// deliberately scoped to the table's own wrapper only — a header that stays fixed while the
+    /// whole PAGE scrolls (viewport-level sticky) is out of scope.
+    /// </summary>
+    [Parameter] public string? ScrollY { get; set; }
+
+    /// <summary>
+    /// Raised after a column's filter is applied (OK) or cleared (Reset), with the column and its
+    /// new selected values (empty when cleared) — the uncontrolled equivalent of AntD's
+    /// <c>onFilter</c>/<c>filteredValue</c> callback pair; there is no fully-controlled
+    /// <c>filteredValue</c> parameter (see <see cref="Column{TItem}.FilterOptions"/>). Not raised
+    /// while a dropdown is merely open, or on an outside-click/Escape discard.
+    /// </summary>
+    [Parameter] public EventCallback<(Column<TItem> Column, IReadOnlyList<string> SelectedValues)> OnFilterChanged { get; set; }
+
+    /// <summary>Accessible-name format for a column's filter button; <c>{0}</c> is the column's
+    /// header text (falls back to plain "Filter" for a headerless column). Override to localize.</summary>
+    [Parameter] public string FilterButtonLabelFormat { get; set; } = "Filter {0}";
+
+    /// <summary>Label of a filter dropdown's clear-this-column button. Override to localize.</summary>
+    [Parameter] public string FilterResetLabel { get; set; } = "Reset";
+
+    /// <summary>Label of a filter dropdown's apply button. Override to localize.</summary>
+    [Parameter] public string FilterOkLabel { get; set; } = "OK";
+
+    /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the root <c>div.wss-table-root</c> element. <c>class</c> and <c>style</c> merge
     /// with the component's own; the rest are splatted verbatim.
@@ -396,7 +472,8 @@
 
     object KeyFor(TItem item) => RowKey?.Invoke(item) ?? (object?)item ?? NullKey;
     List<TItem> _items = new();      // original DataSource order — the source of truth
-    List<TItem> _sorted = new();     // _items reordered by the active sort (or _items itself when unsorted)
+    List<TItem> _filtered = new();   // _items narrowed by every filterable column's applied selection (or _items itself when none)
+    List<TItem> _sorted = new();     // _filtered reordered by the active sort (or _filtered itself when unsorted)
     List<TItem> _pageItems = new();
     IEnumerable<TItem>? _lastDataSource;
     IEnumerable<TItem>? _lastSelectedItems;
@@ -460,19 +537,36 @@
     bool ShowTopPager => HasPager && PagerPosition is PagerPosition.Top or PagerPosition.Both;
     bool ShowBottomPager => HasPager && PagerPosition is PagerPosition.Bottom or PagerPosition.Both;
 
-    // Reorders _items into _sorted by the active column/direction (stable: ties keep their original
-    // order via the index tie-break). Unsorted falls back to the original list with no copy.
+    // Narrows _items to _filtered by every filterable column's currently-APPLIED selection (AntD
+    // ORs within a column, ANDs across columns — see Column.PassesFilter). Runs BEFORE ApplySort
+    // (AntD filters, then sorts) and only from the explicit mutation points that also call
+    // ApplySort/RebuildPageItems together (ApplyColumnFilterAsync/ResetColumnFilterAsync, a
+    // DataSource swap, and a filtered column's removal) — never from a bare parent re-render, the
+    // same discipline ToggleSort already follows for _sortColumn/_sortDirection.
+    // Always assigns a fresh reference when any filter is active (.Where().ToList() allocates a new
+    // list every call) — that's what lets RebuildPageItems's existing _sorted reference-equality
+    // guard (below) catch a real filter change with no separate tracked field: see the guard's own
+    // comment for why.
+    void ApplyFilters()
+    {
+        _filtered = _columns.Any(c => c.CanFilter && c.FilterApplied.Count > 0)
+            ? _items.Where(item => _columns.All(c => c.PassesFilter(item))).ToList()
+            : _items;
+    }
+
+    // Reorders _filtered into _sorted by the active column/direction (stable: ties keep their
+    // original order via the index tie-break). Unsorted falls back to _filtered with no copy.
     void ApplySort()
     {
         if (_sortColumn is null || _sortDirection == SortDirection.None)
         {
-            _sorted = _items;
+            _sorted = _filtered;
             return;
         }
 
         var col = _sortColumn;
         var sign = _sortDirection == SortDirection.Ascending ? 1 : -1;
-        _sorted = _items
+        _sorted = _filtered
             .Select((item, index) => (item, index))
             .OrderBy(x => x, Comparer<(TItem item, int index)>.Create((a, b) =>
             {
@@ -507,6 +601,23 @@
         // every parent re-render defeats the whole point of this guard (see
         // Parent_rerender_with_unchanged_data_does_not_rewalk_rows), so the two extra fields are
         // cheaper than losing that contract.
+        // Column filter state (Column.FilterApplied) deliberately does NOT get its own tracked field
+        // here, unlike IsRowSelectable/SelectionMode above -- and that's a considered choice, not an
+        // oversight (this exact staleness class -- a new kind of state the guard doesn't know about
+        // -- has bitten twice already). IsRowSelectable/SelectionMode are plain Parameters: a parent
+        // can change them on any re-render, entirely independent of _sorted, so RebuildPageItems
+        // (called unconditionally at the end of every OnParametersSet) needed its own way to notice.
+        // Filtering instead only ever changes through ApplyColumnFilterAsync/ResetColumnFilterAsync
+        // (below), which -- like ToggleSort for sorting -- always call ApplyFilters() then
+        // ApplySort() before RebuildPageItems(), and ApplyFilters() always assigns _filtered a fresh
+        // reference whenever a filter is actually turning on, off, or changing (its active branch is
+        // `.Where().ToList()`, a new List<T> instance on every call; its inactive branch aliases
+        // _items, which is itself only ever a fresh reference across a real DataSource swap). That
+        // freshness flows straight into _sorted via ApplySort, so a real filter change is already
+        // guaranteed to fail the _sorted reference check below -- exactly the same mechanism a
+        // DataSource swap or a sort change already rely on, with no separate field needed. (A
+        // no-op Reset/OK click, where filtering was inactive before and after, correctly leaves
+        // _sorted unchanged and correctly skips: nothing to recompute.)
         if (ReferenceEquals(_sorted, _keyedSorted) && _page == _keyedPage && _pageSize == _keyedPageSize
             && ReferenceEquals(IsRowSelectable, _keyedIsRowSelectable) && SelectionMode == _keyedSelectionMode)
             return;
@@ -633,21 +744,28 @@
                 {
                     foreach (var gone in _selected.Keys.Where(k => !present.Contains(k)).ToList())
                         _selected.Remove(gone);
-                    // No RecomputeSelectionFlags here: this branch just made _items (and via ApplySort
-                    // below, _sorted) a fresh reference, so the RebuildPageItems at the end of
-                    // OnParametersSet cannot skip and recomputes the flags against the new page.
+                    // No RecomputeSelectionFlags here: this branch just made _items (and via
+                    // ApplyFilters/ApplySort below, _sorted) a fresh reference, so the
+                    // RebuildPageItems at the end of OnParametersSet cannot skip and recomputes the
+                    // flags against the new page.
                 }
                 _expanded.RemoveWhere(k => !present.Contains(k));
             }
 
-            // Re-derive the sorted view from the new data (the column reference is stable, so the
-            // active sort persists across a DataSource swap).
+            // Re-derive the filtered/sorted view from the new data (column references are stable,
+            // so both the active filter selections and the active sort persist across a DataSource
+            // swap, same treatment).
+            ApplyFilters();
             ApplySort();
         }
 
         if (IsPaged)
         {
-            var pageCount = Math.Max(1, (int)Math.Ceiling((double)_items.Count / _pageSize));
+            // _filtered, not _items: clamp against the currently-visible (post-filter) row count, so
+            // an active filter that narrows the data can't strand _page beyond its own last page --
+            // RecomputeAfterFilterChangeAsync already resets to page 1 on every filter change, so
+            // this clamp only matters for a DataSource swap while a filter from before it stays applied.
+            var pageCount = Math.Max(1, (int)Math.Ceiling((double)_filtered.Count / _pageSize));
             if (_page > pageCount) _page = pageCount;
             if (_page < 1) _page = 1;
         }
@@ -747,14 +865,38 @@
 
             if (!_columns.SequenceEqual(promoted))
             {
+                var previousColumns = _columns;
                 _columns = promoted;
 
+                // A column that dropped out of the rendered set (@if false, or genuinely disposed)
+                // must not keep narrowing the row set for a filter the user can no longer see or
+                // clear -- clear its state (same treatment the active-sort-column-removed case
+                // below already gets) and fall into the recompute.
+                var removedWithFilter = false;
+                foreach (var gone in previousColumns)
+                {
+                    if (_columns.Contains(gone)) continue;
+                    if (gone.FilterApplied.Count == 0 && gone.FilterPending.Count == 0 && !gone.FilterOpen) continue;
+                    gone.FilterApplied.Clear();
+                    gone.FilterPending.Clear();
+                    gone.FilterOpen = false;
+                    removedWithFilter = true;
+                }
+
                 // If the column driving the active sort is gone, drop the sort so the indicator and
-                // the row order can't disagree, and re-derive the view before the body renders.
-                if (_sortColumn is not null && !_columns.Contains(_sortColumn))
+                // the row order can't disagree.
+                var sortColumnRemoved = _sortColumn is not null && !_columns.Contains(_sortColumn);
+                if (sortColumnRemoved)
                 {
                     _sortColumn = null;
                     _sortDirection = SortDirection.None;
+                }
+
+                // Re-derive the view before the body renders whenever either of the above actually
+                // changed something it depends on.
+                if (removedWithFilter || sortColumnRemoved)
+                {
+                    if (removedWithFilter) ApplyFilters();
                     ApplySort();
                     RebuildPageItems();
                 }
@@ -949,4 +1091,65 @@
     // see the wss-table-fixed CSS rule. Untouched (no column sets Ellipsis) keeps the table's
     // existing auto layout exactly as before.
     bool AnyColumnEllipsis => _columns.Any(c => c.Ellipsis);
+
+    // ----- Column filtering (TableColumnFilter calls these -- only one dropdown open at a time,
+    // matching AntD: opening a column's filter closes any other column's still-open one). -----
+
+    internal void OpenColumnFilter(Column<TItem> column)
+    {
+        foreach (var c in _columns)
+            if (!ReferenceEquals(c, column)) c.FilterOpen = false;
+
+        // Stage the dropdown from the last APPLIED selection, not whatever was left over in
+        // FilterPending from a previous open-then-discard (outside click/Escape never copies
+        // Pending back into Applied, so a stale Pending would otherwise resurface here).
+        column.FilterPending.Clear();
+        foreach (var v in column.FilterApplied) column.FilterPending.Add(v);
+        column.FilterOpen = true;
+
+        // TableColumnFilter is a child component: mutating Column fields directly doesn't cause
+        // Table's own <thead> render (a sibling of every OTHER column's TableColumnFilter instance)
+        // to refresh on its own -- this closes those siblings' dropdowns visibly, not just in state.
+        StateHasChanged();
+    }
+
+    internal void CloseColumnFilter(Column<TItem> column)
+    {
+        column.FilterOpen = false;
+        StateHasChanged();
+    }
+
+    // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline.
+    internal async Task ApplyColumnFilterAsync(Column<TItem> column)
+    {
+        column.FilterApplied.Clear();
+        foreach (var v in column.FilterPending) column.FilterApplied.Add(v);
+        column.FilterOpen = false;
+        await RecomputeAfterFilterChangeAsync(column);
+    }
+
+    // Reset: clear both the staged and applied selection immediately (no OK needed) and re-run the
+    // pipeline the same way.
+    internal async Task ResetColumnFilterAsync(Column<TItem> column)
+    {
+        column.FilterPending.Clear();
+        column.FilterApplied.Clear();
+        column.FilterOpen = false;
+        await RecomputeAfterFilterChangeAsync(column);
+    }
+
+    // Shared tail of OK/Reset: AntD resets to page 1 on a filter change (mirrors ToggleSort's own
+    // reset), then re-derives filtered -> sorted -> paged in that order and notifies the consumer.
+    // This is what keeps RebuildPageItems's guard correct with no separate tracked field for filter
+    // state -- see that guard's own comment.
+    async Task RecomputeAfterFilterChangeAsync(Column<TItem> column)
+    {
+        _page = 1;
+        ApplyFilters();
+        ApplySort();
+        RebuildPageItems();
+        StateHasChanged();
+        if (OnFilterChanged.HasDelegate)
+            await OnFilterChanged.InvokeAsync((column, column.AppliedFilterValues));
+    }
 }

@@ -285,6 +285,46 @@ export function clearZ(el) {
     }
 }
 
+// --- Table column filter dropdown (ScrollY overflow-clip escape) ------------------------------
+// A Table.ScrollY wrapper sets overflow-y so its header can stick while the body scrolls -- but
+// that same overflow clips a filter dropdown that's position: absolute relative to its header
+// cell, once the dropdown would extend past the wrapper's bounds. Switching the dropdown to
+// position: fixed (viewport coordinates, computed from the trigger button's own rect) escapes that
+// clip entirely, the same way Modal/Drawer content is never clipped by an ancestor's overflow.
+// Only called under Table.ScrollY (see TableColumnFilter.razor) -- the far more common non-ScrollY
+// case never touches this, staying on the plain CSS-anchored absolute position (also this
+// function's no-JS fallback when the import/invoke itself fails).
+export function placeFixedBelow(trigger, panel, gap) {
+    if (!trigger || !panel) {
+        return;
+    }
+    gap = gap || 4;
+    const margin = 8;
+
+    const z = nextZ();
+    panel.style.position = 'fixed';
+    panel.style.zIndex = z;
+
+    const t = trigger.getBoundingClientRect();
+    const pw = panel.offsetWidth;
+    const ph = panel.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // Flip above the trigger when there's no room below (mirrors place()/placeDropdown()'s flip).
+    let top = t.bottom + gap;
+    if (top + ph > vh - margin && t.top - gap - ph >= margin) {
+        top = t.top - gap - ph;
+    }
+
+    // Right-align under the funnel icon (AntD's default), clamped into the viewport.
+    let left = t.right - pw;
+    left = Math.max(margin, Math.min(left, vw - margin - pw));
+
+    panel.style.top = `${Math.round(top)}px`;
+    panel.style.left = `${Math.round(left)}px`;
+}
+
 // One-time picker wiring. Enter in a picker input commits the typed date via the component's own
 // keydown handler — preventDefault stops it also implicitly submitting an enclosing form (which C#
 // can't do; Blazor has no per-key preventDefault). The wrapper focusout mirrors wss-select.js:

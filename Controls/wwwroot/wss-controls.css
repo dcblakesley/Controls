@@ -2199,6 +2199,178 @@
     cursor: pointer;
 }
 
+/* Header cell content row -- only present when a header needs to lay out more than one thing
+   beside its title (currently: a non-sortable filterable column's text + filter button). Sortable
+   filterable headers reuse this same class around [sort button, filter button] instead. */
+.wss-table-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
+}
+
+.wss-table-header-text {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Column filtering (Column.FilterOptions/OnFilter): a funnel-icon button in the header cell,
+   opening a checkbox/radio dropdown anchored to the header cell (already position: relative for
+   the column-split separator above) -- the same backdrop-click-to-close pattern as
+   Popover/Select, so outside-click needs no JS. */
+.wss-table-filter-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin-inline-start: 4px;
+    color: var(--wss-color-text-disabled);
+    font-size: 12px;
+    background: none;
+    border: none;
+    border-radius: var(--wss-radius);
+    cursor: pointer;
+}
+
+.wss-table-filter-trigger:hover {
+    color: var(--wss-color-text-secondary);
+    background: var(--wss-color-bg-hover);
+}
+
+.wss-table-filter-trigger:focus-visible {
+    outline: 2px solid var(--wss-color-primary);
+    outline-offset: 2px;
+}
+
+/* A column with 1+ applied filter value -- same active tint the sort carets already use. */
+.wss-table-filter-active {
+    color: var(--wss-color-primary);
+}
+
+/* Full-screen invisible backdrop: clicking anywhere outside the dropdown closes it WITHOUT
+   applying pending changes (AntD applies only on OK) -- the same JS-free pattern as
+   .wss-select-backdrop / .wss-popover-backdrop. tabindex="-1": iOS-class WebKit only synthesizes a
+   click from a tap on a focusable/interactive target chain. */
+.wss-table-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+    cursor: pointer;
+    outline: none;
+}
+
+/* Right-aligned under the funnel icon (AntD default), anchored to the header cell. JS
+   (wss-overlay.js's placeFixedBelow) switches this to position: fixed in viewport coordinates when
+   Table.ScrollY's wrapper overflow would otherwise clip it -- this absolute position is also that
+   path's no-JS fallback. */
+.wss-table-filter-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1050;
+    min-width: 160px;
+    max-height: 264px;
+    overflow-y: auto;
+    background-color: var(--wss-color-bg);
+    border-radius: var(--wss-radius);
+    outline: none;
+    box-shadow: var(--wss-shadow);
+    cursor: auto;
+    font-weight: normal; /* the header cell sets font-weight: 500 -- don't let it bleed into the dropdown */
+    white-space: normal; /* the header cell sets white-space: nowrap -- don't clip long option labels */
+}
+
+.wss-table-filter-list {
+    margin: 0;
+    padding: 4px 0;
+    list-style: none;
+}
+
+.wss-table-filter-item {
+    padding: 0;
+}
+
+.wss-table-filter-option-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.wss-table-filter-option-label:hover {
+    background-color: var(--wss-color-bg-hover);
+}
+
+.wss-table-filter-checkbox,
+.wss-table-filter-radio {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    accent-color: var(--wss-color-primary);
+    cursor: pointer;
+}
+
+.wss-table-filter-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 8px;
+    border-top: 1px solid var(--wss-color-split);
+}
+
+.wss-table-filter-reset,
+.wss-table-filter-ok {
+    padding: 0 7px;
+    height: 24px;
+    font-size: var(--wss-font-size-sm);
+    border: none;
+    border-radius: var(--wss-radius);
+    cursor: pointer;
+}
+
+.wss-table-filter-reset {
+    color: var(--wss-color-text-secondary);
+    background: none;
+}
+
+.wss-table-filter-reset:hover {
+    color: var(--wss-color-text);
+}
+
+.wss-table-filter-ok {
+    padding: 0 12px;
+    color: var(--wss-color-on-primary);
+    background-color: var(--wss-color-primary);
+}
+
+.wss-table-filter-ok:hover {
+    opacity: 0.85;
+}
+
+/* Table.ScrollY: the AntD scroll.y equivalent -- a bounded, vertically scrolling body with a
+   sticky header. Deliberately scoped to .wss-table-wrapper's own scrolling only -- a header that
+   stays fixed while the whole PAGE scrolls (viewport-level sticky) is out of scope. max-height
+   itself is set inline (Table.razor) since it's a per-instance CSS length, not a fixed token. */
+.wss-table-wrapper-scroll-y {
+    overflow-y: auto;
+}
+
+.wss-table-wrapper-scroll-y .wss-table-thead .wss-table-cell {
+    position: sticky;
+    top: 0;
+    /* Above body-row backgrounds (which paint at the default z-index: auto ~ 0), below
+       .wss-table-loading-mask's z-index: 2 -- Loading still visually covers a ScrollY header. */
+    z-index: 1;
+}
+
 /* ============================================================================
  * Message toasts (WasmMessageContainer)
  * ============================================================================ */

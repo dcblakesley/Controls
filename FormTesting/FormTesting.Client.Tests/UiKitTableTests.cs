@@ -1430,4 +1430,403 @@ public class UiKitTableTests : TestContext
         cut.SetParametersAndRender(p => p.Add(t => t.UseStyledCheckbox, false));
         Assert.Equal(3, IndeterminateCalls());
     }
+
+    // ----- Column filtering (FilterOptions/OnFilter) -----
+
+    static List<TableFilterOption> NameOptions() =>
+        [new("Alice", "Alice"), new("Bob", "Bob"), new("Carol", "Carol")];
+
+    IRenderedComponent<Table<Person>> RenderNameFilterable(
+        List<Person>? data = null,
+        bool filterMultiple = true,
+        EventCallback<(Column<Person> Column, IReadOnlyList<string> SelectedValues)>? onFilterChanged = null) =>
+        RenderComponent<Table<Person>>(p =>
+        {
+            p.Add(t => t.DataSource, data ?? new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) });
+            if (onFilterChanged is not null) p.Add(t => t.OnFilterChanged, onFilterChanged.Value);
+            p.AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))
+                .Add(c => c.FilterMultiple, filterMultiple));
+        });
+
+    string[] RenderedNames(IRenderedComponent<Table<Person>> cut) =>
+        cut.FindAll("tbody .wss-table-row td.wss-table-cell").Select(td => td.TextContent.Trim()).ToArray();
+
+    void CheckOption(IRenderedComponent<Table<Person>> cut, string text) =>
+        cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Contains(text))
+            .QuerySelector("input")!.Change(true);
+
+    [Fact]
+    public void Non_filterable_column_renders_no_filter_button_or_wrapper_DOM_unchanged()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-trigger"));
+        Assert.Empty(cut.FindAll(".wss-table-header-inner"));
+        // Exactly the pre-existing shape: one bare text-only header cell.
+        Assert.Single(cut.Find("thead th").ChildNodes);
+    }
+
+    [Fact]
+    public void FilterOptions_without_OnFilter_renders_no_filter_button()
+    {
+        // CanFilter requires BOTH -- a column that forgot OnFilter must not render dead UI.
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())));
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-trigger"));
+    }
+
+    [Fact]
+    public void Filterable_column_renders_a_filter_button_with_an_accessible_name()
+    {
+        var cut = RenderNameFilterable();
+
+        var button = cut.Find(".wss-table-filter-trigger");
+        Assert.Equal("Filter Name", button.GetAttribute("aria-label"));
+        Assert.Equal("false", button.GetAttribute("aria-expanded"));
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+    }
+
+    [Fact]
+    public void Clicking_the_filter_button_opens_a_dropdown_with_a_checkbox_per_option()
+    {
+        var cut = RenderNameFilterable();
+
+        cut.Find(".wss-table-filter-trigger").Click();
+
+        Assert.Equal("true", cut.Find(".wss-table-filter-trigger").GetAttribute("aria-expanded"));
+        Assert.Equal(3, cut.FindAll(".wss-table-filter-checkbox").Count);
+        Assert.NotEmpty(cut.FindAll(".wss-table-filter-ok"));
+        Assert.NotEmpty(cut.FindAll(".wss-table-filter-reset"));
+    }
+
+    [Fact]
+    public void Checking_a_value_and_clicking_OK_narrows_the_rows_to_that_column()
+    {
+        var cut = RenderNameFilterable();
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.Equal(["Alice"], RenderedNames(cut));
+        // Dropdown closes and the button reports its active (filtered) state.
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.Contains("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+    }
+
+    [Fact]
+    public void Filter_OR_semantics_selecting_two_values_in_one_column_shows_both()
+    {
+        var cut = RenderNameFilterable();
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        CheckOption(cut, "Carol");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.Equal(["Alice", "Carol"], RenderedNames(cut));
+    }
+
+    [Fact]
+    public void Filter_AND_semantics_across_two_columns()
+    {
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v)))
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.ChildContent, (Person x) => b => b.AddContent(0, x.Age))
+                .Add(c => c.FilterOptions, (IReadOnlyList<TableFilterOption>)[new("Old", "old"), new("Young", "young")])
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => v == "old" ? x.Age > 25 : x.Age <= 25))));
+
+        // Name in {Alice, Bob} (excludes Carol) AND Age = old (>25, excludes Bob) -> Alice only.
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        CheckOption(cut, "Alice");
+        CheckOption(cut, "Bob");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        cut.FindAll(".wss-table-filter-trigger")[1].Click();
+        CheckOption(cut, "Old");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        var names = cut.FindAll("tbody .wss-table-row td.wss-table-cell:first-child")
+            .Select(td => td.TextContent.Trim()).ToArray();
+        Assert.Equal(["Alice"], names);
+    }
+
+    [Fact]
+    public void Reset_clears_the_column_filter_and_shows_every_row_again()
+    {
+        var cut = RenderNameFilterable();
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice"], RenderedNames(cut));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-reset").Click();
+
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.DoesNotContain("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+    }
+
+    [Fact]
+    public void Clicking_outside_the_dropdown_closes_it_without_applying_pending_changes()
+    {
+        var cut = RenderNameFilterable();
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice"); // staged, not yet applied
+        cut.Find(".wss-table-filter-backdrop").Click(); // outside click -- discard, don't apply
+
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut)); // unfiltered -- nothing was applied
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+
+        // Re-opening must not resurrect the discarded pending check -- it re-syncs from Applied
+        // (still empty), not from whatever was left in Pending.
+        cut.Find(".wss-table-filter-trigger").Click();
+        var aliceCheckbox = cut.FindAll(".wss-table-filter-item")
+            .First(li => li.TextContent.Contains("Alice")).QuerySelector("input")!;
+        Assert.False(aliceCheckbox.HasAttribute("checked"));
+    }
+
+    [Fact]
+    public void FilterMultiple_false_renders_radios_and_only_the_latest_pick_stays_selected()
+    {
+        var cut = RenderNameFilterable(filterMultiple: false);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        Assert.Equal(3, cut.FindAll(".wss-table-filter-radio").Count);
+        Assert.Empty(cut.FindAll(".wss-table-filter-checkbox"));
+
+        CheckOption(cut, "Alice");
+        CheckOption(cut, "Bob"); // replaces Alice, never both
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.Equal(["Bob"], RenderedNames(cut));
+    }
+
+    [Fact]
+    public void Filtering_applies_before_sorting()
+    {
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, (IReadOnlyList<TableFilterOption>)[new("Alice", "Alice"), new("Carol", "Carol")])
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v)))
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        // Filter out Bob, leaving Alice(30)/Carol(40).
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        CheckOption(cut, "Carol");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        // Sort descending by Age: if filtering ran AFTER sorting instead, Bob (excluded either way)
+        // couldn't reveal the bug here -- but the row COUNT confirms only the filtered two remain,
+        // and the order confirms sort still ran over exactly that filtered set.
+        // Re-Find (not a cached element reference) between clicks -- ToggleSort re-renders, and a
+        // stale reference's event handler ID no longer exists in the new render tree.
+        cut.Find("button.wss-table-sort-trigger").Click(); // ascending
+        cut.Find("button.wss-table-sort-trigger").Click(); // descending: Carol(40), Alice(30)
+
+        var names = cut.FindAll("tbody .wss-table-row td.wss-table-cell:first-child")
+            .Select(td => td.TextContent.Trim()).ToArray();
+        Assert.Equal(["Carol", "Alice"], names);
+    }
+
+    [Fact]
+    public void Filter_button_click_on_a_sortable_column_does_not_toggle_the_sort()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.Sortable, true)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+
+        Assert.Equal("none", cut.Find("thead th").GetAttribute("aria-sort")); // unchanged
+        Assert.NotEmpty(cut.FindAll(".wss-table-filter-dropdown")); // but the filter did open
+    }
+
+    [Fact]
+    public void OnFilterChanged_raises_the_column_and_selected_values_on_OK_and_empty_on_Reset()
+    {
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        var cut = RenderNameFilterable(onFilterChanged: EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Bob");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.NotNull(raised);
+        Assert.Equal(["Bob"], raised!.Value.Values);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-reset").Click();
+
+        Assert.NotNull(raised);
+        Assert.Empty(raised!.Value.Values);
+    }
+
+    [Fact]
+    public void Selected_rows_that_get_filtered_out_stay_in_SelectedItems()
+    {
+        List<Person>? selected = null;
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectedItemsChanged,
+                EventCallback.Factory.Create<IEnumerable<Person>>(this, s => selected = s.ToList()))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
+
+        // Select Bob (row 1).
+        cut.FindAll("tbody input.wss-table-checkbox")[1].Change(true);
+        Assert.Single(selected!);
+        Assert.Equal("Bob", selected![0].Name);
+
+        // Filter down to Alice only -- Bob disappears from view but must stay selected (same
+        // key-based preservation as paging).
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        // :last-child, not the shared RenderedNames helper -- Selectable adds a leading selection
+        // <td> that also carries the plain wss-table-cell class.
+        var names = cut.FindAll("tbody .wss-table-row td.wss-table-cell:last-child")
+            .Select(td => td.TextContent.Trim()).ToArray();
+        Assert.Equal(["Alice"], names);
+        Assert.Single(selected!);
+        Assert.Equal("Bob", selected![0].Name); // unchanged -- still selected, just not rendered
+    }
+
+    [Fact]
+    public void Applying_a_filter_after_unrelated_parent_rerenders_still_narrows_the_rows()
+    {
+        // The exact staleness class that has bitten this file twice before (see
+        // Runtime_IsRowSelectable_change_with_nothing_else_changed_still_disables_the_header_checkbox):
+        // a few no-op parent re-renders (RebuildPageItems's guard correctly skips them) must not
+        // leave anything in a state where a REAL filter change afterward fails to take effect.
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
+
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, data));
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, data));
+        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, data));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.Equal(["Alice"], RenderedNames(cut));
+    }
+
+    [Fact]
+    public void Empty_placeholder_renders_once_a_filter_excludes_every_row()
+    {
+        var cut = RenderNameFilterable(new List<Person> { new("Alice", 30), new("Bob", 25) });
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Carol"); // matches nobody in this DataSource
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.Empty(cut.FindAll("tbody .wss-table-row:not(.wss-table-placeholder)"));
+        Assert.NotEmpty(cut.FindAll(".wss-table-placeholder"));
+    }
+
+    [Fact]
+    public void Filtered_pager_total_reflects_the_narrowed_row_count()
+    {
+        var data = Enumerable.Range(1, 20).Select(i => new Person($"Item{i}", i)).ToList();
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.PageSize, 5)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, (IReadOnlyList<TableFilterOption>)[new("Item1", "Item1"), new("Item2", "Item2")])
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
+
+        Assert.Equal(5, cut.FindAll("tbody .wss-table-row").Count); // page 1 of 20, unfiltered
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Item1");
+        CheckOption(cut, "Item2");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        // Only 2 rows survive the filter -- one page, no stranding on a now-nonexistent page 2+.
+        Assert.Equal(2, cut.FindAll("tbody .wss-table-row").Count);
+    }
+
+    // ----- ScrollY -----
+
+    [Fact]
+    public void ScrollY_unset_leaves_the_wrapper_without_a_style_attribute_or_scroll_class()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var wrapper = cut.Find(".wss-table-wrapper");
+        Assert.False(wrapper.HasAttribute("style"));
+        Assert.DoesNotContain("wss-table-wrapper-scroll-y", wrapper.ClassList);
+    }
+
+    [Fact]
+    public void ScrollY_set_adds_the_scroll_class_and_a_max_height_style()
+    {
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ScrollY, "240px")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var wrapper = cut.Find(".wss-table-wrapper");
+        Assert.Contains("wss-table-wrapper-scroll-y", wrapper.ClassList);
+        Assert.Contains("max-height:240px", wrapper.GetAttribute("style"));
+    }
 }
