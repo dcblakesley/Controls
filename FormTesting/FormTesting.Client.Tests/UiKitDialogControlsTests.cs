@@ -145,6 +145,92 @@ public class UiKitDialogControlsTests : TestContext
     }
 
     [Fact]
+    public void Modal_centered_adds_the_wrap_modifier_class_only_when_set()
+    {
+        var plain = RenderComponent<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
+        Assert.DoesNotContain("wss-modal-wrap-centered", plain.Find(".wss-modal-wrap").ClassList);
+
+        var centered = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .Add(m => m.Centered, true));
+        Assert.Contains("wss-modal-wrap-centered", centered.Find(".wss-modal-wrap").ClassList);
+    }
+
+    [Fact]
+    public void Modal_keyboard_false_blocks_escape_even_when_closable()
+    {
+        var closes = 0;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .Add(m => m.Closable, true)
+            .Add(m => m.Keyboard, false)
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
+
+        cut.Find(".wss-modal").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        Assert.Equal(0, closes);
+    }
+
+    [Fact]
+    public void Modal_keyboard_true_closes_on_escape_even_when_not_closable()
+    {
+        // Keyboard and Closable are independent (matching AntD: closable only governs the X button).
+        var closes = 0;
+        var cut = RenderComponent<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "T")
+            .Add(m => m.Closable, false)
+            .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
+
+        cut.Find(".wss-modal").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        Assert.Equal(1, closes);
+    }
+
+    [Fact]
+    public void Drawer_extra_renders_beside_the_close_button_only_when_set()
+    {
+        var plain = RenderComponent<Drawer>(p => p.Add(d => d.Visible, true).Add(d => d.Title, "T"));
+        Assert.Empty(plain.FindAll(".wss-drawer-header-actions"));
+        Assert.NotNull(plain.Find(".wss-drawer-close"));
+
+        var withExtra = RenderComponent<Drawer>(p => p
+            .Add(d => d.Visible, true)
+            .Add(d => d.Title, "T")
+            .Add(d => d.Extra, b => b.AddContent(0, "Extra action")));
+        Assert.Contains("Extra action", withExtra.Find(".wss-drawer-extra").TextContent);
+        Assert.NotNull(withExtra.Find(".wss-drawer-header-actions .wss-drawer-close"));
+    }
+
+    [Fact]
+    public void Drawer_extra_alone_forces_the_header_to_render()
+    {
+        var cut = RenderComponent<Drawer>(p => p
+            .Add(d => d.Visible, true)
+            .Add(d => d.Closable, false)
+            .Add(d => d.Extra, b => b.AddContent(0, "Extra action")));
+
+        Assert.NotEmpty(cut.FindAll(".wss-drawer-header"));
+        Assert.Contains("Extra action", cut.Find(".wss-drawer-extra").TextContent);
+        Assert.Empty(cut.FindAll(".wss-drawer-close")); // still respects Closable=false
+    }
+
+    [Fact]
+    public void Drawer_keyboard_false_blocks_escape_even_when_closable()
+    {
+        var closed = false;
+        var cut = RenderComponent<Drawer>(p => p
+            .Add(d => d.Visible, true)
+            .Add(d => d.Title, "T")
+            .Add(d => d.Closable, true)
+            .Add(d => d.Keyboard, false)
+            .Add(d => d.OnClose, EventCallback.Factory.Create(this, () => closed = true)));
+
+        cut.Find(".wss-drawer").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        Assert.False(closed);
+    }
+
+    [Fact]
     public void Drawer_visible_renders_placement_class_and_title()
     {
         var cut = RenderComponent<Drawer>(p => p

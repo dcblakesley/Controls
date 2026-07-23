@@ -7,7 +7,7 @@
     @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap on a focusable/interactive
        target chain, so without it a mask tap never reaches @onclick (mask-close dead on touch). The
        JS focus trap preventDefaults outside mousedown, so the wrap can't actually steal focus. *@
-    <div class="wss-modal-wrap" tabindex="-1" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
+    <div class="wss-modal-wrap @(Centered ? "wss-modal-wrap-centered" : null)" tabindex="-1" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
         <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
              class="wss-modal @AttributeSplat.ConsumerClass(AdditionalAttributes)"
              style="@AttributeSplat.MergeStyle($"width:{Width}", AdditionalAttributes)" role="dialog" aria-modal="true"
@@ -71,10 +71,19 @@
     [Parameter] public EventCallback OnCancel { get; set; }
     /// <summary>Dialog width as a CSS length (e.g. "520px", "60%"). Defaults to "520px".</summary>
     [Parameter] public string Width { get; set; } = "520px";
-    /// <summary>Shows the header close icon and enables Escape-to-close. Defaults to true.</summary>
+    /// <summary>Shows the header close icon. Defaults to true. Escape-to-close is governed
+    /// independently by <see cref="Keyboard"/> — matching AntD, where <c>closable</c> only controls
+    /// the X button.</summary>
     [Parameter] public bool Closable { get; set; } = true;
     /// <summary>When true (default), clicking the mask outside the dialog cancels/closes it.</summary>
     [Parameter] public bool MaskClosable { get; set; } = true;
+    /// <summary>When true (default), pressing Escape cancels/closes the dialog. Independent of
+    /// <see cref="Closable"/> (which only shows/hides the header X) — matching AntD's
+    /// <c>keyboard</c> prop.</summary>
+    [Parameter] public bool Keyboard { get; set; } = true;
+    /// <summary>Vertically centers the dialog in the viewport instead of the default fixed
+    /// 100px-from-top offset.</summary>
+    [Parameter] public bool Centered { get; set; }
     /// <summary>Disables the default OK button while true (e.g. during async confirm work).</summary>
     [Parameter] public bool ConfirmLoading { get; set; }
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
@@ -139,7 +148,7 @@
 
     async Task OnKeyDownAsync(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape" && Closable) await CancelAsync();
+        if (e.Key == "Escape" && Keyboard) await CancelAsync();
     }
 
     int _activationSeq;
