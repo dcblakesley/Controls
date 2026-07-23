@@ -979,6 +979,13 @@
     white-space: nowrap;
 }
 
+.edit-file-size {
+    flex-shrink: 0;
+    white-space: nowrap;
+    color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+    font-size: 0.85em;
+}
+
 .edit-file-delete-btn {
     background: transparent;
     border: none;
@@ -1016,6 +1023,74 @@
 
 .edit-file-list--readonly .edit-file-item {
     cursor: default;
+}
+
+/* Variant="Button" -- a compact plain button (Ant Design's plain Upload, vs. the dashed Dragger
+   card above). Same invisible-InputFile-overlay technique as the drop zone: the input is the real,
+   focusable, click-catching element stretched over the whole button; everything else is inert. */
+.edit-file-select-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    height: 32px;
+    padding: 0 15px;
+    font-size: 14px;
+    line-height: 30px;
+    color: var(--color-text, rgba(0, 0, 0, 0.88));
+    background: var(--color-bg, #fff);
+    border: 1px solid var(--border-color, #d9d9d9);
+    border-radius: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+.edit-file-select-btn:hover {
+    color: var(--edit-color-primary);
+    border-color: var(--edit-color-primary);
+}
+
+.edit-file-select-btn:focus-within {
+    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
+    outline-offset: var(--edit-focus-offset);
+}
+
+.edit-file-select-btn.error {
+    border-color: var(--edit-color-danger);
+}
+
+.edit-file-select-btn.error:focus-within {
+    outline-color: var(--edit-color-danger);
+}
+
+.edit-file-select-btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.edit-file-select-btn.disabled input[type=file] {
+    cursor: not-allowed;
+}
+
+.edit-file-select-btn input[type=file] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.edit-icon-upload-btn {
+    height: 14px;
+    width: 14px;
+    display: inline-block;
+    flex-shrink: 0;
+    background-repeat: no-repeat;
+    background-size: contain;
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23277C6C"/></svg>');
 }
 
 /* ============================================================================

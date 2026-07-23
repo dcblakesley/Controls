@@ -29,8 +29,29 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<List<IBrowserFile>>>? Field { get; set; }
 
-    /// <summary> Accepted file extensions, e.g. <c>".pdf"</c>, <c>".xlsx"</c>. Empty = all types accepted.</summary>
+    /// <summary>
+    /// Accepted file "accept tokens", mirroring the native <c>&lt;input accept&gt;</c>/Ant Design's
+    /// <c>accept</c>: each entry is either a bare/dotted extension (<c>"pdf"</c>/<c>".pdf"</c>), a full
+    /// MIME type (<c>"application/pdf"</c>), or a MIME wildcard (<c>"image/*"</c>) -- detected by
+    /// whether the token contains <c>/</c>. Empty = all types accepted.
+    /// </summary>
     [Parameter] public string[] AllowedExtensions { get; set; } = [];
+
+    /// <summary> Visual style: the dashed drag-and-drop card (default), or a compact plain button
+    /// (<see cref="EditFileVariant.Button"/>, Ant Design's plain <c>Upload</c> look). </summary>
+    [Parameter] public EditFileVariant Variant { get; set; } = EditFileVariant.Dropzone;
+
+    /// <summary> Button text shown when <see cref="Variant"/> is <see cref="EditFileVariant.Button"/>. </summary>
+    [Parameter] public string ButtonText { get; set; } = "Select Files";
+
+    /// <summary>
+    /// Optional async gate run for each file, after the built-in format/size/count/duplicate checks
+    /// and before its bytes are buffered. Return <c>false</c> to reject the file (reported via
+    /// <see cref="BeforeAddRejectedMessageFormat"/>) -- e.g. a server-side dedupe check or content
+    /// sniffing the cheap built-in checks can't do. An exception propagates uncaught: that's a bug in
+    /// the consumer's hook, not a file rejection, so it isn't swallowed into an upload-error message.
+    /// </summary>
+    [Parameter] public Func<IBrowserFile, Task<bool>>? BeforeAdd { get; set; }
 
     /// <summary>
     /// Maximum size in bytes for any single file. Defaults to 10 MB. Also caps the per-file in-memory
@@ -71,6 +92,9 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// <summary> Aggregate size-cap message. {0} = formatted total limit (e.g. "100 MB"), {1} = number skipped, {2} = "file"/"files" (English plural of {1} — ignore when localizing).</summary>
     [Parameter] public string TotalSizeMessageFormat { get; set; } = "Total size limit of {0} reached — {1} {2} not added.";
 
+    /// <summary> <see cref="BeforeAdd"/> rejection message. {0} = file name.</summary>
+    [Parameter] public string BeforeAddRejectedMessageFormat { get; set; } = "{0} was rejected.";
+
     [Inject] IJSRuntime JS { get; set; } = default!;
 
     readonly List<string> _uploadErrors = [];
@@ -86,10 +110,32 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     // or it points at an element that isn't in the DOM.
     bool CanAddMoreFiles => MaxFiles <= 0 || Value is null || Value.Count < MaxFiles;
 
-    // AllowedExtensions entries are documented dot-prefixed (".pdf"), but a bare "pdf" is an easy
-    // consumer mistake that otherwise silently rejects every file (Path.GetExtension always returns
-    // the dot) and emits an invalid `accept` attribute — normalize instead of failing.
-    string[] NormalizedExtensions => [.. AllowedExtensions.Select(x => x.StartsWith('.') ? x : $".{x}")];
+    // AllowedExtensions doubles as an accept-token list: a token containing '/' is a MIME type (or
+    // MIME wildcard, e.g. "image/*") and is passed through verbatim -- dot-prefixing it (the old,
+    // MIME-unaware behavior) turned "image/*" into the meaningless ".image/*", both breaking the
+    // `accept` attribute and silently rejecting every file. A bare extension token is still
+    // normalized to a leading dot ("pdf" -> ".pdf") -- an easy consumer mistake that otherwise
+    // silently rejects every file, since Path.GetExtension always returns the dot.
+    static bool IsMimeToken(string token) => token.Contains('/');
+
+    string[] NormalizedExtensions => [.. AllowedExtensions.Select(x => IsMimeToken(x) ? x : (x.StartsWith('.') ? x : $".{x}"))];
+
+    // True when `file` satisfies accept token `token`, whichever of the three shapes it's written in:
+    // bare/dotted extension, full MIME type ("application/pdf"), or MIME wildcard ("image/*"). MIME
+    // matching reads the browser-reported IBrowserFile.ContentType (not sniffed) case-insensitively.
+    static bool MatchesAcceptToken(IBrowserFile file, string token)
+    {
+        if (!IsMimeToken(token))
+        {
+            var normalized = token.StartsWith('.') ? token : $".{token}";
+            return normalized.Equals(Path.GetExtension(file.Name), StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (token.EndsWith("/*", StringComparison.Ordinal))
+            return file.ContentType.StartsWith(token[..^1], StringComparison.OrdinalIgnoreCase);
+
+        return token.Equals(file.ContentType, StringComparison.OrdinalIgnoreCase);
+    }
 
     // Don't light up the drop zone as if it accepts a drop when it doesn't — the drop is refused when
     // disabled, so the hover highlight would be a lie.
@@ -150,9 +196,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
                 continue;
             }
 
-            var ext = Path.GetExtension(file.Name);
-            if (AllowedExtensions.Length > 0 &&
-                !NormalizedExtensions.Any(x => x.Equals(ext, StringComparison.OrdinalIgnoreCase)))
+            if (AllowedExtensions.Length > 0 && !AllowedExtensions.Any(t => MatchesAcceptToken(file, t)))
             {
                 _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
                     UnsupportedFormatMessageFormat, file.Name, string.Join(", ", AllowedExtensions)));
@@ -171,6 +215,15 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
             if (MaxTotalBytes > 0 && runningTotal + file.Size > MaxTotalBytes)
             {
                 skippedByTotalCap++;
+                continue;
+            }
+
+            // Last gate before buffering: an optional consumer hook (server-side dedupe, content
+            // sniffing) that the cheap built-in checks above can't do. Not caught -- an exception here
+            // is a bug in the hook, not a file rejection.
+            if (BeforeAdd is not null && !await BeforeAdd(file))
+            {
+                _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture, BeforeAddRejectedMessageFormat, file.Name));
                 continue;
             }
 

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -32,7 +33,11 @@ public class EditFileTests : TestContext
         bool isDisabled = false,
         long maxFileSizeBytes = 0,
         string[]? allowedExtensions = null,
-        long? maxTotalBytes = null)   // nullable so a test can pass 0 explicitly (0 = unlimited) vs. leave the 100 MB default
+        long? maxTotalBytes = null,   // nullable so a test can pass 0 explicitly (0 = unlimited) vs. leave the 100 MB default
+        EditFileVariant? variant = null,
+        string? buttonText = null,
+        Func<IBrowserFile, Task<bool>>? beforeAdd = null,
+        string? beforeAddRejectedMessageFormat = null)
     {
         Expression<Func<List<IBrowserFile>>> field = () => model.Files;
         return Render(WithForm(model, b =>
@@ -52,6 +57,14 @@ public class EditFileTests : TestContext
                 b.AddAttribute(7, "AllowedExtensions", allowedExtensions);
             if (maxTotalBytes is not null)
                 b.AddAttribute(8, "MaxTotalBytes", maxTotalBytes.Value);
+            if (variant is not null)
+                b.AddAttribute(9, "Variant", variant.Value);
+            if (buttonText is not null)
+                b.AddAttribute(10, "ButtonText", buttonText);
+            if (beforeAdd is not null)
+                b.AddAttribute(11, "BeforeAdd", beforeAdd);
+            if (beforeAddRejectedMessageFormat is not null)
+                b.AddAttribute(12, "BeforeAddRejectedMessageFormat", beforeAddRejectedMessageFormat);
             b.CloseComponent();
         }));
     }
@@ -463,6 +476,303 @@ public class EditFileTests : TestContext
 
         var list = cut.Find(".edit-file-list--readonly");
         Assert.Equal($"lbl-{list.GetAttribute("id")}", list.GetAttribute("aria-labelledby"));
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Accept tokens: MIME types and MIME wildcards (AntD/native `accept` parity), alongside the
+    // pre-existing bare/dotted extension shape covered above.
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Full_MIME_type_accept_tokens_are_not_dot_prefixed_and_match_by_ContentType()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: ["application/pdf"]);
+
+        // The old extension-only normalizer would have turned this into the meaningless ".application/pdf".
+        Assert.Equal("application/pdf", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        // Matches by ContentType, not extension -- a mismatched extension is irrelevant for a MIME token.
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "report.dat", contentType: "application/pdf"));
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("2", "other.pdf", contentType: "application/xml"));
+        Assert.Single(changed); // still 1 -- the second file's ContentType doesn't match the token
+        Assert.Contains("other.pdf", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
+    public void MIME_wildcard_accept_tokens_match_any_subtype_case_insensitively()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: ["image/*"]);
+
+        Assert.Equal("image/*", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.bin", contentType: "IMAGE/PNG"), // case-insensitive
+            InputFileContent.CreateFromText("2", "b.bin", contentType: "image/jpeg"),
+            InputFileContent.CreateFromText("3", "c.bin", contentType: "application/pdf"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(2, changed.Count); // the two image/* files, not the pdf
+        var message = cut.Find(".edit-validation-message").TextContent;
+        Assert.Contains("c.bin", message);
+        Assert.Contains("image/*", message); // human-readable token list in the rejection message
+    }
+
+    [Fact]
+    public void Extension_and_MIME_wildcard_accept_tokens_combine_in_one_AllowedExtensions_list()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, allowedExtensions: [".pdf", "image/*"]);
+
+        Assert.Equal(".pdf,image/*", cut.Find("input[type=file]").GetAttribute("accept"));
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.pdf", contentType: "application/pdf"), // extension match
+            InputFileContent.CreateFromText("2", "b.dat", contentType: "image/png"),        // MIME wildcard match
+            InputFileContent.CreateFromText("3", "c.dat", contentType: "text/plain"));      // matches neither
+
+        Assert.NotNull(changed);
+        Assert.Equal(["a.pdf", "b.dat"], changed.Select(f => f.Name));
+        Assert.Contains("c.dat", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // BeforeAdd: async per-file gate between the built-in checks and buffering.
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void BeforeAdd_returning_true_lets_the_file_through()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, beforeAdd: _ => Task.FromResult(true));
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+    }
+
+    [Fact]
+    public void BeforeAdd_returning_false_rejects_the_file_with_the_default_message()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v,
+            beforeAdd: f => Task.FromResult(f.Name != "blocked.txt"));
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "ok.txt"),
+            InputFileContent.CreateFromText("2", "blocked.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Equal(["ok.txt"], changed.Select(f => f.Name));
+        Assert.Contains("blocked.txt was rejected.", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
+    public void BeforeAdd_rejection_message_is_localizable()
+    {
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v,
+            beforeAdd: _ => Task.FromResult(false),
+            beforeAddRejectedMessageFormat: "{0} wurde abgelehnt.");
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+
+        Assert.Contains("a.txt wurde abgelehnt.", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    // Minimal hand-written IBrowserFile -- lets the exception-propagation test below call LoadFiles
+    // directly (via reflection) without going through bUnit's InputFile/dispatcher plumbing, whose
+    // exception-surfacing behavior for a component event handler is not something to depend on here.
+    sealed class FakeBrowserFile : IBrowserFile
+    {
+        public string Name => "a.txt";
+        public DateTimeOffset LastModified => DateTimeOffset.UtcNow;
+        public long Size => 5;
+        public string ContentType => "text/plain";
+        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default) =>
+            new MemoryStream(new byte[5]);
+    }
+
+    [Fact]
+    public async Task BeforeAdd_exceptions_propagate_instead_of_being_swallowed_as_a_rejection()
+    {
+        // A throwing hook is a bug in the consumer's code, not a file rejection -- LoadFiles must not
+        // catch it and turn it into an upload-error message like every other rejection path is.
+        // Invoked directly (reflection) rather than through bUnit's UploadFiles/dispatcher plumbing,
+        // whose exception-surfacing behavior for a faulted component event handler isn't something to
+        // depend on for this assertion -- this calls the exact method under test and awaits its Task.
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v,
+            beforeAdd: _ => throw new InvalidOperationException("boom"));
+
+        var editFile = cut.FindComponent<EditFile>().Instance;
+        var loadFiles = typeof(EditFile).GetMethod("LoadFiles", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        var args = new InputFileChangeEventArgs([new FakeBrowserFile()]);
+
+        var task = (Task)loadFiles.Invoke(editFile, [args])!;
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => task);
+
+        Assert.Equal("boom", ex.Message);
+    }
+
+    [Fact]
+    public void BeforeAdd_does_not_run_for_a_file_rejected_by_the_extension_filter()
+    {
+        // Format rejection happens before BeforeAdd -- prove the hook never sees a rejected file by
+        // making it throw if it's ever invoked (the upload must complete normally, hook untouched).
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model,
+            allowedExtensions: [".txt"],
+            beforeAdd: _ => throw new InvalidOperationException("BeforeAdd must not run for a rejected file."));
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.pdf"));
+
+        Assert.Contains("a.pdf", cut.Find(".edit-validation-message").TextContent);
+        Assert.Empty(cut.FindAll(".edit-file-item"));
+    }
+
+    [Fact]
+    public void BeforeAdd_does_not_run_for_a_duplicate_file()
+    {
+        // Duplicate rejection also happens before BeforeAdd. Seed the list with a file already
+        // selected (as an earlier batch would), then re-pick the same file -- it must be caught by
+        // the duplicate check and never reach the always-throwing hook.
+        var seed = InputFileContent.CreateFromText("hi", "b.txt");
+        var seeded = new FileModel { Files = [] };
+        var seedCut = RenderEditFile(seeded, v => seeded.Files = v);
+        seedCut.FindComponent<InputFile>().UploadFiles(seed);
+
+        var model = new FileModel { Files = seeded.Files };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v,
+            beforeAdd: _ => throw new InvalidOperationException("BeforeAdd must not run for a duplicate file."));
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("hi", "b.txt"));
+
+        Assert.Contains("b.txt is already added.", cut.Find(".edit-validation-message").TextContent);
+        Assert.Null(changed); // ValueChanged never fires -- nothing new was added
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // File size in the list rows (edit-mode and read-only).
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Edit_mode_list_shows_each_files_formatted_size()
+    {
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText(new string('x', 2048), "a.txt"));
+
+        Assert.Equal("2 KB", cut.Find(".edit-file-size").TextContent);
+    }
+
+    [Fact]
+    public void Read_only_list_also_shows_each_files_formatted_size()
+    {
+        List<IBrowserFile>? uploaded = null;
+        var upload = RenderEditFile(new FileModel { Files = [] }, v => uploaded = v);
+        upload.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("hello", "report.pdf"));
+
+        var model = new FileModel { Files = uploaded! };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        var item = cut.Find(".edit-file-list--readonly .edit-file-item");
+        Assert.Contains("report.pdf", item.TextContent);
+        Assert.Equal("5 B", cut.Find(".edit-file-list--readonly .edit-file-size").TextContent);
+    }
+
+    [Fact]
+    public void Empty_state_DOM_is_unchanged_by_the_size_display_and_Button_variant_additions()
+    {
+        // No files, default (unset) Variant -- none of this batch's new markup should appear.
+        var cut = RenderEditFile(new FileModel { Files = [] });
+
+        Assert.Single(cut.FindAll(".edit-file-drop-zone"));
+        Assert.Empty(cut.FindAll(".edit-file-list"));
+        Assert.Empty(cut.FindAll(".edit-file-size"));
+        Assert.Empty(cut.FindAll(".edit-file-select-btn"));
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Variant="Button": compact plain-button picker, same validation/caps, no dropzone.
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Button_variant_renders_a_button_not_a_drop_zone()
+    {
+        var cut = RenderEditFile(new FileModel { Files = [] }, variant: EditFileVariant.Button);
+
+        Assert.Empty(cut.FindAll(".edit-file-drop-zone"));
+        var btn = cut.Find(".edit-file-select-btn");
+        Assert.Equal("Select Files", btn.TextContent.Trim());
+        Assert.NotNull(cut.Find(".edit-file-select-btn input[type=file]"));
+    }
+
+    [Fact]
+    public void Button_variant_ButtonText_is_overridable()
+    {
+        var cut = RenderEditFile(new FileModel { Files = [] }, variant: EditFileVariant.Button, buttonText: "Upload Documents");
+
+        Assert.Equal("Upload Documents", cut.Find(".edit-file-select-btn").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Button_variant_applies_the_same_validation_as_the_drop_zone()
+    {
+        var model = new FileModel { Files = [] };
+        List<IBrowserFile>? changed = null;
+        var cut = RenderEditFile(model, v => changed = v, variant: EditFileVariant.Button, maxFiles: 1);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "a.txt"),
+            InputFileContent.CreateFromText("2", "b.txt"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+        Assert.Contains("Only 1 file allowed — 1 not added.", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
+    public void Button_variant_disables_its_input_when_IsDisabled()
+    {
+        var cut = RenderEditFile(new FileModel { Files = [] }, variant: EditFileVariant.Button, isDisabled: true);
+
+        Assert.True(cut.Find("input[type=file]").HasAttribute("disabled"));
+        Assert.Contains("disabled", cut.Find(".edit-file-select-btn").ClassList);
+    }
+
+    [Fact]
+    public void Button_variant_unmounts_its_input_at_the_MaxFiles_cap_like_the_drop_zone()
+    {
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v, variant: EditFileVariant.Button, maxFiles: 1);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+
+        Assert.Empty(cut.FindAll("input[type=file]"));
+        Assert.Empty(cut.FindAll(".edit-file-select-btn"));
     }
 
     [Fact]

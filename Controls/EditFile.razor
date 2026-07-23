@@ -11,29 +11,51 @@
         {
             @if (CanAddMoreFiles)
             {
-                <div class="edit-file-drop-zone @_hoverClass @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass"
-                     @ondragenter="OnDragEnter"
-                     @ondragleave="OnDragLeave"
-                     @ondragover="OnDragEnter"
-                     aria-label="File upload area">
-                    <i class="edit-icon-upload@(_hasError ? "-error" : "")" aria-hidden="true"></i>
-                    <div class="edit-file-drop-text">
-                        <div>Click or drag files to this area to upload</div>
-                        @if (AllowedExtensions.Length > 0)
-                        {
-                            <div class="edit-file-formats">Supported formats: @string.Join(", ", AllowedExtensions)</div>
-                        }
+                @if (Variant == EditFileVariant.Button)
+                {
+                    @* Same invisible-InputFile-overlay technique as the dropzone below (the input is the
+                       real, focusable, click-catching element; the button look is purely visual) -- so
+                       keyboard/focus/click behavior match even though there's no dashed card or drag-drop. *@
+                    <span class="edit-file-select-btn @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass">
+                        <i class="edit-icon-upload-btn" aria-hidden="true"></i>
+                        <span>@ButtonText</span>
+                        <InputFile OnChange="LoadFiles"
+                                   id=@_id
+                                   accept="@string.Join(",", NormalizedExtensions)"
+                                   multiple
+                                   disabled=@IsDisabled
+                                   aria-label="Choose files"
+                                   aria-describedby=@_describedBy
+                                   aria-invalid=@(_hasError ? "true" : null)
+                                   aria-required=@_isRequired />
+                    </span>
+                }
+                else
+                {
+                    <div class="edit-file-drop-zone @_hoverClass @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass"
+                         @ondragenter="OnDragEnter"
+                         @ondragleave="OnDragLeave"
+                         @ondragover="OnDragEnter"
+                         aria-label="File upload area">
+                        <i class="edit-icon-upload@(_hasError ? "-error" : "")" aria-hidden="true"></i>
+                        <div class="edit-file-drop-text">
+                            <div>Click or drag files to this area to upload</div>
+                            @if (AllowedExtensions.Length > 0)
+                            {
+                                <div class="edit-file-formats">Supported formats: @string.Join(", ", AllowedExtensions)</div>
+                            }
+                        </div>
+                        <InputFile OnChange="LoadFiles"
+                                   id=@_id
+                                   accept="@string.Join(",", NormalizedExtensions)"
+                                   multiple
+                                   disabled=@IsDisabled
+                                   aria-label="Choose files"
+                                   aria-describedby=@_describedBy
+                                   aria-invalid=@(_hasError ? "true" : null)
+                                   aria-required=@_isRequired />
                     </div>
-                    <InputFile OnChange="LoadFiles"
-                               id=@_id
-                               accept="@string.Join(",", NormalizedExtensions)"
-                               multiple
-                               disabled=@IsDisabled
-                               aria-label="Choose files"
-                               aria-describedby=@_describedBy
-                               aria-invalid=@(_hasError ? "true" : null)
-                               aria-required=@_isRequired />
-                </div>
+                }
             }
 
             @if (Value?.Count > 0)
@@ -45,6 +67,7 @@
                         <li class="edit-file-item">
                             <i class="edit-icon-paperclip" aria-hidden="true"></i>
                             <span class="edit-file-name">@f.Name</span>
+                            <span class="edit-file-size">@FormatSize(f.Size)</span>
                             <button type="button"
                                     id=@($"del-{_id}-{i}")
                                     class="edit-file-delete-btn"
@@ -93,6 +116,7 @@
                         <li class="edit-file-item">
                             <i class="edit-icon-paperclip" aria-hidden="true"></i>
                             <span>@file.Name</span>
+                            <span class="edit-file-size">@FormatSize(file.Size)</span>
                         </li>
                     }
                 </ul>
