@@ -167,7 +167,7 @@ public class RadioButtonModeTests : TestContext
         Assert.Contains(cut.FindAll("label.edit-radio-button"), l => l.TextContent.Trim() == "Other");
         // The Other free-text input still renders as a normal input, outside the button group.
         var textInput = cut.Find("#txt-Name-custom-value");
-        Assert.False(cut.Find(".edit-radio-button-group").Children.Contains(textInput));
+        Assert.DoesNotContain(textInput, cut.Find(".edit-radio-button-group").Children);
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public class RadioButtonModeTests : TestContext
 
         Assert.Equal(4, cut.FindAll(".edit-radio-button-wrap").Count);
         var textInput = cut.Find("input.edit-radio-other-input");
-        Assert.False(cut.Find(".edit-radio-button-group").Children.Contains(textInput));
+        Assert.DoesNotContain(textInput, cut.Find(".edit-radio-button-group").Children);
     }
 
     [Fact]
