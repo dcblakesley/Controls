@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
@@ -89,5 +90,63 @@ public class EditSelectSearchE2ETests(AppFixture app, BrowserFixture browser) : 
         var firstSection = Page.Locator("section.demo-section").First;
         await Expect(firstSection).ToBeVisibleAsync();
         await ExpectMatchesBaselineAsync(firstSection, "basic-section");
+    }
+
+    // ----- Controlled Open (bUnit can't run JS, so the actual placement side effect of an
+    // externally-driven open is only provable here) -----------------------------------------------
+
+    [Fact]
+    public async Task Controlled_Open_button_opens_the_dropdown_and_JS_positions_it()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "Controlled Open" });
+        var dropdown = section.Locator(".wss-select-dropdown");
+        var stateDiv = section.Locator(".controlled-open-state");
+
+        await Expect(dropdown).ToHaveCountAsync(0);
+        await Expect(stateDiv).ToHaveTextAsync("Open: False");
+
+        await section.GetByRole(AriaRole.Button, new() { Name = "Open externally" }).ClickAsync();
+
+        // Visible AND positioned (not stuck at wss-measuring) proves placeDropdown's JS ran on the
+        // externally-driven open, not just that _open flipped.
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await Expect(stateDiv).ToHaveTextAsync("Open: True");
+
+        // Close externally too -- the round trip back through OpenChanged updates the demo's state div.
+        // DispatchEventAsync (not ClickAsync): the open dropdown's full-viewport backdrop legitimately
+        // covers every other element while open (that's what makes an outside click close it), so a
+        // real position-based click can never reach this button until the dropdown is already closed.
+        // Dispatching the click event directly still exercises the exact same Blazor @onclick handler.
+        await section.GetByRole(AriaRole.Button, new() { Name = "Close externally" }).DispatchEventAsync("click");
+        await Expect(dropdown).ToHaveCountAsync(0);
+        await Expect(stateDiv).ToHaveTextAsync("Open: False");
+    }
+
+    // ----- JS horizontal clamp (bUnit can't run JS/measure layout) ---------------------------------
+
+    [Fact]
+    public async Task Horizontal_clamp_keeps_a_wide_dropdown_on_screen_near_the_right_viewport_edge()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "JS horizontal clamp" });
+        var select = section.Locator(".wss-select").First;
+        var dropdown = section.Locator(".wss-select-dropdown");
+
+        // Force the (normally document-flow-positioned) trigger near the right edge of the fixed
+        // 1280px viewport -- its long-labeled options make the dropdown far wider than the 90px
+        // trigger, so without the clamp it would run off-screen from this position.
+        await select.EvaluateAsync("el => { el.style.position = 'fixed'; el.style.left = (window.innerWidth - 100) + 'px'; el.style.top = '300px'; }");
+
+        await select.ClickAsync();
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+
+        var box = await dropdown.BoundingBoxAsync();
+        Assert.NotNull(box);
+        var viewportWidth = Page.ViewportSize!.Width;
+        Assert.True(box!.X + box.Width <= viewportWidth + 1,
+            $"dropdown right edge ({box.X + box.Width}) ran past the viewport width ({viewportWidth})");
     }
 }
