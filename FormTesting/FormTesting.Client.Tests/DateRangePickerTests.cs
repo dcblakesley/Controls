@@ -1571,4 +1571,117 @@ public class DateRangePickerTests : TestContext
         cut.Find(".wss-picker-grid-rows").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
         Assert.Equal("0", Day(cut, 0, 13).GetAttribute("tabindex"));
     }
+
+    // ===================================================================================
+    // DisabledDate
+    // ===================================================================================
+
+    [Fact]
+    public void DisabledDate_disables_matching_day_cells_and_the_typed_commit_guard_rejects_them()
+    {
+        // Jan 15 2025 is a Wednesday -- disable weekends and confirm both the cell attribute and the
+        // typed-text commit guard agree, mirroring DatePickerTests' identical convention.
+        DateTime? start = Jan15;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        Open(cut);
+
+        Assert.True(Day(cut, 0, 18).HasAttribute("disabled"));  // Saturday
+        Assert.True(Day(cut, 0, 19).HasAttribute("disabled"));  // Sunday
+        Assert.False(Day(cut, 0, 20).HasAttribute("disabled")); // Monday
+
+        var input = cut.Find(".wss-picker-input-start");
+        input.Input("01/18/2025"); // a disabled Saturday
+        input.Change("01/18/2025");
+
+        Assert.Equal(Jan15, start); // rejected -- unchanged
+        Assert.Equal("01/15/2025", input.GetAttribute("value"));
+    }
+
+    [Fact]
+    public void DisabledDate_at_month_granularity_disables_month_cells_using_the_month_start_argument()
+    {
+        var seenArgs = new List<DateTime>();
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Start, Jan15) // left panel 2025, right panel 2026
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d =>
+            {
+                seenArgs.Add(d);
+                return d.Month == 7;
+            })));
+
+        Open(cut);
+
+        Assert.True(MonthButton(cut, 0, 7).HasAttribute("disabled"));
+        Assert.False(MonthButton(cut, 0, 6).HasAttribute("disabled"));
+        Assert.Contains(new DateTime(2025, 7, 1), seenArgs); // the month START, not just any July date
+    }
+
+    [Fact]
+    public void DisabledDate_rejects_a_preset_whose_normalized_endpoints_land_on_a_disabled_unit()
+    {
+        DateTime? start = Jan15, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Month)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d == new DateTime(2025, 7, 1)))
+            .Add(c => c.Presets, new[]
+            {
+                // Resolves to two ordinary mid-month days -- NEITHER is literally July 1st -- but
+                // Month mode normalizes both to their own month start before committing, and the
+                // resolved start's normalized month (July 2025) is exactly what DisabledDate
+                // rejects, proving the guard checks the NORMALIZED result, not the raw resolved day.
+                new DateRangePreset("This range", new DateTime(2025, 7, 15), new DateTime(2025, 8, 10)),
+            })
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal(Jan15, start); // unchanged -- the preset no-oped instead of committing
+        Assert.Null(end);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // stays open -- nothing committed
+    }
+
+    [Fact]
+    public void Week_mode_click_is_rejected_when_disableddate_rejects_the_week_start_even_though_the_clicked_day_does_not()
+    {
+        // DisabledDate rejects ONLY the week start (Jan 5) -- the clicked day (Jan 10) evaluates the
+        // same predicate against ITS OWN day-granularity argument and comes back false, so its
+        // button stays enabled. Unlike Min/Max (where a disabled week always implies every day in it
+        // is also disabled), an arbitrary predicate can disagree between the two granularities -- the
+        // click path must still guard the week-start commit explicitly (see OnWeekDayClickAsync),
+        // mirroring DatePickerTests' identical case.
+        var disabledWeekStart = new DateTime(2025, 1, 5); // week Jan5-11
+        DateTime? start = null, end = null;
+        var cut = RenderComponent<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d == disabledWeekStart))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+
+        Assert.False(Day(cut, 0, 10).HasAttribute("disabled")); // the clicked day's own button stays enabled
+
+        Day(cut, 0, 10).Click(); // Jan 10 -- week Jan5-11 -- the week-start commit itself is rejected
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // nothing pending -- stays open
+
+        Day(cut, 1, 20).Click(); // Feb 20 -- week Feb16-22 -- this becomes the FIRST real pending start
+        Assert.Null(start);
+        Assert.Null(end);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // still open -- only one endpoint chosen
+
+        Day(cut, 0, 12).Click(); // Jan 12 -- week Jan12-18 -- commits the pending pick (swapped)
+
+        Assert.Equal(new DateTime(2025, 1, 12), start);
+        Assert.Equal(new DateTime(2025, 2, 16), end);
+    }
 }

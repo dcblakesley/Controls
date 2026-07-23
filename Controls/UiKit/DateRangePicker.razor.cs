@@ -73,6 +73,24 @@ public partial class DateRangePicker : PickerBase
     /// <see cref="Min"/>.</summary>
     [Parameter] public DateTime? Max { get; set; }
 
+    /// <summary>Extra disable predicate alongside <see cref="Min"/>/<see cref="Max"/> — a cell (or
+    /// a typed/clicked/preset commit) is disabled when either says so. Called with the CELL'S
+    /// committed-value representative, at <see cref="Mode"/>'s own granularity: the day at midnight
+    /// in <see cref="DatePickerMode.Date"/> (including <see cref="DatePickerMode.Week"/>'s
+    /// individual day buttons, which stay day-granularity even though the row's own
+    /// selection/commit unit is the week); the 1st of the month in <see cref="DatePickerMode.Month"/>;
+    /// January 1st in <see cref="DatePickerMode.Year"/>; the 1st of the quarter in
+    /// <see cref="DatePickerMode.Quarter"/>; and the WEEK START (not the individual day) for
+    /// <see cref="DatePickerMode.Week"/>'s own commit guard — a partially-disabled week's day
+    /// buttons can still be enabled while the row's commit itself is rejected, mirroring how
+    /// <see cref="Min"/>/<see cref="Max"/> already split that mode (see <see cref="DatePicker.DisabledDate"/>
+    /// for the single-date sibling's identical contract). A preset whose resolved, clamped, and
+    /// normalized endpoints land on a disabled unit no-ops instead of committing (see
+    /// <see cref="OnPresetClickAsync"/>) — unlike <see cref="Min"/>/<see cref="Max"/>, which a preset
+    /// always clamps past, an arbitrary predicate can still reject the clamped result. Called once
+    /// per rendered cell on every render (plus once per commit guard) — keep it cheap, no I/O.</summary>
+    [Parameter] public Func<DateTime, bool>? DisabledDate { get; set; }
+
     /// <summary>Display and primary parse format for the two inputs. Typed text is parsed with this
     /// exact format first, then with the current culture's general date parsing. Null (default)
     /// picks <see cref="Mode"/>'s default (same values as <see cref="DatePicker.Format"/>'s):
@@ -409,29 +427,40 @@ public partial class DateRangePicker : PickerBase
         return cls;
     }
 
+    // DisabledDate is folded into every granularity's Is*Disabled helper below (not called
+    // separately anywhere else) so every consumer of them -- the cell disabled attributes, the
+    // DefaultFocus*/FirstEnabled* skip logic, and IsUnitDisabled's typed-text/preset commit guards --
+    // picks it up automatically and can never disagree about what counts as disabled. Mirrors
+    // DatePicker's identical fold.
     bool IsDayDisabled(DateTime day) =>
-        (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date);
+        (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date) ||
+        (DisabledDate?.Invoke(day) ?? false);
 
     // Month-mode equivalent of IsDayDisabled: a whole month is disabled once it falls entirely
     // outside [Min, Max] at month granularity -- same granularity DatePicker.IsMonthDisabled uses.
     bool IsMonthDisabled(DateTime month) =>
-        (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max));
+        (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max)) ||
+        (DisabledDate?.Invoke(month) ?? false);
 
     // Year-mode equivalent, one granularity up.
     bool IsYearDisabled(DateTime year) =>
-        (Min is { } min && year < FirstOfYear(min)) || (Max is { } max && year > FirstOfYear(max));
+        (Min is { } min && year < FirstOfYear(min)) || (Max is { } max && year > FirstOfYear(max)) ||
+        (DisabledDate?.Invoke(year) ?? false);
 
     // Quarter-mode equivalent, at quarter granularity. `quarterStart` is already QuarterStart-shaped.
     bool IsQuarterDisabled(DateTime quarterStart) =>
-        (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max));
+        (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max)) ||
+        (DisabledDate?.Invoke(quarterStart) ?? false);
 
     // Week-mode equivalent of IsDayDisabled, at week granularity: a whole week is disabled once its
-    // 7-day span falls entirely outside [Min, Max] -- the individual day buttons stay enabled per
-    // IsDayDisabled above (a partially-in-range week is still clickable; only the commit itself is
-    // guarded here) -- mirrors DatePicker.IsWeekDisabledForCommit. `weekStart` is already
-    // WeekStart-shaped.
+    // 7-day span falls entirely outside [Min, Max] (or DisabledDate itself rejects the week start) --
+    // the individual day buttons stay enabled per IsDayDisabled above (a partially-in-range/disabled
+    // week is still clickable; only the commit itself is guarded here) -- mirrors
+    // DatePicker.IsWeekDisabledForCommit. `weekStart` is already WeekStart-shaped -- this is the one
+    // place DisabledDate sees a week start rather than a day.
     bool IsWeekDisabledForCommit(DateTime weekStart) =>
-        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date);
+        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date) ||
+        (DisabledDate?.Invoke(weekStart) ?? false);
 
     // Dispatches to the Mode-appropriate disabled check -- shared by the grid `disabled` attributes,
     // the DefaultFocus*/FirstEnabled* skip logic, and the typed-text commit guard, so they can never
@@ -1073,9 +1102,13 @@ public partial class DateRangePicker : PickerBase
 
     // A preset click (any Mode): resolve, clamp both ends into [Min, Max] at DAY granularity (so a
     // preset can never commit days the calendar itself would disable at that finer grain), then
-    // hand off to SetRangeAsync, which normalizes to Mode's own granularity centrally -- unlike a
-    // typed/clicked commit, a preset never rejects; it always clamps to something committable
-    // (matching the existing Preset_entirely_past_max/before_min clamp tests).
+    // hand off to SetRangeAsync, which normalizes to Mode's own granularity centrally -- Min/Max
+    // alone a preset never rejects; it always clamps to something committable (matching the existing
+    // Preset_entirely_past_max/before_min clamp tests). DisabledDate is a different story: an
+    // arbitrary predicate can still reject the clamped+normalized result even though it's inside
+    // [Min, Max], so the FINAL normalized endpoints (mirroring what SetRangeAsync itself would
+    // produce, swap included) are guarded via IsUnitDisabled before committing -- a rejection no-ops
+    // instead of committing, mirroring DatePicker.OnPresetClickAsync's own guard.
     async Task OnPresetClickAsync(DateRangePreset preset)
     {
         _startEdit = _endEdit = null;
@@ -1086,6 +1119,11 @@ public partial class DateRangePicker : PickerBase
         start = ClampToMinMax(start);
         end = ClampToMinMax(end);
         if (end < start) end = start;
+
+        var normalizedStart = NormalizeForMode(start);
+        var normalizedEnd = NormalizeForMode(end);
+        if (normalizedEnd < normalizedStart) (normalizedStart, normalizedEnd) = (normalizedEnd, normalizedStart);
+        if (IsUnitDisabled(normalizedStart) || IsUnitDisabled(normalizedEnd)) return;
 
         _selecting = false;
         _pendingStart = null;
