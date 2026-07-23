@@ -1799,6 +1799,172 @@ public class UiKitTableTests : TestContext
         Assert.Equal(2, cut.FindAll("tbody .wss-table-row").Count);
     }
 
+    // ----- No-op OK/Reset must not reset the page (Fix 3) -----
+
+    IRenderedComponent<Table<Person>> RenderPagedEvenFilterable(EventCallback<(Column<Person>, IReadOnlyList<string>)>? onFilterChanged = null)
+    {
+        var data = Enumerable.Range(1, 30).Select(i => new Person($"Item{i}", i)).ToList(); // Age = i
+        return RenderComponent<Table<Person>>(p =>
+        {
+            p.Add(t => t.DataSource, data);
+            p.Add(t => t.PageSize, 10); // 3 pages of 10
+            if (onFilterChanged is not null) p.Add(t => t.OnFilterChanged, onFilterChanged.Value);
+            p.AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, (IReadOnlyList<TableFilterOption>)[new("Even", "even")])
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Age % 2 == 0)));
+        });
+    }
+
+    [Fact]
+    public void A_no_op_OK_click_with_nothing_ticked_does_not_reset_the_page()
+    {
+        var cut = RenderPagedEvenFilterable();
+
+        cut.FindAll(".wss-pagination-item")[2].Click(); // page 3
+        Assert.Equal("3", cut.Find(".wss-pagination-item-active").TextContent);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-ok").Click(); // nothing ticked -- Applied is empty before and after
+
+        Assert.Equal("3", cut.Find(".wss-pagination-item-active").TextContent);
+    }
+
+    [Fact]
+    public void Reset_on_an_already_empty_filter_does_not_reset_the_page()
+    {
+        var cut = RenderPagedEvenFilterable();
+
+        cut.FindAll(".wss-pagination-item")[2].Click(); // page 3
+        Assert.Equal("3", cut.Find(".wss-pagination-item-active").TextContent);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-reset").Click(); // never had anything applied
+
+        Assert.Equal("3", cut.Find(".wss-pagination-item-active").TextContent);
+    }
+
+    [Fact]
+    public void A_real_filter_change_resets_to_page_1()
+    {
+        var cut = RenderPagedEvenFilterable();
+
+        cut.FindAll(".wss-pagination-item")[2].Click(); // page 3 of 3
+        Assert.Equal("3", cut.Find(".wss-pagination-item-active").TextContent);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Even");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        // 15 even rows / page size 10 = 2 pages -- must land back on page 1, not stay stranded on
+        // the now out-of-range page 3.
+        Assert.Equal(2, cut.FindAll(".wss-pagination-item").Count);
+        Assert.Equal("1", cut.Find(".wss-pagination-item-active").TextContent);
+    }
+
+    [Fact]
+    public void OnFilterChanged_does_not_fire_on_a_no_op_OK_or_Reset_only_on_a_real_change()
+    {
+        var fireCount = 0;
+        var cut = RenderPagedEvenFilterable(EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, _ => fireCount++));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-ok").Click(); // no-op OK
+        Assert.Equal(0, fireCount);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-reset").Click(); // no-op Reset
+        Assert.Equal(0, fireCount);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Even");
+        cut.Find(".wss-table-filter-ok").Click(); // real change
+        Assert.Equal(1, fireCount);
+    }
+
+    // ----- A filtered column removed from the render tree raises OnFilterChanged (Fix 4) -----
+
+    [Fact]
+    public void Hiding_a_column_with_an_active_filter_raises_OnFilterChanged_with_an_empty_payload()
+    {
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        var showName = true;
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            if (showName)
+            {
+                builder.OpenComponent<PropertyColumn<Person, string>>(0);
+                builder.AddAttribute(1, "Title", "Name");
+                builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+                builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)NameOptions());
+                builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<PropertyColumn<Person, int>>(5);
+            builder.AddAttribute(6, "Title", "Age");
+            builder.AddAttribute(7, "Property", (Func<Person, int>)(x => x.Age));
+            builder.CloseComponent();
+        };
+
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.NotNull(raised);
+        Assert.Equal(["Alice"], raised!.Value.Values);
+        Assert.Single(cut.FindAll("tbody .wss-table-row"));
+
+        raised = null;
+        showName = false; // drop the filtered column entirely
+        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.NotNull(raised);
+        Assert.Empty(raised!.Value.Values);
+        // The row set stops being narrowed by the now-gone column's filter too.
+        Assert.Equal(3, cut.FindAll("tbody .wss-table-row").Count);
+    }
+
+    // ----- ScrollY sticky header + Loading mask stacking (Fix 1) -----
+
+    [Fact]
+    public void Opening_a_column_filter_under_ScrollY_promotes_only_its_own_th()
+    {
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25) };
+        var cut = RenderComponent<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ScrollY, "160px")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v)))
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)));
+
+        var headers = cut.FindAll("thead th");
+        Assert.DoesNotContain("wss-table-cell-filter-open", headers[0].ClassList);
+        Assert.DoesNotContain("wss-table-cell-filter-open", headers[1].ClassList);
+
+        cut.Find(".wss-table-filter-trigger").Click();
+
+        headers = cut.FindAll("thead th");
+        Assert.Contains("wss-table-cell-filter-open", headers[0].ClassList); // Name's own th
+        Assert.DoesNotContain("wss-table-cell-filter-open", headers[1].ClassList); // Age's th untouched
+
+        cut.Find(".wss-table-filter-reset").Click();
+        headers = cut.FindAll("thead th");
+        Assert.DoesNotContain("wss-table-cell-filter-open", headers[0].ClassList); // closed again
+    }
+
     // ----- ScrollY -----
 
     [Fact]
