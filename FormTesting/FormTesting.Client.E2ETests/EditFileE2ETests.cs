@@ -106,4 +106,30 @@ public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         await Expect(section.Locator(".edit-file-item")).ToHaveCountAsync(1);
         await Expect(section.Locator(".edit-file-name")).ToHaveTextAsync("picked.txt");
     }
+
+    [Fact]
+    public async Task Button_variant_input_is_keyboard_focusable_and_shows_a_focus_indicator()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "Compact button" });
+        var input = section.Locator("input[type=file]");
+        var selectBtn = section.Locator(".edit-file-select-btn");
+
+        // The real <input type=file> is the focusable, click-catching element -- an invisible overlay
+        // stretched over the visible ".edit-file-select-btn" span, which carries no tabindex of its
+        // own. .FocusAsync() (calling .focus() directly) doesn't reliably trigger :focus-visible, so
+        // focus the preceding section's InputFile programmatically as a neutral starting point, then
+        // Tab onto the target with a real keypress (mirrors EditBoolE2ETests' checkbox pattern).
+        var previousInput = Page.Locator("section.demo-section", new() { HasTextString = "BeforeAdd hook" }).Locator("input[type=file]");
+        await previousInput.EvaluateAsync("el => el.focus()");
+        await Page.Keyboard.PressAsync("Tab");
+        await Expect(input).ToBeFocusedAsync();
+
+        // Real keyboard activation (Enter/Space opening the native file-chooser dialog) can't be
+        // asserted headlessly through Playwright -- assert the CSS focus state instead: focusing the
+        // input drives `.edit-file-select-btn:focus-within` in edit-controls.css, giving the visible
+        // button its focus ring even though the button itself is never the focus target.
+        var outline = await selectBtn.EvaluateAsync<string>("el => getComputedStyle(el).outlineStyle");
+        Assert.NotEqual("none", outline);
+    }
 }
