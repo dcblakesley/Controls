@@ -169,6 +169,85 @@ public class SelectEngineTests : TestContext
     }
 
     [Fact]
+    public void Disabled_select_ignores_ArrowDown_and_does_not_open()
+    {
+        // OnKeyDownAsync has no native-disabled backstop of its own to rely on in this test (bUnit
+        // dispatches straight to the handler regardless of the input's disabled attribute), so this
+        // exercises the handler's own Disabled guard directly.
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Disabled, true));
+
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        Assert.Empty(cut.FindAll("[role=listbox]"));
+    }
+
+    [Fact]
+    public void Disabled_select_ignores_typed_search_input_and_does_not_open()
+    {
+        var searched = false;
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Disabled, true)
+            .Add(s => s.OnSearch, (string _) => searched = true));
+
+        cut.Find("input.wss-select-selection-search-input").Input("a");
+
+        Assert.Empty(cut.FindAll("[role=listbox]"));
+        Assert.False(searched);
+    }
+
+    [Fact]
+    public void Disabled_blocks_SelectAsync_even_if_an_option_row_is_still_in_the_DOM()
+    {
+        // Defense in depth for the HIGH defect: OnParametersSetAsync's Disabled-closes invariant means
+        // a real render can never leave the dropdown open while Disabled, so to prove SelectAsync's own
+        // guard actually holds (not just the invariant that is supposed to make it moot) this bypasses
+        // the normal parameter lifecycle -- opens while enabled, then flips the Disabled property
+        // directly (skipping SetParametersAndRender/OnParametersSetAsync entirely) so the option row
+        // from the prior render is still sitting in the DOM, and clicks it.
+        string? selected = null;
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.ValueChanged, (string v) => selected = v));
+
+        cut.Find(".wss-select").Click(); // opens while enabled
+        Assert.NotEmpty(cut.FindAll(".wss-select-item-option"));
+
+#pragma warning disable BL0005 // deliberately bypassing the parameter lifecycle -- see comment above
+        cut.Instance.Disabled = true; // bypasses OnParametersSetAsync's Disabled-closes invariant
+#pragma warning restore BL0005
+
+        cut.Find(".wss-select-item-option").Click();
+
+        Assert.Null(selected); // SelectAsync's own Disabled guard blocked the mutation
+    }
+
+    [Fact]
+    public void Disabled_blocks_ClearAsync_even_if_the_clear_button_is_still_in_the_DOM()
+    {
+        // Same rationale as the SelectAsync test above -- ShowClear already hides this button when
+        // Disabled, so this proves ClearAsync's own guard rather than that suppression.
+        string? selected = "A";
+        var cut = RenderComponent<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Value, "A")
+            .Add(s => s.AllowClear, true)
+            .Add(s => s.ValueChanged, (string v) => selected = v));
+
+        Assert.NotEmpty(cut.FindAll("button.wss-select-clear"));
+
+#pragma warning disable BL0005 // deliberately bypassing the parameter lifecycle -- see comment above
+        cut.Instance.Disabled = true; // bypasses ShowClear's suppression, proving ClearAsync's own guard
+#pragma warning restore BL0005
+
+        cut.Find("button.wss-select-clear").Click();
+
+        Assert.Equal("A", selected); // ClearAsync's own Disabled guard blocked the mutation
+    }
+
+    [Fact]
     public void Clear_resets_a_single_select_to_default()
     {
         string? selected = "A";

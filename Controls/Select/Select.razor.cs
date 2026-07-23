@@ -284,8 +284,19 @@ public partial class Select<TValue> : IAsyncDisposable
     // Controlled Open/OpenChanged: async because routing an externally-driven change through
     // OpenAsync/CloseAsync (JS placement, focus) requires awaiting them, which OnParametersSet
     // (sync) cannot do. Runs after OnParametersSet on every parameter set, uncontrolled or not.
+    //
+    // Invariant enforced here: Disabled => dropdown closed. Checked first and unconditionally (before
+    // the controlled/uncontrolled branch below) so it also catches DefaultOpen+Disabled on the very
+    // first render (OnInitialized sets _open = DefaultOpen with no Disabled check of its own) and a
+    // Disabled flip on an already-open dropdown, controlled or not -- routed through the normal
+    // CloseAsync path so OpenChanged fires and JS/focus cleanup runs.
     protected override async Task OnParametersSetAsync()
     {
+        if (Disabled && _open)
+        {
+            await CloseAsync();
+        }
+
         if (!OpenChanged.HasDelegate)
         {
             // Uncontrolled (the default): Open/OpenChanged are inert and DefaultOpen alone governs
@@ -296,7 +307,16 @@ public partial class Select<TValue> : IAsyncDisposable
         }
 
         if (_lastOpenParam == Open) return; // unchanged since we last observed/raised it (includes our own echo)
+        // Recorded even when Disabled below goes on to suppress the request, so a repeated forced
+        // Open=true while still disabled keeps comparing equal here instead of being retried forever.
         _lastOpenParam = Open;
+
+        if (Disabled)
+        {
+            // Ignore an external Open=true request while disabled (the close above already handled
+            // an external Open=false against an open dropdown -- nothing further to do either way).
+            return;
+        }
 
         if (Open == _open) return; // already in the requested state
         if (Open) await OpenAsync(); else await CloseAsync();
@@ -584,6 +604,10 @@ public partial class Select<TValue> : IAsyncDisposable
 
     async Task OnInputAsync(ChangeEventArgs e)
     {
+        // Defense in depth: the native disabled attribute already stops a real browser from ever
+        // dispatching input events here, but nothing stops this handler running if that ever changes.
+        if (Disabled) return;
+
         // Update the text immediately so the input stays responsive...
         _searchText = e.Value?.ToString() ?? string.Empty;
         if (!_open) await OpenAsync();
@@ -639,7 +663,10 @@ public partial class Select<TValue> : IAsyncDisposable
 
     async Task SelectAsync(SelectOption<TValue> option)
     {
-        if (option.Disabled) return;
+        // Defense in depth: the option row's own click handler is the exploitable surface a forced-
+        // open, disabled dropdown would expose (see OnParametersSetAsync's Disabled-closes invariant) --
+        // guard the mutation itself too, not just the paths that are supposed to keep it from opening.
+        if (Disabled || option.Disabled) return;
 
         if (IsMultiple)
         {
@@ -688,6 +715,10 @@ public partial class Select<TValue> : IAsyncDisposable
 
     async Task ClearAsync()
     {
+        // Defense in depth: ShowClear already hides the clear button when Disabled, so this is
+        // normally unreachable -- guarded anyway in case another path ever calls it.
+        if (Disabled) return;
+
         if (IsMultiple)
         {
             ClearSelected();
@@ -713,6 +744,10 @@ public partial class Select<TValue> : IAsyncDisposable
 
     async Task CommitTagAsync()
     {
+        // Defense in depth: reachable today only via OnKeyDownAsync's own Disabled guard -- kept here
+        // too so this stays safe if ever called from anywhere else.
+        if (Disabled) return;
+
         var text = _searchText.Trim();
         if (text.Length == 0) return;
 
@@ -752,6 +787,12 @@ public partial class Select<TValue> : IAsyncDisposable
 
     async Task OnKeyDownAsync(KeyboardEventArgs e)
     {
+        // Defense in depth, mirroring OnWrapperClickAsync's whole-method Disabled gate: the native
+        // disabled attribute already stops a real browser from ever dispatching key events to this
+        // input, but every branch below can open the dropdown or mutate the value, so guard the
+        // entry point rather than each case individually.
+        if (Disabled) return;
+
         // A debounced search may have updated the text but not yet rebuilt _filtered; flush it before
         // any key that navigates or commits against that list, so it reflects what the user typed.
         if (_searchPending && e.Key is "Enter" or "ArrowDown" or "ArrowUp" or "Home" or "End")
