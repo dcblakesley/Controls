@@ -74,6 +74,64 @@
         <h3>Markup</h3>
         <pre class="code-block"><code>@_perOptionDisabledExample</code></pre>
     </section>
+
+    <section class="demo-section">
+        <EditRadioString @bind-Value="_model.ButtonOutline"
+                         Options="@_basicOptions"
+                         OptionType="RadioOptionType.Button"
+                         Description="Button mode, outline style (default)." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonOutlineExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRadioString @bind-Value="_model.ButtonSolid"
+                         Options="@_basicOptions"
+                         OptionType="RadioOptionType.Button"
+                         ButtonStyle="RadioButtonStyle.Solid"
+                         Description="Button mode, solid style." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonSolidExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRadioString @bind-Value="_model.ButtonSmall"
+                         Options="@_basicOptions"
+                         OptionType="RadioOptionType.Button"
+                         Size="SelectSize.Small" />
+
+        <EditRadioString @bind-Value="_model.ButtonLarge"
+                         Options="@_basicOptions"
+                         OptionType="RadioOptionType.Button"
+                         Size="SelectSize.Large" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonSizeExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRadioString @bind-Value="_model.ButtonWithOther"
+                         Options="@_basicOptions"
+                         OptionType="RadioOptionType.Button"
+                         HasOther="true"
+                         Description="Button mode composes with HasOther -- the Other button joins the row; its free-text input stays a normal input below." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonOtherExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRadioString @bind-Value="_model.ButtonDisabled"
+                         Options="@_basicOptions"
+                         OptionType="RadioOptionType.Button"
+                         IsOptionDisabled="@(o => o == "Green")"
+                         Description="Button mode composes with IsOptionDisabled -- Green is individually disabled." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonDisabledExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -96,6 +154,12 @@
 
         public string Disabled { get; set; } = "";
         public string PerOptionDisabled { get; set; } = "";
+        public string ButtonOutline { get; set; } = "Blue";
+        public string ButtonSolid { get; set; } = "Blue";
+        public string ButtonSmall { get; set; } = "Blue";
+        public string ButtonLarge { get; set; } = "Blue";
+        public string ButtonWithOther { get; set; } = "";
+        public string ButtonDisabled { get; set; } = "";
     }
 
     readonly string _basicExample = @"<EditRadioString @bind-Value=""_model.BasicOption""
@@ -144,6 +208,35 @@ public string Disabled { get; set; } = """";";
 
     readonly string _perOptionDisabledExample = @"<EditRadioString @bind-Value=""_model.PerOptionDisabled""
                 Options=""@_basicOptions""
+                IsOptionDisabled=""@(o => o == \""Green\"")"" />";
+
+    readonly string _buttonOutlineExample = @"<EditRadioString @bind-Value=""_model.ButtonOutline""
+                Options=""@_basicOptions""
+                OptionType=""RadioOptionType.Button"" />";
+
+    readonly string _buttonSolidExample = @"<EditRadioString @bind-Value=""_model.ButtonSolid""
+                Options=""@_basicOptions""
+                OptionType=""RadioOptionType.Button""
+                ButtonStyle=""RadioButtonStyle.Solid"" />";
+
+    readonly string _buttonSizeExample = @"<EditRadioString @bind-Value=""_model.ButtonSmall""
+                Options=""@_basicOptions""
+                OptionType=""RadioOptionType.Button""
+                Size=""SelectSize.Small"" />
+
+<EditRadioString @bind-Value=""_model.ButtonLarge""
+                Options=""@_basicOptions""
+                OptionType=""RadioOptionType.Button""
+                Size=""SelectSize.Large"" />";
+
+    readonly string _buttonOtherExample = @"<EditRadioString @bind-Value=""_model.ButtonWithOther""
+                Options=""@_basicOptions""
+                OptionType=""RadioOptionType.Button""
+                HasOther=""true"" />";
+
+    readonly string _buttonDisabledExample = @"<EditRadioString @bind-Value=""_model.ButtonDisabled""
+                Options=""@_basicOptions""
+                OptionType=""RadioOptionType.Button""
                 IsOptionDisabled=""@(o => o == \""Green\"")"" />";
 }
 

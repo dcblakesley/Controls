@@ -22,48 +22,98 @@
                    InputRadio below carries it individually. *@
                 <InputRadioGroup Value=@SelectedOption ValueChanged=@((string? v) => SelectedOption = v) ValueExpression=@ValueExpression>
 
-                    <div class=@(IsHorizontal
-                                   ? "edit-radio-buttons-container-horizontal"
-                                   : "edit-radio-buttons-container-vertical")>
-
-                        @foreach (var option in Options)
-                        {
-                            var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
-                            <label class=@($"{LabelClass} edit-radio-label")>
-                                <InputRadio Value=@option
-                                            disabled=@isOptionDisabled
-                                            id=@($"rb-{_id}-{option.ToId()}")
-                                            data-test-id=@($"rb-{_id}-{option.ToId()}")
-                                            class=@($"edit-radio-input {CssClass}") />
-
-                                @option
-                            </label>
-                        }
-
-                        <!-- Other -->
+                    @if (OptionType == RadioOptionType.Button)
+                    {
+                        @* Button mode is inherently horizontal (AntD's segmented look) -- IsHorizontal
+                           is ignored here rather than composed with it. Same InputRadio/keyboard
+                           semantics as default mode, just styled as a visually-hidden input + sibling
+                           label button (the established styled-checkbox technique). *@
+                        <div class=@ButtonGroupClass>
+                            @foreach (var option in Options)
+                            {
+                                var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
+                                var optionId = $"rb-{_id}-{option.ToId()}";
+                                <span class="edit-radio-button-wrap">
+                                    <InputRadio Value=@option
+                                                disabled=@isOptionDisabled
+                                                id=@optionId
+                                                data-test-id=@optionId
+                                                class=@($"edit-radio-button-input {CssClass}") />
+                                    <label class=@($"edit-radio-button {LabelClass}") for=@optionId>@option</label>
+                                </span>
+                            }
+                            @if (HasOther)
+                            {
+                                var otherId = $"rb-{_id}-other";
+                                <span class="edit-radio-button-wrap">
+                                    <InputRadio Value=@_otherName
+                                                id=@otherId
+                                                disabled=@IsDisabled
+                                                data-test-id=@otherId
+                                                class=@($"edit-radio-button-input {CssClass}") />
+                                    <label class=@($"edit-radio-button {LabelClass}") for=@otherId>Other</label>
+                                </span>
+                            }
+                        </div>
                         @if (HasOther)
                         {
                             <div class="edit-radio-other-option-container">
-
-                                    <label class=@($"edit-radio-label {LabelClass}")>
-                                        <InputRadio Value=@_otherName
-                                                    id=@($"rb-{_id}-other")
-                                                    disabled=@IsDisabled
-                                                    data-test-id=@($"rb-{_id}-other")
-                                                    class=@($"edit-radio-input {CssClass}") />
-                                        Other
-                                    </label>
                                 <input disabled="@(_selectedOption != _otherName || IsDisabled)"
                                        type="text"
                                        id=@($"txt-{_id}-custom-value")
                                        aria-label="Custom text value input"
                                        class="edit-input edit-string-input"
-                                       @bind:get=@_otherText    
+                                       @bind:get=@_otherText
                                        @bind:set=SetOtherText
                                        @bind:event="oninput"/>
                             </div>
                         }
-                    </div>
+                    }
+                    else
+                    {
+                        <div class=@(IsHorizontal
+                                       ? "edit-radio-buttons-container-horizontal"
+                                       : "edit-radio-buttons-container-vertical")>
+
+                            @foreach (var option in Options)
+                            {
+                                var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
+                                <label class=@($"{LabelClass} edit-radio-label")>
+                                    <InputRadio Value=@option
+                                                disabled=@isOptionDisabled
+                                                id=@($"rb-{_id}-{option.ToId()}")
+                                                data-test-id=@($"rb-{_id}-{option.ToId()}")
+                                                class=@($"edit-radio-input {CssClass}") />
+
+                                    @option
+                                </label>
+                            }
+
+                            <!-- Other -->
+                            @if (HasOther)
+                            {
+                                <div class="edit-radio-other-option-container">
+
+                                        <label class=@($"edit-radio-label {LabelClass}")>
+                                            <InputRadio Value=@_otherName
+                                                        id=@($"rb-{_id}-other")
+                                                        disabled=@IsDisabled
+                                                        data-test-id=@($"rb-{_id}-other")
+                                                        class=@($"edit-radio-input {CssClass}") />
+                                            Other
+                                        </label>
+                                    <input disabled="@(_selectedOption != _otherName || IsDisabled)"
+                                           type="text"
+                                           id=@($"txt-{_id}-custom-value")
+                                           aria-label="Custom text value input"
+                                           class="edit-input edit-string-input"
+                                           @bind:get=@_otherText
+                                           @bind:set=SetOtherText
+                                           @bind:event="oninput"/>
+                                </div>
+                            }
+                        </div>
+                    }
 
                 </InputRadioGroup>
             }

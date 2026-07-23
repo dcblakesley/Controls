@@ -22,44 +22,84 @@
                    InputRadio below carries it individually. *@
                 <InputRadioGroup Value=@CurrentValue ValueChanged=@((TEnum? v) => CurrentValue = v) ValueExpression=@ValueExpression>
 
-                    <div class=@(IsHorizontal
-                                          ? "edit-radio-buttons-container-horizontal"
-                                          : "edit-radio-buttons-container-vertical")>
-                @{
-                            var options = GetOptions();
-                            for (var i = 0; i < options.Count; i++)
+                    @if (OptionType == RadioOptionType.Button)
+                    {
+                        @* Button mode is inherently horizontal (AntD's segmented look) -- IsHorizontal
+                           is ignored here rather than composed with it. Same InputRadio/keyboard
+                           semantics as default mode, just styled as a visually-hidden input + sibling
+                           label button (the established styled-checkbox technique). *@
+                        var buttonOptions = GetOptions();
+                        <div class=@ButtonGroupClass>
+                            @foreach (var option in buttonOptions)
                             {
-                                var option = options[i];
-                                var isLastOption = i == options.Count - 1;
-                                var showOtherInput = HasOtherOption && isLastOption;
-
-                                <div class="edit-radio-option">
-                                    <label class=@($"edit-radio-label {LabelClass}")>
-                                        <InputRadio Value=@option
-                                                    disabled=@IsOptionDisabledFor(option)
-                                                    class=@($"edit-radio-input {CssClass}")
-                                                    id=@($"rb-{_id}-{option.ToId()}")
-                                                    data-test-id=@($"rb-{_id}-{option.ToId()}") />
-
-                                        @option.GetName()
-                                    </label>
-
-                                    @if (showOtherInput)
-                                    {
-                                        <input type="text"
-                                               value="@OtherValue"
-                                               @oninput="@(OnOtherValueChanged)"
-                                               disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsDisabled)"
-                                               class="edit-input edit-radio-other-input"
-                                               aria-label="Custom text value input"
-                                               placeholder=@OtherPlaceholder
-                                               id=@($"other-{_id}")
-                                               data-test-id=@($"other-{_id}") />
-                                    }
-                                </div>
+                                var optionId = $"rb-{_id}-{option.ToId()}";
+                                <span class="edit-radio-button-wrap">
+                                    <InputRadio Value=@option
+                                                disabled=@IsOptionDisabledFor(option)
+                                                class=@($"edit-radio-button-input {CssClass}")
+                                                id=@optionId
+                                                data-test-id=@optionId />
+                                    <label class=@($"edit-radio-button {LabelClass}") for=@optionId>@option.GetName()</label>
+                                </span>
                             }
+                        </div>
+                        @if (HasOtherOption && buttonOptions.Count > 0)
+                        {
+                            var lastOption = buttonOptions[^1];
+                            <div class="edit-radio-other-option-container">
+                                <input type="text"
+                                       value="@OtherValue"
+                                       @oninput="@(OnOtherValueChanged)"
+                                       disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, lastOption) || IsDisabled)"
+                                       class="edit-input edit-radio-other-input"
+                                       aria-label="Custom text value input"
+                                       placeholder=@OtherPlaceholder
+                                       id=@($"other-{_id}")
+                                       data-test-id=@($"other-{_id}") />
+                            </div>
                         }
-                    </div>
+                    }
+                    else
+                    {
+                        <div class=@(IsHorizontal
+                                              ? "edit-radio-buttons-container-horizontal"
+                                              : "edit-radio-buttons-container-vertical")>
+                    @{
+                                var options = GetOptions();
+                                for (var i = 0; i < options.Count; i++)
+                                {
+                                    var option = options[i];
+                                    var isLastOption = i == options.Count - 1;
+                                    var showOtherInput = HasOtherOption && isLastOption;
+
+                                    <div class="edit-radio-option">
+                                        <label class=@($"edit-radio-label {LabelClass}")>
+                                            <InputRadio Value=@option
+                                                        disabled=@IsOptionDisabledFor(option)
+                                                        class=@($"edit-radio-input {CssClass}")
+                                                        id=@($"rb-{_id}-{option.ToId()}")
+                                                        data-test-id=@($"rb-{_id}-{option.ToId()}") />
+
+                                            @option.GetName()
+                                        </label>
+
+                                        @if (showOtherInput)
+                                        {
+                                            <input type="text"
+                                                   value="@OtherValue"
+                                                   @oninput="@(OnOtherValueChanged)"
+                                                   disabled="@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsDisabled)"
+                                                   class="edit-input edit-radio-other-input"
+                                                   aria-label="Custom text value input"
+                                                   placeholder=@OtherPlaceholder
+                                                   id=@($"other-{_id}")
+                                                   data-test-id=@($"other-{_id}") />
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
                 </InputRadioGroup>
             }
             else

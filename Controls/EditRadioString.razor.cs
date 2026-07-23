@@ -34,6 +34,29 @@ public partial class EditRadioString : EditControlBase<string?>
     /// </summary>
     [Parameter] public Func<string, bool>? IsOptionDisabled { get; set; }
 
+    /// <summary>
+    /// Rendering mode, mirroring Ant Design's <c>Radio.Group optionType</c>. Defaults to
+    /// <see cref="RadioOptionType.Default"/> (today's plain-radio markup, unchanged).
+    /// <see cref="RadioOptionType.Button"/> renders AntD's segmented "button" look — the same
+    /// <c>InputRadio</c>/keyboard semantics, styled as joined bordered buttons. Inherently
+    /// horizontal: <see cref="IsHorizontal"/> is ignored in button mode. Composes with
+    /// <see cref="HasOther"/> (the Other radio joins the button row; its free-text input still
+    /// renders as a normal input below) and <see cref="IsOptionDisabled"/>.
+    /// </summary>
+    [Parameter] public RadioOptionType OptionType { get; set; } = RadioOptionType.Default;
+
+    /// <summary>
+    /// Checked-button coloring in <see cref="RadioOptionType.Button"/> mode (no effect otherwise),
+    /// mirroring Ant Design's <c>Radio.Group buttonStyle</c>. Defaults to <see cref="RadioButtonStyle.Outline"/>.
+    /// </summary>
+    [Parameter] public RadioButtonStyle ButtonStyle { get; set; } = RadioButtonStyle.Outline;
+
+    /// <summary>
+    /// Button size in <see cref="RadioOptionType.Button"/> mode (no effect otherwise) — reuses the
+    /// <see cref="SelectSize"/> the Select/EditString family already shares. Defaults to <see cref="SelectSize.Default"/>.
+    /// </summary>
+    [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
+
     string _otherText = "";
     // Internal radio value for the built-in "Other" option. Deliberately NOT the display text
     // "Other" — a consumer options list may legitimately contain "Other" as a real option, and the
@@ -69,6 +92,10 @@ public partial class EditRadioString : EditControlBase<string?>
             DeriveSelectionFromValue();
         }
     }
+
+    // Single computation site for the button-group root class -- keeps the base class + solid
+    // modifier + size class assembly identical to EditRadioEnum's copy.
+    string ButtonGroupClass => RadioButtonGroup.GroupClass(ButtonStyle, Size);
 
     void ComputeOtherSentinel()
     {

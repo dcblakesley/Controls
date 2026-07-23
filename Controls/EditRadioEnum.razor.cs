@@ -33,6 +33,29 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// </summary>
     [Parameter] public Func<TEnum, bool>? IsOptionDisabled { get; set; }
 
+    /// <summary>
+    /// Rendering mode, mirroring Ant Design's <c>Radio.Group optionType</c>. Defaults to
+    /// <see cref="RadioOptionType.Default"/> (today's plain-radio markup, unchanged).
+    /// <see cref="RadioOptionType.Button"/> renders AntD's segmented "button" look — the same
+    /// <c>InputRadio</c>/keyboard semantics, styled as joined bordered buttons. Inherently
+    /// horizontal: <see cref="IsHorizontal"/> is ignored in button mode. Composes with
+    /// <see cref="HasOtherOption"/> (the Other button joins the row; its free-text input still
+    /// renders as a normal input below) and <see cref="IsOptionDisabled"/>.
+    /// </summary>
+    [Parameter] public RadioOptionType OptionType { get; set; } = RadioOptionType.Default;
+
+    /// <summary>
+    /// Checked-button coloring in <see cref="RadioOptionType.Button"/> mode (no effect otherwise),
+    /// mirroring Ant Design's <c>Radio.Group buttonStyle</c>. Defaults to <see cref="RadioButtonStyle.Outline"/>.
+    /// </summary>
+    [Parameter] public RadioButtonStyle ButtonStyle { get; set; } = RadioButtonStyle.Outline;
+
+    /// <summary>
+    /// Button size in <see cref="RadioOptionType.Button"/> mode (no effect otherwise) — reuses the
+    /// <see cref="SelectSize"/> the Select/EditString family already shares. Defaults to <see cref="SelectSize.Default"/>.
+    /// </summary>
+    [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
+
     // Other Option
     /// <summary> When true, includes an "Other" option with a text input field. The last enum value is treated as the "Other" option.</summary>
     [Parameter] public bool HasOtherOption { get; set; } = false;
@@ -93,6 +116,10 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     // wrapper). A null option (shouldn't occur in practice) is simply never disabled by the predicate.
     bool IsOptionDisabledFor(TEnum? option) =>
         IsDisabled || (option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true);
+
+    // Single computation site for the button-group root class -- keeps the base class + solid
+    // modifier + size class assembly identical to EditRadioString's copy.
+    string ButtonGroupClass => RadioButtonGroup.GroupClass(ButtonStyle, Size);
 
     List<TEnum?> BuildOptions()
     {

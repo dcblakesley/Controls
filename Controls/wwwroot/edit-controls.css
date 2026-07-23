@@ -311,6 +311,126 @@
 }
 .edit-radio-other-option-container { }
 
+/* Button mode (EditRadioString/EditRadioEnum's OptionType="Button") -- Ant Design's segmented
+   "button" look for a radio group: joined bordered buttons, one highlighted as checked. This is a
+   new opt-in render mode (like Select/DatePicker), NOT gated behind .edit-theme -- it carries its
+   own styling regardless of whether the classic edit-theme chrome is applied elsewhere on the page,
+   so every token below is the plain generic --color-* bridge (resolves at any scope) rather than
+   the .edit-theme-scoped --edit-color-*-disabled/-text tokens, which don't exist outside that class.
+
+   Same technique as the styled checkbox: the real <input type="radio"> stays in the DOM (focusable,
+   keyboard-operable, full native semantics via InputRadioGroup/InputRadio) but is visually hidden;
+   a sibling <label> (native for/id association, not :has()) draws the button chrome and reacts to
+   the input's real :checked/:focus-visible/:disabled pseudo-classes via the adjacent-sibling (+)
+   selector -- no JS, no C#-computed "checked" class. */
+.edit-radio-button-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+}
+
+.edit-radio-button-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.edit-radio-button-input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.edit-radio-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    padding: 0 15px;
+    margin-inline-start: -1px;
+    font-size: 14px;
+    line-height: 30px;
+    color: var(--color-text, rgba(0, 0, 0, 0.88));
+    background: var(--color-bg, #fff);
+    border: 1px solid var(--border-color, #d9d9d9);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+/* First/last buttons get the group's outer corners; the rest stay square so the row reads as one
+   joined control (adjacent borders overlap via the negative margin above). */
+.edit-radio-button-wrap:first-child .edit-radio-button {
+    margin-inline-start: 0;
+    border-start-start-radius: 6px;
+    border-end-start-radius: 6px;
+}
+
+.edit-radio-button-wrap:last-child .edit-radio-button {
+    border-start-end-radius: 6px;
+    border-end-end-radius: 6px;
+}
+
+.edit-radio-button:hover {
+    z-index: 2;
+    color: var(--edit-color-primary);
+}
+
+.edit-radio-button-input:checked + .edit-radio-button {
+    z-index: 2;
+    color: var(--edit-color-primary);
+    border-color: var(--edit-color-primary);
+}
+
+/* ButtonStyle="Solid" -- the checked button fills with the primary color instead of just tinting
+   its border/text (ButtonStyle="Outline", the default, needs no extra rule beyond the one above). */
+.edit-radio-button-group-solid .edit-radio-button-input:checked + .edit-radio-button {
+    background: var(--edit-color-primary);
+    color: var(--color-on-primary, #fff);
+}
+
+.edit-radio-button-input:focus-visible + .edit-radio-button {
+    z-index: 2;
+    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
+    outline-offset: 1px;
+}
+
+.edit-radio-button-input:disabled + .edit-radio-button {
+    color: var(--color-text-disabled, rgba(0, 0, 0, 0.25));
+    background: var(--color-bg-disabled, #f5f5f5);
+    cursor: not-allowed;
+}
+
+/* Checked-but-disabled keeps the primary-tinted border instead of vanishing into the plain
+   disabled look, so a preselected-then-locked option is still readably "the checked one". */
+.edit-radio-button-input:disabled:checked + .edit-radio-button {
+    border-color: var(--edit-color-primary);
+}
+
+.edit-radio-button-group-solid .edit-radio-button-input:disabled:checked + .edit-radio-button {
+    background: var(--color-bg-disabled, #f5f5f5);
+    color: var(--color-text-disabled, rgba(0, 0, 0, 0.25));
+    border-color: var(--border-color, #d9d9d9);
+}
+
+/* Size="Small"/"Large" -- button-group-specific dimensions matching antd's Radio.Group size
+   recipe (EditInputShell's edit-input-sm/-lg tokens are for the text-input family, not this). */
+.edit-radio-button-group-sm .edit-radio-button {
+    height: 24px;
+    padding: 0 7px;
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.edit-radio-button-group-lg .edit-radio-button {
+    height: 40px;
+    padding: 0 15px;
+    font-size: 16px;
+    line-height: 38px;
+}
+
 /************************************************ EditSelect(String and Enum) *********************************************/
 .edit-select-select { }
 .edit-select-option { /* The options within the select control */ }

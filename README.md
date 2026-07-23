@@ -406,6 +406,25 @@ Two caveats for mixed estates:
 }
 ```
 
+#### Button-style radio group (`OptionType="Button"`)
+
+`EditRadioString` and `EditRadioEnum` also render as Ant Design's segmented "button" look — joined bordered buttons instead of plain radios:
+
+```razor
+<EditRadioString @bind-Value="model.Department"
+                 Options="@departments"
+                 OptionType="RadioOptionType.Button"
+                 ButtonStyle="RadioButtonStyle.Solid"
+                 Size="SelectSize.Large" />
+```
+
+- `OptionType` (`RadioOptionType`, default `Default`) — `Button` switches to the segmented look. Same `InputRadio`/`InputRadioGroup` plumbing and keyboard behavior underneath (a visually-hidden input + a sibling `<label>` styled as the button, matching the styled-checkbox technique — native `for`/`id`, not `:has()`).
+- `ButtonStyle` (`RadioButtonStyle`, default `Outline`) — only applies in button mode. `Outline` tints the checked button's border/text with the primary color; `Solid` fills its background instead.
+- `Size` (`SelectSize`, default `Default`) — only applies in button mode; reuses the same enum as `Select`/`EditString`/etc. (`Small`/`Default`/`Large`).
+- Button mode is inherently horizontal — `IsHorizontal` is ignored when `OptionType="Button"`.
+- Composes with `HasOther`/`HasOtherOption` (the Other button joins the row; its free-text input still renders as a normal `<input>` below, not inside the button row) and with `IsOptionDisabled` (a disabled option's button dims and refuses interaction, same as a disabled plain radio).
+- Default mode (`OptionType` unset) renders byte-identical markup to before — this is a fully opt-in mode, not gated behind `.edit-theme` (it carries its own styling, like `Select`/`EditDatePicker`).
+
 ### Checkbox List
 
 ```razor
@@ -562,6 +581,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **New** (Edit Controls)
 - `EditBool.Indeterminate` (`bool`, default `false`) — AntD's visual-only "mixed" checkbox state (does not change the bound value). Applied via JS after render (there's no HTML attribute for the `indeterminate` DOM property) through a new shared `wss-checkbox.js` module; the UI-kit `Table`'s header "select all" checkbox now imports the same helper instead of its own copy (`wss-table.js` re-exports it, so its module path is unchanged). Works with or without `UseStyledCheckbox`; degrades to a plain checked/unchecked box with no JS runtime. See [Indeterminate ("mixed") state](#indeterminate-mixed-state).
 - `IsOptionDisabled` (per-option disabling) on `EditCheckedStringList` (`Func<string, bool>?`), `EditCheckedEnumList<TEnum>` (`Func<TEnum, bool>?`), `EditRadioString` (`Func<string, bool>?`), and `EditRadioEnum<TEnum>` (`Func<TEnum, bool>?`) — disables the matching option in addition to (not instead of) the whole-group `IsDisabled`. Null (default) disables nothing. See [Per-option disabling](#per-option-disabling).
+- `EditRadioString`/`EditRadioEnum<TEnum>` gain `OptionType="RadioOptionType.Button"` — Ant Design's segmented "button" radio look (joined bordered buttons instead of plain radios), with `ButtonStyle` (`RadioButtonStyle.Outline`/`Solid`) and `Size` (the existing `SelectSize`) applying only in button mode. Same `InputRadio`/`InputRadioGroup` keyboard semantics; button mode is inherently horizontal (`IsHorizontal` is ignored) and composes with `HasOther`/`HasOtherOption` and `IsOptionDisabled`. New CSS-only mode (`.edit-radio-button-*` in `edit-controls.css`), not gated behind `.edit-theme`; default mode's markup is unchanged. See [Button-style radio group](#button-style-radio-group-optiontypebutton).
 
 **New** (UI Kit)
 - Hover tooltips (`data-tooltip`) — ported from the RPG Assistant app's `data-tooltip` convention. Not a component: a `data-tooltip="..."` attribute on any element gets a styled CSS-only hover/focus tooltip (arrow, slide-in, `:focus-visible` support, hidden under `hover: none`) via new rules in `wss-controls.css`, themed through `--wss-*` tokens plus the new `--wss-tooltip-gap` / `--wss-tooltip-z-index` knobs. The optional new `wss-tooltip.js` (a plain `<script>` tag, no interop) auto-places the bubble — above/below and left/right — based on the trigger's position within its nearest clipping ancestor or panel boundary (`wss-modal` / `wss-drawer` / `wss-popover`), so it stays inside a Modal/Drawer instead of running past the edge. See [Hover tooltips](#hover-tooltips-data-tooltip).

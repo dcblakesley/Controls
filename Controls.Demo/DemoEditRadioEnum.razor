@@ -131,6 +131,36 @@
         <h3>Markup</h3>
         <pre class="code-block"><code>@_perOptionDisabledExample</code></pre>
     </section>
+
+    <section class="demo-section">
+        <EditRadioEnum @bind-Value="_model.ButtonOutline"
+                       OptionType="RadioOptionType.Button"
+                       Description="Button mode, outline style (default)." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonOutlineExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRadioEnum @bind-Value="_model.ButtonSolid"
+                       OptionType="RadioOptionType.Button"
+                       ButtonStyle="RadioButtonStyle.Solid"
+                       Description="Button mode, solid style." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonSolidExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRadioEnum @bind-Value="_model.ButtonWithOther"
+                       OptionType="RadioOptionType.Button"
+                       HasOtherOption="true"
+                       @bind-OtherValue="_model.OtherValue"
+                       Description="Button mode composes with HasOtherOption -- the Other button joins the row; its free-text input stays a normal input below." />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_buttonOtherExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -155,6 +185,9 @@
 
         public Animal? SometimesRequired { get; set; }
         public Animal PerOptionDisabled { get; set; }
+        public Animal ButtonOutline { get; set; } = Animal.Dog;
+        public Animal ButtonSolid { get; set; } = Animal.Dog;
+        public Animal ButtonWithOther { get; set; }
 
         [DisplayName("Other / Custom Value")]
         public Bird Other { get; set; }
@@ -226,4 +259,16 @@ public Animal? Required { get; set; } = null;";
 
     readonly string _perOptionDisabledExample = @"<EditRadioEnum @bind-Value=""_model.PerOptionDisabled""
               IsOptionDisabled=""@(a => a == Animal.Bird)"" />";
+
+    readonly string _buttonOutlineExample = @"<EditRadioEnum @bind-Value=""_model.ButtonOutline""
+              OptionType=""RadioOptionType.Button"" />";
+
+    readonly string _buttonSolidExample = @"<EditRadioEnum @bind-Value=""_model.ButtonSolid""
+              OptionType=""RadioOptionType.Button""
+              ButtonStyle=""RadioButtonStyle.Solid"" />";
+
+    readonly string _buttonOtherExample = @"<EditRadioEnum @bind-Value=""_model.ButtonWithOther""
+              OptionType=""RadioOptionType.Button""
+              HasOtherOption=""true""
+              @bind-OtherValue=""_model.OtherValue"" />";
 }
