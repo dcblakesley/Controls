@@ -120,16 +120,20 @@
 }
 
 /************************************************ EditBool ***********************************************/
-.edit-checkbox-label { cursor: pointer; }
-
-/* Styled-checkbox labels (EditBool, EditCheckedStringList, EditCheckedEnumList) adopt the design's
-   row layout: box and text in a flex row, vertically centered, 8px apart (the antd checkbox+label
-   spacing). Scoped to the UseStyledCheckbox opt-in so the default native rendering keeps its
-   whitespace-based layout untouched. */
-.edit-checkbox-label-styled {
+/* Box and text in a flex row, vertically centered, 8px apart -- matches antd's default
+   Checkbox/Radio label spacing. Applies to every checkbox label (EditBool, EditCheckedStringList,
+   EditCheckedEnumList) regardless of UseStyledCheckbox. */
+.edit-checkbox-label {
+    cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 8px;
+}
+
+/* UseStyledCheckbox opt-in marker class -- no longer carries its own layout (the row/gap above is
+   now the default for every checkbox label), kept as a stable hook for consumers who want to target
+   the styled variant specifically. */
+.edit-checkbox-label-styled {
 }
 
 /* Opt-in custom-styled checkbox (EditBool's UseStyledCheckbox="true"). No current browser
@@ -290,7 +294,11 @@
 
 .edit-radio-label {
     /* edit-label is also applied to these labels, so if you want it to look the same you don't have to change this */
+    /* Flex row, 8px apart, matching antd's default Radio label spacing (mirrors .edit-checkbox-label). */
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 .edit-radio-input { }
 .edit-radio-option {

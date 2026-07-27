@@ -113,10 +113,12 @@ public class UseStyledCheckboxTests : BunitContext
     }
 
     [Fact]
-    public void Styled_label_carries_the_flex_alignment_class_and_native_does_not()
+    public void Styled_label_carries_the_opt_in_marker_class_and_native_does_not()
     {
-        // The design's checkbox+label row (flex, centered, 8px gap) is scoped to the styled opt-in
-        // via edit-checkbox-label-styled; the native variant's label must stay untouched.
+        // The checkbox+label row (flex, centered, 8px gap -- antd's default spacing) lives on
+        // .edit-checkbox-label itself now, so both variants get it; edit-checkbox-label-styled is
+        // just a marker class layered on for consumers who want to target the styled opt-in
+        // specifically, and native must not carry it.
         var styled = RenderCheckbox(perControl: true, formOptions: null, formDefaults: null);
         Assert.NotEmpty(styled.FindAll("label.edit-checkbox-label.edit-checkbox-label-styled"));
 
