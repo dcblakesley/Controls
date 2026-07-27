@@ -111,5 +111,27 @@ public partial class EditInputShell
         _ => null
     };
 
+    /// <summary>
+    /// Appends <see cref="SizeClass"/>'s token (if any) and the host's own <c>CssClass</c> to a
+    /// control-specific base class string — the single computation site for the tail every
+    /// Size-bearing host (EditDate/EditNumber/EditString/EditTextArea) repeats after building its
+    /// own affix-mode-dependent prefix.
+    /// </summary>
+    public static string BuildInputClass(string baseClasses, SelectSize size, string? cssClass)
+    {
+        var sizeClass = SizeClass(size);
+        var classes = sizeClass is null ? baseClasses : $"{baseClasses} {sizeClass}";
+        return $"{classes} {cssClass}";
+    }
+
+    /// <summary>
+    /// The shell's character-count text (AntD format: <c>"{length}"</c> alone, or
+    /// <c>"{length} / {maxLength}"</c> once <paramref name="maxLength"/> is set), or null when
+    /// <paramref name="showCount"/> is false -- the single computation site shared by EditString and
+    /// EditTextArea.
+    /// </summary>
+    public static string? BuildCountText(bool showCount, int length, int? maxLength) =>
+        !showCount ? null : maxLength is null ? $"{length}" : $"{length} / {maxLength}";
+
     bool UseAffixLayout => UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, ShowPasswordToggle);
 }

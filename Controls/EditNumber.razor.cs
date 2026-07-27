@@ -63,18 +63,9 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a non-default
     /// <see cref="Size"/> appends its <see cref="EditInputShell.SizeClass"/> token.
     /// </summary>
-    string InputClass
-    {
-        get
-        {
-            var classes = UseAffixLayout
-                ? "edit-input edit-number-input edit-affix-input"
-                : "edit-input edit-number-input";
-            var sizeClass = EditInputShell.SizeClass(Size);
-            if (sizeClass is not null) classes += $" {sizeClass}";
-            return $"{classes} {CssClass}";
-        }
-    }
+    string InputClass => EditInputShell.BuildInputClass(
+        UseAffixLayout ? "edit-input edit-number-input edit-affix-input" : "edit-input edit-number-input",
+        Size, CssClass);
 
     protected override void OnInitialized()
     {

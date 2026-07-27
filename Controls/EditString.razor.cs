@@ -79,11 +79,7 @@ public partial class EditString : EditControlBase<string?>
     /// <see cref="MaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
     /// treating null as zero.
     /// </summary>
-    string? CountText => !ShowCount
-        ? null
-        : MaxLength is null
-            ? $"{CurrentValue?.Length ?? 0}"
-            : $"{CurrentValue?.Length ?? 0} / {MaxLength}";
+    string? CountText => EditInputShell.BuildCountText(ShowCount, CurrentValue?.Length ?? 0, MaxLength);
 
     /// <summary>
     /// True once any affix parameter is in use -- the single computation site
@@ -98,18 +94,9 @@ public partial class EditString : EditControlBase<string?>
     /// adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a non-default
     /// <see cref="Size"/> appends its <see cref="EditInputShell.SizeClass"/> token.
     /// </summary>
-    string InputClass
-    {
-        get
-        {
-            var classes = UseAffixLayout
-                ? "edit-input edit-string-input edit-affix-input"
-                : "edit-input edit-string-input";
-            var sizeClass = EditInputShell.SizeClass(Size);
-            if (sizeClass is not null) classes += $" {sizeClass}";
-            return $"{classes} {CssClass}";
-        }
-    }
+    string InputClass => EditInputShell.BuildInputClass(
+        UseAffixLayout ? "edit-input edit-string-input edit-affix-input" : "edit-input edit-string-input",
+        Size, CssClass);
 
     /// <summary>
     /// The href to render in read-only link mode: the <see cref="Url"/> when it is relative or uses an

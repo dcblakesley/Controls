@@ -76,11 +76,7 @@ public partial class EditTextArea : EditControlBase<string?>
     /// <see cref="MaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
     /// treating null as zero.
     /// </summary>
-    string? CountText => !ShowCount
-        ? null
-        : MaxLength is null
-            ? $"{CurrentValue?.Length ?? 0}"
-            : $"{CurrentValue?.Length ?? 0} / {MaxLength}";
+    string? CountText => EditInputShell.BuildCountText(ShowCount, CurrentValue?.Length ?? 0, MaxLength);
 
     /// <summary>
     /// True once <see cref="AllowClear"/> or <see cref="ShowCount"/> is in use -- the single
@@ -103,9 +99,7 @@ public partial class EditTextArea : EditControlBase<string?>
             var classes = "edit-input edit-textarea-input";
             if (UseAffixLayout) classes += " edit-affix-input";
             if (AutoSize) classes += " edit-textarea-autosize";
-            var sizeClass = EditInputShell.SizeClass(Size);
-            if (sizeClass is not null) classes += $" {sizeClass}";
-            return $"{classes} {CssClass}";
+            return EditInputShell.BuildInputClass(classes, Size, CssClass);
         }
     }
 

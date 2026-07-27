@@ -40,16 +40,7 @@ public partial class EditDate<[DynamicallyAccessedMembers(DynamicallyAccessedMem
     /// string (byte-identical legacy DOM); otherwise appends <see cref="EditInputShell.SizeClass"/>'s
     /// token.
     /// </summary>
-    string InputClass
-    {
-        get
-        {
-            var classes = "edit-input edit-date-input";
-            var sizeClass = EditInputShell.SizeClass(Size);
-            if (sizeClass is not null) classes += $" {sizeClass}";
-            return $"{classes} {CssClass}";
-        }
-    }
+    string InputClass => EditInputShell.BuildInputClass("edit-input edit-date-input", Size, CssClass);
 
     protected override void OnInitialized()
     {
