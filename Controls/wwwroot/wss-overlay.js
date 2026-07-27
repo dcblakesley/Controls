@@ -10,10 +10,37 @@
 // Popover out-ranking a later Modal's mask. Starts above every static CSS band (the no-JS
 // fallback values) and resets at 4000 to stay under the 5000 toast layer; a reset only matters if
 // overlays are stacked at that exact moment, and self-heals on the next open.
-function nextZ() {
+export function nextZ() {
     const current = window.__wssOverlayZ;
     window.__wssOverlayZ = (current && current < 4000 ? current : 1048) + 2;
     return window.__wssOverlayZ;
+}
+
+// Whether a panel of `size` fits in the given `space`, honoring `gap` (distance from the anchor)
+// and `margin` (the caller's own viewport edge reserve, 0 if it doesn't reserve one). The one
+// fits-check every vertical/horizontal-flip site in this module (and wss-select.js's placeDropdown)
+// shares, so "should I flip?" always means "does the alternate side actually fit" -- not "does it
+// merely have more room than the preferred side", which could flip into a position that also
+// overflows, just in the other direction.
+export function fits(space, size, gap, margin) {
+    return space >= size + (gap || 0) + (margin || 0);
+}
+
+// Assigns the next open-order z-index (see nextZ) to `el` and, if its previous sibling carries
+// `backdropClass`, stacks that backdrop just below it. The one computation site every
+// backdrop-guarded overlay in this module (and wss-select.js's placeDropdown) repeats. Returns the
+// z-index assigned to `el` so the caller can hand it back to C# (see placePanel/placeDropdown's own
+// return-value contracts).
+export function stackWithBackdrop(el, backdropClass) {
+    const z = nextZ();
+    if (backdropClass) {
+        const backdrop = el.previousElementSibling;
+        if (backdrop && backdrop.classList.contains(backdropClass)) {
+            backdrop.style.zIndex = z;
+        }
+    }
+    el.style.zIndex = z + 1;
+    return z + 1;
 }
 
 export function place(trigger, panel, prefix, placement, gap, margin) {
@@ -24,12 +51,7 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
     margin = margin || 8;
 
     // Stack in open order: invisible backdrop below, panel above it.
-    const z = nextZ();
-    const backdrop = panel.previousElementSibling;
-    if (backdrop && backdrop.classList.contains(`${prefix}-backdrop`)) {
-        backdrop.style.zIndex = z;
-    }
-    panel.style.zIndex = z + 1;
+    stackWithBackdrop(panel, `${prefix}-backdrop`);
 
     // Start from a clean shift so measurements reflect the un-shifted panel.
     panel.style.setProperty('--wss-shift', '0px');
@@ -39,16 +61,17 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
     const ph = panel.offsetHeight;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    const spaceAbove = t.top, spaceBelow = vh - t.bottom, spaceLeft = t.left, spaceRight = vw - t.right;
 
-    // Flip on the main axis only when the opposite side has room.
+    // Flip on the main axis only when the opposite side actually fits.
     let place = placement;
-    if (place === 'top' && t.top - gap - ph < margin && t.bottom + gap + ph <= vh - margin) {
+    if (place === 'top' && !fits(spaceAbove, ph, gap, margin) && fits(spaceBelow, ph, gap, margin)) {
         place = 'bottom';
-    } else if (place === 'bottom' && t.bottom + gap + ph > vh - margin && t.top - gap - ph >= margin) {
+    } else if (place === 'bottom' && !fits(spaceBelow, ph, gap, margin) && fits(spaceAbove, ph, gap, margin)) {
         place = 'top';
-    } else if (place === 'left' && t.left - gap - pw < margin && t.right + gap + pw <= vw - margin) {
+    } else if (place === 'left' && !fits(spaceLeft, pw, gap, margin) && fits(spaceRight, pw, gap, margin)) {
         place = 'right';
-    } else if (place === 'right' && t.right + gap + pw > vw - margin && t.left - gap - pw >= margin) {
+    } else if (place === 'right' && !fits(spaceRight, pw, gap, margin) && fits(spaceLeft, pw, gap, margin)) {
         place = 'left';
     }
 
@@ -277,19 +300,14 @@ export function placePanel(wrapper, panel, backdropClass, gap) {
     }
     gap = gap || 4;
 
-    const z = nextZ();
-    const backdrop = wrapper.previousElementSibling;
-    if (backdrop && backdropClass && backdrop.classList.contains(backdropClass)) {
-        backdrop.style.zIndex = z;
-    }
-    wrapper.style.zIndex = z + 1;
+    const z = stackWithBackdrop(wrapper, backdropClass);
 
     const w = wrapper.getBoundingClientRect();
     const ph = panel.offsetHeight;
     const pw = panel.offsetWidth;
     const roomBelow = window.innerHeight - w.bottom;
     const roomAbove = w.top;
-    if (roomBelow < ph + gap && roomAbove > roomBelow) {
+    if (!fits(roomBelow, ph, gap, 0) && fits(roomAbove, ph, gap, 0)) {
         panel.style.top = 'auto';
         panel.style.bottom = `calc(100% + ${gap}px)`;
     } else {
@@ -304,7 +322,7 @@ export function placePanel(wrapper, panel, backdropClass, gap) {
     const shift = overflowRight > 0 ? Math.min(overflowRight, Math.max(0, w.left - margin)) : 0;
     panel.style.left = `${-Math.round(shift)}px`;
 
-    return z + 1;
+    return z;
 }
 
 // Removes the open-order z-index applied by placePanel once the panel closes (the wrapper persists
@@ -354,8 +372,9 @@ function repositionFixedBelow(trigger, panel, gap) {
     const vh = window.innerHeight;
 
     // Flip above the trigger when there's no room below (mirrors place()/placeDropdown()'s flip).
+    const spaceBelow = vh - t.bottom, spaceAbove = t.top;
     let top = t.bottom + gap;
-    if (top + ph > vh - margin && t.top - gap - ph >= margin) {
+    if (!fits(spaceBelow, ph, gap, margin) && fits(spaceAbove, ph, gap, margin)) {
         top = t.top - gap - ph;
     }
 
@@ -423,18 +442,30 @@ export function initPicker(wrapper, startInput, endInput) {
             });
         }
     }
-    if (wrapper && !wrapper.__wssPickerFocusWired) {
-        wrapper.__wssPickerFocusWired = true;
-        wrapper.addEventListener('focusout', e => {
-            if (!e.relatedTarget || wrapper.contains(e.relatedTarget)) {
-                return;
-            }
-            const backdrop = wrapper.previousElementSibling;
-            if (backdrop && backdrop.classList.contains('wss-picker-backdrop')) {
-                backdrop.click();
-            }
-        });
+    wireDismissOnFocusOut(wrapper, 'wss-picker-backdrop');
+}
+
+// Tabbing away from a wrapper with an open backdrop-guarded popup used to leave it open, its
+// invisible backdrop silently swallowing the next click anywhere on the page. relatedTarget is the
+// keyboard destination; it's null for mouse presses on non-focusable targets (already owned by the
+// backdrop/option click handlers), so only act when the destination is known. Wired once per
+// wrapper (idempotent -- callers may re-invoke on every render). Shared by wss-select.js's
+// initInput and this module's own initPicker, whose focusout handlers were otherwise
+// byte-identical aside from the backdrop class literal.
+export function wireDismissOnFocusOut(wrapper, backdropClass) {
+    if (!wrapper || wrapper.__wssFocusWired) {
+        return;
     }
+    wrapper.__wssFocusWired = true;
+    wrapper.addEventListener('focusout', e => {
+        if (!e.relatedTarget || wrapper.contains(e.relatedTarget)) {
+            return;
+        }
+        const backdrop = wrapper.previousElementSibling;
+        if (backdrop && backdrop.classList.contains(backdropClass)) {
+            backdrop.click();
+        }
+    });
 }
 
 // --- Modal / Drawer focus management ---------------------------------------------------------

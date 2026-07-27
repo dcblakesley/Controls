@@ -3,6 +3,8 @@
 // dropdown above the control when there's no room below, and tames the search input's native
 // key defaults (which C# handlers can't do — Blazor has no per-key preventDefault).
 // No third-party or Ant Design dependency.
+import { fits, stackWithBackdrop, clearZ, wireDismissOnFocusOut } from './wss-overlay.js';
+export { clearZ };
 
 export function scrollActiveIntoView(container, index, itemSize) {
     if (!container || index < 0) {
@@ -35,24 +37,19 @@ export function placeDropdown(wrapper, dropdown, gap) {
     }
     gap = gap || 4;
 
-    // Stack in open order via the counter shared with wss-overlay.js (window global — separate
-    // modules can't share module state): backdrop below, the selector box + dropdown above it, so
-    // a select opened inside a modal paints above that modal and clicking the select's own
-    // input/tags/clear button doesn't hit the backdrop. clearZ removes the inline value on close
-    // (the wrapper persists in the page, and a stale high z would poke through later overlay masks).
-    const current = window.__wssOverlayZ;
-    const z = window.__wssOverlayZ = (current && current < 4000 ? current : 1048) + 2;
-    const backdrop = wrapper.previousElementSibling;
-    if (backdrop && backdrop.classList.contains('wss-select-backdrop')) {
-        backdrop.style.zIndex = z;
-    }
-    wrapper.style.zIndex = z + 1;
+    // Stack in open order via the counter shared with wss-overlay.js (a window global under it —
+    // separate modules can't share module state): backdrop below, the selector box + dropdown above
+    // it, so a select opened inside a modal paints above that modal and clicking the select's own
+    // input/tags/clear button doesn't hit the backdrop. clearZ (imported/re-exported above) removes
+    // the inline value on close (the wrapper persists in the page, and a stale high z would poke
+    // through later overlay masks).
+    const z = stackWithBackdrop(wrapper, 'wss-select-backdrop');
     const w = wrapper.getBoundingClientRect();
     const dropdownHeight = dropdown.offsetHeight;
     const dropdownWidth = dropdown.offsetWidth;
     const roomBelow = window.innerHeight - w.bottom;
     const roomAbove = w.top;
-    if (roomBelow < dropdownHeight + gap && roomAbove > roomBelow) {
+    if (!fits(roomBelow, dropdownHeight, gap, 0) && fits(roomAbove, dropdownHeight, gap, 0)) {
         dropdown.style.top = 'auto';
         dropdown.style.bottom = `calc(100% + ${gap}px)`;
     } else {
@@ -74,14 +71,7 @@ export function placeDropdown(wrapper, dropdown, gap) {
     }
 
     // Hand the wrapper's z-index back so C# can re-assert it on every bound-style re-render.
-    return z + 1;
-}
-
-// Removes the open-order z-index applied by placeDropdown once the dropdown closes.
-export function clearZ(el) {
-    if (el) {
-        el.style.zIndex = '';
-    }
+    return z;
 }
 
 // Suppresses the browser defaults that fight the combobox keyboard model. Blazor's @onkeydown
@@ -111,19 +101,6 @@ export function initInput(input, wrapper) {
     }
 
     // Tabbing away used to leave the dropdown open with its invisible backdrop silently swallowing
-    // the next click anywhere on the page. relatedTarget is the keyboard destination; it's null for
-    // mouse presses on non-focusable targets (e.g. a dropdown option), and those flows are already
-    // owned by the backdrop/option click handlers — so only act when the destination is known.
-    if (wrapper && !wrapper.__wssFocusWired) {
-        wrapper.__wssFocusWired = true;
-        wrapper.addEventListener('focusout', e => {
-            if (!e.relatedTarget || wrapper.contains(e.relatedTarget)) {
-                return;
-            }
-            const backdrop = wrapper.previousElementSibling;
-            if (backdrop && backdrop.classList.contains('wss-select-backdrop')) {
-                backdrop.click(); // routes through the component's own close path
-            }
-        });
-    }
+    // the next click anywhere on the page (routes through the component's own close path).
+    wireDismissOnFocusOut(wrapper, 'wss-select-backdrop');
 }
