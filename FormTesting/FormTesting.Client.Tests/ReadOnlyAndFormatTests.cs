@@ -13,7 +13,7 @@ namespace FormTesting.Client.Tests;
 ///   value's own type, and degrade (not throw) when the format is incompatible with that type.</item>
 /// </list>
 /// </summary>
-public class ReadOnlyAndFormatTests : TestContext
+public class ReadOnlyAndFormatTests : BunitContext
 {
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {

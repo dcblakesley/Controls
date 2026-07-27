@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -11,7 +12,7 @@ namespace FormTesting.Client.Tests;
 /// <c>List&lt;IBrowserFile&gt;</c> property is never initialized must render and accept uploads
 /// rather than throwing.
 /// </summary>
-public class EditFileTests : TestContext
+public class EditFileTests : BunitContext
 {
     class FileModel
     {
@@ -26,7 +27,7 @@ public class EditFileTests : TestContext
         builder.CloseComponent();
     };
 
-    IRenderedFragment RenderEditFile(
+    IRenderedComponent<ContainerFragment> RenderEditFile(
         FileModel model,
         Action<List<IBrowserFile>>? onChanged = null,
         int maxFiles = 0,

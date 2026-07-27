@@ -13,7 +13,7 @@ namespace FormTesting.Client.Tests;
 /// only proves the render completes and the binding still works; the real resize behavior gets e2e
 /// coverage instead (see EditTextAreaE2ETests in FormTesting.Client.E2ETests).
 /// </summary>
-public class EditTextAreaAffixTests : TestContext
+public class EditTextAreaAffixTests : BunitContext
 {
     public EditTextAreaAffixTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate Clear()'s FocusAsync + AutoSize's JS call
 

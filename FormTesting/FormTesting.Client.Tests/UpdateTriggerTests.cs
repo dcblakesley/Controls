@@ -21,7 +21,7 @@ namespace FormTesting.Client.Tests;
 /// asserts that throw for the non-resolved event before asserting the resolved event actually commits
 /// the value — proving the two events are mutually exclusive, not just that the expected one works.
 /// </remarks>
-public class UpdateTriggerTests : TestContext
+public class UpdateTriggerTests : BunitContext
 {
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {

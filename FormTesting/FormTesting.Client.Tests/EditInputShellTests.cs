@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -16,12 +17,12 @@ namespace FormTesting.Client.Tests;
 ///   <see cref="EditInputShell"/> since no host control passes affix parameters yet.</item>
 /// </list>
 /// </summary>
-public class EditInputShellTests : TestContext
+public class EditInputShellTests : BunitContext
 {
     // EditForm(editContext) -> DataAnnotationsValidator + CascadingValue<FormOptions> -> inner.
     // Mirrors ValidationStateTests.RenderForm: passing the EditContext explicitly (rather than
     // EditForm.Model) is what lets a test call editContext.Validate() itself.
-    IRenderedFragment RenderForm(EditContext editContext, RenderFragment inner) =>
+    IRenderedComponent<ContainerFragment> RenderForm(EditContext editContext, RenderFragment inner) =>
         Render(b =>
         {
             b.OpenComponent<EditForm>(0);
@@ -223,7 +224,7 @@ public class EditInputShellTests : TestContext
     [Fact]
     public void EditInputShell_renders_legacy_markup_when_no_affix_parameter_is_set()
     {
-        var cut = RenderComponent<EditInputShell>(p => p
+        var cut = Render<EditInputShell>(p => p
             .AddChildContent("<input class=\"my-editor\" />"));
 
         Assert.Single(cut.FindAll(".edit-input-with-icon"));
@@ -233,13 +234,13 @@ public class EditInputShellTests : TestContext
     [Fact]
     public void EditInputShell_affix_wrapper_carries_the_invalid_class_only_while_invalid()
     {
-        var invalid = RenderComponent<EditInputShell>(p => p
+        var invalid = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.IsInvalid, true)
             .AddChildContent("<input />"));
         Assert.Contains("edit-input-affix-invalid", invalid.Find(".edit-input-affix-wrapper").ClassList);
 
-        var valid = RenderComponent<EditInputShell>(p => p
+        var valid = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.IsInvalid, false)
             .AddChildContent("<input />"));
@@ -249,7 +250,7 @@ public class EditInputShellTests : TestContext
     [Fact]
     public void EditInputShell_affix_wrapper_places_prefix_before_and_suffix_after_the_editor()
     {
-        var cut = RenderComponent<EditInputShell>(p => p
+        var cut = Render<EditInputShell>(p => p
             .Add(s => s.Prefix, "<span class=\"my-prefix\">$</span>")
             .Add(s => s.AllowClear, true)
             .AddChildContent("<input class=\"my-editor\" />"));
@@ -264,7 +265,7 @@ public class EditInputShellTests : TestContext
     [Fact]
     public void EditInputShell_suffix_order_is_clear_then_count_then_custom_suffix_then_password_then_invalid()
     {
-        var cut = RenderComponent<EditInputShell>(p => p
+        var cut = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.IsClearable, true)
             .Add(s => s.CountText, "3 / 10")
@@ -288,7 +289,7 @@ public class EditInputShellTests : TestContext
     {
         // AllowClear alone keeps the affix wrapper in place (so the box doesn't resize as the user
         // types); the button itself only shows while IsClearable is also true.
-        var cut = RenderComponent<EditInputShell>(p => p
+        var cut = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.IsClearable, false)
             .AddChildContent("<input />"));
@@ -303,7 +304,7 @@ public class EditInputShellTests : TestContext
     public void EditInputShell_password_toggle_aria_and_icon_reflect_IsPasswordRevealed(
         bool revealed, string expectedLabel, string expectedPressed, string expectedIcon)
     {
-        var cut = RenderComponent<EditInputShell>(p => p
+        var cut = Render<EditInputShell>(p => p
             .Add(s => s.ShowPasswordToggle, true)
             .Add(s => s.IsPasswordRevealed, revealed)
             .AddChildContent("<input />"));
@@ -319,7 +320,7 @@ public class EditInputShellTests : TestContext
     {
         var cleared = false;
         var toggled = false;
-        var cut = RenderComponent<EditInputShell>(p => p
+        var cut = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.IsClearable, true)
             .Add(s => s.OnClear, EventCallback.Factory.Create(this, () => cleared = true))

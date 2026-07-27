@@ -9,12 +9,12 @@ namespace FormTesting.Client.Tests;
 /// additive/opt-in — the baseline (existing) rendering test guards that leaving them unset keeps the
 /// original DOM shape.
 /// </summary>
-public class PaginationTests : TestContext
+public class PaginationTests : BunitContext
 {
     [Fact]
     public void With_no_new_parameters_set_the_DOM_shape_is_unchanged()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 10)
             .Add(c => c.Current, 1));
@@ -28,7 +28,7 @@ public class PaginationTests : TestContext
     [Fact]
     public void ShowTotal_renders_the_leading_total_text_before_the_pager_buttons()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 10)
             .Add(c => c.Current, 3)
@@ -44,7 +44,7 @@ public class PaginationTests : TestContext
     [Fact]
     public void ShowTotal_reports_an_empty_window_when_Total_is_zero()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 0)
             .Add(c => c.ShowTotal, (Func<(int Start, int End, int Total), string>)(w => $"{w.Start}-{w.End} of {w.Total}")));
 
@@ -54,7 +54,7 @@ public class PaginationTests : TestContext
     [Fact]
     public void PageSizeOptions_renders_a_size_changer_with_the_current_size_folded_in()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 25) // not present in PageSizeOptions below
             .Add(c => c.Current, 1)
@@ -75,7 +75,7 @@ public class PaginationTests : TestContext
         int? newSize = null;
         int? newCurrent = null;
         // 95 items, PageSize 10, on page 3 -> first visible item is index 20 (0-based).
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 10)
             .Add(c => c.Current, 3)
@@ -93,7 +93,7 @@ public class PaginationTests : TestContext
     public void Changing_the_page_size_does_not_raise_CurrentChanged_when_the_page_would_not_move()
     {
         int? newCurrent = null;
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 10)
             .Add(c => c.Current, 1) // first item index 0
@@ -109,7 +109,7 @@ public class PaginationTests : TestContext
     public void ShowQuickJumper_commits_a_clamped_page_on_enter_and_clears_the_input()
     {
         int? jumped = null;
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 10)
             .Add(c => c.Current, 1)
@@ -128,7 +128,7 @@ public class PaginationTests : TestContext
     public void ShowQuickJumper_ignores_non_numeric_text()
     {
         int? jumped = null;
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 10)
             .Add(c => c.Current, 1)
@@ -145,7 +145,7 @@ public class PaginationTests : TestContext
     [Fact]
     public void Small_adds_the_compact_modifier_class()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(c => c.Total, 95)
             .Add(c => c.PageSize, 10)
             .Add(c => c.Current, 1)

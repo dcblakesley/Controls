@@ -9,7 +9,7 @@ namespace FormTesting.Client.Tests;
 /// bUnit smoke tests: render each control inside an EditForm and confirm the basic markup,
 /// ARIA attributes, and edit/read-only mode switching all work after the EditControlBase refactor.
 /// </summary>
-public class ControlSmokeTests : TestContext
+public class ControlSmokeTests : BunitContext
 {
     /// <summary>
     /// Wraps an inner render fragment in an EditForm so the controls get the cascading EditContext.

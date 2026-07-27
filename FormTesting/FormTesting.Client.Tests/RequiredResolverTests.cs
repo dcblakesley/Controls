@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -11,11 +12,11 @@ namespace FormTesting.Client.Tests;
 /// added by a non-DataAnnotations validator (simulated with a raw <see cref="ValidationMessageStore"/>,
 /// which is all any validator does) render verbatim with the full invalid-state ARIA wiring.
 /// </summary>
-public class RequiredResolverTests : TestContext
+public class RequiredResolverTests : BunitContext
 {
     // EditForm(editContext) -> CascadingValue<FormOptions> -> inner. No DataAnnotationsValidator:
     // these tests exercise the validator-agnostic paths.
-    IRenderedFragment RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
+    IRenderedComponent<ContainerFragment> RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
         Render(b =>
         {
             b.OpenComponent<EditForm>(0);
@@ -68,7 +69,7 @@ public class RequiredResolverTests : TestContext
         var editContext = new EditContext(model);
         Expression<Func<string>> field = () => model.Username;
         var formOptions = new FormOptions { RequiredResolver = _ => required };
-        var cut = RenderComponent<EditForm>(ps => ps
+        var cut = Render<EditForm>(ps => ps
             .Add(f => f.EditContext, editContext)
             .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => formContent =>
             {
@@ -90,14 +91,14 @@ public class RequiredResolverTests : TestContext
         // Flip the condition the resolver reads, then re-parameterize from the top (what a real
         // parent re-render does when the model state driving the condition changes).
         required = true;
-        cut.SetParametersAndRender();
+        cut.Render();
 
         Assert.Equal("true", cut.Find("input.edit-string-input").GetAttribute("aria-required"));
         Assert.NotNull(cut.Find(".edit-label-required-star"));
 
         // And back off again — the star must not latch.
         required = false;
-        cut.SetParametersAndRender();
+        cut.Render();
 
         Assert.False(cut.Find("input.edit-string-input").HasAttribute("aria-required"));
         Assert.Empty(cut.FindAll(".edit-label-required-star"));

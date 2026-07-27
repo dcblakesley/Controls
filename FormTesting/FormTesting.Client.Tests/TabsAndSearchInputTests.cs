@@ -8,7 +8,7 @@ namespace FormTesting.Client.Tests;
 /// UI-kit controls: selection binding, count chips, ARIA wiring, keyboard navigation, panes, and
 /// the search commit paths.
 /// </summary>
-public class TabsAndSearchInputTests : TestContext
+public class TabsAndSearchInputTests : BunitContext
 {
     public TabsAndSearchInputTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate FocusAsync
 
@@ -17,7 +17,7 @@ public class TabsAndSearchInputTests : TestContext
         EventCallback<string?>? changed = null,
         bool withPanes = false,
         bool middleDisabled = false) =>
-        RenderComponent<Tabs>(p =>
+        Render<Tabs>(p =>
         {
             if (activeKey is not null) p.Add(t => t.ActiveKey, activeKey);
             if (changed is not null) p.Add(t => t.ActiveKeyChanged, changed.Value);
@@ -132,7 +132,7 @@ public class TabsAndSearchInputTests : TestContext
             builder.CloseComponent();
         };
 
-        var cut = RenderComponent<Tabs>(p => p.Add(t => t.ChildContent, Children()));
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, Children()));
         Assert.Equal("12", cut.Find(".wss-tabs-count").TextContent);
 
         // The auditor's exact repro shape: the parent re-renders with a changed Count on an
@@ -141,7 +141,7 @@ public class TabsAndSearchInputTests : TestContext
         // NotifyTabChanged the chip would still read "12" after this call returns.
         var rendersBefore = cut.RenderCount;
         count = 34;
-        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Children()));
+        cut.Render(p => p.Add(t => t.ChildContent, Children()));
 
         Assert.Equal("34", cut.Find(".wss-tabs-count").TextContent);
         // Bounded corrective re-render, not a runaway loop — an unguarded notification would
@@ -167,12 +167,12 @@ public class TabsAndSearchInputTests : TestContext
             builder.CloseComponent();
         };
 
-        var cut = RenderComponent<Tabs>(p => p.Add(t => t.ChildContent, Children()));
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, Children()));
         Assert.False(cut.FindAll("[role=tab]")[0].HasAttribute("disabled"));
 
         var rendersBefore = cut.RenderCount;
         disabled = true;
-        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Children()));
+        cut.Render(p => p.Add(t => t.ChildContent, Children()));
 
         Assert.True(cut.FindAll("[role=tab]")[0].HasAttribute("disabled"));
         Assert.True(cut.RenderCount - rendersBefore <= 4);
@@ -199,14 +199,14 @@ public class TabsAndSearchInputTests : TestContext
             builder.CloseComponent();
         };
 
-        var cut = RenderComponent<Tabs>(p => p
+        var cut = Render<Tabs>(p => p
             .Add(t => t.ChildContent, Children())
             .Add(t => t.ActiveKey, "draft"));
         Assert.Contains("wss-tabs-tab-active", cut.FindAll("[role=tab]")[1].ClassList);
 
         var rendersBefore = cut.RenderCount;
         key = "saved";
-        cut.SetParametersAndRender(p => p
+        cut.Render(p => p
             .Add(t => t.ChildContent, Children())
             .Add(t => t.ActiveKey, "saved"));
 
@@ -223,7 +223,7 @@ public class TabsAndSearchInputTests : TestContext
         Assert.Empty(plain.FindAll(".wss-tabs-nav-wrapper"));
         Assert.NotNull(plain.Find(".wss-tabs-nav"));
 
-        var withExtra = RenderComponent<Tabs>(p =>
+        var withExtra = Render<Tabs>(p =>
         {
             p.Add(t => t.TabBarExtraContent, b => b.AddContent(0, "Extra action"));
             p.AddChildContent<Tab>(tp => tp.Add(c => c.Key, "a").Add(c => c.Title, "A"));
@@ -238,7 +238,7 @@ public class TabsAndSearchInputTests : TestContext
         var plain = RenderTabs();
         Assert.DoesNotContain("wss-tabs-nav-centered", plain.Find(".wss-tabs-nav").ClassList);
 
-        var centered = RenderComponent<Tabs>(p =>
+        var centered = Render<Tabs>(p =>
         {
             p.Add(t => t.Centered, true);
             p.AddChildContent<Tab>(tp => tp.Add(c => c.Key, "a").Add(c => c.Title, "A"));
@@ -252,7 +252,7 @@ public class TabsAndSearchInputTests : TestContext
         var plain = RenderTabs();
         Assert.DoesNotContain("wss-tabs-card", plain.Find(".wss-tabs").ClassList);
 
-        var card = RenderComponent<Tabs>(p =>
+        var card = Render<Tabs>(p =>
         {
             p.Add(t => t.Type, TabsType.Card);
             p.AddChildContent<Tab>(tp => tp.Add(c => c.Key, "a").Add(c => c.Title, "A"));
@@ -280,7 +280,7 @@ public class TabsAndSearchInputTests : TestContext
     public void SearchInput_renders_the_addon_and_binds_per_keystroke()
     {
         string? value = null;
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.AddonLabel, "POs")
             .Add(s => s.ValueChanged, (string? v) => value = v));
 
@@ -295,7 +295,7 @@ public class TabsAndSearchInputTests : TestContext
     public void SearchInput_raises_OnSearch_on_enter_and_on_the_button()
     {
         var searches = new List<string?>();
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.Value, "abc")
             .Add(s => s.OnSearch, (string? v) => searches.Add(v)));
 
@@ -309,7 +309,7 @@ public class TabsAndSearchInputTests : TestContext
     public void SearchInput_without_addon_renders_no_chip_and_disabled_blocks_search()
     {
         var fired = false;
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.Disabled, true)
             .Add(s => s.OnSearch, (string? _) => fired = true));
 
@@ -322,7 +322,7 @@ public class TabsAndSearchInputTests : TestContext
     [Fact]
     public void SearchInput_addon_template_without_labels_wires_aria_labelledby()
     {
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.Id, "po-search")
             .Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
 
@@ -334,7 +334,7 @@ public class TabsAndSearchInputTests : TestContext
     [Fact]
     public void SearchInput_InputLabel_wins_over_addon_content_and_suppresses_aria_labelledby()
     {
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.Id, "po-search")
             .Add(s => s.InputLabel, "Search purchase orders")
             .Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
@@ -347,7 +347,7 @@ public class TabsAndSearchInputTests : TestContext
     [Fact]
     public void SearchInput_AddonLabel_path_is_unaffected_by_the_labelledby_wiring()
     {
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.Id, "po-search")
             .Add(s => s.AddonLabel, "POs"));
 
@@ -360,7 +360,7 @@ public class TabsAndSearchInputTests : TestContext
     public void SearchInput_allow_clear_renders_only_with_a_non_empty_value_and_clears_it()
     {
         string? value = "abc";
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.Value, value)
             .Add(s => s.ValueChanged, (string? v) => value = v));
@@ -370,21 +370,21 @@ public class TabsAndSearchInputTests : TestContext
         Assert.Null(value);
 
         // Re-render with the now-empty value: the clear button disappears.
-        cut.SetParametersAndRender(p => p.Add(s => s.Value, (string?)null));
+        cut.Render(p => p.Add(s => s.Value, (string?)null));
         Assert.Empty(cut.FindAll(".wss-search-clear"));
     }
 
     [Fact]
     public void SearchInput_without_allow_clear_never_renders_the_clear_button()
     {
-        var cut = RenderComponent<SearchInput>(p => p.Add(s => s.Value, "abc"));
+        var cut = Render<SearchInput>(p => p.Add(s => s.Value, "abc"));
         Assert.Empty(cut.FindAll(".wss-search-clear"));
     }
 
     [Fact]
     public void SearchInput_allow_clear_is_suppressed_while_disabled()
     {
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.Disabled, true)
             .Add(s => s.Value, "abc"));
@@ -395,7 +395,7 @@ public class TabsAndSearchInputTests : TestContext
     [Fact]
     public void SearchInput_enter_button_text_renders_text_instead_of_the_icon()
     {
-        var cut = RenderComponent<SearchInput>(p => p.Add(s => s.EnterButtonText, "Search"));
+        var cut = Render<SearchInput>(p => p.Add(s => s.EnterButtonText, "Search"));
 
         var btn = cut.Find(".wss-search-btn");
         Assert.Contains("wss-search-btn-enter", btn.ClassList);
@@ -406,7 +406,7 @@ public class TabsAndSearchInputTests : TestContext
     [Fact]
     public void SearchInput_without_enter_button_text_keeps_the_icon_only_button()
     {
-        var cut = RenderComponent<SearchInput>();
+        var cut = Render<SearchInput>();
         var btn = cut.Find(".wss-search-btn");
         Assert.DoesNotContain("wss-search-btn-enter", btn.ClassList);
         Assert.Equal("Search", btn.GetAttribute("aria-label"));
@@ -418,7 +418,7 @@ public class TabsAndSearchInputTests : TestContext
         // AddonLabel = "" (not null) is the edge case: InputLabel ?? AddonLabel alone would
         // render aria-label="" while aria-labelledby also pointed at the addon span — both
         // computed from the code-behind properties so exactly one renders.
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.Id, "po-search")
             .Add(s => s.AddonLabel, "")
             .Add(s => s.AddonContent, b => b.AddContent(0, "POs")));

@@ -11,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// that a cascaded <see cref="FormDefaults.AssetBase"/> actually reaches the JS interop call, not just
 /// the helper in isolation.
 /// </summary>
-public class JsModuleUrlTests : TestContext
+public class JsModuleUrlTests : BunitContext
 {
     [Fact]
     public void No_FormDefaults_resolves_the_existing_relative_path()
@@ -52,7 +52,7 @@ public class JsModuleUrlTests : TestContext
         var module = JSInterop.SetupModule("https://mfe.example.com/_content/WssBlazorControls/wss-select.js");
         module.Setup<int>("placeDropdown", _ => true).SetResult(1051);
 
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("A", "B"))
             .Add(s => s.DefaultOpen, true)
             .AddCascadingValue(new FormDefaults { AssetBase = "https://mfe.example.com" }));

@@ -9,7 +9,7 @@ namespace FormTesting.Client.Tests;
 /// interop fires. The JS half (ARIA re-resolution, reversible promotion, focus restoration) is
 /// exercised by the Playwright e2e suite (PopoverTriggerE2ETests).
 /// </summary>
-public class PopoverTriggerTests : TestContext
+public class PopoverTriggerTests : BunitContext
 {
     const string OverlayModule = "./_content/WssBlazorControls/wss-overlay.js";
 
@@ -20,7 +20,7 @@ public class PopoverTriggerTests : TestContext
 
         // Start with a non-focusable child, then swap to a <button>. Wrapper promotion/demotion is a
         // JS concern (covered by e2e); the C#-rendered wrapper must never carry button semantics itself.
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddChildContent("<span>Loading…</span>"));
 
@@ -28,7 +28,7 @@ public class PopoverTriggerTests : TestContext
         Assert.False(trigger.HasAttribute("role"));
         Assert.False(trigger.HasAttribute("tabindex"));
 
-        cut.SetParametersAndRender(p => p.AddChildContent("<button type=\"button\">Open</button>"));
+        cut.Render(p => p.AddChildContent("<button type=\"button\">Open</button>"));
 
         trigger = cut.Find(".wss-popover-trigger");
         Assert.False(trigger.HasAttribute("role"));
@@ -43,14 +43,14 @@ public class PopoverTriggerTests : TestContext
         var sync = module.SetupVoid("syncTrigger", _ => true);
         sync.SetVoidResult();
 
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddChildContent("<button type=\"button\">Open</button>"));
 
         cut.WaitForAssertion(() => Assert.Single(sync.Invocations)); // the first render always syncs
 
         // A re-render that leaves (_open, false) unchanged must not re-invoke syncTrigger.
-        cut.SetParametersAndRender(p => p.Add(pv => pv.Title, "changed"));
+        cut.Render(p => p.Add(pv => pv.Title, "changed"));
         Assert.Single(sync.Invocations);
     }
 
@@ -61,7 +61,7 @@ public class PopoverTriggerTests : TestContext
 
         // Unmatched attributes go on the outer wrapper span — never the floating panel, whose
         // inline placement (z-index, --wss-shift) is JS-owned (wss-overlay.js place).
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddUnmatched("class", "consumer-class")
             .AddUnmatched("data-testid", "my-popover")
@@ -82,7 +82,7 @@ public class PopoverTriggerTests : TestContext
     {
         JSInterop.Mode = Bunit.JSRuntimeMode.Loose;
 
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .AddChildContent("<button type=\"button\">del</button>"));
 

@@ -9,7 +9,7 @@ namespace FormTesting.Client.Tests;
 /// bUnit smoke tests for <see cref="EditCheckedStringList"/> — list controls were under-tested
 /// relative to scalar controls. Safety net for the EditControlListBase hiding-mode rework.
 /// </summary>
-public class EditCheckedStringListTests : TestContext
+public class EditCheckedStringListTests : BunitContext
 {
     static RenderFragment WithForm(PersonModel model, RenderFragment inner) => builder =>
     {

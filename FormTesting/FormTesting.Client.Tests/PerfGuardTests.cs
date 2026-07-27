@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -14,10 +15,10 @@ namespace FormTesting.Client.Tests;
 /// EditMultiSelect read-only label join building one options lookup per Options reference instead
 /// of scanning Options once per selected value, and that the guards don't over-cache.
 /// </summary>
-public sealed class PerfGuardTests : TestContext
+public sealed class PerfGuardTests : BunitContext
 {
     // EditForm(editContext) -> CascadingValue<FormOptions> -> inner, matching RequiredResolverTests.
-    IRenderedFragment RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
+    IRenderedComponent<ContainerFragment> RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
         Render(b =>
         {
             b.OpenComponent<EditForm>(0);
@@ -99,7 +100,7 @@ public sealed class PerfGuardTests : TestContext
         // Read-only, so the Select engine (which builds its own lookup) never renders — the only
         // Options consumer is the read-only label join. List controls tolerate a null EditContext,
         // so the control renders standalone and can be re-parameterized directly.
-        var cut = RenderComponent<EditMultiSelect<Color>>(ps => ps
+        var cut = Render<EditMultiSelect<Color>>(ps => ps
             .Add(x => x.Value, model.FavoriteColors)
             .Add(x => x.ValueExpression, field)
             .Add(x => x.Options, options)
@@ -112,7 +113,7 @@ public sealed class PerfGuardTests : TestContext
 
         // Every selection toggle produces a NEW Value list (same Options reference); the cached
         // lookup must be reused, not rebuilt per click.
-        cut.SetParametersAndRender(ps => ps.Add(x => x.Value, new List<Color> { Color.Blue, Color.Red }));
+        cut.Render(ps => ps.Add(x => x.Value, new List<Color> { Color.Blue, Color.Red }));
 
         readOnlyText = cut.Find(".edit-readonly-value").TextContent;
         Assert.Contains("Blue", readOnlyText);
@@ -130,7 +131,7 @@ public sealed class PerfGuardTests : TestContext
 
         // The fragment reads the captured locals, so re-rendering the EditForm root re-parameterizes
         // the control with the current label / FormOptions instance.
-        var cut = RenderComponent<EditForm>(ps => ps
+        var cut = Render<EditForm>(ps => ps
             .Add(f => f.Model, model)
             .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
             {
@@ -154,7 +155,7 @@ public sealed class PerfGuardTests : TestContext
         // resolver answers differently — the documented way to force a resolver re-evaluation.
         label = "Second";
         formOptions = new FormOptions { RequiredResolver = _ => true };
-        cut.SetParametersAndRender(ps => ps.Add(f => f.Model, model));
+        cut.Render(ps => ps.Add(f => f.Model, model));
 
         var labelText = cut.Find("label").TextContent;
         Assert.Contains("Second", labelText);

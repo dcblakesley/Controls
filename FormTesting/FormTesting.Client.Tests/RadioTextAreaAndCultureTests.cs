@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// <see cref="EditBoolNullRadio"/>, <see cref="EditRadioString"/> selection, <see cref="EditTextArea"/>,
 /// and the culture-sensitive number formatting in <see cref="EditNumber{T}"/>.
 /// </summary>
-public class RadioTextAreaAndCultureTests : TestContext
+public class RadioTextAreaAndCultureTests : BunitContext
 {
     static RenderFragment WithForm(PersonModel model, RenderFragment inner) => builder =>
     {
@@ -286,7 +286,7 @@ public class RadioTextAreaAndCultureTests : TestContext
         var editContext = new EditContext(model);
         Expression<Func<string?>> valueExpr = () => model.Name;
 
-        var cut = RenderComponent<EditRadioString>(ps => ps
+        var cut = Render<EditRadioString>(ps => ps
             .AddCascadingValue(editContext)
             .Add(c => c.Value, "a")
             .Add(c => c.ValueExpression, valueExpr)
@@ -297,7 +297,7 @@ public class RadioTextAreaAndCultureTests : TestContext
 
         // The parent supplies a new value (form reset / async load / programmatic set). The radio
         // selection used to be cached once in OnInitialized and so ignored this; it must now follow.
-        cut.SetParametersAndRender(ps => ps.Add(c => c.Value, "b"));
+        cut.Render(ps => ps.Add(c => c.Value, "b"));
 
         Assert.False(cut.Find("#rb-Name-a").HasAttribute("checked"));
         Assert.True(cut.Find("#rb-Name-b").HasAttribute("checked"));
@@ -310,7 +310,7 @@ public class RadioTextAreaAndCultureTests : TestContext
         var editContext = new EditContext(model);
         Expression<Func<string?>> valueExpr = () => model.Name;
 
-        var cut = RenderComponent<EditRadioString>(ps => ps
+        var cut = Render<EditRadioString>(ps => ps
             .AddCascadingValue(editContext)
             .Add(c => c.Value, "bespoke")
             .Add(c => c.ValueExpression, valueExpr)

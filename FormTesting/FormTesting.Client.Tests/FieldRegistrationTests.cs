@@ -11,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// in <c>FieldValidationDisplay.OnInitialized</c> and was skipped whenever the control was hidden,
 /// so the validation summary couldn't link to those fields.
 /// </summary>
-public class FieldRegistrationTests : TestContext
+public class FieldRegistrationTests : BunitContext
 {
     static RenderFragment WithFormAndOptions(PersonModel model, FormOptions formOptions, RenderFragment inner)
         => builder =>
@@ -146,7 +146,7 @@ public class FieldRegistrationTests : TestContext
             b.CloseComponent();
         }
 
-        var cut = RenderComponent<EditForm>(ps => ps
+        var cut = Render<EditForm>(ps => ps
             .Add(f => f.Model, model)
             .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
             {
@@ -165,11 +165,11 @@ public class FieldRegistrationTests : TestContext
         Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags");
 
         showSecond = false;
-        cut.SetParametersAndRender(ps => ps.Add(f => f.Model, model));
+        cut.Render(ps => ps.Add(f => f.Model, model));
         Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags"); // survivor keeps the entry
 
         showFirst = false;
-        cut.SetParametersAndRender(ps => ps.Add(f => f.Model, model));
+        cut.Render(ps => ps.Add(f => f.Model, model));
         Assert.DoesNotContain(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags"); // last one out removes it
     }
 

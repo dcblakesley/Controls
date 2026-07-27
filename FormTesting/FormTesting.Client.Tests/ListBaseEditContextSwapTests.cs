@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// re-target the new model, not keep notifying the old one) and null-EditContext tolerance
 /// (usable outside an EditForm without FieldValidationDisplay NRE-ing).
 /// </summary>
-public class ListBaseEditContextSwapTests : TestContext
+public class ListBaseEditContextSwapTests : BunitContext
 {
     class ItemsModel
     {
@@ -29,7 +29,7 @@ public class ListBaseEditContextSwapTests : TestContext
         holder.Model.Items = ["a"];
         EditContext? currentContext = null;
 
-        var cut = RenderComponent<EditForm>(ps => ps
+        var cut = Render<EditForm>(ps => ps
             .Add(f => f.Model, holder.Model)
             .Add(f => f.ChildContent, (RenderFragment<EditContext>)(ctx => b =>
             {
@@ -44,7 +44,7 @@ public class ListBaseEditContextSwapTests : TestContext
 
         // Swap in a fresh model — EditForm creates a new EditContext for it.
         holder.Model = new ItemsModel { Items = ["a", "b"] };
-        cut.SetParametersAndRender(ps => ps.Add(f => f.Model, holder.Model));
+        cut.Render(ps => ps.Add(f => f.Model, holder.Model));
 
         FieldChangedEventArgs? notified = null;
         Assert.NotNull(currentContext);
@@ -64,7 +64,7 @@ public class ListBaseEditContextSwapTests : TestContext
     {
         var holder = new Holder();
         var formOptions = new FormOptions();
-        var cut = RenderComponent<EditForm>(ps => ps
+        var cut = Render<EditForm>(ps => ps
             .Add(f => f.Model, holder.Model)
             .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
             {
@@ -85,7 +85,7 @@ public class ListBaseEditContextSwapTests : TestContext
         for (var i = 0; i < 5; i++)
         {
             holder.Model = new ItemsModel();
-            cut.SetParametersAndRender(ps => ps.Add(f => f.Model, holder.Model));
+            cut.Render(ps => ps.Add(f => f.Model, holder.Model));
         }
 
         // Without unregister-on-swap this grew by one dead identifier per swap (ValidationView then
@@ -99,7 +99,7 @@ public class ListBaseEditContextSwapTests : TestContext
     {
         var model = new ItemsModel();
         List<string>? changed = null;
-        var cut = RenderComponent<EditCheckedStringList>(ps => ps
+        var cut = Render<EditCheckedStringList>(ps => ps
             .Add(c => c.Value, model.Items)
             .Add(c => c.ValueChanged, EventCallback.Factory.Create<List<string>>(this, v => changed = v))
             .Add(c => c.ValueExpression, () => model.Items)

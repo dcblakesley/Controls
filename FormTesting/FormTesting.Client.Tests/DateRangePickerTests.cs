@@ -12,7 +12,7 @@ namespace FormTesting.Client.Tests;
 /// flip/clamp, Enter submit-suppression, focus-out close) are covered by the e2e suite —
 /// bUnit does not execute JavaScript.
 /// </summary>
-public class DateRangePickerTests : TestContext
+public class DateRangePickerTests : BunitContext
 {
     public DateRangePickerTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
@@ -22,7 +22,7 @@ public class DateRangePickerTests : TestContext
 
     IRenderedComponent<DateRangePicker> RenderPicker(
         Action<ComponentParameterCollectionBuilder<DateRangePicker>>? configure = null) =>
-        RenderComponent<DateRangePicker>(p =>
+        Render<DateRangePicker>(p =>
         {
             p.Add(c => c.Format, "MM/dd/yyyy");
             p.Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday);
@@ -359,7 +359,7 @@ public class DateRangePickerTests : TestContext
             .TakeWhile(b => b.ClassList.Contains("wss-picker-day-outside")).Count();
         Assert.Equal(3, sundayLead);
 
-        var monday = RenderComponent<DateRangePicker>(p => p
+        var monday = Render<DateRangePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Monday)
             .Add(c => c.Start, Jan15));
@@ -513,7 +513,7 @@ public class DateRangePickerTests : TestContext
         Assert.Equal(new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" }, sundayNames);
         Assert.Equal("true", sunday.FindAll(".wss-picker-week-header")[0].GetAttribute("aria-hidden"));
 
-        var monday = RenderComponent<DateRangePicker>(p => p
+        var monday = Render<DateRangePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Monday)
             .Add(c => c.Start, Jan15));
@@ -628,7 +628,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Consumer_class_style_and_data_attributes_land_on_the_wrapper()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Width, "300px")
             .AddUnmatched("class", "my-picker")
             .AddUnmatched("style", "margin-top:4px")
@@ -737,7 +737,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_renders_a_single_calendar_time_row_and_ok_not_dual_panels()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -757,7 +757,7 @@ public class DateRangePickerTests : TestContext
     public void Datetime_mode_day_click_sets_the_pending_date_without_firing_either_callback()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -777,7 +777,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_day_click_preserves_the_active_endpoints_pending_time_of_day()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -793,7 +793,7 @@ public class DateRangePickerTests : TestContext
     public void Datetime_mode_ok_on_a_fresh_start_side_advances_to_the_end_side_without_committing()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -817,7 +817,7 @@ public class DateRangePickerTests : TestContext
     public void Datetime_mode_second_ok_commits_both_endpoints_and_closes()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -843,7 +843,7 @@ public class DateRangePickerTests : TestContext
     public void Datetime_mode_a_backwards_pair_swaps_on_the_final_ok()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -867,7 +867,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_escape_mid_session_discards_pending_state_and_keeps_committed_values()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -892,7 +892,7 @@ public class DateRangePickerTests : TestContext
     public void Datetime_mode_time_selects_compose_hour_minute_and_second_into_the_pending_value()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -911,7 +911,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_showseconds_false_hides_the_seconds_select()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.ShowSeconds, false));
@@ -927,7 +927,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_showseconds_false_zeroes_a_stale_second_on_time_select_change()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -943,7 +943,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_use12hours_renders_a_period_select_and_round_trips_pm()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -963,7 +963,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_minutestep_filters_options_and_keeps_an_off_lattice_value_visible()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.MinuteStep, 15)
@@ -979,7 +979,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_steps_below_one_clamp_to_one_instead_of_throwing()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.HourStep, 0)
@@ -998,7 +998,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Startdisabledtime_and_enddisabledtime_each_drive_the_time_row_for_their_own_side()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15) // End left unset so the first OK switches sides, not commits
@@ -1021,7 +1021,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Startdisabledtime_rejects_a_select_change_that_lands_on_a_disabled_hour()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -1037,7 +1037,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Hidedisabledtimeoptions_omits_other_disabled_hours_but_keeps_the_current_value_visible()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 0, 0)) // the bound hour IS on the disabled list
@@ -1058,7 +1058,7 @@ public class DateRangePickerTests : TestContext
     public void Typed_datetime_text_commits_the_endpoint_immediately_bypassing_the_session()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.StartChanged, (DateTime? v) => start = v));
@@ -1073,7 +1073,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_min_and_max_still_disable_calendar_days()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15)
@@ -1091,7 +1091,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_tints_the_span_between_the_other_endpoint_and_the_pending_day()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15)); // End left unset
@@ -1108,7 +1108,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Datetime_mode_ok_is_disabled_until_a_day_is_picked()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday));
 
@@ -1126,7 +1126,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Time_mode_renders_the_time_row_only_with_no_calendar()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+        var cut = Render<DateRangePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
 
         Open(cut);
 
@@ -1139,7 +1139,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Time_mode_ok_is_disabled_until_something_is_resolved()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+        var cut = Render<DateRangePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
 
         Open(cut);
 
@@ -1150,7 +1150,7 @@ public class DateRangePickerTests : TestContext
     public void Time_mode_full_pick_session_preserves_each_endpoints_own_date_and_defaults_to_today()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Start, new DateTime(2025, 1, 15, 8, 0, 0)) // an existing date to preserve
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
@@ -1177,7 +1177,7 @@ public class DateRangePickerTests : TestContext
     public void Time_mode_typed_commit_preserves_the_endpoints_own_date_and_ignores_min_and_max()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Start, new DateTime(2025, 1, 15, 8, 0, 0))
             .Add(c => c.Min, DateTime.Today.AddDays(1)) // would reject Jan 15 if Min/Max applied
@@ -1194,7 +1194,7 @@ public class DateRangePickerTests : TestContext
     public void Time_mode_typed_commit_defaults_to_today_when_the_endpoint_has_no_existing_value()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.StartChanged, (DateTime? v) => start = v));
 
@@ -1216,7 +1216,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Month_mode_dual_panels_show_consecutive_years_with_twelve_buttons_each()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15)); // 2025-01-15 -> left panel 2025, right panel 2026
 
@@ -1246,7 +1246,7 @@ public class DateRangePickerTests : TestContext
     public void Two_month_clicks_commit_the_range_normalized_and_close()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15)
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
@@ -1266,7 +1266,7 @@ public class DateRangePickerTests : TestContext
     public void A_backwards_month_pick_swaps_the_endpoints()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15)
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
@@ -1283,7 +1283,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Month_mode_pending_start_and_hover_preview_get_the_range_tint_classes()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15));
 
@@ -1302,7 +1302,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Month_mode_committed_range_tints_the_months_between_the_endpoints()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, new DateTime(2025, 3, 1))
             .Add(c => c.End, new DateTime(2026, 6, 1)));
@@ -1319,7 +1319,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Month_mode_min_and_max_disable_months_outside_range_at_month_granularity()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15)
             .Add(c => c.Min, new DateTime(2025, 3, 1))
@@ -1336,7 +1336,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Month_mode_year_select_keeps_the_two_panels_consecutive()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15));
         Open(cut);
@@ -1352,7 +1352,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Prev_and_next_year_buttons_step_the_view_and_disable_at_bounds_in_month_mode()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15) // left = 2025
             .Add(c => c.Min, new DateTime(2024, 1, 1))
@@ -1376,7 +1376,7 @@ public class DateRangePickerTests : TestContext
     public void Typed_start_in_month_mode_commits_first_of_month_and_reanchors_the_left_panel()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.StartChanged, (DateTime? v) => start = v));
 
@@ -1393,7 +1393,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Effective_format_and_placeholder_default_for_month_mode()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15));
 
@@ -1406,7 +1406,7 @@ public class DateRangePickerTests : TestContext
     public void Preset_commit_normalizes_to_month_granularity()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Presets, new[]
             {
@@ -1425,7 +1425,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Month_mode_arrow_keys_move_the_roving_tabindex_and_cross_the_year_boundary()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15)); // 2025-01-15 -> left = 2025 (Jan focused by default)
         Open(cut);
@@ -1445,7 +1445,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Month_mode_marks_the_current_month_as_aria_current()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, new DateTime(DateTime.Today.Year, 1, 1)));
         Open(cut);
@@ -1460,7 +1460,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Quarter_mode_dual_panels_show_consecutive_years_with_four_buttons_each()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Start, new DateTime(2025, 8, 20))); // Q3 2025 -> right panel 2026
 
@@ -1489,7 +1489,7 @@ public class DateRangePickerTests : TestContext
     public void Two_quarter_clicks_commit_the_quarter_start_range_and_close()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Start, new DateTime(2025, 8, 20)) // Q3 2025
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
@@ -1507,7 +1507,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Quarter_mode_min_and_max_disable_quarters_outside_range_at_quarter_granularity()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Start, new DateTime(2025, 8, 20)) // Q3 2025 -- left panel 2025
             .Add(c => c.Min, new DateTime(2025, 4, 15))   // Q2 2025
@@ -1525,7 +1525,7 @@ public class DateRangePickerTests : TestContext
     public void Quarter_text_with_a_dash_parses_and_commits_the_quarter_start()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.StartChanged, (DateTime? v) => start = v));
 
@@ -1541,7 +1541,7 @@ public class DateRangePickerTests : TestContext
     public void Quarter_text_without_a_dash_and_lowercase_q_also_parses()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.StartChanged, (DateTime? v) => start = v));
 
@@ -1556,7 +1556,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Effective_format_and_placeholder_default_for_quarter_mode()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Start, new DateTime(2025, 8, 20)));
 
@@ -1567,7 +1567,7 @@ public class DateRangePickerTests : TestContext
     public void Preset_commit_normalizes_to_quarter_granularity()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Presets, new[]
             {
@@ -1586,7 +1586,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Quarter_mode_arrow_keys_cross_the_year_boundary()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Start, new DateTime(2025, 1, 20))); // Q1 2025 -- left panel 2025
         Open(cut);
@@ -1604,7 +1604,7 @@ public class DateRangePickerTests : TestContext
     public void Quarter_mode_marks_the_current_quarter_as_aria_current()
     {
         var currentQuarter = (DateTime.Today.Month - 1) / 3 + 1;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Start, new DateTime(DateTime.Today.Year, 1, 1)));
         Open(cut);
@@ -1619,7 +1619,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Year_mode_dual_panels_show_consecutive_decades_with_two_outside_years_each()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Start, Jan15)); // 2025 -> left decade 2020-2029, right 2030-2039
 
@@ -1657,7 +1657,7 @@ public class DateRangePickerTests : TestContext
     public void Two_year_clicks_commit_the_range_normalized_and_close()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Start, Jan15) // left decade 2020-2029
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
@@ -1676,7 +1676,7 @@ public class DateRangePickerTests : TestContext
     public void Clicking_an_outside_year_cell_commits_it_too()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Start, Jan15)
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
@@ -1693,7 +1693,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Year_mode_min_and_max_disable_years_outside_range_at_year_granularity()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Start, Jan15) // left decade 2020-2029
             .Add(c => c.Min, new DateTime(2022, 6, 1))
@@ -1710,7 +1710,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Prev_and_next_decade_buttons_step_the_view_and_disable_at_bounds()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Start, Jan15) // left decade 2020-2029
             .Add(c => c.Min, new DateTime(2010, 1, 1))
@@ -1734,7 +1734,7 @@ public class DateRangePickerTests : TestContext
     public void Typed_start_in_year_mode_commits_january_first_and_reanchors_the_left_panel()
     {
         DateTime? start = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.StartChanged, (DateTime? v) => start = v));
 
@@ -1752,7 +1752,7 @@ public class DateRangePickerTests : TestContext
     public void Preset_commit_normalizes_to_year_granularity()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Presets, new[]
             {
@@ -1771,7 +1771,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Year_mode_arrow_keys_cross_the_decade_boundary()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Start, new DateTime(2020, 6, 1))); // left decade 2020-2029, 2020 focused
         Open(cut);
@@ -1793,7 +1793,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Year_mode_marks_the_current_year_as_aria_current()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Start, new DateTime(DateTime.Today.Year, 1, 1)));
         Open(cut);
@@ -1817,7 +1817,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Week_mode_dual_panels_render_week_number_rows()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15));
@@ -1836,7 +1836,7 @@ public class DateRangePickerTests : TestContext
     public void Two_week_clicks_commit_the_week_start_range_and_close()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15)
@@ -1857,7 +1857,7 @@ public class DateRangePickerTests : TestContext
     public void A_backwards_week_pick_swaps_the_endpoints()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15)
@@ -1875,7 +1875,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Week_mode_row_level_classes_mark_endpoints_and_in_range_across_both_panels()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, new DateTime(2025, 1, 5))   // week start itself -- Jan's row 1
@@ -1916,7 +1916,7 @@ public class DateRangePickerTests : TestContext
         // including the click target below -- stays enabled; only the week-granularity commit guard
         // (exercised by the typed-text test below) would ever reject the whole week.
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15) // anchors the view on the Jan/Feb 2025 panel pair
@@ -1946,7 +1946,7 @@ public class DateRangePickerTests : TestContext
         DateTime? Commit(string text)
         {
             DateTime? value = null;
-            var cut = RenderComponent<DateRangePicker>(p => p
+            var cut = Render<DateRangePicker>(p => p
                 .Add(c => c.Mode, DatePickerMode.Week)
                 .Add(c => c.Format, "MM/dd/yyyy")
                 .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -1969,7 +1969,7 @@ public class DateRangePickerTests : TestContext
     public void Week_shorthand_start_and_end_parse_and_commit_the_correct_endpoint()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
@@ -1992,7 +1992,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void Effective_format_and_placeholder_default_for_week_mode()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15)); // week start Jan 12, 2025
@@ -2009,7 +2009,7 @@ public class DateRangePickerTests : TestContext
     public void ShowWeekNumbers_in_date_mode_adds_the_column_to_both_panels_without_changing_commit_semantics()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.ShowWeekNumbers, true)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15)
@@ -2041,7 +2041,7 @@ public class DateRangePickerTests : TestContext
         // its own week start for the default-focus comparison, so an already-week-start value keeps
         // the assertion unambiguous (a mid-week Start would default-focus its WEEK START, not the
         // literal bound day -- see DefaultFocusDay's DisplayRange-based comparison).
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, new DateTime(2025, 1, 12)));
@@ -2086,7 +2086,7 @@ public class DateRangePickerTests : TestContext
     public void DisabledDate_at_month_granularity_disables_month_cells_using_the_month_start_argument()
     {
         var seenArgs = new List<DateTime>();
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15) // left panel 2025, right panel 2026
             .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d =>
@@ -2106,7 +2106,7 @@ public class DateRangePickerTests : TestContext
     public void DisabledDate_rejects_a_preset_whose_normalized_endpoints_land_on_a_disabled_unit()
     {
         DateTime? start = Jan15, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Start, Jan15)
             .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d == new DateTime(2025, 7, 1)))
@@ -2140,7 +2140,7 @@ public class DateRangePickerTests : TestContext
         // mirroring DatePickerTests' identical case.
         var disabledWeekStart = new DateTime(2025, 1, 5); // week Jan5-11
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, Jan15)
@@ -2185,7 +2185,7 @@ public class DateRangePickerTests : TestContext
     [Fact]
     public void ExtraFooter_renders_alongside_the_ok_footer_in_datetime_session_mode()
     {
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -2247,7 +2247,7 @@ public class DateRangePickerTests : TestContext
         // Regression guard: OnPresetClickAsync used to truncate both endpoints to .Date before
         // normalizing, which silently zeroed a DateTime/Time preset's resolved time-of-day.
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
@@ -2270,7 +2270,7 @@ public class DateRangePickerTests : TestContext
     public void Preset_in_time_mode_preserves_times_and_commits_normalized_values()
     {
         DateTime? start = null, end = null;
-        var cut = RenderComponent<DateRangePicker>(p => p
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.StartChanged, (DateTime? v) => start = v)
             .Add(c => c.EndChanged, (DateTime? v) => end = v)

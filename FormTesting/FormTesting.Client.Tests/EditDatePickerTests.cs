@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Linq.Expressions;
 using AngleSharp.Dom;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -13,7 +14,7 @@ namespace FormTesting.Client.Tests;
 /// DatePicker's own open/close/navigation/keyboard behavior is already covered by
 /// <c>DatePickerTests</c> and the JS-owned parts by <c>DatePickerE2ETests</c>.
 /// </summary>
-public class EditDatePickerTests : TestContext
+public class EditDatePickerTests : BunitContext
 {
     public EditDatePickerTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
@@ -25,10 +26,10 @@ public class EditDatePickerTests : TestContext
         builder.CloseComponent();
     };
 
-    static void Open(IRenderedFragment cut) => cut.Find(".wss-picker-input").Click();
+    static void Open(IRenderedComponent<ContainerFragment> cut) => cut.Find(".wss-picker-input").Click();
 
     // The in-month day button for the given day number (skips the leading adjacent-month cells).
-    static IElement Day(IRenderedFragment cut, int dayNumber) =>
+    static IElement Day(IRenderedComponent<ContainerFragment> cut, int dayNumber) =>
         cut.FindAll(".wss-picker-day")
             .First(b => !b.ClassList.Contains("wss-picker-day-outside") &&
                         b.TextContent == dayNumber.ToString("00", CultureInfo.InvariantCulture));
@@ -46,7 +47,7 @@ public class EditDatePickerTests : TestContext
 
     // The three hour/minute/second selects rendered by Type="Time"/"DateTimeLocal" -- mirrors
     // DatePickerTests' TimeSelects helper.
-    static IReadOnlyList<IElement> TimeSelects(IRenderedFragment cut) =>
+    static IReadOnlyList<IElement> TimeSelects(IRenderedComponent<ContainerFragment> cut) =>
         cut.FindAll(".wss-picker-time-row select");
 
     [Fact]

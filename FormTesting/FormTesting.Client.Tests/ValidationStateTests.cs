@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -10,11 +11,11 @@ namespace FormTesting.Client.Tests;
 /// emitted only while invalid, that grouped controls surface the state on their <c>role="radiogroup"</c>
 /// container, and that <see cref="ValidationView"/> links to each error (and guards its EditContext).
 /// </summary>
-public class ValidationStateTests : TestContext
+public class ValidationStateTests : BunitContext
 {
     // EditForm(editContext) -> DataAnnotationsValidator + CascadingValue<FormOptions> -> inner.
     // FormOptions is cascaded so the controls register their fields (ValidationView reads that list).
-    IRenderedFragment RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
+    IRenderedComponent<ContainerFragment> RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
         Render(b =>
         {
             b.OpenComponent<EditForm>(0);
@@ -165,7 +166,7 @@ public class ValidationStateTests : TestContext
     [Fact]
     public void ValidationView_throws_when_rendered_without_a_cascading_EditContext()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() => RenderComponent<ValidationView>());
+        var ex = Assert.Throws<InvalidOperationException>(() => Render<ValidationView>());
         Assert.Contains(nameof(EditContext), ex.Message);
     }
 

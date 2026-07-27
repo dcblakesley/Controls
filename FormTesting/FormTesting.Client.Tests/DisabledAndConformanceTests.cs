@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// never set in a test) and the hand-maintained <see cref="IEditControl"/> surface on <c>EditRadio</c>
 /// (which can't inherit the shared base and so re-declares the interface by hand).
 /// </summary>
-public class DisabledAndConformanceTests : TestContext
+public class DisabledAndConformanceTests : BunitContext
 {
     static RenderFragment WithForm(PersonModel model, RenderFragment inner) => builder =>
     {

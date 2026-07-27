@@ -7,12 +7,12 @@ namespace FormTesting.Client.Tests;
 /// Popover, Pagination). These are plain components (no EditForm / EditContext), so they render
 /// directly via RenderComponent.
 /// </summary>
-public class UiKitLeafControlsTests : TestContext
+public class UiKitLeafControlsTests : BunitContext
 {
     [Fact]
     public void Alert_renders_message_and_type_class()
     {
-        var cut = RenderComponent<Alert>(p => p
+        var cut = Render<Alert>(p => p
             .Add(a => a.Type, AlertType.Error)
             .Add(a => a.Message, "Something failed"));
 
@@ -24,11 +24,11 @@ public class UiKitLeafControlsTests : TestContext
     public void Alert_role_and_aria_live_match_severity()
     {
         // Error interrupts (assertive); non-error severities announce politely — matching the toast views.
-        var error = RenderComponent<Alert>(p => p.Add(a => a.Type, AlertType.Error).Add(a => a.Message, "x"));
+        var error = Render<Alert>(p => p.Add(a => a.Type, AlertType.Error).Add(a => a.Message, "x"));
         Assert.Equal("alert", error.Find(".wss-alert").GetAttribute("role"));
         Assert.Equal("assertive", error.Find(".wss-alert").GetAttribute("aria-live"));
 
-        var info = RenderComponent<Alert>(p => p.Add(a => a.Type, AlertType.Info).Add(a => a.Message, "x"));
+        var info = Render<Alert>(p => p.Add(a => a.Type, AlertType.Info).Add(a => a.Message, "x"));
         Assert.Equal("status", info.Find(".wss-alert").GetAttribute("role"));
         Assert.Equal("polite", info.Find(".wss-alert").GetAttribute("aria-live"));
     }
@@ -37,7 +37,7 @@ public class UiKitLeafControlsTests : TestContext
     public void Alert_closable_hides_itself_and_invokes_OnClose()
     {
         var closed = false;
-        var cut = RenderComponent<Alert>(p => p
+        var cut = Render<Alert>(p => p
             .Add(a => a.Message, "x")
             .Add(a => a.Closable, true)
             .Add(a => a.OnClose, EventCallback.Factory.Create(this, () => closed = true)));
@@ -50,7 +50,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Alert_close_works_without_an_OnClose_handler()
     {
-        var cut = RenderComponent<Alert>(p => p
+        var cut = Render<Alert>(p => p
             .Add(a => a.Message, "x")
             .Add(a => a.Closable, true));
 
@@ -61,24 +61,24 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Alert_banner_adds_the_modifier_class_only_when_set()
     {
-        var plain = RenderComponent<Alert>(p => p.Add(a => a.Message, "x"));
+        var plain = Render<Alert>(p => p.Add(a => a.Message, "x"));
         Assert.DoesNotContain("wss-alert-banner", plain.Find(".wss-alert").ClassList);
 
-        var banner = RenderComponent<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Banner, true));
+        var banner = Render<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Banner, true));
         Assert.Contains("wss-alert-banner", banner.Find(".wss-alert").ClassList);
     }
 
     [Fact]
     public void Alert_banner_with_no_explicit_Type_defaults_to_warning_severity()
     {
-        var cut = RenderComponent<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Banner, true));
+        var cut = Render<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Banner, true));
         Assert.Contains("wss-alert-warning", cut.Find(".wss-alert").ClassList);
     }
 
     [Fact]
     public void Alert_banner_with_an_explicit_Type_is_left_alone()
     {
-        var cut = RenderComponent<Alert>(p => p
+        var cut = Render<Alert>(p => p
             .Add(a => a.Message, "x")
             .Add(a => a.Banner, true)
             .Add(a => a.Type, AlertType.Info)); // explicit, even though it equals the non-banner default
@@ -90,7 +90,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Alert_non_banner_still_defaults_to_info()
     {
-        var cut = RenderComponent<Alert>(p => p.Add(a => a.Message, "x"));
+        var cut = Render<Alert>(p => p.Add(a => a.Message, "x"));
         Assert.Contains("wss-alert-info", cut.Find(".wss-alert").ClassList);
     }
 
@@ -100,11 +100,11 @@ public class UiKitLeafControlsTests : TestContext
         // Standard Blazor semantics: a ParameterView that omits Type leaves the backing property at
         // whatever a PRIOR render set it to, unless the component resets it itself. Non-Banner alerts
         // must not keep rendering a stale severity from an earlier render's Type once it's dropped.
-        var cut = RenderComponent<Alert>(p => p.Add(a => a.Type, AlertType.Error).Add(a => a.Message, "x"));
+        var cut = Render<Alert>(p => p.Add(a => a.Type, AlertType.Error).Add(a => a.Message, "x"));
         Assert.Contains("wss-alert-error", cut.Find(".wss-alert").ClassList);
         Assert.Equal("alert", cut.Find(".wss-alert").GetAttribute("role"));
 
-        cut.SetParametersAndRender(p => p.Add(a => a.Message, "x")); // Type omitted this render
+        cut.Render(p => p.Add(a => a.Message, "x")); // Type omitted this render
 
         var alert = cut.Find(".wss-alert");
         Assert.Contains("wss-alert-info", alert.ClassList);
@@ -116,11 +116,11 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Alert_action_renders_beside_the_close_button_only_when_set()
     {
-        var plain = RenderComponent<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Closable, true));
+        var plain = Render<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Closable, true));
         Assert.Empty(plain.FindAll(".wss-alert-actions"));
         Assert.NotNull(plain.Find(".wss-alert-close"));
 
-        var withAction = RenderComponent<Alert>(p => p
+        var withAction = Render<Alert>(p => p
             .Add(a => a.Message, "x")
             .Add(a => a.Closable, true)
             .Add(a => a.Action, b => b.AddContent(0, "Undo")));
@@ -131,7 +131,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Alert_action_without_closable_renders_no_close_button()
     {
-        var cut = RenderComponent<Alert>(p => p
+        var cut = Render<Alert>(p => p
             .Add(a => a.Message, "x")
             .Add(a => a.Action, b => b.AddContent(0, "Undo")));
 
@@ -142,14 +142,14 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Skeleton_loading_renders_requested_rows()
     {
-        var cut = RenderComponent<Skeleton>(p => p.Add(s => s.Rows, 4));
+        var cut = Render<Skeleton>(p => p.Add(s => s.Rows, 4));
         Assert.Equal(4, cut.FindAll(".wss-skeleton-paragraph > li").Count);
     }
 
     [Fact]
     public void Skeleton_loading_exposes_a_busy_status_with_screen_reader_text()
     {
-        var cut = RenderComponent<Skeleton>();
+        var cut = Render<Skeleton>();
         var root = cut.Find(".wss-skeleton");
         Assert.Equal("status", root.GetAttribute("role"));
         Assert.Equal("true", root.GetAttribute("aria-busy"));
@@ -161,7 +161,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Skeleton_not_loading_renders_child_content()
     {
-        var cut = RenderComponent<Skeleton>(p => p
+        var cut = Render<Skeleton>(p => p
             .Add(s => s.Loading, false)
             .AddChildContent("<span class=\"loaded\">done</span>"));
 
@@ -172,7 +172,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Skeleton_without_avatar_renders_no_header_or_content_wrapper()
     {
-        var cut = RenderComponent<Skeleton>();
+        var cut = Render<Skeleton>();
         Assert.Empty(cut.FindAll(".wss-skeleton-header"));
         Assert.Empty(cut.FindAll(".wss-skeleton-content"));
         Assert.NotEmpty(cut.FindAll(".wss-skeleton-title"));
@@ -181,14 +181,14 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Skeleton_avatar_renders_a_circle_by_default_and_a_square_when_requested()
     {
-        var circle = RenderComponent<Skeleton>(p => p.Add(s => s.Avatar, true));
+        var circle = Render<Skeleton>(p => p.Add(s => s.Avatar, true));
         Assert.NotNull(circle.Find(".wss-skeleton-avatar"));
         Assert.DoesNotContain("wss-skeleton-avatar-square", circle.Find(".wss-skeleton-avatar").ClassList);
         Assert.Contains("wss-skeleton-with-avatar", circle.Find(".wss-skeleton").ClassList);
         // Title/paragraph still render, now inside the content wrapper.
         Assert.NotEmpty(circle.FindAll(".wss-skeleton-content .wss-skeleton-title"));
 
-        var square = RenderComponent<Skeleton>(p => p
+        var square = Render<Skeleton>(p => p
             .Add(s => s.Avatar, true)
             .Add(s => s.AvatarShape, SkeletonAvatarShape.Square));
         Assert.Contains("wss-skeleton-avatar-square", square.Find(".wss-skeleton-avatar").ClassList);
@@ -197,11 +197,11 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void SkeletonElement_renders_button_by_default_and_the_requested_kind()
     {
-        var button = RenderComponent<SkeletonElement>();
+        var button = Render<SkeletonElement>();
         Assert.Contains("wss-skeleton-element-button", button.Find(".wss-skeleton-element").ClassList);
         Assert.Contains("wss-skeleton-active", button.Find(".wss-skeleton-element").ClassList);
 
-        var input = RenderComponent<SkeletonElement>(p => p.Add(s => s.Kind, SkeletonElementKind.Input).Add(s => s.Active, false));
+        var input = Render<SkeletonElement>(p => p.Add(s => s.Kind, SkeletonElementKind.Input).Add(s => s.Active, false));
         Assert.Contains("wss-skeleton-element-input", input.Find(".wss-skeleton-element").ClassList);
         Assert.DoesNotContain("wss-skeleton-active", input.Find(".wss-skeleton-element").ClassList);
     }
@@ -209,7 +209,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void SkeletonElement_announces_busy_status_with_screen_reader_text()
     {
-        var cut = RenderComponent<SkeletonElement>();
+        var cut = Render<SkeletonElement>();
         var root = cut.Find(".wss-skeleton-element");
         Assert.Equal("status", root.GetAttribute("role"));
         Assert.Equal("true", root.GetAttribute("aria-busy"));
@@ -219,7 +219,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Popover_shows_content_after_trigger_click()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pp => pp.Content, (RenderFragment)(b => b.AddMarkupContent(0, "<div class=\"pop-body\">body</div>")))
             .AddChildContent("<button>open</button>"));
 
@@ -232,7 +232,7 @@ public class UiKitLeafControlsTests : TestContext
     public void Pagination_renders_pages_and_raises_change_on_click()
     {
         var page = 1;
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(pg => pg.Total, 45)
             .Add(pg => pg.PageSize, 10)
             .Add(pg => pg.Current, 1)
@@ -248,7 +248,7 @@ public class UiKitLeafControlsTests : TestContext
     public void Pagination_clamps_an_out_of_range_current_so_prev_works_and_next_is_disabled()
     {
         var page = 0;
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(pg => pg.Total, 25)    // 25 / 10 => 3 pages
             .Add(pg => pg.PageSize, 10)
             .Add(pg => pg.Current, 5)   // past the last page (the parent hasn't clamped it)
@@ -267,7 +267,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Pagination_windows_large_page_counts_with_ellipsis()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(pg => pg.Total, 200)   // 200 / 10 => 20 pages
             .Add(pg => pg.PageSize, 10)
             .Add(pg => pg.Current, 10));
@@ -286,7 +286,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Pagination_shows_every_page_when_they_all_fit()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(pg => pg.Total, 70)    // 70 / 10 => 7 pages (the no-ellipsis threshold)
             .Add(pg => pg.PageSize, 10)
             .Add(pg => pg.Current, 1));
@@ -298,7 +298,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Pagination_shows_a_single_gap_page_instead_of_an_ellipsis()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(pg => pg.Total, 80)    // 80 / 10 => 8 pages
             .Add(pg => pg.PageSize, 10)
             .Add(pg => pg.Current, 4));
@@ -313,7 +313,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Alert_merges_consumer_class_and_splats_extra_attributes_onto_the_root()
     {
-        var cut = RenderComponent<Alert>(p => p
+        var cut = Render<Alert>(p => p
             .Add(a => a.Message, "x")
             .AddUnmatched("class", "consumer-alert")
             .AddUnmatched("data-testid", "my-alert"));
@@ -327,7 +327,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Skeleton_merges_consumer_class_and_splats_extra_attributes_onto_the_root()
     {
-        var cut = RenderComponent<Skeleton>(p => p
+        var cut = Render<Skeleton>(p => p
             .AddUnmatched("class", "consumer-skeleton")
             .AddUnmatched("data-testid", "my-skeleton"));
 
@@ -340,7 +340,7 @@ public class UiKitLeafControlsTests : TestContext
     [Fact]
     public void Pagination_merges_consumer_class_and_splats_extra_attributes_onto_the_root()
     {
-        var cut = RenderComponent<Pagination>(p => p
+        var cut = Render<Pagination>(p => p
             .Add(pg => pg.Total, 30)
             .Add(pg => pg.PageSize, 10)
             .AddUnmatched("class", "consumer-pager")

@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// <see cref="EditRadioEnum{TEnum}"/>): the predicate disables individual options, composed with
 /// the whole-group <c>IsDisabled</c> (either one disables an option).
 /// </summary>
-public class PerOptionDisabledTests : TestContext
+public class PerOptionDisabledTests : BunitContext
 {
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {

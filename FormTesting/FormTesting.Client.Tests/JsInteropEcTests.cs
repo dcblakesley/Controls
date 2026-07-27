@@ -9,7 +9,7 @@ namespace FormTesting.Client.Tests;
 /// Coverage for the static JS-interop helpers — both invoke globals from edit-controls.js, which
 /// consumers must load via a script tag (see the README Quick Start).
 /// </summary>
-public class JsInteropEcTests : TestContext
+public class JsInteropEcTests : BunitContext
 {
     [Fact]
     public async Task FocusFirstInvalidField_invokes_the_global_function()

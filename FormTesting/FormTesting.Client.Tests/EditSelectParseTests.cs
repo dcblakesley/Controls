@@ -11,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// SelectParsing helper. SelectParsingTests covers the helper in isolation; these confirm the
 /// controls actually delegate to it and write the parsed value back through ValueChanged.
 /// </summary>
-public class EditSelectParseTests : TestContext
+public class EditSelectParseTests : BunitContext
 {
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {
@@ -39,7 +39,7 @@ public class EditSelectParseTests : TestContext
         Assert.Equal("Low", unsortedFirst);
 
         // Previously the cached option list was frozen at init and a Sort change was ignored.
-        cut.FindComponent<EditSelectEnum<Priority?>>().SetParametersAndRender(p => p.Add(x => x.Sort, true));
+        cut.FindComponent<EditSelectEnum<Priority?>>().Render(p => p.Add(x => x.Sort, true));
         var sortedFirst = cut.FindAll("select option")[1].TextContent.Trim();
         Assert.Equal("Critical", sortedFirst);
     }

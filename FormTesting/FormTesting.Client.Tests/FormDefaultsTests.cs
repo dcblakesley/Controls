@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -11,10 +12,10 @@ namespace FormTesting.Client.Tests;
 /// FormOptions static default. The statics themselves are deliberately never mutated here — they're
 /// process-wide, and xUnit runs test classes in parallel.
 /// </summary>
-public class FormDefaultsTests : TestContext
+public class FormDefaultsTests : BunitContext
 {
     // EditForm(editContext) -> DataAnnotationsValidator -> [FormDefaults] -> [CascadingValue<FormOptions>] -> EditString(Name).
-    IRenderedFragment RenderNameField(EditContext editContext, PersonModel model,
+    IRenderedComponent<ContainerFragment> RenderNameField(EditContext editContext, PersonModel model,
         (bool? StarHidden, bool? ShowFieldName)? defaults, FormOptions? formOptions)
     {
         Expression<Func<string>> field = () => model.Name;
@@ -68,7 +69,7 @@ public class FormDefaultsTests : TestContext
 
     // The ShowFieldNameInValidation setting only affects the *visual* message; the sibling
     // screen-reader copy (#error-msg-*) always includes the field name by design.
-    static string VisualMessage(IRenderedFragment cut) =>
+    static string VisualMessage(IRenderedComponent<ContainerFragment> cut) =>
         cut.Find("div.edit-validation-message:not(.edit-sr-only)").TextContent;
 
     [Fact]
@@ -127,7 +128,7 @@ public class FormDefaultsTests : TestContext
 
     // EditForm(editContext) -> validator -> outer FormDefaults -> inner FormDefaults -> EditString(Name).
     // The MFE composition shape: host page defaults wrapping an MFE root's own (partial) overrides.
-    IRenderedFragment RenderNested(EditContext editContext, PersonModel model,
+    IRenderedComponent<ContainerFragment> RenderNested(EditContext editContext, PersonModel model,
         (bool? StarHidden, bool? ShowFieldName) outer, (bool? StarHidden, bool? ShowFieldName) inner)
     {
         Expression<Func<string>> field = () => model.Name;
@@ -212,7 +213,7 @@ public class FormDefaultsTests : TestContext
     // AssetBase has no FormOptions counterpart (unlike the two settings above), so it's verified
     // directly against EffectiveAssetBase rather than through a rendered field's visible output.
     IRenderedComponent<FormDefaults> RenderNestedAssetBase(string? outer, string? inner) =>
-        RenderComponent<FormDefaults>(p => p
+        Render<FormDefaults>(p => p
             .Add(o => o.AssetBase, outer)
             .Add(o => o.ChildContent, (RenderFragment)(b =>
             {

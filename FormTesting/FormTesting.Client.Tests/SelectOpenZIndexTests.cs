@@ -9,7 +9,7 @@ namespace FormTesting.Client.Tests;
 /// <c>placeDropdown</c> to return a fixed value; the disposal tests assert the new <c>_disposed</c>
 /// guard + import re-check path tears down without throwing (the leak itself isn't observable here).
 /// </summary>
-public class SelectOpenZIndexTests : TestContext
+public class SelectOpenZIndexTests : BunitContext
 {
     public SelectOpenZIndexTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the scroll/init/clearZ imports
 
@@ -28,7 +28,7 @@ public class SelectOpenZIndexTests : TestContext
     {
         FakePlaceDropdown(1051);
 
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("A", "B"))
             .Add(s => s.Width, "200px")
             .Add(s => s.DefaultOpen, true));
@@ -44,7 +44,7 @@ public class SelectOpenZIndexTests : TestContext
     {
         FakePlaceDropdown(1051);
 
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("A", "B"))
             .Add(s => s.Width, "200px")
             .Add(s => s.DefaultOpen, true));
@@ -54,7 +54,7 @@ public class SelectOpenZIndexTests : TestContext
 
         // The L13 trigger: parent re-renders with a different Width while the dropdown is open. The
         // rewritten style attribute must still carry the mirrored z-index (not just the new width).
-        cut.SetParametersAndRender(p => p.Add(s => s.Width, "300px"));
+        cut.Render(p => p.Add(s => s.Width, "300px"));
 
         var style = cut.Find(".wss-select").GetAttribute("style") ?? string.Empty;
         Assert.Contains("width:300px", style);
@@ -66,7 +66,7 @@ public class SelectOpenZIndexTests : TestContext
     {
         FakePlaceDropdown(1051);
 
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("A", "B"))
             .Add(s => s.Width, "200px")
             .Add(s => s.DefaultOpen, true));
@@ -84,7 +84,7 @@ public class SelectOpenZIndexTests : TestContext
     [Fact]
     public void Disposing_a_closed_Select_does_not_throw()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("A", "B")));
 
         cut.Dispose();
@@ -98,7 +98,7 @@ public class SelectOpenZIndexTests : TestContext
         // bUnit, but the guarded disposal must not throw.
         FakePlaceDropdown(1051);
 
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("A", "B"))
             .Add(s => s.DefaultOpen, true));
 

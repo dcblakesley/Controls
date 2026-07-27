@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -10,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// <see cref="HidingMode"/> × value-state × edit-mode to lock in the behavior the per-control
 /// implementations used to provide.
 /// </summary>
-public class HidingModeTests : TestContext
+public class HidingModeTests : BunitContext
 {
     static RenderFragment WithForm<TModel>(TModel model, FormOptions? formOptions, RenderFragment inner)
         where TModel : class => builder =>
@@ -37,7 +38,7 @@ public class HidingModeTests : TestContext
         }
     };
 
-    static bool IsRendered(IRenderedFragment cut) => cut.FindAll(".edit-control-wrapper").Count > 0;
+    static bool IsRendered(IRenderedComponent<ContainerFragment> cut) => cut.FindAll(".edit-control-wrapper").Count > 0;
 
     // ── EditString ────────────────────────────────────────────────────────────────────────────
 

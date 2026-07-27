@@ -4,12 +4,12 @@ namespace FormTesting.Client.Tests;
 /// Smoke tests for EditDisplay, the read-only display control (no prior coverage). Confirms it renders
 /// its label + text, honors IsHidden, and — like ReadOnlyValue — is not announced as an editable textbox.
 /// </summary>
-public class EditDisplayTests : TestContext
+public class EditDisplayTests : BunitContext
 {
     [Fact]
     public void EditDisplay_renders_label_and_text()
     {
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Label, "Volume")
             .Add(d => d.Text, "15.3 oz"));
 
@@ -20,7 +20,7 @@ public class EditDisplayTests : TestContext
     [Fact]
     public void EditDisplay_hidden_renders_nothing()
     {
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Text, "x")
             .Add(d => d.IsHidden, true));
 
@@ -31,7 +31,7 @@ public class EditDisplayTests : TestContext
     public void EditDisplay_renders_the_tooltip_when_set()
     {
         // Tooltip is a documented EditDisplay parameter; it must reach the label, not be discarded.
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Label, "Volume")
             .Add(d => d.Tooltip, "ounces per can")
             .Add(d => d.Text, "15.3 oz"));
@@ -43,7 +43,7 @@ public class EditDisplayTests : TestContext
     [Fact]
     public void EditDisplay_renders_the_required_star_when_IsRequired()
     {
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Label, "Volume")
             .Add(d => d.IsRequired, true)
             .Add(d => d.Text, "15.3 oz"));
@@ -56,7 +56,7 @@ public class EditDisplayTests : TestContext
     {
         // The cascaded FormOptions used to be declared but ignored — a form-wide label-hidden
         // setting must reach EditDisplay like every other control (sr-only label, not a visible one).
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .AddCascadingValue(new FormOptions { IsLabelHidden = true })
             .Add(d => d.Label, "Volume")
             .Add(d => d.Text, "15.3 oz"));
@@ -69,7 +69,7 @@ public class EditDisplayTests : TestContext
     public void EditDisplay_applies_the_Class_parameter_to_the_value_element()
     {
         // Class was a documented parameter that the markup never rendered.
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Class, "highlight")
             .Add(d => d.Text, "15.3 oz"));
 
@@ -79,7 +79,7 @@ public class EditDisplayTests : TestContext
     [Fact]
     public void EditDisplay_id_composes_group_name_and_IdPrefix_like_bound_controls()
     {
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .AddCascadingValue(new FormGroupOptions { Name = "shipping" })
             .Add(d => d.IdPrefix, "row1")
             .Add(d => d.Label, "Volume")
@@ -92,7 +92,7 @@ public class EditDisplayTests : TestContext
     [Fact]
     public void EditDisplay_value_is_not_an_editable_textbox()
     {
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Label, "Volume")
             .Add(d => d.Text, "15.3 oz"));
 
@@ -106,7 +106,7 @@ public class EditDisplayTests : TestContext
     {
         // Unmatched attributes used to throw InvalidOperationException; per the library owner's
         // decision, class merges with the component's own and the rest splat onto the value element.
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Text, "15.3 oz")
             .AddUnmatched("class", "consumer-class")
             .AddUnmatched("data-testid", "volume"));
@@ -123,7 +123,7 @@ public class EditDisplayTests : TestContext
         // Class + unmatched class can never compose (case-insensitive parameter matching binds a
         // consumer's class= to the Class parameter — same knob), but Class alongside splatted
         // style/data-* must all land on the value element together.
-        var cut = RenderComponent<EditDisplay>(p => p
+        var cut = Render<EditDisplay>(p => p
             .Add(d => d.Class, "highlight")
             .Add(d => d.Text, "15.3 oz")
             .AddUnmatched("style", "margin-top:4px")

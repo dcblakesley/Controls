@@ -8,7 +8,7 @@ namespace FormTesting.Client.Tests;
 /// bUnit smoke tests for <see cref="EditCheckedEnumList{TEnum}"/>. Mirrors the string-list tests
 /// but covers the enum-display-name path and the Sort option.
 /// </summary>
-public class EditCheckedEnumListTests : TestContext
+public class EditCheckedEnumListTests : BunitContext
 {
     static RenderFragment WithForm(ColorListModel model, RenderFragment inner) => builder =>
     {

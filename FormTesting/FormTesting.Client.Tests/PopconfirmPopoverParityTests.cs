@@ -11,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// path as user interaction, every open/close raises <c>VisibleChanged</c> back, and a
 /// <c>_lastVisibleParam</c> guard recognizes a <c>@bind-Visible</c> echo instead of re-triggering.
 /// </summary>
-public class PopconfirmPopoverParityTests : TestContext
+public class PopconfirmPopoverParityTests : BunitContext
 {
     public PopconfirmPopoverParityTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay module import
 
@@ -20,11 +20,11 @@ public class PopconfirmPopoverParityTests : TestContext
     [Fact]
     public void Popconfirm_OkDanger_adds_the_danger_class_only_when_set()
     {
-        var plain = RenderComponent<Popconfirm>(p => p.Add(pc => pc.Title, "Delete?").AddChildContent("<button>del</button>"));
+        var plain = Render<Popconfirm>(p => p.Add(pc => pc.Title, "Delete?").AddChildContent("<button>del</button>"));
         plain.Find(".wss-popconfirm-trigger").Click();
         Assert.DoesNotContain("wss-dialog-btn-danger", plain.Find(".wss-popconfirm-buttons .wss-dialog-btn-primary").ClassList);
 
-        var danger = RenderComponent<Popconfirm>(p => p
+        var danger = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?").Add(pc => pc.OkDanger, true)
             .AddChildContent("<button>del</button>"));
         danger.Find(".wss-popconfirm-trigger").Click();
@@ -37,7 +37,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public void Popconfirm_synchronous_confirm_still_closes_immediately_with_no_loading_state()
     {
         var confirmed = false;
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, () => confirmed = true))
             .AddChildContent("<button>del</button>"));
@@ -54,7 +54,7 @@ public class PopconfirmPopoverParityTests : TestContext
     {
         var tcs = new TaskCompletionSource();
         var confirmed = false;
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, async () => { await tcs.Task; confirmed = true; }))
             .AddChildContent("<button>del</button>"));
@@ -88,7 +88,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public async Task Popconfirm_a_failing_pending_confirm_closes_and_rethrows_without_swallowing()
     {
         var tcs = new TaskCompletionSource();
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, async () => { await tcs.Task; }))
             .AddChildContent("<button>del</button>"));
@@ -125,7 +125,7 @@ public class PopconfirmPopoverParityTests : TestContext
         var tcs = new TaskCompletionSource();
         var cancelled = false;
         var raised = new List<bool>();
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, async () => { await tcs.Task; }))
             .Add(pc => pc.OnCancel, EventCallback.Factory.Create(this, () => cancelled = true))
@@ -170,7 +170,7 @@ public class PopconfirmPopoverParityTests : TestContext
     {
         var raised = new List<bool>();
         var tcs = new TaskCompletionSource();
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Visible, true)
             .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, v => raised.Add(v)))
@@ -186,7 +186,7 @@ public class PopconfirmPopoverParityTests : TestContext
         raised.Clear();
 
         // External Visible=false while a confirm is pending -- must wait, not close out from under it.
-        cut.SetParametersAndRender(p => p.Add(pc => pc.Visible, false));
+        cut.Render(p => p.Add(pc => pc.Visible, false));
         Assert.NotEmpty(cut.FindAll(".wss-popconfirm"));
         Assert.Empty(raised);
 
@@ -201,28 +201,28 @@ public class PopconfirmPopoverParityTests : TestContext
     [Fact]
     public void Popconfirm_setting_Visible_true_externally_opens_when_VisibleChanged_is_bound()
     {
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Visible, false)
             .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => { }))
             .AddChildContent("<button>del</button>"));
 
         Assert.Empty(cut.FindAll(".wss-popconfirm"));
-        cut.SetParametersAndRender(p => p.Add(pc => pc.Visible, true));
+        cut.Render(p => p.Add(pc => pc.Visible, true));
         Assert.NotEmpty(cut.FindAll(".wss-popconfirm"));
     }
 
     [Fact]
     public void Popconfirm_setting_Visible_false_externally_closes_an_open_popup()
     {
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Visible, true)
             .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => { }))
             .AddChildContent("<button>del</button>"));
 
         Assert.NotEmpty(cut.FindAll(".wss-popconfirm")); // controlled Visible=true opens on first render too
-        cut.SetParametersAndRender(p => p.Add(pc => pc.Visible, false));
+        cut.Render(p => p.Add(pc => pc.Visible, false));
         Assert.Empty(cut.FindAll(".wss-popconfirm"));
     }
 
@@ -230,7 +230,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public void Popconfirm_internal_open_and_close_both_notify_VisibleChanged()
     {
         var raised = new List<bool>();
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Visible, false)
             .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, v => raised.Add(v)))
@@ -247,7 +247,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public void Popconfirm_a_parameter_echo_of_the_value_just_raised_does_not_retrigger_open_close()
     {
         var raiseCount = 0;
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Visible, false)
             .Add(pc => pc.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => raiseCount++))
@@ -257,7 +257,7 @@ public class PopconfirmPopoverParityTests : TestContext
         Assert.Equal(1, raiseCount);
 
         // Simulate the consumer's @bind-Visible field echoing the same value back in.
-        cut.SetParametersAndRender(p => p.Add(pc => pc.Visible, true));
+        cut.Render(p => p.Add(pc => pc.Visible, true));
         Assert.Equal(1, raiseCount); // no additional (re-)trigger from the echo
         Assert.NotEmpty(cut.FindAll(".wss-popconfirm"));
     }
@@ -265,7 +265,7 @@ public class PopconfirmPopoverParityTests : TestContext
     [Fact]
     public void Popconfirm_Visible_is_inert_without_a_bound_VisibleChanged()
     {
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Visible, true) // no VisibleChanged bound
             .AddChildContent("<button>del</button>"));
@@ -277,7 +277,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public void Popconfirm_disabled_ignores_a_forced_controlled_Visible_true_and_never_echoes_true()
     {
         var raised = new List<bool>();
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Disabled, true)
             .Add(pc => pc.Visible, true)
@@ -292,7 +292,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public void Popconfirm_becoming_disabled_while_open_closes_through_the_normal_path_and_notifies()
     {
         var raised = new List<bool>();
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Disabled, false)
             .Add(pc => pc.Visible, true)
@@ -301,7 +301,7 @@ public class PopconfirmPopoverParityTests : TestContext
 
         Assert.NotEmpty(cut.FindAll(".wss-popconfirm")); // opened normally while enabled
 
-        cut.SetParametersAndRender(p => p.Add(pc => pc.Disabled, true)); // Visible stays true, unchanged
+        cut.Render(p => p.Add(pc => pc.Disabled, true)); // Visible stays true, unchanged
 
         Assert.Empty(cut.FindAll(".wss-popconfirm"));
         Assert.Contains(false, raised);
@@ -315,7 +315,7 @@ public class PopconfirmPopoverParityTests : TestContext
         // _lastVisibleParam = Visible BEFORE returning, so re-enabling with a persistent Visible=true
         // compared equal against that stale recording and never took effect.
         var raised = new List<bool>();
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Disabled, false)
             .Add(pc => pc.Visible, true)
@@ -324,11 +324,11 @@ public class PopconfirmPopoverParityTests : TestContext
 
         Assert.NotEmpty(cut.FindAll(".wss-popconfirm")); // opened normally while enabled
 
-        cut.SetParametersAndRender(p => p.Add(pc => pc.Disabled, true)); // force-closes; Visible stays true
+        cut.Render(p => p.Add(pc => pc.Disabled, true)); // force-closes; Visible stays true
         Assert.Empty(cut.FindAll(".wss-popconfirm"));
         Assert.Contains(false, raised);
 
-        cut.SetParametersAndRender(p => p.Add(pc => pc.Disabled, false)); // Visible still true, untouched
+        cut.Render(p => p.Add(pc => pc.Disabled, false)); // Visible still true, untouched
 
         Assert.NotEmpty(cut.FindAll(".wss-popconfirm")); // reopens
         Assert.Contains(true, raised);
@@ -339,28 +339,28 @@ public class PopconfirmPopoverParityTests : TestContext
     [Fact]
     public void Popover_setting_Visible_true_externally_opens_when_VisibleChanged_is_bound()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .Add(pv => pv.Visible, false)
             .Add(pv => pv.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => { }))
             .AddChildContent("<button>open</button>"));
 
         Assert.Empty(cut.FindAll(".wss-popover"));
-        cut.SetParametersAndRender(p => p.Add(pv => pv.Visible, true));
+        cut.Render(p => p.Add(pv => pv.Visible, true));
         Assert.NotEmpty(cut.FindAll(".wss-popover"));
     }
 
     [Fact]
     public void Popover_setting_Visible_false_externally_closes_an_open_popover()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .Add(pv => pv.Visible, true)
             .Add(pv => pv.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => { }))
             .AddChildContent("<button>open</button>"));
 
         Assert.NotEmpty(cut.FindAll(".wss-popover"));
-        cut.SetParametersAndRender(p => p.Add(pv => pv.Visible, false));
+        cut.Render(p => p.Add(pv => pv.Visible, false));
         Assert.Empty(cut.FindAll(".wss-popover"));
     }
 
@@ -368,7 +368,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public void Popover_internal_open_and_close_both_notify_VisibleChanged()
     {
         var raised = new List<bool>();
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .Add(pv => pv.Visible, false)
             .Add(pv => pv.VisibleChanged, EventCallback.Factory.Create<bool>(this, v => raised.Add(v)))
@@ -385,7 +385,7 @@ public class PopconfirmPopoverParityTests : TestContext
     public void Popover_a_parameter_echo_of_the_value_just_raised_does_not_retrigger_open_close()
     {
         var raiseCount = 0;
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .Add(pv => pv.Visible, false)
             .Add(pv => pv.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => raiseCount++))
@@ -394,7 +394,7 @@ public class PopconfirmPopoverParityTests : TestContext
         cut.Find(".wss-popover-trigger").Click();
         Assert.Equal(1, raiseCount);
 
-        cut.SetParametersAndRender(p => p.Add(pv => pv.Visible, true)); // echo
+        cut.Render(p => p.Add(pv => pv.Visible, true)); // echo
         Assert.Equal(1, raiseCount);
         Assert.NotEmpty(cut.FindAll(".wss-popover"));
     }
@@ -402,7 +402,7 @@ public class PopconfirmPopoverParityTests : TestContext
     [Fact]
     public void Popover_Visible_is_inert_without_a_bound_VisibleChanged()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .Add(pv => pv.Visible, true) // no VisibleChanged bound
             .AddChildContent("<button>open</button>"));

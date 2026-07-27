@@ -11,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// ARIA wiring. The JS-owned behaviors (viewport flip/clamp, Enter submit-suppression, focus-out
 /// close) are covered by the e2e suite — bUnit does not execute JavaScript.
 /// </summary>
-public class DatePickerTests : TestContext
+public class DatePickerTests : BunitContext
 {
     public DatePickerTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
@@ -20,7 +20,7 @@ public class DatePickerTests : TestContext
 
     IRenderedComponent<DatePicker> RenderPicker(
         Action<ComponentParameterCollectionBuilder<DatePicker>>? configure = null) =>
-        RenderComponent<DatePicker>(p =>
+        Render<DatePicker>(p =>
         {
             p.Add(c => c.Format, "MM/dd/yyyy");
             p.Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday);
@@ -250,7 +250,7 @@ public class DatePickerTests : TestContext
         Assert.Equal(new[] { "Su", "Mo", "Tu", "We", "Th", "Fr", "Sa" }, sundayNames);
         Assert.Equal("true", sunday.Find(".wss-picker-week-header").GetAttribute("aria-hidden"));
 
-        var monday = RenderComponent<DatePicker>(p => p
+        var monday = Render<DatePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy")
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Monday)
             .Add(c => c.Value, Feb14));
@@ -426,7 +426,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Month_mode_renders_a_twelve_button_grid_with_the_year_header()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14));
 
@@ -454,7 +454,7 @@ public class DatePickerTests : TestContext
     public void Month_click_commits_the_first_of_month_and_closes()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -469,7 +469,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Month_mode_selected_and_disabled_states_honor_min_and_max_at_month_granularity()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14)
             .Add(c => c.Min, new DateTime(2026, 3, 1))
@@ -491,7 +491,7 @@ public class DatePickerTests : TestContext
     {
         // View the year containing today so the "today" cell is guaranteed to render, without
         // hardcoding which month that is (keeps the test valid regardless of when it runs).
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, new DateTime(DateTime.Today.Year, 1, 1)));
 
@@ -507,7 +507,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Month_mode_arrow_keys_move_the_roving_tabindex()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14));
         Open(cut);
@@ -532,7 +532,7 @@ public class DatePickerTests : TestContext
     public void Month_mode_home_and_end_move_to_the_start_and_end_of_the_focused_row()
     {
         // May (month 5) sits in the Apr-Jun grid row.
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, new DateTime(2026, 5, 14)));
         Open(cut);
@@ -547,7 +547,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Month_mode_pagedown_steps_a_year_and_moves_the_displayed_view()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14));
         Open(cut);
@@ -564,7 +564,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Prev_and_next_year_buttons_step_the_view_in_month_mode()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14));
         Open(cut);
@@ -584,7 +584,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Prev_and_next_year_buttons_disable_at_the_min_and_max_year()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14)
             .Add(c => c.Min, new DateTime(2026, 1, 1))
@@ -600,7 +600,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Year_select_retargets_the_month_grid()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14));
 
@@ -615,7 +615,7 @@ public class DatePickerTests : TestContext
     public void Typed_text_in_month_mode_parses_and_normalizes_to_the_first_of_month()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -632,23 +632,23 @@ public class DatePickerTests : TestContext
     public void Effective_format_and_placeholder_default_per_mode_when_unset()
     {
         // Bypass the RenderPicker fixture (it always forces Format) so the mode default applies.
-        var dateCut = RenderComponent<DatePicker>(p => p.Add(c => c.Value, Feb14));
+        var dateCut = Render<DatePicker>(p => p.Add(c => c.Value, Feb14));
         Assert.Equal("02/14/2026", dateCut.Find(".wss-picker-input-date").GetAttribute("value"));
         Assert.Equal("Select date", dateCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
 
-        var monthCut = RenderComponent<DatePicker>(p => p
+        var monthCut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14));
         Assert.Equal("02/2026", monthCut.Find(".wss-picker-input-date").GetAttribute("value"));
         Assert.Equal("Select month", monthCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
 
-        var yearCut = RenderComponent<DatePicker>(p => p
+        var yearCut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14));
         Assert.Equal("2026", yearCut.Find(".wss-picker-input-date").GetAttribute("value"));
         Assert.Equal("Select year", yearCut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
 
-        var quarterCut = RenderComponent<DatePicker>(p => p
+        var quarterCut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 8, 20)));
         Assert.Equal("2026-Q3", quarterCut.Find(".wss-picker-input-date").GetAttribute("value"));
@@ -656,7 +656,7 @@ public class DatePickerTests : TestContext
 
         // Feb 14, 2026 falls in the week starting Feb 8 (culture-default Sunday first day, same
         // assumption GridDays/WeekdayHeaders make elsewhere in this class) -- week 7 of 2026.
-        var weekCut = RenderComponent<DatePicker>(p => p
+        var weekCut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.Value, Feb14));
         Assert.Equal("2026-W07", weekCut.Find(".wss-picker-input-date").GetAttribute("value"));
@@ -671,7 +671,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Time_mode_renders_three_selects_with_the_spec_option_counts_and_aria_labels()
     {
-        var cut = RenderComponent<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+        var cut = Render<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
 
         Open(cut);
 
@@ -694,7 +694,7 @@ public class DatePickerTests : TestContext
     public void Opening_time_mode_with_a_null_value_shows_midnight_but_commits_nothing()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -711,7 +711,7 @@ public class DatePickerTests : TestContext
     public void Changing_a_time_select_commits_a_today_anchored_value_without_closing()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -725,7 +725,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Time_mode_ok_button_closes_the_panel()
     {
-        var cut = RenderComponent<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
+        var cut = Render<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Time));
 
         Open(cut);
         cut.Find(".wss-picker-ok").Click();
@@ -738,7 +738,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Datetime_mode_renders_the_day_calendar_and_the_time_row_together()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30)));
@@ -754,7 +754,7 @@ public class DatePickerTests : TestContext
     public void Datetime_mode_day_click_commits_the_date_and_preserves_the_time_without_closing()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30))
@@ -771,7 +771,7 @@ public class DatePickerTests : TestContext
     public void Datetime_mode_day_click_with_no_prior_value_commits_midnight()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -786,7 +786,7 @@ public class DatePickerTests : TestContext
     public void Datetime_mode_time_select_change_commits_preserving_the_date()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30))
@@ -803,7 +803,7 @@ public class DatePickerTests : TestContext
     public void Typed_datetime_text_round_trips_through_the_effective_format()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -819,7 +819,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Min_and_max_still_disable_days_in_datetime_mode()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30))
@@ -837,7 +837,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Datetime_mode_ok_button_closes_the_panel()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Value, Feb14));
 
@@ -875,7 +875,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Year_mode_renders_a_twelve_cell_decade_grid_with_two_outside_years()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14)); // 2026 -> decade 2020-2029
 
@@ -907,7 +907,7 @@ public class DatePickerTests : TestContext
     public void Year_click_commits_january_first_and_closes()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -923,7 +923,7 @@ public class DatePickerTests : TestContext
     public void Clicking_an_outside_year_cell_commits_it_too()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -938,7 +938,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Year_mode_min_and_max_disable_years_outside_range_at_year_granularity()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14)
             .Add(c => c.Min, new DateTime(2022, 6, 1))
@@ -955,7 +955,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Year_mode_marks_the_current_year_as_aria_current()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, new DateTime(DateTime.Today.Year, 1, 1)));
 
@@ -969,7 +969,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Year_mode_arrow_keys_move_the_roving_tabindex()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14)); // 2026
         Open(cut);
@@ -992,7 +992,7 @@ public class DatePickerTests : TestContext
     {
         // 2023 sits in the 2022-2024 row (rows group from the dimmed leading cell 2019: 2019-21,
         // 2022-24, 2025-27, 2028-30).
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, new DateTime(2023, 6, 1)));
         Open(cut);
@@ -1009,7 +1009,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Prev_and_next_decade_buttons_step_the_view()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14));
         Open(cut);
@@ -1029,7 +1029,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Prev_and_next_decade_buttons_disable_at_the_min_and_max_decade()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14)
             .Add(c => c.Min, new DateTime(2020, 1, 1))
@@ -1045,7 +1045,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Prev_decade_button_disables_at_the_earliest_representable_decade()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, new DateTime(15, 1, 1))); // ClampDecadeStart's floor -> decade 10-19
         Open(cut);
@@ -1058,7 +1058,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Year_mode_pagedown_and_pageup_flip_the_decade()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.Value, Feb14)); // 2026, decade 2020-2029
         Open(cut);
@@ -1074,7 +1074,7 @@ public class DatePickerTests : TestContext
     public void Typed_text_in_year_mode_parses_and_normalizes_to_january_first()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Year)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -1095,7 +1095,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Quarter_mode_renders_a_four_button_row_with_the_year_header()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3 2026
 
@@ -1120,7 +1120,7 @@ public class DatePickerTests : TestContext
     public void Quarter_click_commits_the_quarter_start_and_closes()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 8, 20))
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -1135,7 +1135,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Quarter_mode_min_and_max_disable_quarters_outside_range_at_quarter_granularity()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 8, 20))
             .Add(c => c.Min, new DateTime(2026, 4, 15))  // Q2
@@ -1153,7 +1153,7 @@ public class DatePickerTests : TestContext
     public void Quarter_mode_marks_the_current_quarter_as_aria_current()
     {
         var currentQuarter = (DateTime.Today.Month - 1) / 3 + 1;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(DateTime.Today.Year, 1, 1)));
 
@@ -1165,7 +1165,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Quarter_mode_arrow_keys_move_the_roving_tabindex_and_cross_the_year()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 11, 1))); // Q4 2026
         Open(cut);
@@ -1185,7 +1185,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Quarter_mode_up_and_down_are_no_ops()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3
         Open(cut);
@@ -1200,7 +1200,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Quarter_mode_home_and_end_move_to_the_years_first_and_last_quarter()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3
         Open(cut);
@@ -1215,7 +1215,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Quarter_mode_pageup_and_pagedown_step_a_year_keeping_the_same_quarter()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Value, new DateTime(2026, 8, 20))); // Q3 2026
         Open(cut);
@@ -1232,7 +1232,7 @@ public class DatePickerTests : TestContext
     public void Quarter_text_with_a_dash_parses_and_normalizes_to_the_quarter_start()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -1248,7 +1248,7 @@ public class DatePickerTests : TestContext
     public void Quarter_text_without_a_dash_and_lowercase_q_also_parses()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -1262,7 +1262,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Quarter_text_with_no_year_is_rejected()
     {
-        var cut = RenderComponent<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Quarter));
+        var cut = Render<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Quarter));
 
         Open(cut);
         cut.Find(".wss-picker-input-date").Input("q3");
@@ -1276,7 +1276,7 @@ public class DatePickerTests : TestContext
     public void Typed_plain_date_in_quarter_mode_normalizes_to_its_quarter_start()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
@@ -1290,7 +1290,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Explicit_format_in_quarter_mode_is_used_verbatim()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Quarter)
             .Add(c => c.Format, "yyyy-MM")
             .Add(c => c.Value, new DateTime(2026, 8, 20)));
@@ -1312,7 +1312,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Week_mode_renders_six_week_number_rows_instead_of_the_flat_grid()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14));
@@ -1332,7 +1332,7 @@ public class DatePickerTests : TestContext
     public void Week_click_commits_the_week_start_and_closes()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14)
@@ -1348,7 +1348,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Week_mode_marks_the_row_containing_the_value_as_selected_and_suppresses_day_styling()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14)); // week Feb 8-14, the grid's 2nd row
@@ -1376,7 +1376,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Week_mode_shows_each_rows_week_number()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14));
@@ -1398,7 +1398,7 @@ public class DatePickerTests : TestContext
         // below -- stays enabled; only the week-granularity commit guard (IsWeekDisabledForCommit,
         // exercised by the typed-text tests below) would ever reject the whole week.
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14)
@@ -1424,7 +1424,7 @@ public class DatePickerTests : TestContext
         DateTime? Commit(string text)
         {
             DateTime? value = null;
-            var cut = RenderComponent<DatePicker>(p => p
+            var cut = Render<DatePicker>(p => p
                 .Add(c => c.Mode, DatePickerMode.Week)
                 .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
                 .Add(c => c.Min, new DateTime(2026, 2, 1))
@@ -1445,7 +1445,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Week_mode_arrow_keys_still_move_the_roving_tabindex()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14));
@@ -1461,7 +1461,7 @@ public class DatePickerTests : TestContext
     public void Week_text_with_a_dash_parses_and_normalizes_to_the_week_start()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -1480,7 +1480,7 @@ public class DatePickerTests : TestContext
     public void Week_text_without_a_dash_and_lowercase_w_also_parses()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -1495,7 +1495,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Week_display_shows_the_year_week_shorthand_for_a_bound_value()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, new DateTime(2023, 2, 21))); // within week 8 of 2023 (Feb 19-25)
@@ -1511,7 +1511,7 @@ public class DatePickerTests : TestContext
         // from WeekStart(Jan 1). The parse must invert the DISPLAY's GetWeekOfYear numbering --
         // whatever shorthand the input shows for a value must commit that same week back.
         DateTime? value = new DateTime(2026, 2, 18); // mid-week value, week start Feb 15 (Sunday)
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, value)
@@ -1530,7 +1530,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Week_text_with_no_year_is_rejected()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday));
 
@@ -1546,7 +1546,7 @@ public class DatePickerTests : TestContext
     public void Typed_plain_date_in_week_mode_normalizes_to_its_week_start()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -1561,7 +1561,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Explicit_format_in_week_mode_is_used_verbatim()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.Format, "yyyy-MM-dd")
             .Add(c => c.Value, new DateTime(2026, 2, 14)));
@@ -1575,7 +1575,7 @@ public class DatePickerTests : TestContext
     public void ShowWeekNumbers_in_date_mode_adds_the_column_without_changing_commit_semantics()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.ShowWeekNumbers, true)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14)
@@ -1626,7 +1626,7 @@ public class DatePickerTests : TestContext
     public void DisabledDate_at_month_granularity_disables_month_cells_using_the_month_start_argument()
     {
         var seenArgs = new List<DateTime>();
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.Value, Feb14)
             .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d =>
@@ -1651,7 +1651,7 @@ public class DatePickerTests : TestContext
         // disabled), an arbitrary predicate can disagree between the two granularities -- the click
         // path must still guard the week-start commit explicitly (see OnDayClickAsync).
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Week)
             .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Value, Feb14)
@@ -1672,7 +1672,7 @@ public class DatePickerTests : TestContext
     public void DisabledTime_disables_listed_hour_options_and_blocks_the_select_change_commit()
     {
         DateTime? value = new DateTime(2026, 2, 14, 10, 0, 0);
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Value, value)
             .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13])))
@@ -1694,7 +1694,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void HideDisabledTimeOptions_omits_other_disabled_hours_from_the_select()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 0, 0))
             .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13, 14])))
@@ -1714,7 +1714,7 @@ public class DatePickerTests : TestContext
     {
         DisabledTimeParts DisableThirteen(DateTime? date) => new(Hours: [13]);
 
-        var shown = RenderComponent<DatePicker>(p => p
+        var shown = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 0, 0)) // the bound hour IS on the disabled list
             .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)DisableThirteen)
@@ -1724,7 +1724,7 @@ public class DatePickerTests : TestContext
         Assert.True(shownOption.HasAttribute("disabled"));
         Assert.NotNull(shownOption.GetAttribute("selected"));
 
-        var hidden = RenderComponent<DatePicker>(p => p
+        var hidden = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 0, 0))
             .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)DisableThirteen)
@@ -1744,7 +1744,7 @@ public class DatePickerTests : TestContext
     {
         DateTime? seenDate = new DateTime(1, 1, 1); // sentinel, overwritten by the callback below
         var sawInvocation = false;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(date =>
             {
@@ -1764,7 +1764,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void ShowSeconds_false_renders_two_selects()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.ShowSeconds, false));
 
@@ -1779,7 +1779,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void ShowSeconds_false_with_use12hours_renders_three_selects_hour_minute_period()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.ShowSeconds, false)
             .Add(c => c.Use12Hours, true));
@@ -1795,7 +1795,7 @@ public class DatePickerTests : TestContext
     public void ShowSeconds_false_select_change_commits_zero_seconds_over_a_stale_second()
     {
         DateTime? value = new DateTime(2026, 2, 14, 10, 30, 45);
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.ShowSeconds, false)
             .Add(c => c.Value, value)
@@ -1813,7 +1813,7 @@ public class DatePickerTests : TestContext
     public void ShowSeconds_false_typed_datetime_commit_zeroes_the_parsed_seconds()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.ShowSeconds, false)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -1831,7 +1831,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void MinuteStep_15_lists_only_the_stepped_options_when_the_value_is_on_lattice()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.MinuteStep, 15)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 30, 0)));
@@ -1845,7 +1845,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void MinuteStep_15_keeps_an_off_lattice_bound_value_visible_and_selected_never_jump()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.MinuteStep, 15)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 37, 0)));
@@ -1860,7 +1860,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Steps_below_one_clamp_to_one_instead_of_throwing()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.HourStep, 0)
             .Add(c => c.MinuteStep, -5)
@@ -1877,7 +1877,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void MinuteStep_composes_with_DisabledTime_step_filtering_first_then_disabled_hide()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 37, 0)) // off-lattice bound minute
             .Add(c => c.MinuteStep, 15)
@@ -1899,7 +1899,7 @@ public class DatePickerTests : TestContext
         // Both never-jump rules stack on the same option: the step lattice keeps 37 present at all
         // (it isn't a multiple of 15), and HideDisabledTimeOptions' own never-jump keeps it visible
         // (disabled, but not hidden) even though it's on DisabledTime's own list.
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 37, 0))
             .Add(c => c.MinuteStep, 15)
@@ -1916,7 +1916,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Use12Hours_renders_12_hour_option_text_for_the_current_period_and_a_period_select()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Use12Hours, true)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 14, 0, 0))); // 2 PM
@@ -1946,7 +1946,7 @@ public class DatePickerTests : TestContext
     public void Use12Hours_picking_the_hour_2_pm_option_commits_the_24_hour_value_14()
     {
         DateTime? value = new DateTime(2026, 2, 14, 13, 0, 0); // 1 PM
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Use12Hours, true)
             .Add(c => c.Value, value)
@@ -1962,7 +1962,7 @@ public class DatePickerTests : TestContext
     public void Use12Hours_switching_period_am_to_pm_recommits_the_current_hour_shifted_by_12()
     {
         DateTime? value = new DateTime(2026, 2, 14, 9, 15, 0); // 9:15 AM
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Use12Hours, true)
             .Add(c => c.Value, value)
@@ -1980,7 +1980,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Use12Hours_with_a_null_value_displays_12_am_and_selects_the_am_period()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Use12Hours, true));
 
@@ -1996,7 +1996,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void Use12Hours_changes_the_default_effective_format_to_h_mm_ss_tt()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Use12Hours, true)
             .Add(c => c.Value, new DateTime(2026, 2, 14, 14, 5, 9)));
@@ -2028,7 +2028,7 @@ public class DatePickerTests : TestContext
         // The "one coarse mode" case -- ShowToday's normalization runs through the same
         // NormalizeForMode every other commit path uses, so Month mode lands on the 1st.
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Month)
             .Add(c => c.ShowToday, true)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -2069,7 +2069,7 @@ public class DatePickerTests : TestContext
         Open(cut);
         Assert.Equal("Today", cut.Find(".wss-picker-today-btn").TextContent);
 
-        cut.SetParametersAndRender(p => p.Add(c => c.ShowToday, false));
+        cut.Render(p => p.Add(c => c.ShowToday, false));
         Assert.Empty(cut.FindAll(".wss-picker-footer"));
         Assert.Empty(cut.FindAll(".wss-picker-today-btn"));
     }
@@ -2078,7 +2078,7 @@ public class DatePickerTests : TestContext
     public void ShowNow_commits_datetime_now_without_closing_in_time_mode()
     {
         DateTime? value = null;
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.ShowNow, true)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -2124,7 +2124,7 @@ public class DatePickerTests : TestContext
         // (ApplyTimePartAsync), which never close, this closes just like every other mode.
         DateTime? value = null;
         var presets = new List<DatePickerPreset> { new("Noon", () => new DateTime(2026, 2, 14, 12, 0, 0)) };
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.Presets, presets)
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
@@ -2199,7 +2199,7 @@ public class DatePickerTests : TestContext
     [Fact]
     public void ExtraFooter_renders_alongside_the_existing_footer_in_time_mode()
     {
-        var cut = RenderComponent<DatePicker>(p => p
+        var cut = Render<DatePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.Time)
             .Add(c => c.ExtraFooter, (RenderFragment)(b => b.AddMarkupContent(0, "<span class=\"my-extra\">extra</span>"))));
 

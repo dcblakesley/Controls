@@ -6,14 +6,14 @@ namespace FormTesting.Client.Tests;
 /// English (so existing consumers and baselines are unaffected); overrides must flow into the
 /// rendered aria-labels, with the page-number format applied via the current culture.
 /// </summary>
-public class LocalizationParamsTests : TestContext
+public class LocalizationParamsTests : BunitContext
 {
     public LocalizationParamsTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the Select JS module imports
 
     // ----- Pagination -------------------------------------------------------
 
     IRenderedComponent<Pagination> RenderPager(Action<ComponentParameterCollectionBuilder<Pagination>>? extra = null) =>
-        RenderComponent<Pagination>(p =>
+        Render<Pagination>(p =>
         {
             p.Add(pg => pg.Total, 45)      // 45 / 10 => 5 pages, all rendered (no ellipsis)
              .Add(pg => pg.PageSize, 10)
@@ -72,7 +72,7 @@ public class LocalizationParamsTests : TestContext
     [Fact]
     public void Select_defaults_render_the_original_english_aria_labels()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Mode, SelectMode.Multiple)
             .Add(s => s.Options, Opts("Apple", "Banana"))
             .Add(s => s.Values, new List<string> { "Apple" })
@@ -86,7 +86,7 @@ public class LocalizationParamsTests : TestContext
     [Fact]
     public void Select_single_mode_clear_button_uses_the_singular_default()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("Apple", "Banana"))
             .Add(s => s.Value, "Apple"));
 
@@ -96,7 +96,7 @@ public class LocalizationParamsTests : TestContext
     [Fact]
     public void Select_overridden_labels_render_the_overrides()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Mode, SelectMode.Multiple)
             .Add(s => s.Options, Opts("Apple", "Banana"))
             .Add(s => s.Values, new List<string> { "Apple" })
@@ -113,7 +113,7 @@ public class LocalizationParamsTests : TestContext
     [Fact]
     public void Select_single_mode_override_renders_on_the_clear_button()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts("Apple", "Banana"))
             .Add(s => s.Value, "Apple")
             .Add(s => s.ClearSelectionLabel, "Auswahl aufheben"));

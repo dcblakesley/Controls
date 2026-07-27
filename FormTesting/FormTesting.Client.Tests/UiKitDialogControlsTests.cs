@@ -8,19 +8,19 @@ namespace FormTesting.Client.Tests;
 /// Modal/Popconfirm use inlined native footer buttons (the Button control is intentionally
 /// not part of this library).
 /// </summary>
-public class UiKitDialogControlsTests : TestContext
+public class UiKitDialogControlsTests : BunitContext
 {
     [Fact]
     public void Modal_hidden_renders_nothing()
     {
-        var cut = RenderComponent<Modal>(p => p.Add(m => m.Visible, false).Add(m => m.Title, "T"));
+        var cut = Render<Modal>(p => p.Add(m => m.Visible, false).Add(m => m.Title, "T"));
         Assert.Empty(cut.FindAll(".wss-modal"));
     }
 
     [Fact]
     public void Modal_visible_renders_title_body_and_two_footer_buttons()
     {
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "Confirm")
             .AddChildContent("<p class=\"body\">Are you sure?</p>"));
@@ -35,7 +35,7 @@ public class UiKitDialogControlsTests : TestContext
     {
         var okd = false;
         var canceled = false;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.OnOk, EventCallback.Factory.Create(this, () => okd = true))
             .Add(m => m.OnCancel, EventCallback.Factory.Create(this, () => canceled = true)));
@@ -49,7 +49,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Modal_without_title_and_not_closable_renders_no_empty_header_and_names_itself()
     {
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Closable, false)
             .AddChildContent("<p>body</p>"));
@@ -62,7 +62,7 @@ public class UiKitDialogControlsTests : TestContext
     public void Modal_mask_click_closes_only_when_the_gesture_starts_and_ends_on_the_mask()
     {
         var closes = 0;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
@@ -86,7 +86,7 @@ public class UiKitDialogControlsTests : TestContext
         // mouseup propagation so the wrap never records an up; the composed click reaches the wrap but,
         // with only a mask-down recorded, must NOT close. (This is the M5 direction the old fix missed.)
         var closes = 0;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
@@ -103,7 +103,7 @@ public class UiKitDialogControlsTests : TestContext
         // The already-supported direction, re-asserted under the two-flag model: press in the panel,
         // release on the mask. Down-in-panel clears the close intent, so the click must not close.
         var closes = 0;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
@@ -121,7 +121,7 @@ public class UiKitDialogControlsTests : TestContext
         // A later gesture starting in the panel must clear it, so a subsequent mask-release click can't
         // consume the stale flag and dismiss the dialog.
         var closes = 0;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++)));
@@ -140,17 +140,17 @@ public class UiKitDialogControlsTests : TestContext
         // in-flight focus-trap/scroll-lock handle instead of orphaning it. The leak itself isn't
         // observable in bUnit (no real JS module), but disposal must not throw.
         JSInterop.Mode = Bunit.JSRuntimeMode.Loose; // tolerate the overlay module import
-        var cut = RenderComponent<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
+        var cut = Render<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
         cut.Dispose();
     }
 
     [Fact]
     public void Modal_centered_adds_the_wrap_modifier_class_only_when_set()
     {
-        var plain = RenderComponent<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
+        var plain = Render<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
         Assert.DoesNotContain("wss-modal-wrap-centered", plain.Find(".wss-modal-wrap").ClassList);
 
-        var centered = RenderComponent<Modal>(p => p
+        var centered = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .Add(m => m.Centered, true));
@@ -161,7 +161,7 @@ public class UiKitDialogControlsTests : TestContext
     public void Modal_keyboard_false_blocks_escape_even_when_closable()
     {
         var closes = 0;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .Add(m => m.Closable, true)
@@ -177,7 +177,7 @@ public class UiKitDialogControlsTests : TestContext
     {
         // Keyboard and Closable are independent (matching AntD: closable only governs the X button).
         var closes = 0;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .Add(m => m.Closable, false)
@@ -190,11 +190,11 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Drawer_extra_renders_beside_the_close_button_only_when_set()
     {
-        var plain = RenderComponent<Drawer>(p => p.Add(d => d.Visible, true).Add(d => d.Title, "T"));
+        var plain = Render<Drawer>(p => p.Add(d => d.Visible, true).Add(d => d.Title, "T"));
         Assert.Empty(plain.FindAll(".wss-drawer-header-actions"));
         Assert.NotNull(plain.Find(".wss-drawer-close"));
 
-        var withExtra = RenderComponent<Drawer>(p => p
+        var withExtra = Render<Drawer>(p => p
             .Add(d => d.Visible, true)
             .Add(d => d.Title, "T")
             .Add(d => d.Extra, b => b.AddContent(0, "Extra action")));
@@ -205,7 +205,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Drawer_extra_alone_forces_the_header_to_render()
     {
-        var cut = RenderComponent<Drawer>(p => p
+        var cut = Render<Drawer>(p => p
             .Add(d => d.Visible, true)
             .Add(d => d.Closable, false)
             .Add(d => d.Extra, b => b.AddContent(0, "Extra action")));
@@ -219,7 +219,7 @@ public class UiKitDialogControlsTests : TestContext
     public void Drawer_keyboard_false_blocks_escape_even_when_closable()
     {
         var closed = false;
-        var cut = RenderComponent<Drawer>(p => p
+        var cut = Render<Drawer>(p => p
             .Add(d => d.Visible, true)
             .Add(d => d.Title, "T")
             .Add(d => d.Closable, true)
@@ -233,7 +233,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Drawer_visible_renders_placement_class_and_title()
     {
-        var cut = RenderComponent<Drawer>(p => p
+        var cut = Render<Drawer>(p => p
             .Add(d => d.Visible, true)
             .Add(d => d.Placement, DrawerPlacement.Left)
             .Add(d => d.Title, "Side panel"));
@@ -246,7 +246,7 @@ public class UiKitDialogControlsTests : TestContext
     public void Drawer_close_button_invokes_OnClose()
     {
         var closed = false;
-        var cut = RenderComponent<Drawer>(p => p
+        var cut = Render<Drawer>(p => p
             .Add(d => d.Visible, true)
             .Add(d => d.OnClose, EventCallback.Factory.Create(this, () => closed = true)));
 
@@ -258,7 +258,7 @@ public class UiKitDialogControlsTests : TestContext
     public void Escape_inside_an_open_popconfirm_does_not_close_the_enclosing_modal()
     {
         var modalClosed = false;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "Outer")
             .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => modalClosed = true))
@@ -277,7 +277,7 @@ public class UiKitDialogControlsTests : TestContext
     public void Escape_in_an_open_select_closes_the_dropdown_but_not_the_enclosing_modal()
     {
         var closes = 0;
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "Outer")
             .Add(m => m.VisibleChanged, EventCallback.Factory.Create<bool>(this, _ => closes++))
@@ -298,7 +298,7 @@ public class UiKitDialogControlsTests : TestContext
     public void Popconfirm_opens_on_trigger_then_confirm_invokes_and_closes()
     {
         var confirmed = false;
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, () => confirmed = true))
             .AddChildContent("<button>del</button>"));
@@ -315,7 +315,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Popconfirm_dialog_is_labelled_by_its_title()
     {
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .AddChildContent("<button>del</button>"));
 
@@ -329,7 +329,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Popover_dialog_is_labelled_by_its_title_when_present()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Title, "Info")
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddChildContent("<span>?</span>"));
@@ -346,7 +346,7 @@ public class UiKitDialogControlsTests : TestContext
     {
         var canceled = false;
         var confirmed = false;
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.OnCancel, EventCallback.Factory.Create(this, () => canceled = true))
             .Add(pc => pc.OnConfirm, EventCallback.Factory.Create(this, () => confirmed = true))
@@ -364,7 +364,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Popover_escape_inside_the_panel_closes_it()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Title, "Info")
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddChildContent("<span>?</span>"));
@@ -383,7 +383,7 @@ public class UiKitDialogControlsTests : TestContext
         // a consumer's <button> child made it nested-interactive (two tab stops, invalid ARIA).
         // The child is the trigger now; the popup ARIA lands on it via JS (covered by e2e), so the
         // server-rendered wrapper must carry no button semantics at all.
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Title, "Info")
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddChildContent("<button>?</button>"));
@@ -404,7 +404,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Popconfirm_without_a_title_omits_aria_labelledby_and_the_title_element()
     {
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .AddChildContent("<button>del</button>")); // no Title
 
         cut.Find(".wss-popconfirm-trigger").Click();
@@ -416,7 +416,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Popconfirm_without_a_title_falls_back_to_aria_label_for_its_accessible_name()
     {
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.AriaLabel, "Confirm deletion")
             .AddChildContent("<button>del</button>")); // no Title
 
@@ -429,7 +429,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Popover_without_a_title_falls_back_to_aria_label_for_its_accessible_name()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.AriaLabel, "More info")
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddChildContent("<span>?</span>")); // no Title
@@ -443,7 +443,7 @@ public class UiKitDialogControlsTests : TestContext
     [Fact]
     public void Titled_dialog_does_not_also_emit_aria_label()
     {
-        var cut = RenderComponent<Popover>(p => p
+        var cut = Render<Popover>(p => p
             .Add(pv => pv.Title, "Info")
             .Add(pv => pv.AriaLabel, "ignored when titled")
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
@@ -462,7 +462,7 @@ public class UiKitDialogControlsTests : TestContext
         // Trigger ARIA (aria-disabled, dropped aria-haspopup) lives on the child via JS now —
         // covered by e2e. Server-side, the wrapper must carry no button semantics (M7) and the
         // Disabled guard must hold.
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .Add(pc => pc.Disabled, true)
             .AddChildContent("<button>del</button>"));
@@ -481,20 +481,20 @@ public class UiKitDialogControlsTests : TestContext
         // iOS-class WebKit only synthesizes a click from a tap when the target chain contains a
         // focusable/interactive element. These masks/backdrops are plain divs whose whole job is
         // an @onclick — without tabindex="-1" tap-outside-to-close is dead on touch devices.
-        var modal = RenderComponent<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
+        var modal = Render<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
         Assert.Equal("-1", modal.Find(".wss-modal-wrap").GetAttribute("tabindex"));
 
-        var drawer = RenderComponent<Drawer>(p => p.Add(d => d.Visible, true).Add(d => d.Title, "T"));
+        var drawer = Render<Drawer>(p => p.Add(d => d.Visible, true).Add(d => d.Title, "T"));
         Assert.Equal("-1", drawer.Find(".wss-drawer-mask").GetAttribute("tabindex"));
 
-        var popover = RenderComponent<Popover>(p => p
+        var popover = Render<Popover>(p => p
             .Add(pv => pv.Title, "Info")
             .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
             .AddChildContent("<button>?</button>"));
         popover.Find(".wss-popover-trigger").Click();
         Assert.Equal("-1", popover.Find(".wss-popover-backdrop").GetAttribute("tabindex"));
 
-        var popconfirm = RenderComponent<Popconfirm>(p => p
+        var popconfirm = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .AddChildContent("<button>del</button>"));
         popconfirm.Find(".wss-popconfirm-trigger").Click();
@@ -506,7 +506,7 @@ public class UiKitDialogControlsTests : TestContext
     {
         // Consumers are expected to override styling, so unmatched attributes must land on the
         // dialog panel — NOT the mask wrap, whose inline z-index is JS-owned (wss-overlay.js).
-        var cut = RenderComponent<Modal>(p => p
+        var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
             .Add(m => m.Title, "T")
             .AddUnmatched("class", "consumer-class")
@@ -530,7 +530,7 @@ public class UiKitDialogControlsTests : TestContext
     {
         // Unmatched attributes go on the drawer panel — NOT .wss-drawer-root, whose inline
         // z-index is JS-owned (wss-overlay.js activateModal).
-        var cut = RenderComponent<Drawer>(p => p
+        var cut = Render<Drawer>(p => p
             .Add(d => d.Visible, true)
             .Add(d => d.Title, "T")
             .AddUnmatched("class", "consumer-class")
@@ -551,7 +551,7 @@ public class UiKitDialogControlsTests : TestContext
     {
         // Unmatched attributes go on the outer wrapper span — never the floating panel, whose
         // inline placement (z-index, --wss-shift) is JS-owned (wss-overlay.js place).
-        var cut = RenderComponent<Popconfirm>(p => p
+        var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")
             .AddUnmatched("class", "consumer-class")
             .AddUnmatched("data-testid", "my-popconfirm")

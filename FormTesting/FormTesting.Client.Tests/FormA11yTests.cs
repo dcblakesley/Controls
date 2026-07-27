@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// checked-list group semantics, one element per validation message, dynamic Label updates, and
 /// label[for] only referencing labelable elements.
 /// </summary>
-public class FormA11yTests : TestContext
+public class FormA11yTests : BunitContext
 {
     static RenderFragment WithForm(PersonModel model, bool withValidator, RenderFragment inner) => builder =>
     {
@@ -167,7 +167,7 @@ public class FormA11yTests : TestContext
 
         // CLAUDE.md documents the Label parameter as the vehicle for dynamic/runtime text — a
         // change must not be frozen at the first value.
-        cut.FindComponent<EditBool>().SetParametersAndRender(p => p.Add(x => x.Label, "Second"));
+        cut.FindComponent<EditBool>().Render(p => p.Add(x => x.Label, "Second"));
         Assert.Contains("Second", cut.Find("label.edit-checkbox-label").TextContent);
     }
 

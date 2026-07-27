@@ -13,7 +13,7 @@ namespace FormTesting.Client.Tests;
 /// `.edit-theme` CSS itself isn't exercised here (bUnit doesn't apply stylesheets) -- only the class
 /// wiring that CSS keys off.
 /// </summary>
-public class SizeAndLoadingTests : TestContext
+public class SizeAndLoadingTests : BunitContext
 {
     public SizeAndLoadingTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate Clear()'s FocusAsync where exercised incidentally
 
@@ -30,7 +30,7 @@ public class SizeAndLoadingTests : TestContext
     [Fact]
     public void EditInputShell_WrapperClass_is_appended_to_the_affix_wrapper()
     {
-        var cut = RenderComponent<EditInputShell>(p => p
+        var cut = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.WrapperClass, "edit-input-lg")
             .AddChildContent("<input />"));
@@ -41,13 +41,13 @@ public class SizeAndLoadingTests : TestContext
     [Fact]
     public void EditInputShell_IsDisabled_adds_the_affix_disabled_class_only_while_true()
     {
-        var disabled = RenderComponent<EditInputShell>(p => p
+        var disabled = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.IsDisabled, true)
             .AddChildContent("<input />"));
         Assert.Contains("edit-input-affix-disabled", disabled.Find(".edit-input-affix-wrapper").ClassList);
 
-        var enabled = RenderComponent<EditInputShell>(p => p
+        var enabled = Render<EditInputShell>(p => p
             .Add(s => s.AllowClear, true)
             .Add(s => s.IsDisabled, false)
             .AddChildContent("<input />"));
@@ -275,7 +275,7 @@ public class SizeAndLoadingTests : TestContext
     [Fact]
     public void SearchInput_Loading_false_renders_the_search_glyph_and_stays_byte_stable()
     {
-        var cut = RenderComponent<SearchInput>(p => p.Add(s => s.AddonLabel, "POs"));
+        var cut = Render<SearchInput>(p => p.Add(s => s.AddonLabel, "POs"));
 
         var button = cut.Find(".wss-search-btn");
         Assert.Null(button.GetAttribute("aria-busy"));
@@ -287,7 +287,7 @@ public class SizeAndLoadingTests : TestContext
     [Fact]
     public void SearchInput_Loading_true_swaps_the_icon_and_marks_the_button_busy_and_disabled()
     {
-        var cut = RenderComponent<SearchInput>(p => p.Add(s => s.Loading, true));
+        var cut = Render<SearchInput>(p => p.Add(s => s.Loading, true));
 
         var button = cut.Find(".wss-search-btn");
         Assert.Equal("true", button.GetAttribute("aria-busy"));
@@ -300,7 +300,7 @@ public class SizeAndLoadingTests : TestContext
     public void SearchInput_Loading_blocks_OnSearch_on_both_enter_and_click()
     {
         var searches = new List<string?>();
-        var cut = RenderComponent<SearchInput>(p => p
+        var cut = Render<SearchInput>(p => p
             .Add(s => s.Value, "abc")
             .Add(s => s.Loading, true)
             .Add(s => s.OnSearch, (string? v) => searches.Add(v)));
@@ -316,7 +316,7 @@ public class SizeAndLoadingTests : TestContext
     {
         // Only the button is busy/disabled -- the input stays editable while a search is pending
         // (matching AntD's own Input.Search loading behavior).
-        var cut = RenderComponent<SearchInput>(p => p.Add(s => s.Loading, true));
+        var cut = Render<SearchInput>(p => p.Add(s => s.Loading, true));
 
         Assert.False(cut.Find(".wss-search-input").HasAttribute("disabled"));
     }

@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -14,7 +15,7 @@ namespace FormTesting.Client.Tests;
 /// <see cref="Bunit.MissingEventHandlerException"/>, which it throws (rather than no-op'ing) when an
 /// event is triggered with no matching handler registered on the element.
 /// </summary>
-public class UpdateTriggerCascadeTests : TestContext
+public class UpdateTriggerCascadeTests : BunitContext
 {
     // AutoSize's JS resize call is exercised (not just rendered) by the EditTextArea tests below.
     public UpdateTriggerCascadeTests() => JSInterop.Mode = JSRuntimeMode.Loose;
@@ -49,7 +50,7 @@ public class UpdateTriggerCascadeTests : TestContext
         return current;
     }
 
-    IRenderedFragment RenderControl(PersonModel model, RenderFragment control, params UpdateTrigger?[] formDefaultsChain) =>
+    IRenderedComponent<ContainerFragment> RenderControl(PersonModel model, RenderFragment control, params UpdateTrigger?[] formDefaultsChain) =>
         Render(WithForm(model, WrapFormDefaultsChain(control, formDefaultsChain)));
 
     static RenderFragment EditStringFragment(PersonModel model, UpdateTrigger? updateOn, EventCallback<string?> onChanged) => b =>

@@ -11,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// <c>UiKitTableTests</c>' equivalent coverage for the Table header checkbox, which shares the same
 /// JS helper (see wss-checkbox.js / wss-table.js).
 /// </summary>
-public class EditBoolIndeterminateTests : TestContext
+public class EditBoolIndeterminateTests : BunitContext
 {
     // EditBool lazily imports wss-checkbox.js to set the indeterminate DOM property; tolerate the import.
     public EditBoolIndeterminateTests() => JSInterop.Mode = JSRuntimeMode.Loose;
@@ -77,7 +77,7 @@ public class EditBoolIndeterminateTests : TestContext
         var editContext = new EditContext(model);
         Expression<Func<bool>> field = () => model.IsActive;
 
-        var cut = RenderComponent<EditBool>(ps => ps
+        var cut = Render<EditBool>(ps => ps
             .AddCascadingValue(editContext)
             .Add(c => c.Value, false)
             .Add(c => c.ValueExpression, field)
@@ -85,7 +85,7 @@ public class EditBoolIndeterminateTests : TestContext
 
         cut.WaitForAssertion(() => Assert.Equal(1, IndeterminateCalls()));
 
-        cut.SetParametersAndRender(ps => ps.Add(c => c.Indeterminate, false));
+        cut.Render(ps => ps.Add(c => c.Indeterminate, false));
 
         cut.WaitForAssertion(() => Assert.Equal(2, IndeterminateCalls()));
         var last = JSInterop.Invocations.Last(i => i.Identifier == "setIndeterminate");

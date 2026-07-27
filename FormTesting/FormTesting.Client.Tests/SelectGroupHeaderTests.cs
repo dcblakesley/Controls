@@ -7,7 +7,7 @@ namespace FormTesting.Client.Tests;
 /// interleaves a non-interactive header before the first option of each contiguous run of a shared
 /// group name. Keyboard navigation (Move*/FindLabelPrefix) must skip header rows entirely.
 /// </summary>
-public class SelectGroupHeaderTests : TestContext
+public class SelectGroupHeaderTests : BunitContext
 {
     public SelectGroupHeaderTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
@@ -17,7 +17,7 @@ public class SelectGroupHeaderTests : TestContext
     [Fact]
     public void Options_with_a_shared_Group_render_one_header_before_each_run()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>>
             {
                 Opt("Apple", "Fruit"),
@@ -46,7 +46,7 @@ public class SelectGroupHeaderTests : TestContext
     [Fact]
     public void Ungrouped_options_render_with_no_header_in_their_given_order()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>> { Opt("Apple"), Opt("Banana") })
             .Add(s => s.DefaultOpen, true));
 
@@ -57,7 +57,7 @@ public class SelectGroupHeaderTests : TestContext
     [Fact]
     public void Header_rows_are_presentation_only_never_role_option()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>> { Opt("Apple", "Fruit") })
             .Add(s => s.DefaultOpen, true));
 
@@ -71,7 +71,7 @@ public class SelectGroupHeaderTests : TestContext
     [Fact]
     public void A_header_disappears_when_none_of_its_options_match_the_filter_but_stays_when_one_does()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>>
             {
                 Opt("Apple", "Fruit"),
@@ -97,7 +97,7 @@ public class SelectGroupHeaderTests : TestContext
     public void ArrowDown_navigation_skips_a_header_row_and_lands_on_its_first_option()
     {
         string? selected = null;
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>> { Opt("Apple", "Fruit"), Opt("Banana", "Fruit") })
             .Add(s => s.ValueChanged, (string v) => selected = v));
 
@@ -112,7 +112,7 @@ public class SelectGroupHeaderTests : TestContext
     public void End_key_lands_on_the_last_option_not_a_trailing_header()
     {
         string? selected = null;
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>> { Opt("Apple", "Fruit"), Opt("Carrot", "Vegetable") })
             .Add(s => s.DefaultOpen, true)
             .Add(s => s.ValueChanged, (string v) => selected = v));
@@ -130,7 +130,7 @@ public class SelectGroupHeaderTests : TestContext
         // ShowSearch=false routes typed letters through type-ahead (FindLabelPrefix) instead of the
         // filter text box -- "F" must never resolve to the "Fruit" header, only to an option label.
         string? selected = null;
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>> { Opt("Fig", "Fruit"), Opt("Grape", "Fruit") })
             .Add(s => s.ShowSearch, false)
             .Add(s => s.DefaultOpen, true)
@@ -145,7 +145,7 @@ public class SelectGroupHeaderTests : TestContext
     [Fact]
     public void Same_group_name_in_two_non_contiguous_runs_gets_a_separate_header_per_run()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>>
             {
                 Opt("Apple", "Fruit"),
@@ -165,7 +165,7 @@ public class SelectGroupHeaderTests : TestContext
     public void Disabled_option_within_a_group_is_still_skipped_by_keyboard_navigation()
     {
         string? selected = null;
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, new List<SelectOption<string>>
             {
                 Opt("Apple", "Fruit", disabled: true),

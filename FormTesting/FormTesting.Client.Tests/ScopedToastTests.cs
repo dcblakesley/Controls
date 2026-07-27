@@ -7,7 +7,7 @@ namespace FormTesting.Client.Tests;
 /// INotificationService + their MessageContainer / NotificationContainer hosts. Unlike the static
 /// Wasm* services, state lives on the instance, so it does not bleed across users/circuits.
 /// </summary>
-public class ScopedToastTests : TestContext
+public class ScopedToastTests : BunitContext
 {
     [Fact]
     public void MessageContainer_renders_messages_from_injected_service()
@@ -16,7 +16,7 @@ public class ScopedToastTests : TestContext
         var svc = Services.GetRequiredService<IMessageService>();
         svc.Success("Scoped saved", duration: 0);
 
-        var cut = RenderComponent<MessageContainer>();
+        var cut = Render<MessageContainer>();
 
         Assert.Contains("Scoped saved", cut.Find(".wss-msg-content").TextContent);
         Assert.NotNull(cut.Find(".wss-msg-icon-success"));
@@ -29,7 +29,7 @@ public class ScopedToastTests : TestContext
         var svc = Services.GetRequiredService<INotificationService>();
         svc.Info("Scoped notice", "the details", duration: 0);
 
-        var cut = RenderComponent<NotificationContainer>();
+        var cut = Render<NotificationContainer>();
 
         Assert.Contains("Scoped notice", cut.Find(".wss-notification-message").TextContent);
         Assert.Contains("the details", cut.Find(".wss-notification-description").TextContent);
@@ -44,19 +44,19 @@ public class ScopedToastTests : TestContext
         Services.AddWssControlsToasts();
         Services.GetRequiredService<INotificationService>().Info("x", duration: 0);
 
-        var cut = RenderComponent<NotificationContainer>(p => p.Add(c => c.Placement, NotificationPlacement.BottomLeft));
+        var cut = Render<NotificationContainer>(p => p.Add(c => c.Placement, NotificationPlacement.BottomLeft));
 
         Assert.Contains("wss-notification-bottomleft", cut.Find(".wss-notification-container").ClassList);
     }
 
     [Fact]
-    public void Disposed_MessageContainer_unsubscribes_from_the_service()
+    public async Task Disposed_MessageContainer_unsubscribes_from_the_service()
     {
         Services.AddWssControlsToasts();
         var svc = Services.GetRequiredService<IMessageService>();
-        var cut = RenderComponent<MessageContainer>();
+        var cut = Render<MessageContainer>();
 
-        DisposeComponents();
+        await DisposeComponentsAsync();
 
         // If the container leaked its OnChange subscription, this would StateHasChanged a
         // disposed component and throw.
@@ -112,7 +112,7 @@ public class ScopedToastTests : TestContext
         Services.AddWssControlsToasts();
         Services.GetRequiredService<IMessageService>().Error("boom", duration: 0);
 
-        var cut = RenderComponent<MessageContainer>();
+        var cut = Render<MessageContainer>();
         // The error renders inside the always-present assertive region...
         var assertive = cut.Find(".wss-msg-region[role=alert]");
         Assert.Equal("assertive", assertive.GetAttribute("aria-live"));
@@ -129,7 +129,7 @@ public class ScopedToastTests : TestContext
         Services.AddWssControlsToasts();
         Services.GetRequiredService<IMessageService>().Info("hi", duration: 0);
 
-        var cut = RenderComponent<MessageContainer>();
+        var cut = Render<MessageContainer>();
         var polite = cut.Find(".wss-msg-region[role=status]");
         Assert.Equal("polite", polite.GetAttribute("aria-live"));
         Assert.Contains("hi", polite.TextContent);

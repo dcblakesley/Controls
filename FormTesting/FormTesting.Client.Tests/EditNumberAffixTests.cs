@@ -11,7 +11,7 @@ namespace FormTesting.Client.Tests;
 /// adds coverage for the new surface. EditNumber does not get AllowClear/ShowCount/IsPassword (see
 /// the master spec's D3 EditNumber bullet) -- there's no clear/count/password toggle to test here.
 /// </summary>
-public class EditNumberAffixTests : TestContext
+public class EditNumberAffixTests : BunitContext
 {
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {

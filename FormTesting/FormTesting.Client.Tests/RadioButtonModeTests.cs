@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// button-mode rendering/classes, <c>ButtonStyle</c>/<c>Size</c> class composition, <c>IsHorizontal</c>
 /// being ignored, <c>HasOther</c>/<c>HasOtherOption</c> composition, and that selection still works.
 /// </summary>
-public class RadioButtonModeTests : TestContext
+public class RadioButtonModeTests : BunitContext
 {
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {

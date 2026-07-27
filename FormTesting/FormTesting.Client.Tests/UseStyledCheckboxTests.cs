@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -14,10 +15,10 @@ namespace FormTesting.Client.Tests;
 /// static itself is deliberately never mutated here — it's process-wide, and xUnit runs test classes
 /// in parallel (mirrors FormDefaultsTests' approach).
 /// </summary>
-public class UseStyledCheckboxTests : TestContext
+public class UseStyledCheckboxTests : BunitContext
 {
     // EditForm(model) -> [CascadingValue<FormOptions>] -> [FormDefaults] -> EditBool(IsActive).
-    IRenderedFragment RenderCheckbox(bool? perControl, FormOptions? formOptions, bool? formDefaults)
+    IRenderedComponent<ContainerFragment> RenderCheckbox(bool? perControl, FormOptions? formOptions, bool? formDefaults)
     {
         var model = new PersonModel();
         Expression<Func<bool>> field = () => model.IsActive;
@@ -63,7 +64,7 @@ public class UseStyledCheckboxTests : TestContext
         });
     }
 
-    static bool IsStyled(IRenderedFragment cut) => cut.FindAll(".edit-checkbox-wrap").Count > 0;
+    static bool IsStyled(IRenderedComponent<ContainerFragment> cut) => cut.FindAll(".edit-checkbox-wrap").Count > 0;
 
     [Fact]
     public void Nothing_set_renders_the_native_checkbox()

@@ -15,7 +15,7 @@ namespace FormTesting.Client.Tests;
 ///   checkbox referenced the resolved <c>_id</c>, so neither was announced.</item>
 /// </list>
 /// </summary>
-public class LabelEncodingAndAriaTests : TestContext
+public class LabelEncodingAndAriaTests : BunitContext
 {
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {

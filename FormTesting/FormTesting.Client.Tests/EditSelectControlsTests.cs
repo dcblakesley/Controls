@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// which wrap the Select engine in the EditControlBase / EditControlListBase pattern. Confirms
 /// id/ARIA wiring, the selected-value display, and edit/read-only switching.
 /// </summary>
-public class EditSelectControlsTests : TestContext
+public class EditSelectControlsTests : BunitContext
 {
     static RenderFragment WithForm(PersonModel model, RenderFragment inner) => builder =>
     {

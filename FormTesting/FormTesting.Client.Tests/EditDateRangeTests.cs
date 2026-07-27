@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Linq.Expressions;
 using AngleSharp.Dom;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Web;
@@ -16,7 +17,7 @@ namespace FormTesting.Client.Tests;
 /// picker's own open/close/two-click-pick/navigation/keyboard behavior is already covered by
 /// <c>DateRangePickerTests</c> and the JS-owned parts by <c>DateRangePickerE2ETests</c>.
 /// </summary>
-public class EditDateRangeTests : TestContext
+public class EditDateRangeTests : BunitContext
 {
     public EditDateRangeTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
@@ -50,10 +51,10 @@ public class EditDateRangeTests : TestContext
         builder.CloseComponent();
     };
 
-    static void Open(IRenderedFragment cut) => cut.Find(".wss-picker-input").Click();
+    static void Open(IRenderedComponent<ContainerFragment> cut) => cut.Find(".wss-picker-input").Click();
 
     // The given panel's (0 = left/start month, 1 = right/end month) in-month day button.
-    static IElement Day(IRenderedFragment cut, int panel, int dayNumber) =>
+    static IElement Day(IRenderedComponent<ContainerFragment> cut, int panel, int dayNumber) =>
         cut.FindAll(".wss-picker-month")[panel]
             .QuerySelectorAll(".wss-picker-day")
             .First(b => !b.ClassList.Contains("wss-picker-day-outside") &&

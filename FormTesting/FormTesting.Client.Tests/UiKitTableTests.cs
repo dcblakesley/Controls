@@ -6,7 +6,7 @@ namespace FormTesting.Client.Tests;
 /// bUnit smoke tests for the ported Table + PropertyColumn (selection uses raw checkboxes;
 /// the Checkbox control is intentionally not part of this library).
 /// </summary>
-public class UiKitTableTests : TestContext
+public class UiKitTableTests : BunitContext
 {
     // Table imports wss-table.js (to set the indeterminate select-all checkbox); tolerate the import.
     public UiKitTableTests() => JSInterop.Mode = JSRuntimeMode.Loose;
@@ -18,7 +18,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_renders_headers_and_rows_from_property_columns()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -38,7 +38,7 @@ public class UiKitTableTests : TestContext
     {
         // Two Equals-equal records used to produce duplicate sibling @keys — Blazor rejects those
         // with an InvalidOperationException that killed the whole table render.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, new List<Person> { new("Alice", 30), new("Alice", 30) })
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -52,7 +52,7 @@ public class UiKitTableTests : TestContext
     {
         List<Person>? selected = null;
         var people = new List<Person> { new("Alice", 30), new("Alice", 31) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.Selectable, true)
             .Add(t => t.RowKey, x => x.Age)
@@ -73,7 +73,7 @@ public class UiKitTableTests : TestContext
         // The classic (a, b) => a.X - b.X comparator returns int.MinValue for large gaps; negating
         // that overflows back to int.MinValue, silently mis-sorting descending.
         var people = new List<Person> { new("Small", int.MinValue), new("Zero", 0) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.Title, "Age")
@@ -93,7 +93,7 @@ public class UiKitTableTests : TestContext
     {
         // A title-only column (no template/Property delegates) is skipped by Blazor's diff, so it
         // never re-registers — after two table self-re-renders it used to vanish silently.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp.Add(c => c.Title, "Spacer"))
             .AddChildContent<PropertyColumn<Person, int>>(cp => cp
@@ -113,7 +113,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_empty_data_renders_placeholder()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, new List<Person>())
             .Add(t => t.EmptyText, "Nothing here")
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -127,7 +127,7 @@ public class UiKitTableTests : TestContext
     public void Table_selectable_renders_checkboxes_and_raises_change()
     {
         List<Person>? selected = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectedItemsChanged,
@@ -147,7 +147,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_headers_have_scope_and_selection_checkboxes_are_labelled()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .Add(t => t.Caption, "People")
@@ -167,7 +167,7 @@ public class UiKitTableTests : TestContext
     {
         List<Person>? selected = null;
         var first = new List<Person> { new("Alice", 30), new("Bob", 25) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, first)
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectedItemsChanged,
@@ -181,7 +181,7 @@ public class UiKitTableTests : TestContext
 
         // Swap to a new data source that shares no rows with the old one.
         var second = new List<Person> { new("Carol", 40), new("Dave", 22) };
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, second));
+        cut.Render(p => p.Add(t => t.DataSource, second));
 
         // Selecting a row in the new data must not drag the now-absent Alice along.
         cut.FindAll("tbody input.wss-table-checkbox")[0].Change(true); // select Carol
@@ -193,7 +193,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_sortable_property_column_renders_a_trigger_and_aria_sort_none()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -219,7 +219,7 @@ public class UiKitTableTests : TestContext
     {
         // A sortable column with no Title would otherwise render a sort <button> with no accessible
         // name (empty label span + aria-hidden carets) — it falls back to aria-label="Sort".
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, int>>(cp => cp
                 .Add(c => c.Property, x => x.Age)
@@ -232,7 +232,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_clicking_a_sortable_header_cycles_ascending_descending_then_clears()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -265,7 +265,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_pager_alignment_renders_the_modifier_class()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.PageSize, 1) // force the pager to render
             .Add(t => t.PagerAlign, PagerAlign.Left)
@@ -279,7 +279,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_pager_position_top_renders_a_single_top_pager()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.PageSize, 1)
             .Add(t => t.PagerPosition, PagerPosition.Top)
@@ -295,7 +295,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_pager_position_both_renders_a_top_and_a_bottom_pager()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.PageSize, 1)
             .Add(t => t.PagerPosition, PagerPosition.Both)
@@ -312,7 +312,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_custom_column_with_SortBy_is_sortable()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.Title, "Age")
@@ -332,7 +332,7 @@ public class UiKitTableTests : TestContext
     {
         // Person doesn't implement IComparable, so Comparer<Person>.Default would throw on a header
         // click; CanSort degrades the column to non-sortable instead of crashing the circuit.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, Person>>(cp => cp
                 .Add(c => c.Title, "Self")
@@ -346,7 +346,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Table_non_comparable_property_is_still_sortable_with_an_explicit_SortBy()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
             .AddChildContent<PropertyColumn<Person, Person>>(cp => cp
                 .Add(c => c.Title, "Self")
@@ -384,7 +384,7 @@ public class UiKitTableTests : TestContext
             builder.CloseComponent();
         };
 
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.ChildContent, Columns()));
 
@@ -393,12 +393,12 @@ public class UiKitTableTests : TestContext
 
         // Hide the middle column: it drops out, no zombie left behind.
         showMiddle = false;
-        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
         Assert.Equal(["Name", "City"], Headers());
 
         // Re-show it: no duplicate, and it returns to its declared (middle) position.
         showMiddle = true;
-        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
         Assert.Equal(["Name", "Age", "City"], Headers());
     }
 
@@ -423,7 +423,7 @@ public class UiKitTableTests : TestContext
             }
         };
 
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
             .Add(t => t.ChildContent, Columns()));
 
@@ -436,7 +436,7 @@ public class UiKitTableTests : TestContext
 
         // Hide the sorted column: the sort clears and rows return to DataSource order.
         showAge = false;
-        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
         Assert.Empty(cut.FindAll("button.wss-table-sort-trigger"));
         Assert.Equal(["Alice", "Bob"], Names());
     }
@@ -445,7 +445,7 @@ public class UiKitTableTests : TestContext
     public void Table_select_all_checkbox_is_not_checked_when_only_some_rows_are_selected()
     {
         var data = Sample(); // Alice, Bob
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectedItems, new List<Person> { data[0] }) // one of two selected
@@ -462,7 +462,7 @@ public class UiKitTableTests : TestContext
     public void Toggling_Selectable_off_and_on_reapplies_the_indeterminate_state()
     {
         var data = Sample(); // Alice, Bob
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectedItems, new List<Person> { data[0] }) // partial selection -> mixed state
@@ -477,8 +477,8 @@ public class UiKitTableTests : TestContext
         // and a fresh one comes back with indeterminate == false. The stale _lastIndeterminate mirror
         // used to short-circuit the JS call, leaving the recreated checkbox plain-unchecked while
         // some rows were selected.
-        cut.SetParametersAndRender(p => p.Add(t => t.Selectable, false));
-        cut.SetParametersAndRender(p => p.Add(t => t.Selectable, true));
+        cut.Render(p => p.Add(t => t.Selectable, false));
+        cut.Render(p => p.Add(t => t.Selectable, true));
 
         Assert.Equal(2, IndeterminateCalls());
     }
@@ -495,7 +495,7 @@ public class UiKitTableTests : TestContext
         // scans, i.e. O(rows) growth per re-render beyond the markup probes.
         var keyCalls = 0;
         var people = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.Selectable, true)
             .Add(t => t.RowKey, x => { keyCalls++; return x.Name; })
@@ -508,9 +508,9 @@ public class UiKitTableTests : TestContext
 
         // Simulate the parent re-rendering with identical values (ChildContent defeats Blazor's
         // parameter-change skip, so each of these runs the Table's OnParametersSet + render).
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, people));
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, people));
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, people));
+        cut.Render(p => p.Add(t => t.DataSource, people));
+        cut.Render(p => p.Add(t => t.DataSource, people));
+        cut.Render(p => p.Add(t => t.DataSource, people));
 
         var extraRenders = cut.RenderCount - rendersAfterFirstRender;
         Assert.True(extraRenders >= 3);
@@ -521,7 +521,7 @@ public class UiKitTableTests : TestContext
     public void DataSource_swap_rebuilds_keys_and_selection_flags()
     {
         var first = new List<Person> { new("Alice", 30), new("Bob", 25) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, first)
             .Add(t => t.Selectable, true)
             .Add(t => t.RowKey, x => x.Name)
@@ -535,7 +535,7 @@ public class UiKitTableTests : TestContext
         // Swap to disjoint data: the rows re-render, the stale (uncontrolled) selection is pruned,
         // and the cached header-checkbox state recomputes to unchecked.
         var second = new List<Person> { new("Carol", 40), new("Dave", 22), new("Eve", 35) };
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, second));
+        cut.Render(p => p.Add(t => t.DataSource, second));
 
         var names = cut.FindAll("tbody .wss-table-row td.wss-table-cell:last-child")
             .Select(td => td.TextContent.Trim()).ToArray();
@@ -546,7 +546,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Select_all_and_toggle_row_keep_header_checkbox_state_correct()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice, Bob — uncontrolled selection
             .Add(t => t.Selectable, true)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -570,7 +570,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void UseStyledCheckbox_renders_the_custom_drawn_box_for_header_and_row_checkboxes()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .Add(t => t.UseStyledCheckbox, true)
@@ -586,7 +586,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void UseStyledCheckbox_unset_renders_bare_native_checkboxes()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -602,7 +602,7 @@ public class UiKitTableTests : TestContext
     {
         // Unmatched attributes used to throw InvalidOperationException; per the library owner's
         // decision, class merges with the component's own and the rest splat onto the root element.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddUnmatched("class", "consumer-table")
             .AddUnmatched("data-testid", "orders")
@@ -619,7 +619,7 @@ public class UiKitTableTests : TestContext
     // ----- Expandable rows (RowDetail) + header templates (TitleContent) -----
 
     IRenderedComponent<Table<Person>> RenderExpandable(List<Person>? data = null) =>
-        RenderComponent<Table<Person>>(p => p
+        Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data ?? Sample())
             .Add(t => t.RowKey, x => x.Name)
             .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
@@ -653,7 +653,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Expansion_follows_row_identity_through_a_sort()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice, Bob
             .Add(t => t.RowKey, x => x.Name)
             .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
@@ -682,16 +682,16 @@ public class UiKitTableTests : TestContext
         Assert.Single(cut.FindAll(".wss-table-expanded-row"));
 
         // Swap Alice out, then back in — she must come back collapsed, not zombie-expanded.
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, new List<Person> { new("Bob", 25) }));
+        cut.Render(p => p.Add(t => t.DataSource, new List<Person> { new("Bob", 25) }));
         Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, Sample()));
+        cut.Render(p => p.Add(t => t.DataSource, Sample()));
         Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
     }
 
     [Fact]
     public void TitleContent_replaces_the_plain_header_text()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -709,7 +709,7 @@ public class UiKitTableTests : TestContext
         // The template renders in its own clickable content area, not inside the sort button
         // (nesting the template's own interactive content — e.g. a LabelTooltip's <button> — inside
         // the sort trigger would be invalid HTML and let its clicks bubble into ToggleSort).
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.TitleContent, b => b.AddContent(0, "Age"))
@@ -729,7 +729,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Sortable_TitleContent_without_Title_falls_back_to_Sort_button_label()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.TitleContent, b => b.AddMarkupContent(0, "<svg aria-hidden=\"true\"></svg>")) // icon-only, no visible text
@@ -743,7 +743,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Sortable_TitleContent_with_Title_names_the_button_from_Title()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.Title, "ESD")
@@ -761,7 +761,7 @@ public class UiKitTableTests : TestContext
         // Mirrors the real-world composition: a LabelTooltip's own <button> nested in the header
         // template. Its trigger stops propagation, so clicking it must not bubble into the header's
         // click-to-sort handler; clicking the (non-interactive) content area around it still sorts.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.Title, "Age")
@@ -796,7 +796,7 @@ public class UiKitTableTests : TestContext
     {
         // Committed E2E visual baselines and other bUnit assertions depend on this exact DOM shape
         // — a templated header must not perturb the overwhelmingly common (no TitleContent) case.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, int>>(cp => cp
                 .Add(c => c.Title, "Age")
@@ -822,7 +822,7 @@ public class UiKitTableTests : TestContext
     {
         var people = Sample(); // Alice(30), Bob(25)
         List<Person>? selected = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.Selectable, true)
             .Add(t => t.IsRowSelectable, (Person x) => x.Name != "Bob")
@@ -848,7 +848,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void IsRowSelectable_rejecting_every_row_on_the_page_disables_the_header_checkbox()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .Add(t => t.IsRowSelectable, (Person _) => false)
@@ -864,7 +864,7 @@ public class UiKitTableTests : TestContext
     {
         // Guards the byte-identical-DOM contract: untouched (default null), no row or header
         // checkbox gains a disabled attribute regardless of page contents.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -881,7 +881,7 @@ public class UiKitTableTests : TestContext
         // IsRowSelectable (or SelectionMode) change alone -- nothing else different -- let it skip
         // the rebuild and, with it, RecomputeSelectionFlags: the header checkbox's disabled/
         // indeterminate state went stale.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -890,7 +890,7 @@ public class UiKitTableTests : TestContext
 
         Assert.False(cut.Find("thead input.wss-table-checkbox").HasAttribute("disabled"));
 
-        cut.SetParametersAndRender(p => p.Add(t => t.IsRowSelectable, (Person _) => false));
+        cut.Render(p => p.Add(t => t.IsRowSelectable, (Person _) => false));
 
         Assert.True(cut.Find("thead input.wss-table-checkbox").HasAttribute("disabled"));
     }
@@ -900,7 +900,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void SelectionMode_Single_renders_radios_and_an_empty_header_cell()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectionMode, SelectionMode.Single)
@@ -921,7 +921,7 @@ public class UiKitTableTests : TestContext
     public void SelectionMode_Single_picking_a_row_replaces_any_previous_selection()
     {
         List<Person>? selected = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice, Bob
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectionMode, SelectionMode.Single)
@@ -949,7 +949,7 @@ public class UiKitTableTests : TestContext
         // checked used to leave every checked box's radio-semantics counterpart checked too --
         // multiple checked radios in one native name group, which is not a valid radio state.
         List<Person>? selected = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice, Bob
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectionMode, SelectionMode.Multiple)
@@ -965,7 +965,7 @@ public class UiKitTableTests : TestContext
 
         // Switch to Single: exactly one radio must end up checked, and the parent must be told the
         // selection was pruned (SelectedItemsChanged fires with the clamped, single-item list).
-        cut.SetParametersAndRender(p => p.Add(t => t.SelectionMode, SelectionMode.Single));
+        cut.Render(p => p.Add(t => t.SelectionMode, SelectionMode.Single));
 
         var radios = cut.FindAll("tbody input[type=radio].wss-table-radio");
         Assert.Equal(2, radios.Count);
@@ -983,7 +983,7 @@ public class UiKitTableTests : TestContext
         // SelectSingleAsync (picking a row by hand) enforced exclusivity before this fix.
         List<Person>? selected = null;
         var people = Sample(); // Alice, Bob
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectionMode, SelectionMode.Single)
@@ -1007,7 +1007,7 @@ public class UiKitTableTests : TestContext
     public void OnExpand_fires_with_the_item_and_new_state_uncontrolled()
     {
         (Person Item, bool Expanded)? raised = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.RowKey, x => x.Name)
             .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
@@ -1028,7 +1028,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void ExpandedRowKeys_controls_which_rows_render_expanded()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample()) // Alice, Bob
             .Add(t => t.RowKey, x => x.Name)
             .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
@@ -1040,7 +1040,7 @@ public class UiKitTableTests : TestContext
         var detail = cut.Find(".wss-table-expanded-row .wss-table-expanded-cell");
         Assert.Contains("Detail for Bob", detail.TextContent);
 
-        cut.SetParametersAndRender(p => p.Add(t => t.ExpandedRowKeys, new List<object> { "Alice" }));
+        cut.Render(p => p.Add(t => t.ExpandedRowKeys, new List<object> { "Alice" }));
         detail = cut.Find(".wss-table-expanded-row .wss-table-expanded-cell");
         Assert.Contains("Detail for Alice", detail.TextContent);
     }
@@ -1049,7 +1049,7 @@ public class UiKitTableTests : TestContext
     public void ExpandedRowKeysChanged_raises_the_full_expanded_set_after_a_toggle()
     {
         IEnumerable<object>? changed = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.RowKey, x => x.Name)
             .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
@@ -1066,7 +1066,7 @@ public class UiKitTableTests : TestContext
     public void OnRowClick_fires_with_the_clicked_item()
     {
         Person? clicked = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -1082,7 +1082,7 @@ public class UiKitTableTests : TestContext
     public void ExpandRowByClick_toggles_expansion_from_a_row_click_and_OnRowClick_still_fires()
     {
         Person? clicked = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.RowKey, x => x.Name)
             .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
@@ -1103,7 +1103,7 @@ public class UiKitTableTests : TestContext
     {
         // The chevron's own click stops propagation, so a row click driven by ExpandRowByClick
         // cannot ALSO fire for the same physical click and immediately re-collapse the row.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.RowKey, x => x.Name)
             .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
@@ -1120,7 +1120,7 @@ public class UiKitTableTests : TestContext
     public void Clicking_the_selection_checkbox_does_not_raise_OnRowClick()
     {
         Person? clicked = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Selectable, true)
             .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
@@ -1141,7 +1141,7 @@ public class UiKitTableTests : TestContext
     public void Clicking_inside_an_ActionColumn_cell_does_not_raise_OnRowClick()
     {
         Person? clicked = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -1157,7 +1157,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Rows_are_not_clickable_looking_when_neither_OnRowClick_nor_ExpandRowByClick_is_set()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1172,7 +1172,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Ellipsis_false_leaves_the_cell_as_bare_text_with_no_title_and_no_fixed_layout()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1186,7 +1186,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Ellipsis_true_adds_the_truncation_class_fixed_layout_and_a_title_span_for_PropertyColumn()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1205,7 +1205,7 @@ public class UiKitTableTests : TestContext
     public void Ellipsis_on_a_custom_Column_gets_the_truncation_class_but_no_title()
     {
         // Custom ChildContent is arbitrary markup, not a string the base class computed -- no title.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<Column<Person>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1223,7 +1223,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Loading_false_renders_no_overlay_and_no_aria_busy()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1238,7 +1238,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Loading_true_renders_the_overlay_over_still_rendered_rows_with_aria_busy()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.Loading, true)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -1260,7 +1260,7 @@ public class UiKitTableTests : TestContext
         // ancestor of both pagers and the wrapper), so it renders as a root-level element sitting
         // structurally over the whole component, pager included.
         var people = Enumerable.Range(1, 3).Select(i => new Person($"P{i}", i)).ToList();
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.PageSize, 1) // force a pager to render
             .Add(t => t.Loading, true)
@@ -1288,7 +1288,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void EmptyContent_wins_over_EmptyText_when_set()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, new List<Person>())
             .Add(t => t.EmptyText, "Plain text")
             .Add(t => t.EmptyContent, (RenderFragment)(b => b.AddMarkupContent(0, "<strong class=\"custom-empty\">Nothing to show</strong>")))
@@ -1307,7 +1307,7 @@ public class UiKitTableTests : TestContext
     public void FooterContent_renders_in_a_tfoot_after_the_body_and_is_unaffected_by_paging()
     {
         var people = Enumerable.Range(1, 3).Select(i => new Person($"P{i}", i * 10)).ToList();
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.PageSize, 2)
             .Add(t => t.FooterContent, (RenderFragment)(b =>
@@ -1335,7 +1335,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void FooterContent_null_renders_no_tfoot()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1349,7 +1349,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void ShowTotal_forwards_to_the_embedded_pager()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.PageSize, 1)
             .Add(t => t.ShowTotal, (Func<(int Start, int End, int Total), string>)(w => $"{w.Start}-{w.End} of {w.Total}"))
@@ -1364,7 +1364,7 @@ public class UiKitTableTests : TestContext
     public void PageSizeOptions_forwards_a_size_changer_that_reslices_the_table()
     {
         var people = Enumerable.Range(1, 20).Select(i => new Person($"P{i}", i)).ToList();
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.PageSize, 5)
             .Add(t => t.PageSizeOptions, new[] { 5, 10 })
@@ -1384,7 +1384,7 @@ public class UiKitTableTests : TestContext
     {
         var people = Enumerable.Range(1, 20).Select(i => new Person($"P{i}", i)).ToList();
         List<Person>? selected = null;
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, people)
             .Add(t => t.Selectable, true)
             .Add(t => t.PageSize, 5)
@@ -1410,7 +1410,7 @@ public class UiKitTableTests : TestContext
     public void Toggling_UseStyledCheckbox_reapplies_the_indeterminate_state()
     {
         var data = Sample(); // Alice, Bob
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectedItems, new List<Person> { data[0] }) // partial selection -> mixed state
@@ -1424,10 +1424,10 @@ public class UiKitTableTests : TestContext
         // The styled/unstyled branches have different DOM shapes (see EffectiveUseStyledCheckbox):
         // swapping UseStyledCheckbox recreates the <input>, so the stale _lastIndeterminate mirror
         // must not short-circuit the re-apply.
-        cut.SetParametersAndRender(p => p.Add(t => t.UseStyledCheckbox, true));
+        cut.Render(p => p.Add(t => t.UseStyledCheckbox, true));
         Assert.Equal(2, IndeterminateCalls());
 
-        cut.SetParametersAndRender(p => p.Add(t => t.UseStyledCheckbox, false));
+        cut.Render(p => p.Add(t => t.UseStyledCheckbox, false));
         Assert.Equal(3, IndeterminateCalls());
     }
 
@@ -1440,7 +1440,7 @@ public class UiKitTableTests : TestContext
         List<Person>? data = null,
         bool filterMultiple = true,
         EventCallback<(Column<Person> Column, IReadOnlyList<string> SelectedValues)>? onFilterChanged = null) =>
-        RenderComponent<Table<Person>>(p =>
+        Render<Table<Person>>(p =>
         {
             p.Add(t => t.DataSource, data ?? new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) });
             if (onFilterChanged is not null) p.Add(t => t.OnFilterChanged, onFilterChanged.Value);
@@ -1462,7 +1462,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Non_filterable_column_renders_no_filter_button_or_wrapper_DOM_unchanged()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1478,7 +1478,7 @@ public class UiKitTableTests : TestContext
     public void FilterOptions_without_OnFilter_renders_no_filter_button()
     {
         // CanFilter requires BOTH -- a column that forgot OnFilter must not render dead UI.
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1544,7 +1544,7 @@ public class UiKitTableTests : TestContext
     public void Filter_AND_semantics_across_two_columns()
     {
         var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1630,7 +1630,7 @@ public class UiKitTableTests : TestContext
     public void Filtering_applies_before_sorting()
     {
         var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1664,7 +1664,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void Filter_button_click_on_a_sortable_column_does_not_toggle_the_sort()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1704,7 +1704,7 @@ public class UiKitTableTests : TestContext
     {
         List<Person>? selected = null;
         var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .Add(t => t.Selectable, true)
             .Add(t => t.SelectedItemsChanged,
@@ -1743,7 +1743,7 @@ public class UiKitTableTests : TestContext
         // a few no-op parent re-renders (RebuildPageItems's guard correctly skips them) must not
         // leave anything in a state where a REAL filter change afterward fails to take effect.
         var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1751,9 +1751,9 @@ public class UiKitTableTests : TestContext
                 .Add(c => c.FilterOptions, NameOptions())
                 .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
 
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, data));
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, data));
-        cut.SetParametersAndRender(p => p.Add(t => t.DataSource, data));
+        cut.Render(p => p.Add(t => t.DataSource, data));
+        cut.Render(p => p.Add(t => t.DataSource, data));
+        cut.Render(p => p.Add(t => t.DataSource, data));
 
         cut.Find(".wss-table-filter-trigger").Click();
         CheckOption(cut, "Alice");
@@ -1779,7 +1779,7 @@ public class UiKitTableTests : TestContext
     public void Filtered_pager_total_reflects_the_narrowed_row_count()
     {
         var data = Enumerable.Range(1, 20).Select(i => new Person($"Item{i}", i)).ToList();
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .Add(t => t.PageSize, 5)
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -1804,7 +1804,7 @@ public class UiKitTableTests : TestContext
     IRenderedComponent<Table<Person>> RenderPagedEvenFilterable(EventCallback<(Column<Person>, IReadOnlyList<string>)>? onFilterChanged = null)
     {
         var data = Enumerable.Range(1, 30).Select(i => new Person($"Item{i}", i)).ToList(); // Age = i
-        return RenderComponent<Table<Person>>(p =>
+        return Render<Table<Person>>(p =>
         {
             p.Add(t => t.DataSource, data);
             p.Add(t => t.PageSize, 10); // 3 pages of 10
@@ -1910,7 +1910,7 @@ public class UiKitTableTests : TestContext
             builder.CloseComponent();
         };
 
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
             .Add(t => t.ChildContent, Columns()));
@@ -1924,7 +1924,7 @@ public class UiKitTableTests : TestContext
 
         raised = null;
         showName = false; // drop the filtered column entirely
-        cut.SetParametersAndRender(p => p.Add(t => t.ChildContent, Columns()));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
 
         Assert.NotNull(raised);
         Assert.Empty(raised!.Value.Values);
@@ -1938,7 +1938,7 @@ public class UiKitTableTests : TestContext
     public void Opening_a_column_filter_under_ScrollY_promotes_only_its_own_th()
     {
         var data = new List<Person> { new("Alice", 30), new("Bob", 25) };
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, data)
             .Add(t => t.ScrollY, "160px")
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
@@ -1970,7 +1970,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void ScrollY_unset_leaves_the_wrapper_without_a_style_attribute_or_scroll_class()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp
                 .Add(c => c.Title, "Name")
@@ -1984,7 +1984,7 @@ public class UiKitTableTests : TestContext
     [Fact]
     public void ScrollY_set_adds_the_scroll_class_and_a_max_height_style()
     {
-        var cut = RenderComponent<Table<Person>>(p => p
+        var cut = Render<Table<Person>>(p => p
             .Add(t => t.DataSource, Sample())
             .Add(t => t.ScrollY, "240px")
             .AddChildContent<PropertyColumn<Person, string>>(cp => cp

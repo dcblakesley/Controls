@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// <see cref="EditInputShellTests"/> (slice S1) and is re-run by the same test pass; this file only
 /// adds coverage for the new affix-mode surface.
 /// </summary>
-public class EditStringAffixTests : TestContext
+public class EditStringAffixTests : BunitContext
 {
     public EditStringAffixTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate Clear()'s ElementReference.FocusAsync
 

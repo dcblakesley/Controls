@@ -12,7 +12,7 @@ namespace FormTesting.Client.Tests;
 /// Grouping (<see cref="SelectOption{TValue}.Group"/>) needs no wrapper wiring — it rides along on
 /// the <c>Options</c> the wrappers already forward, so it isn't re-tested here.
 /// </summary>
-public class SelectWrapperForwardingTests : TestContext
+public class SelectWrapperForwardingTests : BunitContext
 {
     public SelectWrapperForwardingTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
@@ -147,7 +147,7 @@ public class SelectWrapperForwardingTests : TestContext
     {
         var model = new PersonModel { FavoriteColors = [Color.Red] };
         Expression<Func<List<Color>>> field = () => model.FavoriteColors;
-        var cut = RenderComponent<EditMultiSelect<Color>>(p => p
+        var cut = Render<EditMultiSelect<Color>>(p => p
             .Add(x => x.Value, model.FavoriteColors)
             .Add(x => x.ValueExpression, field)
             .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red"), new SelectOption<Color>(Color.Blue, "Blue")])
@@ -163,7 +163,7 @@ public class SelectWrapperForwardingTests : TestContext
     {
         var model = new PersonModel { FavoriteColors = [] };
         Expression<Func<List<Color>>> field = () => model.FavoriteColors;
-        var cut = RenderComponent<EditMultiSelect<Color>>(p => p
+        var cut = Render<EditMultiSelect<Color>>(p => p
             .Add(x => x.Value, model.FavoriteColors)
             .Add(x => x.ValueExpression, field)
             .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red"), new SelectOption<Color>(Color.Blue, "Blue")])
@@ -180,7 +180,7 @@ public class SelectWrapperForwardingTests : TestContext
     {
         var model = new PersonModel { FavoriteColors = [] };
         Expression<Func<List<Color>>> field = () => model.FavoriteColors;
-        var cut = RenderComponent<EditMultiSelect<Color>>(p => p
+        var cut = Render<EditMultiSelect<Color>>(p => p
             .Add(x => x.Value, model.FavoriteColors)
             .Add(x => x.ValueExpression, field)
             .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red")])
@@ -200,7 +200,7 @@ public class SelectWrapperForwardingTests : TestContext
         var model = new PersonModel { FavoriteColors = [] };
         Expression<Func<List<Color>>> field = () => model.FavoriteColors;
         var raised = new List<bool>();
-        var cut = RenderComponent<EditMultiSelect<Color>>(p => p
+        var cut = Render<EditMultiSelect<Color>>(p => p
             .Add(x => x.Value, model.FavoriteColors)
             .Add(x => x.ValueExpression, field)
             .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red")])

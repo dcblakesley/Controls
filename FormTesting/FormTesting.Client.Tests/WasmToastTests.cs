@@ -5,7 +5,7 @@ namespace FormTesting.Client.Tests;
 /// process-static state, so each test clears before and after and uses duration:0 (sticky)
 /// to avoid background-timer removal racing the assertions.
 /// </summary>
-public class WasmToastTests : TestContext
+public class WasmToastTests : BunitContext
 {
     [Fact]
     public void MessageContainer_renders_active_message_with_type_icon()
@@ -14,7 +14,7 @@ public class WasmToastTests : TestContext
         try
         {
             WasmMessageService.Success("Saved!", duration: 0);
-            var cut = RenderComponent<WasmMessageContainer>();
+            var cut = Render<WasmMessageContainer>();
 
             Assert.Contains("Saved!", cut.Find(".wss-msg-content").TextContent);
             Assert.NotNull(cut.Find(".wss-msg-icon-success"));
@@ -32,7 +32,7 @@ public class WasmToastTests : TestContext
         try
         {
             WasmNotificationService.Info("Heads up", "the details", duration: 0);
-            var cut = RenderComponent<WasmNotificationContainer>();
+            var cut = Render<WasmNotificationContainer>();
 
             Assert.Contains("Heads up", cut.Find(".wss-notification-message").TextContent);
             Assert.Contains("the details", cut.Find(".wss-notification-description").TextContent);
@@ -53,7 +53,7 @@ public class WasmToastTests : TestContext
         try
         {
             WasmNotificationService.Info("x", duration: 0);
-            var cut = RenderComponent<WasmNotificationContainer>();
+            var cut = Render<WasmNotificationContainer>();
 
             var container = cut.Find(".wss-notification-container");
             Assert.DoesNotContain("wss-notification-topleft", container.ClassList);
@@ -76,7 +76,7 @@ public class WasmToastTests : TestContext
         try
         {
             WasmNotificationService.Info("x", duration: 0);
-            var cut = RenderComponent<WasmNotificationContainer>(p => p.Add(c => c.Placement, placement));
+            var cut = Render<WasmNotificationContainer>(p => p.Add(c => c.Placement, placement));
 
             Assert.Contains(expectedClass, cut.Find(".wss-notification-container").ClassList);
         }

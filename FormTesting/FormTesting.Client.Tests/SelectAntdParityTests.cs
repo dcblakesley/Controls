@@ -9,7 +9,7 @@ namespace FormTesting.Client.Tests;
 /// <c>FilterOption</c>, <c>EmptyContent</c>, <c>DropdownFooter</c>, the <c>Borderless</c> variant,
 /// and a DOM-stability regression guard for default (unused-new-params) rendering.
 /// </summary>
-public class SelectAntdParityTests : TestContext
+public class SelectAntdParityTests : BunitContext
 {
     public SelectAntdParityTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
@@ -21,7 +21,7 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void Default_params_render_the_legacy_markup_with_none_of_the_new_features_present()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Id, "sel1")
             .Add(s => s.Options, Opts(("A", false))));
 
@@ -46,7 +46,7 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void Loading_shows_a_spinner_in_the_arrow_slot_and_sets_aria_busy()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("A", false)))
             .Add(s => s.Loading, true));
 
@@ -57,7 +57,7 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void Loading_shows_the_spinner_even_when_ShowArrow_is_false()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("A", false)))
             .Add(s => s.Loading, true)
             .Add(s => s.ShowArrow, false));
@@ -68,7 +68,7 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void ShowArrow_false_hides_the_arrow_when_not_loading()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("A", false)))
             .Add(s => s.ShowArrow, false));
 
@@ -82,7 +82,7 @@ public class SelectAntdParityTests : TestContext
     {
         // Default Label.Contains("an", OrdinalIgnoreCase) would match only "Banana" -- this predicate
         // ignores the search text entirely and excludes it instead, proving it's authoritative.
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("Apple", false), ("Banana", false)))
             .Add(s => s.FilterOption, (Func<string, SelectOption<string>, bool>)((_, o) => o.Value != "Banana"))
             .Add(s => s.DefaultOpen, true));
@@ -97,7 +97,7 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void FilterOption_always_true_disables_client_filtering_for_server_driven_search()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("Apple", false), ("Banana", false)))
             .Add(s => s.FilterOption, (Func<string, SelectOption<string>, bool>)((_, _) => true))
             .Add(s => s.DefaultOpen, true));
@@ -113,7 +113,7 @@ public class SelectAntdParityTests : TestContext
     {
         // OnParametersSet previously only rebuilt _filtered on an Options/Values reference change; a
         // swapped FilterOption delegate left an open list stale until the next keystroke/reopen.
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("Apple", false), ("Banana", false)))
             .Add(s => s.FilterOption, (Func<string, SelectOption<string>, bool>)((_, o) => o.Value != "Banana"))
             .Add(s => s.DefaultOpen, true));
@@ -123,7 +123,7 @@ public class SelectAntdParityTests : TestContext
         Assert.DoesNotContain("Banana", labels);
 
         // New delegate reference, Options unchanged, no keystroke and no reopen in between.
-        cut.SetParametersAndRender(p => p
+        cut.Render(p => p
             .Add(s => s.FilterOption, (Func<string, SelectOption<string>, bool>)((_, o) => o.Value != "Apple")));
 
         labels = cut.FindAll(".wss-select-item-option-content").Select(e => e.TextContent).ToList();
@@ -136,7 +136,7 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void EmptyText_renders_when_EmptyContent_is_unset()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("Apple", false)))
             .Add(s => s.DefaultOpen, true));
 
@@ -148,7 +148,7 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void EmptyContent_wins_over_EmptyText_when_set()
     {
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("Apple", false)))
             .Add(s => s.EmptyText, "No data")
             .Add(s => s.EmptyContent, (RenderFragment)(b => b.AddContent(0, "Nothing here, try again")))
@@ -168,7 +168,7 @@ public class SelectAntdParityTests : TestContext
     {
         var footerClicked = false;
         string? selected = null;
-        var cut = RenderComponent<Select<string>>(p => p
+        var cut = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("Apple", false)))
             .Add(s => s.DefaultOpen, true)
             .Add(s => s.ValueChanged, (string v) => selected = v)
@@ -196,11 +196,11 @@ public class SelectAntdParityTests : TestContext
     [Fact]
     public void Borderless_variant_adds_the_borderless_class_and_default_stays_outlined()
     {
-        var outlined = RenderComponent<Select<string>>(p => p
+        var outlined = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("A", false))));
         Assert.DoesNotContain("wss-select-borderless", outlined.Find(".wss-select").ClassList);
 
-        var borderless = RenderComponent<Select<string>>(p => p
+        var borderless = Render<Select<string>>(p => p
             .Add(s => s.Options, Opts(("A", false)))
             .Add(s => s.Variant, SelectVariant.Borderless));
         Assert.Contains("wss-select-borderless", borderless.Find(".wss-select").ClassList);
