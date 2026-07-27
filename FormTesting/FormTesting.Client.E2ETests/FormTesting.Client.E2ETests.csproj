@@ -10,15 +10,15 @@
 
   <ItemGroup>
     <!-- Test runner + framework -->
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageReference Include="coverlet.collector" Version="10.0.1" />
 
     <!-- Playwright for .NET. The first build downloads the playwright.ps1 helper into the bin dir;
          after that, run `pwsh bin/Debug/net10.0/playwright.ps1 install chromium` once locally.
          The Target below does the install automatically on first build. -->
-    <PackageReference Include="Microsoft.Playwright" Version="1.49.0" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.61.0" />
 
     <!-- ImageSharp powers the visual-regression diff helper. Microsoft.Playwright's
          ToHaveScreenshotAsync only ships with the NUnit/MSTest adapters, so for xUnit we
