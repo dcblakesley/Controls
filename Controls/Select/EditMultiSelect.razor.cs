@@ -17,7 +17,7 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<List<TValue>>>? Field { get; set; }
 
-    /// <summary> The options to choose from.</summary>
+    /// <inheritdoc cref="Select{TValue}.Options"/>
     [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = Array.Empty<SelectOption<TValue>>();
 
     /// <summary> Multiple (pick from options) or Tags (also allow typed values). Defaults to Multiple.</summary>
@@ -104,17 +104,10 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     List<TValue>? _labelValue;
     IEnumerable<SelectOption<TValue>>? _labelOptions;
 
-    // value -> label, rebuilt only when the Options *reference* changes. Every selection toggle
-    // produces a NEW Value list, so joining via Options.FirstOrDefault per selected value made each
-    // click O(selected × options); with the lookup the join is O(selected). TryAdd keeps the FIRST
-    // option for a duplicate value (preserving the old FirstOrDefault semantics), and the label is
-    // stored verbatim (possibly null) so a matched-but-unlabelled option still falls back to the
-    // value's ToString exactly as before. Null option values are filtered on insert and a null
-    // selected value bypasses the lookup (v?.ToString() ?? "" — the old null-miss result), so the
-    // dictionary never sees a null key — suppress the notnull-constraint warning to keep TValue
-    // unconstrained (e.g. nullable-enum options), same pattern as the Select engine's _lookup.
-#pragma warning disable CS8714
-    Dictionary<TValue, string?> _labelLookup = new();
+    // value -> option, rebuilt only when the Options *reference* changes -- see SelectOptionLookup
+    // for the last-wins tie-break on a duplicate value (matching the Select engine's own lookup).
+#pragma warning disable CS8714 // TValue stays unconstrained; SelectOptionLookup never inserts a null key.
+    Dictionary<TValue, SelectOption<TValue>> _lookup = SelectOptionLookup.Build<TValue>(null);
 #pragma warning restore CS8714
 
     string SelectedLabels => _selectedLabels;
@@ -131,21 +124,12 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
         base.OnParametersSet();
         if (ReferenceEquals(Value, _labelValue) && ReferenceEquals(Options, _labelOptions)) return;
         if (!ReferenceEquals(Options, _labelOptions))
-        {
-#pragma warning disable CS8714
-            _labelLookup = new Dictionary<TValue, string?>();
-#pragma warning restore CS8714
-            foreach (var o in Options ?? [])
-            {
-                if (o.Value is not null)
-                    _labelLookup.TryAdd(o.Value, o.Label);
-            }
-        }
+            _lookup = SelectOptionLookup.Build(Options);
         _labelValue = Value;
         _labelOptions = Options;
         _selectedLabels = string.Join(", ", (Value ?? new List<TValue>())
-            .Select(v => v is not null && _labelLookup.TryGetValue(v, out var label)
-                ? label ?? v.ToString() ?? string.Empty
+            .Select(v => v is not null && _lookup.TryGetValue(v, out var option)
+                ? option.Label ?? v.ToString() ?? string.Empty
                 : v?.ToString() ?? string.Empty));
     }
 

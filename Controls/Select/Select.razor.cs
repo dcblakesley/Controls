@@ -420,20 +420,7 @@ public partial class Select<TValue> : IAsyncDisposable
     SelectOption<TValue>? FindOption(TValue value) =>
         value is not null && _lookup.TryGetValue(value, out var option) ? option : null;
 
-    void RebuildLookup()
-    {
-#pragma warning disable CS8714
-        _lookup = new Dictionary<TValue, SelectOption<TValue>>(_comparer);
-#pragma warning restore CS8714
-        foreach (var o in Options ?? [])
-        {
-            if (o.Value is not null) _lookup[o.Value] = o;
-        }
-        foreach (var o in _tagOptions)
-        {
-            if (o.Value is not null) _lookup[o.Value] = o;
-        }
-    }
+    void RebuildLookup() => _lookup = SelectOptionLookup.Build(AllOptions);
 
     // True when an option matches the current search text: FilterOption (when set) replaces the
     // default case-insensitive Label.Contains check entirely — including when the search text is

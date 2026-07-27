@@ -17,7 +17,7 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<TValue>>? Field { get; set; }
 
-    /// <summary> The options to choose from.</summary>
+    /// <inheritdoc cref="Select{TValue}.Options"/>
     [Parameter] public IEnumerable<SelectOption<TValue>> Options { get; set; } = Array.Empty<SelectOption<TValue>>();
 
     /// <summary> Placeholder text shown when nothing is selected.</summary>
@@ -88,11 +88,17 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     }
 
     // Label for the read-only view: the matching option's label, else the value's own ToString.
-    // Cached and recomputed only when the value or Options change, not on every render.
+    // Cached and recomputed only when the value or Options change, not on every render. The lookup
+    // (rebuilt only when the Options reference changes) replaces a per-render FirstOrDefault scan and
+    // agrees with the Select engine's own last-wins tie-break for a duplicate-valued option list --
+    // see SelectOptionLookup.
     string _selectedLabel = "";
     TValue? _labelValue;
     IEnumerable<SelectOption<TValue>>? _labelOptions;
     bool _labelInit;
+#pragma warning disable CS8714 // TValue stays unconstrained; SelectOptionLookup never inserts a null key.
+    Dictionary<TValue, SelectOption<TValue>> _lookup = SelectOptionLookup.Build<TValue>(null);
+#pragma warning restore CS8714
 
     string SelectedLabel => _selectedLabel;
 
@@ -104,10 +110,12 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
             && EqualityComparer<TValue>.Default.Equals(CurrentValue, _labelValue))
             return;
         _labelInit = true;
+        if (!ReferenceEquals(Options, _labelOptions))
+            _lookup = SelectOptionLookup.Build(Options);
         _labelOptions = Options;
         _labelValue = CurrentValue;
         _selectedLabel =
-            Options?.FirstOrDefault(o => EqualityComparer<TValue>.Default.Equals(o.Value, CurrentValue))?.Label
+            (CurrentValue is not null && _lookup.TryGetValue(CurrentValue, out var option) ? option.Label : null)
             ?? CurrentValue?.ToString()
             ?? string.Empty;
     }
