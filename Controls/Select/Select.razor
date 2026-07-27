@@ -22,31 +22,39 @@
             <span class="wss-select-prefix">@Prefix</span>
         }
 
+        @{
+            // The two modes' search <input> is identical in every attribute/binding -- a single
+            // template avoids drift between them (an ARIA/interop tweak applied to one branch and
+            // missed on the other). Only one branch ever renders per render, so the shared @ref
+            // capture into _inputRef behaves exactly as it did when each branch declared its own.
+            RenderFragment searchInput = @<input @ref="_inputRef"
+                   class="wss-select-selection-search-input"
+                   id="@Id"
+                   data-test-id="@Id"
+                   type="search"
+                   autocomplete="off"
+                   role="combobox"
+                   aria-haspopup="listbox"
+                   aria-autocomplete="list"
+                   aria-expanded=@(_open ? "true" : "false")
+                   aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
+                   aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
+                   aria-required="@AriaRequired"
+                   aria-invalid="@(AriaInvalid ? "true" : null)"
+                   aria-describedby="@AriaDescribedBy"
+                   readonly="@(!ShowSearch)"
+                   disabled="@Disabled"
+                   value="@_searchText"
+                   @oninput="OnInputAsync"
+                   @onkeydown="OnKeyDownAsync"
+                   @onkeydown:stopPropagation="@_open" />;
+        }
+
         @if (Mode == SelectMode.Single)
         {
             <span class="wss-select-selection-wrap">
                 <span class="wss-select-selection-search">
-                    <input @ref="_inputRef"
-                           class="wss-select-selection-search-input"
-                           id="@Id"
-                           data-test-id="@Id"
-                           type="search"
-                           autocomplete="off"
-                           role="combobox"
-                           aria-haspopup="listbox"
-                           aria-autocomplete="list"
-                           aria-expanded=@(_open ? "true" : "false")
-                           aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
-                           aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
-                           aria-required="@AriaRequired"
-                           aria-invalid="@(AriaInvalid ? "true" : null)"
-                           aria-describedby="@AriaDescribedBy"
-                           readonly="@(!ShowSearch)"
-                           disabled="@Disabled"
-                           value="@_searchText"
-                           @oninput="OnInputAsync"
-                           @onkeydown="OnKeyDownAsync"
-                           @onkeydown:stopPropagation="@_open" />
+                    @searchInput
                 </span>
 
                 @if (_showPlaceholder)
@@ -91,27 +99,7 @@
                 }
 
                 <span class="wss-select-selection-search">
-                    <input @ref="_inputRef"
-                           class="wss-select-selection-search-input"
-                           id="@Id"
-                           data-test-id="@Id"
-                           type="search"
-                           autocomplete="off"
-                           role="combobox"
-                           aria-haspopup="listbox"
-                           aria-autocomplete="list"
-                           aria-expanded=@(_open ? "true" : "false")
-                           aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
-                           aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
-                           aria-required="@AriaRequired"
-                           aria-invalid="@(AriaInvalid ? "true" : null)"
-                           aria-describedby="@AriaDescribedBy"
-                           readonly="@(!ShowSearch)"
-                           disabled="@Disabled"
-                           value="@_searchText"
-                           @oninput="OnInputAsync"
-                           @onkeydown="OnKeyDownAsync"
-                           @onkeydown:stopPropagation="@_open" />
+                    @searchInput
                 </span>
 
                 @if (_showPlaceholder)
