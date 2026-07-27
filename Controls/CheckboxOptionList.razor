@@ -1,0 +1,59 @@
+@typeparam TItem
+
+@if (ShowEditor)
+{
+    <div class=@(IsHorizontal ? "edit-checkedList-checkboxes-container-horizontal" : "edit-checkedList-checkboxes-container-vertical")>
+        @foreach (var option in Options)
+        {
+            var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
+            <label @key="option" class=@($"edit-checkbox-label{(UseStyledCheckbox ? " edit-checkbox-label-styled" : "")} {LabelClass}") for=@($"cbx-{Id}-{option.ToId()}")>
+                @if (UseStyledCheckbox)
+                {
+                    <span class="edit-checkbox-wrap">
+                        <input type="checkbox"
+                               value=@option
+                               checked="@(Value?.Contains(option) == true)"
+                               disabled=@isOptionDisabled
+                               aria-disabled=@(isOptionDisabled ? "true" : null)
+                               aria-invalid=@(IsInvalid ? "true" : null) aria-describedby=@DescribedBy
+                               tabindex="0"
+                               @onchange="() => OnToggle.InvokeAsync(option)"
+                               id=@($"cbx-{Id}-{option.ToId()}")
+                               data-test-id=@($"cbx-{Id}-{option.ToId()}")
+                               class="edit-checkedList-checkbox edit-checkbox-input-styled @FieldCssClass" />
+                        <span class="edit-checkbox-box" aria-hidden="true"></span>
+                    </span>
+                }
+                else
+                {
+                    <input type="checkbox"
+                           value=@option
+                           checked="@(Value?.Contains(option) == true)"
+                           disabled=@isOptionDisabled
+                           aria-disabled=@(isOptionDisabled ? "true" : null)
+                           aria-invalid=@(IsInvalid ? "true" : null) aria-describedby=@DescribedBy
+                           tabindex="0"
+                           @onchange="() => OnToggle.InvokeAsync(option)"
+                           id=@($"cbx-{Id}-{option.ToId()}")
+                           data-test-id=@($"cbx-{Id}-{option.ToId()}")
+                           class="edit-checkedList-checkbox @FieldCssClass" />
+                }
+                @DisplayText(option)
+            </label>
+        }
+    </div>
+}
+else
+{
+    @if (Value is null || Value.Count == 0)
+    {
+        <ReadOnlyValue Id=@Id IsLabelHidden=@IsLabelHidden CssClass=@FieldCssClass Text=""/>
+    }
+    else
+    {
+        @foreach (var option in Value)
+        {
+            <ReadOnlyValue Id=@($"{Id}-option-{option.ToId()}") IsLabelHidden="true" CssClass=@FieldCssClass Text=@DisplayText(option)/>
+        }
+    }
+}

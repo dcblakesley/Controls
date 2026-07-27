@@ -13,69 +13,23 @@
                   role=@(ShowEditor ? "group" : null)>
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel />
 
-            @if (ShowEditor)
-            {
-                // Resolve the invalid/field-class/styled state once per render instead of re-querying per checkbox.
-                var isInvalid = IsInvalid;
-                var fieldCssClass = FieldCssClass;
-                var useStyledCheckbox = EffectiveUseStyledCheckbox;
-                <div class=@(IsHorizontal
-                               ? "edit-checkedList-checkboxes-container-horizontal"
-                               : "edit-checkedList-checkboxes-container-vertical")>
-                    @foreach (var option in Options)
-                    {
-                        var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
-                        <label class=@($"edit-checkbox-label{(useStyledCheckbox ? " edit-checkbox-label-styled" : "")} {LabelClass}") for=@($"cbx-{_id}-{option.ToId()}")>
-                            @if (useStyledCheckbox)
-                            {
-                                <span class="edit-checkbox-wrap">
-                                    <input type="checkbox"
-                                           value=@option
-                                           checked="@(Value?.Contains(option) == true)"
-                                           disabled=@isOptionDisabled
-                                           aria-disabled=@(isOptionDisabled ? "true" : null)
-                                           aria-invalid=@(isInvalid ? "true" : null) aria-describedby=@_describedBy
-                                           tabindex="0"
-                                           @onchange="() => ToggleAsync(option)"
-                                           id=@($"cbx-{_id}-{option.ToId()}")
-                                           data-test-id=@($"cbx-{_id}-{option.ToId()}")
-                                           class="edit-checkedList-checkbox edit-checkbox-input-styled @fieldCssClass" />
-                                    <span class="edit-checkbox-box" aria-hidden="true"></span>
-                                </span>
-                            }
-                            else
-                            {
-                                <input type="checkbox"
-                                       value=@option
-                                       checked="@(Value?.Contains(option) == true)"
-                                       disabled=@isOptionDisabled
-                                       aria-disabled=@(isOptionDisabled ? "true" : null)
-                                       aria-invalid=@(isInvalid ? "true" : null) aria-describedby=@_describedBy
-                                       tabindex="0"
-                                       @onchange="() => ToggleAsync(option)"
-                                       id=@($"cbx-{_id}-{option.ToId()}")
-                                       data-test-id=@($"cbx-{_id}-{option.ToId()}")
-                                       class="edit-checkedList-checkbox @fieldCssClass" />
-                            }
-                            @option
-                        </label>
-                    }
-                </div>
-            }
-            else
-            {
-                @if (Value is null || Value.Count == 0)
-                {
-                    <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@FieldCssClass Text=""/>
-                }
-                else
-                {
-                    @foreach (var option in Value)
-                    {
-                        <ReadOnlyValue Id=@($"{_id}-option-{option.ToId()}") IsLabelHidden="true" CssClass=@FieldCssClass Text=@option/>
-                    }
-                }
-            }
+            <CheckboxOptionList TItem="string"
+                                 Options=@Options
+                                 Value=@Value
+                                 Id=@_id
+                                 ShowEditor=@ShowEditor
+                                 IsDisabled=@IsDisabled
+                                 IsOptionDisabled=@IsOptionDisabled
+                                 IsHorizontal=@IsHorizontal
+                                 LabelClass=@LabelClass
+                                 FieldCssClass=@FieldCssClass
+                                 UseStyledCheckbox=@EffectiveUseStyledCheckbox
+                                 IsInvalid=@IsInvalid
+                                 DescribedBy=@_describedBy
+                                 IsLabelHidden=@ShouldHideLabel
+                                 OnToggle="ToggleAsync"
+                                 DisplayText="@(o => o)" />
+
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label/>
             @if (FormOptions != null && FormOptions.ShowBoundValues)
             {
