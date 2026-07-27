@@ -13,7 +13,7 @@
                             WrapperClass=@(EditInputShell.SizeClass(Size))>
                 <input type=@HtmlInputType
                        @bind-value=@CurrentValueAsString
-                       @bind-value:event="onchange"
+                       @bind-value:event="@UpdateEventName"
                        class=@InputClass
                        style="padding-inline-end: 2rem"
                        id=@_id

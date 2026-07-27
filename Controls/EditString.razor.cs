@@ -60,6 +60,18 @@ public partial class EditString : EditControlBase<string?>
     /// </summary>
     [Parameter] public SelectSize Size { get; set; }
 
+    /// <summary>
+    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
+    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
+    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
+    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
+    /// control's own default of <see cref="UpdateTrigger.Input"/>.
+    /// </summary>
+    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
+
+    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
+    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
+
     bool _showMaskedValue;
     bool _passwordRevealed;
     // Captures the <input> so Clear() can refocus it directly -- unlike EditFile's RemoveFile, the

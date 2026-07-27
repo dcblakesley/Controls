@@ -69,6 +69,31 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// <summary> Event callback that fires when the OtherValue changes.</summary>
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
+    /// <summary>
+    /// Which DOM event commits the "Other" free-text box's typed value via
+    /// <see cref="OnOtherValueChanged"/> -- <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits
+    /// on every keystroke, <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter.
+    /// Affects ONLY the "Other" free-text box -- the radio buttons themselves always commit on
+    /// selection (native radio <c>onchange</c>) and are unaffected. Resolution order: this parameter,
+    /// then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this control's own default
+    /// of <see cref="UpdateTrigger.Input"/>.
+    /// </summary>
+    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
+
+    /// <summary> The resolved DOM event name ("oninput" or "onchange") for the "Other" text box, per <see cref="UpdateOn"/>'s resolution order.</summary>
+    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
+
+    /// <summary>
+    /// Splats <see cref="OnOtherValueChanged"/> onto whichever event name <see cref="UpdateEventName"/>
+    /// resolves to. The "Other" text box uses a raw event handler rather than a <c>@bind</c>, so
+    /// <c>@bind:event</c> doesn't apply here -- this dictionary is the mechanism that makes the
+    /// wired-up event name dynamic instead of a fixed <c>@oninput</c>.
+    /// </summary>
+    IReadOnlyDictionary<string, object> OtherInputAttribute => new Dictionary<string, object>(1)
+    {
+        [UpdateEventName] = EventCallback.Factory.Create<ChangeEventArgs>(this, OnOtherValueChanged)
+    };
+
     Type _type = null!;
     Type _underlyingType = null!;
     bool _isNullable;

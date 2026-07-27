@@ -87,4 +87,86 @@ public class EditTextAreaE2ETests(AppFixture app, BrowserFixture browser) : Page
         Assert.True(stillClampedBox.Height <= clampedBox.Height + 2, // +2px slack for sub-pixel rounding
             $"height ({stillClampedBox.Height}px) should have stopped growing once MaxRows was exceeded (was {clampedBox.Height}px)");
     }
+
+    [Fact]
+    public async Task AutoSize_with_UpdateOn_Change_grows_while_typing_but_commits_value_only_on_blur()
+    {
+        // DemoEditTextArea's "AutoSize + UpdateOn=Change" section: AutoSize="true" MinRows="2"
+        // MaxRows="6" UpdateOn="UpdateTrigger.Change". Change's bound event is onchange (blur/Enter
+        // only), but EditTextArea.razor.cs's AutoSizeInputAttribute splats an extra measure-only
+        // oninput handler in exactly this combination, so the box must still grow mid-typing even
+        // though the bound value (echoed via the "Display bound values" .bound-value div) does not
+        // commit until blur.
+        await NavigateAsync();
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Display bound values" }).ClickAsync();
+
+        var section = Page.Locator("section.demo-section").Filter(new() { HasTextString = "AutoSize + UpdateOn=Change" });
+        var textarea = section.Locator("textarea").First;
+        var boundValue = section.Locator(".bound-value").First;
+
+        var initialBox = await textarea.BoundingBoxAsync();
+        Assert.NotNull(initialBox);
+
+        await textarea.FillAsync("line one\nline two\nline three\nline four");
+
+        // Growth must happen from the measure-only oninput handler alone, before any blur -- poll
+        // rather than sleep a fixed duration (async JS interop round-trip, plus this repo's
+        // smooth-scroll-driven geometry pitfall if a fixed wait were used instead).
+        await WaitForHeightAboveAsync(textarea, initialBox.Height);
+
+        // Not committed yet: UpdateOn=Change's bound event is onchange, which a textarea only raises
+        // on blur (Enter just inserts a newline in a multi-line field, unlike a single-line input).
+        await Expect(boundValue).Not.ToContainTextAsync("line one");
+
+        await textarea.BlurAsync();
+        await Expect(boundValue).ToContainTextAsync("line one");
+    }
+
+    [Fact]
+    public async Task AutoSize_with_default_UpdateOn_Input_still_grows_and_commits_value_before_any_blur()
+    {
+        // Regression guard for the UpdateOn feature: AutoSizeInputAttribute only splats its extra
+        // oninput handler once the resolved trigger has moved away from "oninput" (see
+        // EditTextArea.razor.cs). Under the default Input trigger it must stay null, so this
+        // control's pre-existing behavior -- grows AND commits its bound value on every keystroke,
+        // with no blur required -- must be unchanged. Targets DemoEditTextArea's last section
+        // (plain AutoSize="true" MinRows="2" MaxRows="6", no UpdateOn set), the same one
+        // AutoSize_grows_with_content_and_stops_growing_past_MaxRows drives.
+        await NavigateAsync();
+        await Page.GetByRole(AriaRole.Button, new() { Name = "Display bound values" }).ClickAsync();
+
+        var section = Page.Locator("section.demo-section").Last;
+        var textarea = section.Locator("textarea").First;
+        var boundValue = section.Locator(".bound-value").First;
+
+        var initialBox = await textarea.BoundingBoxAsync();
+        Assert.NotNull(initialBox);
+
+        await textarea.FillAsync("line one\nline two\nline three\nline four");
+
+        await WaitForHeightAboveAsync(textarea, initialBox.Height);
+        // Unlike UpdateOn=Change, the default Input trigger's bound event IS oninput -- the value
+        // commits (and this .bound-value echo updates) immediately, with no blur required.
+        await Expect(boundValue).ToContainTextAsync("line one");
+    }
+
+    /// <summary>
+    /// Polls <paramref name="locator"/>'s bounding-box height until it exceeds <paramref name="thresholdPx"/>
+    /// or <paramref name="timeoutMs"/> elapses. Preferred over a fixed <c>WaitForTimeoutAsync</c> sleep
+    /// for asserting AutoSize growth: it returns as soon as the JS resize round-trip lands instead of
+    /// racing a magic-number delay, and still fails loudly (via <see cref="Assert.Fail(string)"/>) if
+    /// the height never moves.
+    /// </summary>
+    static async Task WaitForHeightAboveAsync(ILocator locator, float thresholdPx, int timeoutMs = 3000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        LocatorBoundingBoxResult? box = null;
+        while (DateTime.UtcNow < deadline)
+        {
+            box = await locator.BoundingBoxAsync();
+            if (box != null && box.Height > thresholdPx) return;
+            await Task.Delay(50);
+        }
+        Assert.Fail($"height ({box?.Height.ToString() ?? "null"}px) never grew past {thresholdPx}px within {timeoutMs}ms");
+    }
 }

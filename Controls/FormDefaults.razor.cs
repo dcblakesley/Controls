@@ -2,8 +2,8 @@ namespace Controls;
 
 /// <summary>
 /// Render-tree-scoped defaults for the Edit* controls (plus the UI-kit <c>Table</c>'s
-/// <c>UseStyledCheckbox</c> and the RCL's lazy-JS asset base, neither of which has a
-/// <see cref="FormOptions"/> counterpart). Wrap an app root (or each micro-frontend's root) in this
+/// <c>UseStyledCheckbox</c>, the RCL's lazy-JS asset base, and each control's <see cref="UpdateTrigger"/>,
+/// none of which has a <see cref="FormOptions"/> counterpart). Wrap an app root (or each micro-frontend's root) in this
 /// component to set defaults for everything underneath it, instead of using the process-wide statics
 /// on <see cref="FormOptions"/> — on Blazor Server every circuit shares those statics, and in MFE
 /// hosts the composition root may not be yours to configure. Intended as set-once root configuration
@@ -59,6 +59,17 @@ public partial class FormDefaults
     /// <summary> <see cref="AssetBase"/> resolved through the chain of enclosing
     /// <see cref="FormDefaults"/> instances. Null only when no instance in the chain sets it. </summary>
     public string? EffectiveAssetBase => AssetBase ?? Outer?.EffectiveAssetBase;
+
+    /// <summary> Default <see cref="UpdateTrigger"/> for controls that support it, when neither the
+    /// control's own parameter nor an enclosing <see cref="FormDefaults"/> sets one — another setting
+    /// with no <see cref="FormOptions"/> counterpart (like <see cref="AssetBase"/>), so the final
+    /// fallback is each control's own built-in default rather than a <see cref="FormOptions"/> static.
+    /// Null falls through to any enclosing <see cref="FormDefaults"/>, then to that per-control default. </summary>
+    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
+
+    /// <summary> <see cref="UpdateOn"/> resolved through the chain of enclosing
+    /// <see cref="FormDefaults"/> instances. Null only when no instance in the chain sets it. </summary>
+    public UpdateTrigger? EffectiveUpdateOn => UpdateOn ?? Outer?.EffectiveUpdateOn;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

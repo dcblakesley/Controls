@@ -90,6 +90,17 @@
     </section>
 
     <section class="demo-section">
+        <h3>AutoSize + UpdateOn=Change</h3>
+
+        <EditTextArea @bind-Value="_model.AutoSizedChangeTrigger" AutoSize="true" MinRows="2" MaxRows="6"
+                      UpdateOn="UpdateTrigger.Change"
+                      Placeholder="Grows while you type -- the bound value only commits on blur."/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_autoSizeChangeExample</code></pre>
+    </section>
+
+    <section class="demo-section">
         <h3>AutoSize</h3>
 
         <EditTextArea @bind-Value="_model.AutoSized" AutoSize="true" MinRows="2" MaxRows="6"
@@ -127,6 +138,7 @@
         public string Clearable { get; set; } = "Clear me";
         public string Counted { get; set; } = "";
         public string AutoSized { get; set; } = "";
+        public string AutoSizedChangeTrigger { get; set; } = "";
     }
 
     readonly string _basicExample = @"<EditTextArea @bind-Value=""_model.BasicTextArea"" />
@@ -187,4 +199,10 @@ public string Disabled { get; set; } = ""This textarea is disabled"";";
              MinRows=""2""
              MaxRows=""6""
              Placeholder=""Type several lines...""/>";
+
+    readonly string _autoSizeChangeExample = @"<EditTextArea @bind-Value=""_model.AutoSizedChangeTrigger""
+             AutoSize=""true""
+             MinRows=""2""
+             MaxRows=""6""
+             UpdateOn=""UpdateTrigger.Change""/>";
 }

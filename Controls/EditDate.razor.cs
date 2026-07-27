@@ -36,6 +36,23 @@ public partial class EditDate<[DynamicallyAccessedMembers(DynamicallyAccessedMem
     [Parameter] public SelectSize Size { get; set; }
 
     /// <summary>
+    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
+    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
+    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
+    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
+    /// control's own default of <see cref="UpdateTrigger.Change"/>. Choosing <see cref="UpdateTrigger.Input"/>
+    /// here is not free: browsers report a partially-typed <c>type="date"</c>/<c>datetime-local</c>/
+    /// <c>month</c>/<c>time</c> input's value as an empty string until the user finishes typing a
+    /// valid value, so per-keystroke binding flashes a spurious <see cref="ParsingErrorMessage"/>
+    /// validation error on every keystroke -- which is exactly why <see cref="UpdateTrigger.Change"/>
+    /// is the default.
+    /// </summary>
+    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
+
+    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
+    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Change);
+
+    /// <summary>
     /// The input's <c>class</c> attribute. <see cref="Size"/> at its default reproduces today's exact
     /// string (byte-identical legacy DOM); otherwise appends <see cref="EditInputShell.SizeClass"/>'s
     /// token.

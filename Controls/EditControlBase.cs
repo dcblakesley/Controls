@@ -129,6 +129,18 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 
     /// <summary>
+    /// Resolves the effective <see cref="UpdateTrigger"/> through three levels — the control's own
+    /// <paramref name="updateOn"/> parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>,
+    /// then the calling control's own built-in <paramref name="fallback"/> — and maps it to the DOM
+    /// event name that drives the commit. Returns that name as a plain string, rather than leaving
+    /// callers to switch on the enum, because the call site is <c>@bind-value:event</c>: the Razor
+    /// compiler emits the <c>:event</c> modifier's value as a runtime expression (not a compile-time
+    /// literal), so a string result plugs straight in.
+    /// </summary>
+    protected string ResolveUpdateEvent(UpdateTrigger? updateOn, UpdateTrigger fallback) =>
+        (updateOn ?? FormDefaults?.EffectiveUpdateOn ?? fallback) == UpdateTrigger.Change ? "onchange" : "oninput";
+
+    /// <summary>
     /// True when <see cref="InputBase{TValue}.CurrentValue"/> is the type's semantic "empty" —
     /// empty string for string controls, numeric zero for number controls, <c>default(DateTime)</c>
     /// for date controls, etc. Override in derived classes where the default semantics aren't

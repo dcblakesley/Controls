@@ -57,6 +57,20 @@ public partial class EditRadioString : EditControlBase<string?>
     /// </summary>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
+    /// <summary>
+    /// Which DOM event commits the "Other" free-text box's typed value to
+    /// <see cref="InputBase{TValue}.CurrentValue"/> -- <see cref="UpdateTrigger.Input"/> (<c>oninput</c>)
+    /// commits on every keystroke, <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on
+    /// blur/Enter. Affects ONLY the "Other" free-text box -- the radio buttons themselves always
+    /// commit on selection (native radio <c>onchange</c>) and are unaffected. Resolution order: this
+    /// parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this control's
+    /// own default of <see cref="UpdateTrigger.Input"/>.
+    /// </summary>
+    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
+
+    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving the "Other" text box's <c>@bind:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
+    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
+
     string _otherText = "";
     // Internal radio value for the built-in "Other" option. Deliberately NOT the display text
     // "Other" — a consumer options list may legitimately contain "Other" as a real option, and the

@@ -50,6 +50,22 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a number.";
 
     /// <summary>
+    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
+    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
+    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
+    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
+    /// control's own default of <see cref="UpdateTrigger.Change"/>. Choosing <see cref="UpdateTrigger.Input"/>
+    /// here is not free: browsers report a <c>type="number"</c> input's value as an empty string while
+    /// the user is mid-way through typing a partial number ("-", "3.", "1e"), so per-keystroke binding
+    /// flashes a spurious <see cref="ParsingErrorMessage"/> validation error on every keystroke -- which
+    /// is exactly why <see cref="UpdateTrigger.Change"/> is the default.
+    /// </summary>
+    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
+
+    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
+    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Change);
+
+    /// <summary>
     /// True once <see cref="Prefix"/> or <see cref="Suffix"/> is in use -- the single computation
     /// site <see cref="EditInputShell.UsesAffixLayout"/> defines, so this control and the shell
     /// always agree on which layout renders. EditNumber never sets AllowClear/CountText/IsPassword

@@ -36,7 +36,9 @@ public partial class EditTextArea : EditControlBase<string?>
     /// between <see cref="MinRows"/> (defaults to <see cref="Rows"/> when unset) and
     /// <see cref="MaxRows"/> (unbounded when null). Degrades gracefully to the fixed <see cref="Rows"/>
     /// height with no JS available (prerender / tests). Also disables the browser's manual resize
-    /// handle (<c>edit-textarea-autosize</c>), matching AntD's own TextArea autoSize behavior.
+    /// handle (<c>edit-textarea-autosize</c>), matching AntD's own TextArea autoSize behavior. Keeps
+    /// growing on every keystroke even when <see cref="UpdateOn"/> resolves to
+    /// <see cref="UpdateTrigger.Change"/> (commit-on-blur) -- see <see cref="AutoSizeInputAttribute"/>.
     /// </summary>
     [Parameter] public bool AutoSize { get; set; }
 
@@ -56,6 +58,19 @@ public partial class EditTextArea : EditControlBase<string?>
     /// <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
     /// </summary>
     [Parameter] public SelectSize Size { get; set; }
+
+    /// <summary>
+    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
+    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
+    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
+    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
+    /// control's own default of <see cref="UpdateTrigger.Input"/>. See <see cref="AutoSize"/> for how
+    /// this interacts with auto-resizing.
+    /// </summary>
+    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
+
+    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
+    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
 
     [Inject] IJSRuntime JS { get; set; } = default!;
 
@@ -144,14 +159,32 @@ public partial class EditTextArea : EditControlBase<string?>
     }
 
     /// <summary>
-    /// Runs after every bound-value update (<c>@bind-value:after</c>, fired once per input event) --
-    /// re-measures and resizes when <see cref="AutoSize"/> is on, a no-op otherwise. Wired
-    /// unconditionally (rather than only while AutoSize is true): unlike an explicit <c>@oninput</c>
-    /// handler, <c>:after</c> never renders as a DOM attribute of its own -- it's pure C#-side wiring
-    /// around the same "oninput" binding EditTextArea already had, so attaching it doesn't touch the
-    /// non-AutoSize markup at all (the S1 DOM-stability tests still pass unchanged).
+    /// Runs after every bound-value update (<c>@bind-value:after</c>) -- re-measures and resizes when
+    /// <see cref="AutoSize"/> is on, a no-op otherwise. Wired unconditionally (rather than only while
+    /// AutoSize is true): unlike an explicit <c>@oninput</c> handler, <c>:after</c> never renders as a
+    /// DOM attribute of its own, so attaching it doesn't touch the non-AutoSize markup at all (the S1
+    /// DOM-stability tests still pass unchanged). It fires once per *bound* event, which is
+    /// <c>oninput</c> by default but becomes <c>onchange</c> (blur/Enter only) when
+    /// <see cref="UpdateEventName"/> resolves to Change -- so under AutoSize + Change this alone would
+    /// stop the textarea growing mid-typing; see <see cref="AutoSizeInputAttribute"/> for the patch.
     /// </summary>
     Task OnValueChangedAsync() => AutoSize ? AutoSizeAsync() : Task.CompletedTask;
+
+    /// <summary>
+    /// Measure-only <c>oninput</c> handler, splatted onto the textarea ONLY when <see cref="AutoSize"/>
+    /// is on and <see cref="UpdateEventName"/> has resolved away from <c>"oninput"</c> (i.e. the bound
+    /// commit event is <c>onchange</c>). <see cref="OnValueChangedAsync"/> re-measures via
+    /// <c>@bind-value:after</c>, which only fires once per bound event -- under
+    /// <see cref="UpdateTrigger.Change"/> that's blur, so without this extra handler an AutoSize
+    /// textarea would stop growing as the user types. Null in every other combination (including the
+    /// default oninput binding), so the splat renders no attribute at all and the S1 DOM-stability
+    /// tests' byte-identical markup holds. No key collision by construction: this dictionary only
+    /// ever adds "oninput" in the branch where the bound event is "onchange".
+    /// </summary>
+    IReadOnlyDictionary<string, object>? AutoSizeInputAttribute =>
+        AutoSize && UpdateEventName != "oninput"
+            ? new Dictionary<string, object>(1) { ["oninput"] = EventCallback.Factory.Create(this, AutoSizeAsync) }
+            : null;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

@@ -8,11 +8,12 @@
 
         @if (ShowEditor)
         {
-            @* @bind-value uses the default onchange event (NOT oninput): browsers report
-               type=number as "" while the text is a partial number ("-", "3.", "1e"), so
-               per-keystroke binding flashed "must be a number" mid-typing. Matches Microsoft's
-               InputNumber. (Comment deliberately outside the tag — a Razor comment inside an
-               attribute list compiles into a literal attribute name and breaks setAttribute.) *@
+            @* @bind-value:event defaults to UpdateTrigger.Change (onchange), NOT Input (oninput):
+               browsers report type=number as "" while the text is a partial number ("-", "3.", "1e"),
+               so per-keystroke binding would flash "must be a number" mid-typing. Matches Microsoft's
+               InputNumber. See UpdateOn's doc comment in EditNumber.razor.cs for the full rationale.
+               (Comment deliberately outside the tag — a Razor comment inside an attribute list
+               compiles into a literal attribute name and breaks setAttribute.) *@
             <EditInputShell IsInvalid=@IsInvalid
                             IsDisabled=@IsDisabled
                             WrapperClass=@(EditInputShell.SizeClass(Size))
@@ -28,6 +29,7 @@
                        max=@(Max?.ToString(CultureInfo.InvariantCulture))
                        placeholder=@Placeholder
                        @bind-value=@CurrentValueAsString
+                       @bind-value:event="@UpdateEventName"
                        class=@InputClass
                        aria-required=@_isRequired
                        aria-invalid=@(IsInvalid ? "true" : null)

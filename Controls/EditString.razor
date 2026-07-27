@@ -21,7 +21,7 @@
                             IsPasswordRevealed=@_passwordRevealed
                             OnTogglePassword=@TogglePasswordVisibility>
                 <input @bind-value="CurrentValue"
-                       @bind-value:event="oninput"
+                       @bind-value:event="@UpdateEventName"
                        @ref="_inputRef"
                        style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                        disabled=@IsDisabled

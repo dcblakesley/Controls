@@ -51,7 +51,7 @@
                                        class="edit-input edit-string-input"
                                        @bind:get=@_otherText
                                        @bind:set=SetOtherText
-                                       @bind:event="oninput"/>
+                                       @bind:event="@UpdateEventName"/>
                             </div>
                         }
                     }
@@ -79,7 +79,7 @@
                                            class="edit-input edit-string-input"
                                            @bind:get=@_otherText
                                            @bind:set=SetOtherText
-                                           @bind:event="oninput"/>
+                                           @bind:event="@UpdateEventName"/>
                                 </div>
                             }
                         </div>
