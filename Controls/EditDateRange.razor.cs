@@ -9,11 +9,12 @@ namespace Controls;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Follows <see cref="EditControlListBase{TItem}"/>'s integration style (a plain
-/// <see cref="ComponentBase"/>, not an <c>InputBase</c>, with hand-rolled <see cref="FormOptions"/>
-/// registration and <see cref="EditContext"/> validation-state subscription) rather than inheriting
-/// it directly — that base is hard-wired to a single bound <c>List&lt;TItem&gt;</c>, which doesn't fit
-/// two independent scalar fields.
+/// Shares <see cref="EditControlParametersBase"/> with <see cref="EditControlListBase{TItem}"/> (the
+/// <see cref="IEditControl"/> parameters plus the three cascading options) but not
+/// <see cref="EditControlListBase{TItem}"/> itself, since that base is hard-wired to a single bound
+/// <c>List&lt;TItem&gt;</c>, which doesn't fit two independent scalar fields. Like that base, this is a
+/// plain <see cref="ComponentBase"/>, not an <c>InputBase</c>, with hand-rolled <see cref="FormOptions"/>
+/// registration and <see cref="EditContext"/> validation-state subscription.
 /// </para>
 /// <para>
 /// One <see cref="FormLabel"/> renders for the whole control, associated (<c>label[for]</c>) with the
@@ -31,47 +32,14 @@ namespace Controls;
 /// (<c>label[for]</c>) with the Start input, but <c>aria-label</c> wins the accessible-name
 /// computation over that association (per the AccName spec) — so both inputs' accessible names come
 /// entirely from <see cref="StartInputLabel"/>/<see cref="EndInputLabel"/>, which default to the
-/// resolved <see cref="Label"/> plus a " start"/" end" suffix (falling back to each field's own
-/// auto-derived label when <see cref="Label"/> isn't set). The suffix keeps the two names unique from
+/// resolved <see cref="IEditControl.Label"/> plus a " start"/" end" suffix (falling back to each field's own
+/// auto-derived label when <see cref="IEditControl.Label"/> isn't set). The suffix keeps the two names unique from
 /// each other while both still containing the visible label text (WCAG 2.5.3 Label in Name). The End
 /// input also carries its own id for <c>ValidationView</c> links.
 /// </para>
 /// </remarks>
-public partial class EditDateRange : IEditControl, IDisposable
+public partial class EditDateRange : IDisposable
 {
-    [CascadingParameter] protected EditContext? EditContext { get; set; }
-    /// <inheritdoc/>
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    /// <inheritdoc/>
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-    /// <inheritdoc/>
-    [CascadingParameter] public FormDefaults? FormDefaults { get; set; }
-
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool? IsRequired { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Start</c>/<c>@bind-End</c> alone supply
     /// the accessors those used to require. This inert stub exists only so a leftover
@@ -105,7 +73,7 @@ public partial class EditDateRange : IEditControl, IDisposable
     /// <summary>
     /// Optional label used in the End field's own validation messages (e.g. "End Date is required").
     /// Null (default) auto-generates from the End property's <c>[DisplayName]</c>/name, same precedence
-    /// as the primary <see cref="Label"/>. The visible <see cref="FormLabel"/> for the whole control
+    /// as the primary <see cref="IEditControl.Label"/>. The visible <see cref="FormLabel"/> for the whole control
     /// always derives from Start, never this.
     /// </summary>
     [Parameter] public string? EndLabel { get; set; }
@@ -188,16 +156,16 @@ public partial class EditDateRange : IEditControl, IDisposable
 
     /// <summary>
     /// Accessible name of the Start input — the one <see cref="DateRangePicker"/> associates a
-    /// <c>label[for]</c> with. Null (default) resolves to <see cref="Label"/> + " start" when
-    /// <see cref="Label"/> is set, else the Start field's own auto-derived label (<c>[DisplayName]</c>/
+    /// <c>label[for]</c> with. Null (default) resolves to <see cref="IEditControl.Label"/> + " start" when
+    /// <see cref="IEditControl.Label"/> is set, else the Start field's own auto-derived label (<c>[DisplayName]</c>/
     /// <c>[Display(Name)]</c>/property name) — see the class remarks for why the suffix is needed even
     /// though the visible <see cref="FormLabel"/> associates with this same input. Override to set
     /// something else entirely.
     /// </summary>
     [Parameter] public string? StartInputLabel { get; set; }
     /// <summary>
-    /// Accessible name of the End input. Null (default) resolves to <see cref="Label"/> + " end" when
-    /// <see cref="Label"/> is set, else the End field's own auto-derived label — mirrors
+    /// Accessible name of the End input. Null (default) resolves to <see cref="IEditControl.Label"/> + " end" when
+    /// <see cref="IEditControl.Label"/> is set, else the End field's own auto-derived label — mirrors
     /// <see cref="StartInputLabel"/>'s resolution so the two names stay unique from each other while
     /// both contain the visible label text (WCAG 2.5.3 Label in Name). Override to localize or to set
     /// something else entirely.

@@ -14,38 +14,8 @@ namespace Controls;
 /// <c>InputBase</c>) so derived controls can call <see cref="InitState{T}"/> with it directly instead
 /// of requiring a separate <c>Field</c> expression from the consumer.
 /// </remarks>
-public abstract class EditControlListBase<TItem> : ComponentBase, IEditControl, IDisposable
+public abstract class EditControlListBase<TItem> : EditControlParametersBase, IDisposable
 {
-    [CascadingParameter] protected EditContext? EditContext { get; set; }
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-    [CascadingParameter] public FormDefaults? FormDefaults { get; set; }
-
-    /// <inheritdoc/>
-    [Parameter] public string? Id { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? IdPrefix { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? Label { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? Description { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? Tooltip { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public string? ContainerClass { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool? IsRequired { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public HidingMode? Hiding { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool IsHidden { get; set; }
-    /// <inheritdoc/>
-    [Parameter] public bool IsEditMode { get; set; } = true;
-    /// <inheritdoc/>
-    [Parameter] public bool IsDisabled { get; set; }
-
     /// <summary>
     /// Captures unmatched attributes (in practice, a consumer's <c>class="..."</c>) so list controls
     /// can merge it into <see cref="FieldCssClass"/> — the same forwarding scalar controls get for free
