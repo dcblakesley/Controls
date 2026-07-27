@@ -90,6 +90,66 @@ public class EditSelectParseTests : TestContext
     }
 
     [Fact]
+    public void EditSelectEnum_null_value_selects_the_leading_empty_option()
+    {
+        var model = new PersonModel { Priority = null };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        // A null value used to render with "Low" visually selected (no selected= on any <option>,
+        // relying entirely on JS attaching) while the model stayed null.
+        Assert.True(cut.Find("option[value='']").HasAttribute("selected"));
+        Assert.False(cut.Find("option[value='Low']").HasAttribute("selected"));
+    }
+
+    [Fact]
+    public void EditSelectEnum_matched_value_marks_the_option_selected()
+    {
+        var model = new PersonModel { Priority = Priority.High };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        Assert.True(cut.Find("option[value='High']").HasAttribute("selected"));
+        Assert.False(cut.Find("option[value='Low']").HasAttribute("selected"));
+        Assert.Empty(cut.FindAll("option[hidden]"));
+    }
+
+    class InvalidPriorityModel { public Priority Choice { get; set; } }
+
+    [Fact]
+    public void EditSelectEnum_non_nullable_unmatched_value_shows_hidden_placeholder()
+    {
+        var model = new InvalidPriorityModel { Choice = (Priority)99 }; // no defined member — e.g. a removed enum value
+        Expression<Func<Priority>> field = () => model.Choice;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectEnum<Priority>>(0);
+            b.AddAttribute(1, "Value", model.Choice);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        // Without a placeholder the browser would visually select "Low" (the first member) while the
+        // model holds an undefined value — the same gap EditSelectString already guards against.
+        var placeholder = cut.Find("option[hidden]");
+        Assert.True(placeholder.HasAttribute("selected"));
+        Assert.True(placeholder.HasAttribute("disabled"));
+        Assert.False(cut.Find("option[value='Low']").HasAttribute("selected"));
+    }
+
+    [Fact]
     public void EditSelectEnum_change_parses_and_updates_bound_value()
     {
         var model = new PersonModel { Priority = Priority.Medium };
