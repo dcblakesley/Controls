@@ -118,8 +118,24 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
     }
 
+    /// <summary>
+    /// Writes <paramref name="newValue"/> back to the bound model, fires <see cref="ValueChanged"/>,
+    /// then notifies the <see cref="EditContext"/> — in that order, since the validator reads the
+    /// property live off the model via reflection during <c>NotifyFieldChanged</c>, and notifying
+    /// first would validate the stale (pre-write) value, leaving the error state one interaction
+    /// behind (e.g. a <c>[MinLength(2)]</c> error lingering after a second item is added). Shared by
+    /// <see cref="ToggleAsync"/> (single-item toggle) and any wrapper that replaces the whole list at
+    /// once (e.g. <c>EditMultiSelect.OnValuesChanged</c>).
+    /// </summary>
+    protected async Task SetValueAsync(List<TItem> newValue)
+    {
+        Value = newValue;
+        await ValueChanged.InvokeAsync(Value);
+        EditContext?.NotifyFieldChanged(_fieldIdentifier);
+    }
+
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>
-    protected async Task ToggleAsync(TItem item)
+    protected Task ToggleAsync(TItem item)
     {
         // Build a new list rather than mutating the caller's bound instance — so a parent that
         // compares references detects the change, and any shared/source list isn't mutated as a
@@ -127,14 +143,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         List<TItem> updated = Value is null ? [] : [.. Value];
         if (!updated.Remove(item))
             updated.Add(item);
-        Value = updated;
-
-        // Write the new value back to the bound model BEFORE notifying the EditContext. The validator
-        // reads the property live off the model via reflection during NotifyFieldChanged, so notifying
-        // first would validate the stale (pre-toggle) value — leaving the error state one click behind
-        // (e.g. a [MinLength(2)] error lingering after the second box is checked).
-        await ValueChanged.InvokeAsync(Value);
-        EditContext?.NotifyFieldChanged(_fieldIdentifier);
+        return SetValueAsync(updated);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

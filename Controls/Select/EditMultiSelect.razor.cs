@@ -133,12 +133,5 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
                 : v?.ToString() ?? string.Empty));
     }
 
-    async Task OnValuesChanged(IEnumerable<TValue> values)
-    {
-        Value = values.ToList();
-        // Write back to the model (ValueChanged) BEFORE notifying — the validator reads the property
-        // live off the model during NotifyFieldChanged, so notifying first validates the stale value.
-        await ValueChanged.InvokeAsync(Value);
-        EditContext?.NotifyFieldChanged(_fieldIdentifier);
-    }
+    Task OnValuesChanged(IEnumerable<TValue> values) => SetValueAsync(values.ToList());
 }
