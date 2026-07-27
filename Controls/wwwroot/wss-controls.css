@@ -3633,6 +3633,10 @@
     justify-content: center;
     margin-inline-start: -1px;
     padding: 0 8px;
+    /* min-height (not just height) so a consumer reset like `button { max-height: fit-content }`
+       can't collapse the button below the input's height (see .wss-pagination-prev). */
+    height: var(--wss-control-height);
+    min-height: var(--wss-control-height);
     color: var(--wss-color-text-secondary);
     font-size: 14px;
     background: var(--wss-color-bg);
@@ -3653,6 +3657,10 @@
     justify-content: center;
     margin-inline-start: -1px; /* collapse the doubled border against the input */
     padding: 0 10px;
+    /* min-height (not just height) so a consumer reset like `button { max-height: fit-content }`
+       can't collapse the button below the input's height (see .wss-pagination-prev). */
+    height: var(--wss-control-height);
+    min-height: var(--wss-control-height);
     color: var(--wss-color-text);
     font-size: 16px;
     background: var(--wss-color-bg);
