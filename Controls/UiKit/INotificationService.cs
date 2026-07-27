@@ -4,7 +4,7 @@ namespace Controls;
 public enum NotificationType { Success, Info, Warning, Error }
 
 /// <summary>A single notification box tracked by an <see cref="INotificationService"/>.</summary>
-public class NotificationItem
+public class NotificationItem : IToastItem
 {
     public Guid Id { get; } = Guid.NewGuid();
     public NotificationType Type { get; set; }

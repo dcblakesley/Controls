@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace Controls;
 
 /// <summary>
@@ -10,27 +8,17 @@ namespace Controls;
 /// </summary>
 public sealed class NotificationService : INotificationService, IDisposable
 {
-    private readonly List<NotificationItem> _items = new();
-
-    // One cancellation source per auto-dismissing notification, so Remove/Clear/Dispose can cancel a
-    // pending Task.Delay instead of leaving it to fire later against torn-down state.
-    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _timers = new();
-
-    // Guards _items. The auto-dismiss Task.Delay continuation (RemoveAfterAsync) resumes on a
-    // threadpool thread and would otherwise mutate the list while the renderer enumerates Items on
-    // the circuit thread (Blazor Server) — a "collection modified"/torn-read race. The Items getter
-    // returns a snapshot so callers always enumerate a stable copy. OnChange is raised outside the
-    // lock to avoid re-entrancy if a handler reads Items.
-    private readonly object _gate = new();
+    private readonly ToastQueue<NotificationItem> _queue = new();
 
     /// <inheritdoc/>
-    public IReadOnlyList<NotificationItem> Items
+    public IReadOnlyList<NotificationItem> Items => _queue.Items;
+
+    /// <inheritdoc/>
+    public event Action? OnChange
     {
-        get { lock (_gate) { return _items.ToArray(); } }
+        add => _queue.OnChange += value;
+        remove => _queue.OnChange -= value;
     }
-
-    /// <inheritdoc/>
-    public event Action? OnChange;
 
     /// <inheritdoc/>
     public void Success(string message, string? description = null, double? duration = null) => Add(NotificationType.Success, message, description, duration);
@@ -42,24 +30,10 @@ public sealed class NotificationService : INotificationService, IDisposable
     public void Error(string message, string? description = null, double? duration = null) => Add(NotificationType.Error, message, description, duration);
 
     /// <inheritdoc/>
-    public void Remove(Guid id)
-    {
-        CancelTimer(id);
-        bool removed;
-        lock (_gate) { removed = _items.RemoveAll(i => i.Id == id) > 0; }
-        if (removed)
-        {
-            OnChange?.Invoke();
-        }
-    }
+    public void Remove(Guid id) => _queue.Remove(id);
 
     /// <inheritdoc/>
-    public void Clear()
-    {
-        CancelAllTimers();
-        lock (_gate) { _items.Clear(); }
-        OnChange?.Invoke();
-    }
+    public void Clear() => _queue.Clear();
 
     private void Add(NotificationType type, string message, string? description, double? duration)
     {
@@ -70,53 +44,9 @@ public sealed class NotificationService : INotificationService, IDisposable
             Description = description,
             Duration = duration ?? 4.5
         };
-        lock (_gate) { _items.Add(item); }
-        OnChange?.Invoke();
-
-        if (item.Duration > 0)
-        {
-            var cts = new CancellationTokenSource();
-            _timers[item.Id] = cts;
-            _ = RemoveAfterAsync(item, cts.Token);
-        }
-    }
-
-    private async Task RemoveAfterAsync(NotificationItem item, CancellationToken token)
-    {
-        try
-        {
-            // Task.Delay rejects anything over ~24.8 days (int.MaxValue ms) — cap absurd caller
-            // durations there instead of throwing into this fire-and-forget task.
-            var ms = Math.Min(item.Duration * 1000, int.MaxValue - 1);
-            await Task.Delay(TimeSpan.FromMilliseconds(ms), token);
-        }
-        catch (TaskCanceledException)
-        {
-            return; // removed/cleared/disposed before the delay elapsed
-        }
-
-        Remove(item.Id);
-    }
-
-    private void CancelTimer(Guid id)
-    {
-        if (_timers.TryRemove(id, out var cts))
-        {
-            cts.Cancel();
-            cts.Dispose();
-        }
-    }
-
-    private void CancelAllTimers()
-    {
-        foreach (var cts in _timers.Values)
-        {
-            cts.Cancel();
-            cts.Dispose();
-        }
-        _timers.Clear();
+        _queue.Add(item);
     }
 
     /// <summary>Cancels any pending auto-dismiss timers (called when the DI scope is torn down).</summary>
-    public void Dispose() => CancelAllTimers();
+    public void Dispose() => _queue.Dispose();
 }

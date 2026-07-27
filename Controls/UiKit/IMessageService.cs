@@ -4,7 +4,7 @@ namespace Controls;
 public enum MessageType { Success, Info, Warning, Error, Loading }
 
 /// <summary>A single toast message tracked by an <see cref="IMessageService"/>.</summary>
-public class MessageItem
+public class MessageItem : IToastItem
 {
     public Guid Id { get; } = Guid.NewGuid();
     public MessageType Type { get; set; }
