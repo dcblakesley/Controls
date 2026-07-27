@@ -33,14 +33,7 @@
                             @foreach (var option in buttonOptions)
                             {
                                 var optionId = $"rb-{_id}-{option.ToId()}";
-                                <span class="edit-radio-button-wrap">
-                                    <InputRadio Value=@option
-                                                disabled=@IsOptionDisabledFor(option)
-                                                class=@($"edit-radio-button-input {CssClass}")
-                                                id=@optionId
-                                                data-test-id=@optionId />
-                                    <label class=@($"edit-radio-button {LabelClass}") for=@optionId>@option.GetName()</label>
-                                </span>
+                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionDisabledFor(option) Id=@optionId CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
                             }
                         </div>
                         @if (HasOtherOption && buttonOptions.Count > 0)
@@ -73,15 +66,7 @@
                                     var showOtherInput = HasOtherOption && isLastOption;
 
                                     <div class="edit-radio-option">
-                                        <label class=@($"edit-radio-label {LabelClass}")>
-                                            <InputRadio Value=@option
-                                                        disabled=@IsOptionDisabledFor(option)
-                                                        class=@($"edit-radio-input {CssClass}")
-                                                        id=@($"rb-{_id}-{option.ToId()}")
-                                                        data-test-id=@($"rb-{_id}-{option.ToId()}") />
-
-                                            @option.GetName()
-                                        </label>
+                                        <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@($"rb-{_id}-{option.ToId()}") CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
 
                                         @if (showOtherInput)
                                         {

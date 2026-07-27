@@ -1,0 +1,26 @@
+@typeparam TItem
+
+@if (IsButtonMode)
+{
+    @* AntD's segmented "button" look -- a visually-hidden input + sibling label button (the same
+       styled-checkbox technique CheckboxOptionList uses). *@
+    <span class="edit-radio-button-wrap">
+        <InputRadio Value=@Value
+                    disabled=@IsDisabled
+                    class=@($"edit-radio-button-input {CssClass}")
+                    id=@Id
+                    data-test-id=@Id />
+        <label class=@($"edit-radio-button {LabelClass}") for=@Id>@Display</label>
+    </span>
+}
+else
+{
+    <label class=@($"edit-radio-label {LabelClass}")>
+        <InputRadio Value=@Value
+                    disabled=@IsDisabled
+                    class=@($"edit-radio-input {CssClass}")
+                    id=@Id
+                    data-test-id=@Id />
+        @Display
+    </label>
+}
