@@ -9,7 +9,7 @@
         <EditRadio @bind-Value="_model.BasicRadio">
             @foreach (var option in _numberOptions)
             {
-                <label>
+                <label class="edit-radio-label">
                     <InputRadio Value="@option"
                                 class="my-custom-radio"
                                 id=@($"rb-EditRadio-{option}")
@@ -18,7 +18,7 @@
                 </label>
             }
         </EditRadio>
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
     </section>
@@ -57,7 +57,7 @@
                    IsDisabled="true">
             @foreach (var option in _numberOptions)
             {
-                <label>
+                <label class="edit-radio-label">
                     <InputRadio Value="@option"
                                 class="my-custom-radio"
                                 id=@($"rb-EditRadio-{option}")
@@ -75,7 +75,7 @@
         <EditRadio @bind-Value="_model.Required">
             @foreach (var option in _numberOptions)
             {
-                <label>
+                <label class="edit-radio-label">
                     <InputRadio Value="@option"
                                 class="my-custom-radio"
                                 id=@($"rb-EditRadio-{option}")
@@ -97,7 +97,7 @@
                    IsHorizontal="true">
             @foreach (var option in _colorOptions)
             {
-                <label style="color: @option.ToLower()">
+                <label class="edit-radio-label" style="color: @option.ToLower()">
                     <InputRadio Value=@option
                                 class="my-custom-radio"
                                 id=@($"rb-EditRadio-{option}")
@@ -137,7 +137,7 @@
     readonly string _basicExample = @"<EditRadio @bind-Value=""_model.BasicRadio"">
     @foreach (var option in _numberOptions)
     {
-        <label>
+        <label class=""edit-radio-label"">
             <InputRadio Value=""@option"" />
             @option
         </label>
@@ -149,7 +149,7 @@
           class=""my-custom-radio"">
     @foreach (var option in _numberOptions)
     {
-        <label>
+        <label class=""edit-radio-label"">
             <InputRadio Value=@option class=""my-custom-radio"" />
             @option
         </label>

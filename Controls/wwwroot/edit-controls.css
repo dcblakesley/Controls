@@ -130,6 +130,21 @@
     gap: 8px;
 }
 
+/* Now that the label is a flex container, a plain <input> direct child would pick up any
+   consumer-defined `input { flex: ... }` reset (a common app-level default so text inputs fill a
+   flex form row) and stretch to fill the row, shoving the label text to the far edge. The styled
+   checkbox's real input is already immune (absolutely positioned in .edit-checkbox-wrap); this
+   guards the plain/default input the same way. Margin is reset too: a common consumer default is
+   `input[type="checkbox"] { margin-top: -3px; vertical-align: middle; ... }`, a nudge that made
+   sense to compensate for native baseline alignment in the old whitespace-based layout -- against
+   this flex row's own align-items: center it just shoves the box off-center. The [type] bump keeps
+   this ahead of that consumer rule's own specificity (element + attribute) regardless of which
+   stylesheet a given consumer happens to load second. */
+.edit-checkbox-label > input[type="checkbox"] {
+    flex: none;
+    margin: 0;
+}
+
 /* UseStyledCheckbox opt-in marker class -- no longer carries its own layout (the row/gap above is
    now the default for every checkbox label), kept as a stable hook for consumers who want to target
    the styled variant specifically. */
@@ -300,7 +315,14 @@
     align-items: center;
     gap: 8px;
 }
-.edit-radio-input { }
+/* Same consumer-`input { flex: ... }`/margin collision guard as .edit-checkbox-label's rule above
+   -- .edit-radio-label is a flex container too, and the radio <input> is always a plain, in-flow
+   direct child (no absolutely-positioned styled variant here). The [type] bump (see that rule's
+   comment) keeps this ahead of a same-shaped consumer `input[type="radio"]` rule either way. */
+.edit-radio-label > input[type="radio"] {
+    flex: none;
+    margin: 0;
+}
 .edit-radio-option {
     /* div that surrounds the input and label for each radio button. */
     display: flex;
