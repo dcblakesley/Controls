@@ -1,0 +1,45 @@
+@typeparam TItem
+
+@* Leading empty/null option so a null or unmatched-default value shows blank instead of silently
+   displaying the first option while the model holds null -- without this, the browser selects the
+   first <option> whenever nothing is explicitly marked selected= (no JS attached yet on
+   prerender/tests), while the model still holds null. Gated by the host: a nullable enum's
+   _isNullable, or a string select's ShowNullOption (suppressed when the consumer opts out via
+   NullOptionText=null, or TValue can't represent "no value" -- a non-nullable value type). *@
+@if (ShowNullOption)
+{
+    <option class=@($"edit-select-option {CssClass}")
+            value=""
+            selected=@(string.IsNullOrEmpty(CurrentValueAsString))
+            id=@($"{Id}-option-none")
+            data-test-id=@($"{Id}-option-none")>
+        @NullOptionText
+    </option>
+}
+@* An unmatched current value (e.g. an underlying int with no defined enum member, an untouched
+   default like 0, or a stale model value not in Options) must still display blank -- otherwise the
+   browser silently selects the first real option while the model holds something else, the exact
+   mismatch the leading blank option was added to fix (bc67ec0). A hidden+disabled placeholder shows
+   blank, is not user-selectable, and never submits. Host computes ShowPlaceholder so it only renders
+   when the leading null option above isn't already covering the "no match" case. *@
+@if (ShowPlaceholder)
+{
+    <option class=@($"edit-select-option {CssClass}")
+            value=""
+            disabled
+            hidden
+            selected
+            id=@($"{Id}-option-placeholder")
+            data-test-id=@($"{Id}-option-placeholder")></option>
+}
+@foreach (var o in Options)
+{
+    <option title=@Tooltip
+            class=@($"edit-select-option {CssClass}")
+            value=@ValueString(o)
+            selected=@(Equals(ValueString(o), CurrentValueAsString))
+            id=@($"{Id}-option-{o.ToId()}")
+            data-test-id=@($"{Id}-option-{o.ToId()}")>
+        @DisplayText(o)
+    </option>
+}

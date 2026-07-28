@@ -18,47 +18,20 @@
                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                     aria-describedby=@_describedBy>
 
-                @* Nullable enum: a leading empty option so null is selectable and a null value shows
-                   blank instead of silently displaying the first member. selected= is explicit so the
-                   right option is already marked in the initial HTML -- without JS attached yet
-                   (prerender/tests), the browser otherwise defaults to the first <option> regardless
-                   of the bound value (mirrors EditSelectString's fix for the same gap). *@
-                @if (_isNullable)
-                {
-                    <option class=@($"edit-select-option {CssClass}")
-                            value=""
-                            selected=@(string.IsNullOrEmpty(CurrentValueAsString))
-                            id=@($"{_id}-option-none")
-                            data-test-id=@($"{_id}-option-none")>
-                        @NullOptionText
-                    </option>
-                }
-                @* An unmatched current value (e.g. an underlying int with no defined enum member) must
-                   still display blank -- otherwise the browser silently selects the first real option
-                   while the model holds something else. Only reachable for a non-nullable enum; a
-                   nullable enum's only "no match" case is null, already covered above. *@
-                @if (!_isNullable && !GetOptions().Any(o => Equals(o?.ToString(), CurrentValueAsString)))
-                {
-                    <option class=@($"edit-select-option {CssClass}")
-                            value=""
-                            disabled
-                            hidden
-                            selected
-                            id=@($"{_id}-option-placeholder")
-                            data-test-id=@($"{_id}-option-placeholder")></option>
-                }
-                @foreach (var o in GetOptions())
-                {
-                    <option title=@_attributes.Tooltip()
-                            class=@($"edit-select-option {CssClass}")
-                            value=@o
-                            selected=@(Equals(o?.ToString(), CurrentValueAsString))
-                            id=@($"{_id}-option-{o.ToId()}")
-                            data-test-id=@($"{_id}-option-{o.ToId()}")>
-
-                        @o?.GetName()
-                    </option>
-                }
+                @* Options rendered by the shared SelectOptionList (see its source for why the leading
+                   null option / unmatched-value placeholder exist): the leading null option gates on
+                   _isNullable, the placeholder on an unmatched value for a non-nullable enum (a
+                   nullable enum's only "no match" case is null, already covered by the null option). *@
+                <SelectOptionList Options=@GetOptions()
+                                  Id=@_id
+                                  CssClass=@CssClass
+                                  Tooltip=@_attributes.Tooltip()
+                                  CurrentValueAsString=@CurrentValueAsString
+                                  ShowNullOption=@_isNullable
+                                  NullOptionText=@NullOptionText
+                                  ShowPlaceholder=@(!_isNullable && !GetOptions().Any(o => Equals(o?.ToString(), CurrentValueAsString)))
+                                  DisplayText="@(o => o?.GetName())"
+                                  ValueString="@(o => o?.ToString())" />
             </select>
         }
         else

@@ -18,49 +18,26 @@
                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                     aria-describedby=@_describedBy>
 
-                @* Leading empty option so a null/empty value shows blank instead of silently
-                   displaying the first option while the model still holds null. Suppressed when the
-                   consumer opts out (NullOptionText=null) or TValue can't be null (non-nullable value type). *@
-                @if (ShowNullOption)
-                {
-                    <option class=@($"edit-select-option {CssClass}")
-                            value=""
-                            selected=@(string.IsNullOrEmpty(CurrentValueAsString))
-                            id=@($"{_id}-option-none")
-                            data-test-id=@($"{_id}-option-none")>
-                        @NullOptionText
-                    </option>
-                }
-                @* L5 made the blank non-selectable for value types (a blank there maps only to a spurious
-                   default). But an unmatched current value (an untouched default like 0, or a stale model
-                   value not in Options) must still DISPLAY blank — otherwise the browser silently selects
-                   the first real option while the model holds something else, the exact mismatch the blank
-                   was added to fix (bc67ec0). A hidden+disabled placeholder shows blank, is not user-
-                   selectable, and never submits. *@
-                @* Coalesce to "" so the non-nullable Options.Contains stays warning-clean; a value-type
-                   CurrentValueAsString is never null, and a null on an opt-out reference type matches ""
-                   only if the consumer authored a "" option, which correctly needs no placeholder. *@
-                @if (!ShowNullOption && !Options.Contains(CurrentValueAsString ?? ""))
-                {
-                    <option class=@($"edit-select-option {CssClass}")
-                            value=""
-                            disabled
-                            hidden
-                            selected
-                            id=@($"{_id}-option-placeholder")
-                            data-test-id=@($"{_id}-option-placeholder")></option>
-                }
-                @foreach (var o in Options)
-                {
-                    <option title=@_attributes.Tooltip()
-                            value=@o
-                            selected=@(CurrentValueAsString == o)
-                            id=@($"{_id}-option-{o.ToId()}")
-                            data-test-id=@($"{_id}-option-{o.ToId()}")
-                            class=@($"edit-select-option {CssClass}")>
-                        @o
-                    </option>
-                }
+                @* Options rendered by the shared SelectOptionList (see its source for why the leading
+                   null option / unmatched-value placeholder exist): the leading null option is
+                   suppressed when the consumer opts out (NullOptionText=null) or TValue can't be null
+                   (non-nullable value type). The placeholder covers an unmatched current value (an
+                   untouched default like 0, or a stale model value not in Options) when the null
+                   option above isn't already showing blank. Coalesce to "" so the non-nullable
+                   Options.Contains stays warning-clean; a value-type CurrentValueAsString is never
+                   null, and a null on an opt-out reference type matches "" only if the consumer
+                   authored a "" option, which correctly needs no placeholder. *@
+                <SelectOptionList TItem="string"
+                                  Options=@Options
+                                  Id=@_id
+                                  CssClass=@CssClass
+                                  Tooltip=@_attributes.Tooltip()
+                                  CurrentValueAsString=@CurrentValueAsString
+                                  ShowNullOption=@ShowNullOption
+                                  NullOptionText=@NullOptionText
+                                  ShowPlaceholder=@(!ShowNullOption && !Options.Contains(CurrentValueAsString ?? ""))
+                                  DisplayText="@(o => o)"
+                                  ValueString="@(o => o)" />
             </select>
         }
         else
