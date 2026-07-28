@@ -124,6 +124,23 @@
         <p>A narrow trigger with long option labels makes the dropdown wider than the trigger; positioned near the right edge of the viewport, it shifts to stay on-screen instead of running off it.</p>
         <EditSelectSearch @bind-Value="_model.ClampChoice" Options="_wideOptions" Width="90px" />
     </section>
+
+    <section class="demo-section">
+        <h3>Placeholder from Model Attribute</h3>
+        <p>
+            A <code>[Placeholder]</code> attribute on the bound property (or DataAnnotations'
+            <code>[Display(Prompt = "...")]</code>) supplies the "nothing selected" hint below even
+            though no <code>Placeholder</code> parameter is set in the markup; both fall back to
+            "Please select" if neither is present.
+        </p>
+        <EditSelectSearch @bind-Value="_model.AttributePlaceholderCountry" Options="_countries" Width="260px" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_placeholderAttributeExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -201,9 +218,19 @@
         public string? ControlledCountry { get; set; }
 
         public int ClampChoice { get; set; }
+
+        [Placeholder("Choose a country...")]
+        public string? AttributePlaceholderCountry { get; set; }
     }
 
     readonly string _example = @"<EditSelectSearch @bind-Value=""_model.Country""
                   Options=""_countries""
                   Placeholder=""Search for a country..."" />";
+
+    readonly string _placeholderAttributeExample = @"<EditSelectSearch @bind-Value=""_model.AttributePlaceholderCountry""
+                  Options=""_countries""
+                  Width=""260px"" />";
+
+    readonly string _placeholderAttributeModel = @"[Placeholder(""Choose a country..."")]
+public string? AttributePlaceholderCountry { get; set; }";
 }

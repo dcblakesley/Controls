@@ -92,9 +92,19 @@ public partial class EditDateRange : IDisposable
     /// "MM/yyyy") the moment <see cref="Mode"/> forwarded anything but <see cref="DatePickerMode.Date"/>.
     /// </summary>
     [Parameter] public string? Format { get; set; }
-    /// <inheritdoc cref="DateRangePicker.StartPlaceholder"/>
+    /// <summary>
+    /// Placeholder text forwarded to the inner <see cref="DateRangePicker"/>'s Start input. Null
+    /// (default) falls back to the Start property's <see cref="PlaceholderAttribute"/> or
+    /// <see cref="DisplayAttribute"/> <c>Prompt</c> (see <see cref="EffectiveStartPlaceholder"/>), then
+    /// to <see cref="DateRangePicker"/>'s own mode-derived default (its internal
+    /// <c>DefaultPlaceholder</c>, the uppercased effective format).
+    /// </summary>
     [Parameter] public string? StartPlaceholder { get; set; }
-    /// <inheritdoc cref="DateRangePicker.EndPlaceholder"/>
+    /// <summary>
+    /// Placeholder text forwarded to the inner <see cref="DateRangePicker"/>'s End input. Resolves
+    /// against the End property's own attributes independently of <see cref="StartPlaceholder"/> (see
+    /// <see cref="EffectiveEndPlaceholder"/>) — same fallback chain as <see cref="StartPlaceholder"/>.
+    /// </summary>
     [Parameter] public string? EndPlaceholder { get; set; }
     /// <inheritdoc cref="DateRangePicker.AllowClear"/>
     [Parameter] public bool AllowClear { get; set; } = true;
@@ -312,6 +322,14 @@ public partial class EditDateRange : IDisposable
     // auto-derived label (matches EditDatePicker's EffectiveInputLabel) when Label isn't set.
     string EffectiveStartInputLabel => StartInputLabel ?? (Label is not null ? $"{Label} start" : _attributes.GetLabelText(_startFieldIdentifier));
     string EffectiveEndInputLabel => EndInputLabel ?? (Label is not null ? $"{Label} end" : _endAttributes.GetLabelText(_endFieldIdentifier));
+
+    // Each end resolves against its OWN property's attributes -- a [Placeholder] on Start must never
+    // leak onto End's input, and vice versa. Null is intentional and must be preserved when neither
+    // the parameter nor the attribute supplies text: forwarding null (rather than substituting a
+    // literal) is what lets the inner DateRangePicker's own DefaultPlaceholder (the uppercased
+    // EffectiveFormat) still apply, exactly as it does today.
+    string? EffectiveStartPlaceholder => StartPlaceholder ?? _attributes.Placeholder();
+    string? EffectiveEndPlaceholder => EndPlaceholder ?? _endAttributes.Placeholder();
 
     protected override void OnInitialized()
     {

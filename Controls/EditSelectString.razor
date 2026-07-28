@@ -34,8 +34,9 @@
                                   Tooltip=@_attributes.Tooltip()
                                   CurrentValueAsString=@CurrentValueAsString
                                   ShowNullOption=@ShowNullOption
-                                  NullOptionText=@NullOptionText
+                                  NullOptionText=@EffectiveNullOptionText
                                   ShowPlaceholder=@(!ShowNullOption && !Options.Contains(CurrentValueAsString ?? ""))
+                                  PlaceholderText=@_attributes.Placeholder()
                                   DisplayText="@(o => o)"
                                   ValueString="@(o => o)" />
             </select>

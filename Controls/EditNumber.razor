@@ -27,7 +27,7 @@
                        step=@Step.ToString(CultureInfo.InvariantCulture)
                        min=@(Min?.ToString(CultureInfo.InvariantCulture))
                        max=@(Max?.ToString(CultureInfo.InvariantCulture))
-                       placeholder=@Placeholder
+                       placeholder=@EffectivePlaceholder
                        @bind-value=@CurrentValueAsString
                        @bind-value:event="@UpdateEventName"
                        class=@InputClass

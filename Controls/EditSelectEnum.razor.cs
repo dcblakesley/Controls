@@ -23,6 +23,16 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
     /// </summary>
     [Parameter] public string NullOptionText { get; set; } = "";
 
+    /// <summary>
+    /// Resolved text for the leading null option: the <see cref="NullOptionText"/> parameter when the
+    /// consumer set it, else the bound property's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c>
+    /// attribute, else empty. Unlike <c>EditSelectString.NullOptionText</c>, an empty
+    /// <see cref="NullOptionText"/> here carries no "suppress the option" meaning (that's gated
+    /// separately by <c>_isNullable</c>) — so an unset/empty value is free to fall through to the
+    /// model attribute without resurrecting anything the consumer deliberately turned off.
+    /// </summary>
+    string EffectiveNullOptionText => string.IsNullOrEmpty(NullOptionText) ? _attributes.Placeholder() ?? "" : NullOptionText;
+
     readonly EnumOptionCache<TEnum> _cache = new();
 
     // Markup reads _isNullable directly (leading empty option / unmatched-value placeholder), so it

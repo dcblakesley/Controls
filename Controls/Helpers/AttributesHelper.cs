@@ -33,6 +33,19 @@ public static class AttributesHelper
     public static string? Tooltip(this List<Attribute>? attrs) =>
         attrs?.OfType<ToolTipAttribute>().FirstOrDefault()?.Value;
 
+    /// <summary>
+    /// The model-declared placeholder/hint text for a field: <see cref="PlaceholderAttribute"/> first,
+    /// then DataAnnotations' own <c>[Display(Prompt = "…")]</c> — the framework's existing "watermark"
+    /// slot, honored here for the same reason <see cref="GetLabelText"/> honors <c>[Display(Name)]</c>
+    /// (a model already annotated for MVC/Razor Pages needs no second attribute). <c>GetPrompt()</c>
+    /// rather than <c>.Prompt</c> so a localized <c>[Display(Prompt=…, ResourceType=…)]</c> resolves
+    /// through its resource manager instead of surfacing the raw resource key. Null when neither is
+    /// present, so every caller can fall through to its own default.
+    /// </summary>
+    public static string? Placeholder(this List<Attribute>? attrs) =>
+        attrs?.OfType<PlaceholderAttribute>().FirstOrDefault()?.Value
+        ?? attrs?.OfType<DisplayAttribute>().FirstOrDefault()?.GetPrompt();
+
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
         FieldIdentifier fieldIdentifier)
     {
@@ -130,6 +143,20 @@ public class ToolTipAttribute(string value) : Attribute
 }
 
 public class EnumDisplayNameAttribute(string value) : Attribute
+{
+    public string Value { get; protected set; } = value;
+}
+
+/// <summary>
+/// Declares a control's placeholder/hint text on the model property, so the hint lives next to the
+/// field it describes instead of being repeated at every markup site (the same rationale as
+/// <see cref="ToolTipAttribute"/> and <c>[Description]</c>). Every control that renders a placeholder
+/// resolves it as: its own <c>Placeholder</c> parameter → this attribute → <c>[Display(Prompt)]</c> →
+/// the control's built-in default. Controls without a placeholder concept (native date inputs, radios,
+/// checkbox lists, file upload) ignore it.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public class PlaceholderAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;
 }

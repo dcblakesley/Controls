@@ -29,6 +29,20 @@ public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAcc
     /// </summary>
     [Parameter] public string? NullOptionText { get; set; } = "";
 
+    /// <summary>
+    /// Resolved text for the leading null option. Unlike <see cref="EditSelectEnum{TEnum}"/>'s
+    /// equivalent, <c>null</c> and empty string are NOT interchangeable here: <c>null</c> is the
+    /// consumer's explicit "suppress the leading option entirely" opt-out (see
+    /// <see cref="ShowNullOption"/>) and must never be resurrected into a non-null value just because
+    /// a model attribute exists — that would re-show an option the consumer deliberately removed. Only
+    /// an empty string (the parameter's own default, meaning "unset") falls through to the model's
+    /// <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute; an explicit non-empty
+    /// <see cref="NullOptionText"/> always wins.
+    /// </summary>
+    string? EffectiveNullOptionText => NullOptionText is null
+        ? null
+        : NullOptionText.Length == 0 ? _attributes.Placeholder() ?? "" : NullOptionText;
+
     // Reference types (incl. string — NRT annotations are erased at runtime, so string and string?
     // are indistinguishable here) and Nullable<T> value types can represent "no value". A non-nullable
     // value type (e.g. int) cannot, so a blank there would only map to a spurious default(TValue).

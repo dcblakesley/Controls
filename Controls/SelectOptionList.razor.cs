@@ -22,6 +22,7 @@ public partial class SelectOptionList<TItem>
     [Parameter] public bool ShowNullOption { get; set; }
     [Parameter] public string? NullOptionText { get; set; }
     [Parameter] public bool ShowPlaceholder { get; set; }
+    [Parameter] public string? PlaceholderText { get; set; }
     [Parameter, EditorRequired] public Func<TItem, string?> DisplayText { get; set; } = null!;
     [Parameter, EditorRequired] public Func<TItem, string?> ValueString { get; set; } = null!;
 }

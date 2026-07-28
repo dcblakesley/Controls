@@ -14,8 +14,18 @@ public partial class EditTextArea : EditControlBase<string?>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<string?>>? Field { get; set; }
 
-    /// <summary> Placeholder text to display in the textarea when empty.</summary>
+    /// <summary>
+    /// Placeholder text to display in the textarea when empty. Falls back to the bound property's
+    /// <c>[Placeholder]</c>/<c>[Display(Prompt = "…")]</c> when unset -- see <see cref="EffectivePlaceholder"/>.
+    /// </summary>
     [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// The placeholder actually rendered: the <see cref="Placeholder"/> parameter, else the model
+    /// property's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> text. Null when neither is set, so the
+    /// attribute is omitted rather than rendered empty.
+    /// </summary>
+    string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
 
     /// <summary> Number of visible text rows in the textarea. Defaults to 2. Ignored for the initial
     /// height while <see cref="AutoSize"/> is true -- see <see cref="MinRows"/>.</summary>

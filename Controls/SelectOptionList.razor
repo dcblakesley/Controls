@@ -24,13 +24,19 @@
    when the leading null option above isn't already covering the "no match" case. *@
 @if (ShowPlaceholder)
 {
+    @* A selected hidden option still supplies the closed <select>'s displayed text in every browser,
+       which is what makes this the model-declared [Placeholder]/[Display(Prompt)] slot for a native
+       select (see EditSelectEnum/EditSelectString). PlaceholderText is null unless the host resolved
+       one from the bound property's attributes, and @PlaceholderText renders nothing for a null value,
+       so the DOM stays byte-identical to before this parameter existed -- committed visual-regression
+       baselines depend on that when no placeholder attribute is present. *@
     <option class=@($"edit-select-option {CssClass}")
             value=""
             disabled
             hidden
             selected
             id=@($"{Id}-option-placeholder")
-            data-test-id=@($"{Id}-option-placeholder")></option>
+            data-test-id=@($"{Id}-option-placeholder")>@PlaceholderText</option>
 }
 @foreach (var o in Options)
 {

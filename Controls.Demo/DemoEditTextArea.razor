@@ -90,6 +90,25 @@
     </section>
 
     <section class="demo-section">
+        <h3>Placeholder from Model Attribute</h3>
+        <p>
+            A <code>[Placeholder]</code> attribute on the bound property (or DataAnnotations'
+            <code>[Display(Prompt = "...")]</code>) supplies the hint here even though the markup below
+            sets no <code>Placeholder</code> parameter at all.
+        </p>
+
+        <EditTextArea @bind-Value="_model.WithPlaceholderAttribute" Rows="3"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_placeholderAttributeExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
+    </section>
+
+    @* The two AutoSize sections must stay LAST on this page: EditTextAreaE2ETests anchors on
+       section.demo-section.Last to reach the "AutoSize" one. Append new sections ABOVE these two. *@
+    <section class="demo-section">
         <h3>AutoSize + UpdateOn=Change</h3>
 
         <EditTextArea @bind-Value="_model.AutoSizedChangeTrigger" AutoSize="true" MinRows="2" MaxRows="6"
@@ -139,6 +158,9 @@
         public string Counted { get; set; } = "";
         public string AutoSized { get; set; } = "";
         public string AutoSizedChangeTrigger { get; set; } = "";
+
+        [Placeholder("Describe your experience, thoughts, or feedback...")]
+        public string WithPlaceholderAttribute { get; set; } = "";
     }
 
     readonly string _basicExample = @"<EditTextArea @bind-Value=""_model.BasicTextArea"" />
@@ -205,4 +227,10 @@ public string Disabled { get; set; } = ""This textarea is disabled"";";
              MinRows=""2""
              MaxRows=""6""
              UpdateOn=""UpdateTrigger.Change""/>";
+
+    readonly string _placeholderAttributeExample = @"<EditTextArea @bind-Value=""_model.WithPlaceholderAttribute""
+             Rows=""3""/>";
+
+    readonly string _placeholderAttributeModel = @"[Placeholder(""Describe your experience, thoughts, or feedback..."")]
+public string WithPlaceholderAttribute { get; set; } = """";";
 }

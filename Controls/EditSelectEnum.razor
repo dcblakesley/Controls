@@ -28,8 +28,9 @@
                                   Tooltip=@_attributes.Tooltip()
                                   CurrentValueAsString=@CurrentValueAsString
                                   ShowNullOption=@_isNullable
-                                  NullOptionText=@NullOptionText
+                                  NullOptionText=@EffectiveNullOptionText
                                   ShowPlaceholder=@(!_isNullable && !GetOptions().Any(o => Equals(o?.ToString(), CurrentValueAsString)))
+                                  PlaceholderText=@_attributes.Placeholder()
                                   DisplayText="@(o => o?.GetName())"
                                   ValueString="@(o => o?.ToString())" />
             </select>

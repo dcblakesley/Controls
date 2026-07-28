@@ -64,7 +64,12 @@ public partial class EditDatePicker<T> : EditControlBase<T>
     [Parameter] public DateTime? Max { get; set; }
     /// <inheritdoc cref="DatePicker.Format"/>
     [Parameter] public string? Format { get; set; }
-    /// <inheritdoc cref="DatePicker.Placeholder"/>
+    /// <summary>
+    /// Placeholder text forwarded to the inner <see cref="DatePicker"/>. Null (default) falls back to
+    /// the bound property's <see cref="PlaceholderAttribute"/> or <see cref="DisplayAttribute"/>
+    /// <c>Prompt</c> (see <see cref="EffectivePlaceholder"/>), then to <see cref="DatePicker"/>'s own
+    /// mode-derived default (its internal <c>EffectivePlaceholder</c>, e.g. "Select date").
+    /// </summary>
     [Parameter] public string? Placeholder { get; set; }
     /// <inheritdoc cref="DatePicker.AllowClear"/>
     [Parameter] public bool AllowClear { get; set; } = true;
@@ -181,6 +186,15 @@ public partial class EditDatePicker<T> : EditControlBase<T>
     [Parameter] public string NextDecadeLabel { get; set; } = "Next decade";
 
     string EffectiveInputLabel => InputLabel ?? Label ?? _attributes.GetLabelText(_fieldIdentifier);
+
+    /// <summary>
+    /// Resolves <see cref="Placeholder"/> against the bound property's <see cref="PlaceholderAttribute"/>/
+    /// <see cref="DisplayAttribute"/> <c>Prompt</c> fallback (see <see cref="AttributesHelper.Placeholder"/>).
+    /// Null is intentional and must be preserved when neither source supplies text: forwarding null
+    /// (rather than substituting a literal) is what lets the inner <see cref="DatePicker"/>'s own
+    /// mode-derived default (e.g. "Select date", "Select month") still apply, exactly as it does today.
+    /// </summary>
+    string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
 
     // Type -> DatePickerMode. The inner DatePicker only knows Mode; Type is EditDatePicker's own
     // parameter name/shape (matching EditDate<T>'s Type exactly) so the two controls share one mental

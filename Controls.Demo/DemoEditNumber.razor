@@ -73,6 +73,23 @@
 		<h3>Markup</h3>
 		<pre class="code-block"><code>@_prefixSuffixExample</code></pre>
 	</section>
+
+	<section class="demo-section">
+		<h3>Placeholder from Model Attribute</h3>
+		<p>
+			A <code>[Placeholder]</code> attribute on the bound property (or DataAnnotations'
+			<code>[Display(Prompt = "...")]</code>) supplies the hint here even though the markup below
+			sets no <code>Placeholder</code> parameter at all.
+		</p>
+
+		<EditNumber @bind-Value="_model.WithPlaceholderAttribute"/>
+
+		<h3>Markup</h3>
+		<pre class="code-block"><code>@_placeholderAttributeExample</code></pre>
+
+		<h3>Model</h3>
+		<pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
+	</section>
 </EditForm>
 
 @code {
@@ -101,6 +118,9 @@
 
 		public int Bounded { get; set; }
 		public decimal WithPrefixSuffix { get; set; } = 19;
+
+		[Placeholder("e.g. 42")]
+		public int? WithPlaceholderAttribute { get; set; }
 	}
 
 	readonly string _basicExample = @"<EditNumber @bind-Value=""_model.Int"" />
@@ -162,5 +182,10 @@ public double RangeValue { get; set; } = 33;";
     <Prefix>$</Prefix>
     <Suffix>USD</Suffix>
 </EditNumber>";
+
+	readonly string _placeholderAttributeExample = @"<EditNumber @bind-Value=""_model.WithPlaceholderAttribute"" />";
+
+	readonly string _placeholderAttributeModel = @"[Placeholder(""e.g. 42"")]
+public int? WithPlaceholderAttribute { get; set; }";
 
 }

@@ -29,8 +29,23 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <summary> Tags mode: turn typed text into a TValue. When null and TValue is string, the text is used directly.</summary>
     [Parameter] public Func<string, TValue>? TagValueFactory { get; set; }
 
-    /// <summary> Placeholder text shown when nothing is selected.</summary>
-    [Parameter] public string Placeholder { get; set; } = "Please select";
+    /// <summary>
+    /// Placeholder text shown when nothing is selected. Left <c>null</c> (no initializer — deliberately,
+    /// so "unset" is distinguishable from an explicit empty string) so <see cref="EffectivePlaceholder"/>
+    /// can fall through to the model's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute; null means
+    /// "resolve from the model, else 'Please select'".
+    /// </summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Resolved placeholder actually forwarded to the inner <see cref="Select{TValue}"/>: the
+    /// <see cref="Placeholder"/> parameter (consumer set it explicitly) → the model property's
+    /// <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute → the literal "Please select" fallback.
+    /// The literal default lives here rather than on the parameter itself, because a defaulted
+    /// non-null parameter can't be told apart from a consumer-set value — see <see cref="Placeholder"/>.
+    /// <see cref="Select{TValue}.Placeholder"/> is non-nullable, so this must never be null.
+    /// </summary>
+    string EffectivePlaceholder => Placeholder ?? _attributes.Placeholder() ?? "Please select";
 
     /// <summary> Show the clear (x) button when there is a selection. Defaults to true.</summary>
     [Parameter] public bool AllowClear { get; set; } = true;

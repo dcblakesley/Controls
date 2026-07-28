@@ -54,6 +54,24 @@
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
     </section>
+
+    <section class="demo-section">
+        <h3>Placeholder from Model Attribute</h3>
+        <p>
+            A native <code>&lt;select&gt;</code> has no <code>placeholder</code> attribute, so
+            <code>EditSelectEnum</code> has no <code>Placeholder</code> parameter either -- instead a
+            <code>[Placeholder]</code> attribute (or <code>[Display(Prompt = "...")]</code>) on a
+            <b>nullable</b> enum property supplies the text for the leading blank option.
+        </p>
+
+        <EditSelectEnum @bind-Value="_model.WithPlaceholderAttribute"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_placeholderAttributeExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -71,6 +89,9 @@
 
         [Required] public Animal Required { get; set; }
         public Animal Disabled { get; set; }
+
+        [Placeholder("Choose an animal...")]
+        public Animal? WithPlaceholderAttribute { get; set; }
     }
 
     readonly string _basicExample = @"<EditSelectEnum @bind-Value=""_model.BasicEnum"" />
@@ -100,8 +121,13 @@
 
 <EditSelectEnum @bind-Value=""_model.Required""/>";
 
-    readonly string _validationModel = @"[Required] 
+    readonly string _validationModel = @"[Required]
 public Animal Required { get; set; }
 
 public Animal Disabled { get; set; }";
+
+    readonly string _placeholderAttributeExample = @"<EditSelectEnum @bind-Value=""_model.WithPlaceholderAttribute""/>";
+
+    readonly string _placeholderAttributeModel = @"[Placeholder(""Choose an animal..."")]
+public Animal? WithPlaceholderAttribute { get; set; }";
 }

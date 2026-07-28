@@ -17,8 +17,18 @@ public partial class EditString : EditControlBase<string?>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<string?>>? Field { get; set; }
 
-    /// <summary> Placeholder text to display in the input when empty.</summary>
+    /// <summary>
+    /// Placeholder text to display in the input when empty. Falls back to the bound property's
+    /// <c>[Placeholder]</c>/<c>[Display(Prompt = "…")]</c> when unset -- see <see cref="EffectivePlaceholder"/>.
+    /// </summary>
     [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// The placeholder actually rendered: the <see cref="Placeholder"/> parameter, else the model
+    /// property's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> text. Null when neither is set, so the
+    /// attribute is omitted rather than rendered empty.
+    /// </summary>
+    string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
 
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
     /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>

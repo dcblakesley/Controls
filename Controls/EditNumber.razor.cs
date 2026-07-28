@@ -25,8 +25,18 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// <summary> The maximum allowed value, rendered as the input's <c>max</c> attribute (InvariantCulture, same type discipline as <see cref="Step"/>). Omitted (no browser-side ceiling) when null.</summary>
     [Parameter] public decimal? Max { get; set; }
 
-    /// <summary> Placeholder text to display in the input when empty.</summary>
+    /// <summary>
+    /// Placeholder text to display in the input when empty. Falls back to the bound property's
+    /// <c>[Placeholder]</c>/<c>[Display(Prompt = "…")]</c> when unset -- see <see cref="EffectivePlaceholder"/>.
+    /// </summary>
     [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// The placeholder actually rendered: the <see cref="Placeholder"/> parameter, else the model
+    /// property's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> text. Null when neither is set, so the
+    /// attribute is omitted rather than rendered empty.
+    /// </summary>
+    string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
 
     /// <summary> Optional leading affix content (e.g. a currency symbol or icon), rendered by <see cref="EditInputShell"/>. Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Prefix { get; set; }

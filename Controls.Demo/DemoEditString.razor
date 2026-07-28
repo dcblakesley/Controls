@@ -139,6 +139,31 @@
         <h3>Markup</h3>
         <pre class="code-block"><code>@_passwordExample</code></pre>
     </section>
+
+    <section class="demo-section">
+        <h3>Placeholder from Model Attribute</h3>
+        <p>
+            A <code>[Placeholder]</code> attribute on the bound property supplies the hint without
+            repeating it at every markup site; DataAnnotations' own <code>[Display(Prompt = "...")]</code>
+            works the same way for a model already annotated for MVC/Razor Pages. Resolution order:
+            the control's own <code>Placeholder</code> parameter wins first, then <code>[Placeholder]</code>,
+            then <code>[Display(Prompt)]</code> -- so an explicit <code>Placeholder</code> in markup still
+            overrides a <code>[Placeholder]</code> attribute on the same property.
+        </p>
+
+        <EditString @bind-Value="_model.WithPlaceholderAttribute"/>
+
+        <EditString @bind-Value="_model.WithDisplayPrompt"/>
+
+        <EditString @bind-Value="_model.WithPlaceholderOverride"
+                    Placeholder="This wins over the [Placeholder] attribute"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_placeholderAttributeExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -176,6 +201,15 @@
         public string Clearable { get; set; } = "Clear me";
         public string Counted { get; set; } = "";
         public string Password { get; set; } = "";
+
+        [Placeholder("e.g. jane@example.com")]
+        public string WithPlaceholderAttribute { get; set; } = "";
+
+        [Display(Prompt = "e.g. (555) 555-1234")]
+        public string WithDisplayPrompt { get; set; } = "";
+
+        [Placeholder("This is overridden by the Placeholder parameter")]
+        public string WithPlaceholderOverride { get; set; } = "";
     }
 
     readonly string _basicExample = @"<EditString @bind-Value=""_model.BasicString""/>
@@ -255,4 +289,20 @@ public string Disabled { get; set; } = """";";
 
     readonly string _passwordExample = @"<EditString @bind-Value=""_model.Password""
            IsPassword=""true""/>";
+
+    readonly string _placeholderAttributeExample = @"<EditString @bind-Value=""_model.WithPlaceholderAttribute""/>
+
+<EditString @bind-Value=""_model.WithDisplayPrompt""/>
+
+<EditString @bind-Value=""_model.WithPlaceholderOverride""
+           Placeholder=""This wins over the [Placeholder] attribute""/>";
+
+    readonly string _placeholderAttributeModel = @"[Placeholder(""e.g. jane@example.com"")]
+public string WithPlaceholderAttribute { get; set; } = """";
+
+[Display(Prompt = ""e.g. (555) 555-1234"")]
+public string WithDisplayPrompt { get; set; } = """";
+
+[Placeholder(""This is overridden by the Placeholder parameter"")]
+public string WithPlaceholderOverride { get; set; } = """";";
 }

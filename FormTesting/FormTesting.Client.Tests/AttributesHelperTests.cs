@@ -151,6 +151,40 @@ public class AttributesHelperTests
     }
 
     [Fact]
+    public void Placeholder_extension_pulls_PlaceholderAttribute()
+    {
+        var attrs = new List<Attribute> { new PlaceholderAttribute("Enter a value") };
+        Assert.Equal("Enter a value", attrs.Placeholder());
+    }
+
+    [Fact]
+    public void Placeholder_extension_falls_back_to_Display_Prompt_when_no_PlaceholderAttribute()
+    {
+        var attrs = new List<Attribute> { new DisplayAttribute { Prompt = "e.g. jsmith@example.com" } };
+        Assert.Equal("e.g. jsmith@example.com", attrs.Placeholder());
+    }
+
+    [Fact]
+    public void Placeholder_extension_prefers_PlaceholderAttribute_over_Display_Prompt()
+    {
+        // Both present -- [Placeholder] is the more specific/newer attribute, so it wins over
+        // DataAnnotations' own [Display(Prompt=…)] watermark slot.
+        var attrs = new List<Attribute>
+        {
+            new PlaceholderAttribute("Wins"),
+            new DisplayAttribute { Prompt = "Loses" }
+        };
+        Assert.Equal("Wins", attrs.Placeholder());
+    }
+
+    [Fact]
+    public void Placeholder_extension_returns_null_when_neither_attribute_present()
+    {
+        var attrs = new List<Attribute>();
+        Assert.Null(attrs.Placeholder());
+    }
+
+    [Fact]
     public void GetExpressionMember_throws_for_non_member_expression()
     {
         Assert.Throws<ArgumentException>(() =>
