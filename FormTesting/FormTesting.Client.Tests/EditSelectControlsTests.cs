@@ -260,6 +260,79 @@ public class EditSelectControlsTests : BunitContext
     }
 
     [Fact]
+    public void EditSelectSearch_sets_aria_errormessage_only_while_invalid()
+    {
+        var model = new PersonModel(); // Priority is [Required] and null by default -> fails
+        var editContext = new EditContext(model);
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditSelectSearch<Priority?>>(1);
+                content.AddAttribute(2, "Value", model.Priority);
+                content.AddAttribute(3, "ValueExpression", field);
+                content.AddAttribute(4, "Options", PriorityOptions());
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        // Not yet validated -- no error state.
+        var input = cut.Find("input.wss-select-selection-search-input");
+        Assert.Null(input.GetAttribute("aria-invalid"));
+        Assert.False(input.HasAttribute("aria-errormessage"));
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        input = cut.Find("input.wss-select-selection-search-input");
+        Assert.Equal("true", input.GetAttribute("aria-invalid"));
+        // Same id error-msg-{Id} that FieldValidationDisplay renders (and that carries the message).
+        Assert.Equal("error-msg-Priority", input.GetAttribute("aria-errormessage"));
+        Assert.Contains("required", cut.Find("#error-msg-Priority").TextContent);
+    }
+
+    [Fact]
+    public void EditMultiSelect_sets_aria_errormessage_only_while_invalid()
+    {
+        // Reuses MinTwoColorsModel (Required + MinLength(2)) from the test above: one selection fails.
+        var model = new MinTwoColorsModel { Picks = [Color.Green] };
+        var editContext = new EditContext(model);
+        Expression<Func<List<Color>>> field = () => model.Picks;
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditMultiSelect<Color>>(1);
+                content.AddAttribute(2, "Value", model.Picks);
+                content.AddAttribute(3, "ValueExpression", field);
+                content.AddAttribute(4, "Options", ColorOptions());
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        var input = cut.Find("input.wss-select-selection-search-input");
+        Assert.Null(input.GetAttribute("aria-invalid"));
+        Assert.False(input.HasAttribute("aria-errormessage"));
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        input = cut.Find("input.wss-select-selection-search-input");
+        Assert.Equal("true", input.GetAttribute("aria-invalid"));
+        Assert.Equal("error-msg-Picks", input.GetAttribute("aria-errormessage"));
+        Assert.NotEmpty(cut.Find("#error-msg-Picks").TextContent);
+    }
+
+    [Fact]
     public void Select_wrapper_and_backdrop_carry_tabindex_for_touch_click_synthesis()
     {
         // iOS-class WebKit only synthesizes a click from a tap when the target chain contains a

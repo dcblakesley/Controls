@@ -209,6 +209,10 @@ public partial class Select<TValue> : IAsyncDisposable
     /// <summary>Value for the search input's <c>aria-describedby</c> attribute.</summary>
     [Parameter] public string? AriaDescribedBy { get; set; }
 
+    /// <summary>Value for the search input's <c>aria-errormessage</c>; null (default) omits the
+    /// attribute. Pair with <see cref="AriaInvalid"/>.</summary>
+    [Parameter] public string? AriaErrorMessage { get; set; }
+
     bool IsMultiple => Mode != SelectMode.Single;
 
     // ----- Inline icons (no icon-font / Ant dependency) ---------------------

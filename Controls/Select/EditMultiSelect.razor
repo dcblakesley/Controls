@@ -41,7 +41,8 @@
                     ListboxLabel="@ListboxLabel"
                     AriaRequired="@_isRequired"
                     AriaInvalid="@IsInvalid"
-                    AriaDescribedBy="@_describedBy" />
+                    AriaDescribedBy="@_describedBy"
+                    AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)" />
         }
         else
         {

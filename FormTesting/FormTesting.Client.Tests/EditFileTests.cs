@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -17,6 +18,14 @@ public class EditFileTests : BunitContext
     class FileModel
     {
         public List<IBrowserFile> Files { get; set; } = null!; // required only guarantees set, not non-null
+    }
+
+    // A count-based annotation on the bound list -- distinct from FileModel above, which carries none
+    // and so never trips EditContext-level validation. Used only by the aria-errormessage tests below.
+    class RequiredFilesModel
+    {
+        [MinLength(1)]
+        public List<IBrowserFile> Files { get; set; } = [];
     }
 
     static RenderFragment WithForm(FileModel model, RenderFragment inner) => builder =>
@@ -118,6 +127,61 @@ public class EditFileTests : BunitContext
         Assert.NotNull(changed);
         Assert.Single(changed);
         Assert.Equal("a.txt", changed[0].Name);
+    }
+
+    [Fact]
+    public void Aria_errormessage_is_set_only_while_the_bound_list_fails_EditContext_validation()
+    {
+        var model = new RequiredFilesModel(); // Files = [] -> [MinLength(1)] fails
+        var editContext = new EditContext(model);
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditFile>(1);
+                content.AddAttribute(2, "Value", model.Files);
+                content.AddAttribute(3, "ValueExpression", field);
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        // Not yet validated -- no error state.
+        var input = cut.Find("input[type=file]");
+        Assert.Null(input.GetAttribute("aria-invalid"));
+        Assert.False(input.HasAttribute("aria-errormessage"));
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        input = cut.Find("input[type=file]");
+        Assert.Equal("true", input.GetAttribute("aria-invalid"));
+        // Same id error-msg-{Id} FieldValidationDisplay renders, and it actually carries the message.
+        Assert.Equal("error-msg-Files", input.GetAttribute("aria-errormessage"));
+        Assert.NotEmpty(cut.Find("#error-msg-Files").TextContent);
+    }
+
+    [Fact]
+    public void Aria_errormessage_is_not_set_from_an_upload_rejection_alone()
+    {
+        // _hasError -- which drives aria-invalid -- also lights up for a pure upload-time rejection
+        // (bad extension, duplicate, over a cap) that never touches the EditContext. The
+        // error-msg-{id} element FieldValidationDisplay renders only ever contains EditContext-sourced
+        // messages, so aria-errormessage stays keyed off IsInvalid, not _hasError -- otherwise it would
+        // point at that element while it's empty, even though aria-invalid reports true.
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, allowedExtensions: [".pdf"]);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+
+        var input = cut.Find("input[type=file]");
+        Assert.Equal("true", input.GetAttribute("aria-invalid"));  // _hasError: the rejection above
+        Assert.False(input.HasAttribute("aria-errormessage"));     // IsInvalid: no EditContext message
+        Assert.Contains("a.txt", cut.Find(".edit-validation-message[role='alert']").TextContent);
     }
 
     [Fact]

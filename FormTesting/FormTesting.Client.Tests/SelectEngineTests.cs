@@ -425,4 +425,22 @@ public class SelectEngineTests : BunitContext
         // Tags render inside the wrap, so they never slide under the prefix column.
         Assert.NotNull(cut.Find(".wss-select-selection-wrap .wss-select-selection-item"));
     }
+
+    [Fact]
+    public void AriaErrorMessage_renders_on_the_search_input_when_set_and_is_omitted_by_default()
+    {
+        // Same shape as AriaRequired/AriaInvalid/AriaDescribedBy: a direct pass-through onto the
+        // search input, with null (the default) omitting the attribute entirely rather than
+        // rendering an empty one. EditSelectSearch/EditMultiSelect forward it as
+        // "@(IsInvalid ? _errorMsgId : null)"; this pins the engine's own half of that contract.
+        var plain = Render<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false))));
+        Assert.False(plain.Find("input.wss-select-selection-search-input").HasAttribute("aria-errormessage"));
+
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.AriaErrorMessage, "error-msg-Field"));
+
+        Assert.Equal("error-msg-Field", cut.Find("input.wss-select-selection-search-input").GetAttribute("aria-errormessage"));
+    }
 }
