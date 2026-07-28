@@ -8,15 +8,15 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// bUnit tests for <see cref="EditDatePicker{T}"/> — the form-control wrapper around the
+/// bUnit tests for <see cref="EditDate{T}"/> — the form-control wrapper around the
 /// <see cref="DatePicker"/> UI-kit calendar dropdown. These cover the layer this control adds over
 /// DatePicker itself (EditContext binding, validation, label, read-only view, parameter forwarding);
 /// DatePicker's own open/close/navigation/keyboard behavior is already covered by
 /// <c>DatePickerTests</c> and the JS-owned parts by <c>DatePickerE2ETests</c>.
 /// </summary>
-public class EditDatePickerTests : BunitContext
+public class EditDateTests : BunitContext
 {
-    public EditDatePickerTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
+    public EditDateTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
     static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
     {
@@ -57,7 +57,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.BirthDate = v));
@@ -86,7 +86,7 @@ public class EditDatePickerTests : BunitContext
             b.AddAttribute(1, "EditContext", editContext);
             b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
             {
-                content.OpenComponent<EditDatePicker<DateTime?>>(0);
+                content.OpenComponent<EditDate<DateTime?>>(0);
                 content.AddAttribute(1, "Value", model.BirthDate);
                 content.AddAttribute(2, "ValueExpression", field);
                 content.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.BirthDate = v));
@@ -109,7 +109,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -135,7 +135,7 @@ public class EditDatePickerTests : BunitContext
             {
                 content.OpenComponent<DataAnnotationsValidator>(0);
                 content.CloseComponent();
-                content.OpenComponent<EditDatePicker<DateTime?>>(1);
+                content.OpenComponent<EditDate<DateTime?>>(1);
                 content.AddAttribute(2, "Value", model.BirthDate);
                 content.AddAttribute(3, "ValueExpression", field);
                 content.CloseComponent();
@@ -146,7 +146,7 @@ public class EditDatePickerTests : BunitContext
         cut.InvokeAsync(() => editContext.Validate());
 
         // aria-invalid/aria-errormessage land on the picker's actual <input> via DatePicker's
-        // dedicated Aria* parameters — full parity with EditDate's native <input>.
+        // dedicated Aria* parameters — full parity with EditDateNative's native <input>.
         var input = cut.Find(".wss-picker-input-date");
         Assert.Equal("true", input.GetAttribute("aria-invalid"));
         Assert.StartsWith("error-msg-", input.GetAttribute("aria-errormessage"));
@@ -160,7 +160,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -173,13 +173,13 @@ public class EditDatePickerTests : BunitContext
     public void Input_label_defaults_to_the_resolved_field_label_so_it_matches_the_visible_label()
     {
         // DatePicker's own aria-label wins the accessible-name computation over label[for] (per the
-        // AccName spec) — EditDatePicker defaults InputLabel to the resolved field label instead of
+        // AccName spec) — EditDate defaults InputLabel to the resolved field label instead of
         // DatePicker's generic "Date" default so the two never diverge.
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -198,7 +198,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Label", "Date of Birth");
@@ -216,7 +216,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Label", "Date of Birth");
@@ -236,7 +236,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -254,7 +254,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "DateFormat", "yyyy-MM-dd");
@@ -279,7 +279,7 @@ public class EditDatePickerTests : BunitContext
             Expression<Func<DateTime?>> field = () => model.BirthDate;
             var cut = Render(WithForm(model, b =>
             {
-                b.OpenComponent<EditDatePicker<DateTime?>>(0);
+                b.OpenComponent<EditDate<DateTime?>>(0);
                 b.AddAttribute(1, "Value", model.BirthDate);
                 b.AddAttribute(2, "ValueExpression", field);
                 b.AddAttribute(3, "DateFormat", "yyyy-MM-dd");
@@ -313,7 +313,7 @@ public class EditDatePickerTests : BunitContext
                 b.AddAttribute(1, "Model", model);
                 b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
                 {
-                    content.OpenComponent<EditDatePicker<DateTime?>>(0);
+                    content.OpenComponent<EditDate<DateTime?>>(0);
                     content.AddAttribute(1, "Value", model.BirthDate);
                     content.AddAttribute(2, "ValueExpression", field);
                     content.CloseComponent();
@@ -330,15 +330,15 @@ public class EditDatePickerTests : BunitContext
     public void HidingMode_WhenNullOrDefault_hides_when_the_value_is_default_DateTime()
     {
         // default(DateTime) (0001-01-01) must count as semantically empty for the hiding contract,
-        // the same way EditDate<T>'s IsValueDefault override already treats it (see HidingModeTests'
-        // EditDate coverage for the native-input case). EditDatePicker previously fell through to
+        // the same way EditDateNative<T>'s IsValueDefault override already treats it (see HidingModeTests'
+        // EditDateNative coverage for the native-input case). EditDate previously fell through to
         // EditControlBase's plain EqualityComparer check, which treats a non-null default DateTime
         // as NOT default.
         var model = new PersonModel { BirthDate = default(DateTime) };
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
@@ -355,7 +355,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
@@ -372,7 +372,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Min", new DateTime(2020, 1, 10));
@@ -389,7 +389,7 @@ public class EditDatePickerTests : BunitContext
         Assert.True(Day(cut, 21).HasAttribute("disabled"));
     }
 
-    // EditDatePicker<T> generalizes beyond the original DateTime?-only binding -- these cover the
+    // EditDate<T> generalizes beyond the original DateTime?-only binding -- these cover the
     // conversion bridge to/from the inner DatePicker's DateTime? (PickerValue/OnValueChanged/FromPickerValue).
 
     [Fact]
@@ -399,7 +399,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateOnly>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateOnly>>(0);
+            b.OpenComponent<EditDate<DateOnly>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly>(this, v => model.ShipDate = v));
@@ -420,7 +420,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateOnly?>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateOnly?>>(0);
+            b.OpenComponent<EditDate<DateOnly?>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly?>(this, v => model.ShipDate = v));
@@ -439,7 +439,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime>>(0);
+            b.OpenComponent<EditDate<DateTime>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTime>(this, v => model.ShipDate = v));
@@ -463,7 +463,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime>>(0);
+            b.OpenComponent<EditDate<DateTime>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
@@ -482,7 +482,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateOnly?>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateOnly?>>(0);
+            b.OpenComponent<EditDate<DateOnly?>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly?>(this, v => model.ShipDate = v));
@@ -503,7 +503,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTimeOffset>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTimeOffset>>(0);
+            b.OpenComponent<EditDate<DateTimeOffset>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTimeOffset>(this, v => model.ShipDate = v));
@@ -526,7 +526,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTimeOffset>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTimeOffset>>(0);
+            b.OpenComponent<EditDate<DateTimeOffset>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
@@ -543,7 +543,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTimeOffset?>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTimeOffset?>>(0);
+            b.OpenComponent<EditDate<DateTimeOffset?>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTimeOffset?>(this, v => model.ShipDate = v));
@@ -564,7 +564,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTimeOffset?>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTimeOffset?>>(0);
+            b.OpenComponent<EditDate<DateTimeOffset?>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateTimeOffset?>(this, v => model.ShipDate = v));
@@ -583,7 +583,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<TimeOnly>> field = () => model.ShipTime;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.OpenComponent<EditDate<TimeOnly>>(0);
             b.AddAttribute(1, "Value", model.ShipTime);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<TimeOnly>(this, v => model.ShipTime = v));
@@ -604,7 +604,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<TimeOnly>> field = () => model.ShipTime;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.OpenComponent<EditDate<TimeOnly>>(0);
             b.AddAttribute(1, "Value", model.ShipTime);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Time);
@@ -622,7 +622,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<TimeOnly?>> field = () => model.ShipTime;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<TimeOnly?>>(0);
+            b.OpenComponent<EditDate<TimeOnly?>>(0);
             b.AddAttribute(1, "Value", model.ShipTime);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<TimeOnly?>(this, v => model.ShipTime = v));
@@ -649,7 +649,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Month);
@@ -669,7 +669,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Time);
@@ -690,7 +690,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.DateTimeLocal);
@@ -711,7 +711,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Month);
@@ -733,7 +733,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Time);
@@ -761,7 +761,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<TimeOnly>> field = () => model.ShipTime;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.OpenComponent<EditDate<TimeOnly>>(0);
             b.AddAttribute(1, "Value", model.ShipTime);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Time);
@@ -779,7 +779,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Month);
@@ -797,7 +797,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.DateTimeLocal);
@@ -815,7 +815,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<TimeOnly>> field = () => model.ShipTime;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.OpenComponent<EditDate<TimeOnly>>(0);
             b.AddAttribute(1, "Value", model.ShipTime);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Time);
@@ -835,7 +835,7 @@ public class EditDatePickerTests : BunitContext
 
         Assert.Throws<NotSupportedException>(() => Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<int>>(0);
+            b.OpenComponent<EditDate<int>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -851,7 +851,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Mode", DatePickerMode.Week);
@@ -872,7 +872,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Mode", DatePickerMode.Year);
@@ -888,13 +888,13 @@ public class EditDatePickerTests : BunitContext
     [Fact]
     public void Type_alone_still_maps_to_Date_mode_when_Mode_is_unset()
     {
-        // Regression guard: Mode defaults to null, so an EditDatePicker that never sets it (every
+        // Regression guard: Mode defaults to null, so an EditDate that never sets it (every
         // other test in this file) must keep resolving Type -> PickerMode exactly as before.
         var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "FirstDayOfWeek", DayOfWeek.Sunday);
@@ -917,7 +917,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateOnly?>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateOnly?>>(0);
+            b.OpenComponent<EditDate<DateOnly?>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<DateOnly?>(this, v => model.ShipDate = v));
@@ -941,7 +941,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "DisabledDate", (Func<DateTime, bool>)(d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday));
@@ -962,7 +962,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<TimeOnly>> field = () => model.ShipTime;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.OpenComponent<EditDate<TimeOnly>>(0);
             b.AddAttribute(1, "Value", model.ShipTime);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Time);
@@ -984,7 +984,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "ShowToday", true);
@@ -1005,7 +1005,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Mode", DatePickerMode.Year);
@@ -1023,7 +1023,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Mode", DatePickerMode.Quarter);
@@ -1049,7 +1049,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Mode", DatePickerMode.Week);
@@ -1068,7 +1068,7 @@ public class EditDatePickerTests : BunitContext
         Expression<Func<TimeOnly>> field = () => model.ShipTime;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<TimeOnly>>(0);
+            b.OpenComponent<EditDate<TimeOnly>>(0);
             b.AddAttribute(1, "Value", model.ShipTime);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Type", InputDateType.Time);

@@ -270,7 +270,7 @@
 }
 .edit-checkedList-checkbox { }
 
-/************************************************ EditDate ***********************************************/
+/************************************************ EditDateNative ******************************************/
 .edit-date-input {}
 
 /************************************************ EditNumber *********************************************/
@@ -483,7 +483,7 @@
 /************************************************ Input + InvalidIcon wrapper ********************************/
 .edit-input-with-icon {
     /* Wraps a single editor element (<input>/<textarea>/<InputDate>) together with the optional
-       <InvalidIcon> red-X. Used by EditString / EditNumber / EditDate / EditTextArea.
+       <InvalidIcon> red-X. Used by EditString / EditNumber / EditDateNative / EditTextArea.
        A flex row rather than a shrink-wrapped block: the editor keeps its natural intrinsic
        width by default, but because this wrapper stretches to the control column, a consumer
        width:100% (or any percentage) on the editor resolves against it and works. (The previous
@@ -845,7 +845,7 @@
           edit-label-description
           edit-readonly-value
           edit-validation-message
-          edit-input-with-icon (EditString / EditNumber / EditDate / EditTextArea; legacy mode —
+          edit-input-with-icon (EditString / EditNumber / EditDateNative / EditTextArea; legacy mode —
                                 no Prefix/Suffix/AllowClear/CountText/ShowPasswordToggle in use)
               edit-control (input, textarea, InputDate, etc.)
               edit-icon-invalid (only when validation fails)
@@ -1156,7 +1156,7 @@
  * its :root fallback (#cf1322) is already darkened off AntD's #ff4d4f for WCAG 1.4.3, and that
  * accessible red should apply here too.
  *
- * Scope of what gets themed: EditString/EditNumber/EditTextArea/EditDate's editor and EditSelect's
+ * Scope of what gets themed: EditString/EditNumber/EditTextArea/EditDateNative's editor and EditSelect's
  * native <select> all carry plain `.edit-input` and get the full box chrome. EditBool's checkbox
  * ALSO carries `.edit-input` (both its plain and UseStyledCheckbox inputs are native
  * type="checkbox") but must not be boxed like a text field -- excluded below via
@@ -1188,7 +1188,7 @@
 }
 
 /* Base editor chrome. Targets the legacy-mode editor itself, EditSelect's native <select>, and
-   EditDate's <input> (all carry plain `.edit-input`) *and*, in affix mode, the wrapper
+   EditDateNative's <input> (all carry plain `.edit-input`) *and*, in affix mode, the wrapper
    (`.edit-input-affix-wrapper`) -- never the naked inner `.edit-affix-input` (stripped back to
    invisible further down, since it also carries `.edit-input`) or a checkbox (see the class
    remarks above). */

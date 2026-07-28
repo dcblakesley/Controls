@@ -1,0 +1,50 @@
+@typeparam T
+@inherits EditControlBase<T>
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+
+        @if (ShowEditor)
+        {
+            <EditInputShell IsInvalid=@IsInvalid
+                            IsDisabled=@IsDisabled
+                            WrapperClass=@(EditInputShell.SizeClass(Size))>
+                <input type=@HtmlInputType
+                       @bind-value=@CurrentValueAsString
+                       @bind-value:event="@UpdateEventName"
+                       class=@InputClass
+                       style="padding-inline-end: 2rem"
+                       id=@_id
+                       data-test-id=@_id
+                       disabled=@IsDisabled
+                       aria-required=@_isRequired
+                       aria-invalid=@(IsInvalid ? "true" : null)
+                       aria-describedby=@_describedBy
+                       aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
+            </EditInputShell>
+        }
+        else
+        {
+            <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@CssClass Text=@GetDisplayValue() />
+        }
+
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
+        @if (FormOptions != null && FormOptions.ShowBoundValues)
+        {
+            <div class="bound-value">@CurrentValueAsString</div>
+        }
+    </div>
+}
+
+@code {
+    string HtmlInputType => Type switch
+    {
+        InputDateType.Date => "date",
+        InputDateType.DateTimeLocal => "datetime-local",
+        InputDateType.Month => "month",
+        InputDateType.Time => "time",
+        _ => "date"
+    };
+}

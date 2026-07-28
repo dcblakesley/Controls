@@ -127,7 +127,7 @@
         [Required]
         public DateTime? RequiredEnd { get; set; }
 
-        // Mode overrides -- pinned dates, same rationale as DemoEditDatePickerModel's own Mode
+        // Mode overrides -- pinned dates, same rationale as DemoEditDateModel's own Mode
         // overrides.
         public DateTime? MonthStart { get; set; } = new DateTime(2026, 2, 1);
         public DateTime? MonthEnd { get; set; } = new DateTime(2026, 5, 1);
@@ -139,7 +139,7 @@
         public DateTime? DateTimeEnd { get; set; } = new DateTime(2026, 2, 20, 17, 30, 0);
 
         // Feb 2 and Feb 13, 2026 are both weekdays (Monday/Friday) -- clear of IsWeekend below, same
-        // convention as DemoEditDatePickerModel.AppointmentDate.
+        // convention as DemoEditDateModel.AppointmentDate.
         public DateTime? DisabledStart { get; set; } = new DateTime(2026, 2, 2);
         public DateTime? DisabledEnd { get; set; } = new DateTime(2026, 2, 13);
     }

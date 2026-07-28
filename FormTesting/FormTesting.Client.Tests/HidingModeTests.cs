@@ -119,16 +119,16 @@ public class HidingModeTests : BunitContext
         Assert.Equal(expectedVisible, IsRendered(cut));
     }
 
-    // ── EditDate<DateTime?> — the special-case override for default(DateTime) ────────────────
+    // ── EditDateNative<DateTime?> — the special-case override for default(DateTime) ──────────
 
     [Fact]
-    public void EditDate_treats_default_DateTime_inside_nullable_as_default()
+    public void EditDateNative_treats_default_DateTime_inside_nullable_as_default()
     {
         var model = new DateModel { D = default(DateTime) };
         Expression<Func<DateTime?>> field = () => model.D;
         var cut = Render(WithForm(model, null, b =>
         {
-            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.OpenComponent<EditDateNative<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.D);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault);
@@ -140,13 +140,13 @@ public class HidingModeTests : BunitContext
     }
 
     [Fact]
-    public void EditDate_shows_real_date_under_WhenNullOrDefault()
+    public void EditDateNative_shows_real_date_under_WhenNullOrDefault()
     {
         var model = new DateModel { D = new DateTime(2026, 1, 1) };
         Expression<Func<DateTime?>> field = () => model.D;
         var cut = Render(WithForm(model, null, b =>
         {
-            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.OpenComponent<EditDateNative<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.D);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "Hiding", HidingMode.WhenNullOrDefault);

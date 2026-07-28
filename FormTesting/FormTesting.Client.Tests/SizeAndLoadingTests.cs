@@ -7,7 +7,7 @@ namespace FormTesting.Client.Tests;
 
 /// <summary>
 /// Covers slice S4 of the AntD input-parity work: the shared <see cref="SelectSize"/> parameter on
-/// EditString/EditNumber/EditTextArea/EditDate (editor + affix-wrapper class, DOM-stability at
+/// EditString/EditNumber/EditTextArea/EditDateNative (editor + affix-wrapper class, DOM-stability at
 /// <see cref="SelectSize.Default"/>), <see cref="EditInputShell"/>'s new <c>WrapperClass</c>/
 /// <c>IsDisabled</c> parameters, and <see cref="SearchInput"/>'s <c>Loading</c> state. The
 /// `.edit-theme` CSS itself isn't exercised here (bUnit doesn't apply stylesheets) -- only the class
@@ -212,16 +212,16 @@ public class SizeAndLoadingTests : BunitContext
         Assert.Contains("edit-input-lg", cut.Find(".edit-input-affix-wrapper").ClassList);
     }
 
-    // ── EditDate: Size ────────────────────────────────────────────────────────────────────────────
+    // ── EditDateNative: Size ──────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void EditDate_Size_Default_adds_no_class()
+    public void EditDateNative_Size_Default_adds_no_class()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.OpenComponent<EditDateNative<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -234,13 +234,13 @@ public class SizeAndLoadingTests : BunitContext
     }
 
     [Fact]
-    public void EditDate_Size_appends_the_token_to_the_input()
+    public void EditDateNative_Size_appends_the_token_to_the_input()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.OpenComponent<EditDateNative<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "Size", SelectSize.Small);

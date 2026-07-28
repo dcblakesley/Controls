@@ -8,96 +8,100 @@
     <section class="demo-section">
         <EditDate @bind-Value="_model.BasicDate" />
 
-        <EditDate @bind-Value="_model.BasicDate"
-                  IsEditMode=false
-                  Label="DateFormat = MM-dd-yyyy"
-                  DateFormat="MM-dd-yyyy" />
-
-        <EditDate @bind-Value="_model.BasicDate"
-                  IsEditMode=false
-                  Label="DateFormat = MM/dd/yy"
-                  DateFormat="MM/dd/yy" />
-
-        <EditDate @bind-Value="_model.BasicDate"
-                  IsEditMode=false
-                  Label="MM/dd/yyyy hh:mm:ss tt"
-                  DateFormat="MM/dd/yyyy hh:mm:ss tt" />
-        
         <h3>Markup</h3>
         <pre class="code-block"><code>@_basicExample</code></pre>
     </section>
 
     <section class="demo-section">
-        <EditDate @bind-Value="_model.NullableDate" />
-        
+        <EditDate @bind-Value="_model.LabeledDate"
+                        Label="Appointment Date" />
+
+        <EditDate @bind-Value="_model.LabeledDate"
+                        IsEditMode=false
+                        DateFormat="MMMM d, yyyy" />
+
+        <EditDate @bind-Value="_model.RangeBoundDate"
+                        Label="Within February 2026"
+                        Min="@_minDate"
+                        Max="@_maxDate" />
+
         <h3>Markup</h3>
-        <pre class="code-block"><code>@_nullableExample</code></pre>
-        
-        <h3>Model</h3>
-        <pre class="code-block code-block-model"><code>@_nullableModel</code></pre>
-    </section>
-
-    <section class="demo-section">
-        <EditDate @bind-Value="_model.DateWithTime"
-                  Type="InputDateType.DateTimeLocal"/>
-
-        <EditDate @bind-Value="_model.DateWithTime"
-                  Type="InputDateType.DateTimeLocal"
-                  IsEditMode="false"
-                  Label="MM/dd/yyyy hh:mm:ss tt"
-                  DateFormat="MM/dd/yyyy hh:mm:ss tt" />
-
-        <EditDate @bind-Value="_model.TimeOnly"
-                  Type="InputDateType.Time" />
-
-        <EditDate @bind-Value="_model.TimeOnly"
-                  Type="InputDateType.Time"
-                  IsEditMode="false"
-                  Label="hh:mm:ss tt"
-                  DateFormat="hh:mm:ss tt" />
-        
-        <h3>Markup</h3>
-        <pre class="code-block"><code>@_dateTimeExample</code></pre>
-    </section>
-
-    <section class="demo-section">
-        <style>
-            .my-custom-container {
-                background-color: cornflowerblue;
-                padding: 10px;
-                border-radius: 0px;
-            }
-
-            .my-custom-date {
-                border: 6px solid darkgreen;
-                border-radius: 4px;
-                padding: 4px;
-                color: magenta;
-            }
-        </style>
-        
-        <EditDate @bind-Value="_model.CustomStyle"
-                  ContainerClass="my-custom-container"
-                  class="my-custom-date" />
-        
-        <h3>Markup</h3>
-        <pre class="code-block"><code>@_customStyleExample</code></pre>
-        
-        <h3>CSS</h3>
-        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+        <pre class="code-block"><code>@_labelReadOnlyMinMaxExample</code></pre>
     </section>
 
     <section class="demo-section">
         <EditDate @bind-Value="_model.Disabled"
-                  IsDisabled="true" />
+                        IsDisabled="true" />
 
         <EditDate @bind-Value="_model.Required" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_validationExample</code></pre>
-        
+
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDate @bind-Value="_model.MonthValue"
+                        Type="InputDateType.Month"
+                        Label="Month (DateOnly?)" />
+
+        <EditDate @bind-Value="_model.TimeValue"
+                        Type="InputDateType.Time"
+                        Label="Time (TimeOnly?)" />
+
+        <EditDate @bind-Value="_model.DateTimeValue"
+                        Type="InputDateType.DateTimeLocal"
+                        Label="Date + Time (DateTime?)" />
+
+        <EditDate @bind-Value="_model.OffsetDate"
+                        Label="Date (DateTimeOffset?)" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_typesExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_typesModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDate @bind-Value="_model.WeekValue"
+                        Mode="DatePickerMode.Week"
+                        Label="Week (DateOnly?)" />
+
+        <EditDate @bind-Value="_model.QuarterValue"
+                        Mode="DatePickerMode.Quarter"
+                        Label="Quarter (DateOnly?)" />
+
+        <EditDate @bind-Value="_model.YearValue"
+                        Mode="DatePickerMode.Year"
+                        Label="Year (DateOnly?)" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_modeOverrideExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_modeOverrideModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDate @bind-Value="_model.AppointmentDate"
+                        DisabledDate="IsWeekend"
+                        ShowToday="true"
+                        Label="Appointment Date (weekends disabled)" />
+
+        <EditDate @bind-Value="_model.MeetingTime"
+                        Type="InputDateType.Time"
+                        Use12Hours="true"
+                        ShowSeconds="false"
+                        Label="Meeting Time (12-hour, no seconds)" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_footerAndTimeOptionsExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_footerAndTimeOptionsModel</code></pre>
     </section>
 
 </EditForm>
@@ -105,65 +109,117 @@
 @code {
     readonly DemoEditDateModel _model = new();
 
+    readonly DateTime _minDate = new(2026, 2, 1);
+    readonly DateTime _maxDate = new(2026, 2, 28);
+
     EditForm? _form;
     protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
-    
+
     public class DemoEditDateModel
     {
-        [Description("Basic Description")]
-        public DateTime BasicDate { get; set; } = DateTime.Today;
-        public DateTime? NullableDate { get; set; } = DateTime.Today;
-        public DateTime DateWithTime { get; set; } = DateTime.Now;
-        public DateTime TimeOnly { get; set; } = DateTime.Now;
-        public DateTime CustomStyle { get; set; } = DateTime.Today;
+        public DateTime? BasicDate { get; set; } = new DateTime(2026, 2, 14);
+        public DateTime? LabeledDate { get; set; } = new DateTime(2026, 2, 14);
+        public DateTime? RangeBoundDate { get; set; } = new DateTime(2026, 2, 14);
+        public DateTime? Disabled { get; set; } = new DateTime(2026, 2, 14);
 
         [Required]
-        public DateTime? Required { get; set; } 
-        public DateTime Disabled { get; set; } = DateTime.Today;
+        public DateTime? Required { get; set; }
 
+        // Type generalizes the bound value to any of EditDate<T>'s 8 shapes; these four
+        // demonstrate the non-DateTime? corners -- DateOnly? (Month), TimeOnly? (Time), plain
+        // DateTime? (DateTimeLocal), and DateTimeOffset? (the default Date mode).
+        public DateOnly? MonthValue { get; set; } = new DateOnly(2026, 2, 1);
+        public TimeOnly? TimeValue { get; set; } = new TimeOnly(9, 30, 15);
+        public DateTime? DateTimeValue { get; set; } = new DateTime(2026, 2, 14, 9, 30, 15);
+        public DateTimeOffset? OffsetDate { get; set; } = new DateTimeOffset(2026, 2, 14, 0, 0, 0, TimeSpan.Zero);
+
+        // Mode overrides InputDateType has no equivalent for -- Week/Quarter/Year all bind the same
+        // DateOnly? shape Month already does above, no bridge changes needed.
+        public DateOnly? WeekValue { get; set; } = new DateOnly(2026, 2, 14);
+        public DateOnly? QuarterValue { get; set; } = new DateOnly(2026, 8, 15);
+        public DateOnly? YearValue { get; set; } = new DateOnly(2026, 1, 1);
+
+        // Feb 16, 2026 is a Monday -- clear of IsWeekend below, so the field opens showing a value
+        // its own DisabledDate predicate accepts.
+        public DateTime? AppointmentDate { get; set; } = new DateTime(2026, 2, 16);
+        public TimeOnly? MeetingTime { get; set; } = new TimeOnly(14, 30, 0);
     }
 
-    readonly string _basicExample = @"<EditDate @bind-Value=""_model.BasicDate"" />
+    static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
-<EditDate @bind-Value=""_model.BasicDate""
-          IsEditMode=false
-          Label=""DateFormat = MM-dd-yyyy""
-          DateFormat=""MM-dd-yyyy"" />";
+    readonly string _basicExample = @"<EditDate @bind-Value=""_model.BasicDate"" />";
 
-    readonly string _nullableExample = @"<EditDate @bind-Value=""_model.NullableDate"" />";
+    readonly string _labelReadOnlyMinMaxExample = @"<EditDate @bind-Value=""_model.LabeledDate""
+                Label=""Appointment Date"" />
 
-    readonly string _nullableModel = @"public DateTime? NullableDate { get; set; } = DateTime.Today;";
+<EditDate @bind-Value=""_model.LabeledDate""
+                IsEditMode=false
+                DateFormat=""MMMM d, yyyy"" />
 
-    readonly string _dateTimeExample = @"<EditDate @bind-Value=""_model.DateWithTime""
-          Type=""InputDateType.DateTimeLocal""/>
-
-<EditDate @bind-Value=""_model.TimeOnly""
-          Type=""InputDateType.Time"" />";
-
-    readonly string _customStyleExample = @"<EditDate @bind-Value=""_model.CustomStyle""
-          ContainerClass=""my-custom-container""
-          class=""my-custom-date"" />";
-
-    readonly string _customStyleCss = @".my-custom-container {
-    background-color: cornflowerblue;
-    padding: 10px;
-    border-radius: 0px;
-}
-
-.my-custom-date {
-    border: 6px solid darkgreen;
-    border-radius: 4px;
-    padding: 4px;
-    color: magenta;
-}";
+<EditDate @bind-Value=""_model.RangeBoundDate""
+                Label=""Within February 2026""
+                Min=""@_minDate""
+                Max=""@_maxDate"" />";
 
     readonly string _validationExample = @"<EditDate @bind-Value=""_model.Disabled""
-          IsDisabled=""true"" />
+                IsDisabled=""true"" />
 
 <EditDate @bind-Value=""_model.Required"" />";
 
     readonly string _validationModel = @"[Required]
-public DateTime? Required { get; set; } 
+public DateTime? Required { get; set; }
 
-public DateTime Disabled { get; set; } = DateTime.Today;";
+public DateTime? Disabled { get; set; } = new DateTime(2026, 2, 14);";
+
+    readonly string _typesExample = @"<EditDate @bind-Value=""_model.MonthValue""
+                Type=""InputDateType.Month""
+                Label=""Month (DateOnly?)"" />
+
+<EditDate @bind-Value=""_model.TimeValue""
+                Type=""InputDateType.Time""
+                Label=""Time (TimeOnly?)"" />
+
+<EditDate @bind-Value=""_model.DateTimeValue""
+                Type=""InputDateType.DateTimeLocal""
+                Label=""Date + Time (DateTime?)"" />
+
+<EditDate @bind-Value=""_model.OffsetDate""
+                Label=""Date (DateTimeOffset?)"" />";
+
+    readonly string _typesModel = @"public DateOnly? MonthValue { get; set; } = new DateOnly(2026, 2, 1);
+public TimeOnly? TimeValue { get; set; } = new TimeOnly(9, 30, 15);
+public DateTime? DateTimeValue { get; set; } = new DateTime(2026, 2, 14, 9, 30, 15);
+public DateTimeOffset? OffsetDate { get; set; } = new DateTimeOffset(2026, 2, 14, 0, 0, 0, TimeSpan.Zero);";
+
+    readonly string _modeOverrideExample = @"<EditDate @bind-Value=""_model.WeekValue""
+                Mode=""DatePickerMode.Week""
+                Label=""Week (DateOnly?)"" />
+
+<EditDate @bind-Value=""_model.QuarterValue""
+                Mode=""DatePickerMode.Quarter""
+                Label=""Quarter (DateOnly?)"" />
+
+<EditDate @bind-Value=""_model.YearValue""
+                Mode=""DatePickerMode.Year""
+                Label=""Year (DateOnly?)"" />";
+
+    readonly string _modeOverrideModel = @"public DateOnly? WeekValue { get; set; } = new DateOnly(2026, 2, 14);
+public DateOnly? QuarterValue { get; set; } = new DateOnly(2026, 8, 15);
+public DateOnly? YearValue { get; set; } = new DateOnly(2026, 1, 1);";
+
+    readonly string _footerAndTimeOptionsExample = @"<EditDate @bind-Value=""_model.AppointmentDate""
+                DisabledDate=""IsWeekend""
+                ShowToday=""true""
+                Label=""Appointment Date (weekends disabled)"" />
+
+<EditDate @bind-Value=""_model.MeetingTime""
+                Type=""InputDateType.Time""
+                Use12Hours=""true""
+                ShowSeconds=""false""
+                Label=""Meeting Time (12-hour, no seconds)"" />";
+
+    readonly string _footerAndTimeOptionsModel = @"public DateTime? AppointmentDate { get; set; } = new DateTime(2026, 2, 16);
+public TimeOnly? MeetingTime { get; set; } = new TimeOnly(14, 30, 0);
+
+static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;";
 }

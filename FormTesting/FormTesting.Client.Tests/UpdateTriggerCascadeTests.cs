@@ -75,10 +75,10 @@ public class UpdateTriggerCascadeTests : BunitContext
         b.CloseComponent();
     };
 
-    static RenderFragment EditDateFragment(PersonModel model, UpdateTrigger? updateOn, EventCallback<DateTime?> onChanged) => b =>
+    static RenderFragment EditDateNativeFragment(PersonModel model, UpdateTrigger? updateOn, EventCallback<DateTime?> onChanged) => b =>
     {
         Expression<Func<DateTime?>> field = () => model.BirthDate;
-        b.OpenComponent<EditDate<DateTime?>>(0);
+        b.OpenComponent<EditDateNative<DateTime?>>(0);
         b.AddAttribute(1, "Value", model.BirthDate);
         b.AddAttribute(2, "ValueExpression", field);
         b.AddAttribute(3, "ValueChanged", onChanged);
@@ -203,12 +203,12 @@ public class UpdateTriggerCascadeTests : BunitContext
     }
 
     [Fact]
-    public void EditDate_defaults_to_Change_with_no_FormDefaults_in_scope()
+    public void EditDateNative_defaults_to_Change_with_no_FormDefaults_in_scope()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
         DateTime? captured = null;
         var cut = RenderControl(model,
-            EditDateFragment(model, updateOn: null, EventCallback.Factory.Create<DateTime?>(this, v => captured = v)));
+            EditDateNativeFragment(model, updateOn: null, EventCallback.Factory.Create<DateTime?>(this, v => captured = v)));
 
         var input = cut.Find("input.edit-date-input");
         Assert.Throws<Bunit.MissingEventHandlerException>(() => input.Input("2021-06-15"));

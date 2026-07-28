@@ -495,7 +495,7 @@ public class EditDateRangeTests : BunitContext
     [Fact]
     public void HidingMode_WhenNullOrDefault_hides_when_Start_is_default_DateTime_and_End_is_null()
     {
-        // Mirrors EditDatePicker's per-field default(DateTime) contract: neither endpoint carries a
+        // Mirrors EditDate's per-field default(DateTime) contract: neither endpoint carries a
         // meaningful value, so the pair counts as "default" even though Start isn't literally null.
         var model = new RangeModel { Start = default(DateTime), End = null };
         Expression<Func<DateTime?>> startField = () => model.Start;
@@ -652,7 +652,7 @@ public class EditDateRangeTests : BunitContext
         }));
 
         // No DateFormat set -- Quarter's own default bypasses ToString entirely (no .NET token for a
-        // quarter number) via PickerMath.FormatQuarterDisplay, mirroring EditDatePicker's own display.
+        // quarter number) via PickerMath.FormatQuarterDisplay, mirroring EditDate's own display.
         Assert.Equal("2026-Q3 - 2026-Q4", cut.Find(".edit-readonly-value").TextContent.Trim());
     }
 

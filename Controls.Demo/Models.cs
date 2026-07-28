@@ -33,13 +33,13 @@ internal class DemoModelForEditControls
     [DisplayName("EditBoolNullRadio")] 
     public bool? EditBoolNullRadio { get; set; }
 
+    [DisplayName("EditDateNative")]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
+    public DateTime EditDateNative { get; set; } = DateTime.Now;
+
     [DisplayName("EditDate")]
     [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
-    public DateTime EditDate { get; set; } = DateTime.Now;
-
-    [DisplayName("EditDatePicker")]
-    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
-    public DateTime? EditDatePicker { get; set; } = new DateTime(2026, 2, 14);
+    public DateTime? EditDate { get; set; } = new DateTime(2026, 2, 14);
 
     [DisplayName("EditDateRange")]
     public DateTime? EditDateRangeStart { get; set; } = new DateTime(2026, 2, 1);

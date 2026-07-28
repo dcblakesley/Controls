@@ -7,7 +7,7 @@ namespace FormTesting.Client.Tests;
 /// <summary>
 /// bUnit tests for the model-declared <see cref="PlaceholderAttribute"/> (falling back to
 /// <see cref="System.ComponentModel.DataAnnotations.DisplayAttribute"/>'s <c>Prompt</c>) reaching the
-/// two calendar-dropdown controls, <see cref="EditDatePicker{T}"/> and <see cref="EditDateRange"/>.
+/// two calendar-dropdown controls, <see cref="EditDate{T}"/> and <see cref="EditDateRange"/>.
 /// Covers the universal resolution precedence (the control's own placeholder parameter -> the model
 /// attribute -> the control's built-in default) at the rendering layer; the attribute/extension logic
 /// itself is covered by <c>AttributesHelperTests</c>.
@@ -24,7 +24,7 @@ public class ModelPlaceholderDateTests : BunitContext
         builder.CloseComponent();
     };
 
-    // ----- EditDatePicker<T> ---------------------------------------------------------------------
+    // ----- EditDate<T> ---------------------------------------------------------------------
 
     class PlaceholderDateModel
     {
@@ -39,7 +39,7 @@ public class ModelPlaceholderDateTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -55,7 +55,7 @@ public class ModelPlaceholderDateTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.ShipDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.ShipDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Placeholder", "Explicit wins");
@@ -75,7 +75,7 @@ public class ModelPlaceholderDateTests : BunitContext
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDatePicker<DateTime?>>(0);
+            b.OpenComponent<EditDate<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
@@ -162,7 +162,7 @@ public class ModelPlaceholderDateTests : BunitContext
     [Fact]
     public void Neither_parameter_nor_attribute_set_still_yields_the_pickers_default_for_both_ends()
     {
-        // Same null-preserving regression guard as EditDatePicker's, per end: this RangeModel carries
+        // Same null-preserving regression guard as EditDate's, per end: this RangeModel carries
         // no [Placeholder]/[Display(Prompt)] on either property, so both inputs must still show
         // DateRangePicker's own DefaultPlaceholder (the uppercased EffectiveFormat -- "MM/DD/YYYY" for
         // the default Date mode).

@@ -162,6 +162,9 @@ public partial class DateRangePicker : PickerBase
     /// <summary>Field width as a CSS length (e.g. "280px", "100%"). Null (default) keeps the stylesheet width.</summary>
     [Parameter] public string? Width { get; set; }
 
+    /// <inheritdoc cref="DatePicker.Size"/>
+    [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
+
     /// <summary>First day of the week for the calendar grids (<see cref="DatePickerMode.Date"/> and
     /// <see cref="DatePickerMode.Week"/> only -- the latter also uses it to compute each row's own
     /// week start). Null (default) follows <see cref="CultureInfo.CurrentCulture"/>. (The Figma
@@ -399,6 +402,8 @@ public partial class DateRangePicker : PickerBase
             var classes = "wss-picker";
             if (_open) classes += " wss-picker-open";
             if (Disabled) classes += " wss-picker-disabled";
+            if (Size == SelectSize.Small) classes += " wss-picker-sm";
+            if (Size == SelectSize.Large) classes += " wss-picker-lg";
             return classes;
         }
     }

@@ -143,7 +143,7 @@ public partial class EditDateRange : IDisposable
     [Parameter] public DateTime? DefaultViewDate { get; set; }
 
     /// <summary> Format string for the read-only "start - end" value display. Null (default) picks
-    /// <see cref="Mode"/>'s own default (mirrors <see cref="EditDatePicker{T}.DateFormat"/>'s identical
+    /// <see cref="Mode"/>'s own default (mirrors <see cref="EditDate{T}.DateFormat"/>'s identical
     /// per-mode contract): <c>Date</c> "MM-dd-yyyy" (the original, unchanged default) · <c>Month</c>
     /// "MM-yyyy" · <c>DateTime</c> "MM-dd-yyyy " plus <c>Time</c>'s own string · <c>Time</c> "HH:mm:ss"
     /// (<see cref="ShowSeconds"/> false drops ":ss"; <see cref="Use12Hours"/> switches to the 12-hour
@@ -297,7 +297,7 @@ public partial class EditDateRange : IDisposable
     /// Both Start and End null count as "default" for the strict Null hiding modes
     /// (<see cref="HidingMode.WhenNull"/>/<see cref="HidingMode.WhenReadOnlyAndNull"/>); both
     /// null-or-<c>default(DateTime)</c> count as "default" for the NullOrDefault modes — mirrors
-    /// <see cref="EditDatePicker{T}"/>'s <c>IsValueDefault</c> override applied per field, since there's
+    /// <see cref="EditDate{T}"/>'s <c>IsValueDefault</c> override applied per field, since there's
     /// no meaningful partial-range default distinct from "nothing entered".
     /// </summary>
     protected bool ShouldShowComponent()
@@ -309,7 +309,7 @@ public partial class EditDateRange : IDisposable
 
     /// <summary>
     /// True when a range endpoint is either unset or the uninitialized <c>default(DateTime)</c>
-    /// (0001-01-01) — the same semantically-empty value <see cref="EditDatePicker{T}"/>'s
+    /// (0001-01-01) — the same semantically-empty value <see cref="EditDate{T}"/>'s
     /// <c>IsValueDefault</c> override treats as empty (see <see cref="EditControlBase{TValue}.IsValueDefault"/>'s
     /// remarks for why a boxed default DateTime isn't caught by a plain null check).
     /// </summary>
@@ -319,7 +319,7 @@ public partial class EditDateRange : IDisposable
     // accessible-name computation over the visible FormLabel's label[for] association (see the class
     // remarks), so the suffix is what keeps the two inputs' names unique from each other while each
     // still contains the visible label text (WCAG 2.5.3 Label in Name). Falls back to each field's own
-    // auto-derived label (matches EditDatePicker's EffectiveInputLabel) when Label isn't set.
+    // auto-derived label (matches EditDate's EffectiveInputLabel) when Label isn't set.
     string EffectiveStartInputLabel => StartInputLabel ?? (Label is not null ? $"{Label} start" : _attributes.GetLabelText(_startFieldIdentifier));
     string EffectiveEndInputLabel => EndInputLabel ?? (Label is not null ? $"{Label} end" : _endAttributes.GetLabelText(_endFieldIdentifier));
 
@@ -433,14 +433,14 @@ public partial class EditDateRange : IDisposable
         }
     }
 
-    // Mirrors EditDatePicker.TimeFormatPart exactly (see its doc comment) -- one small string, not
+    // Mirrors EditDate.TimeFormatPart exactly (see its doc comment) -- one small string, not
     // worth sharing across the two otherwise-independent classes. Feeds EffectiveDateFormat's own
     // Time/DateTime default below.
     string TimeFormatPart => Use12Hours
         ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
         : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
 
-    // Mirrors EditDatePicker.EffectiveDateFormat one-for-one, keyed off this control's own Mode
+    // Mirrors EditDate.EffectiveDateFormat one-for-one, keyed off this control's own Mode
     // (there's no separate Type/Mode fork here -- Mode is the only lever). Quarter/Week's "yyyy" is
     // never actually rendered -- FormatOne bypasses ToString(EffectiveDateFormat) for both via
     // PickerMath's shared FormatQuarterDisplay/FormatWeekDisplay (see FormatOne below).

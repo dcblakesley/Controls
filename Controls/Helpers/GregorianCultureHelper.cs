@@ -9,7 +9,7 @@ namespace Controls.Helpers;
 /// and formatting/parsing straight through them would glue a non-Gregorian year/month system onto
 /// the Gregorian grid (a Thai Buddhist year next to a plain "2026" year-select option; day
 /// aria-labels in a different calendar than the grid they sit in). For those, every picker-facing
-/// format and parse — including the <c>EditDatePicker</c>/<c>EditDateRange</c> read-only display,
+/// format and parse — including the <c>EditDate</c>/<c>EditDateRange</c> read-only display,
 /// which must agree with the editable picker — routes through a clone with the calendar forced to
 /// Gregorian instead: same language, always the Gregorian calendar.
 /// </summary>

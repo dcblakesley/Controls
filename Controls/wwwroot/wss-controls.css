@@ -2862,6 +2862,36 @@
     box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
 }
 
+/* ------------------------------------------------------------------- Sizes */
+/* Mirrors .wss-select-sm/.wss-select-lg's own height/padding/font-size tokens (same section further
+   above), adapted to this control's actual markup: a picker's field is one always-visible text
+   <input> (.wss-picker-input-slot input) inside .wss-picker-input, not Select's three-layer
+   selector/overlay-search-input/item+placeholder split -- so there's no separate "search" overlay
+   rule to mirror, and one input rule covers both the single-date field here and DateRangePicker's
+   two (start/end) inputs, which share this exact .wss-picker-input/.wss-picker-input-slot markup. */
+
+.wss-picker-sm .wss-picker-input {
+    height: var(--wss-control-height-sm);
+    padding: 0 7px;
+}
+
+.wss-picker-sm .wss-picker-input-slot input {
+    line-height: 22px;
+}
+
+.wss-picker-lg {
+    font-size: var(--wss-font-size-lg);
+}
+
+.wss-picker-lg .wss-picker-input {
+    height: var(--wss-control-height-lg);
+    padding: 0 var(--wss-padding-h);
+}
+
+.wss-picker-lg .wss-picker-input-slot input {
+    line-height: 38px;
+}
+
 /* ---------------------------------------------------------------- Dropdown */
 
 .wss-picker-backdrop {

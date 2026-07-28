@@ -9,7 +9,7 @@ namespace FormTesting.Client.Tests;
 /// <list type="bullet">
 ///   <item>ReadOnlyValue must HTML-encode the bound text — it previously rendered it as a raw
 ///   <c>MarkupString</c>, which let bound user data inject markup (an XSS hole).</item>
-///   <item>EditDate's read-only display must format the bound value with <c>DateFormat</c> by the
+///   <item>EditDateNative's read-only display must format the bound value with <c>DateFormat</c> by the
 ///   value's own type, and degrade (not throw) when the format is incompatible with that type.</item>
 /// </list>
 /// </summary>
@@ -48,13 +48,13 @@ public class ReadOnlyAndFormatTests : BunitContext
     class DateModel { public DateTime? When { get; set; } }
 
     [Fact]
-    public void EditDate_read_only_formats_value_with_DateFormat()
+    public void EditDateNative_read_only_formats_value_with_DateFormat()
     {
         var model = new DateModel { When = new DateTime(2020, 3, 5) };
         Expression<Func<DateTime?>> field = () => model.When;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.OpenComponent<EditDateNative<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.When);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "DateFormat", "yyyy-MM-dd");
@@ -68,7 +68,7 @@ public class ReadOnlyAndFormatTests : BunitContext
     class TimeModel { public TimeOnly? At { get; set; } }
 
     [Fact]
-    public void EditDate_read_only_with_incompatible_format_degrades_without_throwing()
+    public void EditDateNative_read_only_with_incompatible_format_degrades_without_throwing()
     {
         // A date-style DateFormat applied to a TimeOnly throws FormatException inside ToString; the
         // control must catch it and fall back to the value's own ToString rather than crash the render.
@@ -76,7 +76,7 @@ public class ReadOnlyAndFormatTests : BunitContext
         Expression<Func<TimeOnly?>> field = () => model.At;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDate<TimeOnly?>>(0);
+            b.OpenComponent<EditDateNative<TimeOnly?>>(0);
             b.AddAttribute(1, "Value", model.At);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "Type", InputDateType.Time);

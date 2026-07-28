@@ -6,7 +6,7 @@
     <code>.edit-theme</code> is an opt-in ancestor class --
     apply it to any element you own (a whole page, a single form, or an MFE's own render-tree root)
     to give every <code>EditString</code>/<code>EditNumber</code>/<code>EditTextArea</code>/
-    <code>EditDate</code>/<code>EditSelect*</code> beneath it the AntD 4.x box chrome (border,
+    <code>EditDateNative</code>/<code>EditSelect*</code> beneath it the AntD 4.x box chrome (border,
     radius, hover, focus glow) that <code>Select</code>/<code>EditSelectSearch</code> already use.
     It's render-tree-scoped, not global: nothing outside the <code>&lt;div class="edit-theme"&gt;</code>
     below is affected, and unthemed controls elsewhere on this same page keep their default look.
@@ -63,9 +63,9 @@
         </section>
 
         <section class="demo-section">
-            <h3>EditDate</h3>
+            <h3>EditDateNative</h3>
 
-            <EditDate @bind-Value="_model.DateValue" />
+            <EditDateNative @bind-Value="_model.DateValue" />
 
             <h3>Markup</h3>
             <pre class="code-block"><code>@_dateExample</code></pre>
@@ -184,7 +184,7 @@
               AutoSize=""true"" MinRows=""2"" MaxRows=""6""
               MaxLength=""300"" ShowCount=""true"" />";
 
-    readonly string _dateExample = @"<EditDate @bind-Value=""_model.DateValue"" />";
+    readonly string _dateExample = @"<EditDateNative @bind-Value=""_model.DateValue"" />";
 
     readonly string _selectExample = @"<EditSelectEnum @bind-Value=""_model.SelectValue"" />";
 

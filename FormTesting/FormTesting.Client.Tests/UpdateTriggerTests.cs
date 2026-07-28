@@ -7,7 +7,7 @@ namespace FormTesting.Client.Tests;
 /// <summary>
 /// Covers the per-control instance-level <c>UpdateOn</c> parameter (<see cref="UpdateTrigger"/>) on
 /// the six controls that carry it: <see cref="EditString"/>, <see cref="EditTextArea"/>,
-/// <see cref="EditNumber{T}"/>, <see cref="EditDate{T}"/>, <see cref="EditRadioString"/> (the "Other"
+/// <see cref="EditNumber{T}"/>, <see cref="EditDateNative{T}"/>, <see cref="EditRadioString"/> (the "Other"
 /// free-text box only), and <see cref="EditRadioEnum{TEnum}"/> (the "Other" free-text box only).
 /// Deliberately out of scope: the <c>FormDefaults.EffectiveUpdateOn</c> cascade — that resolution
 /// level is covered elsewhere.
@@ -175,19 +175,19 @@ public class UpdateTriggerTests : BunitContext
         Assert.Equal(42, captured);
     }
 
-    // ───────────────────────── EditDate<DateTime?> (control default: Change) ───────────────────
+    // ───────────────────────── EditDateNative<DateTime?> (control default: Change) ─────────────
 
     [Theory]
     [InlineData(null)]
     [InlineData(UpdateTrigger.Change)]
-    public void EditDate_default_or_explicit_Change_commits_only_on_change_and_has_no_input_handler(UpdateTrigger? updateOn)
+    public void EditDateNative_default_or_explicit_Change_commits_only_on_change_and_has_no_input_handler(UpdateTrigger? updateOn)
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
         DateTime? captured = model.BirthDate;
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.OpenComponent<EditDateNative<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, v => captured = v));
@@ -202,14 +202,14 @@ public class UpdateTriggerTests : BunitContext
     }
 
     [Fact]
-    public void EditDate_UpdateOn_Input_commits_every_keystroke_and_has_no_change_handler()
+    public void EditDateNative_UpdateOn_Input_commits_every_keystroke_and_has_no_change_handler()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
         DateTime? captured = model.BirthDate;
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.OpenComponent<EditDateNative<DateTime?>>(0);
             b.AddAttribute(1, "Value", model.BirthDate);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, v => captured = v));

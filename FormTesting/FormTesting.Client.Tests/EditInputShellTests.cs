@@ -10,7 +10,7 @@ namespace FormTesting.Client.Tests;
 /// work):
 /// <list type="bullet">
 ///   <item>DOM-stability regression — with no affix parameters set, EditString/EditNumber/
-///   EditTextArea/EditDate must still render today's exact <c>edit-input-with-icon</c> wrapper: a
+///   EditTextArea/EditDateNative must still render today's exact <c>edit-input-with-icon</c> wrapper: a
 ///   single editor child, plus a second <see cref="InvalidIcon"/> child only while invalid.</item>
 ///   <item>The shell's affix-mode layout — prefix/suffix/clear/count/password-toggle content, the
 ///   locked suffix ordering, and the clearable/aria wiring — exercised directly against
@@ -176,14 +176,14 @@ public class EditInputShellTests : BunitContext
     }
 
     [Fact]
-    public void EditDate_wrapper_is_the_legacy_edit_input_with_icon_markup_when_valid()
+    public void EditDateNative_wrapper_is_the_legacy_edit_input_with_icon_markup_when_valid()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
         var editContext = new EditContext(model);
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = RenderForm(editContext, content =>
         {
-            content.OpenComponent<EditDate<DateTime?>>(0);
+            content.OpenComponent<EditDateNative<DateTime?>>(0);
             content.AddAttribute(1, "Value", model.BirthDate);
             content.AddAttribute(2, "ValueExpression", field);
             content.CloseComponent();
@@ -199,14 +199,14 @@ public class EditInputShellTests : BunitContext
     }
 
     [Fact]
-    public void EditDate_wrapper_adds_InvalidIcon_as_a_second_child_when_invalid()
+    public void EditDateNative_wrapper_adds_InvalidIcon_as_a_second_child_when_invalid()
     {
         var model = new PersonModel { BirthDate = null }; // [Required] fails
         var editContext = new EditContext(model);
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = RenderForm(editContext, content =>
         {
-            content.OpenComponent<EditDate<DateTime?>>(0);
+            content.OpenComponent<EditDateNative<DateTime?>>(0);
             content.AddAttribute(1, "Value", model.BirthDate);
             content.AddAttribute(2, "ValueExpression", field);
             content.CloseComponent();

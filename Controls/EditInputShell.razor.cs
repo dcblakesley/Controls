@@ -2,7 +2,7 @@ namespace Controls;
 
 /// <summary>
 /// Internal-use shell shared by <see cref="EditString"/>, <see cref="EditNumber{T}"/>,
-/// <see cref="EditTextArea"/>, and <see cref="EditDate{T}"/>: wraps the host's editor element
+/// <see cref="EditTextArea"/>, and <see cref="EditDateNative{T}"/>: wraps the host's editor element
 /// (passed as <see cref="ChildContent"/>) together with the standard <see cref="InvalidIcon"/>, and
 /// — once a host starts setting one of the affix parameters — the AntD-style prefix/suffix/clear/
 /// count/password-toggle chrome. A host that sets none of <see cref="Prefix"/>, <see cref="Suffix"/>,
@@ -72,7 +72,7 @@ public partial class EditInputShell
     /// <summary>
     /// Whether the host control is currently disabled — added as <c>edit-input-affix-disabled</c> to
     /// the affix wrapper. There's no <c>:disabled</c> pseudo-class for a wrapper <c>div</c>, so the
-    /// four hosts (EditString/EditNumber/EditTextArea/EditDate) pass their own <c>IsDisabled</c>
+    /// four hosts (EditString/EditNumber/EditTextArea/EditDateNative) pass their own <c>IsDisabled</c>
     /// through unconditionally and the <c>.edit-theme</c> opt-in theme keys off this class instead —
     /// the same C#-owned-class approach <c>Select</c>'s <c>wss-select-disabled</c> uses. No effect in
     /// legacy mode (the wrapper doesn't render there; the editor's own native <c>:disabled</c> covers
@@ -101,7 +101,7 @@ public partial class EditInputShell
     /// Maps <see cref="SelectSize"/> (shared with the <c>Select</c> family) to the <c>.edit-theme</c>
     /// size class token, or null for <see cref="SelectSize.Default"/> (adds no class, so a
     /// no-new-params render stays byte-identical). Single computation site for all four Size-bearing
-    /// hosts (EditString/EditNumber/EditTextArea/EditDate) — each appends this to its own editor
+    /// hosts (EditString/EditNumber/EditTextArea/EditDateNative) — each appends this to its own editor
     /// class string and passes it through as <see cref="WrapperClass"/>.
     /// </summary>
     public static string? SizeClass(SelectSize size) => size switch
@@ -114,7 +114,7 @@ public partial class EditInputShell
     /// <summary>
     /// Appends <see cref="SizeClass"/>'s token (if any) and the host's own <c>CssClass</c> to a
     /// control-specific base class string — the single computation site for the tail every
-    /// Size-bearing host (EditDate/EditNumber/EditString/EditTextArea) repeats after building its
+    /// Size-bearing host (EditDateNative/EditNumber/EditString/EditTextArea) repeats after building its
     /// own affix-mode-dependent prefix.
     /// </summary>
     public static string BuildInputClass(string baseClasses, SelectSize size, string? cssClass)

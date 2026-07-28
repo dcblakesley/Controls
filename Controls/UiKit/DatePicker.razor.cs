@@ -155,6 +155,19 @@ public partial class DatePicker : PickerBase
     /// via <c>ToString</c> and therefore can't render the quarter/week digits itself.</summary>
     [Parameter] public string? Format { get; set; }
 
+    /// <summary>
+    /// Raised with the offending text when a typed commit (Enter or blur) can't be parsed as a date
+    /// at all -- i.e. <see cref="TryParseDate"/> itself fails, not merely a well-formed date rejected
+    /// by <see cref="Min"/>/<see cref="Max"/>/<see cref="DisabledDate"/>/<see cref="DisabledTime"/>
+    /// (that's a valid date this picker simply won't accept, which is a different situation from a
+    /// parse failure, and does not raise this callback). This picker has no validation concept of its
+    /// own (see the class remarks) -- it exists so a host form control (<see cref="EditDate{T}"/>)
+    /// can surface a validation message the picker itself can't. Optional: a standalone
+    /// <see cref="DatePicker"/> with no handler attached behaves exactly as before this parameter
+    /// existed -- the unparseable text is still silently reverted to the formatted bound value.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnParseError { get; set; }
+
     /// <summary>Input placeholder. Null (default) picks <see cref="Mode"/>'s default: <c>Date</c>/
     /// <c>DateTime</c> "Select date" (the Figma spec) · <c>Month</c> "Select month" · <c>Time</c>
     /// "Select time" · <c>Year</c> "Select year" · <c>Quarter</c> "Select quarter" · <c>Week</c>
@@ -169,6 +182,14 @@ public partial class DatePicker : PickerBase
 
     /// <summary>Field width as a CSS length (e.g. "300px", "100%"). Null (default) keeps the stylesheet width.</summary>
     [Parameter] public string? Width { get; set; }
+
+    /// <summary>
+    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
+    /// Large) -- adds <c>wss-picker-sm</c>/<c>wss-picker-lg</c> to the outer wrapper.
+    /// <see cref="SelectSize.Default"/> adds no class (byte-identical DOM to before this parameter
+    /// existed).
+    /// </summary>
+    [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
     /// <summary>First day of the week for the calendar grid. Null (default) follows
     /// <see cref="CultureInfo.CurrentCulture"/>.</summary>
@@ -275,7 +296,7 @@ public partial class DatePicker : PickerBase
     /// <see cref="DatePickerMode.DateTime"/> panel. Override to localize.</summary>
     [Parameter] public string OkText { get; set; } = "OK";
 
-    // Validation-state ARIA passthrough onto the actual <input>, for form wrappers (EditDatePicker).
+    // Validation-state ARIA passthrough onto the actual <input>, for form wrappers (EditDate).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio (which EditSelectSearch
     // forwards) — AdditionalAttributes can't do this job because it lands on the outer wrapper div.
 
@@ -318,6 +339,8 @@ public partial class DatePicker : PickerBase
             var classes = "wss-picker wss-picker-single";
             if (_open) classes += " wss-picker-open";
             if (Disabled) classes += " wss-picker-disabled";
+            if (Size == SelectSize.Small) classes += " wss-picker-sm";
+            if (Size == SelectSize.Large) classes += " wss-picker-lg";
             return classes;
         }
     }
@@ -1141,7 +1164,15 @@ public partial class DatePicker : PickerBase
             if (Value is not null) await SetValueAsync(null);
             return true;
         }
-        if (!TryParseDate(text, out var day) || IsDisabledForCommit(day)) return false;
+        if (!TryParseDate(text, out var day))
+        {
+            // Unparseable, as opposed to a well-formed date IsDisabledForCommit rejects below -- only
+            // this case is a genuine parse failure (see OnParseError's doc comment for why the
+            // distinction matters).
+            if (OnParseError.HasDelegate) await OnParseError.InvokeAsync(text);
+            return false;
+        }
+        if (IsDisabledForCommit(day)) return false;
         await SetValueAsync(day);
         _viewMonth = ClampView(FirstOfMonth(day));
         return true;

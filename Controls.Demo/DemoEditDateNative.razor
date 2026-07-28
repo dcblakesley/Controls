@@ -1,0 +1,169 @@
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>EditDateNative Demo</h1>
+
+<EditForm Model="@_model" class="flex-row flex-wrap" @ref=_form>
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <EditDateNative @bind-Value="_model.BasicDate" />
+
+        <EditDateNative @bind-Value="_model.BasicDate"
+                  IsEditMode=false
+                  Label="DateFormat = MM-dd-yyyy"
+                  DateFormat="MM-dd-yyyy" />
+
+        <EditDateNative @bind-Value="_model.BasicDate"
+                  IsEditMode=false
+                  Label="DateFormat = MM/dd/yy"
+                  DateFormat="MM/dd/yy" />
+
+        <EditDateNative @bind-Value="_model.BasicDate"
+                  IsEditMode=false
+                  Label="MM/dd/yyyy hh:mm:ss tt"
+                  DateFormat="MM/dd/yyyy hh:mm:ss tt" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateNative @bind-Value="_model.NullableDate" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_nullableExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_nullableModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateNative @bind-Value="_model.DateWithTime"
+                  Type="InputDateType.DateTimeLocal"/>
+
+        <EditDateNative @bind-Value="_model.DateWithTime"
+                  Type="InputDateType.DateTimeLocal"
+                  IsEditMode="false"
+                  Label="MM/dd/yyyy hh:mm:ss tt"
+                  DateFormat="MM/dd/yyyy hh:mm:ss tt" />
+
+        <EditDateNative @bind-Value="_model.TimeOnly"
+                  Type="InputDateType.Time" />
+
+        <EditDateNative @bind-Value="_model.TimeOnly"
+                  Type="InputDateType.Time"
+                  IsEditMode="false"
+                  Label="hh:mm:ss tt"
+                  DateFormat="hh:mm:ss tt" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_dateTimeExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <style>
+            .my-custom-container {
+                background-color: cornflowerblue;
+                padding: 10px;
+                border-radius: 0px;
+            }
+
+            .my-custom-date {
+                border: 6px solid darkgreen;
+                border-radius: 4px;
+                padding: 4px;
+                color: magenta;
+            }
+        </style>
+
+        <EditDateNative @bind-Value="_model.CustomStyle"
+                  ContainerClass="my-custom-container"
+                  class="my-custom-date" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_customStyleExample</code></pre>
+
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_customStyleCss</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditDateNative @bind-Value="_model.Disabled"
+                  IsDisabled="true" />
+
+        <EditDateNative @bind-Value="_model.Required" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+</EditForm>
+
+@code {
+    readonly DemoEditDateNativeModel _model = new();
+
+    EditForm? _form;
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
+    public class DemoEditDateNativeModel
+    {
+        [Description("Basic Description")]
+        public DateTime BasicDate { get; set; } = DateTime.Today;
+        public DateTime? NullableDate { get; set; } = DateTime.Today;
+        public DateTime DateWithTime { get; set; } = DateTime.Now;
+        public DateTime TimeOnly { get; set; } = DateTime.Now;
+        public DateTime CustomStyle { get; set; } = DateTime.Today;
+
+        [Required]
+        public DateTime? Required { get; set; }
+        public DateTime Disabled { get; set; } = DateTime.Today;
+
+    }
+
+    readonly string _basicExample = @"<EditDateNative @bind-Value=""_model.BasicDate"" />
+
+<EditDateNative @bind-Value=""_model.BasicDate""
+          IsEditMode=false
+          Label=""DateFormat = MM-dd-yyyy""
+          DateFormat=""MM-dd-yyyy"" />";
+
+    readonly string _nullableExample = @"<EditDateNative @bind-Value=""_model.NullableDate"" />";
+
+    readonly string _nullableModel = @"public DateTime? NullableDate { get; set; } = DateTime.Today;";
+
+    readonly string _dateTimeExample = @"<EditDateNative @bind-Value=""_model.DateWithTime""
+          Type=""InputDateType.DateTimeLocal""/>
+
+<EditDateNative @bind-Value=""_model.TimeOnly""
+          Type=""InputDateType.Time"" />";
+
+    readonly string _customStyleExample = @"<EditDateNative @bind-Value=""_model.CustomStyle""
+          ContainerClass=""my-custom-container""
+          class=""my-custom-date"" />";
+
+    readonly string _customStyleCss = @".my-custom-container {
+    background-color: cornflowerblue;
+    padding: 10px;
+    border-radius: 0px;
+}
+
+.my-custom-date {
+    border: 6px solid darkgreen;
+    border-radius: 4px;
+    padding: 4px;
+    color: magenta;
+}";
+
+    readonly string _validationExample = @"<EditDateNative @bind-Value=""_model.Disabled""
+          IsDisabled=""true"" />
+
+<EditDateNative @bind-Value=""_model.Required"" />";
+
+    readonly string _validationModel = @"[Required]
+public DateTime? Required { get; set; }
+
+public DateTime Disabled { get; set; } = DateTime.Today;";
+}

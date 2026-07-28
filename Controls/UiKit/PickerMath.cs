@@ -5,7 +5,7 @@ namespace Controls;
 /// <summary>
 /// Pure, instance-independent date/culture arithmetic shared by <see cref="DatePicker"/> and
 /// <see cref="DateRangePicker"/> (and, via the promoted quarter/week display statics, by
-/// <see cref="EditDatePicker{T}"/>'s read-only view). Every member takes its inputs explicitly --
+/// <see cref="EditDate{T}"/>'s read-only view). Every member takes its inputs explicitly --
 /// no component state, no <c>Value</c>/<c>Min</c>/<c>Max</c> -- so it can be shared without either
 /// picker needing an instance of the other.
 /// </summary>
@@ -328,7 +328,7 @@ internal static class PickerMath
 
     /// <summary>Quarter mode's null-<c>Format</c> display for <paramref name="value"/> —
     /// <c>"yyyy-Qn"</c> (e.g. "2026-Q3") in <paramref name="culture"/>'s digits. Shared by
-    /// <see cref="DatePicker"/>'s own display and <see cref="EditDatePicker{T}"/>'s read-only
+    /// <see cref="DatePicker"/>'s own display and <see cref="EditDate{T}"/>'s read-only
     /// view.</summary>
     public static string FormatQuarterDisplay(DateTime value, CultureInfo culture) =>
         $"{value.Year.ToString(culture)}-Q{QuarterOf(value).ToString(culture)}";
@@ -337,7 +337,7 @@ internal static class PickerMath
     /// <c>"yyyy-Www"</c> (e.g. "2026-W08") in <paramref name="culture"/>'s digits, where the year is
     /// the WEEK START's calendar year (deterministic at year-boundary weeks, unlike
     /// <paramref name="value"/>'s own year, which can disagree with the week it falls in). Shared by
-    /// <see cref="DatePicker"/>'s own display and <see cref="EditDatePicker{T}"/>'s read-only
+    /// <see cref="DatePicker"/>'s own display and <see cref="EditDate{T}"/>'s read-only
     /// view.</summary>
     public static string FormatWeekDisplay(DateTime value, CultureInfo culture, DayOfWeek firstDayOfWeek)
     {
