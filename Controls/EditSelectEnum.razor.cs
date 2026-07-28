@@ -23,11 +23,11 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
     /// </summary>
     [Parameter] public string NullOptionText { get; set; } = "";
 
-    Type _type = null!;
-    Type _underlyingType = null!;
-    bool _isNullable;
-    List<TEnum?>? _cachedOptions;
-    bool _lastSort;
+    readonly EnumOptionCache<TEnum> _cache = new();
+
+    // Markup reads _isNullable directly (leading empty option / unmatched-value placeholder), so it
+    // stays a same-named member delegating to the cache rather than a call site rewrite.
+    bool _isNullable => _cache.IsNullable;
 
     protected override void OnInitialized()
     {
@@ -35,41 +35,21 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
         InitState(ValueExpression ?? throw new InvalidOperationException(
             $"{nameof(EditSelectEnum<TEnum>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
 
-        // Handle nullable enum types
-        _type = typeof(TEnum);
-        _isNullable = Nullable.GetUnderlyingType(_type) != null;
-        _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
-        _cachedOptions = BuildOptions();
-        _lastSort = Sort;
+        // EditSelectEnum has no "Other" option, so hasOtherOption is always false here.
+        _cache.Initialize(Sort, hasOtherOption: false);
     }
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
         // The option list is cached, but a runtime Sort change must rebuild it — it was frozen at init.
-        if (_cachedOptions is not null && Sort != _lastSort)
-        {
-            _lastSort = Sort;
-            _cachedOptions = BuildOptions();
-        }
+        _cache.Refresh(Sort, hasOtherOption: false);
     }
 
-    List<TEnum?> GetOptions() => _cachedOptions!;
-
-    List<TEnum?> BuildOptions()
-    {
-        var enumValues = EnumHelpers.GetValues<TEnum>(_underlyingType);
-
-        // Sort by the same display name the UI shows so sort order matches what the user sees.
-        // EnumHelpers.GetName caches its lookup, so this stays cheap on subsequent renders.
-        if (Sort)
-            enumValues = enumValues.OrderBy(x => x!.GetName()).ToList();
-
-        return enumValues.Cast<TEnum?>().ToList();
-    }
+    List<TEnum?> GetOptions() => _cache.Options;
 
     // Base IsValueDefault uses EqualityComparer<TEnum>.Default — for non-nullable TEnum that
     // matches the zero-valued enum, which is the same "default" as before.
     protected override bool TryParseValueFromString(string? value, out TEnum result, out string validationErrorMessage) =>
-        SelectParsing.TryParseEnum(value, _underlyingType, _isNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
+        SelectParsing.TryParseEnum(value, _cache.UnderlyingType, _cache.IsNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 }

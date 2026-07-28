@@ -94,12 +94,11 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         [UpdateEventName] = EventCallback.Factory.Create<ChangeEventArgs>(this, OnOtherValueChanged)
     };
 
-    Type _type = null!;
-    Type _underlyingType = null!;
-    bool _isNullable;
-    List<TEnum?>? _cachedOptions;
-    bool _lastSort;
-    bool _lastHasOther;
+    readonly EnumOptionCache<TEnum> _cache = new();
+
+    // Markup reads _isNullable directly, so it stays a same-named member delegating to the cache
+    // rather than a call site rewrite.
+    bool _isNullable => _cache.IsNullable;
 
     protected override void OnInitialized()
     {
@@ -107,13 +106,7 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         InitState(ValueExpression ?? throw new InvalidOperationException(
             $"{nameof(EditRadioEnum<TEnum>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
 
-        // Handle nullable enum types
-        _type = typeof(TEnum);
-        _isNullable = Nullable.GetUnderlyingType(_type) != null;
-        _underlyingType = _isNullable ? Nullable.GetUnderlyingType(_type)! : _type;
-        _cachedOptions = BuildOptions();
-        _lastSort = Sort;
-        _lastHasOther = HasOtherOption;
+        _cache.Initialize(Sort, HasOtherOption);
     }
 
     protected override void OnParametersSet()
@@ -121,24 +114,20 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         base.OnParametersSet();
         // The option list is cached, but the parameters that shape it may change at runtime —
         // previously a Sort/HasOtherOption change was silently ignored forever.
-        if (_cachedOptions is not null && (Sort != _lastSort || HasOtherOption != _lastHasOther))
-        {
-            _lastSort = Sort;
-            _lastHasOther = HasOtherOption;
-            _cachedOptions = BuildOptions();
-        }
+        _cache.Refresh(Sort, HasOtherOption);
     }
 
     // Read-only "Other" detection; an empty enum (no options) can't have an Other selection —
     // GetOptions().Last() threw on it.
-    bool IsOtherSelected => HasOtherOption && _cachedOptions is { Count: > 0 } && Value?.Equals(_cachedOptions[^1]) == true;
+    bool IsOtherSelected => HasOtherOption && _cache.Options is { Count: > 0 } && Value?.Equals(_cache.Options[^1]) == true;
 
-    List<TEnum?> GetOptions() => _cachedOptions!;
+    List<TEnum?> GetOptions() => _cache.Options;
 
-    // GetOptions() carries TEnum? (see BuildOptions' final Cast<TEnum?>()) even though every entry is
-    // a real enum value -- the "is TEnum" pattern unwraps that safely for the Func<TEnum, bool>?
-    // predicate's exact signature (matching EditCheckedEnumList's, whose options list has no such
-    // wrapper). A null option (shouldn't occur in practice) is simply never disabled by the predicate.
+    // GetOptions() carries TEnum? (see EnumOptionCache<TEnum>.BuildOptions' final Cast<TEnum?>())
+    // even though every entry is a real enum value -- the "is TEnum" pattern unwraps that safely for
+    // the Func<TEnum, bool>? predicate's exact signature (matching EditCheckedEnumList's, whose
+    // options list has no such wrapper). A null option (shouldn't occur in practice) is simply never
+    // disabled by the predicate.
     bool IsOptionDisabledFor(TEnum? option) =>
         IsDisabled || (option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true);
 
@@ -146,32 +135,8 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     // modifier + size class assembly identical to EditRadioString's copy.
     string ButtonGroupClass => RadioButtonGroup.GroupClass(ButtonStyle, Size);
 
-    List<TEnum?> BuildOptions()
-    {
-        var enumValues = EnumHelpers.GetValues<TEnum>(_underlyingType);
-
-        // If HasOtherOption is true, remove the last enum value to add it back later
-        TEnum? otherOption = default;
-        if (HasOtherOption && enumValues.Count > 0)
-        {
-            otherOption = enumValues.Last();
-            enumValues.RemoveAt(enumValues.Count - 1);
-        }
-
-        // Sort by the same display name the UI shows so sort order matches what the user sees.
-        // EnumHelpers.GetName caches its lookup, so this stays cheap on subsequent renders.
-        if (Sort)
-            enumValues = enumValues.OrderBy(x => x!.GetName()).ToList();
-
-        // Add back the "other" option at the end if it exists
-        if (HasOtherOption && otherOption != null)
-            enumValues.Add(otherOption);
-
-        return enumValues.Cast<TEnum?>().ToList();
-    }
-
     protected override bool TryParseValueFromString(string? value, out TEnum? result, out string validationErrorMessage) =>
-        SelectParsing.TryParseEnum(value, _underlyingType, _isNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
+        SelectParsing.TryParseEnum(value, _cache.UnderlyingType, _cache.IsNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
     async Task OnOtherValueChanged(ChangeEventArgs e)
     {
