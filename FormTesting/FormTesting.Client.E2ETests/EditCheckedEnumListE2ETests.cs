@@ -2,16 +2,9 @@ using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
 
-public class EditCheckedEnumListE2ETests(AppFixture app, BrowserFixture browser) : PageTestBase(app, browser)
+public class EditCheckedEnumListE2ETests(AppFixture app, BrowserFixture browser) : DemoPageTestBase(app, browser)
 {
     protected override CurrentView View => CurrentView.CheckedEnumList;
-
-    [Fact]
-    public async Task Demo_page_renders_with_expected_heading()
-    {
-        await NavigateAsync();
-        await Expect(Page.Locator("h1", new() { HasTextString = "EditCheckedEnumList Demo" })).ToBeVisibleAsync();
-    }
 
     [Fact]
     public async Task Clicking_checkbox_toggles_selection_and_renders_GetName_labels()
@@ -35,13 +28,7 @@ public class EditCheckedEnumListE2ETests(AppFixture app, BrowserFixture browser)
     // regression. If this fails, re-run in isolation or check the -diff.png before treating it as
     // a real bug.
     [Fact]
-    public async Task Visual_baseline_basic_section()
-    {
-        await NavigateAsync();
-        var firstSection = Page.Locator("section.demo-section").First;
-        await Expect(firstSection).ToBeVisibleAsync();
-        await ExpectMatchesBaselineAsync(firstSection, "basic-section");
-    }
+    public override async Task Visual_baseline_basic_section() => await base.Visual_baseline_basic_section();
 
     [Fact]
     public async Task IsOptionDisabled_disables_only_the_matching_checkbox()

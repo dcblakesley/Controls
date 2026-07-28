@@ -84,3 +84,44 @@ public abstract class PageTestBase : IAsyncLifetime
         VisualRegression.Assert(bytes, $"{GetType().Name}-{name}");
     }
 }
+
+/// <summary>
+/// Base class for the per-control demo-page e2e suites (one per <c>Edit*</c> control's own demo
+/// view). Adds the two tests that were byte-identical across every one of those suites: the
+/// page-heading smoke test and the "basic section" visual baseline.
+/// </summary>
+/// <remarks>
+/// This sits between <see cref="PageTestBase"/> and the per-control classes rather than folding
+/// these two tests into <see cref="PageTestBase"/> itself, because not every <see cref="PageTestBase"/>
+/// subclass wants them: <c>ComparisonE2ETests</c> targets a demo view with no "{Control} Demo"
+/// heading and no basic-section baseline of its own, so it stays directly on <see cref="PageTestBase"/>.
+/// </remarks>
+public abstract class DemoPageTestBase(AppFixture app, BrowserFixture browser) : PageTestBase(app, browser)
+{
+    /// <summary>
+    /// The exact <c>&lt;h1&gt;</c> text this control's demo page renders. Every current per-control
+    /// view's heading follows "Edit{View} Demo" (e.g. <c>CurrentView.Radio</c> -&gt; "EditRadio Demo")
+    /// -- verified against all 19 existing usages -- so this derives from <see cref="PageTestBase.View"/>
+    /// and needs no per-class override unless a future control's heading genuinely breaks that
+    /// convention, in which case override it there.
+    /// </summary>
+    protected virtual string ExpectedHeading => $"Edit{View} Demo";
+
+    [Fact]
+    public async Task Demo_page_renders_with_expected_heading()
+    {
+        await NavigateAsync();
+        await Expect(Page.Locator("h1", new() { HasTextString = ExpectedHeading })).ToBeVisibleAsync();
+    }
+
+    // virtual: EditCheckedEnumListE2ETests overrides this to attach a class-specific "known flaky"
+    // rationale comment to an otherwise-identical baseline capture -- see its override.
+    [Fact]
+    public virtual async Task Visual_baseline_basic_section()
+    {
+        await NavigateAsync();
+        var firstSection = Page.Locator("section.demo-section").First;
+        await Expect(firstSection).ToBeVisibleAsync();
+        await ExpectMatchesBaselineAsync(firstSection, "basic-section");
+    }
+}

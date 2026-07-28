@@ -10,16 +10,9 @@ namespace FormTesting.Client.E2ETests;
 /// (placement, keyboard nav, focus handling) are already covered by <see cref="DatePickerE2ETests"/>
 /// against the /uikit gallery, which drives the same component.
 /// </summary>
-public class EditDatePickerE2ETests(AppFixture app, BrowserFixture browser) : PageTestBase(app, browser)
+public class EditDatePickerE2ETests(AppFixture app, BrowserFixture browser) : DemoPageTestBase(app, browser)
 {
     protected override CurrentView View => CurrentView.DatePicker;
-
-    [Fact]
-    public async Task Demo_page_renders_with_expected_heading()
-    {
-        await NavigateAsync();
-        await Expect(Page.Locator("h1", new() { HasTextString = "EditDatePicker Demo" })).ToBeVisibleAsync();
-    }
 
     [Fact]
     public async Task Day_click_updates_the_input_value()
@@ -192,14 +185,5 @@ public class EditDatePickerE2ETests(AppFixture app, BrowserFixture browser) : Pa
         // Time mode commits immediately without closing.
         await Expect(dropdown).ToBeVisibleAsync();
         await Expect(input).ToHaveValueAsync("2:30 AM");
-    }
-
-    [Fact]
-    public async Task Visual_baseline_basic_section()
-    {
-        await NavigateAsync();
-        var firstSection = Page.Locator("section.demo-section").First;
-        await Expect(firstSection).ToBeVisibleAsync();
-        await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
 }

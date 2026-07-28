@@ -11,16 +11,9 @@ namespace FormTesting.Client.E2ETests;
 /// nav, focus handling) are already covered by <see cref="DateRangePickerE2ETests"/> against the
 /// /uikit gallery, which drives the same component.
 /// </summary>
-public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : PageTestBase(app, browser)
+public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : DemoPageTestBase(app, browser)
 {
     protected override CurrentView View => CurrentView.DateRange;
-
-    [Fact]
-    public async Task Demo_page_renders_with_expected_heading()
-    {
-        await NavigateAsync();
-        await Expect(Page.Locator("h1", new() { HasTextString = "EditDateRange Demo" })).ToBeVisibleAsync();
-    }
 
     [Fact]
     public async Task Range_pick_updates_both_inputs()
@@ -186,14 +179,5 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Pag
         await Expect(dropdown).Not.ToBeVisibleAsync();
         await Expect(startInput).ToHaveValueAsync("02/12/2026 10:00 AM"); // Start's own value rides along unchanged
         await Expect(endInput).ToHaveValueAsync("02/25/2026 3:30 PM");
-    }
-
-    [Fact]
-    public async Task Visual_baseline_basic_section()
-    {
-        await NavigateAsync();
-        var firstSection = Page.Locator("section.demo-section").First;
-        await Expect(firstSection).ToBeVisibleAsync();
-        await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
 }

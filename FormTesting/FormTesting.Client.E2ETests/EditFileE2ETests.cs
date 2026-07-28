@@ -3,7 +3,7 @@ using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
 
-public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : PageTestBase(app, browser)
+public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : DemoPageTestBase(app, browser)
 {
     protected override CurrentView View => CurrentView.File;
 
@@ -13,13 +13,6 @@ public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         MimeType = "text/plain",
         Buffer = Encoding.UTF8.GetBytes(content),
     };
-
-    [Fact]
-    public async Task Demo_page_renders_with_expected_heading()
-    {
-        await NavigateAsync();
-        await Expect(Page.Locator("h1", new() { HasTextString = "EditFile Demo" })).ToBeVisibleAsync();
-    }
 
     [Fact]
     public async Task Upload_lists_the_file_and_remove_deletes_it()
@@ -77,15 +70,6 @@ public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : PageTest
         var firstSection = Page.Locator("section.demo-section").First;
         await Expect(firstSection.Locator(".edit-file-drop-zone")).Not.ToBeVisibleAsync();
         await Expect(firstSection.Locator(".edit-readonly-value").First).ToBeVisibleAsync();
-    }
-
-    [Fact]
-    public async Task Visual_baseline_basic_section()
-    {
-        await NavigateAsync();
-        var firstSection = Page.Locator("section.demo-section").First;
-        await Expect(firstSection).ToBeVisibleAsync();
-        await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
 
     [Fact]

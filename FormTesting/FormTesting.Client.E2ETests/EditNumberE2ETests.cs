@@ -2,16 +2,9 @@ using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
 
-public class EditNumberE2ETests(AppFixture app, BrowserFixture browser) : PageTestBase(app, browser)
+public class EditNumberE2ETests(AppFixture app, BrowserFixture browser) : DemoPageTestBase(app, browser)
 {
     protected override CurrentView View => CurrentView.Number;
-
-    [Fact]
-    public async Task Demo_page_renders_with_expected_heading()
-    {
-        await NavigateAsync();
-        await Expect(Page.Locator("h1", new() { HasTextString = "EditNumber Demo" })).ToBeVisibleAsync();
-    }
 
     [Fact]
     public async Task First_number_input_accepts_value_and_round_trips_to_bound_display()
@@ -36,14 +29,5 @@ public class EditNumberE2ETests(AppFixture app, BrowserFixture browser) : PageTe
         var firstSection = Page.Locator("section.demo-section").First;
         await Expect(firstSection.Locator("input[type=number]").First).Not.ToBeVisibleAsync();
         await Expect(firstSection.Locator(".edit-readonly-value").First).ToBeVisibleAsync();
-    }
-
-    [Fact]
-    public async Task Visual_baseline_basic_section()
-    {
-        await NavigateAsync();
-        var firstSection = Page.Locator("section.demo-section").First;
-        await Expect(firstSection).ToBeVisibleAsync();
-        await ExpectMatchesBaselineAsync(firstSection, "basic-section");
     }
 }
