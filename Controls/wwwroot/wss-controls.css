@@ -943,15 +943,20 @@
  * Popover  (click-triggered)
  * ============================================================================ */
 
-.wss-popover-wrap {
+/* Wrap/backdrop/arrow chrome and the four placement + arrow-counter-shift rules below are shared
+   with Popconfirm (grouped selectors, one declaration body per rule) -- wss-overlay.js's place()
+   resolves the backdrop by prefix (`${prefix}-backdrop`) and each component's own PanelClassPrefix
+   drives which prefixed placement class (`{prefix}-top`/`-bottom`/`-left`/`-right`) actually lands
+   on its panel, but the geometry per class is identical between the two, so only the prefix varies. */
+.wss-popover-wrap, .wss-popconfirm-wrap {
     position: relative;
     display: inline-flex;
-    /* Shrink-wrap the trigger so the absolutely-positioned popover anchors to it even when the
-       wrap is a flex/grid item (those stretch it to full width by default, breaking left:50%). */
+    /* Shrink-wrap the trigger so the absolutely-positioned panel anchors to it even when the wrap is
+       a flex/grid item (those stretch it to full width by default, breaking left:50%). */
     width: fit-content;
 }
 
-.wss-popover-backdrop {
+.wss-popover-backdrop, .wss-popconfirm-backdrop {
     position: fixed;
     inset: 0;
     z-index: 1029;
@@ -1004,7 +1009,7 @@
     line-height: var(--wss-line-height);
 }
 
-.wss-popover-arrow {
+.wss-popover-arrow, .wss-popconfirm-arrow {
     position: absolute;
     width: 8px;
     height: 8px;
@@ -1014,18 +1019,19 @@
 }
 
 /* --wss-shift (set by wss-overlay.js) keeps the panel in the viewport; the arrow counter-shifts
-   to keep pointing at the trigger. Both default to 0 when JS is unavailable. */
-.wss-popover-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popover-top .wss-popover-arrow { bottom: -4px; left: 50%; margin-left: -4px; transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
+   to keep pointing at the trigger. Both default to 0 when JS is unavailable. Grouped selectors:
+   Popover and Popconfirm's geometry is identical per side, so each pair below covers both. */
+.wss-popover-top, .wss-popconfirm-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-top .wss-popover-arrow, .wss-popconfirm-top .wss-popconfirm-arrow { bottom: -4px; left: 50%; margin-left: -4px; transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popover-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popover-bottom .wss-popover-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
+.wss-popover-bottom, .wss-popconfirm-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-bottom .wss-popover-arrow, .wss-popconfirm-bottom .wss-popconfirm-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popover-left { right: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popover-left .wss-popover-arrow { right: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
+.wss-popover-left, .wss-popconfirm-left { right: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-left .wss-popover-arrow, .wss-popconfirm-left .wss-popconfirm-arrow { right: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
-.wss-popover-right { left: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popover-right .wss-popover-arrow { left: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
+.wss-popover-right, .wss-popconfirm-right { left: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+.wss-popover-right .wss-popover-arrow, .wss-popconfirm-right .wss-popconfirm-arrow { left: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
 /* ============================================================================
  * Hover Tooltip (data-tooltip)
@@ -1796,22 +1802,11 @@
  * Popconfirm
  * ============================================================================ */
 
-.wss-popconfirm-wrap {
-    position: relative;
-    display: inline-flex;
-    /* Shrink-wrap the trigger so the absolutely-positioned popconfirm anchors to it even when the
-       wrap is a flex/grid item (those stretch it to full width by default, breaking left:50%). */
-    width: fit-content;
-}
-
-.wss-popconfirm-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1029;
-    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" backdrop. */
-    cursor: pointer;
-    outline: none;
-}
+/* Wrap/backdrop/arrow chrome and the four placement + arrow-counter-shift rules are shared with
+   Popover via grouped selectors -- see .wss-popover-wrap/.wss-popover-backdrop/.wss-popover-arrow
+   and the .wss-popover-top/-bottom/-left/-right (+ arrow) pairs in the Popover section above; their
+   bodies covered Popconfirm's identical prefixed classes too, so nothing panel-geometry-specific is
+   declared here. */
 
 .wss-popconfirm {
     position: absolute;
@@ -1850,28 +1845,6 @@
     justify-content: flex-end;
     gap: 8px;
 }
-
-.wss-popconfirm-arrow {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: var(--wss-color-bg);
-    transform: rotate(45deg);
-    box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.07);
-}
-
-/* --wss-shift (set by wss-overlay.js) keeps the panel in the viewport; the arrow counter-shifts. */
-.wss-popconfirm-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popconfirm-top .wss-popconfirm-arrow { bottom: -4px; left: 50%; margin-left: -4px; transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
-
-.wss-popconfirm-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popconfirm-bottom .wss-popconfirm-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
-
-.wss-popconfirm-left { right: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popconfirm-left .wss-popconfirm-arrow { right: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
-
-.wss-popconfirm-right { left: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popconfirm-right .wss-popconfirm-arrow { left: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
 /* ============================================================================
  * Table
