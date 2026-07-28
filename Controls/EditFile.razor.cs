@@ -36,9 +36,20 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// whether the token contains <c>/</c>. Empty = all types accepted. A bare <c>"*"</c> or full
     /// <c>"*/*"</c> token explicitly accepts everything too (equivalent to leaving the list empty, but
     /// usable alongside other tokens in the same array -- it ORs in, it doesn't short-circuit them).
-    /// Leading/trailing whitespace on any token is ignored.
+    /// Leading/trailing whitespace on any token is ignored. Falls back to the bound property's
+    /// <c>[FileConstraints(AllowedExtensions = …)]</c> when left empty -- see
+    /// <see cref="EffectiveAllowedExtensions"/>.
     /// </summary>
     [Parameter] public string[] AllowedExtensions { get; set; } = [];
+
+    /// <summary>
+    /// The extension/MIME accept-token list actually enforced: <see cref="AllowedExtensions"/> when it
+    /// has any entries, else the bound property's <c>[FileConstraints(AllowedExtensions = …)]</c> list,
+    /// else empty (accept everything).
+    /// </summary>
+    string[] EffectiveAllowedExtensions => AllowedExtensions.Length > 0
+        ? AllowedExtensions
+        : _attributes.FileConstraints()?.AllowedExtensions ?? [];
 
     /// <summary> Visual style: the dashed drag-and-drop card (default), or a compact plain button
     /// (<see cref="EditFileVariant.Button"/>, Ant Design's plain <c>Upload</c> look). </summary>
@@ -57,20 +68,68 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     [Parameter] public Func<IBrowserFile, Task<bool>>? BeforeAdd { get; set; }
 
     /// <summary>
-    /// Maximum size in bytes for any single file. Defaults to 10 MB. Also caps the per-file in-memory
-    /// buffer (files over this are rejected before any bytes are read), so it doubles as the memory bound.
+    /// Maximum size in bytes for any single file. Also caps the per-file in-memory buffer (files over
+    /// this are rejected before any bytes are read), so it doubles as the memory bound. Falls back to
+    /// the bound property's <c>[FileConstraints(MaxFileSizeBytes = …)]</c> when unset -- see
+    /// <see cref="EffectiveMaxFileSizeBytes"/> -- then to the built-in 10 MB default.
     /// </summary>
-    [Parameter] public long MaxFileSizeBytes { get; set; } = 10L * 1024 * 1024;
-
-    /// <summary> Maximum number of files that may be selected. 0 = unlimited.</summary>
-    [Parameter] public int MaxFiles { get; set; } = 0;
+    [Parameter] public long? MaxFileSizeBytes { get; set; }
 
     /// <summary>
-    /// Maximum total bytes across all selected files (existing plus newly picked). Defaults to 100 MB.
-    /// 0 = unlimited. Enforced before each file is buffered, so it bounds the aggregate in-memory
-    /// footprint even when every individual file passes <see cref="MaxFileSizeBytes"/>.
+    /// The per-file size cap actually enforced: the <see cref="MaxFileSizeBytes"/> parameter, else the
+    /// bound property's <c>[FileConstraints(MaxFileSizeBytes = …)]</c> value (0 there means unset, since
+    /// attributes can't hold a nullable long), else the built-in 10 MB default.
     /// </summary>
-    [Parameter] public long MaxTotalBytes { get; set; } = 100L * 1024 * 1024;
+    long EffectiveMaxFileSizeBytes
+    {
+        get
+        {
+            var attrValue = _attributes.FileConstraints()?.MaxFileSizeBytes ?? 0;
+            return MaxFileSizeBytes ?? (attrValue > 0 ? attrValue : 10L * 1024 * 1024);
+        }
+    }
+
+    /// <summary>
+    /// Maximum number of files that may be selected. 0 = unlimited. Falls back to the bound property's
+    /// <c>[FileConstraints(MaxFiles = …)]</c> when unset -- see <see cref="EffectiveMaxFiles"/>.
+    /// </summary>
+    [Parameter] public int? MaxFiles { get; set; }
+
+    /// <summary>
+    /// The file-count cap actually enforced: the <see cref="MaxFiles"/> parameter, else the bound
+    /// property's <c>[FileConstraints(MaxFiles = …)]</c> value (0 there means unset), else 0 (unlimited).
+    /// </summary>
+    int EffectiveMaxFiles
+    {
+        get
+        {
+            var attrValue = _attributes.FileConstraints()?.MaxFiles ?? 0;
+            return MaxFiles ?? (attrValue > 0 ? attrValue : 0);
+        }
+    }
+
+    /// <summary>
+    /// Maximum total bytes across all selected files (existing plus newly picked). 0 = unlimited.
+    /// Enforced before each file is buffered, so it bounds the aggregate in-memory footprint even when
+    /// every individual file passes <see cref="MaxFileSizeBytes"/>. Falls back to the bound property's
+    /// <c>[FileConstraints(MaxTotalBytes = …)]</c> when unset -- see
+    /// <see cref="EffectiveMaxTotalBytes"/> -- then to the built-in 100 MB default.
+    /// </summary>
+    [Parameter] public long? MaxTotalBytes { get; set; }
+
+    /// <summary>
+    /// The aggregate size cap actually enforced: the <see cref="MaxTotalBytes"/> parameter, else the
+    /// bound property's <c>[FileConstraints(MaxTotalBytes = …)]</c> value (0 there means unset), else
+    /// the built-in 100 MB default.
+    /// </summary>
+    long EffectiveMaxTotalBytes
+    {
+        get
+        {
+            var attrValue = _attributes.FileConstraints()?.MaxTotalBytes ?? 0;
+            return MaxTotalBytes ?? (attrValue > 0 ? attrValue : 100L * 1024 * 1024);
+        }
+    }
 
     // Localizable upload-error messages (string.Format under CurrentCulture, defaults keep today's
     // exact English output — same pattern as the Pagination/Select label parameters). The {n}
@@ -116,7 +175,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     // The <InputFile> (and its drop zone) unmounts once the MaxFiles cap is reached — anything that
     // targets the input (the FormLabel's `for`, focus restoration) must gate on this same condition
     // or it points at an element that isn't in the DOM.
-    bool CanAddMoreFiles => MaxFiles <= 0 || Value is null || Value.Count < MaxFiles;
+    bool CanAddMoreFiles => EffectiveMaxFiles <= 0 || Value is null || Value.Count < EffectiveMaxFiles;
 
     // AllowedExtensions doubles as an accept-token list: a token containing '/' is a MIME type (or
     // MIME wildcard, e.g. "image/*") and is passed through verbatim -- dot-prefixing it (the old,
@@ -137,7 +196,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     // Trimmed once here (the render-facing shape) and once in MatchesAcceptToken (the match-time
     // shape) -- surrounding whitespace in a consumer's token (e.g. a hand-formatted array) otherwise
     // fails both the `accept` attribute and the match silently, with no error to explain why.
-    string[] NormalizedExtensions => [.. AllowedExtensions.Select(x =>
+    string[] NormalizedExtensions => [.. EffectiveAllowedExtensions.Select(x =>
     {
         var trimmed = x.Trim();
         if (trimmed == "*") return "*/*"; // normalize to the actual MIME wildcard-of-wildcards for `accept`
@@ -259,29 +318,29 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
                 continue;
             }
 
-            if (MaxFiles > 0 && (Value?.Count ?? 0) + toAdd.Count >= MaxFiles)
+            if (EffectiveMaxFiles > 0 && (Value?.Count ?? 0) + toAdd.Count >= EffectiveMaxFiles)
             {
                 skippedByCap++;
                 continue;
             }
 
-            if (AllowedExtensions.Length > 0 && !AllowedExtensions.Any(t => MatchesAcceptToken(file, t)))
+            if (EffectiveAllowedExtensions.Length > 0 && !EffectiveAllowedExtensions.Any(t => MatchesAcceptToken(file, t)))
             {
                 _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
-                    UnsupportedFormatMessageFormat, file.Name, string.Join(", ", AllowedExtensions)));
+                    UnsupportedFormatMessageFormat, file.Name, string.Join(", ", EffectiveAllowedExtensions)));
                 continue;
             }
 
-            if (file.Size > MaxFileSizeBytes)
+            if (file.Size > EffectiveMaxFileSizeBytes)
             {
                 _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
-                    FileTooLargeMessageFormat, file.Name, FormatSize(MaxFileSizeBytes)));
+                    FileTooLargeMessageFormat, file.Name, FormatSize(EffectiveMaxFileSizeBytes)));
                 continue;
             }
 
             // Aggregate cap: skip (don't buffer) an otherwise-valid file that would push the total over
             // MaxTotalBytes. Counted like the count cap and reported once after the loop.
-            if (MaxTotalBytes > 0 && runningTotal + file.Size > MaxTotalBytes)
+            if (EffectiveMaxTotalBytes > 0 && runningTotal + file.Size > EffectiveMaxTotalBytes)
             {
                 skippedByTotalCap++;
                 continue;
@@ -304,7 +363,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
             try
             {
                 var bytes = new byte[file.Size];
-                await using var stream = file.OpenReadStream(MaxFileSizeBytes);
+                await using var stream = file.OpenReadStream(EffectiveMaxFileSizeBytes);
                 await stream.ReadExactlyAsync(bytes);
                 toAdd.Add(new BufferedBrowserFile(file, bytes));
                 runningTotal += file.Size; // only count bytes that actually got buffered
@@ -319,12 +378,12 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         // Files silently dropped by the count cap looked like a bug — say so.
         if (skippedByCap > 0)
             _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
-                MaxFilesMessageFormat, MaxFiles, skippedByCap, MaxFiles == 1 ? "file" : "files"));
+                MaxFilesMessageFormat, EffectiveMaxFiles, skippedByCap, EffectiveMaxFiles == 1 ? "file" : "files"));
 
         // Same voice as the count cap: one aggregate line for everything the total-size cap turned away.
         if (skippedByTotalCap > 0)
             _uploadErrors.Add(string.Format(CultureInfo.CurrentCulture,
-                TotalSizeMessageFormat, FormatSize(MaxTotalBytes), skippedByTotalCap, skippedByTotalCap == 1 ? "file" : "files"));
+                TotalSizeMessageFormat, FormatSize(EffectiveMaxTotalBytes), skippedByTotalCap, skippedByTotalCap == 1 ? "file" : "files"));
 
         if (toAdd.Count > 0)
         {

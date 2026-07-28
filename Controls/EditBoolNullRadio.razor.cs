@@ -20,14 +20,44 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
     /// <summary> When true, displays the null/not set option. Defaults to true.</summary>
     [Parameter] public bool ShowNullOption { get; set; } = true;
 
-    /// <summary> Text to display for the true option. Defaults to "Yes".</summary>
-    [Parameter] public string TrueText { get; set; } = "Yes";
+    /// <summary>
+    /// Text to display for the true option. Falls back to the bound property's <c>[BoolText]</c>
+    /// when unset -- see <see cref="EffectiveTrueText"/>. Defaults to "Yes".
+    /// </summary>
+    [Parameter] public string? TrueText { get; set; }
 
-    /// <summary> Text to display for the false option. Defaults to "No".</summary>
-    [Parameter] public string FalseText { get; set; } = "No";
+    /// <summary>
+    /// Text to display for the false option. Falls back to the bound property's <c>[BoolText]</c>
+    /// when unset -- see <see cref="EffectiveFalseText"/>. Defaults to "No".
+    /// </summary>
+    [Parameter] public string? FalseText { get; set; }
 
-    /// <summary> Text to display for the null option. Defaults to "Not Set".</summary>
-    [Parameter] public string NullText { get; set; } = "Not Set";
+    /// <summary>
+    /// Text to display for the null option. Falls back to the bound property's <c>[BoolText]</c>
+    /// when unset -- see <see cref="EffectiveNullText"/>. Defaults to "Not Set".
+    /// </summary>
+    [Parameter] public string? NullText { get; set; }
+
+    /// <summary>
+    /// The text actually rendered for the true option: the <see cref="TrueText"/> parameter, else
+    /// the model property's <c>[BoolText(TrueText = …)]</c>, else <c>"Yes"</c> -- the control's
+    /// built-in default.
+    /// </summary>
+    string EffectiveTrueText => TrueText ?? _attributes.BoolText()?.TrueText ?? "Yes";
+
+    /// <summary>
+    /// The text actually rendered for the false option: the <see cref="FalseText"/> parameter, else
+    /// the model property's <c>[BoolText(FalseText = …)]</c>, else <c>"No"</c> -- the control's
+    /// built-in default.
+    /// </summary>
+    string EffectiveFalseText => FalseText ?? _attributes.BoolText()?.FalseText ?? "No";
+
+    /// <summary>
+    /// The text actually rendered for the null option: the <see cref="NullText"/> parameter, else
+    /// the model property's <c>[BoolText(NullText = …)]</c>, else <c>"Not Set"</c> -- the control's
+    /// built-in default.
+    /// </summary>
+    string EffectiveNullText => NullText ?? _attributes.BoolText()?.NullText ?? "Not Set";
 
     protected override void OnInitialized()
     {
@@ -69,8 +99,8 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
 
     string GetDisplayText(bool? value) => value switch
     {
-        true => TrueText,
-        false => FalseText,
-        _ => NullText
+        true => EffectiveTrueText,
+        false => EffectiveFalseText,
+        _ => EffectiveNullText
     };
 }

@@ -157,6 +157,106 @@ public static class AttributesHelper
             : null;
     }
 
+    /// <summary>
+    /// The model-declared autocomplete token for a text field (<see cref="AutocompleteAttribute"/>),
+    /// e.g. "email", "name", "postal-code". Null when absent, so the caller falls through to its own
+    /// default (EditString's "one-time-code").
+    /// </summary>
+    public static string? Autocomplete(this List<Attribute>? attrs) =>
+        attrs?.OfType<AutocompleteAttribute>().FirstOrDefault()?.Value;
+
+    /// <summary>
+    /// The model-declared step increment for a numeric field (<see cref="StepAttribute"/>), resolved
+    /// through the same conversion rules as <see cref="MinNumber"/>. A step that can't be converted,
+    /// or that isn't positive (HTML's <c>step</c> must be a positive number), is treated as absent
+    /// (null) rather than throwing — same lenient philosophy as the Min/Max bounds.
+    /// </summary>
+    public static decimal? Step(this List<Attribute>? attrs)
+    {
+        var step = attrs?.OfType<StepAttribute>().FirstOrDefault()?.Value;
+        return step is not null
+            && MinMaxValueComparer.TryConvertBoundToDecimal(step, out var converted)
+            && converted > 0
+            ? converted
+            : null;
+    }
+
+    /// <summary> The model-declared true/false/null display texts for a boolean field, or null when absent.</summary>
+    public static BoolTextAttribute? BoolText(this List<Attribute>? attrs) =>
+        attrs?.OfType<BoolTextAttribute>().FirstOrDefault();
+
+    /// <summary> The model-declared textarea sizing (<see cref="RowsAttribute"/>), or null when absent.</summary>
+    public static RowsAttribute? Rows(this List<Attribute>? attrs) =>
+        attrs?.OfType<RowsAttribute>().FirstOrDefault();
+
+    /// <summary> The model-declared file-upload constraints (<see cref="FileConstraintsAttribute"/>), or null when absent.</summary>
+    public static FileConstraintsAttribute? FileConstraints(this List<Attribute>? attrs) =>
+        attrs?.OfType<FileConstraintsAttribute>().FirstOrDefault();
+
+    /// <summary>
+    /// The model-declared maximum text length — DataAnnotations' own <c>[StringLength]</c>/<c>[MaxLength]</c>,
+    /// via <see cref="GetMinAndMaxLengths"/> (which already reconciles the two when both apply). Lets the
+    /// rendered <c>maxlength</c> attribute derive from the same annotation that validates the field, so
+    /// the browser-side cap and the validation bound can never disagree. Null means no length constraint.
+    /// </summary>
+    public static int? MaxTextLength(this List<Attribute>? attrs) =>
+        attrs is null ? null : GetMinAndMaxLengths(attrs).MaxLength;
+
+    /// <summary>
+    /// True when the model marks this field as a password — DataAnnotations' own
+    /// <c>[DataType(DataType.Password)]</c> (the framework's existing "this is a secret" slot, honored
+    /// for the same "already-annotated model needs no second attribute" reason as
+    /// <see cref="Placeholder"/>'s <c>[Display(Prompt)]</c> fallback). <c>Any</c> rather than
+    /// <c>FirstOrDefault</c> because DataTypeAttribute subclasses ([EmailAddress] etc.) may coexist.
+    /// </summary>
+    public static bool IsPasswordField(this List<Attribute>? attrs) =>
+        attrs?.OfType<DataTypeAttribute>().Any(d => d.DataType == DataType.Password) ?? false;
+
+    /// <summary>
+    /// The model-declared display format — DataAnnotations' own <c>[DisplayFormat(DataFormatString = …)]</c>,
+    /// normalized to the bare format token the Edit controls consume: <c>"{0:N2}"</c> (MVC's composite
+    /// convention) and a raw <c>"N2"</c> both yield <c>"N2"</c>. A composite string this can't reduce to
+    /// one token (e.g. <c>"Total: {0:C}"</c>) is treated as absent (null) rather than rendered literally —
+    /// the controls pass the token to <c>ToString(format)</c>, where a composite would be garbage.
+    /// </summary>
+    public static string? FormatString(this List<Attribute>? attrs)
+    {
+        var format = attrs?.OfType<DisplayFormatAttribute>().FirstOrDefault()?.DataFormatString;
+        if (string.IsNullOrEmpty(format))
+            return null;
+        if (!format.Contains('{'))
+            return format; // already a bare token, e.g. "N2" or "yyyy-MM-dd"
+        if (format.StartsWith("{0:", StringComparison.Ordinal) && format.EndsWith("}", StringComparison.Ordinal))
+        {
+            var token = format[3..^1];
+            return token.Contains('{') || token.Contains('}') ? null : token;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The date-input flavor the model declares via DataAnnotations' own <c>[DataType]</c>:
+    /// <c>Date</c> → <see cref="InputDateType.Date"/>, <c>DateTime</c> → <see cref="InputDateType.DateTimeLocal"/>,
+    /// <c>Time</c> → <see cref="InputDateType.Time"/>. Iterates rather than <c>FirstOrDefault</c> because
+    /// DataTypeAttribute subclasses may coexist; any other DataType value (or none) yields null so the
+    /// control falls through to its own default.
+    /// </summary>
+    public static InputDateType? DateInputType(this List<Attribute>? attrs)
+    {
+        if (attrs is null)
+            return null;
+        foreach (var dataType in attrs.OfType<DataTypeAttribute>())
+        {
+            switch (dataType.DataType)
+            {
+                case DataType.Date: return InputDateType.Date;
+                case DataType.DateTime: return InputDateType.DateTimeLocal;
+                case DataType.Time: return InputDateType.Time;
+            }
+        }
+        return null;
+    }
+
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
         FieldIdentifier fieldIdentifier)
     {
@@ -270,6 +370,88 @@ public class EnumDisplayNameAttribute(string value) : Attribute
 public class PlaceholderAttribute(string value) : Attribute
 {
     public string Value { get; protected set; } = value;
+}
+
+/// <summary>
+/// Declares the HTML <c>autocomplete</c> token for a text field on the model property (e.g. "email",
+/// "name", "tel", "postal-code"), so the field's data semantics live next to the field they describe —
+/// the same rationale as <see cref="PlaceholderAttribute"/>. Resolution: the control's own
+/// <c>Autocomplete</c> parameter → this attribute → the control's built-in default ("one-time-code",
+/// which suppresses browser autofill).
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public class AutocompleteAttribute(string value) : Attribute
+{
+    public string Value { get; protected set; } = value;
+}
+
+/// <summary>
+/// Declares the step increment for a numeric field on the model property (rendered as the input's
+/// <c>step</c> attribute). Same three-constructor shape as <see cref="MinValueAttribute"/> — int and
+/// double for the common cases, string (invariant-culture decimal text, e.g. "0.01") when double's
+/// representation would drift. Resolution: the control's own <c>Step</c> parameter → this attribute →
+/// the control's built-in default of 1. A non-positive or unconvertible step degrades to absent
+/// rather than throwing — see <see cref="AttributesHelper.Step"/>.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public class StepAttribute : Attribute
+{
+    public object Value { get; }
+
+    public StepAttribute(int value) => Value = value;
+    public StepAttribute(double value) => Value = value;
+    public StepAttribute(string value) => Value = value;
+}
+
+/// <summary>
+/// Declares a boolean field's display texts on the model property — what EditBool/EditBoolNullRadio
+/// (and their read-only views) render for true/false/null (e.g. "Enabled"/"Disabled"). All three are
+/// optional named properties; an unset one falls through to the control's built-in default
+/// ("Yes"/"No"/"Not Set"). Resolution per text: the control's own parameter → this attribute → default.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public class BoolTextAttribute : Attribute
+{
+    public string? TrueText { get; set; }
+    public string? FalseText { get; set; }
+    public string? NullText { get; set; }
+}
+
+/// <summary>
+/// Declares a multi-line text field's size/growth on the model property, mirroring EditTextArea's
+/// Rows/MinRows/MaxRows/AutoSize parameters (each parameter still wins over this attribute when set).
+/// 0 means "unset" for the numeric properties — a zero-row textarea isn't a meaningful ask, and
+/// attributes can't hold nullable ints — so an unset one falls through to the control's own default.
+/// <c>AutoSize = false</c> is likewise indistinguishable from unset, which is harmless: false IS the
+/// control default, and an explicit <c>AutoSize="false"</c> parameter still overrides a true here.
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public class RowsAttribute : Attribute
+{
+    public RowsAttribute() { }
+    public RowsAttribute(int rows) => Rows = rows;
+
+    public int Rows { get; set; }
+    public int MinRows { get; set; }
+    public int MaxRows { get; set; }
+    public bool AutoSize { get; set; }
+}
+
+/// <summary>
+/// Declares a file-upload field's constraints on the model property, mirroring EditFile's
+/// AllowedExtensions/MaxFileSizeBytes/MaxFiles/MaxTotalBytes parameters (each parameter still wins
+/// over this attribute when set). 0 means "unset" for the numeric properties (attributes can't hold
+/// nullable longs, and a zero-byte/zero-file cap isn't a meaningful ask); null means "unset" for
+/// <see cref="AllowedExtensions"/>. Unset values fall through to the control's own defaults
+/// (10 MB per file, 100 MB total, unlimited count, any extension).
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+public class FileConstraintsAttribute : Attribute
+{
+    public string[]? AllowedExtensions { get; set; }
+    public long MaxFileSizeBytes { get; set; }
+    public int MaxFiles { get; set; }
+    public long MaxTotalBytes { get; set; }
 }
 
 /// <summary>

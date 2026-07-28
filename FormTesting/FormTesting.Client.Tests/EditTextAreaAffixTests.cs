@@ -25,15 +25,24 @@ public class EditTextAreaAffixTests : BunitContext
         builder.CloseComponent();
     };
 
+    // PersonModel.Name carries [StringLength(100, MinimumLength = 2)] (needed elsewhere for validation
+    // coverage), which would now also supply a model-attribute-fallback maxlength/count -- see
+    // EditTextAreaModelAttributeTests. The MaxLength/ShowCount tests below are about the *parameter* in
+    // isolation, so they bind to a plain string property with no length attribute instead.
+    class UnconstrainedModel
+    {
+        public string? Text { get; set; }
+    }
+
     [Fact]
     public void With_no_new_params_the_textarea_stays_in_legacy_mode_with_no_autosize_class()
     {
-        var model = new PersonModel { Name = "hello" };
-        Expression<Func<string>> field = () => model.Name;
+        var model = new UnconstrainedModel { Text = "hello" };
+        Expression<Func<string?>> field = () => model.Text;
         var cut = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditTextArea>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
         }));
@@ -96,13 +105,13 @@ public class EditTextAreaAffixTests : BunitContext
     [Fact]
     public void MaxLength_renders_the_maxlength_attribute_and_omits_it_when_null()
     {
-        var model = new PersonModel { Name = "hello" };
-        Expression<Func<string>> field = () => model.Name;
+        var model = new UnconstrainedModel { Text = "hello" };
+        Expression<Func<string?>> field = () => model.Text;
 
         var withMax = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditTextArea>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "MaxLength", 50);
             b.CloseComponent();
@@ -112,7 +121,7 @@ public class EditTextAreaAffixTests : BunitContext
         var withoutMax = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditTextArea>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
         }));
@@ -146,12 +155,12 @@ public class EditTextAreaAffixTests : BunitContext
     [Fact]
     public void ShowCount_updates_as_the_value_changes()
     {
-        var model = new PersonModel { Name = "hello" };
-        Expression<Func<string>> field = () => model.Name;
+        var model = new UnconstrainedModel { Text = "hello" };
+        Expression<Func<string?>> field = () => model.Text;
         var cut = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditTextArea>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "ShowCount", true);
             b.CloseComponent();

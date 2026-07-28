@@ -41,7 +41,7 @@
 }
 
 @code {
-    string HtmlInputType => Type switch
+    string HtmlInputType => EffectiveType switch
     {
         InputDateType.Date => "date",
         InputDateType.DateTimeLocal => "datetime-local",

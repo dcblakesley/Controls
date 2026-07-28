@@ -17,7 +17,7 @@
                             IsClearable=@IsClearable
                             OnClear=@Clear
                             CountText=@CountText
-                            ShowPasswordToggle=@IsPassword
+                            ShowPasswordToggle=@EffectiveIsPassword
                             IsPasswordRevealed=@_passwordRevealed
                             OnTogglePassword=@TogglePasswordVisibility>
                 <input @bind-value="CurrentValue"
@@ -29,13 +29,13 @@
                        data-test-id=@_id
                        class=@InputClass
                        placeholder=@EffectivePlaceholder
-                       maxlength=@MaxLength
-                       type=@(IsPassword ? (_passwordRevealed ? "text" : "password") : null)
+                       maxlength=@EffectiveMaxLength
+                       type=@(EffectiveIsPassword ? (_passwordRevealed ? "text" : "password") : null)
                        aria-invalid=@(IsInvalid ? "true" : null)
                        aria-required=@_isRequired
                        aria-describedby=@_describedBy
                        aria-errormessage=@(IsInvalid ? _errorMsgId : null)
-                       autocomplete=@Autocomplete />
+                       autocomplete=@EffectiveAutocomplete />
             </EditInputShell>
         }
         else

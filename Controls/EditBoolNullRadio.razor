@@ -29,7 +29,7 @@
                                data-test-id=@($"rb-{_id}-false")
                                class="edit-radio-input @CssClass"
                                disabled=@IsDisabled />
-                        @FalseText
+                        @EffectiveFalseText
                     </label>
                     <label class="edit-radio-label">
                         <input type="radio"
@@ -41,7 +41,7 @@
                                data-test-id=@($"rb-{_id}-true")
                                class="edit-radio-input @CssClass"
                                disabled=@IsDisabled />
-                        @TrueText
+                        @EffectiveTrueText
                     </label>
                     @if (ShowNullOption)
                     {
@@ -55,7 +55,7 @@
                                    data-test-id=@($"rb-{_id}-none")
                                    class="edit-radio-input @CssClass"
                                    disabled=@IsDisabled />
-                            @NullText
+                            @EffectiveNullText
                         </label>
                     }
                 </div>

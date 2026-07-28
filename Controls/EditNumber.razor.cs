@@ -16,8 +16,20 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<T>>? Field { get; set; }
 
-    /// <summary> The increment/decrement step for the number input. Defaults to 1.0.</summary>
-    [Parameter] public decimal Step { get; set; } = 1.0m;
+    /// <summary>
+    /// The increment/decrement step for the number input, rendered as the input's <c>step</c> attribute
+    /// (InvariantCulture). Falls back to the bound property's <c>[Step]</c> when unset -- see
+    /// <see cref="EffectiveStep"/>.
+    /// </summary>
+    [Parameter] public decimal? Step { get; set; }
+
+    /// <summary>
+    /// The step actually rendered: the <see cref="Step"/> parameter, else the model property's
+    /// <c>[Step]</c>, else <c>1.0m</c> -- the same default the parameter used to carry directly.
+    /// <see cref="AttributesHelper.Step"/> already degrades a non-positive or unconvertible attribute
+    /// value to null, so this is the only place that old hardcoded default needs to live now.
+    /// </summary>
+    decimal EffectiveStep => Step ?? _attributes.Step() ?? 1.0m;
 
     /// <summary>
     /// The minimum allowed value, rendered as the input's <c>min</c> attribute (InvariantCulture, same
@@ -77,8 +89,21 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// </summary>
     [Parameter] public SelectSize Size { get; set; }
 
-    /// <summary> Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal places).</summary>
+    /// <summary>
+    /// Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal
+    /// places). Falls back to the bound property's <c>[DisplayFormat(DataFormatString = …)]</c> when
+    /// unset -- see <see cref="EffectiveFormat"/>.
+    /// </summary>
     [Parameter] public string? Format { get; set; }
+
+    /// <summary>
+    /// The format string actually applied in read-only mode: the <see cref="Format"/> parameter, else
+    /// the model property's <c>[DisplayFormat(DataFormatString = …)]</c> (normalized by
+    /// <see cref="AttributesHelper.FormatString"/> to the bare token <c>ToString(format)</c> expects).
+    /// Null when neither is set, so <see cref="GetFormattedNumber"/> falls through to the value's own
+    /// default <c>ToString()</c> exactly as before.
+    /// </summary>
+    string? EffectiveFormat => Format ?? _attributes.FormatString();
 
     /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a number.";
@@ -173,17 +198,17 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
             {
                 return Value switch
                 {
-                    decimal d => d.ToString(Format),
-                    float f => f.ToString(Format),
-                    double d => d.ToString(Format),
-                    int i => i.ToString(Format),
-                    long l => l.ToString(Format),
-                    short s => s.ToString(Format),
-                    byte b => b.ToString(Format),
-                    sbyte sb => sb.ToString(Format),
-                    uint ui => ui.ToString(Format),
-                    ulong ul => ul.ToString(Format),
-                    ushort us => us.ToString(Format),
+                    decimal d => d.ToString(EffectiveFormat),
+                    float f => f.ToString(EffectiveFormat),
+                    double d => d.ToString(EffectiveFormat),
+                    int i => i.ToString(EffectiveFormat),
+                    long l => l.ToString(EffectiveFormat),
+                    short s => s.ToString(EffectiveFormat),
+                    byte b => b.ToString(EffectiveFormat),
+                    sbyte sb => sb.ToString(EffectiveFormat),
+                    uint ui => ui.ToString(EffectiveFormat),
+                    ulong ul => ul.ToString(EffectiveFormat),
+                    ushort us => us.ToString(EffectiveFormat),
                     _ => Value.ToString()
                 };
             }

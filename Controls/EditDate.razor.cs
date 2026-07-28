@@ -73,7 +73,11 @@ public partial class EditDate<T> : EditControlBase<T>
     /// <see cref="DatePicker"/>'s own default of no upper bound.
     /// </summary>
     [Parameter] public DateTime? Max { get; set; }
-    /// <inheritdoc cref="DatePicker.Format"/>
+    /// <summary>
+    /// Display and primary parse format forwarded to the inner <see cref="DatePicker"/> (see
+    /// <see cref="DatePicker.Format"/>). Falls back to the bound property's
+    /// <c>[DisplayFormat(DataFormatString = "…")]</c> when unset -- see <see cref="EffectiveFormat"/>.
+    /// </summary>
     [Parameter] public string? Format { get; set; }
     /// <summary>
     /// Placeholder text forwarded to the inner <see cref="DatePicker"/>. Null (default) falls back to
@@ -105,10 +109,12 @@ public partial class EditDate<T> : EditControlBase<T>
     /// </summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
 
-    /// <summary> The value shape the calendar picks — Date, DateTimeLocal, Month, or Time. Defaults
-    /// to Date. Maps onto the inner <see cref="DatePicker"/>'s <see cref="DatePickerMode"/>:
-    /// Date→Date, DateTimeLocal→DateTime, Month→Month, Time→Time (see the class remarks).</summary>
-    [Parameter] public InputDateType Type { get; set; } = InputDateType.Date;
+    /// <summary> The value shape the calendar picks — Date, DateTimeLocal, Month, or Time. Maps onto
+    /// the inner <see cref="DatePicker"/>'s <see cref="DatePickerMode"/>: Date→Date, DateTimeLocal→
+    /// DateTime, Month→Month, Time→Time (see the class remarks). Falls back to the bound property's
+    /// <c>[DataType(DataType.Date/DateTime/Time)]</c> when unset, then to <see cref="InputDateType.Date"/>
+    /// -- see <see cref="EffectiveType"/>.</summary>
+    [Parameter] public InputDateType? Type { get; set; }
 
     /// <summary> Format string for the read-only value display. Null (default) picks the effective
     /// mode's default (<see cref="Mode"/> when set, else <see cref="Type"/>'s mapping): Date
@@ -117,7 +123,9 @@ public partial class EditDate<T> : EditControlBase<T>
     /// <see cref="Use12Hours"/> switches to the 12-hour "h:mm tt"/"h:mm:ss tt" forms) · Year "yyyy" ·
     /// Quarter/Week render the same "yyyy-Qn"/"yyyy-Www" shorthand the picker itself shows (no .NET
     /// format token exists for either) — set <see cref="DateFormat"/> explicitly in those two modes
-    /// and it is used verbatim via <c>ToString</c> instead, which can't render the quarter/week digit.</summary>
+    /// and it is used verbatim via <c>ToString</c> instead, which can't render the quarter/week digit.
+    /// Falls back to the bound property's <c>[DisplayFormat(DataFormatString = "…")]</c> when unset,
+    /// ahead of the mode-derived default -- see <see cref="EffectiveDateFormat"/>.</summary>
     [Parameter] public string? DateFormat { get; set; }
 
     // Localizable accessibility strings, forwarded to the inner DatePicker. Defaults mirror
@@ -158,7 +166,7 @@ public partial class EditDate<T> : EditControlBase<T>
 
     /// <summary>
     /// Overrides the inner <see cref="DatePicker"/>'s <see cref="DatePickerMode"/> directly. Null
-    /// (default) derives it from <see cref="Type"/> exactly as before (see <see cref="PickerMode"/>);
+    /// (default) derives it from <see cref="EffectiveType"/> exactly as before (see <see cref="PickerMode"/>);
     /// set this explicitly to reach <see cref="DatePickerMode.Week"/>, <see cref="DatePickerMode.Quarter"/>,
     /// or <see cref="DatePickerMode.Year"/> — <see cref="InputDateType"/> has no equivalents for those
     /// three (and <see cref="EditDateNative{T}"/>'s own <c>Type</c> stays untouched: it drives a native
@@ -224,6 +232,15 @@ public partial class EditDate<T> : EditControlBase<T>
     string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
 
     /// <summary>
+    /// The format actually forwarded to the inner <see cref="DatePicker"/>: the <see cref="Format"/>
+    /// parameter, else the bound property's <c>[DisplayFormat]</c> (see
+    /// <see cref="AttributesHelper.FormatString"/>). Null is intentional and must be preserved when
+    /// neither source supplies a format -- forwarding null is what lets <see cref="DatePicker"/>'s own
+    /// mode-derived default still apply, exactly as it does today.
+    /// </summary>
+    string? EffectiveFormat => Format ?? _attributes.FormatString();
+
+    /// <summary>
     /// Resolves <see cref="Min"/> against the bound property's <see cref="MinValueAttribute"/>/
     /// <see cref="RangeAttribute"/> fallback (see <see cref="AttributesHelper.MinDate"/>). Null is
     /// intentional and must be preserved when neither source supplies a bound: forwarding null is
@@ -238,12 +255,20 @@ public partial class EditDate<T> : EditControlBase<T>
     /// </summary>
     DateTime? EffectiveMax => Max ?? _attributes.MaxDate();
 
+    /// <summary>
+    /// The type actually used to resolve <see cref="PickerMode"/>: the <see cref="Type"/> parameter,
+    /// else the bound property's <c>[DataType(DataType.Date/DateTime/Time)]</c> (see
+    /// <see cref="AttributesHelper.DateInputType"/>), else <see cref="InputDateType.Date"/> -- the
+    /// same default the parameter used to carry directly.
+    /// </summary>
+    InputDateType EffectiveType => Type ?? _attributes.DateInputType() ?? InputDateType.Date;
+
     // Type -> DatePickerMode. The inner DatePicker only knows Mode; Type is EditDate's own
     // parameter name/shape (matching EditDateNative<T>'s Type exactly) so the two controls share one mental
     // model for "what does this field pick" regardless of which UX backs it. Mode (above) overrides
     // this outright when set -- EffectiveMode is what actually reaches the picker and what every
     // read-only-display default below keys off of.
-    DatePickerMode PickerMode => Type switch
+    DatePickerMode PickerMode => EffectiveType switch
     {
         InputDateType.Date => DatePickerMode.Date,
         InputDateType.DateTimeLocal => DatePickerMode.DateTime,
@@ -262,7 +287,14 @@ public partial class EditDate<T> : EditControlBase<T>
         ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
         : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
 
-    string EffectiveDateFormat => DateFormat ?? EffectiveMode switch
+    // The explicit-override surface for the read-only display format: the DateFormat parameter, else
+    // the bound property's own [DisplayFormat]. Shared by EffectiveDateFormat (as the layer ahead of
+    // the mode-derived default) and GetDisplayValue's Quarter/Week gate below -- an attribute-supplied
+    // format must behave exactly like an explicit DateFormat (used verbatim, bypassing the
+    // quarter/week shorthand), not silently get ignored in those two modes.
+    string? FormatOverride => DateFormat ?? _attributes.FormatString();
+
+    string EffectiveDateFormat => FormatOverride ?? EffectiveMode switch
     {
         DatePickerMode.Date => "MM-dd-yyyy",
         DatePickerMode.Month => "MM-yyyy",
@@ -434,7 +466,7 @@ public partial class EditDate<T> : EditControlBase<T>
         // not duplicated regex/format logic here) via PickerValue, the same DateTime? bridge the
         // picker itself would see. An explicit DateFormat still falls through to the verbatim
         // ToString path, matching the picker's own Format contract.
-        if (DateFormat is null && PickerValue is { } pv)
+        if (FormatOverride is null && PickerValue is { } pv)
         {
             if (EffectiveMode == DatePickerMode.Quarter) return PickerMath.FormatQuarterDisplay(pv, culture);
             if (EffectiveMode == DatePickerMode.Week) return PickerMath.FormatWeekDisplay(pv, culture, EffectiveFirstDayOfWeek(culture));

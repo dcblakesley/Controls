@@ -53,9 +53,9 @@
                         <i class="edit-icon-upload@(_hasError ? "-error" : "")" aria-hidden="true"></i>
                         <div class="edit-file-drop-text">
                             <div>Click or drag files to this area to upload</div>
-                            @if (AllowedExtensions.Length > 0)
+                            @if (EffectiveAllowedExtensions.Length > 0)
                             {
-                                <div class="edit-file-formats">Supported formats: @string.Join(", ", AllowedExtensions)</div>
+                                <div class="edit-file-formats">Supported formats: @string.Join(", ", EffectiveAllowedExtensions)</div>
                             }
                         </div>
                         @inputFile

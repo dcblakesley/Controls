@@ -23,11 +23,35 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<T>>? Field { get; set; }
 
-    /// <summary> Format string for displaying the date in read-only mode. Defaults to "MM-dd-yyyy".</summary>
-    [Parameter] public string DateFormat { get; set; } = "MM-dd-yyyy";
+    /// <summary>
+    /// Format string for displaying the date in read-only mode. Falls back to the bound property's
+    /// <c>[DisplayFormat(DataFormatString = "…")]</c> when unset, then to "MM-dd-yyyy" -- see
+    /// <see cref="EffectiveDateFormat"/>.
+    /// </summary>
+    [Parameter] public string? DateFormat { get; set; }
 
-    /// <summary> The HTML input type — Date, DateTimeLocal, Month, or Time. Defaults to Date.</summary>
-    [Parameter] public InputDateType Type { get; set; } = InputDateType.Date;
+    /// <summary>
+    /// The HTML input type — Date, DateTimeLocal, Month, or Time. Falls back to the bound property's
+    /// <c>[DataType(DataType.Date/DateTime/Time)]</c> when unset, then to <see cref="InputDateType.Date"/>
+    /// -- see <see cref="EffectiveType"/>.
+    /// </summary>
+    [Parameter] public InputDateType? Type { get; set; }
+
+    /// <summary>
+    /// The format actually used for the read-only display: the <see cref="DateFormat"/> parameter,
+    /// else the bound property's <c>[DisplayFormat]</c> (see <see cref="AttributesHelper.FormatString"/>),
+    /// else <c>"MM-dd-yyyy"</c> -- the same default the parameter used to carry directly.
+    /// </summary>
+    string EffectiveDateFormat => DateFormat ?? _attributes.FormatString() ?? "MM-dd-yyyy";
+
+    /// <summary>
+    /// The type actually used to select the rendered <c>&lt;input&gt;</c>'s HTML type and the
+    /// <see cref="InputFormat"/>/bound granularity: the <see cref="Type"/> parameter, else the bound
+    /// property's <c>[DataType(DataType.Date/DateTime/Time)]</c> (see
+    /// <see cref="AttributesHelper.DateInputType"/>), else <see cref="InputDateType.Date"/> -- the
+    /// same default the parameter used to carry directly.
+    /// </summary>
+    InputDateType EffectiveType => Type ?? _attributes.DateInputType() ?? InputDateType.Date;
 
     /// <summary>
     /// Lower bound rendered as the native <c>&lt;input&gt;</c>'s <c>min</c> attribute. Stays
@@ -128,7 +152,7 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     // browser's <input type="date|datetime-local|month|time"> in the format it expects. Also backs
     // MinAttribute/MaxAttribute below, so the bound value and its native min/max can never disagree
     // on format.
-    string InputFormat => Type switch
+    string InputFormat => EffectiveType switch
     {
         InputDateType.Date => "yyyy-MM-dd",
         InputDateType.DateTimeLocal => "yyyy-MM-ddTHH:mm:ss",
@@ -160,7 +184,7 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     string? MaxAttribute => FormatBound(EffectiveMax);
 
     string? FormatBound(DateTime? value) =>
-        Type == InputDateType.Time || value is not { } dt
+        EffectiveType == InputDateType.Time || value is not { } dt
             ? null
             : BindConverter.FormatValue(dt, InputFormat, CultureInfo.InvariantCulture);
 
@@ -176,10 +200,10 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
             return CurrentValue switch
             {
                 null => string.Empty,
-                DateTime dt => dt.ToString(DateFormat, CultureInfo.CurrentCulture),
-                DateTimeOffset dto => dto.ToString(DateFormat, CultureInfo.CurrentCulture),
-                DateOnly d => d.ToString(DateFormat, CultureInfo.CurrentCulture),
-                TimeOnly t => t.ToString(DateFormat, CultureInfo.CurrentCulture),
+                DateTime dt => dt.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
+                DateTimeOffset dto => dto.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
+                DateOnly d => d.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
+                TimeOnly t => t.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
                 _ => CurrentValue.ToString() ?? string.Empty
             };
         }

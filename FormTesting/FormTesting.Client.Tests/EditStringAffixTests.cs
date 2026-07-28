@@ -22,6 +22,15 @@ public class EditStringAffixTests : BunitContext
         builder.CloseComponent();
     };
 
+    // PersonModel.Name carries [StringLength(100, MinimumLength = 2)] (needed elsewhere for validation
+    // coverage), which would now also supply a model-attribute-fallback maxlength/count -- see
+    // EditStringModelAttributeTests. The MaxLength/ShowCount tests below are about the *parameter* in
+    // isolation, so they bind to a plain string property with no length attribute instead.
+    class UnconstrainedModel
+    {
+        public string? Text { get; set; }
+    }
+
     [Fact]
     public void With_no_new_params_the_input_has_no_type_attribute_and_stays_in_legacy_mode()
     {
@@ -70,13 +79,13 @@ public class EditStringAffixTests : BunitContext
     [Fact]
     public void AllowClear_click_clears_the_bound_value_and_the_button_disappears()
     {
-        var model = new PersonModel { Name = "Alice" };
+        var model = new UnconstrainedModel { Text = "Alice" };
         string? captured = "Alice";
-        Expression<Func<string>> field = () => model.Name;
+        Expression<Func<string?>> field = () => model.Text;
         var cut = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditString>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => captured = v));
             b.AddAttribute(5, "AllowClear", true);
@@ -96,13 +105,13 @@ public class EditStringAffixTests : BunitContext
     [Fact]
     public void MaxLength_renders_the_maxlength_attribute_and_omits_it_when_null()
     {
-        var model = new PersonModel { Name = "Alice" };
-        Expression<Func<string>> field = () => model.Name;
+        var model = new UnconstrainedModel { Text = "Alice" };
+        Expression<Func<string?>> field = () => model.Text;
 
         var withMax = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditString>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "MaxLength", 10);
             b.CloseComponent();
@@ -112,7 +121,7 @@ public class EditStringAffixTests : BunitContext
         var withoutMax = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditString>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
         }));
@@ -122,13 +131,13 @@ public class EditStringAffixTests : BunitContext
     [Fact]
     public void ShowCount_formats_with_and_without_MaxLength_and_updates_as_the_value_changes()
     {
-        var model = new PersonModel { Name = "Alice" };
-        Expression<Func<string>> field = () => model.Name;
+        var model = new UnconstrainedModel { Text = "Alice" };
+        Expression<Func<string?>> field = () => model.Text;
 
         var withoutMax = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditString>(0);
-            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "ShowCount", true);
             b.CloseComponent();
@@ -141,7 +150,7 @@ public class EditStringAffixTests : BunitContext
         var withMax = Render(WithForm(model, b =>
         {
             b.OpenComponent<EditString>(0);
-            b.AddAttribute(1, "Value", model.Name); // fresh render -- model.Name is still "Alice" (no ValueChanged wired above)
+            b.AddAttribute(1, "Value", model.Text); // fresh render -- model.Text is still "Alice" (no ValueChanged wired above)
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "ShowCount", true);
             b.AddAttribute(5, "MaxLength", 20);

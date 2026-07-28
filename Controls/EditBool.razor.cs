@@ -17,11 +17,31 @@ public partial class EditBool : EditControlBase<bool>
     /// <summary> When true, allows the checkbox to receive focus even when disabled. Defaults to true.</summary>
     [Parameter] public bool AllowFocusWhenDisabled { get; set; } = true;
 
-    /// <summary> Text shown by the read-only view when the value is true. Defaults to "Yes". </summary>
-    [Parameter] public string TrueText { get; set; } = "Yes";
+    /// <summary>
+    /// Text shown by the read-only view when the value is true. Falls back to the bound property's
+    /// <c>[BoolText]</c> when unset -- see <see cref="EffectiveTrueText"/>. Defaults to "Yes".
+    /// </summary>
+    [Parameter] public string? TrueText { get; set; }
 
-    /// <summary> Text shown by the read-only view when the value is false. Defaults to "No". </summary>
-    [Parameter] public string FalseText { get; set; } = "No";
+    /// <summary>
+    /// Text shown by the read-only view when the value is false. Falls back to the bound property's
+    /// <c>[BoolText]</c> when unset -- see <see cref="EffectiveFalseText"/>. Defaults to "No".
+    /// </summary>
+    [Parameter] public string? FalseText { get; set; }
+
+    /// <summary>
+    /// The text actually rendered when the value is true: the <see cref="TrueText"/> parameter, else
+    /// the model property's <c>[BoolText(TrueText = …)]</c>, else <c>"Yes"</c> -- the control's
+    /// built-in default.
+    /// </summary>
+    string EffectiveTrueText => TrueText ?? _attributes.BoolText()?.TrueText ?? "Yes";
+
+    /// <summary>
+    /// The text actually rendered when the value is false: the <see cref="FalseText"/> parameter, else
+    /// the model property's <c>[BoolText(FalseText = …)]</c>, else <c>"No"</c> -- the control's
+    /// built-in default.
+    /// </summary>
+    string EffectiveFalseText => FalseText ?? _attributes.BoolText()?.FalseText ?? "No";
 
     /// <summary>
     /// When true, falls back to the legacy behavior of rendering a disabled checkbox in read-only mode.

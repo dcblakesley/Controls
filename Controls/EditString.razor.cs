@@ -40,8 +40,19 @@ public partial class EditString : EditControlBase<string?>
     /// <summary> Only used with Urls, Sets target="UrlTarget" in the link </summary>
     [Parameter] public string? UrlTarget { get; set; }
 
-    /// <summary> Sets the autocomplete attribute on the input element. Defaults to "one-time-code" to prevent browser autofill/extensions from intercepting input events.</summary>
-    [Parameter] public string Autocomplete { get; set; } = "one-time-code";
+    /// <summary>
+    /// Sets the autocomplete attribute on the input element. Falls back to the bound property's
+    /// <c>[Autocomplete]</c> when unset, then to "one-time-code" to prevent browser autofill/extensions
+    /// from intercepting input events -- see <see cref="EffectiveAutocomplete"/>.
+    /// </summary>
+    [Parameter] public string? Autocomplete { get; set; }
+
+    /// <summary>
+    /// The autocomplete token actually rendered: the <see cref="Autocomplete"/> parameter, else the
+    /// model property's <c>[Autocomplete]</c>, else <c>"one-time-code"</c> (the control's built-in
+    /// default).
+    /// </summary>
+    string EffectiveAutocomplete => Autocomplete ?? _attributes.Autocomplete() ?? "one-time-code";
 
     /// <summary> Optional leading affix content (e.g. a currency symbol or icon), rendered by <see cref="EditInputShell"/>. Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Prefix { get; set; }
@@ -52,14 +63,36 @@ public partial class EditString : EditControlBase<string?>
     /// <summary> Shows a clear button (via <see cref="EditInputShell"/>) while the value is non-empty and the control is enabled. Clicking it sets the value to null and refocuses the input.</summary>
     [Parameter] public bool AllowClear { get; set; }
 
-    /// <summary> Maximum number of characters, rendered as the input's <c>maxlength</c> attribute. Omitted (no browser-side cap) when null.</summary>
+    /// <summary>
+    /// Maximum number of characters, rendered as the input's <c>maxlength</c> attribute. Falls back to
+    /// the bound property's <c>[StringLength]</c>/<c>[MaxLength]</c> when unset -- see
+    /// <see cref="EffectiveMaxLength"/>. Omitted (no browser-side cap) when neither is set.
+    /// </summary>
     [Parameter] public int? MaxLength { get; set; }
 
-    /// <summary> Shows a character-count indicator (via <see cref="EditInputShell"/>): <c>"{length}"</c> alone, or <c>"{length} / {MaxLength}"</c> once <see cref="MaxLength"/> is set (AntD's format).</summary>
+    /// <summary>
+    /// The maximum length actually rendered: the <see cref="MaxLength"/> parameter, else the model
+    /// property's <c>[StringLength]</c>/<c>[MaxLength]</c> bound. Null when neither is set, so the
+    /// <c>maxlength</c> attribute is omitted rather than rendered as an arbitrary cap.
+    /// </summary>
+    int? EffectiveMaxLength => MaxLength ?? _attributes.MaxTextLength();
+
+    /// <summary> Shows a character-count indicator (via <see cref="EditInputShell"/>): <c>"{length}"</c> alone, or <c>"{length} / {EffectiveMaxLength}"</c> once <see cref="EffectiveMaxLength"/> is set (AntD's format).</summary>
     [Parameter] public bool ShowCount { get; set; }
 
-    /// <summary> Renders the input as <c>type="password"</c> with a show/hide toggle (via <see cref="EditInputShell"/>). Independent of the read-only <see cref="MaskText"/> feature.</summary>
-    [Parameter] public bool IsPassword { get; set; }
+    /// <summary>
+    /// Renders the input as <c>type="password"</c> with a show/hide toggle (via <see cref="EditInputShell"/>).
+    /// Independent of the read-only <see cref="MaskText"/> feature. Falls back to the bound property's
+    /// <c>[DataType(DataType.Password)]</c> when unset -- see <see cref="EffectiveIsPassword"/>.
+    /// </summary>
+    [Parameter] public bool? IsPassword { get; set; }
+
+    /// <summary>
+    /// Whether the input actually renders as a password field: the <see cref="IsPassword"/> parameter,
+    /// else the model property's <c>[DataType(DataType.Password)]</c>. False when neither is set,
+    /// matching the control's old default.
+    /// </summary>
+    bool EffectiveIsPassword => IsPassword ?? _attributes.IsPasswordField();
 
     /// <summary>
     /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
@@ -97,18 +130,18 @@ public partial class EditString : EditControlBase<string?>
 
     /// <summary>
     /// The shell's character-count text when <see cref="ShowCount"/> is set, else null (no count
-    /// span renders). AntD format: <c>"{length}"</c> alone, or <c>"{length} / {MaxLength}"</c> once
-    /// <see cref="MaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
+    /// span renders). AntD format: <c>"{length}"</c> alone, or <c>"{length} / {EffectiveMaxLength}"</c>
+    /// once <see cref="EffectiveMaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
     /// treating null as zero.
     /// </summary>
-    string? CountText => EditInputShell.BuildCountText(ShowCount, CurrentValue?.Length ?? 0, MaxLength);
+    string? CountText => EditInputShell.BuildCountText(ShowCount, CurrentValue?.Length ?? 0, EffectiveMaxLength);
 
     /// <summary>
     /// True once any affix parameter is in use -- the single computation site
     /// <see cref="EditInputShell.UsesAffixLayout"/> defines, so this control and the shell always
     /// agree on which layout renders.
     /// </summary>
-    bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, IsPassword);
+    bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, EffectiveIsPassword);
 
     /// <summary>
     /// The input's <c>class</c> attribute. Legacy mode with <see cref="Size"/> at its default

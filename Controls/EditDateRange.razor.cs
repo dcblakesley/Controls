@@ -99,10 +99,12 @@ public partial class EditDateRange : IDisposable
     [Parameter] public DateTime? Max { get; set; }
     /// <summary>
     /// Display and primary parse format forwarded to the inner <see cref="DateRangePicker"/>. Null
-    /// (default) picks <see cref="Mode"/>'s own default there (see <see cref="DateRangePicker.Format"/>)
-    /// instead of a fixed literal -- unlike this parameter's own former hardcoded "MM/dd/yyyy" default,
-    /// which would otherwise silently override every OTHER mode's per-mode default (e.g. Month's
-    /// "MM/yyyy") the moment <see cref="Mode"/> forwarded anything but <see cref="DatePickerMode.Date"/>.
+    /// (default) falls back to the Start property's <c>[DisplayFormat]</c>, then the End property's
+    /// (see <see cref="EffectiveFormat"/>), then <see cref="Mode"/>'s own default there (see
+    /// <see cref="DateRangePicker.Format"/>) instead of a fixed literal -- unlike this parameter's own
+    /// former hardcoded "MM/dd/yyyy" default, which would otherwise silently override every OTHER
+    /// mode's per-mode default (e.g. Month's "MM/yyyy") the moment <see cref="Mode"/> forwarded
+    /// anything but <see cref="DatePickerMode.Date"/>.
     /// </summary>
     [Parameter] public string? Format { get; set; }
     /// <summary>
@@ -163,7 +165,9 @@ public partial class EditDateRange : IDisposable
     /// "h:mm tt"/"h:mm:ss tt" forms) · <c>Year</c> "yyyy" · <c>Quarter</c>/<c>Week</c> render the same
     /// "yyyy-Qn"/"yyyy-Www" shorthand the picker itself shows (no .NET format token exists for either)
     /// — set <see cref="DateFormat"/> explicitly in those two modes and it is used verbatim via
-    /// <c>ToString</c> instead, which can't render the quarter/week digit.</summary>
+    /// <c>ToString</c> instead, which can't render the quarter/week digit. Falls back to the Start
+    /// property's <c>[DisplayFormat]</c>, then the End property's, ahead of the mode-derived default
+    /// -- see <see cref="EffectiveDateFormat"/>.</summary>
     [Parameter] public string? DateFormat { get; set; }
 
     /// <summary>
@@ -344,6 +348,24 @@ public partial class EditDateRange : IDisposable
     string? EffectiveStartPlaceholder => StartPlaceholder ?? _attributes.Placeholder();
     string? EffectiveEndPlaceholder => EndPlaceholder ?? _endAttributes.Placeholder();
 
+    /// <summary>
+    /// The format actually forwarded to the inner <see cref="DateRangePicker"/>: the <see cref="Format"/>
+    /// parameter, else the Start property's <c>[DisplayFormat]</c>, else the End property's (see
+    /// <see cref="AttributesHelper.FormatString"/>) -- mirrors <see cref="EffectiveMin"/>'s Start-first
+    /// preference, since Format (like Min/Max) drives the single calendar both fields share rather than
+    /// two independent per-field values. Null is intentional and must be preserved when no source
+    /// supplies a format -- forwarding null is what lets <see cref="DateRangePicker"/>'s own mode-derived
+    /// default still apply, exactly as it does today.
+    /// </summary>
+    string? EffectiveFormat => Format ?? _attributes.FormatString() ?? _endAttributes.FormatString();
+
+    // The explicit-override surface for the read-only display format: the DateFormat parameter, else
+    // the Start property's own [DisplayFormat], else the End property's. Shared by EffectiveDateFormat
+    // (as the layer ahead of the mode-derived default) and FormatOne's Quarter/Week gate below -- an
+    // attribute-supplied format must behave exactly like an explicit DateFormat (used verbatim,
+    // bypassing the quarter/week shorthand), not silently get ignored in those two modes.
+    string? FormatOverride => DateFormat ?? _attributes.FormatString() ?? _endAttributes.FormatString();
+
     // Unlike Start/EndPlaceholder above, Min/Max bound ONE shared calendar rather than two independent
     // inputs, so there's no "leak onto the other field" concern to avoid -- the opposite problem
     // applies instead. The natural annotation is [MinValue] on Start and [MaxValue] on End (the
@@ -468,7 +490,7 @@ public partial class EditDateRange : IDisposable
     // (there's no separate Type/Mode fork here -- Mode is the only lever). Quarter/Week's "yyyy" is
     // never actually rendered -- FormatOne bypasses ToString(EffectiveDateFormat) for both via
     // PickerMath's shared FormatQuarterDisplay/FormatWeekDisplay (see FormatOne below).
-    string EffectiveDateFormat => DateFormat ?? Mode switch
+    string EffectiveDateFormat => FormatOverride ?? Mode switch
     {
         DatePickerMode.Date => "MM-dd-yyyy",
         DatePickerMode.Month => "MM-yyyy",
@@ -504,7 +526,7 @@ public partial class EditDateRange : IDisposable
         // FormatWeekDisplay (the single source of truth DateRangePicker's own display routes through
         // too, not duplicated regex/format logic here). An explicit DateFormat still falls through to
         // the verbatim ToString path, matching the picker's own Format contract.
-        if (DateFormat is null)
+        if (FormatOverride is null)
         {
             if (Mode == DatePickerMode.Quarter) return PickerMath.FormatQuarterDisplay(v, culture);
             if (Mode == DatePickerMode.Week) return PickerMath.FormatWeekDisplay(v, culture, EffectiveFirstDayOfWeek(culture));
