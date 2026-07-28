@@ -99,6 +99,18 @@
         <pre class="code-block code-block-model"><code>@_disabledModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditDateRange @bind-Start="_model.BoundedStart"
+                       @bind-End="_model.BoundedEnd"
+                       Label="Bounded Range" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_boundedExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_boundedModel</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -142,6 +154,14 @@
         // convention as DemoEditDateModel.AppointmentDate.
         public DateTime? DisabledStart { get; set; } = new DateTime(2026, 2, 2);
         public DateTime? DisabledEnd { get; set; } = new DateTime(2026, 2, 13);
+
+        // No Min/Max markup here -- the shared calendar's bounds come entirely from these two
+        // properties' own [MinValue]/[MaxValue] attributes (EditDateRange.EffectiveMin/EffectiveMax).
+        [MinValue("2026-01-01")]
+        public DateTime? BoundedStart { get; set; } = new DateTime(2026, 2, 1);
+
+        [MaxValue("2026-12-31")]
+        public DateTime? BoundedEnd { get; set; } = new DateTime(2026, 2, 14);
     }
 
     static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
@@ -204,4 +224,14 @@ public DateTime? DateTimeEnd { get; set; } = new DateTime(2026, 2, 20, 17, 30, 0
 public DateTime? DisabledEnd { get; set; } = new DateTime(2026, 2, 13);
 
 static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;";
+
+    readonly string _boundedExample = @"<EditDateRange @bind-Start=""_model.BoundedStart""
+               @bind-End=""_model.BoundedEnd""
+               Label=""Bounded Range"" />";
+
+    readonly string _boundedModel = @"[MinValue(""2026-01-01"")]
+public DateTime? BoundedStart { get; set; } = new DateTime(2026, 2, 1);
+
+[MaxValue(""2026-12-31"")]
+public DateTime? BoundedEnd { get; set; } = new DateTime(2026, 2, 14);";
 }

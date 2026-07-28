@@ -19,11 +19,35 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// <summary> The increment/decrement step for the number input. Defaults to 1.0.</summary>
     [Parameter] public decimal Step { get; set; } = 1.0m;
 
-    /// <summary> The minimum allowed value, rendered as the input's <c>min</c> attribute (InvariantCulture, same type discipline as <see cref="Step"/>). Omitted (no browser-side floor) when null.</summary>
+    /// <summary>
+    /// The minimum allowed value, rendered as the input's <c>min</c> attribute (InvariantCulture, same
+    /// type discipline as <see cref="Step"/>). Falls back to the bound property's
+    /// <c>[MinValue]</c>/<c>[Range]</c> when unset -- see <see cref="EffectiveMin"/>.
+    /// </summary>
     [Parameter] public decimal? Min { get; set; }
 
-    /// <summary> The maximum allowed value, rendered as the input's <c>max</c> attribute (InvariantCulture, same type discipline as <see cref="Step"/>). Omitted (no browser-side ceiling) when null.</summary>
+    /// <summary>
+    /// The maximum allowed value, rendered as the input's <c>max</c> attribute (InvariantCulture, same
+    /// type discipline as <see cref="Step"/>). Falls back to the bound property's
+    /// <c>[MaxValue]</c>/<c>[Range]</c> when unset -- see <see cref="EffectiveMax"/>.
+    /// </summary>
     [Parameter] public decimal? Max { get; set; }
+
+    /// <summary>
+    /// The minimum bound actually rendered: the <see cref="Min"/> parameter, else the model property's
+    /// <c>[MinValue]</c>/<c>[Range]</c> lower bound. Null when neither is set (or the bound isn't
+    /// representable as <see cref="decimal"/>), so the <c>min</c> attribute is omitted rather than
+    /// rendered as an unbounded floor.
+    /// </summary>
+    decimal? EffectiveMin => Min ?? _attributes.MinNumber();
+
+    /// <summary>
+    /// The maximum bound actually rendered: the <see cref="Max"/> parameter, else the model property's
+    /// <c>[MaxValue]</c>/<c>[Range]</c> upper bound. Null when neither is set (or the bound isn't
+    /// representable as <see cref="decimal"/>), so the <c>max</c> attribute is omitted rather than
+    /// rendered as an unbounded ceiling.
+    /// </summary>
+    decimal? EffectiveMax => Max ?? _attributes.MaxNumber();
 
     /// <summary>
     /// Placeholder text to display in the input when empty. Falls back to the bound property's

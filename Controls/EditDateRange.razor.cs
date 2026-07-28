@@ -80,9 +80,22 @@ public partial class EditDateRange : IDisposable
 
     /// <inheritdoc cref="DateRangePicker.Presets"/>
     [Parameter] public IReadOnlyList<DateRangePreset>? Presets { get; set; }
-    /// <inheritdoc cref="DateRangePicker.Min"/>
+    /// <summary>
+    /// Lower bound forwarded to the inner <see cref="DateRangePicker"/>, shared by both panels. Null
+    /// (default) falls back to the Start property's own <see cref="MinValueAttribute"/>/
+    /// <see cref="RangeAttribute"/> minimum, then to the End property's (see
+    /// <see cref="EffectiveMin"/>) -- mirrors <see cref="StartPlaceholder"/>'s per-field resolution
+    /// except that Min/Max apply to the single calendar both fields share, so each bound falls back to
+    /// the OTHER field's attributes rather than yielding independent per-input values.
+    /// </summary>
     [Parameter] public DateTime? Min { get; set; }
-    /// <inheritdoc cref="DateRangePicker.Max"/>
+    /// <summary>
+    /// Upper bound forwarded to the inner <see cref="DateRangePicker"/>, shared by both panels. Null
+    /// (default) falls back to the End property's own <see cref="MaxValueAttribute"/>/
+    /// <see cref="RangeAttribute"/> maximum, then to the Start property's (see
+    /// <see cref="EffectiveMax"/>) -- the mirror image of <see cref="Min"/>'s Start-first preference,
+    /// since the natural annotation pairs <c>[MinValue]</c> with Start and <c>[MaxValue]</c> with End.
+    /// </summary>
     [Parameter] public DateTime? Max { get; set; }
     /// <summary>
     /// Display and primary parse format forwarded to the inner <see cref="DateRangePicker"/>. Null
@@ -330,6 +343,17 @@ public partial class EditDateRange : IDisposable
     // EffectiveFormat) still apply, exactly as it does today.
     string? EffectiveStartPlaceholder => StartPlaceholder ?? _attributes.Placeholder();
     string? EffectiveEndPlaceholder => EndPlaceholder ?? _endAttributes.Placeholder();
+
+    // Unlike Start/EndPlaceholder above, Min/Max bound ONE shared calendar rather than two independent
+    // inputs, so there's no "leak onto the other field" concern to avoid -- the opposite problem
+    // applies instead. The natural annotation is [MinValue] on Start and [MaxValue] on End (the
+    // property each bound most obviously constrains), but a single [Range(typeof(DateTime), ...)] on
+    // just one property also supplies both bounds at once, so each effective value prefers its
+    // "natural" field's attributes first and falls back to the other field's -- the union of what
+    // either field's own validation would accept, so the shared calendar bound can never be tighter
+    // than both fields' own annotations and block a value either field's own validation would allow.
+    DateTime? EffectiveMin => Min ?? _attributes.MinDate() ?? _endAttributes.MinDate();
+    DateTime? EffectiveMax => Max ?? _endAttributes.MaxDate() ?? _attributes.MaxDate();
 
     protected override void OnInitialized()
     {

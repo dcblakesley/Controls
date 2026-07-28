@@ -104,6 +104,17 @@
         <pre class="code-block code-block-model"><code>@_footerAndTimeOptionsModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditDate @bind-Value="_model.ModelBoundDate"
+                        Label="Within 2026 (model-declared [MinValue]/[MaxValue])" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_modelMinMaxExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_modelMinMaxModel</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -143,6 +154,12 @@
         // its own DisabledDate predicate accepts.
         public DateTime? AppointmentDate { get; set; } = new DateTime(2026, 2, 16);
         public TimeOnly? MeetingTime { get; set; } = new TimeOnly(14, 30, 0);
+
+        // No Min/Max parameter set in markup -- [MinValue]/[MaxValue] alone bound the picker via
+        // EffectiveMin/EffectiveMax.
+        [MinValue("2026-01-01")]
+        [MaxValue("2026-12-31")]
+        public DateTime? ModelBoundDate { get; set; } = new DateTime(2026, 6, 15);
     }
 
     static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
@@ -222,4 +239,11 @@ public DateOnly? YearValue { get; set; } = new DateOnly(2026, 1, 1);";
 public TimeOnly? MeetingTime { get; set; } = new TimeOnly(14, 30, 0);
 
 static bool IsWeekend(DateTime date) => date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;";
+
+    readonly string _modelMinMaxExample = @"<EditDate @bind-Value=""_model.ModelBoundDate""
+                Label=""Within 2026 (model-declared [MinValue]/[MaxValue])"" />";
+
+    readonly string _modelMinMaxModel = @"[MinValue(""2026-01-01"")]
+[MaxValue(""2026-12-31"")]
+public DateTime? ModelBoundDate { get; set; } = new DateTime(2026, 6, 15);";
 }

@@ -29,6 +29,41 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     /// <summary> The HTML input type — Date, DateTimeLocal, Month, or Time. Defaults to Date.</summary>
     [Parameter] public InputDateType Type { get; set; } = InputDateType.Date;
 
+    /// <summary>
+    /// Lower bound rendered as the native <c>&lt;input&gt;</c>'s <c>min</c> attribute. Stays
+    /// <c>DateTime?</c> regardless of <typeparamref name="T"/> -- only the bound value generalizes,
+    /// the same contract as <see cref="EditDate{T}.Min"/> (e.g. a <c>DateOnly</c>-bound instance
+    /// still sets this with a <c>DateTime</c>: <c>Min="@d.ToDateTime(TimeOnly.MinValue)"</c>). Null
+    /// (default) falls back to the bound property's <see cref="MinValueAttribute"/> or
+    /// <see cref="RangeAttribute"/> minimum (see <see cref="EffectiveMin"/>), then to no lower bound
+    /// at all -- the attribute is omitted, not rendered as an unbounded floor. Ignored entirely when
+    /// <see cref="Type"/> is <see cref="InputDateType.Time"/>: a time-of-day has no date-range
+    /// concept, matching <see cref="EditDate{T}"/>'s own documented Time-mode exemption for its inner
+    /// <c>DatePicker</c>.
+    /// </summary>
+    [Parameter] public DateTime? Min { get; set; }
+    /// <summary>
+    /// Upper bound rendered as the native <c>&lt;input&gt;</c>'s <c>max</c> attribute. Same
+    /// <c>DateTime?</c>-regardless-of-<typeparamref name="T"/> contract as <see cref="Min"/>, model-
+    /// attribute fallback (via <see cref="MaxValueAttribute"/>/<see cref="RangeAttribute"/>, see
+    /// <see cref="EffectiveMax"/>), and <see cref="InputDateType.Time"/> exemption.
+    /// </summary>
+    [Parameter] public DateTime? Max { get; set; }
+
+    /// <summary>
+    /// Resolves <see cref="Min"/> against the bound property's <see cref="MinValueAttribute"/>/
+    /// <see cref="RangeAttribute"/> fallback (see <see cref="AttributesHelper.MinDate"/>). Null is
+    /// preserved when neither source supplies a bound, so <see cref="MinAttribute"/> omits the
+    /// native <c>min</c> attribute entirely rather than rendering an unbounded floor.
+    /// </summary>
+    DateTime? EffectiveMin => Min ?? _attributes.MinDate();
+    /// <summary>
+    /// Resolves <see cref="Max"/> against the bound property's <see cref="MaxValueAttribute"/>/
+    /// <see cref="RangeAttribute"/> fallback (see <see cref="AttributesHelper.MaxDate"/>). Same
+    /// null-preserving contract as <see cref="EffectiveMin"/>.
+    /// </summary>
+    DateTime? EffectiveMax => Max ?? _attributes.MaxDate();
+
     /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
 
@@ -90,27 +125,44 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     }
 
     // Ported from InputDate<T>: format-string varies with Type so the value round-trips through the
-    // browser's <input type="date|datetime-local|month|time"> in the format it expects.
-    protected override string FormatValueAsString(T? value)
+    // browser's <input type="date|datetime-local|month|time"> in the format it expects. Also backs
+    // MinAttribute/MaxAttribute below, so the bound value and its native min/max can never disagree
+    // on format.
+    string InputFormat => Type switch
     {
-        var format = Type switch
-        {
-            InputDateType.Date => "yyyy-MM-dd",
-            InputDateType.DateTimeLocal => "yyyy-MM-ddTHH:mm:ss",
-            InputDateType.Month => "yyyy-MM",
-            InputDateType.Time => "HH:mm:ss",
-            _ => "yyyy-MM-dd"
-        };
+        InputDateType.Date => "yyyy-MM-dd",
+        InputDateType.DateTimeLocal => "yyyy-MM-ddTHH:mm:ss",
+        InputDateType.Month => "yyyy-MM",
+        InputDateType.Time => "HH:mm:ss",
+        _ => "yyyy-MM-dd"
+    };
 
-        return value switch
-        {
-            DateTime dt => BindConverter.FormatValue(dt, format, CultureInfo.InvariantCulture),
-            DateTimeOffset dto => BindConverter.FormatValue(dto, format, CultureInfo.InvariantCulture),
-            DateOnly @do => BindConverter.FormatValue(@do, format, CultureInfo.InvariantCulture),
-            TimeOnly to => BindConverter.FormatValue(to, format, CultureInfo.InvariantCulture),
-            _ => string.Empty
-        };
-    }
+    protected override string FormatValueAsString(T? value) => value switch
+    {
+        DateTime dt => BindConverter.FormatValue(dt, InputFormat, CultureInfo.InvariantCulture),
+        DateTimeOffset dto => BindConverter.FormatValue(dto, InputFormat, CultureInfo.InvariantCulture),
+        DateOnly @do => BindConverter.FormatValue(@do, InputFormat, CultureInfo.InvariantCulture),
+        TimeOnly to => BindConverter.FormatValue(to, InputFormat, CultureInfo.InvariantCulture),
+        _ => string.Empty
+    };
+
+    /// <summary>
+    /// The native <c>min</c> attribute value, formatted with the same <see cref="InputFormat"/> the
+    /// bound value itself round-trips through (see <see cref="FormatValueAsString"/>) -- so the value
+    /// and its bound can never disagree on format. Null when <see cref="EffectiveMin"/> resolves to
+    /// nothing, or when <see cref="Type"/> is <see cref="InputDateType.Time"/> (min/max are date-
+    /// granularity and meaningless for a time-of-day -- parity with <see cref="EditDate{T}"/>, whose
+    /// own Min/Max are documented as ignored in Time mode). Blazor renders no attribute at all for a
+    /// null value, same as <see cref="EditNumber{T}"/>'s own <c>min</c> pattern.
+    /// </summary>
+    string? MinAttribute => FormatBound(EffectiveMin);
+    /// <inheritdoc cref="MinAttribute"/>
+    string? MaxAttribute => FormatBound(EffectiveMax);
+
+    string? FormatBound(DateTime? value) =>
+        Type == InputDateType.Time || value is not { } dt
+            ? null
+            : BindConverter.FormatValue(dt, InputFormat, CultureInfo.InvariantCulture);
 
     // Format the bound value directly by its type with DateFormat. (The old code re-parsed the
     // round-tripped editor string and ran ToUniversalTime().ToLocalTime(), which rendered TimeOnly

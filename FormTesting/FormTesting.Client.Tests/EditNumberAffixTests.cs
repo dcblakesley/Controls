@@ -24,12 +24,15 @@ public class EditNumberAffixTests : BunitContext
     [Fact]
     public void With_no_new_params_the_input_has_no_min_max_or_placeholder_and_stays_in_legacy_mode()
     {
-        var model = new PersonModel { Age = 30 };
-        Expression<Func<int?>> field = () => model.Age;
+        // Price, not Age: Age carries [Range(1, 120)], which the model-attribute fallback
+        // (AttributesHelper.MinNumber/MaxNumber) now legitimately renders as min/max. This test is
+        // about the PARAMETERS being absent, so it needs a bound property with no Range either.
+        var model = new PersonModel { Price = 30m };
+        Expression<Func<decimal?>> field = () => model.Price;
         var cut = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditNumber<int?>>(0);
-            b.AddAttribute(1, "Value", model.Age);
+            b.OpenComponent<EditNumber<decimal?>>(0);
+            b.AddAttribute(1, "Value", model.Price);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
         }));
@@ -47,13 +50,14 @@ public class EditNumberAffixTests : BunitContext
     [Fact]
     public void Min_and_Max_render_InvariantCulture_attributes_and_are_omitted_when_null()
     {
-        var model = new PersonModel { Age = 30 };
-        Expression<Func<int?>> field = () => model.Age;
+        // Price, not Age -- same [Range] rationale as the no-new-params test above.
+        var model = new PersonModel { Price = 30m };
+        Expression<Func<decimal?>> field = () => model.Price;
 
         var withBounds = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditNumber<int?>>(0);
-            b.AddAttribute(1, "Value", model.Age);
+            b.OpenComponent<EditNumber<decimal?>>(0);
+            b.AddAttribute(1, "Value", model.Price);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(4, "Min", 1m);
             b.AddAttribute(5, "Max", 120m);
@@ -65,8 +69,8 @@ public class EditNumberAffixTests : BunitContext
 
         var withoutBounds = Render(WithForm(model, b =>
         {
-            b.OpenComponent<EditNumber<int?>>(0);
-            b.AddAttribute(1, "Value", model.Age);
+            b.OpenComponent<EditNumber<decimal?>>(0);
+            b.AddAttribute(1, "Value", model.Price);
             b.AddAttribute(2, "ValueExpression", field);
             b.CloseComponent();
         }));

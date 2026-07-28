@@ -58,9 +58,20 @@ public partial class EditDate<T> : EditControlBase<T>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<T>>? Field { get; set; }
 
-    /// <inheritdoc cref="DatePicker.Min"/>
+    /// <summary>
+    /// Lower bound forwarded to the inner <see cref="DatePicker"/> (see <see cref="DatePicker.Min"/>
+    /// for the exact mode-dependent granularity and the <c>Time</c>-mode exemption). Null (default)
+    /// falls back to the bound property's <see cref="MinValueAttribute"/> or <see cref="RangeAttribute"/>
+    /// minimum (see <see cref="EffectiveMin"/>), then to <see cref="DatePicker"/>'s own default of no
+    /// lower bound.
+    /// </summary>
     [Parameter] public DateTime? Min { get; set; }
-    /// <inheritdoc cref="DatePicker.Max"/>
+    /// <summary>
+    /// Upper bound forwarded to the inner <see cref="DatePicker"/> (see <see cref="DatePicker.Max"/>).
+    /// Null (default) falls back to the bound property's <see cref="MaxValueAttribute"/> or
+    /// <see cref="RangeAttribute"/> maximum (see <see cref="EffectiveMax"/>), then to
+    /// <see cref="DatePicker"/>'s own default of no upper bound.
+    /// </summary>
     [Parameter] public DateTime? Max { get; set; }
     /// <inheritdoc cref="DatePicker.Format"/>
     [Parameter] public string? Format { get; set; }
@@ -211,6 +222,21 @@ public partial class EditDate<T> : EditControlBase<T>
     /// mode-derived default (e.g. "Select date", "Select month") still apply, exactly as it does today.
     /// </summary>
     string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
+
+    /// <summary>
+    /// Resolves <see cref="Min"/> against the bound property's <see cref="MinValueAttribute"/>/
+    /// <see cref="RangeAttribute"/> fallback (see <see cref="AttributesHelper.MinDate"/>). Null is
+    /// intentional and must be preserved when neither source supplies a bound: forwarding null is
+    /// what lets the inner <see cref="DatePicker"/> impose no lower bound at all, exactly as it does
+    /// today.
+    /// </summary>
+    DateTime? EffectiveMin => Min ?? _attributes.MinDate();
+    /// <summary>
+    /// Resolves <see cref="Max"/> against the bound property's <see cref="MaxValueAttribute"/>/
+    /// <see cref="RangeAttribute"/> fallback (see <see cref="AttributesHelper.MaxDate"/>). Same
+    /// null-preserving contract as <see cref="EffectiveMin"/>.
+    /// </summary>
+    DateTime? EffectiveMax => Max ?? _attributes.MaxDate();
 
     // Type -> DatePickerMode. The inner DatePicker only knows Mode; Type is EditDate's own
     // parameter name/shape (matching EditDateNative<T>'s Type exactly) so the two controls share one mental

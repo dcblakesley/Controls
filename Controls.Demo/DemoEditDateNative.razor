@@ -100,6 +100,17 @@
         <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
     </section>
 
+    <section class="demo-section">
+        <EditDateNative @bind-Value="_model.ModelBoundDate"
+                  Label="Within 2026 (model-declared [MinValue]/[MaxValue])" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_modelMinMaxExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_modelMinMaxModel</code></pre>
+    </section>
+
 </EditForm>
 
 @code {
@@ -121,6 +132,11 @@
         public DateTime? Required { get; set; }
         public DateTime Disabled { get; set; } = DateTime.Today;
 
+        // No Min/Max parameter set in markup -- [MinValue]/[MaxValue] alone bound the native
+        // min/max attributes via EffectiveMin/EffectiveMax.
+        [MinValue("2026-01-01")]
+        [MaxValue("2026-12-31")]
+        public DateTime? ModelBoundDate { get; set; } = new DateTime(2026, 6, 15);
     }
 
     readonly string _basicExample = @"<EditDateNative @bind-Value=""_model.BasicDate"" />
@@ -166,4 +182,11 @@
 public DateTime? Required { get; set; }
 
 public DateTime Disabled { get; set; } = DateTime.Today;";
+
+    readonly string _modelMinMaxExample = @"<EditDateNative @bind-Value=""_model.ModelBoundDate""
+          Label=""Within 2026 (model-declared [MinValue]/[MaxValue])"" />";
+
+    readonly string _modelMinMaxModel = @"[MinValue(""2026-01-01"")]
+[MaxValue(""2026-12-31"")]
+public DateTime? ModelBoundDate { get; set; } = new DateTime(2026, 6, 15);";
 }

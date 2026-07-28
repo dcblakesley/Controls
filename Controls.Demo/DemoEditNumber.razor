@@ -90,6 +90,23 @@
 		<h3>Model</h3>
 		<pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
 	</section>
+
+	<section class="demo-section">
+		<h3>Min / Max from Model Attribute</h3>
+		<p>
+			A <code>[MinValue]</code>/<code>[MaxValue]</code> attribute on the bound property (or a plain
+			<code>[Range]</code>) supplies the <code>min</code>/<code>max</code> bounds here even though
+			the markup below sets no <code>Min</code>/<code>Max</code> parameter at all.
+		</p>
+
+		<EditNumber @bind-Value="_model.WithMinMaxAttribute"/>
+
+		<h3>Markup</h3>
+		<pre class="code-block"><code>@_minMaxAttributeExample</code></pre>
+
+		<h3>Model</h3>
+		<pre class="code-block code-block-model"><code>@_minMaxAttributeModel</code></pre>
+	</section>
 </EditForm>
 
 @code {
@@ -121,6 +138,10 @@
 
 		[Placeholder("e.g. 42")]
 		public int? WithPlaceholderAttribute { get; set; }
+
+		[MinValue(0)]
+		[MaxValue(100)]
+		public int? WithMinMaxAttribute { get; set; }
 	}
 
 	readonly string _basicExample = @"<EditNumber @bind-Value=""_model.Int"" />
@@ -187,5 +208,11 @@ public double RangeValue { get; set; } = 33;";
 
 	readonly string _placeholderAttributeModel = @"[Placeholder(""e.g. 42"")]
 public int? WithPlaceholderAttribute { get; set; }";
+
+	readonly string _minMaxAttributeExample = @"<EditNumber @bind-Value=""_model.WithMinMaxAttribute"" />";
+
+	readonly string _minMaxAttributeModel = @"[MinValue(0)]
+[MaxValue(100)]
+public int? WithMinMaxAttribute { get; set; }";
 
 }

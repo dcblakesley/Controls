@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using Microsoft.AspNetCore.Components.Forms;
 
 namespace FormTesting.Client.Tests;
@@ -189,5 +190,273 @@ public class AttributesHelperTests
     {
         Assert.Throws<ArgumentException>(() =>
             AttributesHelper.GetExpressionMember<int>(() => 1 + 1));
+    }
+
+    // MinNumber / MaxNumber
+
+    [Fact]
+    public void MinNumber_and_MaxNumber_prefer_MinValue_and_MaxValue_over_Range()
+    {
+        // [MinValue]/[MaxValue] are the more specific/newer attributes -- same precedence rule as
+        // Placeholder() winning over [Display(Prompt)].
+        var attrs = new List<Attribute>
+        {
+            new MinValueAttribute(5),
+            new MaxValueAttribute(50),
+            new RangeAttribute(1, 100)
+        };
+        Assert.Equal(5m, attrs.MinNumber());
+        Assert.Equal(50m, attrs.MaxNumber());
+    }
+
+    [Fact]
+    public void MinNumber_and_MaxNumber_fall_back_to_Range_int_ctor()
+    {
+        var attrs = new List<Attribute> { new RangeAttribute(1, 120) };
+        Assert.Equal(1m, attrs.MinNumber());
+        Assert.Equal(120m, attrs.MaxNumber());
+    }
+
+    [Fact]
+    public void MinNumber_and_MaxNumber_fall_back_to_Range_double_ctor()
+    {
+        var attrs = new List<Attribute> { new RangeAttribute(0.5, 99.5) };
+        Assert.Equal(0.5m, attrs.MinNumber());
+        Assert.Equal(99.5m, attrs.MaxNumber());
+    }
+
+    [Fact]
+    public void MaxNumber_treats_a_double_MaxValue_Range_bound_as_unbounded()
+    {
+        // The ubiquitous one-sided idiom: [Range(0, double.MaxValue)] must render min="0" with no max
+        // attribute at all, not throw OverflowException or produce max="1.79E+308".
+        var attrs = new List<Attribute> { new RangeAttribute(0, double.MaxValue) };
+        Assert.Equal(0m, attrs.MinNumber());
+        Assert.Null(attrs.MaxNumber());
+    }
+
+    [Fact]
+    public void MinNumber_treats_a_double_MinValue_Range_bound_as_unbounded()
+    {
+        var attrs = new List<Attribute> { new RangeAttribute(double.MinValue, 100) };
+        Assert.Null(attrs.MinNumber());
+        Assert.Equal(100m, attrs.MaxNumber());
+    }
+
+    [Fact]
+    public void Int_extreme_Range_bounds_are_unbounded_like_ValidationHelpers_one_sided_rewrite()
+    {
+        // The integer-typed spelling of the one-sided idiom. ValidationHelper already rewrites these
+        // sentinels into one-sided messages ("Cannot exceed 100"), so rendering must agree -- a bound
+        // the message layer presents as absent can't appear in the DOM as min="-2147483648".
+        var capped = new List<Attribute> { new RangeAttribute(int.MinValue, 100) };
+        Assert.Null(capped.MinNumber());
+        Assert.Equal(100m, capped.MaxNumber());
+
+        var floored = new List<Attribute> { new RangeAttribute(0, int.MaxValue) };
+        Assert.Equal(0m, floored.MinNumber());
+        Assert.Null(floored.MaxNumber());
+    }
+
+    [Fact]
+    public void Long_extreme_Range_string_bounds_are_unbounded()
+    {
+        var attrs = new List<Attribute>
+        {
+            new RangeAttribute(typeof(long), long.MinValue.ToString(CultureInfo.InvariantCulture), "100")
+            {
+                ParseLimitsInInvariantCulture = true
+            }
+        };
+        Assert.Null(attrs.MinNumber());
+        Assert.Equal(100m, attrs.MaxNumber());
+    }
+
+    [Fact]
+    public void Explicit_MinValue_and_MaxValue_attributes_are_never_sentinel_suppressed()
+    {
+        // The sentinel rule exists only because [Range] forces both bounds to be written. [MinValue]/
+        // [MaxValue] are one-sided by design, so an extreme written there is intentional and renders.
+        var attrs = new List<Attribute> { new MinValueAttribute(int.MinValue), new MaxValueAttribute(int.MaxValue) };
+        Assert.Equal((decimal)int.MinValue, attrs.MinNumber());
+        Assert.Equal((decimal)int.MaxValue, attrs.MaxNumber());
+    }
+
+    [Fact]
+    public void MinNumber_treats_a_NaN_MinValue_bound_as_unbounded()
+    {
+        var attrs = new List<Attribute> { new MinValueAttribute(double.NaN) };
+        Assert.Null(attrs.MinNumber());
+    }
+
+    [Fact]
+    public void MinValue_string_ctor_parses_invariantly_even_under_a_comma_decimal_culture()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE"); // decimal separator is ','
+            var attrs = new List<Attribute> { new MinValueAttribute("1.5") };
+            Assert.Equal(1.5m, attrs.MinNumber());
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void MinNumber_Range_string_ctor_honors_ParseLimitsInInvariantCulture_true()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE"); // decimal separator is ','
+            var attrs = new List<Attribute>
+            {
+                new RangeAttribute(typeof(double), "1.5", "99.5") { ParseLimitsInInvariantCulture = true }
+            };
+            // "1.5" only parses as 1.5 under invariant -- under de-DE, '.' is not the decimal separator.
+            Assert.Equal(1.5m, attrs.MinNumber());
+            Assert.Equal(99.5m, attrs.MaxNumber());
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void MinNumber_Range_string_ctor_defaults_to_CurrentCulture_when_flag_is_unset()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE"); // decimal separator is ','
+            // ParseLimitsInInvariantCulture left at its default (false) -- matches RangeAttribute's own
+            // validation, which also uses CurrentCulture unless the flag is explicitly opted in.
+            var attrs = new List<Attribute> { new RangeAttribute(typeof(double), "1,5", "99,5") };
+            Assert.Equal(1.5m, attrs.MinNumber());
+            Assert.Equal(99.5m, attrs.MaxNumber());
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void MinNumber_returns_null_when_no_bound_attribute_is_present()
+    {
+        Assert.Null(new List<Attribute>().MinNumber());
+    }
+
+    [Fact]
+    public void MinNumber_returns_null_for_a_null_attrs_list()
+    {
+        List<Attribute>? attrs = null;
+        Assert.Null(attrs.MinNumber());
+    }
+
+    // MinDate / MaxDate
+
+    [Fact]
+    public void MinDate_and_MaxDate_prefer_MinValue_and_MaxValue_over_Range()
+    {
+        var attrs = new List<Attribute>
+        {
+            new MinValueAttribute("2024-01-01"),
+            new MaxValueAttribute("2024-12-31"),
+            new RangeAttribute(typeof(DateTime), "2020-01-01", "2020-12-31")
+        };
+        Assert.Equal(new DateTime(2024, 1, 1), attrs.MinDate());
+        Assert.Equal(new DateTime(2024, 12, 31), attrs.MaxDate());
+    }
+
+    [Fact]
+    public void MinDate_and_MaxDate_fall_back_to_a_typeof_DateTime_Range()
+    {
+        var attrs = new List<Attribute>
+        {
+            new RangeAttribute(typeof(DateTime), "2024-01-01", "2024-12-31")
+        };
+        Assert.Equal(new DateTime(2024, 1, 1), attrs.MinDate());
+        Assert.Equal(new DateTime(2024, 12, 31), attrs.MaxDate());
+    }
+
+    [Fact]
+    public void MinDate_ignores_a_numeric_Range_attribute()
+    {
+        // A [Range(int, int)] has OperandType typeof(int) -- MinDate must not mistake it for a date bound.
+        var attrs = new List<Attribute> { new RangeAttribute(1, 120) };
+        Assert.Null(attrs.MinDate());
+        Assert.Null(attrs.MaxDate());
+    }
+
+    [Fact]
+    public void MinValue_string_ctor_for_a_date_bound_parses_invariantly()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            var attrs = new List<Attribute> { new MinValueAttribute("2024-01-01") };
+            Assert.Equal(new DateTime(2024, 1, 1), attrs.MinDate());
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void MinDate_and_MaxDate_Range_honor_ParseLimitsInInvariantCulture_true()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            // "Januar"/"Dezember" are German month names -- InvariantCulture only understands the
+            // English "January"/"December", so parsing under the invariant flag must fail (null).
+            var attrs = new List<Attribute>
+            {
+                new RangeAttribute(typeof(DateTime), "1 Januar 2024", "31 Dezember 2024")
+                {
+                    ParseLimitsInInvariantCulture = true
+                }
+            };
+            Assert.Null(attrs.MinDate());
+            Assert.Null(attrs.MaxDate());
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void MinDate_and_MaxDate_Range_default_to_CurrentCulture_when_flag_is_unset()
+    {
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            var attrs = new List<Attribute>
+            {
+                new RangeAttribute(typeof(DateTime), "1 Januar 2024", "31 Dezember 2024")
+            };
+            Assert.Equal(new DateTime(2024, 1, 1), attrs.MinDate());
+            Assert.Equal(new DateTime(2024, 12, 31), attrs.MaxDate());
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
+    public void MinDate_returns_null_when_no_bound_attribute_is_present()
+    {
+        Assert.Null(new List<Attribute>().MinDate());
     }
 }
