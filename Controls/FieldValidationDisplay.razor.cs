@@ -16,7 +16,6 @@ public partial class FieldValidationDisplay
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
     [Parameter] public required List<Attribute> Attributes { get; set; }
     [Parameter] public string? Id { get; set; }
-    [Parameter] public string? IdPrefix { get; set; }
     [Parameter] public string? Label { get; set; }
 
     int? _minCharacters;

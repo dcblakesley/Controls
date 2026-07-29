@@ -52,6 +52,16 @@ public class AttributesHelperTests
     }
 
     [Fact]
+    public void GetId_ignores_an_empty_idPrefix()
+    {
+        // An empty (not null) IdPrefix — the shape a consumer's unset string variable arrives as —
+        // must not contribute a separator, the same way an empty FormGroupOptions name doesn't.
+        var fid = FieldOf(() => _model.Name);
+        Assert.Equal("Name", AttributesHelper.GetId(null, null, "", fid));
+        Assert.Equal("billing-Name", AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, "", fid));
+    }
+
+    [Fact]
     public void GetLabelText_uses_DisplayName_attribute_when_present()
     {
         var fid = FieldOf(() => _model.Name);

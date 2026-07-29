@@ -289,7 +289,7 @@ public static class AttributesHelper
         if (!string.IsNullOrEmpty(formGroupOptions?.Name))
             baseName = formGroupOptions.Name + "-" + baseName;
 
-        if (idPrefix != null)
+        if (!string.IsNullOrEmpty(idPrefix))
             baseName = idPrefix + "-" + baseName;
 
         return baseName.Replace(" ", "");

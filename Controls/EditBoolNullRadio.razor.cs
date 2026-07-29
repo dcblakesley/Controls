@@ -82,8 +82,6 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
         return false;
     }
 
-    string DisplayLabel() => Label ?? _attributes.GetLabelText(FieldIdentifier);
-
     // For bool? the "default" is null OR false — preserves prior behavior. The base
     // ShouldShowComponent handles the null branch; this override only addresses "false counts
     // as default too." Centralization also fixes a pre-existing latent bug where the

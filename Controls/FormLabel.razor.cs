@@ -9,9 +9,6 @@ public partial class FormLabel
     /// <inheritdoc cref="IEditControl.Id"/>
     [Parameter] public string? Id { get; set; }
     
-    /// <inheritdoc cref="IEditControl.IdPrefix"/>
-    [Parameter] public string? IdPrefix { get; set; }
-    
     [Parameter] public required List<Attribute> Attributes { get; set; }
     [Parameter] public required FieldIdentifier FieldIdentifier { get; set; }
     
