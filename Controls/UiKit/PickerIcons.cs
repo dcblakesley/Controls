@@ -2,17 +2,31 @@ namespace Controls;
 
 /// <summary>
 /// Inline SVG glyphs (AntD icon paths, no icon-font dependency) shared by <see cref="DatePicker"/>
-/// and <see cref="DateRangePicker"/>'s markup.
+/// and <see cref="DateRangePicker"/>'s markup, plus the glyphs <see cref="Pagination"/>,
+/// <see cref="Table{TItem}"/>'s expand chevron and <c>Select</c>'s arrow reuse (see
+/// <see cref="NextIcon"/>/<see cref="DownPath"/>) — one definition per glyph, so a coordinate
+/// never drifts between two copies of the same icon.
 /// </summary>
 internal static class PickerIcons
 {
+    /// <summary>
+    /// AntD "DownOutlined" path data, shared by <see cref="DownIcon"/>, <see cref="Pagination"/>'s
+    /// size-changer arrow and <c>Select</c>'s dropdown arrow — those three need different
+    /// <c>class</c>/size attributes on the <c>&lt;svg&gt;</c>, so each wraps this path itself.
+    /// MUST stay a compile-time literal: it is emitted unencoded wherever a <see cref="MarkupString"/>
+    /// is built from it, so never route a parameter or model value through it (XSS).
+    /// </summary>
+    internal const string DownPath = "M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z";
+
     public static readonly MarkupString CalendarIcon = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M880 184H712v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H384v-64c0-4.4-3.6-8-8-8h-56c-4.4 0-8 3.6-8 8v64H144c-17.7 0-32 14.3-32 32v664c0 17.7 14.3 32 32 32h736c17.7 0 32-14.3 32-32V216c0-17.7-14.3-32-32-32zm-40 656H184V460h656v380zM184 392V256h128v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h256v48c0 4.4 3.6 8 8 8h56c4.4 0 8-3.6 8-8v-48h128v136H184z\"/></svg>");
 
     public static readonly MarkupString DownIcon = new(
-        "<svg class=\"wss-picker-select-arrow\" viewBox=\"64 64 896 896\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z\"/></svg>");
+        $"<svg class=\"wss-picker-select-arrow\" viewBox=\"64 64 896 896\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"{DownPath}\"/></svg>");
 
-    // Prev/next chevrons — the same AntD glyphs Pagination.razor uses for its prev/next buttons.
+    // Prev/next chevrons — the same AntD glyphs Pagination.razor renders for its prev/next buttons
+    // and Table.razor for its expand chevron; those consumers need this exact wrapper, so they use
+    // these MarkupStrings directly rather than re-wrapping the path.
     public static readonly MarkupString PrevIcon = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z\"/></svg>");
 

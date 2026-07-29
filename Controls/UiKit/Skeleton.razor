@@ -14,31 +14,11 @@
             <div class="wss-skeleton-header">
                 <span class="wss-skeleton-avatar @(AvatarShape == SkeletonAvatarShape.Square ? "wss-skeleton-avatar-square" : null)" aria-hidden="true"></span>
             </div>
-            <div class="wss-skeleton-content">
-                @if (Title)
-                {
-                    <div class="wss-skeleton-title" aria-hidden="true"></div>
-                }
-                <ul class="wss-skeleton-paragraph" aria-hidden="true">
-                    @for (var i = 0; i < Rows; i++)
-                    {
-                        <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
-                    }
-                </ul>
-            </div>
+            <div class="wss-skeleton-content">@Body</div>
         }
         else
         {
-            @if (Title)
-            {
-                <div class="wss-skeleton-title" aria-hidden="true"></div>
-            }
-            <ul class="wss-skeleton-paragraph" aria-hidden="true">
-                @for (var i = 0; i < Rows; i++)
-                {
-                    <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
-                }
-            </ul>
+            @Body
         }
     </div>
 }
@@ -79,4 +59,23 @@ else
     /// component's own; the rest are splatted verbatim.
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // Title bar + paragraph lines, identical in both branches above — Avatar mode only differs in
+    // wrapping them in wss-skeleton-content beside the avatar block. Composed from the two
+    // single-root fragments below because a Razor template needs exactly one root element.
+    RenderFragment Body => builder =>
+    {
+        if (Title) builder.AddContent(0, TitleBar);
+        builder.AddContent(1, Paragraph);
+    };
+
+    RenderFragment TitleBar => @<div class="wss-skeleton-title" aria-hidden="true"></div>;
+
+    RenderFragment Paragraph => @<ul class="wss-skeleton-paragraph" aria-hidden="true">
+        @for (var i = 0; i < Rows; i++)
+        {
+            @* The last of several lines is short, AntD-style; a single line stays full width. *@
+            <li style="@(i == Rows - 1 && Rows > 1 ? "width:61%;" : null)"></li>
+        }
+    </ul>;
 }

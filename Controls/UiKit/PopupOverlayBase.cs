@@ -74,6 +74,25 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
     /// comment in <c>wss-overlay.js</c> for why a plain <c>FocusAsync()</c> isn't enough there).</summary>
     protected abstract Task FocusPanelAsync();
 
+    /// <summary>
+    /// Lazily imports <c>wss-overlay.js</c> into <see cref="_module"/> and hands back the reference to
+    /// invoke on. Returns <c>null</c> when this component was disposed while the import was in flight:
+    /// <see cref="DisposeAsync"/> already ran against a null module, so the late-arriving reference is
+    /// ours to clean up (done here) and the caller must bail out rather than invoke into a dead
+    /// circuit. Every import site — this base's <c>syncTrigger</c>/<c>place</c> calls and a subclass's
+    /// <see cref="FocusPanelAsync"/> — must go through here so none of them can strand a module.
+    /// Throws when there is no JS runtime at all (prerender/unit tests); callers keep their own
+    /// graceful-degradation <c>catch</c>.
+    /// </summary>
+    protected async Task<IJSObjectReference?> EnsureModuleAsync()
+    {
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
+        if (!_disposed) return _module;
+        try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
+        _module = null;
+        return null;
+    }
+
     // Single choke point for every open/close, internal or externally-driven: applies _open (the one
     // source of truth OnAfterRenderAsync's JS placement/focus logic reacts to, regardless of who
     // changed it) and notifies VisibleChanged. Mirrors Select's OpenAsync/CloseAsync +
@@ -118,16 +137,9 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
         {
             try
             {
-                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-                if (_disposed)
-                {
-                    // Disposed while the import was in flight — DisposeAsync already ran with a null
-                    // module, so this reference is ours to clean up.
-                    try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-                    _module = null;
-                    return;
-                }
-                await _module.InvokeVoidAsync("syncTrigger", _triggerRef, _open, TriggerDisabled);
+                var module = await EnsureModuleAsync();
+                if (module is null) return; // disposed while the import was in flight
+                await module.InvokeVoidAsync("syncTrigger", _triggerRef, _open, TriggerDisabled);
                 _lastSyncedTrigger = pair; // cache only on success, so a no-JS render retries next time
             }
             catch { /* no JS — a button child still toggles via its bubbled click; plain content is mouse-only */ }
@@ -142,14 +154,9 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
             string? resolved = null;
             try
             {
-                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-                if (_disposed)
-                {
-                    try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-                    _module = null;
-                    return;
-                }
-                resolved = await _module.InvokeAsync<string>("place", _triggerRef, _panelRef, PanelClassPrefix, PlacementName, 10, 8);
+                var module = await EnsureModuleAsync();
+                if (module is null) return; // disposed while the import was in flight
+                resolved = await module.InvokeAsync<string>("place", _triggerRef, _panelRef, PanelClassPrefix, PlacementName, 10, 8);
             }
             catch
             {

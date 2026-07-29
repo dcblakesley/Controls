@@ -14,10 +14,7 @@
         {
             @if (m.Type != MessageType.Error)
             {
-                <div class="wss-msg" @key="m.Id">
-                    <span class="wss-msg-icon wss-msg-icon-@m.Type.ToString().ToLowerInvariant()">@Icon(m.Type)</span>
-                    <span class="wss-msg-content">@m.Content</span>
-                </div>
+                @Row(m)
             }
         }
     </div>
@@ -26,10 +23,7 @@
         {
             @if (m.Type == MessageType.Error)
             {
-                <div class="wss-msg" @key="m.Id">
-                    <span class="wss-msg-icon wss-msg-icon-error">@Icon(m.Type)</span>
-                    <span class="wss-msg-content">@m.Content</span>
-                </div>
+                @Row(m)
             }
         }
     </div>
@@ -38,17 +32,22 @@
 @code {
     [Parameter] public IReadOnlyList<MessageItem> Items { get; set; } = Array.Empty<MessageItem>();
 
+    // One item template for both regions (mirrors NotificationListView.Row) — the assertive region
+    // only ever receives Error items, so the computed severity class is the same "error" it used to
+    // hardcode, with no second copy of the markup to drift.
+    RenderFragment Row(MessageItem m) => @<div class="wss-msg" @key="m.Id">
+        <span class="wss-msg-icon wss-msg-icon-@m.Type.ToString().ToLowerInvariant()">@Icon(m.Type)</span>
+        <span class="wss-msg-content">@m.Content</span>
+    </div>;
+
+    // The spin comes from .wss-msg-icon-loading on the surrounding span (wss-controls.css), which is
+    // why the shared LoadingSpinner glyph — deliberately animation-free — drops straight in here.
     static MarkupString Icon(MessageType type) => type switch
     {
         MessageType.Success => UiKitIcons.ToastSuccess,
         MessageType.Warning => UiKitIcons.ToastWarning,
         MessageType.Error => UiKitIcons.ToastError,
-        MessageType.Loading => Svg("M988 548c-19.9 0-36-16.1-36-36 0-59.4-11.6-117-34.6-171.3a440.45 440.45 0 00-94.3-139.9 437.71 437.71 0 00-139.9-94.3C629 83.6 571.4 72 512 72c-19.9 0-36-16.1-36-36s16.1-36 36-36c69.1 0 136.2 13.5 199.3 40.3C772.3 65 827 102 874 149c47 47 83.9 101.8 109.7 162.7 26.7 63.1 40.2 130.2 40.2 199.3.1 19.9-16 36-35.9 36z"),
+        MessageType.Loading => EditIcons.LoadingSpinner,
         _ => UiKitIcons.ToastInfo,
     };
-
-    // `path` MUST stay a compile-time literal — the constructor emits it unencoded. Every caller
-    // passes a constant icon path; never route a parameter or model value through here (XSS).
-    static MarkupString Svg(string path) => new(
-        $"<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"{path}\"/></svg>");
 }

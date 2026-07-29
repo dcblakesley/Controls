@@ -10,7 +10,7 @@
     }
     <button type="button" class="wss-pagination-prev @(Clamped <= 1 ? "wss-pagination-disabled" : null)"
             disabled="@(Clamped <= 1)" aria-label="@PreviousPageLabel" @onclick="@(() => GoAsync(Clamped - 1))">
-        <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 000 50.3l450.8 352.1c5.3 4.1 12.9.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z"/></svg>
+        @PickerIcons.PrevIcon
     </button>
     @foreach (var (p, idx) in PageItems.Select((p, i) => (p, i)))
     {
@@ -27,7 +27,7 @@
     }
     <button type="button" class="wss-pagination-next @(Clamped >= PageCount ? "wss-pagination-disabled" : null)"
             disabled="@(Clamped >= PageCount)" aria-label="@NextPageLabel" @onclick="@(() => GoAsync(Clamped + 1))">
-        <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M765.7 486.8L314.9 134.7A7.97 7.97 0 00302 141v77.3c0 4.9 2.3 9.6 6.1 12.6l360 281.1-360 281.1c-3.8 3-6.1 7.7-6.1 12.6V883c0 6.7 7.7 10.4 12.9 6.3l450.8-352.1a31.96 31.96 0 000-50.4z"/></svg>
+        @PickerIcons.NextIcon
     </button>
     @if (EffectivePageSizeOptions.Count > 0)
     {
@@ -39,7 +39,7 @@
                     <option value="@size" selected="@(size == PageSize)">@string.Format(CultureInfo.CurrentCulture, PageSizeLabelFormat, size)</option>
                 }
             </select>
-            <svg class="wss-pagination-size-arrow" viewBox="64 64 896 896" fill="currentColor" aria-hidden="true"><path d="M884 256h-75c-5.1 0-9.9 2.5-12.9 6.6L512 654.2 227.9 262.6c-3-4.1-7.8-6.6-12.9-6.6h-75c-6.5 0-10.3 7.4-6.5 12.7l352.6 486.1c12.8 17.6 39 17.6 51.7 0l352.6-486.1c3.9-5.3.1-12.7-6.4-12.7z"/></svg>
+            @SizeArrow
         </span>
     }
     @if (ShowQuickJumper)
@@ -147,6 +147,11 @@
 
     // Sentinel in PageItems marking a collapsed range (rendered as "…").
     const int Ellipsis = 0;
+
+    // The prev/next chevrons come straight from PickerIcons (identical wrapper), but the
+    // size-changer's caret needs its own class instead of the picker's, so it wraps the shared path.
+    static readonly MarkupString SizeArrow = new(
+        $"<svg class=\"wss-pagination-size-arrow\" viewBox=\"64 64 896 896\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"{PickerIcons.DownPath}\"/></svg>");
 
     int PageCount => Math.Max(1, (int)Math.Ceiling((double)Total / Math.Max(1, PageSize)));
 

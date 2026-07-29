@@ -24,8 +24,10 @@
              @onclick:stopPropagation="true">
             <div class="wss-popconfirm-inner">
                 <div class="wss-popconfirm-message">
+                    @* ToastWarning is AntD's ExclamationCircleFilled — the same glyph the warning
+                       toast and Alert render. *@
                     <span class="wss-popconfirm-icon">
-                        <svg viewBox="64 64 896 896" width="1em" height="1em" fill="currentColor" aria-hidden="true"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm-32 232c0-4.4 3.6-8 8-8h48c4.4 0 8 3.6 8 8v272c0 4.4-3.6 8-8 8h-48c-4.4 0-8-3.6-8-8V296zm32 440a48.01 48.01 0 010-96 48.01 48.01 0 010 96z"/></svg>
+                        @UiKitIcons.ToastWarning
                     </span>
                     @if (HasTitle)
                     {
@@ -128,8 +130,9 @@
     {
         try
         {
-            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-            await _module.InvokeVoidAsync("focusDeferred", _okButtonRef);
+            var module = await EnsureModuleAsync();
+            if (module is null) return; // disposed while the import was in flight
+            await module.InvokeVoidAsync("focusDeferred", _okButtonRef);
         }
         catch { /* not focusable yet (prerender/tests) */ }
     }
