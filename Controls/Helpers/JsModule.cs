@@ -25,13 +25,20 @@ namespace Controls.Helpers;
 /// <para>
 /// Not thread-safe, and doesn't need to be: a component's lifecycle callbacks and event handlers are
 /// serialized onto its renderer's synchronization context, so <see cref="GetAsync"/> and
-/// <see cref="DisposeAsync"/> never actually overlap — only the awaits inside them interleave, which
-/// is exactly what the disposed re-check covers.
+/// <see cref="DisposeAsync"/> never actually overlap — only the awaits inside them interleave. That
+/// interleaving is the whole problem this class exists to solve, and it takes both guards below: the
+/// disposed re-check for a dispose that lands mid-import, and the cached import <em>task</em> for two
+/// <see cref="GetAsync"/> calls that both start before the first import resolves.
 /// </para>
 /// </remarks>
 internal sealed class JsModule(string fileName)
 {
     IJSObjectReference? _module;
+    // The in-flight import, not just its result: a second GetAsync arriving before the first resolves
+    // must await the SAME import. Caching only the resolved reference (a `??=` around the await) let
+    // both callers import, and the loser's IJSObjectReference was stranded — never disposed, held for
+    // the rest of the circuit.
+    Task<IJSObjectReference>? _importTask;
     bool _disposed;
 
     /// <summary>
@@ -43,24 +50,33 @@ internal sealed class JsModule(string fileName)
     internal IJSObjectReference? Current => _disposed ? null : _module;
 
     /// <summary>
-    /// Imports the module on first use and hands back the reference to invoke on. Returns
-    /// <c>null</c> in both of the cases a caller must not invoke in — there is no JS runtime/module
-    /// (server prerender, bUnit), or this holder was disposed, including a dispose that raced the
-    /// awaited import (whose late-arriving reference is disposed here rather than stranded) — so every
-    /// caller's bail-out is the same <c>if (module is null)</c>, and its own no-JS fallback covers
-    /// both. A failed import is not cached: the next render retries.
+    /// Imports the module on first use — once, however many callers ask before it resolves — and hands
+    /// back the reference to invoke on. Returns <c>null</c> in both of the cases a caller must not
+    /// invoke in — there is no JS runtime/module (server prerender, bUnit), or this holder was
+    /// disposed, including a dispose that raced the awaited import (whose late-arriving reference is
+    /// disposed here rather than stranded) — so every caller's bail-out is the same
+    /// <c>if (module is null)</c>, and its own no-JS fallback covers both. A failed import is not
+    /// cached: the next render retries.
     /// </summary>
     internal async ValueTask<IJSObjectReference?> GetAsync(IJSRuntime js, FormDefaults? formDefaults)
     {
         if (_disposed) return null;
+        Task<IJSObjectReference>? importTask = null;
         try
         {
-            _module ??= await js.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(formDefaults, fileName));
+            // Held in a local as well as the field so this call awaits its own import even if the
+            // field is cleared underneath it (the dispose path below, or another caller's retry).
+            importTask = _importTask ??= js.InvokeAsync<IJSObjectReference>(
+                "import", JsModuleUrl.Resolve(formDefaults, fileName)).AsTask();
+            _module = await importTask;
         }
         catch
         {
-            return null; // no JS runtime / module (prerender, tests)
+            // No JS runtime / module (prerender, tests). Uncache so the next render retries — but only
+            // this call's own task, so a retry already in flight isn't forgotten (which would let a
+            // second import start after all).
+            if (ReferenceEquals(_importTask, importTask)) _importTask = null;
+            return null;
         }
         if (_disposed)
         {
@@ -92,6 +108,11 @@ internal sealed class JsModule(string fileName)
     // before awaiting so a re-entrant call can't double-dispose the same reference.
     async ValueTask ReleaseAsync()
     {
+        // Drop the cached import as well. This only ever runs with _disposed already set, so nothing
+        // can import again; a completed task would otherwise keep holding the very reference being
+        // released, and a still-pending one is safe to forget — the GetAsync awaiting it holds its own
+        // local and disposes the late-arriving reference itself.
+        _importTask = null;
         if (_module is null) return;
         var module = _module;
         _module = null;
