@@ -8,9 +8,9 @@
         <InputRadio Value=@Value
                     disabled=@IsDisabled
                     class=@($"edit-radio-button-input {CssClass}")
-                    id=@Id
-                    data-test-id=@Id />
-        <label class=@($"edit-radio-button {LabelClass}") for=@Id>@Display</label>
+                    id=@OptionId
+                    data-test-id=@OptionId />
+        <label class=@($"edit-radio-button {LabelClass}") for=@OptionId>@Display</label>
     </span>
 }
 else
@@ -19,8 +19,8 @@ else
         <InputRadio Value=@Value
                     disabled=@IsDisabled
                     class=@($"edit-radio-input {CssClass}")
-                    id=@Id
-                    data-test-id=@Id />
+                    id=@OptionId
+                    data-test-id=@OptionId />
         @Display
     </label>
 }

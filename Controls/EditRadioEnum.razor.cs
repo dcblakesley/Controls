@@ -3,9 +3,11 @@ namespace Controls;
 /// <summary> Edit control for selecting an enum value using radio buttons. Supports sorting and an optional "Other" option with text input.</summary>
 // TEnum is annotated 'All' because the markup renders InputRadioGroup<TEnum?>/InputRadio<TEnum?>,
 // whose TValue declares that requirement.
-public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEnum> : EditControlBase<TEnum?>
+public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEnum> : RadioGroupControlBase<TEnum?>
 {
-    // Component-specific parameters
+    // Component-specific parameters. The shared radio-group surface (IsHorizontal, LabelClass, the
+    // OptionType/ButtonStyle/Size trio + ButtonGroupClass, UpdateOn + UpdateEventName) lives on
+    // RadioGroupControlBase<TValue>, which EditRadioString inherits too.
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
@@ -16,14 +18,8 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<TEnum>>? Field { get; set; }
 
-    /// <summary> When true, displays radio buttons horizontally.</summary>
-    [Parameter] public bool IsHorizontal { get; set; }
-
     /// <summary> When true, sorts the enum options alphabetically by their display name. When false, uses the enum's numeric order.</summary>
     [Parameter] public bool Sort { get; set; }
-
-    /// <summary> The labels around each radio button</summary>
-    [Parameter] public string? LabelClass { get; set; }
 
     /// <summary>
     /// Optional per-option disable predicate, called with each enum value being rendered (including
@@ -31,30 +27,9 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// disabled when this returns true OR the whole group's <c>IsDisabled</c> is true. Null
     /// (default) disables nothing beyond <c>IsDisabled</c>.
     /// </summary>
+    // Can't hoist to RadioGroupControlBase: this control declares Func<TEnum, bool>? while inheriting
+    // RadioGroupControlBase<TEnum?>, so the predicate's type argument isn't the base's TValue.
     [Parameter] public Func<TEnum, bool>? IsOptionDisabled { get; set; }
-
-    /// <summary>
-    /// Rendering mode, mirroring Ant Design's <c>Radio.Group optionType</c>. Defaults to
-    /// <see cref="RadioOptionType.Default"/> (today's plain-radio markup, unchanged).
-    /// <see cref="RadioOptionType.Button"/> renders AntD's segmented "button" look — the same
-    /// <c>InputRadio</c>/keyboard semantics, styled as joined bordered buttons. Inherently
-    /// horizontal: <see cref="IsHorizontal"/> is ignored in button mode. Composes with
-    /// <see cref="HasOtherOption"/> (the Other button joins the row; its free-text input still
-    /// renders as a normal input below) and <see cref="IsOptionDisabled"/>.
-    /// </summary>
-    [Parameter] public RadioOptionType OptionType { get; set; } = RadioOptionType.Default;
-
-    /// <summary>
-    /// Checked-button coloring in <see cref="RadioOptionType.Button"/> mode (no effect otherwise),
-    /// mirroring Ant Design's <c>Radio.Group buttonStyle</c>. Defaults to <see cref="RadioButtonStyle.Outline"/>.
-    /// </summary>
-    [Parameter] public RadioButtonStyle ButtonStyle { get; set; } = RadioButtonStyle.Outline;
-
-    /// <summary>
-    /// Button size in <see cref="RadioOptionType.Button"/> mode (no effect otherwise) — reuses the
-    /// <see cref="SelectSize"/> the Select/EditString family already shares. Defaults to <see cref="SelectSize.Default"/>.
-    /// </summary>
-    [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
     // Other Option
     /// <summary> When true, includes an "Other" option with a text input field. The last enum value is treated as the "Other" option.</summary>
@@ -70,37 +45,23 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
     /// <summary>
-    /// Which DOM event commits the "Other" free-text box's typed value via
-    /// <see cref="OnOtherValueChanged"/> -- <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits
-    /// on every keystroke, <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter.
-    /// Affects ONLY the "Other" free-text box -- the radio buttons themselves always commit on
-    /// selection (native radio <c>onchange</c>) and are unaffected. Resolution order: this parameter,
-    /// then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this control's own default
-    /// of <see cref="UpdateTrigger.Input"/>.
-    /// </summary>
-    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
-
-    /// <summary> The resolved DOM event name ("oninput" or "onchange") for the "Other" text box, per <see cref="UpdateOn"/>'s resolution order.</summary>
-    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
-
-    /// <summary>
-    /// Splats <see cref="OnOtherValueChanged"/> onto whichever event name <see cref="UpdateEventName"/>
-    /// resolves to. The "Other" text box uses a raw event handler rather than a <c>@bind</c>, so
-    /// <c>@bind:event</c> doesn't apply here -- this dictionary is the mechanism that makes the
-    /// wired-up event name dynamic instead of a fixed <c>@oninput</c>. It is handed to the shared
-    /// <see cref="RadioOtherInput"/> (which <see cref="EditRadioString"/> also renders) as its
-    /// <c>CommitAttributes</c>, which is why the wiring travels as a dictionary rather than a callback.
+    /// Splats <see cref="OnOtherValueChanged"/> onto whichever event name
+    /// <see cref="RadioGroupControlBase{TValue}.UpdateEventName"/> resolves to. The "Other" text box
+    /// uses a raw event handler rather than a <c>@bind</c>, so <c>@bind:event</c> doesn't apply here --
+    /// this dictionary is the mechanism that makes the wired-up event name dynamic instead of a fixed
+    /// <c>@oninput</c>. It is handed to the shared <see cref="RadioOtherInput"/> (which
+    /// <see cref="EditRadioString"/> also renders) as its <c>CommitAttributes</c>, which is why the
+    /// wiring travels as a dictionary rather than a callback.
     /// </summary>
     IReadOnlyDictionary<string, object> OtherInputAttribute => new Dictionary<string, object>(1)
     {
         [UpdateEventName] = EventCallback.Factory.Create<ChangeEventArgs>(this, OnOtherValueChanged)
     };
 
+    // No local _isNullable mirror (unlike EditSelectEnum, whose markup reads one for the leading
+    // empty option): nothing in this control's markup needs it, and TryParseValueFromString below
+    // reads the cache's own IsNullable.
     readonly EnumOptionCache<TEnum> _cache = new();
-
-    // Markup reads _isNullable directly, so it stays a same-named member delegating to the cache
-    // rather than a call site rewrite.
-    bool _isNullable => _cache.IsNullable;
 
     protected override void OnInitialized()
     {
@@ -125,18 +86,18 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 
     List<TEnum?> GetOptions() => _cache.Options;
 
-    // GetOptions() carries TEnum? (see EnumOptionCache<TEnum>.BuildOptions' final Cast<TEnum?>())
-    // even though every entry is a real enum value -- the "is TEnum" pattern unwraps that safely for
-    // the Func<TEnum, bool>? predicate's exact signature (matching EditCheckedEnumList's, whose
-    // options list has no such wrapper). A null option (shouldn't occur in practice) is simply never
+    // GetOptions() carries TEnum? (the cache's nullable-element view) even though every entry is a
+    // real enum value -- the "is TEnum" pattern unwraps that safely for the Func<TEnum, bool>?
+    // predicate's exact signature. (EditCheckedEnumList needs no unwrap: it reads the cache's
+    // OptionsNonNullable view instead.) A null option (shouldn't occur in practice) is simply never
     // disabled by the predicate.
     bool IsOptionDisabledFor(TEnum? option) =>
         IsDisabled || (option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true);
 
-    // Single computation site for the button-group root class -- keeps the base class + solid
-    // modifier + size class assembly identical to EditRadioString's copy.
-    string ButtonGroupClass => RadioButtonGroup.GroupClass(ButtonStyle, Size);
-
+    // No IsValueDefault override here (matching EditSelectEnum): the base's
+    // EqualityComparer<TValue>.Default.Equals(CurrentValue, default) already answers "is this the
+    // zero-valued enum?" for a non-nullable TEnum and "is this null?" for a nullable one -- the two
+    // cases this control's former hand-written override spelled out.
     protected override bool TryParseValueFromString(string? value, out TEnum? result, out string validationErrorMessage) =>
         SelectParsing.TryParseEnum(value, _cache.UnderlyingType, _cache.IsNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
@@ -146,11 +107,4 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         if (OtherValue != value)
             await OtherValueChanged.InvokeAsync(value);
     }
-
-    // Class inherits EditControlBase<TEnum?>, so default(TValue) is null — but the prior
-    // behavior also treated the zero-valued enum as default. Preserve that here. Centralization
-    // additionally fixes a latent bug where WhenReadOnly* used bare IsEditMode and ignored
-    // form-wide FormOptions.IsEditMode.
-    protected override bool IsValueDefault() =>
-        CurrentValue == null || CurrentValue.Equals(default(TEnum));
 }

@@ -1,7 +1,7 @@
 namespace Controls;
 
 /// <summary> Provides checkboxes for each input string (in Options), binds to a List of selected strings.</summary>
-public partial class EditCheckedStringList : EditControlListBase<string>
+public partial class EditCheckedStringList : CheckedListControlBase<string>
 {
     // Component-specific parameters
 
@@ -16,30 +16,6 @@ public partial class EditCheckedStringList : EditControlListBase<string>
 
     /// <summary> List of string options to display as checkboxes.</summary>
     [Parameter] public List<string> Options { get; set; } = [];
-
-    /// <summary> Labels for the checkboxes.</summary>
-    [Parameter] public string? LabelClass { get; set; }
-
-    /// <summary> If true, the checkboxes will be displayed horizontally.</summary>
-    [Parameter] public bool IsHorizontal { get; set; }
-
-    /// <summary>
-    /// Optional per-option disable predicate, called with each entry in <see cref="Options"/>. An
-    /// option is disabled when this returns true OR the whole group's <c>IsDisabled</c> is
-    /// true. Null (default) disables nothing beyond <c>IsDisabled</c>.
-    /// </summary>
-    [Parameter] public Func<string, bool>? IsOptionDisabled { get; set; }
-
-    /// <summary>
-    /// When true, each checkbox renders with a custom-drawn box (hidden native input + a sibling
-    /// element that draws the visual state) instead of the bare native checkbox — same opt-in as
-    /// <see cref="EditBool.UseStyledCheckbox"/>. Null (default) falls through to <see cref="FormOptions"/>,
-    /// then any enclosing <see cref="Controls.FormDefaults"/>, then <see cref="FormOptions.DefaultUseStyledCheckbox"/>.
-    /// </summary>
-    [Parameter] public bool? UseStyledCheckbox { get; set; }
-
-    /// <summary> <see cref="UseStyledCheckbox"/> resolved through the FormOptions/FormDefaults/static chain. </summary>
-    bool EffectiveUseStyledCheckbox => EditControlInit.UseStyledCheckbox(UseStyledCheckbox, FormOptions, FormDefaults);
 
     protected override void OnInitialized()
     {

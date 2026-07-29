@@ -1,4 +1,4 @@
-﻿@inherits EditControlBase<string?>
+﻿@inherits RadioGroupControlBase<string?>
 
 @if (ShouldShowComponent())
 {
@@ -31,14 +31,11 @@
                         <div class=@ButtonGroupClass>
                             @foreach (var option in Options)
                             {
-                                var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
-                                var optionId = $"rb-{_id}-{option.ToId()}";
-                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@isOptionDisabled Id=@optionId CssClass=@CssClass LabelClass=@LabelClass Display=@option />
+                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionDisabledFor(option) Id=@_id CssClass=@CssClass LabelClass=@LabelClass Display=@option />
                             }
                             @if (HasOther)
                             {
-                                var otherId = $"rb-{_id}-other";
-                                <RadioOptionItem Value=@_otherName IsButtonMode="true" IsDisabled=@IsDisabled Id=@otherId CssClass=@CssClass LabelClass=@LabelClass Display="Other" />
+                                <RadioOptionItem Value=@_otherName IsButtonMode="true" IsDisabled=@IsDisabled Id=@_id IdSuffix="other" CssClass=@CssClass LabelClass=@LabelClass Display="Other" />
                             }
                         </div>
                         @if (HasOther)
@@ -59,8 +56,7 @@
 
                             @foreach (var option in Options)
                             {
-                                var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
-                                <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@isOptionDisabled Id=@($"rb-{_id}-{option.ToId()}") CssClass=@CssClass LabelClass=@LabelClass Display=@option />
+                                <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@_id CssClass=@CssClass LabelClass=@LabelClass Display=@option />
                             }
 
                             @* Other. .edit-radio-option is the flex row EditRadioEnum puts around every
@@ -71,7 +67,7 @@
                             @if (HasOther)
                             {
                                 <div class="edit-radio-option edit-radio-other-option-container">
-                                    <RadioOptionItem Value=@_otherName IsButtonMode="false" IsDisabled=@IsDisabled Id=@($"rb-{_id}-other") CssClass=@CssClass LabelClass=@LabelClass Display="Other" />
+                                    <RadioOptionItem Value=@_otherName IsButtonMode="false" IsDisabled=@IsDisabled Id=@_id IdSuffix="other" CssClass=@CssClass LabelClass=@LabelClass Display="Other" />
                                     <RadioOtherInput Id=@($"txt-{_id}-custom-value")
                                                      Value=@_otherText
                                                      IsDisabled=@(_selectedOption != _otherName || IsDisabled)

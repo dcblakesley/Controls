@@ -1,17 +1,19 @@
 namespace Controls.Helpers;
 
 /// <summary>
-/// Shared cached-enum-options machinery for <c>EditSelectEnum</c> and <c>EditRadioEnum</c>: resolves
-/// <typeparamref name="TEnum"/>'s nullable-ness/underlying type once, builds the (optionally sorted,
-/// optionally Other-reserved-last) option list, and rebuilds it only when a shaping parameter actually
-/// changes at runtime -- the list would otherwise stay frozen at its init-time shape forever. Holds
-/// per-instance cache state, so each control owns its own instance rather than sharing a static.
+/// Shared cached-enum-options machinery for <c>EditSelectEnum</c>, <c>EditRadioEnum</c> and
+/// <c>EditCheckedEnumList</c>: resolves <typeparamref name="TEnum"/>'s nullable-ness/underlying type
+/// once, builds the (optionally sorted, optionally Other-reserved-last) option list, and rebuilds it
+/// only when a shaping parameter actually changes at runtime -- the list would otherwise stay frozen
+/// at its init-time shape forever. Holds per-instance cache state, so each control owns its own
+/// instance rather than sharing a static.
 /// </summary>
 public sealed class EnumOptionCache<TEnum>
 {
     Type _underlyingType = null!;
     bool _isNullable;
-    List<TEnum?>? _options;
+    List<TEnum>? _options;
+    List<TEnum?>? _nullableOptions;
     bool _lastSort;
     bool _lastHasOtherOption;
 
@@ -25,8 +27,21 @@ public sealed class EnumOptionCache<TEnum>
     /// <summary> Whether <typeparamref name="TEnum"/> is a nullable enum (i.e. <c>Nullable.GetUnderlyingType</c> returned non-null).</summary>
     public bool IsNullable => _isNullable;
 
-    /// <summary> The cached option list, current as of the last <see cref="Initialize"/>/<see cref="Refresh"/> call.</summary>
-    public List<TEnum?> Options => _options!;
+    /// <summary>
+    /// The cached option list as <c>List&lt;TEnum?&gt;</c>, current as of the last
+    /// <see cref="Initialize"/>/<see cref="Refresh"/> call -- the shape the controls that bind a
+    /// <c>TEnum?</c> value (<c>EditSelectEnum</c>, <c>EditRadioEnum</c>) render against. Every entry
+    /// is a real enum member; the nullable annotation is only about the declared element type.
+    /// </summary>
+    public List<TEnum?> Options => _nullableOptions!;
+
+    /// <summary>
+    /// The same options, in the same order, as <c>List&lt;TEnum&gt;</c> -- the shape a control whose
+    /// items are non-nullable needs (<c>EditCheckedEnumList</c> binds <c>List&lt;TEnum&gt;</c> and its
+    /// <c>IsOptionDisabled</c> predicate takes a bare <c>TEnum</c>, so the nullable-element view above
+    /// would only force an unwrap back at the call site).
+    /// </summary>
+    public List<TEnum> OptionsNonNullable => _options!;
 
     /// <summary>
     /// Resolves <typeparamref name="TEnum"/>'s nullable-ness/underlying type and builds the initial
@@ -39,7 +54,7 @@ public sealed class EnumOptionCache<TEnum>
         _underlyingType = _isNullable ? Nullable.GetUnderlyingType(type)! : type;
         _lastSort = sort;
         _lastHasOtherOption = hasOtherOption;
-        _options = BuildOptions(sort, hasOtherOption);
+        SetOptions(BuildOptions(sort, hasOtherOption));
     }
 
     /// <summary>
@@ -54,11 +69,21 @@ public sealed class EnumOptionCache<TEnum>
         {
             _lastSort = sort;
             _lastHasOtherOption = hasOtherOption;
-            _options = BuildOptions(sort, hasOtherOption);
+            SetOptions(BuildOptions(sort, hasOtherOption));
         }
     }
 
-    List<TEnum?> BuildOptions(bool sort, bool hasOtherOption)
+    // Both views are cached side by side so neither accessor converts on the render path and each
+    // hands back a reference-stable list between rebuilds. The second list is a copy purely to
+    // satisfy the accessors' declared element nullability -- for an unconstrained TEnum a bare
+    // `TEnum?` carries no Nullable<> wrapper, so the two lists hold the very same values.
+    void SetOptions(List<TEnum> options)
+    {
+        _options = options;
+        _nullableOptions = options.Cast<TEnum?>().ToList();
+    }
+
+    List<TEnum> BuildOptions(bool sort, bool hasOtherOption)
     {
         var enumValues = EnumHelpers.GetValues<TEnum>(_underlyingType);
 
@@ -80,6 +105,6 @@ public sealed class EnumOptionCache<TEnum>
         if (hasOtherOption && otherOption != null)
             enumValues.Add(otherOption);
 
-        return enumValues.Cast<TEnum?>().ToList();
+        return enumValues;
     }
 }

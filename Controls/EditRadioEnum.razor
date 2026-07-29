@@ -1,5 +1,5 @@
 ﻿@typeparam TEnum
-@inherits EditControlBase<TEnum?>
+@inherits RadioGroupControlBase<TEnum?>
 
 @if (ShouldShowComponent())
 {
@@ -32,8 +32,7 @@
                         <div class=@ButtonGroupClass>
                             @foreach (var option in buttonOptions)
                             {
-                                var optionId = $"rb-{_id}-{option.ToId()}";
-                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionDisabledFor(option) Id=@optionId CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
+                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionDisabledFor(option) Id=@_id CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
                             }
                         </div>
                         @if (HasOtherOption && buttonOptions.Count > 0)
@@ -62,7 +61,7 @@
                                     var showOtherInput = HasOtherOption && isLastOption;
 
                                     <div class="edit-radio-option">
-                                        <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@($"rb-{_id}-{option.ToId()}") CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
+                                        <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@_id CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
 
                                         @* The Other box shares this option's .edit-radio-option flex row, so the
                                            radio and its free-text box sit side by side. EditRadioString mirrors

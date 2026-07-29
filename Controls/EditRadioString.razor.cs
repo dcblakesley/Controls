@@ -1,9 +1,11 @@
 namespace Controls;
 
 /// <summary> Edit control for selecting a string value from a list using radio buttons. Supports custom "Other" option.</summary>
-public partial class EditRadioString : EditControlBase<string?>
+public partial class EditRadioString : RadioGroupControlBase<string?>
 {
-    // Component-specific parameters
+    // Component-specific parameters. The shared radio-group surface (IsHorizontal, LabelClass, the
+    // OptionType/ButtonStyle/Size trio + ButtonGroupClass, UpdateOn + UpdateEventName) lives on
+    // RadioGroupControlBase<TValue>, which EditRadioEnum inherits too.
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
@@ -17,14 +19,8 @@ public partial class EditRadioString : EditControlBase<string?>
     /// <summary> List of string options to display as radio buttons.</summary>
     [Parameter] public required List<string> Options { get; set; }
 
-    /// <summary> When true, displays radio buttons horizontally.</summary>
-    [Parameter] public bool IsHorizontal { get; set; }
-
     /// <summary> When true, includes an "Other" option with a text input field.</summary>
     [Parameter] public bool HasOther { get; set; }
-
-    /// <summary> The labels around each radio button</summary>
-    [Parameter] public string? LabelClass { get; set; }
 
     /// <summary>
     /// Optional per-option disable predicate, called with each entry in <see cref="Options"/>. An
@@ -32,50 +28,16 @@ public partial class EditRadioString : EditControlBase<string?>
     /// true. Null (default) disables nothing beyond <c>IsDisabled</c>. Does not apply to the
     /// built-in "Other" radio (<see cref="HasOther"/>), which has no corresponding options entry.
     /// </summary>
+    // Stays on the leaf rather than RadioGroupControlBase: EditRadioEnum's counterpart is typed on
+    // its TEnum, not on the base's TValue, so the two aren't the same member.
     [Parameter] public Func<string, bool>? IsOptionDisabled { get; set; }
 
     /// <summary>
-    /// Rendering mode, mirroring Ant Design's <c>Radio.Group optionType</c>. Defaults to
-    /// <see cref="RadioOptionType.Default"/> (today's plain-radio markup, unchanged).
-    /// <see cref="RadioOptionType.Button"/> renders AntD's segmented "button" look — the same
-    /// <c>InputRadio</c>/keyboard semantics, styled as joined bordered buttons. Inherently
-    /// horizontal: <see cref="IsHorizontal"/> is ignored in button mode. Composes with
-    /// <see cref="HasOther"/> (the Other radio joins the button row; its free-text input still
-    /// renders as a normal input below) and <see cref="IsOptionDisabled"/>.
-    /// </summary>
-    [Parameter] public RadioOptionType OptionType { get; set; } = RadioOptionType.Default;
-
-    /// <summary>
-    /// Checked-button coloring in <see cref="RadioOptionType.Button"/> mode (no effect otherwise),
-    /// mirroring Ant Design's <c>Radio.Group buttonStyle</c>. Defaults to <see cref="RadioButtonStyle.Outline"/>.
-    /// </summary>
-    [Parameter] public RadioButtonStyle ButtonStyle { get; set; } = RadioButtonStyle.Outline;
-
-    /// <summary>
-    /// Button size in <see cref="RadioOptionType.Button"/> mode (no effect otherwise) — reuses the
-    /// <see cref="SelectSize"/> the Select/EditString family already shares. Defaults to <see cref="SelectSize.Default"/>.
-    /// </summary>
-    [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
-
-    /// <summary>
-    /// Which DOM event commits the "Other" free-text box's typed value to
-    /// <see cref="InputBase{TValue}.CurrentValue"/> -- <see cref="UpdateTrigger.Input"/> (<c>oninput</c>)
-    /// commits on every keystroke, <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on
-    /// blur/Enter. Affects ONLY the "Other" free-text box -- the radio buttons themselves always
-    /// commit on selection (native radio <c>onchange</c>) and are unaffected. Resolution order: this
-    /// parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this control's
-    /// own default of <see cref="UpdateTrigger.Input"/>.
-    /// </summary>
-    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
-
-    /// <summary> The resolved DOM event name ("oninput" or "onchange") the "Other" text box commits on, per <see cref="UpdateOn"/>'s resolution order.</summary>
-    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
-
-    /// <summary>
-    /// Splats <see cref="OnOtherTextChanged"/> onto whichever event name <see cref="UpdateEventName"/>
-    /// resolves to. This is the same mechanism <see cref="EditRadioEnum{TEnum}"/> uses, so both
-    /// controls can render the one shared <see cref="RadioOtherInput"/> element instead of two copies
-    /// of the markup that had silently drifted apart.
+    /// Splats <see cref="OnOtherTextChanged"/> onto whichever event name
+    /// <see cref="RadioGroupControlBase{TValue}.UpdateEventName"/> resolves to. This is the same
+    /// mechanism <see cref="EditRadioEnum{TEnum}"/> uses, so both controls can render the one shared
+    /// <see cref="RadioOtherInput"/> element instead of two copies of the markup that had silently
+    /// drifted apart.
     /// <para>
     /// It replaced an <c>@bind:get</c>/<c>@bind:set</c>/<c>@bind:event</c> trio on an inline input.
     /// Behaviorally identical here: the only thing <c>@bind</c> added was its "re-push the value to
@@ -126,9 +88,10 @@ public partial class EditRadioString : EditControlBase<string?>
         }
     }
 
-    // Single computation site for the button-group root class -- keeps the base class + solid
-    // modifier + size class assembly identical to EditRadioEnum's copy.
-    string ButtonGroupClass => RadioButtonGroup.GroupClass(ButtonStyle, Size);
+    // Mirrors EditRadioEnum's IsOptionDisabledFor so the two markup files diff cleanly. No nullable
+    // unwrap needed on this side: the predicate takes the same string the option loop yields.
+    bool IsOptionDisabledFor(string option) =>
+        IsDisabled || IsOptionDisabled?.Invoke(option) == true;
 
     void ComputeOtherSentinel()
     {
