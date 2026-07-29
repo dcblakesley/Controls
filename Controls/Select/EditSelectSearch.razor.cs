@@ -38,10 +38,10 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// </summary>
     string EffectivePlaceholder => Placeholder ?? _attributes.Placeholder() ?? "Please select";
 
-    /// <summary> Show the clear (x) button when a value is selected. Defaults to true.</summary>
+    /// <inheritdoc cref="Select{TValue}.AllowClear"/>
     [Parameter] public bool AllowClear { get; set; } = true;
 
-    /// <summary> Allow type-to-search filtering. Defaults to true.</summary>
+    /// <inheritdoc cref="Select{TValue}.ShowSearch"/>
     [Parameter] public bool ShowSearch { get; set; } = true;
 
     /// <inheritdoc cref="Select{TValue}.ShowArrow"/>
@@ -50,7 +50,7 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <inheritdoc cref="Select{TValue}.Loading"/>
     [Parameter] public bool Loading { get; set; }
 
-    /// <summary> Visual size (small / default / large).</summary>
+    /// <inheritdoc cref="Select{TValue}.Size"/>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
     /// <inheritdoc cref="Select{TValue}.Variant"/>
@@ -59,10 +59,10 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <inheritdoc cref="Select{TValue}.Prefix"/>
     [Parameter] public RenderFragment? Prefix { get; set; }
 
-    /// <summary> Optional CSS width (e.g. "240px", "100%").</summary>
+    /// <inheritdoc cref="Select{TValue}.Width"/>
     [Parameter] public string? Width { get; set; }
 
-    /// <summary> Text shown when no options match. Defaults to "No data".</summary>
+    /// <inheritdoc cref="Select{TValue}.EmptyText"/>
     [Parameter] public string EmptyText { get; set; } = "No data";
 
     /// <inheritdoc cref="Select{TValue}.EmptyContent"/>
@@ -74,10 +74,10 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <inheritdoc cref="Select{TValue}.DropdownFooter"/>
     [Parameter] public RenderFragment? DropdownFooter { get; set; }
 
-    /// <summary> Debounce (ms) before filtering after a keystroke; 0 = immediate.</summary>
+    /// <inheritdoc cref="Select{TValue}.DebounceMilliseconds"/>
     [Parameter] public int DebounceMilliseconds { get; set; }
 
-    /// <summary> Raised with the current search text whenever it changes.</summary>
+    /// <inheritdoc cref="Select{TValue}.OnSearch"/>
     [Parameter] public EventCallback<string> OnSearch { get; set; }
 
     /// <inheritdoc cref="Select{TValue}.DefaultOpen"/>

@@ -1,4 +1,9 @@
-﻿<!-- Screen readers -->
+@* GetValidationMessages is a lazy yield-return iterator over EditContext's internal field-state
+   dictionary — enumerating it separately for the sr-only region below and the visible region
+   further down would rescan that dictionary twice per render. Materialized once instead so both
+   regions enumerate the same in-memory list. *@
+@{ List<string> messages = EditContext?.GetValidationMessages(FieldIdentifier).ToList() ?? []; }
+<!-- Screen readers -->
 <div class="edit-validation-message edit-sr-only"
      id="error-msg-@Id"
      data-test-id="error-msg-@Id"
@@ -8,7 +13,7 @@
        needed, and the no-arg GetValidationMessages() (a whole-form scan) is avoided. A null
        EditContext (control used outside an EditForm) simply has no messages. *@
     @* One element per message — adjacent text nodes ran together ("RequiredMust be between…"). *@
-    @foreach (var x in EditContext?.GetValidationMessages(FieldIdentifier) ?? [])
+    @foreach (var x in messages)
     {
         <div>@GetValidationMessage(x, true)</div>
     }
@@ -16,7 +21,7 @@
 
 <!-- non-screen readers -->
 <div class="edit-validation-message">
-    @foreach (var x in EditContext?.GetValidationMessages(FieldIdentifier) ?? [])
+    @foreach (var x in messages)
     {
         <div>@GetValidationMessage(x)</div>
     }

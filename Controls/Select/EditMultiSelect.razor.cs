@@ -29,28 +29,16 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <summary> Tags mode: turn typed text into a TValue. When null and TValue is string, the text is used directly.</summary>
     [Parameter] public Func<string, TValue>? TagValueFactory { get; set; }
 
-    /// <summary>
-    /// Placeholder text shown when nothing is selected. Left <c>null</c> (no initializer — deliberately,
-    /// so "unset" is distinguishable from an explicit empty string) so <see cref="EffectivePlaceholder"/>
-    /// can fall through to the model's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute; null means
-    /// "resolve from the model, else 'Please select'".
-    /// </summary>
+    /// <inheritdoc cref="EditSelectSearch{TValue}.Placeholder"/>
     [Parameter] public string? Placeholder { get; set; }
 
-    /// <summary>
-    /// Resolved placeholder actually forwarded to the inner <see cref="Select{TValue}"/>: the
-    /// <see cref="Placeholder"/> parameter (consumer set it explicitly) → the model property's
-    /// <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute → the literal "Please select" fallback.
-    /// The literal default lives here rather than on the parameter itself, because a defaulted
-    /// non-null parameter can't be told apart from a consumer-set value — see <see cref="Placeholder"/>.
-    /// <see cref="Select{TValue}.Placeholder"/> is non-nullable, so this must never be null.
-    /// </summary>
+    /// <inheritdoc cref="EditSelectSearch{TValue}.EffectivePlaceholder"/>
     string EffectivePlaceholder => Placeholder ?? _attributes.Placeholder() ?? "Please select";
 
-    /// <summary> Show the clear (x) button when there is a selection. Defaults to true.</summary>
+    /// <inheritdoc cref="Select{TValue}.AllowClear"/>
     [Parameter] public bool AllowClear { get; set; } = true;
 
-    /// <summary> Allow type-to-search filtering. Defaults to true.</summary>
+    /// <inheritdoc cref="Select{TValue}.ShowSearch"/>
     [Parameter] public bool ShowSearch { get; set; } = true;
 
     /// <inheritdoc cref="Select{TValue}.ShowArrow"/>
@@ -59,16 +47,16 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <inheritdoc cref="Select{TValue}.Loading"/>
     [Parameter] public bool Loading { get; set; }
 
-    /// <summary> Visual size (small / default / large).</summary>
+    /// <inheritdoc cref="Select{TValue}.Size"/>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
     /// <inheritdoc cref="Select{TValue}.Prefix"/>
     [Parameter] public RenderFragment? Prefix { get; set; }
 
-    /// <summary> Optional CSS width (e.g. "240px", "100%").</summary>
+    /// <inheritdoc cref="Select{TValue}.Width"/>
     [Parameter] public string? Width { get; set; }
 
-    /// <summary> Text shown when no options match. Defaults to "No data".</summary>
+    /// <inheritdoc cref="Select{TValue}.EmptyText"/>
     [Parameter] public string EmptyText { get; set; } = "No data";
 
     /// <inheritdoc cref="Select{TValue}.EmptyContent"/>
@@ -80,10 +68,10 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <inheritdoc cref="Select{TValue}.DropdownFooter"/>
     [Parameter] public RenderFragment? DropdownFooter { get; set; }
 
-    /// <summary> Debounce (ms) before filtering after a keystroke; 0 = immediate.</summary>
+    /// <inheritdoc cref="Select{TValue}.DebounceMilliseconds"/>
     [Parameter] public int DebounceMilliseconds { get; set; }
 
-    /// <summary> Raised with the current search text whenever it changes.</summary>
+    /// <inheritdoc cref="Select{TValue}.OnSearch"/>
     [Parameter] public EventCallback<string> OnSearch { get; set; }
 
     /// <inheritdoc cref="Select{TValue}.DefaultOpen"/>
