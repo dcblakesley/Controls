@@ -43,21 +43,21 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
     /// the model property's <c>[BoolText(TrueText = …)]</c>, else <c>"Yes"</c> -- the control's
     /// built-in default.
     /// </summary>
-    string EffectiveTrueText => TrueText ?? _attributes.BoolText()?.TrueText ?? "Yes";
+    string EffectiveTrueText => _attributes.BoolText(TrueText, static a => a.TrueText, "Yes");
 
     /// <summary>
     /// The text actually rendered for the false option: the <see cref="FalseText"/> parameter, else
     /// the model property's <c>[BoolText(FalseText = …)]</c>, else <c>"No"</c> -- the control's
     /// built-in default.
     /// </summary>
-    string EffectiveFalseText => FalseText ?? _attributes.BoolText()?.FalseText ?? "No";
+    string EffectiveFalseText => _attributes.BoolText(FalseText, static a => a.FalseText, "No");
 
     /// <summary>
     /// The text actually rendered for the null option: the <see cref="NullText"/> parameter, else
     /// the model property's <c>[BoolText(NullText = …)]</c>, else <c>"Not Set"</c> -- the control's
     /// built-in default.
     /// </summary>
-    string EffectiveNullText => NullText ?? _attributes.BoolText()?.NullText ?? "Not Set";
+    string EffectiveNullText => _attributes.BoolText(NullText, static a => a.NullText, "Not Set");
 
     void OnValueChanged(bool? value) => CurrentValue = value;
 

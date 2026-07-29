@@ -185,6 +185,17 @@ public static class AttributesHelper
     public static BoolTextAttribute? BoolText(this List<Attribute>? attrs) =>
         attrs?.OfType<BoolTextAttribute>().FirstOrDefault();
 
+    /// <summary>
+    /// Resolves one of a boolean field's three display texts through the standard precedence: the
+    /// control's own <paramref name="param"/> first, then the matching member of the model property's
+    /// <see cref="BoolTextAttribute"/> (picked out by <paramref name="selector"/>), then
+    /// <paramref name="fallback"/>. Shared by EditBool's TrueText/FalseText and EditBoolNullRadio's
+    /// TrueText/FalseText/NullText -- each control's own Effective* property still names its own
+    /// built-in default in its doc comment; this just removes the repeated three-way null-coalesce.
+    /// </summary>
+    public static string BoolText(this List<Attribute>? attrs, string? param, Func<BoolTextAttribute, string?> selector, string fallback) =>
+        param ?? (attrs.BoolText() is { } boolText ? selector(boolText) : null) ?? fallback;
+
     /// <summary> The model-declared textarea sizing (<see cref="RowsAttribute"/>), or null when absent.</summary>
     public static RowsAttribute? Rows(this List<Attribute>? attrs) =>
         attrs?.OfType<RowsAttribute>().FirstOrDefault();

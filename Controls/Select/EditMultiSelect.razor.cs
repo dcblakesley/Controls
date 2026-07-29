@@ -92,21 +92,13 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
     [Parameter] public string ListboxLabel { get; set; } = "Options";
 
-    // Read-only view: comma-joined option labels (or the value's ToString when unmatched). Cached
-    // and recomputed only when the bound list or Options change by reference — the editable engine
-    // builds its own O(1) lookup, so without this the read-only path would re-scan Options for every
-    // selected value on every render.
-    string _selectedLabels = "";
-    List<TValue>? _labelValue;
-    IEnumerable<SelectOption<TValue>>? _labelOptions;
+    // Read-only view: comma-joined option labels (or the value's ToString when unmatched), resolved by
+    // the same shared SelectLabelCache EditSelectSearch uses -- it caches both the value -> option
+    // lookup (per Options reference) and the joined text (per bound-list reference), so the read-only
+    // path never re-scans Options per selected value per render.
+    readonly SelectLabelCache<TValue> _labels = new();
 
-    // value -> option, rebuilt only when the Options *reference* changes -- see SelectOptionLookup
-    // for the last-wins tie-break on a duplicate value (matching the Select engine's own lookup).
-#pragma warning disable CS8714 // TValue stays unconstrained; SelectOptionLookup never inserts a null key.
-    Dictionary<TValue, SelectOption<TValue>> _lookup = SelectOptionLookup.Build<TValue>(null);
-#pragma warning restore CS8714
-
-    string SelectedLabels => _selectedLabels;
+    string SelectedLabels => _labels.JoinedLabels(Value);
 
     protected override void OnParametersSet()
     {
@@ -118,15 +110,15 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
                 $"{GetType().Name} binds a List<TValue> and supports SelectMode.Multiple or SelectMode.Tags — use EditSelectSearch for single selection.");
 
         base.OnParametersSet();
-        if (ReferenceEquals(Value, _labelValue) && ReferenceEquals(Options, _labelOptions)) return;
-        if (!ReferenceEquals(Options, _labelOptions))
-            _lookup = SelectOptionLookup.Build(Options);
-        _labelValue = Value;
-        _labelOptions = Options;
-        _selectedLabels = string.Join(", ", (Value ?? new List<TValue>())
-            .Select(v => v is not null && _lookup.TryGetValue(v, out var option)
-                ? option.Label ?? v.ToString() ?? string.Empty
-                : v?.ToString() ?? string.Empty));
+
+        // Options only -- deliberately NOT the engine's effective option set, which also carries the
+        // tags a user typed in SelectMode.Tags. Narrow known consequence: with a non-string TValue plus
+        // a TagValueFactory, a user-created tag shows its typed text in the editable view but
+        // value.ToString() here. Closing that gap needs the engine to surface its tag options (it keeps
+        // them private, and this wrapper only ever sees the resulting values come back through
+        // ValuesChanged -- never the text they were created from), so it stays as-is. For TValue ==
+        // string, tag text and tag value coincide and the two views already agree.
+        _labels.Refresh(Options);
     }
 
     Task OnValuesChanged(IEnumerable<TValue> values) => SetValueAsync(values.ToList());

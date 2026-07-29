@@ -34,14 +34,14 @@ public partial class EditBool : EditControlBase<bool>
     /// the model property's <c>[BoolText(TrueText = …)]</c>, else <c>"Yes"</c> -- the control's
     /// built-in default.
     /// </summary>
-    string EffectiveTrueText => TrueText ?? _attributes.BoolText()?.TrueText ?? "Yes";
+    string EffectiveTrueText => _attributes.BoolText(TrueText, static a => a.TrueText, "Yes");
 
     /// <summary>
     /// The text actually rendered when the value is false: the <see cref="FalseText"/> parameter, else
     /// the model property's <c>[BoolText(FalseText = …)]</c>, else <c>"No"</c> -- the control's
     /// built-in default.
     /// </summary>
-    string EffectiveFalseText => FalseText ?? _attributes.BoolText()?.FalseText ?? "No";
+    string EffectiveFalseText => _attributes.BoolText(FalseText, static a => a.FalseText, "No");
 
     /// <summary>
     /// When true, falls back to the legacy behavior of rendering a disabled checkbox in read-only mode.

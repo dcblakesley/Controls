@@ -95,37 +95,18 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
     [Parameter] public string ListboxLabel { get; set; } = "Options";
 
-    // Label for the read-only view: the matching option's label, else the value's own ToString.
-    // Cached and recomputed only when the value or Options change, not on every render. The lookup
-    // (rebuilt only when the Options reference changes) replaces a per-render FirstOrDefault scan and
-    // agrees with the Select engine's own last-wins tie-break for a duplicate-valued option list --
-    // see SelectOptionLookup.
-    string _selectedLabel = "";
-    TValue? _labelValue;
-    IEnumerable<SelectOption<TValue>>? _labelOptions;
-    bool _labelInit;
-#pragma warning disable CS8714 // TValue stays unconstrained; SelectOptionLookup never inserts a null key.
-    Dictionary<TValue, SelectOption<TValue>> _lookup = SelectOptionLookup.Build<TValue>(null);
-#pragma warning restore CS8714
+    // Label for the read-only view: the matching option's label, else the value's own ToString --
+    // resolved (and cached at both levels: the value -> option lookup and the resolved text) by the
+    // shared SelectLabelCache, which EditMultiSelect uses too. Read-only only; the editor's own label
+    // comes from the Select engine's interleaved lookup, which agrees on the duplicate-value tie-break.
+    readonly SelectLabelCache<TValue> _labels = new();
 
-    string SelectedLabel => _selectedLabel;
+    string SelectedLabel => _labels.Label(CurrentValue);
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        if (_labelInit
-            && ReferenceEquals(Options, _labelOptions)
-            && EqualityComparer<TValue>.Default.Equals(CurrentValue, _labelValue))
-            return;
-        _labelInit = true;
-        if (!ReferenceEquals(Options, _labelOptions))
-            _lookup = SelectOptionLookup.Build(Options);
-        _labelOptions = Options;
-        _labelValue = CurrentValue;
-        _selectedLabel =
-            (CurrentValue is not null && _lookup.TryGetValue(CurrentValue, out var option) ? option.Label : null)
-            ?? CurrentValue?.ToString()
-            ?? string.Empty;
+        _labels.Refresh(Options);
     }
 
     // Setting CurrentValue runs the InputBase machinery: NotifyFieldChanged + validation + ValueChanged.
