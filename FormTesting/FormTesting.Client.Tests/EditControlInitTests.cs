@@ -96,6 +96,33 @@ public class EditControlInitTests
         Assert.False(EditControlInit.IsRequired(null, null, form, default));
     }
 
+    [Fact]
+    public void ResolveAriaState_composes_AriaRequired_and_the_aria_refs()
+    {
+        // The single call every control base makes at init and on each parameter change. It must
+        // agree with the two halves it sequences, so no control can drift from either.
+        var (attrs, fid) = InitFor(() => _model.Name); // [Required] is on Name
+        var state = EditControlInit.ResolveAriaState("Name", false, "a description", null, attrs, null, null, fid);
+
+        Assert.Equal(EditControlInit.AriaRequired(attrs, null, null, fid), state.AriaRequired);
+        Assert.Equal(EditControlInit.ResolveAriaRefs("Name", false, "a description", null, attrs),
+            (state.ErrorMsgId, state.DescribedBy));
+        Assert.Equal("true", state.AriaRequired);
+        Assert.Equal("error-msg-Name", state.ErrorMsgId);
+        Assert.Equal("error-msg-Name desc-Name", state.DescribedBy);
+    }
+
+    [Fact]
+    public void ResolveAriaState_hidden_label_drops_the_description_reference()
+    {
+        // A hidden label renders no desc- element, so aria-describedby must not point at one.
+        var (attrs, fid) = InitFor(() => _model.Name);
+        var state = EditControlInit.ResolveAriaState("Name", true, "a description", "a tooltip", attrs, false, null, fid);
+
+        Assert.Null(state.AriaRequired); // IsRequired="false" forces optional even with [Required]
+        Assert.Equal("error-msg-Name", state.DescribedBy);
+    }
+
     [Theory]
     [InlineData(true, true, true)]
     [InlineData(true, false, false)]

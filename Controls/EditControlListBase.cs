@@ -130,16 +130,19 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     {
         (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         _fieldIdentifierFactory = () => FieldIdentifier.Create(field);
-        // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
-        // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
-        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
         // Paired with Dispose below — see EditControlInit.RegisterField's remarks.
         EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
+        RefreshAriaState();
+    }
 
-        // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
-        // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and
-        // aria-describedby never dangles.
-        (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+    // aria-required plus the error-msg id and aria-describedby token list, all through the one shared
+    // helper (same resolution and same call sites as EditControlBase.RefreshAriaState). No-op until
+    // InitState has run — _attributes is null before then.
+    void RefreshAriaState()
+    {
+        if (_attributes is null) return;
+        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
+            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
     }
 
     /// <summary>
@@ -195,13 +198,9 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// </summary>
     protected override void OnParametersSet()
     {
-        // Keep the cached ARIA references current when parameters change (runtime Description/Tooltip
-        // or label-hidden toggle). No-op until InitState has run (_attributes is null before then).
-        if (_attributes is not null)
-        {
-            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
-            (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
-        }
+        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
+        // label-hidden toggle).
+        RefreshAriaState();
 
         // A false return means the same EditContext is still cascading, so the cached FieldIdentifier
         // is still live and there's nothing to re-register.

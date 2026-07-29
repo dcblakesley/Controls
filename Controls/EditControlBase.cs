@@ -130,31 +130,30 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected void InitState(Expression<Func<TValue>> field)
     {
         (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
-        // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
-        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
         // Paired with the Dispose override below — see EditControlInit.RegisterField's remarks.
         EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
-
-        // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
-        // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and
-        // aria-describedby never points at a missing desc-/tooltip- element.
-        (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+        RefreshAriaState();
     }
 
     /// <summary>
-    /// Re-resolves the cached ARIA references on parameter change (e.g. a runtime Description/Tooltip
-    /// or label-hidden toggle) so aria-describedby stays accurate and never dangles. No-op until
-    /// InitState has run (_attributes is null before then).
+    /// Re-resolves the cached ARIA state on parameter change (e.g. a runtime Description/Tooltip
+    /// or label-hidden toggle) so aria-describedby stays accurate and never dangles.
     /// </summary>
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        if (_attributes is not null)
-        {
-            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
-            (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
-        }
+        RefreshAriaState();
+    }
+
+    // aria-required plus the error-msg id and aria-describedby token list, all through the one shared
+    // helper (required-ness resolves as IsRequired param → [Required] attribute →
+    // FormOptions.RequiredResolver, so aria-required always matches the FormLabel star). No-op until
+    // InitState has run — _attributes is null before then.
+    void RefreshAriaState()
+    {
+        if (_attributes is null) return;
+        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
+            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
     }
 
     /// <summary>

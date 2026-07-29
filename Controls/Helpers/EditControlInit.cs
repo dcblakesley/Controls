@@ -186,6 +186,23 @@ public static class EditControlInit
     }
 
     /// <summary>
+    /// The whole cached ARIA state of one bound field in one call — <c>aria-required</c>
+    /// (<see cref="AriaRequired"/>) plus the <c>error-msg-</c> id and <c>aria-describedby</c> token
+    /// list (<see cref="ResolveAriaRefs"/>). The two are always recomputed together, at init and again
+    /// on every parameter change, so this owns that pairing rather than leaving each control base to
+    /// re-sequence it: <see cref="EditControlBase{TValue}"/>, <see cref="EditControlListBase{TItem}"/>,
+    /// <c>EditRadio</c> and <c>EditDateRange</c> (once per bound field) all call it from both places.
+    /// </summary>
+    public static (string? AriaRequired, string ErrorMsgId, string DescribedBy) ResolveAriaState(
+        string id, bool shouldHideLabel, string? description, string? tooltip,
+        List<Attribute>? attributes, bool? isRequiredParam, FormOptions? formOptions, FieldIdentifier fieldIdentifier)
+    {
+        var ariaRequired = AriaRequired(attributes, isRequiredParam, formOptions, fieldIdentifier);
+        var (errorMsgId, describedBy) = ResolveAriaRefs(id, shouldHideLabel, description, tooltip, attributes);
+        return (ariaRequired, errorMsgId, describedBy);
+    }
+
+    /// <summary>
     /// The shared <c>InputBase&lt;TValue&gt;.TryParseValueFromString</c> body for the controls that hand
     /// their parsing to <see cref="BindConverter"/> —
     /// <c>EditNumber&lt;T&gt;</c> (every numeric primitive plus their unsigned/nullable variants) and

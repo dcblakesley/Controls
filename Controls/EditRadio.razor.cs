@@ -96,28 +96,29 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         var accessor = ValueExpression ?? throw new InvalidOperationException(
             $"{nameof(EditRadio<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)}).");
         (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(accessor, Id, FormGroupOptions, IdPrefix);
-        // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
-        // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
-        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
         // field survives HidingMode and links from the validation summary always work. Paired with
         // the Dispose override below — see EditControlInit.RegisterField's remarks.
         EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
-
-        // Mirror EditControlBase: resolve the ARIA references (recomputed in OnParametersSet too).
-        (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
+        RefreshAriaState();
     }
 
     // InputRadioGroup uses OnParametersSet to set up the group name/context — call base first, then
-    // refresh the cached ARIA references so a runtime Description/Tooltip/label change is reflected.
+    // refresh the cached ARIA state so a runtime Description/Tooltip/label change is reflected.
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        if (_attributes is not null)
-        {
-            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
-            (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
-        }
+        RefreshAriaState();
+    }
+
+    // Mirrors EditControlBase.RefreshAriaState: aria-required plus the error-msg id and
+    // aria-describedby token list through the one shared helper. No-op until OnInitialized has run —
+    // _attributes is null before then.
+    void RefreshAriaState()
+    {
+        if (_attributes is null) return;
+        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
+            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
     }
 
     /// <summary>

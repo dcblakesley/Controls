@@ -397,32 +397,34 @@ public partial class EditDateRange : IDisposable
         _endFieldIdentifierFactory = () => FieldIdentifier.Create(endExpression);
         _endId = $"{_id}-end";
 
-        _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _startFieldIdentifier);
         // Each field registers under its own input's DOM id (DateRangePicker's Id/EndId), so a
         // ValidationView link for an End-only error lands on the End input, not Start's. Paired with
         // Dispose below — see EditControlInit.RegisterField's remarks.
         EditControlInit.RegisterField(FormOptions, _startFieldIdentifier, _id, this);
         EditControlInit.RegisterField(FormOptions, _endFieldIdentifier, _endId, this);
+        RefreshAriaState();
+    }
 
-        (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
-        // The End field's ARIA state is independent of Start's. Description/Tooltip belong to the
-        // whole control (rendered by the start-anchored FormLabel), so the end input's describedby
-        // references only its own validation message — hence shouldHideLabel: true here.
-        _endIsRequired = EditControlInit.AriaRequired(_endAttributes, null, FormOptions, _endFieldIdentifier);
-        (_endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaRefs(_endId, true, null, null, _endAttributes);
+    // Both bound fields' ARIA state through the one shared helper, once per field (see
+    // EditControlBase.RefreshAriaState). The End field's state is independent of Start's:
+    // Description/Tooltip belong to the whole control (rendered by the start-anchored FormLabel), so
+    // the end input's describedby references only its own validation message — hence shouldHideLabel
+    // true with no description/tooltip on the second call. No-op until OnInitialized has run —
+    // _attributes is null before then.
+    void RefreshAriaState()
+    {
+        if (_attributes is null) return;
+        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
+            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _startFieldIdentifier);
+        (_endIsRequired, _endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaState(
+            _endId, true, null, null, _endAttributes, null, FormOptions, _endFieldIdentifier);
     }
 
     protected override void OnParametersSet()
     {
-        // Keep the cached ARIA references current when parameters change (runtime Description/Tooltip
-        // or label-hidden toggle). No-op until OnInitialized has run (_attributes is null before then).
-        if (_attributes is not null)
-        {
-            _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _startFieldIdentifier);
-            (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
-            _endIsRequired = EditControlInit.AriaRequired(_endAttributes, null, FormOptions, _endFieldIdentifier);
-            (_endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaRefs(_endId, true, null, null, _endAttributes);
-        }
+        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
+        // label-hidden toggle).
+        RefreshAriaState();
 
         // A false return means the same EditContext is still cascading, so both cached
         // FieldIdentifiers are still live and there's nothing to re-register.
