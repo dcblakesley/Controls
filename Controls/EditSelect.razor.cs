@@ -45,5 +45,14 @@ public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedM
     // so a de-DE double 1.5 rendered "1,5" and matched no <option value="1.5">.
     protected override string? FormatValueAsString(TValue? value) => SelectParsing.FormatInvariant(value);
 
-    // Base IsValueDefault covers EqualityComparer<TValue>.Default behavior — no override needed.
+    // The base's EqualityComparer<TValue>.Default.Equals(value, default) alone is NOT enough for
+    // TValue = string: default(string) is null, not "", so EditSelect<string> bound to the empty
+    // string stayed visible under WhenNullOrDefault/WhenReadOnlyAndNullOrDefault while every sibling
+    // (EditSelectString, EditString, EditTextArea, EditRadioString) hid it — contradicting HidingMode's
+    // documented "null or its type's default (e.g. empty string, 0, ...)". Unioned with the base check
+    // rather than replacing it (EditSelectString's copy is a bare string.IsNullOrEmpty) so every other
+    // TValue keeps its own default: EditSelect<int> at 0 and EditSelect<bool> at false still count as
+    // default, which stringifying them ("0"/"False") would have silently broken.
+    protected override bool IsValueDefault() =>
+        base.IsValueDefault() || CurrentValue is string { Length: 0 };
 }

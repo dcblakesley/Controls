@@ -87,7 +87,9 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// Splats <see cref="OnOtherValueChanged"/> onto whichever event name <see cref="UpdateEventName"/>
     /// resolves to. The "Other" text box uses a raw event handler rather than a <c>@bind</c>, so
     /// <c>@bind:event</c> doesn't apply here -- this dictionary is the mechanism that makes the
-    /// wired-up event name dynamic instead of a fixed <c>@oninput</c>.
+    /// wired-up event name dynamic instead of a fixed <c>@oninput</c>. It is handed to the shared
+    /// <see cref="RadioOtherInput"/> (which <see cref="EditRadioString"/> also renders) as its
+    /// <c>CommitAttributes</c>, which is why the wiring travels as a dictionary rather than a callback.
     /// </summary>
     IReadOnlyDictionary<string, object> OtherInputAttribute => new Dictionary<string, object>(1)
     {

@@ -156,6 +156,69 @@ public class HidingModeTests : BunitContext
         Assert.True(IsRendered(cut));
     }
 
+    // ── EditSelect<string> — "" must count as default, like every other string-bound control ──
+
+    [Theory]
+    // WhenNullOrDefault: "" is the string type's semantic default per HidingMode's own docs, so it
+    // hides in both modes. EditSelect had no IsValueDefault override, and the base's
+    // EqualityComparer<string>.Default.Equals("", null) is false — so "" stayed visible here while
+    // EditSelectString/EditString/EditTextArea/EditRadioString all hid it.
+    [InlineData(HidingMode.WhenNullOrDefault, "", true, false)]
+    [InlineData(HidingMode.WhenNullOrDefault, "", false, false)]
+    [InlineData(HidingMode.WhenNullOrDefault, null, true, false)]
+    [InlineData(HidingMode.WhenNullOrDefault, "a", true, true)] // a real selection always shows
+    [InlineData(HidingMode.WhenNullOrDefault, "a", false, true)]
+    // WhenReadOnlyAndNullOrDefault: same "" verdict, but only in read-only mode.
+    [InlineData(HidingMode.WhenReadOnlyAndNullOrDefault, "", true, true)]
+    [InlineData(HidingMode.WhenReadOnlyAndNullOrDefault, "", false, false)]
+    // "" is still not *null*, so the null-only modes keep showing it.
+    [InlineData(HidingMode.WhenNull, "", true, true)]
+    [InlineData(HidingMode.WhenReadOnlyAndNull, "", false, true)]
+    [InlineData(HidingMode.None, "", true, true)]
+    public void EditSelect_string_hiding_matrix(HidingMode mode, string? value, bool isEditMode, bool expectedVisible)
+    {
+        var model = new StringModel { Text = value };
+        Expression<Func<string>> field = () => model.Text!;
+        var cut = Render(WithForm(model, null, b =>
+        {
+            b.OpenComponent<EditSelect<string>>(0);
+            b.AddAttribute(1, "Value", model.Text);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Hiding", mode);
+            b.AddAttribute(4, "IsEditMode", isEditMode);
+            b.AddAttribute(5, "ChildContent", (RenderFragment)(cb =>
+            {
+                cb.OpenElement(0, "option");
+                cb.AddAttribute(1, "value", "a");
+                cb.AddContent(2, "A");
+                cb.CloseElement();
+            }));
+            b.CloseComponent();
+        }));
+
+        Assert.Equal(expectedVisible, IsRendered(cut));
+    }
+
+    [Fact]
+    public void EditSelect_int_still_treats_numeric_zero_as_default()
+    {
+        // The "" fix above is unioned with the base default-equality check rather than replacing it,
+        // so non-string TValue keeps its own default. Stringifying instead (EditSelectString's shape)
+        // would have made 0 render as "0" → non-empty → visible.
+        var model = new IntValueModel { N = 0 };
+        Expression<Func<int>> field = () => model.N;
+        var cut = Render(WithForm(model, null, b =>
+        {
+            b.OpenComponent<EditSelect<int>>(0);
+            b.AddAttribute(1, "Value", model.N);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Hiding", HidingMode.WhenNullOrDefault);
+            b.CloseComponent();
+        }));
+
+        Assert.False(IsRendered(cut));
+    }
+
     // ── FormOptions.IsEditMode now respected by every control (bug-fix coverage) ─────────────
 
     [Fact]
@@ -204,5 +267,6 @@ public class HidingModeTests : BunitContext
 
     class StringModel { public string? Text { get; set; } }
     class IntModel { public int? N { get; set; } }
+    class IntValueModel { public int N { get; set; } } // non-nullable int: 0 is the type's default
     class DateModel { public DateTime? D { get; set; } }
 }

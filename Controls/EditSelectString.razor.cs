@@ -67,7 +67,8 @@ public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAcc
     // desynced the option-value match under cultures with different numeric separators/signs.
     protected override string? FormatValueAsString(TValue? value) => SelectParsing.FormatInvariant(value);
 
-    // Empty stringified value counts as "default" — matches the prior behavior where
-    // value.ToString() != "" gated the NullOrDefault hiding modes.
-    protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue?.ToString());
+    // Union of the base default check and the empty-string case, matching EditSelect: the base
+    // covers null and value-type defaults (0, false — HidingMode.cs documents both as "default"),
+    // which the previous CurrentValue?.ToString() != "" check missed for non-string TValue.
+    protected override bool IsValueDefault() => base.IsValueDefault() || CurrentValue is string { Length: 0 };
 }

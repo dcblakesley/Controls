@@ -44,14 +44,10 @@
                         @if (HasOther)
                         {
                             <div class="edit-radio-other-option-container">
-                                <input disabled="@(_selectedOption != _otherName || IsDisabled)"
-                                       type="text"
-                                       id=@($"txt-{_id}-custom-value")
-                                       aria-label="Custom text value input"
-                                       class="edit-input edit-string-input"
-                                       @bind:get=@_otherText
-                                       @bind:set=SetOtherText
-                                       @bind:event="@UpdateEventName"/>
+                                <RadioOtherInput Id=@($"txt-{_id}-custom-value")
+                                                 Value=@_otherText
+                                                 IsDisabled=@(_selectedOption != _otherName || IsDisabled)
+                                                 CommitAttributes=@OtherInputAttribute />
                             </div>
                         }
                     }
@@ -67,19 +63,19 @@
                                 <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@isOptionDisabled Id=@($"rb-{_id}-{option.ToId()}") CssClass=@CssClass LabelClass=@LabelClass Display=@option />
                             }
 
-                            <!-- Other -->
+                            @* Other. .edit-radio-option is the flex row EditRadioEnum puts around every
+                               option -- without it the radio and its free-text box didn't line up like
+                               the sibling control's. .edit-radio-other-option-container stays as this
+                               control's long-standing consumer hook for the Other block (and is what
+                               button mode above uses in both controls). *@
                             @if (HasOther)
                             {
-                                <div class="edit-radio-other-option-container">
+                                <div class="edit-radio-option edit-radio-other-option-container">
                                     <RadioOptionItem Value=@_otherName IsButtonMode="false" IsDisabled=@IsDisabled Id=@($"rb-{_id}-other") CssClass=@CssClass LabelClass=@LabelClass Display="Other" />
-                                    <input disabled="@(_selectedOption != _otherName || IsDisabled)"
-                                           type="text"
-                                           id=@($"txt-{_id}-custom-value")
-                                           aria-label="Custom text value input"
-                                           class="edit-input edit-string-input"
-                                           @bind:get=@_otherText
-                                           @bind:set=SetOtherText
-                                           @bind:event="@UpdateEventName"/>
+                                    <RadioOtherInput Id=@($"txt-{_id}-custom-value")
+                                                     Value=@_otherText
+                                                     IsDisabled=@(_selectedOption != _otherName || IsDisabled)
+                                                     CommitAttributes=@OtherInputAttribute />
                                 </div>
                             }
                         </div>

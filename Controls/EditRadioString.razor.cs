@@ -68,8 +68,27 @@ public partial class EditRadioString : EditControlBase<string?>
     /// </summary>
     [Parameter] public UpdateTrigger? UpdateOn { get; set; }
 
-    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving the "Other" text box's <c>@bind:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
+    /// <summary> The resolved DOM event name ("oninput" or "onchange") the "Other" text box commits on, per <see cref="UpdateOn"/>'s resolution order.</summary>
     protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
+
+    /// <summary>
+    /// Splats <see cref="OnOtherTextChanged"/> onto whichever event name <see cref="UpdateEventName"/>
+    /// resolves to. This is the same mechanism <see cref="EditRadioEnum{TEnum}"/> uses, so both
+    /// controls can render the one shared <see cref="RadioOtherInput"/> element instead of two copies
+    /// of the markup that had silently drifted apart.
+    /// <para>
+    /// It replaced an <c>@bind:get</c>/<c>@bind:set</c>/<c>@bind:event</c> trio on an inline input.
+    /// Behaviorally identical here: the only thing <c>@bind</c> added was its "re-push the value to
+    /// the DOM when the setter didn't change it" guard, and <see cref="SetOtherText"/> always stores
+    /// the typed text verbatim, so that guard never had anything to revert.
+    /// </para>
+    /// </summary>
+    IReadOnlyDictionary<string, object> OtherInputAttribute => new Dictionary<string, object>(1)
+    {
+        [UpdateEventName] = EventCallback.Factory.Create<ChangeEventArgs>(this, OnOtherTextChanged)
+    };
+
+    void OnOtherTextChanged(ChangeEventArgs e) => SetOtherText(e.Value?.ToString());
 
     string _otherText = "";
     // Internal radio value for the built-in "Other" option. Deliberately NOT the display text
@@ -175,6 +194,9 @@ public partial class EditRadioString : EditControlBase<string?>
     // Empty string counts as "default" for the NullOrDefault hiding modes.
     protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
 
+    // The "Other" box's commit path, reached from OnOtherTextChanged (see OtherInputAttribute).
+    // Unlike EditRadioEnum -- whose Other text is a separate OtherValue/OtherValueChanged pair -- the
+    // typed text IS this control's bound value, so it goes straight to CurrentValue.
     void SetOtherText(string? value)
     {
         _otherText = value ?? "";
