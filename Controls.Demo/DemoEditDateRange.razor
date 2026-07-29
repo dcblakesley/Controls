@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>EditDateRange Demo</h1>
 
@@ -122,9 +123,6 @@
         new("Q2 2026", new DateTime(2026, 4, 1), new DateTime(2026, 6, 30)),
         new("Full Year 2026", new DateTime(2026, 1, 1), new DateTime(2026, 12, 31)),
     ];
-
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoEditDateRangeModel
     {

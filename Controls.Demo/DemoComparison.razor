@@ -1,6 +1,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Net
 @using System.Text.RegularExpressions
+@inherits DemoFormPage
 
 <h1>Comparison Demo</h1>
 
@@ -345,9 +346,6 @@
 </style>
 
 @code {
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
-
     readonly ComparisonModel _model = new();
 
     enum ComparisonTab { RollYourOwn, ReactTypical, ReactFullParity }

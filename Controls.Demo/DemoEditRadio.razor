@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>EditRadio Demo</h1>
 
@@ -116,9 +117,6 @@
     readonly DemoEditRadioModel _model = new();
     readonly int[] _numberOptions = [1, 2, 3, 4, 5];
     readonly string[] _colorOptions = ["Red", "Green", "Blue", "Yellow", "Purple", "Orange", "Lime", "Magenta"];
-
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoEditRadioModel
     {

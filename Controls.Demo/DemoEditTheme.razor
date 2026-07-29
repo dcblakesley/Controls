@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>Theme (<code>.edit-theme</code>) Demo</h1>
 
@@ -126,9 +127,6 @@
 </EditForm>
 
 @code {
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
-
     readonly DemoEditThemeModel _model = new();
 
     public class DemoEditThemeModel

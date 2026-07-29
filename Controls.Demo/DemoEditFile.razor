@@ -1,3 +1,5 @@
+@inherits DemoFormPage
+
 <h1>EditFile Demo</h1>
 
 <EditForm Model="@_model" class="flex-column" @ref=_form>
@@ -59,8 +61,6 @@
 
 @code {
     readonly DemoEditFileModel _model = new();
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     readonly string _basicExample = @"<EditFile @bind-Value=""_model.Files"" />";
 

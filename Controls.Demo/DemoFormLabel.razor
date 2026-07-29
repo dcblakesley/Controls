@@ -1,4 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>Common Features Demo</h1>
 
@@ -88,9 +89,6 @@
 @code {
     readonly DemoFormLabelModel _model = new();
     public bool IsCurrentlyRequired { get; set; } = true;
-
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoFormLabelModel
     {

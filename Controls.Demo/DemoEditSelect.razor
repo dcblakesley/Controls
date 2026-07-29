@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>EditSelect Demo</h1>
 
@@ -94,9 +95,6 @@
     readonly DemoEditSelectModel _model = new();
     readonly List<string> _colors = ["Red", "Green", "Blue", "Yellow", "Purple"];
     readonly List<Plant> _plants = Plant.GetTestData();
-    
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoEditSelectModel
     {

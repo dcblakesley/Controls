@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>EditSelectEnum Demo</h1>
 
@@ -75,10 +76,6 @@
 </EditForm>
 
 @code {
-
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
-
     readonly DemoEditSelectEnumModel _model = new();
 
     public class DemoEditSelectEnumModel

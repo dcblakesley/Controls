@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>EditSelectSearch Demo</h1>
 <p>Searchable single-select (AntDesign-style) backed by the <code>Select</code> engine. Supports type-to-search, clear, keyboard navigation and a virtualized dropdown for large option sets.</p>
@@ -145,11 +146,9 @@
 
 @code {
     readonly Model _model = new();
-    EditForm? _form;
     int _submitCount;
     int _footerClicks;
     bool _controlledOpen;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     readonly List<SelectOption<string?>> _countries =
     [

@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
 
 <h1>EditDate Demo</h1>
 
@@ -122,9 +123,6 @@
 
     readonly DateTime _minDate = new(2026, 2, 1);
     readonly DateTime _maxDate = new(2026, 2, 28);
-
-    EditForm? _form;
-    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
 
     public class DemoEditDateModel
     {
