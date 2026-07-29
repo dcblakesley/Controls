@@ -109,18 +109,8 @@
     readonly DemoEditCheckedEnumListModel _model = new();
 
     EditForm? _form;
-    
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && _form?.EditContext != null)
-        {
-            // Use small delay to ensure component is fully rendered before validation
-            await Task.Delay(10);
-            _form.EditContext.Validate();
-            StateHasChanged();
-        }
-    }
-    
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
     public class DemoEditCheckedEnumListModel
     {
         [Description("Basic Description")]

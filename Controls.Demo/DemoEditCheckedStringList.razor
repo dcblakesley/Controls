@@ -14,11 +14,31 @@
     </section>
 
     <section class="demo-section">
+        <style>
+            .my-custom-container {
+                background-color: teal;
+                padding: 10px;
+                border-radius: 4px;
+            }
+
+            .my-custom-checklist {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+                .my-custom-checklist input[type="checkbox"] {
+                    transform: scale(1.2);
+                    margin-right: 8px;
+                    accent-color: lime;
+                }
+        </style>
+
         <EditCheckedStringList @bind-Value="_model.CustomStyling"
                                Options="@_basicItems"
                                ContainerClass="my-custom-container"
                                LabelClass="my-custom-checklist" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_customStyleExample</code></pre>
         
@@ -68,18 +88,8 @@
     readonly List<string> _basicItems = ["Apple", "Banana", "Orange", "Grape", "Mango"];
 
     EditForm? _form;
-    
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender && _form?.EditContext != null)
-        {
-            // Use small delay to ensure component is fully rendered before validation
-            await Task.Delay(10);
-            _form.EditContext.Validate();
-            StateHasChanged();
-        }
-    }
-    
+    protected override void OnAfterRender(bool firstRender) => _form?.EditContext!.Validate();
+
     public class DemoEditCheckedStringListModel
     {
         [Description("Basic Description")]
@@ -141,27 +151,4 @@ public List<string> Disabled { get; set; } = [];";
     readonly string _perOptionDisabledExample = @"<EditCheckedStringList @bind-Value=""_model.PerOptionDisabled""
                       Options=""@_basicItems""
                       IsOptionDisabled=""@(o => o == \""Banana\"" || o == \""Grape\"")"" />";
-
-    // For demonstration, providing some basic items
-    private List<string> GetBasicItems() => new() { "Apple", "Banana", "Cherry" };
 }
-
-<style>
-    .my-custom-container {
-        background-color: teal;
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .my-custom-checklist {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-        .my-custom-checklist input[type="checkbox"] {
-            transform: scale(1.2);
-            margin-right: 8px;
-            accent-color: lime;
-        }
-</style>

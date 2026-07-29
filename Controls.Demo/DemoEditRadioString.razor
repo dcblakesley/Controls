@@ -28,12 +28,25 @@
     </section>
 
     <section class="demo-section">
+        <style>
+            .my-custom-container {
+                background-color: darkorchid;
+                padding: 10px;
+                border-radius: 4px;
+            }
+
+            .my-custom-label {
+                font-weight: bold;
+                color: white;
+            }
+        </style>
+
         <EditRadioString @bind-Value="_model.CustomStyling"
                          Options="@_basicOptions"
                          ContainerClass="my-custom-container"
                          class="my-custom-radio"
                          LabelClass="my-custom-label" />
-        
+
         <h3>Markup</h3>
         <pre class="code-block"><code>@_customStyleExample</code></pre>
         
@@ -239,16 +252,3 @@ public string Disabled { get; set; } = """";";
                 OptionType=""RadioOptionType.Button""
                 IsOptionDisabled=""@(o => o == \""Green\"")"" />";
 }
-
-<style>
-    .my-custom-container {
-        background-color: darkorchid;
-        padding: 10px;
-        border-radius: 4px;
-    }
-
-    .my-custom-label {
-        font-weight: bold;
-        color: white;
-    }
-</style>
