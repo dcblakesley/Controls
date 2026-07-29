@@ -12,14 +12,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class RadioTextAreaAndCultureTests : BunitContext
 {
-    static RenderFragment WithForm(PersonModel model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     [Theory]
     [InlineData("true", true)]
     [InlineData("false", false)]

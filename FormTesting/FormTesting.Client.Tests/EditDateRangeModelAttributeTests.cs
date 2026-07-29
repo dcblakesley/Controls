@@ -24,14 +24,6 @@ public class EditDateRangeModelAttributeTests : BunitContext
 {
     public EditDateRangeModelAttributeTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     static DateRangePicker Picker(IRenderedComponent<ContainerFragment> cut) =>
         cut.FindComponent<DateRangePicker>().Instance;
 

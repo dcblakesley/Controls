@@ -43,14 +43,6 @@ public class EditDateRangeTests : BunitContext
     static readonly DateTime Jan15 = new(2025, 1, 15);
     static readonly DateTime Feb3 = new(2025, 2, 3);
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     static void Open(IRenderedComponent<ContainerFragment> cut) => cut.Find(".wss-picker-input").Click();
 
     // The given panel's (0 = left/start month, 1 = right/end month) in-month day button.

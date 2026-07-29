@@ -10,14 +10,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class EditCheckedEnumListTests : BunitContext
 {
-    static RenderFragment WithForm(ColorListModel model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     class ColorListModel
     {
         public List<Color> Colors { get; set; } = [];

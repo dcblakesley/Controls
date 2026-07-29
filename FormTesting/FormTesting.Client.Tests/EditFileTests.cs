@@ -28,14 +28,6 @@ public class EditFileTests : BunitContext
         public List<IBrowserFile> Files { get; set; } = [];
     }
 
-    static RenderFragment WithForm(FileModel model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     IRenderedComponent<ContainerFragment> RenderEditFile(
         FileModel model,
         Action<List<IBrowserFile>>? onChanged = null,

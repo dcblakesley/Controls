@@ -16,14 +16,6 @@ public class ControlSmokeTests : BunitContext
     /// Programmatic component construction also requires <c>ValueExpression</c> explicitly — Blazor's
     /// <c>@bind-Value</c> macro normally synthesizes it from the markup but we don't have that luxury here.
     /// </summary>
-    static RenderFragment WithForm(PersonModel model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     [Fact]
     public void EditString_renders_input_with_resolved_id()
     {

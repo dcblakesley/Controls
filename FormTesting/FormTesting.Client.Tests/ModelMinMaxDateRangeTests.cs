@@ -21,14 +21,6 @@ public class ModelMinMaxDateRangeTests : BunitContext
 {
     public ModelMinMaxDateRangeTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     static readonly DateTime Jan1_2024 = new(2024, 1, 1);
     static readonly DateTime Jun30_2024 = new(2024, 6, 30);
     static readonly DateTime Dec31_2024 = new(2024, 12, 31);

@@ -32,6 +32,7 @@
     <Using Include="Bunit" />
     <Using Include="Controls" />
     <Using Include="Controls.Helpers" />
+    <Using Include="FormTesting.Client.Tests.FormRenderHelpers" Static="true" />
   </ItemGroup>
 
 </Project>

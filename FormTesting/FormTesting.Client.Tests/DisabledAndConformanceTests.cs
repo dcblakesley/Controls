@@ -12,14 +12,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class DisabledAndConformanceTests : BunitContext
 {
-    static RenderFragment WithForm(PersonModel model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     [Fact]
     public void EditString_IsDisabled_renders_a_disabled_input()
     {

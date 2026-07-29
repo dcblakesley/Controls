@@ -20,14 +20,6 @@ public class PickerSizeAndParsingTests : BunitContext
 
     static readonly DateTime Feb14 = new(2026, 2, 14);
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     // ----- DatePicker / DateRangePicker: Size ---------------------------------------------------
 
     [Fact]

@@ -14,19 +14,7 @@ namespace FormTesting.Client.Tests;
 public class FieldRegistrationTests : BunitContext
 {
     static RenderFragment WithFormAndOptions(PersonModel model, FormOptions formOptions, RenderFragment inner)
-        => builder =>
-        {
-            builder.OpenComponent<CascadingValue<FormOptions>>(0);
-            builder.AddAttribute(1, "Value", formOptions);
-            builder.AddAttribute(2, "ChildContent", (RenderFragment)(b =>
-            {
-                b.OpenComponent<EditForm>(0);
-                b.AddAttribute(1, "Model", model);
-                b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-                b.CloseComponent();
-            }));
-            builder.CloseComponent();
-        };
+        => WithForm(model, formOptions, inner);
 
     [Fact]
     public void Visible_EditString_registers_field()

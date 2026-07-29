@@ -12,22 +12,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class FormA11yTests : BunitContext
 {
-    static RenderFragment WithForm(PersonModel model, bool withValidator, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
-        {
-            if (withValidator)
-            {
-                content.OpenComponent<DataAnnotationsValidator>(0);
-                content.CloseComponent();
-            }
-            inner(content);
-        }));
-        builder.CloseComponent();
-    };
-
     static void AddEditString(RenderTreeBuilder b, PersonModel model, Expression<Func<string>> field, params (string Name, object Value)[] extra)
     {
         b.OpenComponent<EditString>(0);
@@ -44,7 +28,7 @@ public class FormA11yTests : BunitContext
     {
         var model = new PersonModel { Name = "x" };
         Expression<Func<string>> field = () => model.Name;
-        var cut = Render(WithForm(model, false, b => AddEditString(b, model, field, ("IsLabelHidden", true))));
+        var cut = Render(WithValidatedForm(model, false, b => AddEditString(b, model, field, ("IsLabelHidden", true))));
 
         // Previously nothing rendered at all — an unnamed field to assistive tech.
         var srLabel = cut.Find("label.edit-sr-only");
@@ -57,7 +41,7 @@ public class FormA11yTests : BunitContext
     {
         var model = new PersonModel { IsActive = true };
         Expression<Func<bool>> field = () => model.IsActive;
-        var cut = Render(WithForm(model, false, b =>
+        var cut = Render(WithValidatedForm(model, false, b =>
         {
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
@@ -80,7 +64,7 @@ public class FormA11yTests : BunitContext
     {
         var model = new PersonModel { Name = "x" };
         Expression<Func<string>> field = () => model.Name;
-        var cut = Render(WithForm(model, false, b => AddEditString(b, model, field, ("IsEditMode", false))));
+        var cut = Render(WithValidatedForm(model, false, b => AddEditString(b, model, field, ("IsEditMode", false))));
 
         // label[for] must reference a labelable element; the read-only value is a div (named via
         // aria-labelledby), so the label renders unassociated.
@@ -93,7 +77,7 @@ public class FormA11yTests : BunitContext
     {
         var model = new PersonModel { Tags = [] };
         Expression<Func<List<string>>> field = () => model.Tags;
-        var cut = Render(WithForm(model, false, b =>
+        var cut = Render(WithValidatedForm(model, false, b =>
         {
             b.OpenComponent<EditCheckedStringList>(0);
             b.AddAttribute(1, "Value", model.Tags);
@@ -154,7 +138,7 @@ public class FormA11yTests : BunitContext
     {
         var model = new PersonModel { IsActive = true };
         Expression<Func<bool>> field = () => model.IsActive;
-        var cut = Render(WithForm(model, false, b =>
+        var cut = Render(WithValidatedForm(model, false, b =>
         {
             b.OpenComponent<EditBool>(0);
             b.AddAttribute(1, "Value", model.IsActive);
@@ -176,7 +160,7 @@ public class FormA11yTests : BunitContext
     {
         var model = new PersonModel { Name = "valid value" };
         Expression<Func<string>> field = () => model.Name;
-        var cut = Render(WithForm(model, true, b => AddEditString(b, model, field, ("class", "invalid-style-fix"))));
+        var cut = Render(WithValidatedForm(model, true, b => AddEditString(b, model, field, ("class", "invalid-style-fix"))));
 
         // IsInvalid used to substring-match "invalid" in CssClass, so this rendered aria-invalid
         // plus the red X despite the field being perfectly valid.

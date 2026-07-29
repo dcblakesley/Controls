@@ -16,14 +16,6 @@ public class EditBoolIndeterminateTests : BunitContext
     // EditBool lazily imports wss-checkbox.js to set the indeterminate DOM property; tolerate the import.
     public EditBoolIndeterminateTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     int IndeterminateCalls() => JSInterop.Invocations.Count(i => i.Identifier == "setIndeterminate");
 
     [Fact]

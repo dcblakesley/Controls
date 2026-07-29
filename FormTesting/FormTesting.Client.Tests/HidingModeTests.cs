@@ -13,31 +13,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class HidingModeTests : BunitContext
 {
-    static RenderFragment WithForm<TModel>(TModel model, FormOptions? formOptions, RenderFragment inner)
-        where TModel : class => builder =>
-    {
-        if (formOptions is not null)
-        {
-            builder.OpenComponent<CascadingValue<FormOptions>>(0);
-            builder.AddAttribute(1, "Value", formOptions);
-            builder.AddAttribute(2, "ChildContent", (RenderFragment)(b =>
-            {
-                b.OpenComponent<EditForm>(0);
-                b.AddAttribute(1, "Model", model);
-                b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-                b.CloseComponent();
-            }));
-            builder.CloseComponent();
-        }
-        else
-        {
-            builder.OpenComponent<EditForm>(0);
-            builder.AddAttribute(1, "Model", model);
-            builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-            builder.CloseComponent();
-        }
-    };
-
     static bool IsRendered(IRenderedComponent<ContainerFragment> cut) => cut.FindAll(".edit-control-wrapper").Count > 0;
 
     // ── EditString ────────────────────────────────────────────────────────────────────────────

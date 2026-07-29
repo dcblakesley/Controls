@@ -18,14 +18,6 @@ public class EditDateTests : BunitContext
 {
     public EditDateTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate the overlay JS import
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     static void Open(IRenderedComponent<ContainerFragment> cut) => cut.Find(".wss-picker-input").Click();
 
     // The in-month day button for the given day number (skips the leading adjacent-month cells).

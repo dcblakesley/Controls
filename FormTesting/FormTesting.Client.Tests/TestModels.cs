@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 
 namespace FormTesting.Client.Tests;
 
@@ -65,4 +67,67 @@ public enum Color
     Blue,
 
     PaleYellow
+}
+
+// Shared EditForm-wrapping RenderFragment builders. Consolidates what used to be ~41 byte-identical
+// (mod the model parameter's declared type) private `WithForm` copies scattered across test files.
+// Exposed as a project-global `using static` (see the <Using Static="true"> item in the .csproj)
+// so individual test classes need no per-file import.
+internal static class FormRenderHelpers
+{
+    // The canonical shape: <EditForm Model="model">@inner</EditForm>, no FormOptions cascaded.
+    public static RenderFragment WithForm<TModel>(TModel model, RenderFragment inner)
+        where TModel : class => builder =>
+    {
+        builder.OpenComponent<EditForm>(0);
+        builder.AddAttribute(1, "Model", model);
+        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
+        builder.CloseComponent();
+    };
+
+    // HidingModeTests' variant: cascades FormOptions only when a non-null instance is supplied,
+    // so form-wide options (e.g. IsEditMode) can be exercised without forcing every caller to pass one.
+    public static RenderFragment WithForm<TModel>(TModel model, FormOptions? formOptions, RenderFragment inner)
+        where TModel : class => builder =>
+    {
+        if (formOptions is not null)
+        {
+            builder.OpenComponent<CascadingValue<FormOptions>>(0);
+            builder.AddAttribute(1, "Value", formOptions);
+            builder.AddAttribute(2, "ChildContent", (RenderFragment)(b =>
+            {
+                b.OpenComponent<EditForm>(0);
+                b.AddAttribute(1, "Model", model);
+                b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
+                b.CloseComponent();
+            }));
+            builder.CloseComponent();
+        }
+        else
+        {
+            builder.OpenComponent<EditForm>(0);
+            builder.AddAttribute(1, "Model", model);
+            builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
+            builder.CloseComponent();
+        }
+    };
+
+    // FormA11yTests' variant: conditionally adds a DataAnnotationsValidator so a submit can actually
+    // run validation.
+    public static RenderFragment WithValidatedForm<TModel>(TModel model, bool withValidator, RenderFragment inner)
+        where TModel : class => builder =>
+    {
+        builder.OpenComponent<EditForm>(0);
+        builder.AddAttribute(1, "Model", model);
+        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+        {
+            if (withValidator)
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+            }
+            inner(content);
+        }));
+        builder.CloseComponent();
+    };
 }

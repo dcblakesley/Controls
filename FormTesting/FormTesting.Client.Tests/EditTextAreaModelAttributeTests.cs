@@ -18,14 +18,6 @@ public class EditTextAreaModelAttributeTests : BunitContext
 {
     public EditTextAreaModelAttributeTests() => JSInterop.Mode = JSRuntimeMode.Loose; // tolerate Clear()/AutoSize's JS calls
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     class RowsAttributeModel
     {
         [Rows(5, MinRows = 3, MaxRows = 10, AutoSize = true)]

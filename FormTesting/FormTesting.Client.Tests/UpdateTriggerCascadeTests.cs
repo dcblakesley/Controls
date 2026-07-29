@@ -20,14 +20,6 @@ public class UpdateTriggerCascadeTests : BunitContext
     // AutoSize's JS resize call is exercised (not just rendered) by the EditTextArea tests below.
     public UpdateTriggerCascadeTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     // Wraps `innermost` in zero, one, or two levels of <FormDefaults UpdateOn="..."> -- outermost
     // entry first, matching the MFE composition shape (host page defaults, then an inner root's own
     // overrides). An empty chain renders no FormDefaults component at all, distinct from a single

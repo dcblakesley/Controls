@@ -13,14 +13,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class EditNumberAffixTests : BunitContext
 {
-    static RenderFragment WithForm(object model, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content => inner(content)));
-        builder.CloseComponent();
-    };
-
     [Fact]
     public void With_no_new_params_the_input_has_no_min_max_or_placeholder_and_stays_in_legacy_mode()
     {
