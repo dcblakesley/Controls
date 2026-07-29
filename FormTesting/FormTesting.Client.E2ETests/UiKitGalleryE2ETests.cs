@@ -919,7 +919,8 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         // button also gains focus -- a prior investigation of this controlled-Visible path had
         // surfaced two compounding issues: an activation race in OnAfterRenderAsync (overlapping
         // invocations around the position/focus state machine could leave _pendingFocus never
-        // consumed), now guarded by an _activationSeq sequence token (mirroring Modal's); and,
+        // consumed), now guarded by an _activationSeq sequence token (Modal/Drawer's equivalent
+        // lives in the shared JsHandle holder); and,
         // independently, a Blazor render-batch focus-restore race specific to focusing a <button>
         // from this externally-driven path, fixed by routing the focus call through
         // wss-overlay.js's focusDeferred instead of a direct FocusAsync() (see its doc comment).
