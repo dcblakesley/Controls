@@ -105,6 +105,25 @@ public class EnumOptionCacheTests
         Assert.Equal(OtherReservedLast, cache.Options);
     }
 
+    // An enum with no members at all: BuildOptions' "pull the last value out and re-append it as
+    // Other" step has nothing to pull.
+    enum EmptyEnum { }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void HasOtherOption_on_an_empty_enum_yields_no_options(bool sort)
+    {
+        var cache = new EnumOptionCache<EmptyEnum>();
+        cache.Initialize(sort, hasOtherOption: true);
+
+        // Regression: the re-add was guarded on `otherOption != null`, but TEnum is unconstrained, so
+        // for a value-type enum `default` is the ZERO MEMBER rather than null — the guard passed and
+        // appended a phantom default(TEnum) option to an enum that has none.
+        Assert.Empty(cache.Options);
+        Assert.Empty(cache.OptionsNonNullable);
+    }
+
     [Fact]
     public void Refresh_is_a_no_op_when_neither_shaping_parameter_changed()
     {

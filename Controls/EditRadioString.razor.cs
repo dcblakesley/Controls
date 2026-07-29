@@ -62,6 +62,14 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
     string _otherName = "__wss-other__";
     string? _selectedOption;
 
+    // One distinct id segment per Options entry, positionally aligned with it and consumed by the
+    // markup as each RadioOptionItem's IdSuffix. EnumHelpers.ToId strips non-ASCII, so an all-CJK
+    // options list gave every radio the same rb-{id}- element id -- and in Button mode, where the
+    // label associates by `for`, every button then toggled the FIRST radio. "other" is reserved so the
+    // built-in Other radio keeps its exact rb-{id}-other id and a colliding real option yields instead.
+    // Ordinary ASCII options are unaffected and render the ids they always did.
+    string[] _optionIds = [];
+
     // Extra init on top of the base's state wiring: the "Other" sentinel and the initial selection.
     // Base first, matching the order these ran in when the InitState call was spelled out here.
     protected override void OnInitialized()
@@ -78,6 +86,7 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
         // below reads it. If Other was selected under the old sentinel, `implied` no longer matches
         // CurrentValue, so the selection re-derives (and lands on Other under the new sentinel).
         ComputeOtherSentinel();
+        _optionIds = EnumHelpers.ToUniqueIds(Options, HasOther ? "other" : null);
         // Re-sync the radio selection with an externally-changed value (form reset, async-loaded
         // model, programmatic set). Skip when the current selection already implies CurrentValue,
         // so this never clobbers in-progress "Other" typing (where CurrentValue == _otherText).

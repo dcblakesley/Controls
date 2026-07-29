@@ -63,6 +63,13 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     // reads the cache's own IsNullable.
     readonly EnumOptionCache<TEnum> _cache = new();
 
+    // One distinct id segment per option, positionally aligned with GetOptions() and consumed by the
+    // markup as each RadioOptionItem's IdSuffix. Enum member names are C# identifiers, which may be
+    // non-ASCII -- and EnumHelpers.ToId strips those, so such an enum gave every radio the same
+    // rb-{id}- element id (in Button mode, where the label associates by `for`, every button then
+    // toggled the FIRST radio). See EnumHelpers.ToUniqueIds; ASCII member names are unaffected.
+    string[] _optionIds = [];
+
     // Extra init on top of the base's state wiring: seed the option cache. Base first, matching the
     // order this ran in when the InitState call was spelled out here.
     protected override void OnInitialized()
@@ -77,6 +84,8 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         // The option list is cached, but the parameters that shape it may change at runtime —
         // previously a Sort/HasOtherOption change was silently ignored forever.
         _cache.Refresh(Sort, HasOtherOption);
+        // Runs after Refresh so the ids track a reordered/resized option list. Cheap: ToId memoizes.
+        _optionIds = EnumHelpers.ToUniqueIds(_cache.Options);
     }
 
     // Read-only "Other" detection; an empty enum (no options) can't have an Other selection —

@@ -9,10 +9,11 @@ namespace Controls;
 /// value) and stays in the host, not here.
 /// </summary>
 /// <remarks>
-/// Takes the host control's id and composes the option's own <c>rb-{id}-{option}</c> element id
-/// itself — the same division of labor <c>CheckboxOptionList</c> (<c>cbx-{Id}-{option}</c>) and
-/// <c>SelectOptionList</c> (<c>{Id}-option-{option}</c>) already use, so the id recipe has one
-/// authoring site instead of one per host call site.
+/// Takes the host control's id plus the option's already-de-duplicated <see cref="IdSuffix"/> and
+/// composes the <c>rb-{id}-{option}</c> element id itself — the same division of labor
+/// <c>CheckboxOptionList</c> (<c>cbx-{Id}-{option}</c>) and <c>SelectOptionList</c>
+/// (<c>{Id}-option-{option}</c>) already use, so the id recipe has one authoring site instead of one
+/// per host call site.
 /// <para>
 /// Unlike those two, the display label arrives pre-resolved as a plain <see cref="Display"/> string
 /// rather than as a <c>Func&lt;TItem, string?&gt;</c> projection: they own the <c>foreach</c> over the
@@ -33,10 +34,12 @@ public partial class RadioOptionItem<[DynamicallyAccessedMembers(DynamicallyAcce
     [Parameter, EditorRequired] public string Id { get; set; } = "";
 
     /// <summary>
-    /// Replaces the option-derived trailing segment of <see cref="OptionId"/>. Null (default) derives
-    /// it from <see cref="Value"/>, which is what every real option wants;
-    /// <see cref="EditRadioString"/> passes <c>"other"</c> for its built-in "Other" radio, whose
-    /// <see cref="Value"/> is an internal sentinel that must never leak into a DOM id.
+    /// The trailing segment of <see cref="OptionId"/>. Both hosts pass it for every real option: the
+    /// segment has to be de-duplicated across the whole option list
+    /// (<c>EnumHelpers.ToUniqueIds</c>), which only the host — the one holding the list — can do.
+    /// <see cref="EditRadioString"/> also passes the literal <c>"other"</c> for its built-in "Other"
+    /// radio, whose <see cref="Value"/> is an internal sentinel that must never leak into a DOM id.
+    /// Null falls back to deriving the segment from <see cref="Value"/> alone (no de-duplication).
     /// </summary>
     [Parameter] public string? IdSuffix { get; set; }
 

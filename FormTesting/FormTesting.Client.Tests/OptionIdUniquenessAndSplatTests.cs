@@ -1,0 +1,397 @@
+using System.Linq.Expressions;
+using AngleSharp.Dom;
+using Bunit.Rendering;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+
+namespace FormTesting.Client.Tests;
+
+/// <summary>
+/// Two fixes that cut across the checkbox-list / radio-group controls.
+/// <para>
+/// <b>Option id uniqueness.</b> <c>EnumHelpers.ToId</c> is lossy — it strips everything outside
+/// <c>[A-Za-z0-9-_]</c> — so an option list of non-ASCII labels used to sanitize every entry to the
+/// same (empty) trailing segment. Duplicate ids make an explicit <c>&lt;label for&gt;</c> resolve to the
+/// FIRST matching input, so every label toggled the first checkbox/radio. The hosts now de-duplicate
+/// across the whole list, and the established id shape for an ordinary ASCII list is asserted here
+/// alongside the fix so it can't drift.
+/// </para>
+/// <para>
+/// <b>Unmatched attribute forwarding.</b> <c>EditControlListBase.AdditionalAttributes</c> is documented
+/// as "applied", but only <c>class</c> was ever read (into <c>FieldCssClass</c>) — <c>style</c>,
+/// <c>data-*</c> and <c>title</c> were silently dropped by <c>EditCheckedStringList</c>,
+/// <c>EditCheckedEnumList</c> and <c>EditFile</c>. They now splat onto the root wrapper, with
+/// <c>class</c> still travelling its single existing channel.
+/// </para>
+/// </summary>
+public class OptionIdUniquenessAndSplatTests : BunitContext
+{
+    // ----- shared fixtures -----------------------------------------------------------------------
+
+    // Enum whose member names are CJK ideographs -- legal C# identifiers that ToId strips entirely.
+    enum CjkColor
+    {
+        赤,
+        青,
+        緑
+    }
+
+    class CjkModel
+    {
+        public List<CjkColor> Picks { get; set; } = [];
+    }
+
+    sealed class FakeBrowserFile(string name, long size) : IBrowserFile
+    {
+        public string Name { get; } = name;
+        public DateTimeOffset LastModified { get; } = DateTimeOffset.UnixEpoch;
+        public long Size { get; } = size;
+        public string ContentType => "text/plain";
+        // Never reached: only the read-only view (Name + Size) is rendered in these tests.
+        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default) =>
+            Stream.Null;
+    }
+
+    class FileModel
+    {
+        public List<IBrowserFile> Files { get; set; } = [];
+    }
+
+    IRenderedComponent<ContainerFragment> RenderStringList(PersonModel model, List<string> options,
+        string? cssClass = null, string? style = null, string? dataFoo = null)
+    {
+        Expression<Func<List<string>>> field = () => model.Tags;
+        return Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", options);
+            if (cssClass is not null) b.AddAttribute(4, "class", cssClass);
+            if (style is not null) b.AddAttribute(5, "style", style);
+            if (dataFoo is not null) b.AddAttribute(6, "data-foo", dataFoo);
+            b.CloseComponent();
+        }));
+    }
+
+    IRenderedComponent<ContainerFragment> RenderRadioString(PersonModel model, List<string> options,
+        RadioOptionType optionType = RadioOptionType.Default, bool hasOther = false)
+    {
+        Expression<Func<string>> field = () => model.Name;
+        return Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", options);
+            b.AddAttribute(4, "OptionType", optionType);
+            b.AddAttribute(5, "HasOther", hasOther);
+            b.CloseComponent();
+        }));
+    }
+
+    // Every label's explicit `for` must name the input it wraps -- otherwise the label activates
+    // whichever input claimed the id first.
+    static void AssertLabelsPairWithTheirOwnInputs(IReadOnlyList<IElement> labels, IReadOnlyList<IElement> inputs)
+    {
+        Assert.Equal(inputs.Count, labels.Count);
+        var ids = inputs.Select(i => i.Id!).ToList();
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+        for (var i = 0; i < labels.Count; i++)
+            Assert.Equal(ids[i], labels[i].GetAttribute("for"));
+    }
+
+    // ----- EditCheckedStringList / EditCheckedEnumList option ids ---------------------------------
+
+    [Fact]
+    public void EditCheckedStringList_keeps_the_established_cbx_id_shape_for_an_ascii_list()
+    {
+        var cut = RenderStringList(new PersonModel(), ["a", "b", "Hello World"]);
+
+        // Unchanged by the de-duplication pass: first claim on a sanitized segment keeps it verbatim.
+        Assert.NotNull(cut.Find("#cbx-Tags-a"));
+        Assert.NotNull(cut.Find("#cbx-Tags-b"));
+        Assert.NotNull(cut.Find("#cbx-Tags-Hello-World"));
+        AssertLabelsPairWithTheirOwnInputs(cut.FindAll("label.edit-checkbox-label"), cut.FindAll("input[type=checkbox]"));
+    }
+
+    [Fact]
+    public void EditCheckedStringList_gives_options_that_sanitize_alike_distinct_ids()
+    {
+        // "a!" and "a?" both sanitized to "a", so both labels pointed at the first checkbox.
+        var cut = RenderStringList(new PersonModel(), ["a!", "a?"]);
+
+        AssertLabelsPairWithTheirOwnInputs(cut.FindAll("label.edit-checkbox-label"), cut.FindAll("input[type=checkbox]"));
+        Assert.NotNull(cut.Find("#cbx-Tags-a"));
+        Assert.NotNull(cut.Find("#cbx-Tags-1-a"));
+    }
+
+    [Fact]
+    public void EditCheckedStringList_gives_an_all_non_ascii_option_list_distinct_ids()
+    {
+        var cut = RenderStringList(new PersonModel(), ["赤", "青", "緑"]);
+
+        var boxes = cut.FindAll("input[type=checkbox]");
+        Assert.Equal(3, boxes.Count);
+        AssertLabelsPairWithTheirOwnInputs(cut.FindAll("label.edit-checkbox-label"), boxes);
+        Assert.Equal(new[] { "cbx-Tags-0", "cbx-Tags-1", "cbx-Tags-2" }, boxes.Select(b => b.Id!).ToArray());
+    }
+
+    [Fact]
+    public void EditCheckedStringList_labels_still_toggle_their_own_option_when_ids_collide()
+    {
+        // The end-user symptom, exercised through the change event the label's own input raises.
+        var model = new PersonModel();
+        List<string>? captured = null;
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<string>>(this, v => captured = v));
+            b.AddAttribute(3, "ValueExpression", field);
+            b.AddAttribute(4, "Options", new List<string> { "赤", "青" });
+            b.CloseComponent();
+        }));
+
+        cut.Find("#cbx-Tags-1").Change(true);
+
+        Assert.NotNull(captured);
+        Assert.Equal(new List<string> { "青" }, captured);
+    }
+
+    [Fact]
+    public void EditCheckedEnumList_gives_a_non_ascii_enum_distinct_ids()
+    {
+        var model = new CjkModel();
+        Expression<Func<List<CjkColor>>> field = () => model.Picks;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedEnumList<CjkColor>>(0);
+            b.AddAttribute(1, "Value", model.Picks);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        var boxes = cut.FindAll("input[type=checkbox]");
+        Assert.Equal(3, boxes.Count);
+        AssertLabelsPairWithTheirOwnInputs(cut.FindAll("label.edit-checkbox-label"), boxes);
+    }
+
+    [Fact]
+    public void EditCheckedEnumList_keeps_the_established_cbx_id_shape_for_an_ascii_enum()
+    {
+        var model = new PersonModel();
+        Expression<Func<List<Color>>> field = () => model.FavoriteColors;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedEnumList<Color>>(0);
+            b.AddAttribute(1, "Value", model.FavoriteColors);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        Assert.NotNull(cut.Find("#cbx-FavoriteColors-Red"));
+        Assert.NotNull(cut.Find("#cbx-FavoriteColors-PaleYellow"));
+    }
+
+    [Fact]
+    public void EditCheckedStringList_read_only_view_gives_look_alike_selections_distinct_ids()
+    {
+        var model = new PersonModel { Tags = ["赤", "青"] };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<string> { "赤", "青" });
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        var ids = cut.FindAll(".edit-readonly-value").Select(v => v.Id!).ToList();
+        Assert.Equal(2, ids.Count);
+        Assert.Equal(2, ids.Distinct().Count());
+    }
+
+    // ----- radio option ids -----------------------------------------------------------------------
+
+    [Fact]
+    public void EditRadioString_keeps_the_established_rb_id_shape_for_an_ascii_list()
+    {
+        var cut = RenderRadioString(new PersonModel { Name = "a" }, ["a", "b"]);
+
+        Assert.NotNull(cut.Find("#rb-Name-a"));
+        Assert.NotNull(cut.Find("#rb-Name-b"));
+    }
+
+    [Fact]
+    public void EditRadioString_button_mode_gives_options_that_sanitize_alike_distinct_ids()
+    {
+        // Button mode is where a duplicate id actually mis-wires the UI: the visible control is a
+        // sibling <label for> rather than a wrapping label.
+        var cut = RenderRadioString(new PersonModel { Name = "a!" }, ["a!", "a?"], RadioOptionType.Button);
+
+        AssertLabelsPairWithTheirOwnInputs(
+            cut.FindAll("label.edit-radio-button"), cut.FindAll("input.edit-radio-button-input"));
+        Assert.NotNull(cut.Find("#rb-Name-a"));
+        Assert.NotNull(cut.Find("#rb-Name-1-a"));
+    }
+
+    [Fact]
+    public void EditRadioString_button_mode_gives_an_all_non_ascii_option_list_distinct_ids()
+    {
+        var cut = RenderRadioString(new PersonModel { Name = "赤" }, ["赤", "青", "緑"], RadioOptionType.Button);
+
+        AssertLabelsPairWithTheirOwnInputs(
+            cut.FindAll("label.edit-radio-button"), cut.FindAll("input.edit-radio-button-input"));
+    }
+
+    [Fact]
+    public void EditRadioString_built_in_Other_keeps_its_own_id_when_a_real_option_is_named_other()
+    {
+        var cut = RenderRadioString(new PersonModel { Name = "" }, ["other", "b"], RadioOptionType.Button, hasOther: true);
+
+        // The library's own suffix is the fixed point (several suites pin #rb-Name-other); the consumer
+        // option yields to it rather than shadowing it.
+        Assert.NotNull(cut.Find("#rb-Name-other"));
+        Assert.NotNull(cut.Find("#rb-Name-0-other"));
+        AssertLabelsPairWithTheirOwnInputs(
+            cut.FindAll("label.edit-radio-button"), cut.FindAll("input.edit-radio-button-input"));
+    }
+
+    [Fact]
+    public void EditRadioEnum_keeps_the_established_rb_id_shape_for_an_ascii_enum()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        Assert.NotNull(cut.Find("#rb-Priority-Low"));
+        Assert.NotNull(cut.Find("#rb-Priority-Critical"));
+    }
+
+    [Fact]
+    public void EditRadioEnum_button_mode_gives_a_non_ascii_enum_distinct_ids()
+    {
+        var model = new CjkEnumModel();
+        Expression<Func<CjkColor?>> field = () => model.Pick;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<CjkColor?>>(0);
+            b.AddAttribute(1, "Value", model.Pick);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "OptionType", RadioOptionType.Button);
+            b.CloseComponent();
+        }));
+
+        AssertLabelsPairWithTheirOwnInputs(
+            cut.FindAll("label.edit-radio-button"), cut.FindAll("input.edit-radio-button-input"));
+    }
+
+    class CjkEnumModel
+    {
+        public CjkColor? Pick { get; set; }
+    }
+
+    // ----- unmatched attribute forwarding ---------------------------------------------------------
+
+    [Fact]
+    public void EditCheckedStringList_forwards_style_and_data_attributes_to_its_wrapper()
+    {
+        var cut = RenderStringList(new PersonModel(), ["a", "b"],
+            cssClass: "my-class", style: "margin-top:4px", dataFoo: "bar");
+
+        var wrapper = cut.Find(".edit-control-wrapper");
+        Assert.Equal("margin-top:4px", wrapper.GetAttribute("style"));
+        Assert.Equal("bar", wrapper.GetAttribute("data-foo"));
+        // class keeps its single existing channel -- every checkbox, not the wrapper (no double-apply).
+        Assert.DoesNotContain("my-class", wrapper.ClassList);
+        Assert.All(cut.FindAll("input[type=checkbox]"), box => Assert.Contains("my-class", box.ClassList));
+    }
+
+    [Fact]
+    public void EditCheckedEnumList_forwards_style_and_data_attributes_to_its_wrapper()
+    {
+        var model = new PersonModel();
+        Expression<Func<List<Color>>> field = () => model.FavoriteColors;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditCheckedEnumList<Color>>(0);
+            b.AddAttribute(1, "Value", model.FavoriteColors);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-class");
+            b.AddAttribute(4, "style", "margin-top:4px");
+            b.AddAttribute(5, "data-foo", "bar");
+            b.CloseComponent();
+        }));
+
+        var wrapper = cut.Find(".edit-control-wrapper");
+        Assert.Equal("margin-top:4px", wrapper.GetAttribute("style"));
+        Assert.Equal("bar", wrapper.GetAttribute("data-foo"));
+        Assert.All(cut.FindAll("input[type=checkbox]"), box => Assert.Contains("my-class", box.ClassList));
+    }
+
+    [Fact]
+    public void EditFile_forwards_style_and_data_attributes_to_its_wrapper()
+    {
+        var model = new FileModel();
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-class");
+            b.AddAttribute(4, "style", "margin-top:4px");
+            b.AddAttribute(5, "title", "pick files");
+            b.CloseComponent();
+        }));
+
+        var wrapper = cut.Find(".edit-control-wrapper");
+        Assert.Equal("margin-top:4px", wrapper.GetAttribute("style"));
+        Assert.Equal("pick files", wrapper.GetAttribute("title"));
+        // The drop zone keeps owning the class channel (its own class list is state-driven).
+        Assert.Contains("my-class", cut.Find(".edit-file-drop-zone").ClassList);
+    }
+
+    [Fact]
+    public void List_controls_render_no_style_attribute_when_the_consumer_supplies_none()
+    {
+        var cut = RenderStringList(new PersonModel(), ["a"], cssClass: "my-class");
+
+        Assert.False(cut.Find(".edit-control-wrapper").HasAttribute("style"));
+    }
+
+    // ----- EditFile read-only label association ---------------------------------------------------
+
+    [Fact]
+    public void EditFile_read_only_list_stays_labelled_by_the_field_label_when_the_label_is_hidden()
+    {
+        // FormLabel renders lbl-{id} even for a hidden label (sr-only), so the old
+        // ShouldHideLabel gate dropped the association on a premise that no longer holds.
+        var model = new FileModel { Files = [new FakeBrowserFile("report.pdf", 10)] };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "IsEditMode", false);
+            b.AddAttribute(4, "IsLabelHidden", true);
+            b.CloseComponent();
+        }));
+
+        var list = cut.Find(".edit-file-list--readonly");
+        Assert.Equal("lbl-Files", list.GetAttribute("aria-labelledby"));
+        Assert.NotNull(cut.Find("#lbl-Files"));            // the sr-only label it points at really exists
+        Assert.False(list.HasAttribute("aria-label"));     // no competing name now that labelledby is on
+    }
+}

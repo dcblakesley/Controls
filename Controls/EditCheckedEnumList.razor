@@ -3,7 +3,11 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* Splat first so the explicit class/style below win; the consumer's own class stays on the single
+       FieldCssClass channel (each checkbox), so only style and the remaining attributes land here. *@
+    <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+         class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         @* No aria-required/aria-invalid/aria-errormessage here: ARIA 1.2 doesn't support them on
            role="group" (unlike the radio fieldsets' radiogroup), so AT ignores them and checkers
            flag them. Required state lives on the legend star + validation message; invalid state
@@ -27,7 +31,6 @@
                                  UseStyledCheckbox=@EffectiveUseStyledCheckbox
                                  IsInvalid=@IsInvalid
                                  DescribedBy=@_describedBy
-                                 IsLabelHidden=@ShouldHideLabel
                                  OnToggle="ToggleAsync"
                                  DisplayText="@(o => o.GetName())" />
 

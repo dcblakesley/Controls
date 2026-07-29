@@ -88,11 +88,16 @@ public sealed class EnumOptionCache<TEnum>
         var enumValues = EnumHelpers.GetValues<TEnum>(_underlyingType);
 
         // If hasOtherOption is true, pull the last enum value out so it can be added back after
-        // sorting -- Other always stays last regardless of Sort.
-        TEnum? otherOption = default;
-        if (hasOtherOption && enumValues.Count > 0)
+        // sorting -- Other always stays last regardless of Sort. The extraction is tracked with a
+        // flag, not a null check on the pulled value: TEnum is unconstrained, so for a value-type enum
+        // `default` is the zero MEMBER rather than null, and an `otherOption != null` re-add guard
+        // therefore passed even for an EMPTY enum -- appending a phantom default(TEnum) option to a
+        // list that should have had none.
+        var otherPulled = hasOtherOption && enumValues.Count > 0;
+        TEnum otherOption = default!;
+        if (otherPulled)
         {
-            otherOption = enumValues.Last();
+            otherOption = enumValues[^1];
             enumValues.RemoveAt(enumValues.Count - 1);
         }
 
@@ -101,8 +106,8 @@ public sealed class EnumOptionCache<TEnum>
         if (sort)
             enumValues = enumValues.OrderBy(x => x!.GetName()).ToList();
 
-        // Add the "other" option back at the end if it exists.
-        if (hasOtherOption && otherOption != null)
+        // Add the "other" option back at the end if one was actually pulled out.
+        if (otherPulled)
             enumValues.Add(otherOption);
 
         return enumValues;

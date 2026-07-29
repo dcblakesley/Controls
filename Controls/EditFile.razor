@@ -2,7 +2,12 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* Splat first so the explicit class/style below win; the consumer's own class stays on the single
+       FieldCssClass channel (the drop zone / select button / read-only list), so only style and the
+       remaining attributes land here. Never on the drop zone itself — its class list is state-driven. *@
+    <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+         class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         @* IsForLabelable gates on CanAddMoreFiles too — at the MaxFiles cap the <InputFile> carrying
            _id unmounts, and a label pointing at a missing id is invalid (and clicks dead). *@
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@(ShowEditor && CanAddMoreFiles) />
@@ -108,14 +113,14 @@
             }
             else
             {
-                @* aria-labelledby ties the read-only list back to the field label ("lbl-{_id}" also
-                   exists when the label is visually hidden — FormLabel renders an sr-only label);
-                   the edit-mode list above names itself the same way via aria-label. *@
+                @* aria-labelledby unconditionally: FormLabel renders lbl-{_id} even when the label is
+                   visually hidden (sr-only), so the old ShouldHideLabel gate dropped the association
+                   on a premise that no longer holds — matching every other control's read-only view.
+                   The edit-mode list above names itself with a literal aria-label instead. *@
                 <ul class="edit-file-list edit-file-list--readonly @FieldCssClass"
                     id=@_id
                     data-test-id=@_id
-                    aria-labelledby=@(ShouldHideLabel ? null : $"lbl-{_id}")
-                    aria-label=@(ShouldHideLabel ? "Selected files" : null)>
+                    aria-labelledby="lbl-@_id">
                     @foreach (var file in Value)
                     {
                         <li class="edit-file-item">

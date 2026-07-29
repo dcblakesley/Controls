@@ -4,15 +4,10 @@
 @if (ShouldShowComponent())
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <fieldset class="edit-radio-fieldset"
-                  id=@(ShowEditor ? _id : null)
-                  data-test-id=@(ShowEditor ? _id : null)
-                  role=@(ShowEditor ? "radiogroup" : null)
-                  aria-labelledby=@(ShowEditor && !ShouldHideLabel ? $"lbl-{_id}" : null)
-                  aria-required=@(ShowEditor ? _isRequired : null)
-                  aria-invalid=@(ShowEditor && IsInvalid ? "true" : null)
-                  aria-describedby=@(ShowEditor ? _describedBy : null)
-                  aria-errormessage=@(ShowEditor && IsInvalid ? _errorMsgId : null)>
+        @* id/data-test-id/role/aria-* come from RadioAria, shared with EditRadio/EditRadioString;
+           splatted first so the explicit class below wins. *@
+        <fieldset @attributes="RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId)"
+                  class="edit-radio-fieldset">
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend=true IsLabelHidden=@ShouldHideLabel />
 
             @if (ShowEditor)
@@ -30,9 +25,10 @@
                            label button (the established styled-checkbox technique). *@
                         var buttonOptions = GetOptions();
                         <div class=@ButtonGroupClass>
-                            @foreach (var option in buttonOptions)
+                            @for (var i = 0; i < buttonOptions.Count; i++)
                             {
-                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionDisabledFor(option) Id=@_id CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
+                                var option = buttonOptions[i];
+                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionDisabledFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
                             }
                         </div>
                         @if (HasOtherOption && buttonOptions.Count > 0)
@@ -61,7 +57,7 @@
                                     var showOtherInput = HasOtherOption && isLastOption;
 
                                     <div class="edit-radio-option">
-                                        <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@_id CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
+                                        <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option.GetName() />
 
                                         @* The Other box shares this option's .edit-radio-option flex row, so the
                                            radio and its free-text box sit side by side. EditRadioString mirrors

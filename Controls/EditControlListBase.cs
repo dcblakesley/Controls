@@ -18,12 +18,20 @@ namespace Controls;
 public abstract class EditControlListBase<TItem> : EditControlParametersBase, IDisposable
 {
     /// <summary>
-    /// Captures unmatched attributes (in practice, a consumer's <c>class="..."</c>) so list controls
-    /// can merge it into <see cref="FieldCssClass"/> — the same forwarding scalar controls get for free
-    /// from <see cref="InputBase{TValue}.AdditionalAttributes"/>. Without this, an unmatched attribute
-    /// on a list control (e.g. <c>class</c> on <c>EditMultiSelect</c>) throws at render time instead of
+    /// Captures unmatched attributes — the same forwarding scalar controls get for free from
+    /// <see cref="InputBase{TValue}.AdditionalAttributes"/>. Without this, an unmatched attribute on a
+    /// list control (e.g. <c>class</c> on <c>EditMultiSelect</c>) throws at render time instead of
     /// being applied.
     /// </summary>
+    /// <remarks>
+    /// Split two ways by the derived controls' markup, so each attribute lands exactly once:
+    /// <c>class</c> is merged into <see cref="FieldCssClass"/> (which the control puts on the element
+    /// that represents the field itself — each checkbox, the file drop zone, the select box), while
+    /// <c>style</c> and everything else are hand-merged/splatted onto the control's root
+    /// <c>.edit-control-wrapper</c> via <c>AttributeSplat</c>. A control that splats nothing silently
+    /// drops <c>style</c>/<c>data-*</c>/<c>title</c>, which is what this parameter's contract promises
+    /// to apply.
+    /// </remarks>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     /// <summary> The current list of selected items.</summary>

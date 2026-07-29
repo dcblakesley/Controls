@@ -1,7 +1,53 @@
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+
 namespace FormTesting.Client.Tests;
 
 public class EnumHelpersTests
 {
+    /// <summary>
+    /// Stand-in for a generated <c>.resx</c> designer class. <see cref="DisplayAttribute"/> resolves a
+    /// <c>ResourceType</c>-backed name by looking up a public static <c>string</c> PROPERTY of that name
+    /// and re-invoking its getter on every read, so a hand-written holder exercises the localized path
+    /// with no satellite assembly. Must be public: the attribute rejects a non-visible resource type.
+    /// </summary>
+    public static class FakeUiResources
+    {
+        public static string Greeting =>
+            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fr" ? "Bonjour" : "Hello";
+    }
+
+    enum LocalizedGreeting
+    {
+        [Display(Name = nameof(FakeUiResources.Greeting), ResourceType = typeof(FakeUiResources))]
+        Greeting
+    }
+
+    [Fact]
+    public void GetName_re_resolves_a_ResourceType_backed_Display_name_per_culture()
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = new CultureInfo("en-US");
+            Assert.Equal("Hello", LocalizedGreeting.Greeting.GetName());
+
+            // The bug: the display-name cache was keyed (type, member) with no culture, but
+            // DisplayAttribute.GetName() resolves against CurrentUICulture — so the first render froze
+            // one language for the whole process (on Blazor Server, for every other user's circuit too).
+            CultureInfo.CurrentUICulture = new CultureInfo("fr-FR");
+            Assert.Equal("Bonjour", LocalizedGreeting.Greeting.GetName());
+
+            // Switching back proves the second call re-resolved rather than re-freezing on French.
+            CultureInfo.CurrentUICulture = new CultureInfo("en-US");
+            Assert.Equal("Hello", LocalizedGreeting.Greeting.GetName());
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
     [Fact]
     public void GetName_with_no_attribute_splits_camelCase()
     {
@@ -93,6 +139,55 @@ public class EnumHelpersTests
         // The whole point of .ToId() — Color.Green's display name is "Forest Green",
         // raw enum value is "Green", ToId returns "Green" (the C# name).
         Assert.Equal("Green", Color.Green.ToId());
+    }
+
+    // ----- ToUniqueIds: the de-duplication CheckboxOptionList / the radio hosts render against -------
+
+    [Fact]
+    public void ToUniqueIds_keeps_the_plain_sanitized_segment_for_an_ordinary_list()
+    {
+        // The shape every existing test, e2e selector and visual baseline pins must be untouched.
+        Assert.Equal(new[] { "a", "b", "Hello-World" }, EnumHelpers.ToUniqueIds(new[] { "a", "b", "Hello World" }));
+    }
+
+    [Fact]
+    public void ToUniqueIds_falls_back_to_the_index_when_sanitizing_leaves_nothing()
+    {
+        // Every all-CJK option sanitized to "" — so every checkbox/radio shared one id, and per HTML's
+        // label-for resolution every label toggled the FIRST input.
+        var ids = EnumHelpers.ToUniqueIds(new[] { "赤", "青", "緑" });
+
+        Assert.Equal(new[] { "0", "1", "2" }, ids);
+        Assert.Equal(3, ids.Distinct().Count());
+    }
+
+    [Fact]
+    public void ToUniqueIds_disambiguates_two_options_that_sanitize_alike()
+    {
+        // "a!" and "a?" both sanitize to "a": the first claim keeps it, the collider takes its index.
+        Assert.Equal(new[] { "a", "1-a" }, EnumHelpers.ToUniqueIds(new[] { "a!", "a?" }));
+    }
+
+    [Fact]
+    public void ToUniqueIds_leaves_a_reserved_segment_to_the_caller()
+    {
+        // EditRadioString reserves "other" for its built-in Other radio, so a real option of that name
+        // yields instead of shadowing it (the built-in's rb-{id}-other is pinned by several tests).
+        Assert.Equal(new[] { "0-other", "b" }, EnumHelpers.ToUniqueIds(new[] { "other", "b" }, reserved: "other"));
+    }
+
+    [Fact]
+    public void ToUniqueIds_re_prefixes_when_the_index_qualified_form_is_itself_taken()
+    {
+        // Pathological: index 2's "a" collides, and its "2-a" fallback is a literal option at index 0,
+        // so it has to prefix again rather than duplicate that id.
+        Assert.Equal(new[] { "2-a", "a", "2-2-a" }, EnumHelpers.ToUniqueIds(new[] { "2-a", "a", "a" }));
+    }
+
+    [Fact]
+    public void ToUniqueIds_returns_an_empty_array_for_an_empty_list()
+    {
+        Assert.Empty(EnumHelpers.ToUniqueIds(Array.Empty<string>()));
     }
 
     enum TypeA

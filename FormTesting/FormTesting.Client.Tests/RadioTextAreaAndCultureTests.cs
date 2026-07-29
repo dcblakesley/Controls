@@ -220,7 +220,7 @@ public class RadioTextAreaAndCultureTests : BunitContext
     }
 
     [Fact]
-    public void EditRadioString_omits_aria_labelledby_when_the_label_is_hidden()
+    public void EditRadioString_keeps_aria_labelledby_when_the_label_is_hidden()
     {
         var model = new PersonModel { Name = "a" };
         Expression<Func<string>> field = () => model.Name;
@@ -234,8 +234,9 @@ public class RadioTextAreaAndCultureTests : BunitContext
             b.CloseComponent();
         }));
         var fieldset = cut.Find("fieldset.edit-radio-fieldset");
-        Assert.Equal("radiogroup", fieldset.GetAttribute("role"));  // still a radiogroup in edit mode
-        Assert.False(fieldset.HasAttribute("aria-labelledby"));     // but no dangling lbl- ref (no legend rendered)
+        Assert.Equal("radiogroup", fieldset.GetAttribute("role"));         // still a radiogroup in edit mode
+        Assert.Equal("lbl-Name", fieldset.GetAttribute("aria-labelledby")); // the sr-only legend still names it
+        Assert.NotNull(cut.Find("legend.edit-sr-only#lbl-Name"));           // and that legend really renders
     }
 
     [Fact]
