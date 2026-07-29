@@ -61,46 +61,29 @@ public static class ValidationHelper
     static string NumberRangeString(string min, string max) => $"Must be between {min} and {max}";
     static string NumberRangeString(string min, string max, string label) => $"{label} must be between {min} and {max}";
 
-    /// <summary> Overrides the default validation messages. </summary>
-    public static string GetValidationMessage(string message, string fieldName, string label, string? valueType, int? max = null, int? min = null, bool includeLabel = false)
+    /// <summary>
+    /// Overrides the default validation messages. Matches the framework text under the raw member name
+    /// only — use the <c>displayName</c> overload for models that carry <c>[Display(Name = "…")]</c>.
+    /// </summary>
+    public static string GetValidationMessage(string message, string fieldName, string label, string? valueType, int? max = null, int? min = null, bool includeLabel = false) =>
+        GetValidationMessage(message, fieldName, null, label, valueType, max, min, includeLabel);
+
+    /// <summary>
+    /// Overrides the default validation messages. <paramref name="displayName"/> is the name
+    /// DataAnnotations itself used when it formatted <paramref name="message"/> —
+    /// <c>ValidationContext.DisplayName</c>, which resolves <c>[Display(Name = "…")]</c> when the
+    /// property carries one; null (or equal to <paramref name="fieldName"/>) when it doesn't. Both
+    /// spellings are tried because the rewrites below are exact-string matches and a decorated
+    /// property's framework message contains no trace of the member name.
+    /// (<c>[DisplayName]</c> needs nothing here — DataAnnotations doesn't read it.)
+    /// </summary>
+    public static string GetValidationMessage(string message, string fieldName, string? displayName, string label, string? valueType, int? max = null, int? min = null, bool includeLabel = false)
     {
-        //Console.WriteLine($"GetValidationMessage: {message}, {fieldName}, {label}, {valueType}, {max}, {min}, {includeLabel}");
-
-        var output = message;
-
-        // Required
-        if (string.Equals(message, $"The {fieldName} field is required."))
-            return includeLabel ? RequiredString(label) : RequiredString();
-
-        // StringLength with only max
-        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
-            return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
-
-        // StringLength with Min
-        if (string.Equals(message, $"The field {fieldName} must be a string with a minimum length of {min} and a maximum length of {max}."))
-            return includeLabel ? RangeString(min, max, label) : RangeString(min, max);
-
-        // MinLength
-        if (string.Equals(message, $"The field {fieldName} must be a string or array type with a minimum length of '{min}'."))
-        {
-            if (valueType == "System.String")
-                return includeLabel ? MinLengthString(min, label) : MinLengthString(min);
-            return includeLabel ? MinLengthList(min, label) : MinLengthList(min);
-        }
-
-        if (string.Equals(message, $"The field {fieldName} must be a string or array type with a maximum length of '{max}'."))
-        {
-            if (valueType == "System.String")
-                return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
-            return includeLabel ? MaxLengthList(max, label) : MaxLengthList(max);
-        }
-
-        if (string.Equals(message, $"The field {fieldName} must be a string with a maximum length of {max}."))
-            return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
-
-        // Replace numeric validation message 
-        if (string.Equals(message, $"The {fieldName} field must be a number."))
-            return includeLabel ? MustBeANumberString(label) : MustBeANumberString();
+        var rewritten = ExactMatchRewrite(message, fieldName, label, valueType, max, min, includeLabel);
+        if (rewritten is null && !string.IsNullOrEmpty(displayName) && !string.Equals(displayName, fieldName))
+            rewritten = ExactMatchRewrite(message, displayName, label, valueType, max, min, includeLabel);
+        if (rewritten is not null)
+            return rewritten;
 
         // Numeric range — e.g. "The field Min must be between -2 and 55."
         // Uses a regex so multi-word field names ("Order Total") and trailing-period variations don't
@@ -125,7 +108,50 @@ public static class ValidationHelper
             }
         }
 
-        return output;
+        return message;
+    }
+
+    // The framework's own message text for a given attribute, reconstructed and compared verbatim: a
+    // match proves DataAnnotations (or a control's parse-error path) produced this message for THIS
+    // field with THESE bounds, which is what makes replacing it safe. `name` is one candidate spelling
+    // of the field — the member name, or the [Display(Name)] the framework formatted with. Returns null
+    // when nothing matched, so the caller can try the other spelling.
+    static string? ExactMatchRewrite(string message, string name, string label, string? valueType, int? max, int? min, bool includeLabel)
+    {
+        // Required
+        if (string.Equals(message, $"The {name} field is required."))
+            return includeLabel ? RequiredString(label) : RequiredString();
+
+        // StringLength with only max
+        if (string.Equals(message, $"The field {name} must be a string with a maximum length of {max}."))
+            return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
+
+        // StringLength with Min
+        if (string.Equals(message, $"The field {name} must be a string with a minimum length of {min} and a maximum length of {max}."))
+            return includeLabel ? RangeString(min, max, label) : RangeString(min, max);
+
+        // MinLength
+        if (string.Equals(message, $"The field {name} must be a string or array type with a minimum length of '{min}'."))
+        {
+            if (valueType == "System.String")
+                return includeLabel ? MinLengthString(min, label) : MinLengthString(min);
+            return includeLabel ? MinLengthList(min, label) : MinLengthList(min);
+        }
+
+        // MaxLength
+        if (string.Equals(message, $"The field {name} must be a string or array type with a maximum length of '{max}'."))
+        {
+            if (valueType == "System.String")
+                return includeLabel ? MaxLengthString(max, label) : MaxLengthString(max);
+            return includeLabel ? MaxLengthList(max, label) : MaxLengthList(max);
+        }
+
+        // Numeric parse failure — the controls format their ParsingErrorMessage with the raw member
+        // name, so this one never sees a [Display(Name)] spelling; harmless to try both.
+        if (string.Equals(message, $"The {name} field must be a number."))
+            return includeLabel ? MustBeANumberString(label) : MustBeANumberString();
+
+        return null;
     }
 
     // Sentinel checks — every numeric primitive's MinValue/MaxValue as text. RangeAttribute formats

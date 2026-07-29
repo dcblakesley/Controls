@@ -80,9 +80,20 @@ public partial class FieldValidationDisplay
     bool ShowFieldNameInValidation =>
         FormOptions?.ShowFieldNameInValidation ?? FormDefaults?.EffectiveShowFieldNameInValidation ?? FormOptions.DefaultShowFieldNameInValidation;
 
+    // The name DataAnnotations itself formats its messages with (ValidationContext.DisplayName):
+    // [Display(Name = "…")] when the property carries one, else the member name — which _fieldName
+    // already covers, so null here means "member name only". Without this, a [Display(Name)] property's
+    // framework message ("The Given Name field is required.") matched none of ValidationHelper's
+    // exact-match candidates and rendered raw. GetName() (not .Name) so a ResourceType-localized name
+    // resolves through its resource manager, and read live per message rather than derived once in
+    // OnParametersSet: GetName() is culture-dependent, and this is a probe over the already-materialized
+    // attribute list, not reflection. ([DisplayName]/[EnumDisplayName] are deliberately not consulted —
+    // DataAnnotations ignores them, so those messages keep the raw member name.)
+    string? DataAnnotationsDisplayName => Attributes?.OfType<DisplayAttribute>().FirstOrDefault()?.GetName();
+
     /// <summary> Overrides the default validation messages. </summary>
     string GetValidationMessage(string message, bool showLabel) =>
-        ValidationHelper.GetValidationMessage(message, _fieldName, _label, _valueType, _maxCharacters, _minCharacters, showLabel);
+        ValidationHelper.GetValidationMessage(message, _fieldName, DataAnnotationsDisplayName, _label, _valueType, _maxCharacters, _minCharacters, showLabel);
 
     /// <summary> Overrides the default validation messages, using the form option to determine label visibility. </summary>
     string GetValidationMessage(string message) =>

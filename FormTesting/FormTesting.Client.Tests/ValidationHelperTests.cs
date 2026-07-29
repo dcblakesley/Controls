@@ -129,4 +129,74 @@ public class ValidationHelperTests
             "Age", "Age", valueType: "System.Int32", includeLabel: true);
         Assert.Equal("Age must be between 1 and 120", msg);
     }
+
+    // ----- [Display(Name)] candidate ------------------------------------------------------------
+    // DataAnnotations formats its messages with ValidationContext.DisplayName, which resolves
+    // [Display(Name = "…")] — so the message contains no trace of the member name and the exact-match
+    // rewrites have to be tried under the display-name spelling too. These call the overload whose
+    // argument order is (message, fieldName, displayName, label, valueType, …).
+
+    [Fact]
+    public void Required_message_under_a_display_name_is_rewritten()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            "The Given Name field is required.", "FirstName", "Given Name", "Given Name", "System.String");
+        Assert.Equal("Required", msg);
+    }
+
+    [Fact]
+    public void Required_message_under_a_display_name_with_includeLabel_includes_label()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            "The Given Name field is required.", "FirstName", "Given Name", "Given Name", "System.String",
+            includeLabel: true);
+        Assert.Equal("Given Name is required.", msg);
+    }
+
+    [Fact]
+    public void StringLength_message_under_a_display_name_is_rewritten()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Given Name must be a string with a minimum length of 2 and a maximum length of 50.",
+            "FirstName", "Given Name", "Given Name", "System.String", max: 50, min: 2);
+        Assert.Equal("Must be between 2 and 50 characters", msg);
+    }
+
+    [Fact]
+    public void MinLength_message_under_a_display_name_is_rewritten_with_the_list_wording()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Chosen Tags must be a string or array type with a minimum length of '2'.",
+            "Tags", "Chosen Tags", "Chosen Tags", "System.Collections.Generic.List`1[System.String]", min: 2);
+        Assert.Equal("Must select at least 2 options", msg);
+    }
+
+    [Fact]
+    public void Member_name_message_still_rewrites_when_a_display_name_is_also_supplied()
+    {
+        // Both candidates are tried, not just the display name: the numeric/date parse messages are
+        // formatted by the controls themselves with the raw member name, even on a [Display]-decorated
+        // property.
+        var msg = ValidationHelper.GetValidationMessage(
+            "The Age field must be a number.", "Age", "Years Old", "Years Old", "System.Int32");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Fact]
+    public void Display_name_message_passes_through_when_no_display_name_candidate_is_supplied()
+    {
+        // The regression this candidate exists for: with only the member name to match on, the raw
+        // framework text reached the user.
+        const string raw = "The Given Name field is required.";
+        var msg = ValidationHelper.GetValidationMessage(raw, "FirstName", null, "Given Name", "System.String");
+        Assert.Equal(raw, msg);
+    }
+
+    [Fact]
+    public void Display_name_equal_to_the_member_name_is_harmless()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            "The Name field is required.", "Name", "Name", "Full Name", "System.String");
+        Assert.Equal("Required", msg);
+    }
 }
