@@ -91,7 +91,8 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// Registration used to live in <c>FieldValidationDisplay.OnInitialized</c>, but that
     /// component is rendered conditionally (inside <c>@if (ShouldShowComponent())</c>) — so
     /// hidden fields silently never registered, and the validation summary couldn't link to them.
-    /// Registering here happens once per control init and survives any HidingMode setting.
+    /// Registering here happens once per control init and survives any HidingMode setting; the
+    /// paired unregister lives in <see cref="Dispose(bool)"/>.
     /// </remarks>
     protected void InitState<T>(Expression<Func<T>> field)
     {
@@ -99,7 +100,8 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
         // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
-        FormOptions?.RegisterField(_fieldIdentifier, _id, this);
+        // Paired with the Dispose override below — see EditControlInit.RegisterField's remarks.
+        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
         // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and
@@ -120,6 +122,20 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
             _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
         }
+    }
+
+    /// <summary>
+    /// Drops the field registration <see cref="InitState{T}"/> added, so a control removed from the
+    /// render tree (e.g. behind a conditional <c>@if</c>) doesn't leave stale state for the validation
+    /// summary to link to — <see cref="FormOptions"/> is per-form and long-lived, so an unpaired
+    /// registration also grows <see cref="FormOptions.FieldIdentifiers"/> on every mount/unmount cycle.
+    /// Mirrors <see cref="EditControlListBase{TItem}.Dispose"/>; derived overrides must chain to base.
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
+        base.Dispose(disposing);
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

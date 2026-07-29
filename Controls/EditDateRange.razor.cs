@@ -479,12 +479,10 @@ public partial class EditDateRange : IDisposable
         }
     }
 
-    // Mirrors EditDate.TimeFormatPart exactly (see its doc comment) -- one small string, not
-    // worth sharing across the two otherwise-independent classes. Feeds EffectiveDateFormat's own
-    // Time/DateTime default below.
-    string TimeFormatPart => Use12Hours
-        ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
-        : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
+    // The Time/DateTime portion of EffectiveDateFormat's own defaults below -- see
+    // PickerMath.TimeFormatString for the ShowSeconds/Use12Hours contract (shared with the inner
+    // DateRangePicker's own identical property, so read-only and edit mode can't disagree).
+    string TimeFormatPart => PickerMath.TimeFormatString(Use12Hours, ShowSeconds);
 
     // Mirrors EditDate.EffectiveDateFormat one-for-one, keyed off this control's own Mode
     // (there's no separate Type/Mode fork here -- Mode is the only lever). Quarter/Week's "yyyy" is

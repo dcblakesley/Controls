@@ -100,8 +100,9 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
         // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
-        // field survives HidingMode and links from the validation summary always work.
-        FormOptions?.RegisterField(_fieldIdentifier, _id, this);
+        // field survives HidingMode and links from the validation summary always work. Paired with
+        // the Dispose override below — see EditControlInit.RegisterField's remarks.
+        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
 
         // Mirror EditControlBase: resolve the ARIA references (recomputed in OnParametersSet too).
         (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
@@ -117,6 +118,20 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
             _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
         }
+    }
+
+    /// <summary>
+    /// Drops the field registration <see cref="OnInitialized"/> added — the same pairing
+    /// <c>EditControlBase&lt;T&gt;</c> gets from its own override, spelled out here because this
+    /// control inherits <see cref="InputRadioGroup{TValue}"/> instead. Without it a removed control
+    /// (behind a conditional <c>@if</c>) leaves a dead <see cref="FieldIdentifier"/> in the long-lived
+    /// <see cref="FormOptions"/> for the validation summary to link to.
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+            EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
+        base.Dispose(disposing);
     }
 
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);

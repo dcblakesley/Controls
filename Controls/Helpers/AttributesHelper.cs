@@ -258,20 +258,30 @@ public static class AttributesHelper
     }
 
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
-        FieldIdentifier fieldIdentifier)
+        FieldIdentifier fieldIdentifier) =>
+        GetId(id, formGroupOptions, idPrefix, fieldIdentifier.FieldName);
+
+    /// <summary>
+    /// The id composition every edit control shares, over an arbitrary <paramref name="baseName"/>:
+    /// an explicit <paramref name="id"/> wins verbatim, else the group name and
+    /// <paramref name="idPrefix"/> prefix the base name and spaces are stripped. Bound controls pass
+    /// the <see cref="FieldIdentifier"/> overload; the unbound <c>EditDisplay</c> (no field) passes
+    /// its Label-derived name instead.
+    /// </summary>
+    public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
+        string baseName)
     {
         // Explicit id always wins.
         if (!string.IsNullOrEmpty(id))
             return id;
 
-        var fieldName = fieldIdentifier.FieldName;
         if (!string.IsNullOrEmpty(formGroupOptions?.Name))
-            fieldName = formGroupOptions.Name + "-" + fieldName;
+            baseName = formGroupOptions.Name + "-" + baseName;
 
         if (idPrefix != null)
-            fieldName = idPrefix + "-" + fieldName;
+            baseName = idPrefix + "-" + baseName;
 
-        return fieldName.Replace(" ", "");
+        return baseName.Replace(" ", "");
     }
 
     // Complex

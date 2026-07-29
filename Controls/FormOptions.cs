@@ -40,9 +40,12 @@ public class FormOptions
         }
     }
 
-    /// <summary> Removes a field's registration (and its resolved id). A list control calls this when
-    /// its model/<see cref="EditContext"/> is swapped — the old-model <see cref="FieldIdentifier"/> is
-    /// dead and must not linger in the validation summary — and when it is disposed. When
+    /// <summary> Removes a field's registration (and its resolved id). Every control unregisters when it
+    /// is disposed — this instance outlives any one control, so a control removed behind a conditional
+    /// <c>@if</c> would otherwise leave a dead <see cref="FieldIdentifier"/> in the validation summary
+    /// and grow <see cref="FieldIdentifiers"/> on each mount/unmount cycle. Controls that support a
+    /// model/<see cref="EditContext"/> swap (the list base, <c>EditDateRange</c>) additionally call this
+    /// before re-registering, since the old-model <see cref="FieldIdentifier"/> is dead. When
     /// <paramref name="owner"/> is supplied, the entry is only dropped once no other registered owner
     /// remains (two controls bound to the same property share one entry); a null owner removes it
     /// unconditionally. </summary>

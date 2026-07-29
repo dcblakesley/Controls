@@ -388,11 +388,8 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         if (toAdd.Count > 0)
         {
             // A null bound list (model property never initialized) starts fresh instead of throwing.
-            Value = Value is null ? toAdd : [.. Value, .. toAdd];
-            // Write back to the model (ValueChanged) BEFORE notifying — the validator reads the property
-            // live off the model during NotifyFieldChanged, so notifying first validates the stale value.
-            await ValueChanged.InvokeAsync(Value);
-            EditContext?.NotifyFieldChanged(_fieldIdentifier);
+            List<IBrowserFile> updated = Value is null ? toAdd : [.. Value, .. toAdd];
+            await SetValueAsync(updated);
         }
     }
 
@@ -402,19 +399,17 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         var updated = new List<IBrowserFile>(Value);
         var removedIndex = updated.IndexOf(file);
         updated.Remove(file);
-        Value = updated;
         _uploadErrors.Clear();
 
         // Keep keyboard focus on the control after the delete button vanishes: focus the file that
         // shifted into this slot, else the new last file, else the drop zone's file input. Consumed
-        // in OnAfterRenderAsync once the new list has rendered.
+        // in OnAfterRenderAsync once the new list has rendered — so it's set before the commit below
+        // renders the shorter list.
         _pendingFocusId = updated.Count == 0
             ? _id
             : $"del-{_id}-{Math.Min(removedIndex, updated.Count - 1)}";
 
-        // Write back before notifying so validation sees the post-removal list, not the stale one.
-        await ValueChanged.InvokeAsync(Value);
-        EditContext?.NotifyFieldChanged(_fieldIdentifier);
+        await SetValueAsync(updated);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

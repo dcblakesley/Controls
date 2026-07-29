@@ -34,6 +34,30 @@ public static class EditControlInit
     }
 
     /// <summary>
+    /// Registers a control's field (and its resolved element id) with the form so the validation
+    /// summary can link to it. <paramref name="owner"/> is the registering control instance, so two
+    /// controls bound to the same property share one entry until the last of them unregisters.
+    /// </summary>
+    /// <remarks>
+    /// Paired with <see cref="UnregisterField"/> — a control that registers MUST unregister on
+    /// dispose. <see cref="FormOptions"/> is per-form and long-lived, so a control removed behind a
+    /// conditional <c>@if</c> would otherwise leave a dead <see cref="FieldIdentifier"/> that
+    /// <see cref="ValidationView"/> links to and re-iterates every render, growing with each
+    /// mount/unmount cycle. The two halves sit here as one pair so a control base written against
+    /// this helper can't implement only the registering side (as the scalar bases once did).
+    /// </remarks>
+    public static void RegisterField(FormOptions? formOptions, FieldIdentifier fieldIdentifier, string id, object owner) =>
+        formOptions?.RegisterField(fieldIdentifier, id, owner);
+
+    /// <summary>
+    /// Drops the registration <see cref="RegisterField"/> added. Called from a control's dispose, and
+    /// before re-registering when a bound model (and therefore the <see cref="FieldIdentifier"/>) is
+    /// swapped out from under a control that supports it.
+    /// </summary>
+    public static void UnregisterField(FormOptions? formOptions, FieldIdentifier fieldIdentifier, object owner) =>
+        formOptions?.UnregisterField(fieldIdentifier, owner);
+
+    /// <summary>
     /// The single source of truth for whether a field is required — used by both the FormLabel
     /// star and <c>aria-required</c> so the two signals can never disagree. Resolution order:
     /// an explicitly-set <see cref="IEditControl.IsRequired"/> parameter wins outright
@@ -72,7 +96,8 @@ public static class EditControlInit
         isLabelHidden || (formOptions?.IsLabelHidden ?? false);
 
     /// <summary>
-    /// Resolves EditBool / EditCheckedStringList / EditCheckedEnumList's styled-checkbox switch: an
+    /// Resolves EditBool / EditCheckedStringList / EditCheckedEnumList's styled-checkbox switch (and
+    /// Table's row-selection checkboxes, which pass <c>null</c> for <paramref name="formOptions"/>): an
     /// explicit per-control <c>UseStyledCheckbox</c> parameter wins outright; otherwise the form's
     /// <see cref="FormOptions.UseStyledCheckbox"/>, then any enclosing <see cref="FormDefaults"/>
     /// (app/MFE-root default), then the process-wide <see cref="FormOptions.DefaultUseStyledCheckbox"/>.

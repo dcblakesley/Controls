@@ -173,6 +173,88 @@ public class FieldRegistrationTests : BunitContext
         Assert.DoesNotContain(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags"); // last one out removes it
     }
 
+    // <EditForm><CascadingValue FormOptions>{children}</CascadingValue></EditForm>, with the children
+    // supplied by a closure a test can flip between renders so a control is removed (and disposed).
+    static RenderFragment<EditContext> FormOptionsScope(FormOptions formOptions, RenderFragment children)
+        => _ => b =>
+        {
+            b.OpenComponent<CascadingValue<FormOptions>>(0);
+            b.AddAttribute(1, "Value", formOptions);
+            b.AddAttribute(2, "ChildContent", children);
+            b.CloseComponent();
+        };
+
+    [Fact]
+    public void Disposing_a_scalar_control_unregisters_its_field()
+    {
+        // Scalar controls register in EditControlBase.InitState; the paired unregister lives in its
+        // Dispose override. Without it, a control removed behind a conditional @if left a dead
+        // FieldIdentifier (and its FieldIds entry) in the long-lived per-form FormOptions, which
+        // ValidationView then links to and re-iterates every render.
+        var model = new PersonModel { Name = "Alice" };
+        var formOptions = new FormOptions();
+        Expression<Func<string>> field = () => model.Name;
+        var show = true;
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, FormOptionsScope(formOptions, inner =>
+            {
+                if (!show) return;
+                inner.OpenComponent<EditString>(0);
+                inner.AddAttribute(1, "Value", model.Name);
+                inner.AddAttribute(2, "ValueExpression", field);
+                inner.CloseComponent();
+            })));
+
+        Assert.Contains(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name");
+
+        show = false;
+        cut.Render(ps => ps.Add(f => f.Model, model));
+        Assert.DoesNotContain(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name");
+        Assert.False(formOptions.FieldIds.ContainsKey(FieldIdentifier.Create(field)));
+    }
+
+    [Fact]
+    public void Disposing_one_of_two_scalar_controls_sharing_a_field_keeps_the_registration()
+    {
+        // Same owner semantics the list path has (see above), across the scalar base: two controls
+        // bound to one property share a single entry, and only the last one out removes it.
+        var model = new PersonModel { Name = "Alice" };
+        var formOptions = new FormOptions();
+        Expression<Func<string>> field = () => model.Name;
+        var showFirst = true;
+        var showSecond = true;
+
+        void AddString(RenderTreeBuilder b, int seq)
+        {
+            b.OpenComponent<EditString>(seq);
+            b.AddAttribute(seq + 1, "Value", model.Name);
+            b.AddAttribute(seq + 2, "ValueExpression", field);
+            b.CloseComponent();
+        }
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, FormOptionsScope(formOptions, inner =>
+            {
+                if (showFirst)
+                    AddString(inner, 0);
+                if (showSecond)
+                    AddString(inner, 10);
+            })));
+
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name");
+
+        showSecond = false;
+        cut.Render(ps => ps.Add(f => f.Model, model));
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name"); // survivor keeps the entry
+
+        showFirst = false;
+        cut.Render(ps => ps.Add(f => f.Model, model));
+        Assert.DoesNotContain(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name"); // last one out removes it
+    }
+
     [Fact]
     public void Registering_the_same_field_twice_does_not_duplicate()
     {

@@ -56,25 +56,13 @@ public partial class EditDisplay
 
     // Resolved id used by the markup: explicit Id wins, then a Label-derived id, else a unique
     // fallback so label-less displays don't collide on an empty id (and the markup can omit
-    // aria-labelledby rather than point it at an empty label). The derived forms compose with
-    // FormGroupOptions.Name / IdPrefix the same way AttributesHelper.GetId does for bound controls,
-    // so two "Status" displays in different groups don't collide.
+    // aria-labelledby rather than point it at an empty label). The composition itself is
+    // AttributesHelper.GetId's (group name / IdPrefix prefixes, spaces stripped) over that base name
+    // instead of a FieldIdentifier, so two "Status" displays in different groups don't collide.
     string _id = string.Empty;
     readonly string _fallbackId = $"ed-{Guid.NewGuid():N}";
 
-    protected override void OnParametersSet()
-    {
-        if (!string.IsNullOrEmpty(Id))
-        {
-            _id = Id;
-            return;
-        }
-
-        var baseId = !string.IsNullOrEmpty(Label) ? Label.ToId() : _fallbackId;
-        if (!string.IsNullOrEmpty(FormGroupOptions?.Name))
-            baseId = $"{FormGroupOptions.Name}-{baseId}";
-        if (IdPrefix != null)
-            baseId = $"{IdPrefix}-{baseId}";
-        _id = baseId.Replace(" ", "");
-    }
+    protected override void OnParametersSet() =>
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix,
+            !string.IsNullOrEmpty(Label) ? Label.ToId() : _fallbackId);
 }

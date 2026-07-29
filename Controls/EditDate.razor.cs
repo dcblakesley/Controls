@@ -279,13 +279,10 @@ public partial class EditDate<T> : EditControlBase<T>
 
     DatePickerMode EffectiveMode => Mode ?? PickerMode;
 
-    // Mirrors DatePicker.TimeFormatString exactly (see its doc comment) rather than sharing it --
-    // it's one small string, and sharing it would mean exposing an internal instance member across
-    // two otherwise-independent classes for a three-line ternary. This value also feeds
-    // EffectiveDateFormat's own Time/DateTime default below.
-    string TimeFormatPart => Use12Hours
-        ? (ShowSeconds ? "h:mm:ss tt" : "h:mm tt")
-        : (ShowSeconds ? "HH:mm:ss" : "HH:mm");
+    // The Time/DateTime portion of EffectiveDateFormat's own defaults below -- see
+    // PickerMath.TimeFormatString for the ShowSeconds/Use12Hours contract (shared with the inner
+    // DatePicker's own identical property, so read-only and edit mode can't disagree).
+    string TimeFormatPart => PickerMath.TimeFormatString(Use12Hours, ShowSeconds);
 
     // The explicit-override surface for the read-only display format: the DateFormat parameter, else
     // the bound property's own [DisplayFormat]. Shared by EffectiveDateFormat (as the layer ahead of
