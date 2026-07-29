@@ -1,4 +1,4 @@
-﻿@inherits EditControlBase<string?>
+﻿@inherits EditTextInputBase
 
 @if (ShouldShowComponent())
 {
@@ -19,7 +19,7 @@
                           @bind-value:event="@UpdateEventName"
                           @bind-value:after="OnValueChangedAsync"
                           @attributes="AutoSizeInputAttribute"
-                          @ref="_textAreaRef"
+                          @ref="_editorRef"
                           style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                           disabled=@IsDisabled
                           id=@_id

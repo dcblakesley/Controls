@@ -1,11 +1,13 @@
 namespace Controls;
 
 /// <summary> Edit control for numeric values, displays as a number input. Supports custom formatting and step values.</summary>
-// T is annotated 'All' because TryParseValueFromString feeds it to BindConverter.TryConvertTo<T>,
-// which declares that requirement for its TypeConverter fallback (mirrors the framework's InputNumber<T>).
-public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T> : EditControlBase<T>
+// T is annotated 'All' because TryParseValueFromString feeds it (via EditControlInit.TryConvert<T>)
+// to BindConverter.TryConvertTo<T>, which declares that requirement for its TypeConverter fallback
+// (mirrors the framework's InputNumber<T>).
+public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T> : EditTextControlBase<T>
 {
-    // Component-specific parameters
+    // Component-specific parameters. Size and UpdateOn (+ UpdateEventName) live on
+    // EditTextControlBase<TValue>, shared with EditString/EditTextArea/EditDateNative.
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
@@ -65,6 +67,10 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// Placeholder text to display in the input when empty. Falls back to the bound property's
     /// <c>[Placeholder]</c>/<c>[Display(Prompt = "…")]</c> when unset -- see <see cref="EffectivePlaceholder"/>.
     /// </summary>
+    // Stays on this control rather than moving to EditTextControlBase: EditDateNative inherits that
+    // base and deliberately renders no placeholder (the native date input shows its own format hint),
+    // so hoisting would hand it a public parameter it ignores. The identical pair EditString and
+    // EditTextArea declare lives on EditTextInputBase, which those two share and this control doesn't.
     [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>
@@ -79,15 +85,6 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
     /// <summary> Optional custom trailing affix content, rendered by <see cref="EditInputShell"/> after the (absent, for EditNumber) clear button and character count. Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Suffix { get; set; }
-
-    /// <summary>
-    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
-    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the input's class in both legacy and
-    /// affix mode, and to the shell's affix wrapper in affix mode (via <see cref="EditInputShell.WrapperClass"/>).
-    /// Unthemed these are inert hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes
-    /// them. <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
-    /// </summary>
-    [Parameter] public SelectSize Size { get; set; }
 
     /// <summary>
     /// Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal
@@ -108,21 +105,17 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a number.";
 
-    /// <summary>
-    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
-    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
-    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
-    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
-    /// control's own default of <see cref="UpdateTrigger.Change"/>. Choosing <see cref="UpdateTrigger.Input"/>
-    /// here is not free: browsers report a <c>type="number"</c> input's value as an empty string while
-    /// the user is mid-way through typing a partial number ("-", "3.", "1e"), so per-keystroke binding
-    /// flashes a spurious <see cref="ParsingErrorMessage"/> validation error on every keystroke -- which
-    /// is exactly why <see cref="UpdateTrigger.Change"/> is the default.
-    /// </summary>
-    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
-
-    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
-    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Change);
+    /// <inheritdoc/>
+    /// <remarks>
+    /// This control's answer is <see cref="UpdateTrigger.Change"/>, and overriding it with
+    /// <see cref="UpdateTrigger.Input"/> via <see cref="EditTextControlBase{TValue}.UpdateOn"/> is not
+    /// free: browsers report a
+    /// <c>type="number"</c> input's value as an empty string while the user is mid-way through typing a
+    /// partial number ("-", "3.", "1e"), so per-keystroke binding flashes a spurious
+    /// <see cref="ParsingErrorMessage"/> validation error on every keystroke -- which is exactly why
+    /// Change is the default here (matching the framework's own <c>InputNumber&lt;T&gt;</c>).
+    /// </remarks>
+    protected override UpdateTrigger DefaultUpdateTrigger => UpdateTrigger.Change;
 
     /// <summary>
     /// True once <see cref="Prefix"/> or <see cref="Suffix"/> is in use -- the single computation
@@ -133,10 +126,10 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, false, null, false);
 
     /// <summary>
-    /// The input's <c>class</c> attribute. Legacy mode with <see cref="Size"/> at its default
-    /// reproduces today's exact string (so a no-new-params render stays byte-identical); affix mode
-    /// adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a non-default
-    /// <see cref="Size"/> appends its <see cref="EditInputShell.SizeClass"/> token.
+    /// The input's <c>class</c> attribute. Legacy mode with <see cref="EditTextControlBase{TValue}.Size"/>
+    /// at its default reproduces today's exact string (so a no-new-params render stays byte-identical);
+    /// affix mode adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a
+    /// non-default Size appends its <see cref="EditInputShell.SizeClass"/> token.
     /// </summary>
     string InputClass => EditInputShell.BuildInputClass(
         UseAffixLayout ? "edit-input edit-number-input edit-affix-input" : "edit-input edit-number-input",
@@ -149,22 +142,12 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
             $"{nameof(EditNumber<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
-    // Ported from Microsoft.AspNetCore.Components.Forms.InputNumber<T>:
-    // BindConverter handles every numeric primitive (int, long, short, sbyte, byte, decimal,
-    // float, double, plus their unsigned + nullable variants).
-    protected override bool TryParseValueFromString(string? value, out T result, out string validationErrorMessage)
-    {
-        if (BindConverter.TryConvertTo<T>(value, CultureInfo.InvariantCulture, out var parsedValue))
-        {
-            result = parsedValue!;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        result = default!;
-        validationErrorMessage = string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, FieldIdentifier.FieldName);
-        return false;
-    }
+    // Ported from Microsoft.AspNetCore.Components.Forms.InputNumber<T>, and identical to
+    // EditDateNative<T>'s parse — hence the shared body in EditControlInit.TryConvert. BindConverter
+    // handles every numeric primitive (int, long, short, sbyte, byte, decimal, float, double, plus
+    // their unsigned + nullable variants); only ParsingErrorMessage differs between the two controls.
+    protected override bool TryParseValueFromString(string? value, out T result, out string validationErrorMessage) =>
+        EditControlInit.TryConvert(value, ParsingErrorMessage, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
     // Ported from InputNumber<T>, extended to every numeric primitive the parse side accepts —
     // the unsigned/byte types must format invariantly too, or a culture with a non-ASCII negative

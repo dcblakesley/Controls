@@ -3,9 +3,12 @@
 namespace Controls;
 
 /// <summary> Edit control for string values, displays as a text input. Supports masking and URL display in read-only mode.</summary>
-public partial class EditString : EditControlBase<string?>
+public partial class EditString : EditTextInputBase
 {
-    // Component-specific parameters
+    // Component-specific parameters. The shared text-editor surface lives on the two bases:
+    // Placeholder/MaxLength/AllowClear/ShowCount (+ their Effective*/IsClearable/CountText/Clear
+    // members) on EditTextInputBase, which EditTextArea inherits too; Size and UpdateOn (+
+    // UpdateEventName) on EditTextControlBase<TValue>, which EditNumber/EditDateNative share as well.
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
@@ -16,19 +19,6 @@ public partial class EditString : EditControlBase<string?>
     /// </summary>
     [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
     [Parameter] public Expression<Func<string?>>? Field { get; set; }
-
-    /// <summary>
-    /// Placeholder text to display in the input when empty. Falls back to the bound property's
-    /// <c>[Placeholder]</c>/<c>[Display(Prompt = "…")]</c> when unset -- see <see cref="EffectivePlaceholder"/>.
-    /// </summary>
-    [Parameter] public string? Placeholder { get; set; }
-
-    /// <summary>
-    /// The placeholder actually rendered: the <see cref="Placeholder"/> parameter, else the model
-    /// property's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> text. Null when neither is set, so the
-    /// attribute is omitted rather than rendered empty.
-    /// </summary>
-    string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
 
     /// <summary> Non-Edit Mode only, MaskText is a string that will be displayed before the current value </summary>
     /// <example> MaskText='****-****-' with the value 'abcd-efgh-ijkl' would display '****-****-ijkl'</example>
@@ -60,26 +50,6 @@ public partial class EditString : EditControlBase<string?>
     /// <summary> Optional custom trailing affix content, rendered by <see cref="EditInputShell"/> after the clear button and character count but before the password toggle (locked order). Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Suffix { get; set; }
 
-    /// <summary> Shows a clear button (via <see cref="EditInputShell"/>) while the value is non-empty and the control is enabled. Clicking it sets the value to null and refocuses the input.</summary>
-    [Parameter] public bool AllowClear { get; set; }
-
-    /// <summary>
-    /// Maximum number of characters, rendered as the input's <c>maxlength</c> attribute. Falls back to
-    /// the bound property's <c>[StringLength]</c>/<c>[MaxLength]</c> when unset -- see
-    /// <see cref="EffectiveMaxLength"/>. Omitted (no browser-side cap) when neither is set.
-    /// </summary>
-    [Parameter] public int? MaxLength { get; set; }
-
-    /// <summary>
-    /// The maximum length actually rendered: the <see cref="MaxLength"/> parameter, else the model
-    /// property's <c>[StringLength]</c>/<c>[MaxLength]</c> bound. Null when neither is set, so the
-    /// <c>maxlength</c> attribute is omitted rather than rendered as an arbitrary cap.
-    /// </summary>
-    int? EffectiveMaxLength => MaxLength ?? _attributes.MaxTextLength();
-
-    /// <summary> Shows a character-count indicator (via <see cref="EditInputShell"/>): <c>"{length}"</c> alone, or <c>"{length} / {EffectiveMaxLength}"</c> once <see cref="EffectiveMaxLength"/> is set (AntD's format).</summary>
-    [Parameter] public bool ShowCount { get; set; }
-
     /// <summary>
     /// Renders the input as <c>type="password"</c> with a show/hide toggle (via <see cref="EditInputShell"/>).
     /// Independent of the read-only <see cref="MaskText"/> feature. Falls back to the bound property's
@@ -94,47 +64,8 @@ public partial class EditString : EditControlBase<string?>
     /// </summary>
     bool EffectiveIsPassword => IsPassword ?? _attributes.IsPasswordField();
 
-    /// <summary>
-    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
-    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the input's class in both legacy and
-    /// affix mode, and to the shell's affix wrapper in affix mode (via <see cref="EditInputShell.WrapperClass"/>).
-    /// Unthemed these are inert hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes
-    /// them. <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
-    /// </summary>
-    [Parameter] public SelectSize Size { get; set; }
-
-    /// <summary>
-    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
-    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
-    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
-    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
-    /// control's own default of <see cref="UpdateTrigger.Input"/>.
-    /// </summary>
-    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
-
-    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
-    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
-
     bool _showMaskedValue;
     bool _passwordRevealed;
-    // Captures the <input> so Clear() can refocus it directly -- unlike EditFile's RemoveFile, the
-    // input never unmounts here, so a plain ElementReference.FocusAsync (Select/PickerBase's pattern)
-    // is enough; no JsInteropEc by-id fallback needed.
-    ElementReference _inputRef;
-
-    /// <summary>
-    /// Whether the shell's clear button should render right now: <see cref="AllowClear"/> is set,
-    /// the control isn't disabled, and the current value is non-empty.
-    /// </summary>
-    bool IsClearable => AllowClear && !IsDisabled && !string.IsNullOrEmpty(CurrentValue);
-
-    /// <summary>
-    /// The shell's character-count text when <see cref="ShowCount"/> is set, else null (no count
-    /// span renders). AntD format: <c>"{length}"</c> alone, or <c>"{length} / {EffectiveMaxLength}"</c>
-    /// once <see cref="EffectiveMaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
-    /// treating null as zero.
-    /// </summary>
-    string? CountText => EditInputShell.BuildCountText(ShowCount, CurrentValue?.Length ?? 0, EffectiveMaxLength);
 
     /// <summary>
     /// True once any affix parameter is in use -- the single computation site
@@ -144,10 +75,10 @@ public partial class EditString : EditControlBase<string?>
     bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, EffectiveIsPassword);
 
     /// <summary>
-    /// The input's <c>class</c> attribute. Legacy mode with <see cref="Size"/> at its default
-    /// reproduces today's exact string (so a no-new-params render stays byte-identical); affix mode
-    /// adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a non-default
-    /// <see cref="Size"/> appends its <see cref="EditInputShell.SizeClass"/> token.
+    /// The input's <c>class</c> attribute. Legacy mode with <see cref="EditTextControlBase{TValue}.Size"/>
+    /// at its default reproduces today's exact string (so a no-new-params render stays byte-identical);
+    /// affix mode adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a
+    /// non-default Size appends its <see cref="EditInputShell.SizeClass"/> token.
     /// </summary>
     string InputClass => EditInputShell.BuildInputClass(
         UseAffixLayout ? "edit-input edit-string-input edit-affix-input" : "edit-input edit-string-input",
@@ -179,30 +110,6 @@ public partial class EditString : EditControlBase<string?>
         base.OnInitialized();
         InitState(ValueExpression ?? throw new InvalidOperationException(
             $"{nameof(EditString)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
-    // Trivial parser — same as Microsoft's InputText: pass the string through. `out string`
-    // (not `string?`) because InputBase<T>'s abstract signature declares it non-nullable.
-    protected override bool TryParseValueFromString(string? value, out string? result, out string validationErrorMessage)
-    {
-        result = value;
-        validationErrorMessage = null!;
-        return true;
-    }
-
-    // Empty string counts as "default" for the NullOrDefault hiding modes.
-    protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
-
-    /// <summary>
-    /// The shell's clear button action: sets the value to null (via <see cref="InputBase{TValue}.CurrentValue"/>,
-    /// which raises <c>ValueChanged</c>/<c>NotifyFieldChanged</c> itself) and refocuses the input.
-    /// Focus is best-effort -- see <see cref="_inputRef"/>'s remarks.
-    /// </summary>
-    async Task Clear()
-    {
-        CurrentValue = null;
-        try { await _inputRef.FocusAsync(); }
-        catch { /* not focusable yet (prerender/tests) */ }
     }
 
     /// <summary> Toggles the password reveal state driving the shell's show/hide button.</summary>

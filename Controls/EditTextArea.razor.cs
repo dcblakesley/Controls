@@ -1,9 +1,12 @@
 namespace Controls;
 
 /// <summary> Edit control for multi-line string values, displays as a textarea with configurable row count.</summary>
-public partial class EditTextArea : EditControlBase<string?>
+public partial class EditTextArea : EditTextInputBase
 {
-    // Component-specific parameters
+    // Component-specific parameters. The shared text-editor surface lives on the two bases:
+    // Placeholder/MaxLength/AllowClear/ShowCount (+ their Effective*/IsClearable/CountText/Clear
+    // members) on EditTextInputBase, which EditString inherits too; Size and UpdateOn (+
+    // UpdateEventName) on EditTextControlBase<TValue>, which EditNumber/EditDateNative share as well.
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
@@ -15,45 +18,12 @@ public partial class EditTextArea : EditControlBase<string?>
     [Parameter] public Expression<Func<string?>>? Field { get; set; }
 
     /// <summary>
-    /// Placeholder text to display in the textarea when empty. Falls back to the bound property's
-    /// <c>[Placeholder]</c>/<c>[Display(Prompt = "…")]</c> when unset -- see <see cref="EffectivePlaceholder"/>.
-    /// </summary>
-    [Parameter] public string? Placeholder { get; set; }
-
-    /// <summary>
-    /// The placeholder actually rendered: the <see cref="Placeholder"/> parameter, else the model
-    /// property's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> text. Null when neither is set, so the
-    /// attribute is omitted rather than rendered empty.
-    /// </summary>
-    string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
-
-    /// <summary>
     /// Number of visible text rows in the textarea. Falls back to the bound property's <c>[Rows]</c>
     /// (its <c>Rows</c> value, 0 meaning unset) when unset, then to 2 -- see <see cref="ResolvedRows"/>.
     /// Ignored for the initial height while <see cref="ResolvedAutoSize"/> is true -- see
     /// <see cref="ResolvedMinRows"/>.
     /// </summary>
     [Parameter] public int? Rows { get; set; }
-
-    /// <summary> Shows a clear button (via <see cref="EditInputShell"/>) while the value is non-empty and the control is enabled. Clicking it sets the value to null and refocuses the textarea.</summary>
-    [Parameter] public bool AllowClear { get; set; }
-
-    /// <summary>
-    /// Maximum number of characters, rendered as the textarea's <c>maxlength</c> attribute. Falls back
-    /// to the bound property's <c>[StringLength]</c>/<c>[MaxLength]</c> when unset -- see
-    /// <see cref="EffectiveMaxLength"/>. Omitted (no browser-side cap) when neither is set.
-    /// </summary>
-    [Parameter] public int? MaxLength { get; set; }
-
-    /// <summary>
-    /// The maximum length actually rendered: the <see cref="MaxLength"/> parameter, else the model
-    /// property's <c>[StringLength]</c>/<c>[MaxLength]</c> bound. Null when neither is set, so the
-    /// <c>maxlength</c> attribute is omitted rather than rendered as an arbitrary cap.
-    /// </summary>
-    int? EffectiveMaxLength => MaxLength ?? _attributes.MaxTextLength();
-
-    /// <summary> Shows a character-count indicator (via <see cref="EditInputShell"/>'s <see cref="EditInputShell.CountBelow"/> layout -- below the editor, right-aligned, unlike EditString's inline count): <c>"{length}"</c> alone, or <c>"{length} / {EffectiveMaxLength}"</c> once <see cref="EffectiveMaxLength"/> is set (AntD's format).</summary>
-    [Parameter] public bool ShowCount { get; set; }
 
     /// <summary>
     /// Grows/shrinks the textarea to fit its content as the user types (JS -- <c>edit-controls.js</c>'s
@@ -62,7 +32,8 @@ public partial class EditTextArea : EditControlBase<string?>
     /// <see cref="ResolvedMaxRows"/> (unbounded when null). Degrades gracefully to the fixed
     /// <see cref="ResolvedRows"/> height with no JS available (prerender / tests). Also disables the
     /// browser's manual resize handle (<c>edit-textarea-autosize</c>), matching AntD's own TextArea
-    /// autoSize behavior. Keeps growing on every keystroke even when <see cref="UpdateOn"/> resolves to
+    /// autoSize behavior. Keeps growing on every keystroke even when
+    /// <see cref="EditTextControlBase{TValue}.UpdateOn"/> resolves to
     /// <see cref="UpdateTrigger.Change"/> (commit-on-blur) -- see <see cref="AutoSizeInputAttribute"/>.
     /// Falls back to the bound property's <c>[Rows]</c> (its <c>AutoSize</c> value) when unset, then to
     /// false -- see <see cref="ResolvedAutoSize"/>.
@@ -119,53 +90,11 @@ public partial class EditTextArea : EditControlBase<string?>
     // attribute can't hold a nullable int -- so every fallback through it must convert 0 back to null.
     static int? NonZero(int? value) => value is null or 0 ? null : value;
 
-    /// <summary>
-    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
-    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the textarea's class in both legacy
-    /// and affix mode, and to the shell's affix wrapper in affix mode (via
-    /// <see cref="EditInputShell.WrapperClass"/>). Only padding/font change for a textarea -- height
-    /// is never locked (<see cref="Rows"/>/<see cref="AutoSize"/> still govern it). Unthemed these are
-    /// inert hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes them.
-    /// <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
-    /// </summary>
-    [Parameter] public SelectSize Size { get; set; }
-
-    /// <summary>
-    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
-    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
-    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
-    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
-    /// control's own default of <see cref="UpdateTrigger.Input"/>. See <see cref="AutoSize"/> for how
-    /// this interacts with auto-resizing.
-    /// </summary>
-    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
-
-    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
-    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
-
     [Inject] IJSRuntime JS { get; set; } = default!;
 
-    // Captures the <textarea> so Clear() can refocus it directly -- same reasoning as
-    // EditString._inputRef (the element never unmounts here, so a plain ElementReference.FocusAsync
-    // is enough; no JsInteropEc by-id fallback needed for focus).
-    ElementReference _textAreaRef;
-
     /// <summary>
-    /// Whether the shell's clear button should render right now: <see cref="AllowClear"/> is set,
-    /// the control isn't disabled, and the current value is non-empty.
-    /// </summary>
-    bool IsClearable => AllowClear && !IsDisabled && !string.IsNullOrEmpty(CurrentValue);
-
-    /// <summary>
-    /// The shell's character-count text when <see cref="ShowCount"/> is set, else null (no count
-    /// renders). AntD format: <c>"{length}"</c> alone, or <c>"{length} / {EffectiveMaxLength}"</c> once
-    /// <see cref="EffectiveMaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
-    /// treating null as zero.
-    /// </summary>
-    string? CountText => EditInputShell.BuildCountText(ShowCount, CurrentValue?.Length ?? 0, EffectiveMaxLength);
-
-    /// <summary>
-    /// True once <see cref="AllowClear"/> or <see cref="ShowCount"/> is in use -- the single
+    /// True once <see cref="EditTextInputBase.AllowClear"/> or <see cref="EditTextInputBase.ShowCount"/>
+    /// is in use -- the single
     /// computation site <see cref="EditInputShell.UsesAffixLayout"/> defines, so this control and the
     /// shell always agree on which layout renders. EditTextArea never sets Prefix/Suffix/IsPassword,
     /// so those arguments are always null/false here.
@@ -203,31 +132,12 @@ public partial class EditTextArea : EditControlBase<string?>
             $"{nameof(EditTextArea)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
-    // Trivial parser — same as Microsoft's InputTextArea: pass the string through.
-    protected override bool TryParseValueFromString(string? value, out string? result, out string validationErrorMessage)
-    {
-        result = value;
-        validationErrorMessage = null!;
-        return true;
-    }
-
-    // Empty string counts as "default" for the NullOrDefault hiding modes.
-    protected override bool IsValueDefault() => string.IsNullOrEmpty(CurrentValue);
-
-    /// <summary>
-    /// The shell's clear button action: sets the value to null (via <see cref="InputBase{TValue}.CurrentValue"/>,
-    /// which raises <c>ValueChanged</c>/<c>NotifyFieldChanged</c> itself) and refocuses the textarea.
-    /// Focus is best-effort -- see <see cref="_textAreaRef"/>'s remarks. Clearing bypasses the bound
-    /// input event entirely, so <see cref="OnValueChangedAsync"/> never fires for it -- re-measure
-    /// explicitly here when <see cref="ResolvedAutoSize"/> is on.
-    /// </summary>
-    async Task Clear()
-    {
-        CurrentValue = null;
-        try { await _textAreaRef.FocusAsync(); }
-        catch { /* not focusable yet (prerender/tests) */ }
-        if (ResolvedAutoSize) await AutoSizeAsync();
-    }
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Clearing bypasses the bound input event entirely, so <see cref="OnValueChangedAsync"/> never
+    /// fires for it -- re-measure explicitly here when <see cref="ResolvedAutoSize"/> is on.
+    /// </remarks>
+    protected override Task OnClearedAsync() => ResolvedAutoSize ? AutoSizeAsync() : Task.CompletedTask;
 
     /// <summary>
     /// Runs after every bound-value update (<c>@bind-value:after</c>) -- re-measures and resizes when
@@ -236,21 +146,22 @@ public partial class EditTextArea : EditControlBase<string?>
     /// as a DOM attribute of its own, so attaching it doesn't touch the non-AutoSize markup at all (the
     /// S1 DOM-stability tests still pass unchanged). It fires once per *bound* event, which is
     /// <c>oninput</c> by default but becomes <c>onchange</c> (blur/Enter only) when
-    /// <see cref="UpdateEventName"/> resolves to Change -- so under AutoSize + Change this alone would
-    /// stop the textarea growing mid-typing; see <see cref="AutoSizeInputAttribute"/> for the patch.
+    /// <see cref="EditTextControlBase{TValue}.UpdateEventName"/> resolves to Change -- so under
+    /// AutoSize + Change this alone would stop the textarea growing mid-typing; see
+    /// <see cref="AutoSizeInputAttribute"/> for the patch.
     /// </summary>
     Task OnValueChangedAsync() => ResolvedAutoSize ? AutoSizeAsync() : Task.CompletedTask;
 
     /// <summary>
     /// Measure-only <c>oninput</c> handler, splatted onto the textarea ONLY when
-    /// <see cref="ResolvedAutoSize"/> is on and <see cref="UpdateEventName"/> has resolved away from
-    /// <c>"oninput"</c> (i.e. the bound commit event is <c>onchange</c>). <see cref="OnValueChangedAsync"/> re-measures via
-    /// <c>@bind-value:after</c>, which only fires once per bound event -- under
-    /// <see cref="UpdateTrigger.Change"/> that's blur, so without this extra handler an AutoSize
-    /// textarea would stop growing as the user types. Null in every other combination (including the
-    /// default oninput binding), so the splat renders no attribute at all and the S1 DOM-stability
-    /// tests' byte-identical markup holds. No key collision by construction: this dictionary only
-    /// ever adds "oninput" in the branch where the bound event is "onchange".
+    /// <see cref="ResolvedAutoSize"/> is on and <see cref="EditTextControlBase{TValue}.UpdateEventName"/>
+    /// has resolved away from <c>"oninput"</c> (i.e. the bound commit event is <c>onchange</c>).
+    /// <see cref="OnValueChangedAsync"/> re-measures via <c>@bind-value:after</c>, which only fires once
+    /// per bound event -- under <see cref="UpdateTrigger.Change"/> that's blur, so without this extra
+    /// handler an AutoSize textarea would stop growing as the user types. Null in every other
+    /// combination (including the default oninput binding), so the splat renders no attribute at all and
+    /// the S1 DOM-stability tests' byte-identical markup holds. No key collision by construction: this
+    /// dictionary only ever adds "oninput" in the branch where the bound event is "onchange".
     /// </summary>
     IReadOnlyDictionary<string, object>? AutoSizeInputAttribute =>
         ResolvedAutoSize && UpdateEventName != "oninput"

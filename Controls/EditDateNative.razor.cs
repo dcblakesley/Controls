@@ -8,11 +8,14 @@ namespace Controls;
 /// support the identical set of bound types and <see cref="Type"/> values, so the choice is purely
 /// native input vs. calendar dropdown UX.
 /// </summary>
-// T is annotated 'All' because TryParseValueFromString feeds it to BindConverter.TryConvertTo<T>,
-// which declares that requirement for its TypeConverter fallback (mirrors the framework's InputDate<T>).
-public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T> : EditControlBase<T>
+// T is annotated 'All' because TryParseValueFromString feeds it (via EditControlInit.TryConvert<T>)
+// to BindConverter.TryConvertTo<T>, which declares that requirement for its TypeConverter fallback
+// (mirrors the framework's InputDate<T>).
+public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T> : EditTextControlBase<T>
 {
-    // Component-specific parameters
+    // Component-specific parameters. Size and UpdateOn (+ UpdateEventName) live on
+    // EditTextControlBase<TValue>, shared with EditString/EditTextArea/EditNumber. No Placeholder here
+    // by design -- a native date/time input renders its own format hint.
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
@@ -91,37 +94,22 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
 
-    /// <summary>
-    /// Visual size, shared with the <c>Select</c> family's <see cref="SelectSize"/> (Default/Small/
-    /// Large). Adds <c>edit-input-sm</c>/<c>edit-input-lg</c> to the input's class. EditDateNative never
-    /// enters the shell's affix mode (no Prefix/Suffix/clear/count/password params), so the wrapper
-    /// class is passed through for consistency but never actually renders. Unthemed these are inert
-    /// hooks -- the opt-in <c>.edit-theme</c> section is what actually sizes them.
-    /// <see cref="SelectSize.Default"/> adds no class (byte-identical legacy DOM).
-    /// </summary>
-    [Parameter] public SelectSize Size { get; set; }
+    /// <inheritdoc/>
+    /// <remarks>
+    /// This control's answer is <see cref="UpdateTrigger.Change"/>, and overriding it with
+    /// <see cref="UpdateTrigger.Input"/> via <see cref="EditTextControlBase{TValue}.UpdateOn"/> is not
+    /// free: browsers report a partially-typed <c>type="date"</c>/<c>datetime-local</c>/<c>month</c>/<c>time</c> input's value
+    /// as an empty string until the user finishes typing a valid value, so per-keystroke binding
+    /// flashes a spurious <see cref="ParsingErrorMessage"/> validation error on every keystroke --
+    /// which is exactly why Change is the default here (matching the framework's own
+    /// <c>InputDate&lt;T&gt;</c>).
+    /// </remarks>
+    protected override UpdateTrigger DefaultUpdateTrigger => UpdateTrigger.Change;
 
     /// <summary>
-    /// Which DOM event commits keystrokes to <see cref="InputBase{TValue}.CurrentValue"/> --
-    /// <see cref="UpdateTrigger.Input"/> (<c>oninput</c>) commits on every keystroke,
-    /// <see cref="UpdateTrigger.Change"/> (<c>onchange</c>) commits on blur/Enter. Resolution order:
-    /// this parameter, then the cascaded <see cref="FormDefaults.EffectiveUpdateOn"/>, then this
-    /// control's own default of <see cref="UpdateTrigger.Change"/>. Choosing <see cref="UpdateTrigger.Input"/>
-    /// here is not free: browsers report a partially-typed <c>type="date"</c>/<c>datetime-local</c>/
-    /// <c>month</c>/<c>time</c> input's value as an empty string until the user finishes typing a
-    /// valid value, so per-keystroke binding flashes a spurious <see cref="ParsingErrorMessage"/>
-    /// validation error on every keystroke -- which is exactly why <see cref="UpdateTrigger.Change"/>
-    /// is the default.
-    /// </summary>
-    [Parameter] public UpdateTrigger? UpdateOn { get; set; }
-
-    /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
-    protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Change);
-
-    /// <summary>
-    /// The input's <c>class</c> attribute. <see cref="Size"/> at its default reproduces today's exact
-    /// string (byte-identical legacy DOM); otherwise appends <see cref="EditInputShell.SizeClass"/>'s
-    /// token.
+    /// The input's <c>class</c> attribute. <see cref="EditTextControlBase{TValue}.Size"/> at its
+    /// default reproduces today's exact string (byte-identical legacy DOM); otherwise appends
+    /// <see cref="EditInputShell.SizeClass"/>'s token.
     /// </summary>
     string InputClass => EditInputShell.BuildInputClass("edit-input edit-date-input", Size, CssClass);
 
@@ -132,21 +120,12 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
             $"{nameof(EditDateNative<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
-    // Ported from Microsoft.AspNetCore.Components.Forms.InputDate<T>:
-    // BindConverter handles DateTime, DateTime?, DateTimeOffset, DateTimeOffset?, DateOnly, DateOnly?, TimeOnly, TimeOnly?.
-    protected override bool TryParseValueFromString(string? value, out T result, out string validationErrorMessage)
-    {
-        if (BindConverter.TryConvertTo<T>(value, CultureInfo.InvariantCulture, out var parsedValue))
-        {
-            result = parsedValue!;
-            validationErrorMessage = null!;
-            return true;
-        }
-
-        result = default!;
-        validationErrorMessage = string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, FieldIdentifier.FieldName);
-        return false;
-    }
+    // Ported from Microsoft.AspNetCore.Components.Forms.InputDate<T>, and identical to EditNumber<T>'s
+    // parse — hence the shared body in EditControlInit.TryConvert. BindConverter handles DateTime,
+    // DateTime?, DateTimeOffset, DateTimeOffset?, DateOnly, DateOnly?, TimeOnly, TimeOnly?; only
+    // ParsingErrorMessage differs between the two controls.
+    protected override bool TryParseValueFromString(string? value, out T result, out string validationErrorMessage) =>
+        EditControlInit.TryConvert(value, ParsingErrorMessage, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
     // Ported from InputDate<T>: format-string varies with Type so the value round-trips through the
     // browser's <input type="date|datetime-local|month|time"> in the format it expects. Also backs

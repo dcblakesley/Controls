@@ -1,4 +1,4 @@
-﻿@inherits EditControlBase<string?>
+﻿@inherits EditTextInputBase
 
 @if (ShouldShowComponent())
 {
@@ -22,7 +22,7 @@
                             OnTogglePassword=@TogglePasswordVisibility>
                 <input @bind-value="CurrentValue"
                        @bind-value:event="@UpdateEventName"
-                       @ref="_inputRef"
+                       @ref="_editorRef"
                        style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                        disabled=@IsDisabled
                        id=@_id

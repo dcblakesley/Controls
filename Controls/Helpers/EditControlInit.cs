@@ -3,7 +3,8 @@ namespace Controls.Helpers;
 /// <summary>
 /// Shared initialization logic for edit controls. Eliminates the boilerplate that every
 /// <c>Edit*.razor.cs</c> would otherwise duplicate in <c>OnInitialized</c> and the
-/// <c>ShowEditor</c>/<c>ShouldHideLabel</c> computed properties.
+/// <c>ShowEditor</c>/<c>ShouldHideLabel</c> computed properties — plus <see cref="TryConvert{T}"/>,
+/// the one parse body two controls share for the same "can't share a base" reason.
 /// </summary>
 /// <remarks>
 /// A static helper rather than a base class so the same logic can be shared by the control bases
@@ -161,5 +162,47 @@ public static class EditControlInit
         var hasDescription = !shouldHideLabel && !string.IsNullOrEmpty(description ?? attributes.Description());
         var hasTooltip = !shouldHideLabel && !string.IsNullOrEmpty(tooltip ?? attributes.Tooltip());
         return (errorMsgId, BuildDescribedBy(id, hasDescription, hasTooltip));
+    }
+
+    /// <summary>
+    /// The shared <c>InputBase&lt;TValue&gt;.TryParseValueFromString</c> body for the controls that hand
+    /// their parsing to <see cref="BindConverter"/> —
+    /// <c>EditNumber&lt;T&gt;</c> (every numeric primitive plus their unsigned/nullable variants) and
+    /// <c>EditDateNative&lt;T&gt;</c> (DateTime/DateTimeOffset/DateOnly/TimeOnly, likewise nullable).
+    /// Ported from Microsoft's <c>InputNumber&lt;T&gt;</c>/<c>InputDate&lt;T&gt;</c>, which share the
+    /// same body: convert invariantly, and on failure format <paramref name="parsingErrorMessage"/>
+    /// with <paramref name="fieldName"/>. Only that message differs between the two controls, so it
+    /// stays a per-control parameter (their defaults differ too).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A static helper rather than a member of the base the two controls do share
+    /// (<see cref="EditTextControlBase{TValue}"/>): <see cref="BindConverter.TryConvertTo{T}"/> demands
+    /// <see cref="DynamicallyAccessedMemberTypes.All"/> on its type argument, so hosting this on that
+    /// base would force the annotation onto its <c>TValue</c> — and onto the string controls that
+    /// inherit it and don't need it. Here the annotation stops at the two controls that actually
+    /// declare it, matching this class's existing "shared by types that can't share an ancestor"
+    /// rationale.
+    /// </para>
+    /// <para>
+    /// <paramref name="validationErrorMessage"/> is a non-nullable <c>string</c> (assigned <c>null!</c>
+    /// on success, exactly as the framework's originals do) so a control can forward its own
+    /// <c>out</c> parameter straight through — <c>InputBase</c> declares the signature that way.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="T">The bound value type, converted by <see cref="BindConverter"/>.</typeparam>
+    public static bool TryConvert<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
+        string? value, string parsingErrorMessage, string fieldName, out T result, out string validationErrorMessage)
+    {
+        if (BindConverter.TryConvertTo<T>(value, CultureInfo.InvariantCulture, out var parsedValue))
+        {
+            result = parsedValue!;
+            validationErrorMessage = null!;
+            return true;
+        }
+
+        result = default!;
+        validationErrorMessage = string.Format(CultureInfo.InvariantCulture, parsingErrorMessage, fieldName);
+        return false;
     }
 }

@@ -1,5 +1,5 @@
 ﻿@typeparam T
-@inherits EditControlBase<T>
+@inherits EditTextControlBase<T>
 
 @if (ShouldShowComponent())
 {
@@ -11,7 +11,8 @@
             @* @bind-value:event defaults to UpdateTrigger.Change (onchange), NOT Input (oninput):
                browsers report type=number as "" while the text is a partial number ("-", "3.", "1e"),
                so per-keystroke binding would flash "must be a number" mid-typing. Matches Microsoft's
-               InputNumber. See UpdateOn's doc comment in EditNumber.razor.cs for the full rationale.
+               InputNumber. See DefaultUpdateTrigger's doc comment in EditNumber.razor.cs for the
+               full rationale (UpdateOn itself now lives on EditTextControlBase<TValue>).
                (Comment deliberately outside the tag — a Razor comment inside an attribute list
                compiles into a literal attribute name and breaks setAttribute.) *@
             <EditInputShell IsInvalid=@IsInvalid
