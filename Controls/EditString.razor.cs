@@ -105,13 +105,6 @@ public partial class EditString : EditTextInputBase
     /// <summary> rel for the read-only link; hardens <c>target="_blank"</c> against reverse tabnabbing. </summary>
     string? UrlRel => string.Equals(UrlTarget, "_blank", StringComparison.OrdinalIgnoreCase) ? "noopener noreferrer" : null;
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditString)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     /// <summary> Toggles the password reveal state driving the shell's show/hide button.</summary>
     void TogglePasswordVisibility() => _passwordRevealed = !_passwordRevealed;
 

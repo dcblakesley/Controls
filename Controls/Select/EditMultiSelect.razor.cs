@@ -92,13 +92,6 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
     [Parameter] public string ListboxLabel { get; set; } = "Options";
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditMultiSelect<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // Read-only view: comma-joined option labels (or the value's ToString when unmatched). Cached
     // and recomputed only when the bound list or Options change by reference — the editable engine
     // builds its own O(1) lookup, so without this the read-only path would re-scan Options for every

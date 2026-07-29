@@ -52,13 +52,6 @@ public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAcc
     /// is null (explicit opt-out) or <typeparamref name="TValue"/> is a non-nullable value type. </summary>
     bool ShowNullOption => NullOptionText is not null && CanBeNull;
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditSelectString<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // Strings pass through; anything else round-trips via BindConverter (shared with EditSelect).
     protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
         SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);

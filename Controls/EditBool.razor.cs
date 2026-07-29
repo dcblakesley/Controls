@@ -92,13 +92,6 @@ public partial class EditBool : EditControlBase<bool>
     bool? _lastShouldHideLabel;
     bool _disposed;
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditBool)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // Checkboxes don't bind via string parsing — the value is set directly through CurrentValue
     // by HandleCheckboxChange below. This matches Microsoft's InputCheckbox behavior.
     protected override bool TryParseValueFromString(string? value, out bool result, out string validationErrorMessage)

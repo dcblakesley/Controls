@@ -59,13 +59,6 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
     /// </summary>
     string EffectiveNullText => NullText ?? _attributes.BoolText()?.NullText ?? "Not Set";
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditBoolNullRadio)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     void OnValueChanged(bool? value) => CurrentValue = value;
 
     protected override bool TryParseValueFromString(string? value, out bool? result, out string validationErrorMessage)

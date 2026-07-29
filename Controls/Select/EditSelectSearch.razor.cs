@@ -95,13 +95,6 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
     [Parameter] public string ListboxLabel { get; set; } = "Options";
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditSelectSearch<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // Label for the read-only view: the matching option's label, else the value's own ToString.
     // Cached and recomputed only when the value or Options change, not on every render. The lookup
     // (rebuilt only when the Options reference changes) replaces a per-render FirstOrDefault scan and

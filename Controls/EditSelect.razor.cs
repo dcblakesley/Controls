@@ -30,13 +30,6 @@ public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// </summary>
     [Parameter] public string? ReadOnlyText { get; set; }
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditSelect<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // Strings pass through; enums and other value types round-trip via BindConverter.
     protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
         SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);

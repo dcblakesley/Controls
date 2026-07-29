@@ -9,14 +9,24 @@ namespace Controls;
 /// <remarks>
 /// <para>
 /// Derived classes must implement <see cref="InputBase{TValue}.TryParseValueFromString"/> — replacing
-/// the parsing that Microsoft's <c>Input*</c> classes used to provide. They must also declare their
-/// own <c>Field</c> parameter (kept on the derived class because some controls — e.g.
-/// <c>EditRadioEnum&lt;TEnum&gt;</c> — bind to a different generic type than they declare for Field).
+/// the parsing that Microsoft's <c>Input*</c> classes used to provide. A control that never parses a
+/// string (e.g. <c>EditBool</c>, which assigns <see cref="InputBase{TValue}.CurrentValue"/> directly)
+/// throws <see cref="NotSupportedException"/> from it instead.
 /// </para>
 /// <para>
-/// After declaring <c>Field</c>, override <see cref="ComponentBase.OnInitialized"/> and call
-/// <see cref="InitState{T}"/> with it — that's the one line each derived control needs to populate
-/// the standard derived state.
+/// Initialization needs no code in the derived control at all: <c>@bind-Value</c> supplies
+/// <see cref="InputBase{TValue}.ValueExpression"/>, and this class's <see cref="OnInitialized"/> feeds
+/// it to <see cref="InitState"/>. Override <see cref="OnInitialized"/> only for extra init of the
+/// control's own (e.g. <c>EditRadioEnum</c>'s option cache) — and then call <c>base.OnInitialized()</c>
+/// first, so the extra work sees the derived state already populated. Forgetting the call is the whole
+/// reason the wiring lives here: a control that skipped it rendered silently broken (empty <c>_id</c>,
+/// no model attributes, no field registration) rather than failing loudly.
+/// </para>
+/// <para>
+/// Derived controls do still each declare an inert <c>Field</c> parameter marked
+/// <c>[Obsolete(error: true)]</c>. It is a compile-time guard only — nothing reads it and nothing
+/// passes it to <see cref="InitState"/> — so that a leftover <c>Field="..."</c> attribute in consumer
+/// markup is a build error rather than an unmatched-parameter throw at first render.
 /// </para>
 /// </remarks>
 public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
@@ -50,7 +60,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// <inheritdoc/>
     [Parameter] public bool IsDisabled { get; set; }
 
-    // Standard derived state — populated by InitState in derived class's OnInitialized.
+    // Standard derived state — populated by InitState, which OnInitialized below calls.
     protected string _id = string.Empty;
     protected string? _isRequired;
     protected List<Attribute>? _attributes;
@@ -79,13 +89,36 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(FieldIdentifier).Any();
 
     /// <summary>
-    /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
-    /// from the derived control's <c>Field</c> expression, and registers the field with
+    /// This control's name for diagnostics — <c>EditNumber</c>, not the CLR's <c>EditNumber`1</c>.
+    /// </summary>
+    /// <remarks>
+    /// Not <c>virtual</c>: nothing needs a name other than its own type's, and the trimmed
+    /// <c>GetType().Name</c> reproduces the per-control <c>nameof(EditNumber&lt;T&gt;)</c> the hoisted
+    /// exception message below used to be written with, character for character — so there is nothing
+    /// for a derived control to correct. See <see cref="EditControlInit.ControlName"/>.
+    /// </remarks>
+    protected string ControlName => EditControlInit.ControlName(this);
+
+    /// <summary>
+    /// Wires the standard derived state for every scalar control, so a derived control needs no
+    /// <c>OnInitialized</c> of its own unless it has extra init to run (in which case it calls
+    /// <c>base.OnInitialized()</c> first — see this class's remarks).
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        // Chains to InputBase even though it doesn't override this today — every control's own
+        // OnInitialized did, and hoisting them here must not quietly drop the call.
+        base.OnInitialized();
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{ControlName} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
+    }
+
+    /// <summary>
+    /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c> from
+    /// the control's bound accessor (<see cref="InputBase{TValue}.ValueExpression"/>, which
+    /// <c>@bind-Value</c> supplies), and registers the field with
     /// <see cref="FormOptions.FieldIdentifiers"/> so the validation summary can link to it.
-    /// Generic so it works regardless of whether the control's Field type matches
-    /// <typeparamref name="TValue"/> exactly (some controls — e.g. <c>EditRadioEnum</c> — declare
-    /// <c>Expression&lt;Func&lt;TEnum&gt;&gt;</c> while inheriting
-    /// <c>EditControlBase&lt;TEnum?&gt;</c>).
+    /// Called by <see cref="OnInitialized"/>; a derived control never calls it itself.
     /// </summary>
     /// <remarks>
     /// Registration used to live in <c>FieldValidationDisplay.OnInitialized</c>, but that
@@ -94,7 +127,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// Registering here happens once per control init and survives any HidingMode setting; the
     /// paired unregister lives in <see cref="Dispose(bool)"/>.
     /// </remarks>
-    protected void InitState<T>(Expression<Func<T>> field)
+    protected void InitState(Expression<Func<TValue>> field)
     {
         (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
@@ -125,7 +158,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     }
 
     /// <summary>
-    /// Drops the field registration <see cref="InitState{T}"/> added, so a control removed from the
+    /// Drops the field registration <see cref="InitState"/> added, so a control removed from the
     /// render tree (e.g. behind a conditional <c>@if</c>) doesn't leave stale state for the validation
     /// summary to link to — <see cref="FormOptions"/> is per-form and long-lived, so an unpaired
     /// registration also grows <see cref="FormOptions.FieldIdentifiers"/> on every mount/unmount cycle.

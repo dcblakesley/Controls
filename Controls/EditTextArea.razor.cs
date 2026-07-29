@@ -125,13 +125,6 @@ public partial class EditTextArea : EditTextInputBase
     /// </summary>
     int EffectiveRows => ResolvedAutoSize ? ResolvedMinRows ?? ResolvedRows : ResolvedRows;
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditTextArea)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     /// <inheritdoc/>
     /// <remarks>
     /// Clearing bypasses the bound input event entirely, so <see cref="OnValueChangedAsync"/> never

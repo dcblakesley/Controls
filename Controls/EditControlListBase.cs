@@ -11,8 +11,9 @@ namespace Controls;
 /// <remarks>
 /// Declares its own <see cref="ValueExpression"/> parameter (the Razor compiler's <c>@bind-Value</c>
 /// synthesis only needs the Value/ValueChanged/ValueExpression parameter shape — it isn't limited to
-/// <c>InputBase</c>) so derived controls can call <see cref="InitState{T}"/> with it directly instead
-/// of requiring a separate <c>Field</c> expression from the consumer.
+/// <c>InputBase</c>), which is what lets <see cref="OnInitialized"/> here wire every derived control's
+/// state with no consumer-supplied <c>Field</c> expression and no per-control <c>OnInitialized</c>.
+/// Same contract as <see cref="EditControlBase{TValue}"/> — see its remarks.
 /// </remarks>
 public abstract class EditControlListBase<TItem> : EditControlParametersBase, IDisposable
 {
@@ -33,19 +34,19 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
 
     /// <summary>
     /// Compiler-populated by <c>@bind-Value</c> alongside <see cref="Value"/>/<see cref="ValueChanged"/>
-    /// (same convention <c>InputBase</c> uses) — supplies the accessor <see cref="InitState{T}"/> needs.
+    /// (same convention <c>InputBase</c> uses) — supplies the accessor <see cref="InitState"/> needs.
     /// </summary>
     /// <remarks>
     /// <see cref="EditorRequiredAttribute"/> makes a missing/incomplete bind (e.g. one-way <c>Value="..."</c>
     /// with no <c>@bind-Value</c>) a build-time <c>RZ2012</c> diagnostic instead of only the runtime
-    /// <see cref="InvalidOperationException"/> each derived control's <c>OnInitialized</c> throws. Unlike
+    /// <see cref="InvalidOperationException"/> <see cref="OnInitialized"/> throws. Unlike
     /// the scalar controls, this parameter is declared here rather than inherited from Microsoft's
     /// <c>InputBase&lt;TValue&gt;</c>, so attaching the attribute doesn't require hiding an inherited,
     /// non-virtual member — which would silently break <c>InputBase</c>'s own change-notification path.
     /// </remarks>
     [Parameter, EditorRequired] public Expression<Func<List<TItem>>>? ValueExpression { get; set; }
 
-    // Standard derived state — populated by InitState in derived class's OnInitialized.
+    // Standard derived state — populated by InitState, which OnInitialized below calls.
     protected string _id = string.Empty;
     protected string? _isRequired;
     protected List<Attribute>? _attributes;
@@ -90,19 +91,42 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         }
     }
 
-    /// <summary>
-    /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
-    /// from the derived control's accessor expression (<see cref="ValueExpression"/>), and registers the field with
-    /// <see cref="FormOptions.FieldIdentifiers"/> so the validation summary can link to it.
-    /// See the matching remarks on <see cref="EditControlBase{TValue}.InitState{T}"/> for why
-    /// registration lives here rather than in <c>FieldValidationDisplay</c>.
-    /// </summary>
     // Re-derives the FieldIdentifier when the cascading EditContext is swapped (see OnParametersSet).
     // The field expression evaluates its model access live against the parent's state, so calling
     // FieldIdentifier.Create again picks up the new model instance.
     Func<FieldIdentifier>? _fieldIdentifierFactory;
 
-    protected void InitState<T>(Expression<Func<T>> field)
+    /// <summary>
+    /// This control's name for diagnostics — <c>EditMultiSelect</c>, not the CLR's
+    /// <c>EditMultiSelect`1</c>. Mirrors <see cref="EditControlBase{TValue}.ControlName"/> (the two
+    /// bases share no ancestor, so the one-line forward is declared twice; the trimming itself lives
+    /// once, in <see cref="EditControlInit.ControlName"/>).
+    /// </summary>
+    protected string ControlName => EditControlInit.ControlName(this);
+
+    /// <summary>
+    /// Wires the standard derived state for every list-bound control, so a derived control needs no
+    /// <c>OnInitialized</c> of its own unless it has extra init to run (in which case it calls
+    /// <c>base.OnInitialized()</c> first — see <see cref="EditControlBase{TValue}"/>'s remarks, which
+    /// this base follows exactly).
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        InitState(ValueExpression ?? throw new InvalidOperationException(
+            $"{ControlName} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
+    }
+
+    /// <summary>
+    /// Populates <c>_id</c>, <c>_isRequired</c>, <c>_attributes</c>, and <c>_fieldIdentifier</c>
+    /// from the control's bound accessor (<see cref="ValueExpression"/>, which <c>@bind-Value</c>
+    /// supplies), and registers the field with <see cref="FormOptions.FieldIdentifiers"/> so the
+    /// validation summary can link to it. Called by <see cref="OnInitialized"/>; a derived control
+    /// never calls it itself. See the matching remarks on
+    /// <see cref="EditControlBase{TValue}.InitState"/> for why registration lives here rather than in
+    /// <c>FieldValidationDisplay</c>.
+    /// </summary>
+    protected void InitState(Expression<Func<List<TItem>>> field)
     {
         (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         _fieldIdentifierFactory = () => FieldIdentifier.Create(field);

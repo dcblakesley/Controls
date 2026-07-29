@@ -16,11 +16,4 @@ public partial class EditCheckedStringList : CheckedListControlBase<string>
 
     /// <summary> List of string options to display as checkboxes.</summary>
     [Parameter] public List<string> Options { get; set; } = [];
-
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditCheckedStringList)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
 }

@@ -135,13 +135,6 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
         UseAffixLayout ? "edit-input edit-number-input edit-affix-input" : "edit-input edit-number-input",
         Size, CssClass);
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditNumber<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // Ported from Microsoft.AspNetCore.Components.Forms.InputNumber<T>, and identical to
     // EditDateNative<T>'s parse — hence the shared body in EditControlInit.TryConvert. BindConverter
     // handles every numeric primitive (int, long, short, sbyte, byte, decimal, float, double, plus

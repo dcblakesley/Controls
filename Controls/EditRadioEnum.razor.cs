@@ -63,12 +63,11 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     // reads the cache's own IsNullable.
     readonly EnumOptionCache<TEnum> _cache = new();
 
+    // Extra init on top of the base's state wiring: seed the option cache. Base first, matching the
+    // order this ran in when the InitState call was spelled out here.
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditRadioEnum<TEnum>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-
         _cache.Initialize(Sort, HasOtherOption);
     }
 

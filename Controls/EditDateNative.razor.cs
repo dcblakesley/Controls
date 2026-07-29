@@ -113,13 +113,6 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     /// </summary>
     string InputClass => EditInputShell.BuildInputClass("edit-input edit-date-input", Size, CssClass);
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditDateNative<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // Ported from Microsoft.AspNetCore.Components.Forms.InputDate<T>, and identical to EditNumber<T>'s
     // parse — hence the shared body in EditControlInit.TryConvert. BindConverter handles DateTime,
     // DateTime?, DateTimeOffset, DateTimeOffset?, DateOnly, DateOnly?, TimeOnly, TimeOnly?; only

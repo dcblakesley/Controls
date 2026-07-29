@@ -62,11 +62,11 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
     string _otherName = "__wss-other__";
     string? _selectedOption;
 
+    // Extra init on top of the base's state wiring: the "Other" sentinel and the initial selection.
+    // Base first, matching the order these ran in when the InitState call was spelled out here.
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditRadioString)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
         ComputeOtherSentinel();
         DeriveSelectionFromValue();
     }

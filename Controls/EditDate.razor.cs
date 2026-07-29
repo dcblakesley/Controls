@@ -296,13 +296,6 @@ public partial class EditDate<T> : EditControlBase<T>
     string EffectiveDateFormat =>
         FormatOverride ?? PickerMath.ModeDisplayFormat(EffectiveMode, "MM-dd-yyyy", "MM-yyyy", Use12Hours, ShowSeconds);
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditDate<T>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // The picker sets the value through its own ValueChanged callback, not string parsing — mirrors
     // EditSelectSearch's contract for a wrapped UI-kit engine. Binding to CurrentValueAsString (the
     // debug bound-value display excepted, which only ever reads it) is unsupported.

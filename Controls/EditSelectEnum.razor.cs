@@ -39,12 +39,11 @@ public partial class EditSelectEnum<TEnum> : EditControlBase<TEnum>
     // stays a same-named member delegating to the cache rather than a call site rewrite.
     bool _isNullable => _cache.IsNullable;
 
+    // Extra init on top of the base's state wiring: seed the option cache. Base first, matching the
+    // order this ran in when the InitState call was spelled out here.
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditSelectEnum<TEnum>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-
         // EditSelectEnum has no "Other" option, so hasOtherOption is always false here.
         _cache.Initialize(Sort, hasOtherOption: false);
     }

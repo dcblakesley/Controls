@@ -231,13 +231,6 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     void OnDragEnter(Microsoft.AspNetCore.Components.Web.DragEventArgs _) { if (!IsDisabled) _hoverClass = "hover"; }
     void OnDragLeave(Microsoft.AspNetCore.Components.Web.DragEventArgs _) => _hoverClass = string.Empty;
 
-    protected override void OnInitialized()
-    {
-        base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditFile)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
-    }
-
     // "10 MB limit", "500 KB limit" — integer MB division reported "0 MB" for sub-MB caps.
     static string FormatSize(long bytes) => bytes switch
     {

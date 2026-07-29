@@ -35,6 +35,27 @@ public static class EditControlInit
     }
 
     /// <summary>
+    /// A control's simple type name for diagnostics — <c>EditNumber</c>, not the CLR's
+    /// <c>EditNumber`1</c>. Reproduces exactly what the per-control <c>nameof(EditNumber&lt;T&gt;)</c>
+    /// in each control's own "requires a two-way @bind-Value binding" message produced, so hoisting
+    /// that message onto the control bases left every control's text byte-identical.
+    /// </summary>
+    /// <remarks>
+    /// Lives here rather than on a base for this class's usual reason: both control bases need it and
+    /// they share no ancestor. <c>GetType().Name</c> is trim/AOT-safe — it reads the runtime type's own
+    /// name and needs no member metadata — which is what lets the message move off the call site, where
+    /// a compile-time <c>nameof</c> was previously the only option.
+    /// </remarks>
+    public static string ControlName(object control)
+    {
+        var name = control.GetType().Name;
+        // A generic type's runtime name carries the CLR arity suffix (`EditNumber`1`); nameof() never
+        // did, so trim it back to the bare name.
+        var arity = name.IndexOf('`');
+        return arity < 0 ? name : name[..arity];
+    }
+
+    /// <summary>
     /// Registers a control's field (and its resolved element id) with the form so the validation
     /// summary can link to it. <paramref name="owner"/> is the registering control instance, so two
     /// controls bound to the same property share one entry until the last of them unregisters.
