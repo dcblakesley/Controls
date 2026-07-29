@@ -57,9 +57,20 @@
     // tooltips center against instead of the viewport, which is the wrong frame once that box is
     // smaller than the screen — the case that lets tooltips run off a modal's/drawer's edges even
     // while "centered" relative to the screen.
+    //
+    // <body> is deliberately skipped: `body { overflow-x: hidden }` is near-ubiquitous boilerplate,
+    // and body's rect is the whole DOCUMENT (as tall as the page, top well above the viewport once
+    // scrolled). Accepting it made every tooltip on such a page measure against a frame whose
+    // bottom is thousands of pixels below the screen, so the vertical flip never fired and a
+    // trigger near the viewport bottom opened downward, off-screen. A page that genuinely wants a
+    // body-sized frame gets the viewport instead, which is the same box for an unscrolled page.
     function nearestBoundsRect(el) {
         var node = el.parentElement;
         while (node && node !== document.documentElement) {
+            if (node === document.body) {
+                node = node.parentElement;
+                continue;
+            }
             var cs = getComputedStyle(node);
             if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') return node.getBoundingClientRect();
             for (var i = 0; i < BOUNDARY_CLASSES.length; i++) {
@@ -68,6 +79,25 @@
             node = node.parentElement;
         }
         return null;
+    }
+
+    // Intersects a bounds rect with the viewport, because only the visible part of a frame is
+    // somewhere a tooltip can actually open: a scroll container taller than the screen (or one
+    // scrolled partly out of view) otherwise reintroduces exactly the off-screen placement the
+    // frame exists to prevent — "centered in its container" is useless if that container's center
+    // is below the fold. A no-op for the common cases (a modal panel or a scroll region entirely
+    // on screen). Returns a plain {left, top, width, height} — not a DOMRect — and falls back to
+    // null (meaning "use the viewport") when the intersection is empty or inverted, i.e. the frame
+    // is scrolled completely out of view; the trigger can't be visible either in that case, so
+    // there is nothing better to aim at.
+    function clipToViewport(rect, vw, vh) {
+        if (!rect) return null;
+        var left = Math.max(rect.left, 0);
+        var top = Math.max(rect.top, 0);
+        var right = Math.min(rect.right, vw);
+        var bottom = Math.min(rect.bottom, vh);
+        if (right <= left || bottom <= top) return null;
+        return { left: left, top: top, width: right - left, height: bottom - top };
     }
 
     function place(el) {
@@ -82,11 +112,13 @@
         var r = el.getBoundingClientRect();
         if (!r.width && !r.height) return;
 
-        var bounds = nearestBoundsRect(el);
+        var vw = window.innerWidth || document.documentElement.clientWidth;
+        var vh = window.innerHeight || document.documentElement.clientHeight;
+        var bounds = clipToViewport(nearestBoundsRect(el), vw, vh);
         var boundLeft = bounds ? bounds.left : 0;
         var boundTop = bounds ? bounds.top : 0;
-        var w = bounds ? bounds.width : (window.innerWidth || document.documentElement.clientWidth);
-        var h = bounds ? bounds.height : (window.innerHeight || document.documentElement.clientHeight);
+        var w = bounds ? bounds.width : vw;
+        var h = bounds ? bounds.height : vh;
         var cx = r.left + r.width / 2 - boundLeft;
         var cy = r.top + r.height / 2 - boundTop;
 

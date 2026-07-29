@@ -26,6 +26,25 @@ export function fits(space, size, gap, margin) {
     return space >= size + (gap || 0) + (margin || 0);
 }
 
+// Clamps a viewport-coordinate position (`pos`, the left/top edge a box of `size` WANTS) along one
+// axis so the box stays inside `viewport` (innerWidth/innerHeight), keeping `margin` of edge reserve
+// on both sides. Returns the position to use — callers that position relative to an anchor derive
+// their own shift from the difference (`clamped - pos`).
+//
+// The one two-sided clamp every cross-axis/horizontal positioning site shares: place()'s cross-axis
+// shift, placePanel, repositionFixedBelow, and wss-select.js's placeDropdown, which between them had
+// four hand-rolled variants (one of which only ever clamped one edge). Both edges matter, and which
+// one wins when they conflict matters more: when the box is too big to satisfy both (larger than
+// viewport - 2*margin), the NEAR edge wins and the result stays at `margin`, so the FAR edge is what
+// clips. That's deliberate — content pushed past the near (left/top) viewport edge is unreachable,
+// while a clipped far edge is at worst truncated. It's also what keeps a right-edge overflow from
+// being "fixed" by shoving the panel's own left edge off-screen, which is strictly worse than the
+// overflow it was correcting.
+export function clampAxis(pos, size, viewport, margin) {
+    margin = margin || 0;
+    return Math.max(margin, Math.min(pos, viewport - margin - size));
+}
+
 // Flips `el` above `anchorRect` when there's no room below it (and there IS room above) — the
 // vertical open-upward decision + top/bottom style writes shared by wss-select.js's placeDropdown
 // and this module's own placePanel, which duplicated this verbatim aside from variable names.
@@ -99,10 +118,10 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
     let shift = 0;
     if (place === 'top' || place === 'bottom') {
         const left = t.left + t.width / 2 - pw / 2;        // centred on the trigger
-        shift = Math.max(margin, Math.min(left, vw - margin - pw)) - left;
+        shift = clampAxis(left, pw, vw, margin) - left;
     } else {
         const top = t.top + t.height / 2 - ph / 2;
-        shift = Math.max(margin, Math.min(top, vh - margin - ph)) - top;
+        shift = clampAxis(top, ph, vh, margin) - top;
     }
     panel.style.setProperty('--wss-shift', `${Math.round(shift)}px`);
 
@@ -327,12 +346,15 @@ export function placePanel(wrapper, panel, backdropClass, gap) {
     const pw = panel.offsetWidth;
     applyVerticalFlip(panel, w, ph, gap);
 
-    // Shift left just enough to stay inside the right viewport edge (8px margin), never past the
-    // wrapper's own distance from the left edge — a fully off-screen field stays panel-left-aligned.
-    const margin = 8;
-    const overflowRight = w.left + pw - (window.innerWidth - margin);
-    const shift = overflowRight > 0 ? Math.min(overflowRight, Math.max(0, w.left - margin)) : 0;
-    panel.style.left = `${-Math.round(shift)}px`;
+    // Shift horizontally just enough to keep the panel inside the viewport (8px margin) — the panel
+    // is far wider than its field, so a field near the right edge would otherwise push it off-screen.
+    // Expressed as a `left` offset from the wrapper, since the CSS default is left: 0 (the panel is
+    // absolute inside the wrapper). Via the shared two-sided clampAxis, so a field whose own left
+    // edge sits past the left viewport margin (horizontally scrolled, or a field wider than the
+    // screen) now gets the panel nudged back to the margin rather than trailing the field off-screen
+    // to the left — the previous one-sided version could only ever shift left.
+    const left = clampAxis(w.left, pw, window.innerWidth, 8);
+    panel.style.left = `${Math.round(left - w.left)}px`;
 
     return z;
 }
@@ -391,8 +413,7 @@ function repositionFixedBelow(trigger, panel, gap) {
     }
 
     // Right-align under the funnel icon (AntD's default), clamped into the viewport.
-    let left = t.right - pw;
-    left = Math.max(margin, Math.min(left, vw - margin - pw));
+    const left = clampAxis(t.right - pw, pw, vw, margin);
 
     panel.style.top = `${Math.round(top)}px`;
     panel.style.left = `${Math.round(left)}px`;

@@ -3,7 +3,7 @@
 // dropdown above the control when there's no room below, and tames the search input's native
 // key defaults (which C# handlers can't do — Blazor has no per-key preventDefault).
 // No third-party or Ant Design dependency.
-import { applyVerticalFlip, stackWithBackdrop, clearZ, wireDismissOnFocusOut } from './wss-overlay.js';
+import { applyVerticalFlip, clampAxis, stackWithBackdrop, clearZ, wireDismissOnFocusOut } from './wss-overlay.js';
 export { clearZ };
 
 export function scrollActiveIntoView(container, index, itemSize) {
@@ -51,16 +51,28 @@ export function placeDropdown(wrapper, dropdown, gap) {
 
     // Horizontal clamp: the dropdown normally hangs from the wrapper's left edge (CSS `left: 0`).
     // A dropdown wider than its trigger (long option labels, or the pill variant's content-driven
-    // width) can run off the right edge of the viewport near it — mirror the vertical flip above by
-    // anchoring from the wrapper's right edge instead whenever that would happen. Keeps the CSS
-    // default (left: 0) whenever there's room, so this only ever moves the panel further on-screen.
-    if (w.left + dropdownWidth > window.innerWidth) {
-        dropdown.style.left = 'auto';
-        dropdown.style.right = '0';
-    } else {
-        dropdown.style.right = 'auto';
-        dropdown.style.left = '0';
-    }
+    // width up to its 320px max) can run off the right edge of the viewport near it — shift it left
+    // by exactly enough to sit inside, expressed as a `left` offset from the wrapper (the same
+    // mechanism wss-overlay.js's placePanel uses, and one the CSS supports as-is: the dropdown is
+    // absolute inside the position: relative wrapper, which has no border or padding, so `left: 0`
+    // and the wrapper's own client rect start at the same x).
+    //
+    // Via the shared two-sided clampAxis rather than anchoring to the wrapper's RIGHT edge, which is
+    // what this used to do: right-anchoring keeps overflowing whenever the wrapper's own right edge
+    // is at/past the viewport's, and for a dropdown wider than the remaining room (the pill variant
+    // on a narrow viewport) it pushes the dropdown's LEFT edge off-screen — unreachable content,
+    // strictly worse than the right-side clipping it was avoiding, which clampAxis prefers instead
+    // (see its own comment). Still no movement at all whenever there's room, so the plain CSS default
+    // describes the common case. `right: auto` neutralizes any stale right anchor.
+    //
+    // The edge margin drops to 0 for a dropdown too wide to inset: min-width: 100% ties the dropdown
+    // to its trigger, so a full-bleed select on a phone legitimately produces one as wide as the
+    // screen, and insetting that one would clip options off its right edge where it previously sat
+    // aligned and fully visible.
+    const margin = dropdownWidth <= window.innerWidth - 16 ? 8 : 0;
+    const left = clampAxis(w.left, dropdownWidth, window.innerWidth, margin);
+    dropdown.style.right = 'auto';
+    dropdown.style.left = `${Math.round(left - w.left)}px`;
 
     // Hand the wrapper's z-index back so C# can re-assert it on every bound-style re-render.
     return z;
