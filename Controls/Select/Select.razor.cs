@@ -374,7 +374,13 @@ public partial class Select<TValue> : IAsyncDisposable
     // "A value is selected" = it resolves to an option, OR it's a non-default value. The FindOption
     // arm matters for value types whose default is a real option (e.g. a non-nullable enum's 0 member
     // or int 0) — without it the default would mis-render as the empty placeholder with no clear button.
-    bool HasSingleValue => FindOption(Value) is not null || !_comparer.Equals(Value, default!);
+    // The empty-string exclusion is the mirror case: default(string) is null, not "", so a string-bound
+    // Select at "" counted as a real selection and rendered an empty label plus a live clear button that
+    // appeared to do nothing. "" still counts as selected when a genuine option carries it (the
+    // FindOption arm wins), which is what makes an explicit "None" option work. Same verdict the
+    // wrappers reach in IsValueDefault (EditSelect/EditSelectString) and the one HidingMode documents.
+    bool HasSingleValue =>
+        FindOption(Value) is not null || (!_comparer.Equals(Value, default!) && Value is not string { Length: 0 });
 
     string SelectedLabel => FindOption(Value)?.Label ?? Value?.ToString() ?? string.Empty;
 
@@ -700,7 +706,11 @@ public partial class Select<TValue> : IAsyncDisposable
         if (Mode != SelectMode.Tags || _selectedSet.Contains(value)) return;
         if (_tagOptions.RemoveAll(t => _comparer.Equals(t.Value, value)) > 0)
         {
-            if (value is not null) _lookup.Remove(value);
+            // Rebuild rather than removing the one key: the lookup is derived from Options + _tagOptions,
+            // and Options can supply the same value (e.g. a server echoing the committed tag back as a
+            // real, better-labelled option). A targeted Remove deleted that live entry too, after which
+            // the value's label fell back to ToString(). O(n) is fine on a user-action path.
+            RebuildLookup();
             RebuildFiltered();
         }
     }
@@ -716,11 +726,10 @@ public partial class Select<TValue> : IAsyncDisposable
             ClearSelected();
             if (Mode == SelectMode.Tags && _tagOptions.Count > 0)
             {
-                foreach (var tag in _tagOptions)
-                {
-                    if (tag.Value is not null) _lookup.Remove(tag.Value);
-                }
                 _tagOptions.Clear();
+                // Same reason as PruneTagOption: the lookup is derived, so rebuild it from what's left
+                // instead of removing each cleared tag's key — Options may still supply that value.
+                RebuildLookup();
             }
             await ValuesChanged.InvokeAsync(_selected.ToList());
         }
@@ -966,14 +975,19 @@ public partial class Select<TValue> : IAsyncDisposable
         // when Mode switches between the single and multiple markup branches).
         if (!_inputWired || _wiredMode != Mode)
         {
-            _inputWired = true;
-            _wiredMode = Mode;
             var module = await _jsModule.GetAsync(JS, FormDefaults);
             if (module is not null)
             {
                 try
                 {
                     await module.InvokeVoidAsync("initInput", _inputRef, _wrapperRef);
+                    // Latched only on success (the pattern PopupOverlayBase's syncTrigger cache follows):
+                    // a failed import isn't cached by JsModule, so a transient failure retries on the next
+                    // render instead of permanently stranding this select without its key-default
+                    // suppression and focus-out dismiss. Recording the mode here still re-wires on a
+                    // Mode switch, which recreates the input element.
+                    _inputWired = true;
+                    _wiredMode = Mode;
                 }
                 catch
                 {

@@ -50,6 +50,9 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <inheritdoc cref="Select{TValue}.Size"/>
     [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
 
+    /// <inheritdoc cref="Select{TValue}.Variant"/>
+    [Parameter] public SelectVariant Variant { get; set; } = SelectVariant.Outlined;
+
     /// <inheritdoc cref="Select{TValue}.Prefix"/>
     [Parameter] public RenderFragment? Prefix { get; set; }
 

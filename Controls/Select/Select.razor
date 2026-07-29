@@ -135,8 +135,13 @@
     {
         @* tabindex=-1: Chromium puts scrollable containers in the tab order by default, which made
            Tab land on the raw listbox. Per the ARIA combobox pattern the popup is driven from the
-           input (arrow keys / type-ahead), never tabbed into. *@
-        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" tabindex="-1" @ref="_dropdownRef" role="listbox" aria-label="@ListboxLabel" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")">
+           input (arrow keys / type-ahead), never tabbed into.
+           stopPropagation on the panel itself: the parts of it that carry no click handler of their own
+           (group headers, the empty row, the panel's own padding/scrollbar) otherwise bubbled into the
+           wrapper's OnWrapperClickAsync and toggled a non-searchable select closed. Option rows and the
+           footer stop propagation themselves as well -- theirs is what keeps a click from reaching this
+           element in the first place, so their own handlers still run and still commit. *@
+        <div class="wss-select-dropdown @(_dropdownPositioned ? null : "wss-measuring")" tabindex="-1" @ref="_dropdownRef" role="listbox" aria-label="@ListboxLabel" aria-multiselectable="@(IsMultiple ? "true" : null)" id="@($"{BaseId}-listbox")" @onclick:stopPropagation>
             @if (_filtered.Count == 0)
             {
                 <div class="wss-select-item-empty">

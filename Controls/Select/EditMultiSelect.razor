@@ -4,7 +4,15 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* Unmatched attributes (style, data-*, title, ...) land on the wrapper — splatted FIRST so the
+       explicit attributes below win. `class` is deliberately NOT re-emitted here: AttributeSplat.Rest
+       withholds it and FieldCssClass already carries the consumer's class (merged with the field-state
+       classes) through to the engine's own wrapper, which must stay the single channel for it. The
+       engine's wrapper is also why the splat can't go there — its inline style is JS-owned (the
+       open-order z-index). *@
+    <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+         class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
@@ -21,6 +29,7 @@
                     ShowArrow="ShowArrow"
                     Loading="Loading"
                     Size="Size"
+                    Variant="Variant"
                     Prefix="Prefix"
                     Width="@Width"
                     MaxTagCount="MaxTagCount"

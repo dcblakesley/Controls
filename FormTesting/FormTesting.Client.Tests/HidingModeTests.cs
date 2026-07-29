@@ -13,6 +13,11 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class HidingModeTests : BunitContext
 {
+    // EditSelectSearch's inner Select engine imports wss-select.js on first render. JsModule swallows a
+    // failed import (the no-JS degrade), so Strict mode would pass too -- Loose just keeps the matrix
+    // below from depending on that swallow.
+    public HidingModeTests() => JSInterop.Mode = JSRuntimeMode.Loose;
+
     static bool IsRendered(IRenderedComponent<ContainerFragment> cut) => cut.FindAll(".edit-control-wrapper").Count > 0;
 
     // ── EditString ────────────────────────────────────────────────────────────────────────────
@@ -192,6 +197,41 @@ public class HidingModeTests : BunitContext
         }));
 
         Assert.False(IsRendered(cut));
+    }
+
+    // ── EditSelectSearch<string> — the same "" verdict as every other string-capable control ──
+
+    [Theory]
+    // EditSelectSearch was the one string-capable scalar select with no IsValueDefault override, so ""
+    // stayed visible under the *OrDefault modes while EditSelect/EditSelectString/EditString hid it.
+    // Same matrix as EditSelect_string_hiding_matrix above -- the two must agree.
+    [InlineData(HidingMode.WhenNullOrDefault, "", true, false)]
+    [InlineData(HidingMode.WhenNullOrDefault, "", false, false)]
+    [InlineData(HidingMode.WhenNullOrDefault, null, true, false)]
+    [InlineData(HidingMode.WhenNullOrDefault, "a", true, true)] // a real selection always shows
+    [InlineData(HidingMode.WhenNullOrDefault, "a", false, true)]
+    [InlineData(HidingMode.WhenReadOnlyAndNullOrDefault, "", true, true)]
+    [InlineData(HidingMode.WhenReadOnlyAndNullOrDefault, "", false, false)]
+    // "" is still not *null*, so the null-only modes keep showing it.
+    [InlineData(HidingMode.WhenNull, "", true, true)]
+    [InlineData(HidingMode.WhenReadOnlyAndNull, "", false, true)]
+    [InlineData(HidingMode.None, "", true, true)]
+    public void EditSelectSearch_string_hiding_matrix(HidingMode mode, string? value, bool isEditMode, bool expectedVisible)
+    {
+        var model = new StringModel { Text = value };
+        Expression<Func<string>> field = () => model.Text!;
+        var cut = Render(WithForm(model, null, b =>
+        {
+            b.OpenComponent<EditSelectSearch<string>>(0);
+            b.AddAttribute(1, "Value", model.Text);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<SelectOption<string>> { new("a", "A") });
+            b.AddAttribute(4, "Hiding", mode);
+            b.AddAttribute(5, "IsEditMode", isEditMode);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal(expectedVisible, IsRendered(cut));
     }
 
     // ── FormOptions.IsEditMode now respected by every control (bug-fix coverage) ─────────────

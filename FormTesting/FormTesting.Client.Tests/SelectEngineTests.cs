@@ -381,6 +381,139 @@ public class SelectEngineTests : BunitContext
     }
 
     [Fact]
+    public void Empty_string_value_shows_the_placeholder_and_offers_no_clear_button()
+    {
+        // default(string) is null, not "", so the old "resolves to an option OR != default" test counted
+        // "" as a real selection: an empty selection-item label instead of the placeholder, plus a live
+        // clear button that appeared to do nothing.
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("A", false)))
+            .Add(s => s.Value, "")
+            .Add(s => s.AllowClear, true));
+
+        Assert.NotEmpty(cut.FindAll(".wss-select-selection-placeholder"));
+        Assert.Empty(cut.FindAll(".wss-select-selection-item"));
+        Assert.Empty(cut.FindAll("button.wss-select-clear"));
+    }
+
+    [Fact]
+    public void Empty_string_still_counts_as_selected_when_a_real_option_carries_it()
+    {
+        // The FindOption arm wins over the empty-string exclusion, so an explicit "None" option keeps
+        // working: its label shows and the clear button is offered, exactly like any other selection.
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, new List<SelectOption<string>> { new("", "None"), new("A", "A") })
+            .Add(s => s.Value, "")
+            .Add(s => s.AllowClear, true));
+
+        Assert.Equal("None", cut.Find(".wss-select-selection-item").TextContent);
+        Assert.Empty(cut.FindAll(".wss-select-selection-placeholder"));
+        Assert.NotEmpty(cut.FindAll("button.wss-select-clear"));
+    }
+
+    [Fact]
+    public void Pruning_a_tag_keeps_the_label_of_a_same_valued_option_still_supplied_by_Options()
+    {
+        // The value -> option lookup is derived from Options + the user's tags. Pruning a deselected tag
+        // used to Remove() its key outright, deleting the entry Options still supplied for the same
+        // value -- after which the re-selected option's tag fell back to value.ToString().
+        var values = new List<string>();
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Mode, SelectMode.Tags)
+            .Add(s => s.Options, new List<SelectOption<string>>())
+            .Add(s => s.Values, values)
+            // Mirrors a @bind-Values consumer while keeping the same list instance, so the
+            // reference-guarded re-mirror below sees the committed tag rather than resetting it.
+            .Add(s => s.ValuesChanged, (IEnumerable<string> v) => { values.Clear(); values.AddRange(v); }));
+
+        var input = cut.Find("input.wss-select-selection-search-input");
+        input.Input("X");
+        input.KeyDown(new KeyboardEventArgs { Key = "Enter" }); // commit the free tag "X"
+
+        // The server echoes the same value back as a real, better-labelled option.
+        cut.Render(p => p.Add(s => s.Options, new List<SelectOption<string>> { new("X", "X-label") }));
+
+        cut.Find("button.wss-select-selection-item-remove").Click(); // deselect -> prunes the tag option
+        Assert.Empty(cut.FindAll("button.wss-select-selection-item-remove"));
+
+        cut.Find(".wss-select-item-option").Click(); // re-select it from the list
+        Assert.Equal("X-label", cut.Find(".wss-select-selection-item-content").TextContent);
+    }
+
+    [Fact]
+    public void Clearing_tags_keeps_the_label_of_a_same_valued_option_still_supplied_by_Options()
+    {
+        // ClearAsync's tag teardown had the same targeted-removal bug as PruneTagOption.
+        var values = new List<string>();
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Mode, SelectMode.Tags)
+            .Add(s => s.Options, new List<SelectOption<string>>())
+            .Add(s => s.Values, values)
+            .Add(s => s.ValuesChanged, (IEnumerable<string> v) => { values.Clear(); values.AddRange(v); }));
+
+        var input = cut.Find("input.wss-select-selection-search-input");
+        input.Input("X");
+        input.KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        cut.Render(p => p.Add(s => s.Options, new List<SelectOption<string>> { new("X", "X-label") }));
+
+        cut.Find("button.wss-select-clear").Click();
+        Assert.Empty(cut.FindAll(".wss-select-selection-item-content"));
+
+        cut.Find(".wss-select-item-option").Click();
+        Assert.Equal("X-label", cut.Find(".wss-select-selection-item-content").TextContent);
+    }
+
+    [Fact]
+    public void Clicking_the_dropdown_panel_chrome_does_not_toggle_a_non_searchable_select_closed()
+    {
+        // The panel stops click propagation, so the parts of it carrying no handler of their own (a group
+        // header here, but equally the empty row or the panel's padding) can no longer bubble into the
+        // wrapper's OnWrapperClickAsync -- which, with ShowSearch=false, reads as a second click on the
+        // control and closes it. This is the hazard the DropdownFooter's own stopPropagation documents.
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, new List<SelectOption<string>>
+            {
+                new("A", "A") { Group = "Letters" },
+                new("B", "B") { Group = "Letters" },
+            })
+            .Add(s => s.ShowSearch, false)
+            .Add(s => s.DefaultOpen, true));
+
+        try
+        {
+            cut.Find(".wss-select-item-group-label").Click();
+        }
+        catch (Bunit.MissingEventHandlerException)
+        {
+            // bUnit models stopPropagation by cutting the bubble path: the header has no onclick of its
+            // own, so with the panel stopping propagation the click reaches no handler at all and bUnit
+            // reports the miss rather than dispatching. Either way the wrapper's toggle must not run --
+            // that's what the open-state assertion below pins.
+        }
+
+        Assert.NotEmpty(cut.FindAll("[role=listbox]"));
+    }
+
+    [Fact]
+    public void Clicking_an_option_in_a_non_searchable_select_still_selects_and_closes()
+    {
+        // The other half of the panel-stopPropagation change: option rows carry their own handler (and
+        // their own stopPropagation), so the panel's directive never gets in their way.
+        string? selected = null;
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, new List<SelectOption<string>> { new("A", "A") { Group = "Letters" } })
+            .Add(s => s.ShowSearch, false)
+            .Add(s => s.DefaultOpen, true)
+            .Add(s => s.ValueChanged, (string v) => selected = v));
+
+        cut.Find(".wss-select-item-option").Click();
+
+        Assert.Equal("A", selected);
+        Assert.Empty(cut.FindAll("[role=listbox]"));
+    }
+
+    [Fact]
     public void Pill_variant_adds_the_pill_class_and_default_stays_outlined()
     {
         var outlined = Render<Select<string>>(p => p

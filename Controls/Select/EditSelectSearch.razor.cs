@@ -109,6 +109,14 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
         _labels.Refresh(Options);
     }
 
+    // Union of the base default check and the empty-string case, matching EditSelect/EditSelectString:
+    // default(string) is null, not "", so a string-bound EditSelectSearch at the empty string stayed
+    // visible under WhenNullOrDefault/WhenReadOnlyAndNullOrDefault while every sibling string control hid
+    // it — contradicting HidingMode's documented "null or its type's default (e.g. empty string, 0, ...)".
+    // Unioned rather than replacing the base check, so every other TValue keeps its own default (a
+    // nullable enum at null, an int at 0), which stringifying would have silently broken.
+    protected override bool IsValueDefault() => base.IsValueDefault() || CurrentValue is string { Length: 0 };
+
     // Setting CurrentValue runs the InputBase machinery: NotifyFieldChanged + validation + ValueChanged.
     void OnValueChanged(TValue value) => CurrentValue = value;
 

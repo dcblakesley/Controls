@@ -204,4 +204,51 @@ public class SelectWrapperForwardingTests : BunitContext
         Assert.NotEmpty(cut.FindAll("[role=listbox]"));
         Assert.Contains(true, raised);
     }
+
+    [Fact]
+    public void EditMultiSelect_forwards_Variant()
+    {
+        // EditSelectSearch already declared+forwarded Variant; EditMultiSelect omitted it, so Pill and
+        // Borderless were unreachable for multiple/tags even though the engine applies them modelessly.
+        var model = new PersonModel { FavoriteColors = [] };
+        Expression<Func<List<Color>>> field = () => model.FavoriteColors;
+
+        var outlined = Render<EditMultiSelect<Color>>(p => p
+            .Add(x => x.Value, model.FavoriteColors)
+            .Add(x => x.ValueExpression, field)
+            .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red")]));
+        Assert.DoesNotContain("wss-select-pill", outlined.Find(".wss-select").ClassList);
+
+        var pill = Render<EditMultiSelect<Color>>(p => p
+            .Add(x => x.Value, model.FavoriteColors)
+            .Add(x => x.ValueExpression, field)
+            .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red")])
+            .Add(x => x.Variant, SelectVariant.Pill));
+        Assert.Contains("wss-select-pill", pill.Find(".wss-select").ClassList);
+    }
+
+    [Fact]
+    public void EditMultiSelect_renders_unmatched_attributes_on_the_wrapper_and_still_routes_class_to_the_engine()
+    {
+        // EditControlListBase captures unmatched values, but EditMultiSelect never splatted them, so
+        // style/data-*/title on the control were silently dropped. They land on the outer
+        // edit-control-wrapper (not the engine's wrapper, whose inline style is JS-owned); `class` keeps
+        // its single existing channel -- FieldCssClass -> the engine's CssClass.
+        var model = new PersonModel { FavoriteColors = [] };
+        Expression<Func<List<Color>>> field = () => model.FavoriteColors;
+        var cut = Render<EditMultiSelect<Color>>(p => p
+            .Add(x => x.Value, model.FavoriteColors)
+            .Add(x => x.ValueExpression, field)
+            .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red")])
+            .AddUnmatched("style", "margin-top:4px")
+            .AddUnmatched("data-test", "multi")
+            .AddUnmatched("class", "my-custom-class"));
+
+        var wrapper = cut.Find(".edit-control-wrapper");
+        Assert.Equal("margin-top:4px", wrapper.GetAttribute("style"));
+        Assert.Equal("multi", wrapper.GetAttribute("data-test"));
+        // The consumer's class must not be duplicated onto the wrapper -- it belongs to the engine.
+        Assert.DoesNotContain("my-custom-class", wrapper.ClassList);
+        Assert.Contains("my-custom-class", cut.Find(".wss-select").ClassList);
+    }
 }
