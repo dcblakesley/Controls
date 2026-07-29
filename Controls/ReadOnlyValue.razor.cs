@@ -8,11 +8,14 @@ public partial class ReadOnlyValue
     [Parameter] public required string Id { get; set; }
 
     /// <summary>
-    /// When true, suppresses <c>aria-labelledby</c> — the sibling <see cref="FormLabel"/> renders no
-    /// <c>lbl-{id}</c> element to point at (label hidden), or this value has no associated label
-    /// (e.g. a per-option read-only item in a checked list).
+    /// False when no <see cref="FormLabel"/> element exists for this value to be named by, which
+    /// suppresses <c>aria-labelledby</c> so it can't dangle at a missing <c>lbl-{id}</c>. Only the
+    /// per-option rows of a read-only checked list set this — each carries its own derived id and no
+    /// label of its own. A <em>hidden</em> label is not such a case: <see cref="FormLabel"/> still
+    /// renders the <c>lbl-{id}</c> element (visually hidden), and dropping the reference would leave
+    /// the value with no accessible name at all. Defaults to true.
     /// </summary>
-    [Parameter] public bool IsLabelHidden { get; set; }
+    [Parameter] public bool HasLabelElement { get; set; } = true;
 
     [Parameter] public string? CssClass { get; set; }
     [Parameter] public string? Text { get; set; }

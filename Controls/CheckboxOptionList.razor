@@ -47,13 +47,13 @@ else
 {
     @if (Value is null || Value.Count == 0)
     {
-        <ReadOnlyValue Id=@Id IsLabelHidden=@IsLabelHidden CssClass=@FieldCssClass Text=""/>
+        <ReadOnlyValue Id=@Id CssClass=@FieldCssClass Text=""/>
     }
     else
     {
         @foreach (var option in Value)
         {
-            <ReadOnlyValue Id=@($"{Id}-option-{option.ToId()}") IsLabelHidden="true" CssClass=@FieldCssClass Text=@DisplayText(option)/>
+            <ReadOnlyValue Id=@($"{Id}-option-{option.ToId()}") HasLabelElement="false" CssClass=@FieldCssClass Text=@DisplayText(option)/>
         }
     }
 }

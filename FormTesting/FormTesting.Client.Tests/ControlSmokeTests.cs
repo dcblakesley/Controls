@@ -365,9 +365,11 @@ public class ControlSmokeTests : BunitContext
     }
 
     [Fact]
-    public void ReadOnlyValue_omits_aria_labelledby_when_the_label_is_hidden()
+    public void ReadOnlyValue_keeps_aria_labelledby_when_the_label_is_hidden()
     {
-        // No FormLabel renders (lbl-Name absent), so the read-only value must not dangle aria-labelledby.
+        // A hidden FormLabel still renders lbl-Name — visually hidden, but present — so the read-only
+        // value must keep referencing it. Suppressing the reference left the value with no accessible
+        // name at all.
         var model = new PersonModel { Name = "Alice" };
         Expression<Func<string>> field = () => model.Name;
         var cut = Render(WithForm(model, b =>
@@ -380,7 +382,8 @@ public class ControlSmokeTests : BunitContext
             b.CloseComponent();
         }));
 
-        Assert.False(cut.Find(".edit-readonly-value").HasAttribute("aria-labelledby"));
+        Assert.Equal("lbl-Name", cut.Find("label.edit-sr-only").Id);
+        Assert.Equal("lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
     }
 
     [Fact]

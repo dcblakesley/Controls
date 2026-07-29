@@ -84,7 +84,6 @@
             else
             {
                 <ReadOnlyValue Id=@_id
-                               IsLabelHidden=@ShouldHideLabel
                                CssClass=@CssClass
                                Text=@(IsOtherSelected ? $"{Value?.GetName()}: {OtherValue}" : Value?.GetName()) />
                 }

@@ -73,6 +73,45 @@ public class FormA11yTests : BunitContext
     }
 
     [Fact]
+    public void Read_only_hidden_label_still_names_the_value_via_the_visually_hidden_label()
+    {
+        var model = new PersonModel { Name = "x" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithValidatedForm(model, false,
+            b => AddEditString(b, model, field, ("IsEditMode", false), ("IsLabelHidden", true))));
+
+        // The hidden label renders lbl-Name (visually hidden) instead of nothing at all, so the
+        // read-only div must point at it — omitting aria-labelledby here, on the premise that no
+        // label element existed, left read-only hidden-label fields unnamed to assistive tech.
+        Assert.Equal("lbl-Name", cut.Find("label.edit-sr-only").Id);
+        Assert.Equal("lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void Read_only_checked_list_option_rows_carry_no_dangling_aria_labelledby()
+    {
+        var model = new PersonModel { Tags = ["a", "b"] };
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var cut = Render(WithValidatedForm(model, false, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(4, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        // The per-option rows carry their own derived ids and have no label element of their own
+        // (only the group's legend renders an lbl- id), so they must reference nothing at all — the
+        // one case that opts out of ReadOnlyValue's always-on aria-labelledby.
+        var rows = cut.FindAll(".edit-readonly-value");
+        Assert.Equal(2, rows.Count);
+        Assert.All(rows, r => Assert.False(r.HasAttribute("aria-labelledby")));
+        Assert.Equal("lbl-Tags", cut.Find("legend").Id);
+    }
+
+    [Fact]
     public void Checked_list_fieldset_exposes_group_semantics_without_unsupported_aria()
     {
         var model = new PersonModel { Tags = [] };

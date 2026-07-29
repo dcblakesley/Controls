@@ -30,7 +30,7 @@
         {
             @* Read-only — use the same FormLabel + ReadOnlyValue pattern as the other controls *@
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable="false" />
-            <ReadOnlyValue Id=@_id IsLabelHidden=@ShouldHideLabel CssClass=@CssClass Text=@(CurrentValue ? EffectiveTrueText : EffectiveFalseText) />
+            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@(CurrentValue ? EffectiveTrueText : EffectiveFalseText) />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
