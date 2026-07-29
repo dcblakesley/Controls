@@ -2289,4 +2289,168 @@ public class DateRangePickerTests : BunitContext
         Assert.Equal(new DateTime(2025, 1, 20, 14, 45, 0), end);
         Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
     }
+
+    // ----- aria-current on day cells -------------------------------------------------
+
+    [Fact]
+    public void Todays_day_cell_exposes_aria_current_date_in_every_day_grid()
+    {
+        // wss-picker-day-today is the visual channel; aria-current="date" is the accessibility one,
+        // matching what the Month/Quarter/Year grids already expose for their own "current" cell.
+        // Three separate markup sites render day cells: the dual-panel flat grid, the dual-panel
+        // week-rows grid, and the DateTime pick session's single-panel grid.
+        var today = DateTime.Today;
+        var todayDate = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var otherDate = today.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        var flat = RenderPicker(p => p.Add(c => c.Start, today));
+        Open(flat);
+        Assert.Equal("date", flat.Find($"[data-date='{todayDate}']").GetAttribute("aria-current"));
+        Assert.Null(flat.Find($"[data-date='{otherDate}']").GetAttribute("aria-current"));
+
+        var rows = RenderPicker(p => p.Add(c => c.Mode, DatePickerMode.Week).Add(c => c.Start, today));
+        Open(rows);
+        Assert.Equal("date", rows.Find($"[data-date='{todayDate}']").GetAttribute("aria-current"));
+        Assert.Null(rows.Find($"[data-date='{otherDate}']").GetAttribute("aria-current"));
+
+        var session = RenderPicker(p => p.Add(c => c.Mode, DatePickerMode.DateTime).Add(c => c.Start, today));
+        Open(session);
+        Assert.Equal("date", session.Find($"[data-date='{todayDate}']").GetAttribute("aria-current"));
+        Assert.Null(session.Find($"[data-date='{otherDate}']").GetAttribute("aria-current"));
+    }
+
+    // ----- Mode="Week": row-hover scope class + DateTime range edges -------------------
+
+    [Fact]
+    public void Week_mode_grids_carry_the_row_hover_scope_class()
+    {
+        // wss-picker-grid-week is what scopes the row-wide hover affordance to the mode where the ROW
+        // is the selection unit -- DatePicker's own week-rows grid has always emitted it.
+        var cut = RenderPicker(p => p.Add(c => c.Mode, DatePickerMode.Week).Add(c => c.Start, Jan15));
+
+        Open(cut);
+
+        Assert.Empty(cut.FindAll(".wss-picker-grid")); // the rows layout, not the flat 42-cell grid
+        Assert.Equal(2, cut.FindAll(".wss-picker-grid-week").Count); // one per panel
+    }
+
+    [Fact]
+    public void ShowWeekNumbers_in_date_mode_renders_rows_without_the_row_hover_scope_class()
+    {
+        // Same rows layout, but a day click still commits that day -- there is no selected week to
+        // band, so the row-hover scope must stay off.
+        var cut = RenderPicker(p => p.Add(c => c.ShowWeekNumbers, true).Add(c => c.Start, Jan15));
+
+        Open(cut);
+
+        Assert.Equal(2, cut.FindAll(".wss-picker-grid-rows").Count);
+        Assert.Empty(cut.FindAll(".wss-picker-grid-week"));
+    }
+
+    [Fact]
+    public void Week_mode_renders_a_default_datetime_endpoint_without_underflowing()
+    {
+        // WeekStart walks BACK from the bound endpoint to its week's own first day, which for year 1's
+        // first week isn't representable -- the start input's display alone hits it before the panel is
+        // ever opened, so an unclamped subtraction threw on first render.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, DateTime.MinValue));
+
+        var rule = CultureInfo.CurrentCulture.DateTimeFormat.CalendarWeekRule;
+        var week = new GregorianCalendar().GetWeekOfYear(DateTime.MinValue, rule, DayOfWeek.Sunday);
+        Assert.Equal($"1-W{week.ToString("00", CultureInfo.InvariantCulture)}",
+            cut.Find(".wss-picker-input-start").GetAttribute("value"));
+
+        Open(cut); // both panels' per-cell/per-row WeekStart call sites
+        Assert.Equal(84, cut.FindAll(".wss-picker-day").Count);
+    }
+
+    [Fact]
+    public void Week_mode_typed_commit_in_the_last_representable_week_does_not_overflow()
+    {
+        // 9999-12-31 (a Friday) normalizes to the 9999-12-26 week start; the Min half of the
+        // week-granularity commit guard needs that week's END, and an unclamped +6 days runs past
+        // DateTime.MaxValue.
+        DateTime? start = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            // Min near the range edge on purpose: the guard only reaches the week-end computation when a
+            // Min is set, and this picker stays OPEN after a typed commit -- a Min decades back would
+            // leave both panels' year selects offering thousands of options each.
+            .Add(c => c.Min, new DateTime(9999, 1, 1))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-start").Input("12/31/9999");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(9999, 12, 26), start);
+    }
+
+    // ----- Per-endpoint parse-error callbacks ----------------------------------------
+
+    [Fact]
+    public void Unparseable_typed_text_raises_only_the_offending_endpoints_parse_error()
+    {
+        string? startText = null;
+        string? endText = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3)
+            .Add(c => c.OnStartParseError, (string t) => startText = t)
+            .Add(c => c.OnEndParseError, (string t) => endText = t));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-start").Input("not a date");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("not a date", startText);
+        Assert.Null(endText); // the untouched input never had text to fail on
+        Assert.Equal(Jan15, cut.Instance.Start); // unchanged -- still the silent revert
+
+        cut.Find(".wss-picker-input-end").Input("garbage");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("garbage", endText);
+        Assert.Equal(Feb3, cut.Instance.End);
+    }
+
+    [Fact]
+    public void Out_of_range_but_parseable_text_does_not_raise_a_parse_error()
+    {
+        // A well-formed value Min/Max rejects is a different situation from a parse failure (see
+        // OnStartParseError's doc comment) -- only the parse itself failing raises these.
+        var raised = false;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.Min, new DateTime(2025, 1, 10))
+            .Add(c => c.Max, new DateTime(2025, 1, 20))
+            .Add(c => c.OnStartParseError, (string _) => raised = true));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-start").Input("03/01/2025"); // parseable, but outside Min/Max
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.False(raised);
+    }
+
+    [Fact]
+    public void Unparseable_time_mode_text_raises_the_endpoints_parse_error()
+    {
+        // Time mode parses through TryParseTimePart, a separate path from every other mode's
+        // TryParseDate -- both have to distinguish a parse failure from a guard rejection.
+        string? endText = null;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.OnEndParseError, (string t) => endText = t));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-end").Input("half past nine");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("half past nine", endText);
+        Assert.Null(cut.Instance.End);
+    }
 }

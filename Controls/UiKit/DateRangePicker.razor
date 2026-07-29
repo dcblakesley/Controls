@@ -151,6 +151,7 @@
                                                         data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                                         aria-label="@d.ToString("D", PickerCulture)"
                                                         aria-pressed="@(IsSessionEndpoint(d) ? "true" : "false")"
+                                                        aria-current="@(IsToday(d) ? "date" : null)"
                                                         @onclick="@(() => OnSessionDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                                             </div>
                                         }
@@ -171,6 +172,7 @@
                                                 data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                                 aria-label="@d.ToString("D", PickerCulture)"
                                                 aria-pressed="@(IsSessionEndpoint(d) ? "true" : "false")"
+                                                aria-current="@(IsToday(d) ? "date" : null)"
                                                 @onclick="@(() => OnSessionDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                                     </div>
                                 }
@@ -418,7 +420,12 @@
                                a delegate is omitted from the render tree entirely. *@
                             @if (ShowWeekRows)
                             {
-                                <div class="wss-picker-grid-rows" @ref="_gridRefs[panel]"
+                                @* wss-picker-grid-week scopes Week mode's row-wide hover affordance
+                                   (the row, not the day, is the selection unit there) -- the same
+                                   conditional DatePicker's own week-rows grid emits. ShowWeekNumbers
+                                   in Date mode renders these same rows with no row-level selection,
+                                   so it deliberately doesn't get the class. *@
+                                <div class="@(EffectiveMode == DatePickerMode.Week ? "wss-picker-grid-rows wss-picker-grid-week" : "wss-picker-grid-rows")" @ref="_gridRefs[panel]"
                                      @onkeydown="OnGridKeyDown"
                                      @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
                                     @foreach (var row in GridWeekRows(month))
@@ -437,6 +444,7 @@
                                                             data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                                             aria-label="@d.ToString("D", PickerCulture)"
                                                             aria-pressed="@(pressed ? "true" : "false")"
+                                                            aria-current="@(IsToday(d) ? "date" : null)"
                                                             @onclick="@(() => OnGridDayClickAsync(d))"
                                                             @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnGridDayPointerEnter(d)) : default)">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                                                 </div>
@@ -460,6 +468,7 @@
                                                     data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                                     aria-label="@d.ToString("D", PickerCulture)"
                                                     aria-pressed="@(IsEndpoint(d) ? "true" : "false")"
+                                                    aria-current="@(IsToday(d) ? "date" : null)"
                                                     @onclick="@(() => OnGridDayClickAsync(d))"
                                                     @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnGridDayPointerEnter(d)) : default)">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                                         </div>

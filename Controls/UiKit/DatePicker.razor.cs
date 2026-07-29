@@ -418,13 +418,19 @@ public partial class DatePicker : PickerBase
     {
         var cls = "wss-picker-day";
         if (day.Month != _viewMonth.Month) cls += " wss-picker-day-outside";
-        if (day == DateTime.Today) cls += " wss-picker-day-today";
+        if (IsToday(day)) cls += " wss-picker-day-today";
         // Week mode suppresses the single-day selected look -- the row is the selection unit there
         // (see IsDaySelected/wss-picker-week-row-selected), and every day in the row still carries
-        // aria-pressed="true" via IsDaySelected below.
-        if (Mode != DatePickerMode.Week && day == Value?.Date) cls += " wss-picker-day-selected";
+        // aria-pressed="true" via IsDaySelected below. The Mode guard is what keeps IsDaySelected's
+        // whole-row answer from painting all 7 days selected; it is not redundant with it.
+        if (Mode != DatePickerMode.Week && IsDaySelected(day)) cls += " wss-picker-day-selected";
         return cls;
     }
+
+    // Whether `day` is today -- the visual channel is wss-picker-day-today (see DayClass), and the
+    // accessibility channel is aria-current="date" on the day button (see the .razor markup), matching
+    // what IsCurrentMonth/IsCurrentQuarter/IsCurrentYear already expose for the coarser grids.
+    static bool IsToday(DateTime day) => day == DateTime.Today;
 
     // Whether `day`'s button should render aria-pressed="true": in every mode but Week, only the
     // exact selected day; in Week mode, every day sharing Value's week (the row is the selection
@@ -442,15 +448,12 @@ public partial class DatePicker : PickerBase
         (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date) ||
         (DisabledDate?.Invoke(day) ?? false);
 
-    // Week-mode equivalent of IsDayDisabled/IsMonthDisabled, at week granularity: a whole week is
-    // disabled once its 7-day span falls entirely outside [Min, Max] (or DisabledDate itself rejects
-    // the week start) -- the individual day buttons stay enabled per IsDayDisabled above (a
-    // partially-in-range week is still clickable; only the commit itself is guarded here, same split
-    // DateTime mode uses between day-cell and Min/Max-day checks). `weekStart` is already
-    // WeekStart-shaped -- this is the one place DisabledDate sees a week start rather than a day.
+    // Week-mode equivalent of IsDayDisabled/IsMonthDisabled, at week granularity -- see
+    // PickerMath.IsWeekDisabledForCommit for the full contract (including the overflow-safe week end,
+    // which a typed commit in year 9999's last week needs), shared verbatim with DateRangePicker's own
+    // Week-mode guard. `weekStart` is already WeekStart-shaped.
     bool IsWeekDisabledForCommit(DateTime weekStart) =>
-        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date) ||
-        (DisabledDate?.Invoke(weekStart) ?? false);
+        PickerMath.IsWeekDisabledForCommit(weekStart, Min, Max, DisabledDate);
 
     // Month-mode equivalent of IsDayDisabled: a whole month is disabled once it falls entirely
     // outside [Min, Max] at month granularity — same granularity PrevMonthDisabled/NextMonthDisabled

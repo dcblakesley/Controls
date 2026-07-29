@@ -157,6 +157,22 @@ public partial class EditDateRange : IDisposable
     /// <inheritdoc cref="DateRangePicker.DefaultViewDate"/>
     [Parameter] public DateTime? DefaultViewDate { get; set; }
 
+    /// <summary>
+    /// Error message format string used when a typed entry in EITHER input can't be parsed at all --
+    /// i.e. the inner <see cref="DateRangePicker"/> raises <see cref="DateRangePicker.OnStartParseError"/>/
+    /// <see cref="DateRangePicker.OnEndParseError"/> (a well-formed value merely rejected by
+    /// <see cref="Min"/>/<see cref="Max"/>/<see cref="DisabledDate"/>/<see cref="StartDisabledTime"/>/
+    /// <see cref="EndDisabledTime"/> does not). <c>{0}</c> is replaced with the FAILING field's own name,
+    /// so one format string serves both endpoints -- same formatting as
+    /// <see cref="EditDate{T}.ParsingErrorMessage"/>. Surfaces as a validation message via a dedicated
+    /// <see cref="ValidationMessageStore"/> scoped to that endpoint's own <see cref="FieldIdentifier"/>
+    /// (see <see cref="OnStartParseErrorAsync"/>), since this control never parses strings itself -- the
+    /// picker sets values through its own per-endpoint value callbacks. Each endpoint's message is
+    /// cleared the moment a valid value next commits for THAT endpoint (see <see cref="OnStartChanged"/>/
+    /// <see cref="OnEndChanged"/>), independently of the other's.
+    /// </summary>
+    [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
+
     /// <summary> Format string for the read-only "start - end" value display. Null (default) picks
     /// <see cref="Mode"/>'s own default (mirrors <see cref="EditDate{T}.DateFormat"/>'s identical
     /// per-mode contract): <c>Date</c> "MM-dd-yyyy" (the original, unchanged default) · <c>Month</c>
@@ -443,6 +459,10 @@ public partial class EditDateRange : IDisposable
     // EditControlListBase.ToggleAsync for the full rationale).
     async Task OnStartChanged(DateTime? value)
     {
+        // A value only ever reaches here once the picker itself successfully committed it -- drop any
+        // stale parse-error message for THIS endpoint (the other endpoint's own message is untouched,
+        // since its own text was never revalidated) so it can't outlive the very next valid commit.
+        ClearParseError(_startFieldIdentifier);
         Start = value;
         await StartChanged.InvokeAsync(value);
         EditContext?.NotifyFieldChanged(_startFieldIdentifier);
@@ -450,9 +470,58 @@ public partial class EditDateRange : IDisposable
 
     async Task OnEndChanged(DateTime? value)
     {
+        ClearParseError(_endFieldIdentifier);
         End = value;
         await EndChanged.InvokeAsync(value);
         EditContext?.NotifyFieldChanged(_endFieldIdentifier);
+    }
+
+    // Dedicated store for the two parse-error messages below -- a separate instance from whatever
+    // DataAnnotationsValidator (or any other validator) already maintains for this same EditContext,
+    // since this control never parses typed text itself (the picker owns that) and so has no
+    // InputBase-style built-in parsing-error path to route through. Multiple independent
+    // ValidationMessageStores over one EditContext compose fine -- each only ever touches the entries
+    // it added itself, so clearing this one can never drop a DataAnnotations message and vice versa.
+    // Mirrors EditDate's own _parseErrorMessages, doubled onto two FieldIdentifiers.
+    ValidationMessageStore? _parseErrorMessages;
+
+    /// <summary>
+    /// Raised by the inner <see cref="DateRangePicker"/> when typed text in the START input can't be
+    /// parsed at all (see <see cref="DateRangePicker.OnStartParseError"/> for exactly which failures
+    /// reach here) — adds <see cref="ParsingErrorMessage"/> against the Start field. The offending text
+    /// is deliberately discarded: <see cref="ParsingErrorMessage"/>'s <c>{0}</c> is the field name, not
+    /// the text, matching <see cref="EditDate{T}.ParsingErrorMessage"/>'s identical contract.
+    /// </summary>
+    Task OnStartParseErrorAsync(string _) => AddParseErrorAsync(_startFieldIdentifier);
+
+    /// <inheritdoc cref="OnStartParseErrorAsync"/>
+    Task OnEndParseErrorAsync(string _) => AddParseErrorAsync(_endFieldIdentifier);
+
+    // Mirrors the shape of InputBase<T>.SetCurrentValueAsStringAsync's own built-in parsing-error path
+    // -- clear this field's prior entry, add the formatted message, and notify -- just against a store
+    // this control owns, and against whichever of the two fields actually failed.
+    Task AddParseErrorAsync(FieldIdentifier field)
+    {
+        if (EditContext is null) return Task.CompletedTask;
+        _parseErrorMessages ??= new ValidationMessageStore(EditContext);
+        _parseErrorMessages.Clear(field);
+        _parseErrorMessages.Add(field,
+            string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, field.FieldName));
+        // Neither bound value changed (the bad text was reverted, not committed) -- notify explicitly,
+        // same as InputBase's own equivalent failure path, so FormOptions/consumers watching field
+        // changes still see this as a touch.
+        EditContext.NotifyFieldChanged(field);
+        EditContext.NotifyValidationStateChanged();
+        return Task.CompletedTask;
+    }
+
+    // Drops `field`'s own parse-error entry, if this control ever added one. Only ever touches entries
+    // it added itself -- see _parseErrorMessages.
+    void ClearParseError(FieldIdentifier field)
+    {
+        if (_parseErrorMessages is null || EditContext is null) return;
+        _parseErrorMessages.Clear(field);
+        EditContext.NotifyValidationStateChanged();
     }
 
     // The validation-state ARIA goes through DateRangePicker's dedicated per-input Aria* parameters
@@ -509,10 +578,20 @@ public partial class EditDateRange : IDisposable
             () => v.ToString(culture));
     }
 
-    /// <summary> Detaches the validation-state listener and drops both field registrations so a removed
-    /// control (e.g. behind a conditional <c>@if</c>) doesn't leave stale state in the validation summary. </summary>
+    /// <summary> Detaches the validation-state listener, drops any outstanding parse-error messages, and
+    /// drops both field registrations so a removed control (e.g. behind a conditional <c>@if</c>) doesn't
+    /// leave stale state in the validation summary. The parse-error entries live on the
+    /// <see cref="EditContext"/>, not on this component, so a control removed while showing one (an
+    /// <c>IsHidden</c>/<see cref="HidingMode"/> toggle, a tab switch) would otherwise leave the message
+    /// behind for a <c>ValidationView</c> summary to link to a field that no longer renders. </summary>
     public void Dispose()
     {
+        if (_parseErrorMessages is not null && EditContext is not null)
+        {
+            _parseErrorMessages.Clear(_startFieldIdentifier);
+            _parseErrorMessages.Clear(_endFieldIdentifier);
+            EditContext.NotifyValidationStateChanged();
+        }
         DetachValidationSubscription();
         EditControlInit.UnregisterField(FormOptions, _startFieldIdentifier, this);
         EditControlInit.UnregisterField(FormOptions, _endFieldIdentifier, this);

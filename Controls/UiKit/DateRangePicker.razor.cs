@@ -145,6 +145,25 @@ public partial class DateRangePicker : PickerBase
     /// <c>ToString</c> and therefore can't render the quarter/week digits itself.</summary>
     [Parameter] public string? Format { get; set; }
 
+    /// <summary>
+    /// Raised with the offending text when a typed commit (Enter or blur) in the START input can't be
+    /// parsed at all -- i.e. the parse itself fails, not merely a well-formed value rejected by
+    /// <see cref="Min"/>/<see cref="Max"/>/<see cref="DisabledDate"/>/<see cref="StartDisabledTime"/>
+    /// (that's a valid value this picker simply won't accept, which is a different situation from a
+    /// parse failure, and does not raise this callback). This picker has no validation concept of its
+    /// own (see the class remarks) -- it exists so a host form control (<see cref="EditDateRange"/>)
+    /// can surface a validation message the picker itself can't. Per endpoint rather than one callback
+    /// carrying which side failed, matching every other per-input parameter on this control
+    /// (<see cref="StartPlaceholder"/>/<see cref="EndPlaceholder"/>, <see cref="StartDisabledTime"/>/
+    /// <see cref="EndDisabledTime"/>, the <c>StartAria*</c>/<c>EndAria*</c> pairs) — the wrapper needs
+    /// the two apart anyway, to target each field's own <c>FieldIdentifier</c>. Optional: a standalone
+    /// <see cref="DateRangePicker"/> with no handler attached behaves exactly as before this parameter
+    /// existed -- the unparseable text is still silently reverted to the formatted bound value.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnStartParseError { get; set; }
+    /// <summary>Same contract as <see cref="OnStartParseError"/>, for the END input.</summary>
+    [Parameter] public EventCallback<string> OnEndParseError { get; set; }
+
     /// <summary>Placeholder for the start input. Null (default) shows the uppercased
     /// <see cref="EffectiveFormat"/> (e.g. "2026-Q3" mode's own null-Format default, <c>yyyy</c>,
     /// uppercases to "YYYY" -- a placeholder that doesn't hint at the quarter shorthand; override
@@ -503,11 +522,16 @@ public partial class DateRangePicker : PickerBase
         return cls;
     }
 
+    // Whether `day` is today -- the visual channel is wss-picker-day-today (see DayClass/
+    // SessionDayClass), and the accessibility channel is aria-current="date" on the day button (see the
+    // .razor markup), matching what the Month/Quarter/Year grids already expose inline.
+    static bool IsToday(DateTime day) => day == DateTime.Today;
+
     string DayClass(DateTime day, DateTime month)
     {
         var cls = "wss-picker-day";
         if (day.Month != month.Month) cls += " wss-picker-day-outside";
-        if (day == DateTime.Today) cls += " wss-picker-day-today";
+        if (IsToday(day)) cls += " wss-picker-day-today";
         // Week mode suppresses the single-day selected look -- the ROW is the selection unit there
         // (see WeekRowClass/IsWeekRowEndpoint), mirroring DatePicker.DayClass's own suppression.
         if (EffectiveMode != DatePickerMode.Week && IsEndpoint(day)) cls += " wss-picker-day-selected";
@@ -601,15 +625,12 @@ public partial class DateRangePicker : PickerBase
         (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max)) ||
         (DisabledDate?.Invoke(quarterStart) ?? false);
 
-    // Week-mode equivalent of IsDayDisabled, at week granularity: a whole week is disabled once its
-    // 7-day span falls entirely outside [Min, Max] (or DisabledDate itself rejects the week start) --
-    // the individual day buttons stay enabled per IsDayDisabled above (a partially-in-range/disabled
-    // week is still clickable; only the commit itself is guarded here) -- mirrors
-    // DatePicker.IsWeekDisabledForCommit. `weekStart` is already WeekStart-shaped -- this is the one
-    // place DisabledDate sees a week start rather than a day.
+    // Week-mode equivalent of IsDayDisabled, at week granularity -- see
+    // PickerMath.IsWeekDisabledForCommit for the full contract (including the overflow-safe week end,
+    // which a typed commit in year 9999's last week needs), shared verbatim with
+    // DatePicker.IsWeekDisabledForCommit. `weekStart` is already WeekStart-shaped.
     bool IsWeekDisabledForCommit(DateTime weekStart) =>
-        (Max is { } max && weekStart > max.Date) || (Min is { } min && weekStart.AddDays(6) < min.Date) ||
-        (DisabledDate?.Invoke(weekStart) ?? false);
+        PickerMath.IsWeekDisabledForCommit(weekStart, Min, Max, DisabledDate);
 
     // Dispatches to the Mode-appropriate disabled check -- shared by the grid `disabled` attributes,
     // the DefaultFocus*/FirstEnabled* skip logic, and the typed-text commit guard, so they can never
@@ -1418,13 +1439,22 @@ public partial class DateRangePicker : PickerBase
         }
         if (Mode == DatePickerMode.Time)
         {
-            if (!TryParseTimePart(text, Start, out var time) || IsCommitDisabled(0, time)) return;
+            if (!TryParseTimePart(text, Start, out var time))
+            {
+                await RaiseParseErrorAsync(OnStartParseError, text);
+                return;
+            }
+            if (IsCommitDisabled(0, time)) return;
             await SetRangeAsync(time, End);
             FinishTextCommit();
             return;
         }
         // Invalid or out-of-range text reverts to the formatted bound value (edit state cleared above).
-        if (!TryParseDate(text, out var unit)) return;
+        if (!TryParseDate(text, out var unit))
+        {
+            await RaiseParseErrorAsync(OnStartParseError, text);
+            return;
+        }
         if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(0, unit) : IsUnitDisabled(unit)) return;
         await SetRangeAsync(unit, End);
         if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 0);
@@ -1444,17 +1474,33 @@ public partial class DateRangePicker : PickerBase
         }
         if (Mode == DatePickerMode.Time)
         {
-            if (!TryParseTimePart(text, End, out var time) || IsCommitDisabled(1, time)) return;
+            if (!TryParseTimePart(text, End, out var time))
+            {
+                await RaiseParseErrorAsync(OnEndParseError, text);
+                return;
+            }
+            if (IsCommitDisabled(1, time)) return;
             await SetRangeAsync(Start, time);
             FinishTextCommit();
             return;
         }
-        if (!TryParseDate(text, out var unit)) return;
+        if (!TryParseDate(text, out var unit))
+        {
+            await RaiseParseErrorAsync(OnEndParseError, text);
+            return;
+        }
         if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(1, unit) : IsUnitDisabled(unit)) return;
         await SetRangeAsync(Start, unit);
         if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 1);
         FinishTextCommit();
     }
+
+    // Raises whichever endpoint's OnStartParseError/OnEndParseError the caller passed, for a GENUINE
+    // parse failure only -- a well-formed value the Min/Max/DisabledDate/DisabledTime guards reject is
+    // a different situation and never reaches here (see OnStartParseError's doc comment). The
+    // HasDelegate check keeps a handler-less picker on exactly its old silent-revert path.
+    Task RaiseParseErrorAsync(EventCallback<string> callback, string text) =>
+        callback.HasDelegate ? callback.InvokeAsync(text) : Task.CompletedTask;
 
     // A successful typed commit (a parsed date or an explicit clear) finalizes the field: any
     // in-progress calendar pick (or Time/DateTime pick session) is discarded so the display reflects
@@ -1574,7 +1620,7 @@ public partial class DateRangePicker : PickerBase
     {
         var cls = "wss-picker-day";
         if (day.Month != _viewMonth.Month) cls += " wss-picker-day-outside";
-        if (day == DateTime.Today) cls += " wss-picker-day-today";
+        if (IsToday(day)) cls += " wss-picker-day-today";
         if (IsSessionEndpoint(day)) cls += " wss-picker-day-selected";
         return cls;
     }

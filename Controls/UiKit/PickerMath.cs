@@ -31,14 +31,44 @@ internal static class PickerMath
     public static DateTime WeekStart(DateTime day, DayOfWeek firstDayOfWeek)
     {
         var lead = ((int)day.DayOfWeek - (int)firstDayOfWeek + 7) % 7;
+        // Year 1's own first week has fewer than `lead` days behind it, so the unclamped subtraction
+        // underflows DateTime.MinValue and throws -- reachable from a plain Mode="Week" picker bound
+        // to default(DateTime), which walks six of these building the grid. Clamping to the days
+        // actually available yields that partial first week's own start (0001-01-01), which is what
+        // every caller wants there anyway.
+        lead = Math.Min(lead, (day.Date - DateTime.MinValue).Days);
         return day.AddDays(-lead);
     }
 
+    /// <summary>The last day of the calendar week starting on <paramref name="weekStart"/> —
+    /// <c>weekStart + 6 days</c>, clamped to the last representable date so the final week of year
+    /// 9999 (whose 7-day span runs past <see cref="DateTime.MaxValue"/>) can't overflow and throw.
+    /// The mirror image of <see cref="WeekStart"/>'s own year-1 clamp.</summary>
+    public static DateTime WeekEnd(DateTime weekStart) =>
+        weekStart.AddDays(Math.Min(6, (DateTime.MaxValue.Date - weekStart.Date).Days));
+
+    /// <summary>Whether the whole calendar week starting on <paramref name="weekStart"/> is
+    /// unselectable: its 7-day span falls entirely outside [<paramref name="min"/>,
+    /// <paramref name="max"/>], or <paramref name="disabledDate"/> itself rejects the week start (the
+    /// one place that predicate sees a week start rather than a day). The individual day buttons of a
+    /// partially-in-range week stay enabled at their own day granularity — only the commit is guarded
+    /// here. Shared verbatim by <see cref="DatePicker"/>'s and <see cref="DateRangePicker"/>'s own
+    /// Week-mode commit guards, which were character-identical; the week end goes through
+    /// <see cref="WeekEnd"/> so a typed commit in year 9999's last week can't throw.</summary>
+    public static bool IsWeekDisabledForCommit(DateTime weekStart, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate) =>
+        (max is { } mx && weekStart > mx.Date) || (min is { } mn && WeekEnd(weekStart) < mn.Date) ||
+        (disabledDate?.Invoke(weekStart) ?? false);
+
     // The ISO-ish week number of the calendar week starting on `weekStart`, per `culture`'s week
     // rule -- shared by DatePicker's own WeekNumberOf display and FormatWeekDisplay/
-    // TryParseWeekShorthand below.
+    // TryParseWeekShorthand below. DateTimeFormat.Calendar, not the culture's own default Calendar:
+    // GregorianCultureHelper forces Gregorian by swapping the former, so reading the latter would
+    // number the week in a non-Gregorian calendar (ar-SA's Umm al-Qura, th-TH's Buddhist) while every
+    // other picker-facing format stayed Gregorian. Identical for the cultures that already default to
+    // Gregorian, en-US included.
     public static int WeekNumberOf(DateTime weekStart, CultureInfo culture, DayOfWeek firstDayOfWeek) =>
-        culture.Calendar.GetWeekOfYear(weekStart, culture.DateTimeFormat.CalendarWeekRule, firstDayOfWeek);
+        culture.DateTimeFormat.Calendar.GetWeekOfYear(weekStart, culture.DateTimeFormat.CalendarWeekRule, firstDayOfWeek);
 
     // A fixed 6-row (42-cell) grid — covers every month/first-day combination, so the panel height
     // never jumps while navigating. Leading/trailing cells are the adjacent months' days.
@@ -110,7 +140,10 @@ internal static class PickerMath
                 "ArrowUp" => current.AddDays(-7),
                 "ArrowDown" => current.AddDays(7),
                 "Home" => WeekStart(current, firstDayOfWeek),
-                "End" => WeekStart(current, firstDayOfWeek).AddDays(6),
+                // WeekEnd, not a bare AddDays(6): one named week-end concept, clamped the same way
+                // WeekStart clamps its own edge (unreachable from a grid, whose month is clamped well
+                // inside the range, but the two halves of Home/End shouldn't disagree about it).
+                "End" => WeekEnd(WeekStart(current, firstDayOfWeek)),
                 "PageUp" => current.AddMonths(-1),
                 "PageDown" => current.AddMonths(1),
                 _ => (DateTime?)null,
@@ -392,8 +425,10 @@ internal static class PickerMath
             }
             catch (ArgumentOutOfRangeException)
             {
-                // WeekStart/AddDays overflowed at the DateTime range edge (year 1 / 9999) --
-                // fall through to the general parse below, same as any other malformed text.
+                // A boundary step overflowed past DateTime.MaxValue (year 9999's own last week start
+                // + 7 days) -- fall through to the general parse below, same as any other malformed
+                // text. WeekStart itself can no longer throw here (it clamps at year 1), but the
+                // AddDays walk above still can.
             }
         }
         value = default;

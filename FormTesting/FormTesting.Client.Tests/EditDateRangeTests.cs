@@ -5,6 +5,7 @@ using AngleSharp.Dom;
 using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
@@ -675,5 +676,141 @@ public class EditDateRangeTests : BunitContext
         var text = cut.Find(".edit-readonly-value").TextContent;
         Assert.Contains("09:30:00", text);
         Assert.Contains("17:45:00", text);
+    }
+
+    // ----- ParsingErrorMessage (one format string, per-endpoint messages) ----------------------
+
+    // Both fields bound with two-way callbacks, plus whatever extra attributes a parse-error test
+    // needs -- the Start/End write-backs are what let a follow-up valid entry actually commit (and so
+    // clear the message), which is the half a read-only fragment can't exercise.
+    RenderFragment RenderRange(RangeModel model, Action<RenderTreeBuilder, int>? extra = null)
+    {
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        return WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "StartChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.Start = v));
+            b.AddAttribute(4, "End", model.End);
+            b.AddAttribute(5, "EndExpression", endField);
+            b.AddAttribute(6, "EndChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.End = v));
+            b.AddAttribute(7, "Format", "MM/dd/yyyy");
+            extra?.Invoke(b, 8);
+            b.CloseComponent();
+        });
+    }
+
+    static void Commit(IRenderedComponent<ContainerFragment> cut, string inputClass, string text)
+    {
+        cut.Find(inputClass).Input(text);
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+    }
+
+    // The validation text for one endpoint's own field. Indexing FindAll(".edit-validation-message")
+    // would be ambiguous here: each FieldValidationDisplay renders TWO copies of that class (an sr-only
+    // region plus the visible one), so this control has four. The id-carrying (sr-only) one is addressed
+    // directly instead, via the endpoint input's own id -- exactly the FieldValidationDisplay each
+    // input's aria-errormessage points at.
+    static string MessageFor(IRenderedComponent<ContainerFragment> cut, string inputClass) =>
+        cut.Find($"#error-msg-{cut.Find(inputClass).GetAttribute("id")}").TextContent;
+
+    const string StartInput = ".wss-picker-input-start";
+    const string EndInput = ".wss-picker-input-end";
+
+    [Fact]
+    public void Unparseable_start_text_surfaces_the_ParsingErrorMessage_on_the_start_field_only()
+    {
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var cut = Render(RenderRange(model));
+
+        Open(cut);
+        Commit(cut, StartInput, "not a date");
+
+        // {0} is the FAILING field's own FieldIdentifier.FieldName, so one format string serves both
+        // endpoints -- same substitution EditDate's identically-shaped default message uses.
+        Assert.Contains("The Start field must be a date.", MessageFor(cut, StartInput));
+        Assert.Equal(string.Empty, MessageFor(cut, EndInput)); // End never had text to fail on
+        // aria-invalid/aria-errormessage reach the START input only (per-field independence).
+        var startInput = cut.Find(StartInput);
+        Assert.Equal("true", startInput.GetAttribute("aria-invalid"));
+        Assert.StartsWith("error-msg-", startInput.GetAttribute("aria-errormessage"));
+        Assert.Null(cut.Find(EndInput).GetAttribute("aria-invalid"));
+        Assert.Equal(Jan15, model.Start); // unchanged -- the picker still silently reverts
+    }
+
+    [Fact]
+    public void Unparseable_end_text_surfaces_the_ParsingErrorMessage_on_the_end_field_only()
+    {
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var cut = Render(RenderRange(model));
+
+        Open(cut);
+        Commit(cut, EndInput, "garbage");
+
+        Assert.Equal(string.Empty, MessageFor(cut, StartInput));
+        Assert.Contains("The End field must be a date.", MessageFor(cut, EndInput));
+        Assert.Equal("true", cut.Find(EndInput).GetAttribute("aria-invalid"));
+        Assert.Null(cut.Find(StartInput).GetAttribute("aria-invalid"));
+        Assert.Equal(Feb3, model.End);
+    }
+
+    [Fact]
+    public void A_subsequent_valid_entry_clears_only_that_endpoints_parsing_error()
+    {
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var cut = Render(RenderRange(model));
+
+        Open(cut);
+        Commit(cut, StartInput, "not a date");
+        Commit(cut, EndInput, "garbage");
+        Assert.Contains("must be a date", MessageFor(cut, StartInput));
+        Assert.Contains("must be a date", MessageFor(cut, EndInput));
+
+        // Deliberately still BEFORE the committed End: a value past it would swap the pair, firing
+        // EndChanged too and clearing End's own message as a side effect.
+        Commit(cut, StartInput, "01/20/2025");
+
+        Assert.Equal(string.Empty, MessageFor(cut, StartInput));
+        // End's own message survives -- its text was never re-entered, so nothing revalidated it.
+        Assert.Contains("The End field must be a date.", MessageFor(cut, EndInput));
+        // aria-invalid is omitted entirely once the Start field is valid again, not set to "false".
+        Assert.Null(cut.Find(StartInput).GetAttribute("aria-invalid"));
+        Assert.Equal(new DateTime(2025, 1, 20), model.Start);
+    }
+
+    [Fact]
+    public void Custom_ParsingErrorMessage_is_honored_for_both_endpoints()
+    {
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var cut = Render(RenderRange(model, (b, seq) =>
+            b.AddAttribute(seq, "ParsingErrorMessage", "{0} isn't a real date.")));
+
+        Open(cut);
+        Commit(cut, StartInput, "not a date");
+        Commit(cut, EndInput, "garbage");
+
+        Assert.Contains("Start isn't a real date.", MessageFor(cut, StartInput));
+        Assert.Contains("End isn't a real date.", MessageFor(cut, EndInput));
+    }
+
+    [Fact]
+    public void Out_of_range_rejection_does_not_surface_a_parsing_error_message()
+    {
+        // Min/Max rejecting a well-formed value is not a parse failure (see
+        // DateRangePicker.OnStartParseError's doc comment) -- ParsingErrorMessage must not appear for it.
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var cut = Render(RenderRange(model, (b, seq) =>
+        {
+            b.AddAttribute(seq, "Min", new DateTime(2025, 1, 10));
+            b.AddAttribute(seq + 1, "Max", new DateTime(2025, 2, 20));
+        }));
+
+        Open(cut);
+        Commit(cut, StartInput, "03/01/2025"); // parseable, but outside Min/Max
+
+        Assert.Equal(string.Empty, MessageFor(cut, StartInput));
+        Assert.Equal(string.Empty, MessageFor(cut, EndInput));
     }
 }

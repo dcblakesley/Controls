@@ -1071,4 +1071,50 @@ public class EditDateTests : BunitContext
 
         Assert.Contains("2:05:09 PM", cut.Find(".edit-readonly-value").TextContent);
     }
+
+    [Fact]
+    public void Read_only_mode_renders_a_default_datetime_in_Mode_Week_without_underflowing()
+    {
+        // The read-only display walks back to the value's own week start through the very helper the
+        // picker uses. For default(DateTime) that walk leaves year 1's first week, which isn't
+        // representable -- it threw mid-render before the clamp, in read-only mode as well as edit mode
+        // (a DateTime-bound field starts at default, so no consumer action is needed to hit it).
+        var model = new NonNullableDateTimeModel(); // ShipDate == default(DateTime)
+        Expression<Func<DateTime>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDate<DateTime>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Mode", DatePickerMode.Week);
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.AddAttribute(5, "IsEditMode", false);
+            b.CloseComponent();
+        }));
+
+        // The clamp lands on that partial first week's own start (0001-01-01 itself).
+        var rule = CultureInfo.CurrentCulture.DateTimeFormat.CalendarWeekRule;
+        var week = new GregorianCalendar().GetWeekOfYear(DateTime.MinValue, rule, DayOfWeek.Sunday);
+        Assert.Equal($"1-W{week.ToString("00", CultureInfo.InvariantCulture)}",
+            cut.Find(".edit-readonly-value").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Edit_mode_renders_a_default_datetime_in_Mode_Week_without_underflowing()
+    {
+        var model = new NonNullableDateTimeModel();
+        Expression<Func<DateTime>> field = () => model.ShipDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDate<DateTime>>(0);
+            b.AddAttribute(1, "Value", model.ShipDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Mode", DatePickerMode.Week);
+            b.AddAttribute(4, "FirstDayOfWeek", DayOfWeek.Sunday);
+            b.CloseComponent();
+        }));
+
+        Open(cut); // the inner picker's own per-cell/per-row week-start call sites
+        Assert.Equal(42, cut.FindAll(".wss-picker-day").Count);
+    }
 }

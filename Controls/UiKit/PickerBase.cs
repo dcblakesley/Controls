@@ -38,7 +38,10 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     // override. The module-import race this used to gate is now JsModule's own business.
     protected bool _disposed;
     // One-time input-wiring guard (initPicker) -- the input(s) are always rendered (not inside an
-    // @if), so once is enough regardless of open state.
+    // @if), so once is enough regardless of open state. Set only after the wiring actually SUCCEEDS
+    // (see OnAfterRenderAsync): latching before the awaited import would strand the picker without its
+    // focus-out dismiss wiring for good on one transient import failure, when JsModule's own contract
+    // is that a failed import retries on the next render.
     protected bool _inputsWired;
     // The open-order z-index placePanel assigned this wrapper (null while closed). C# owns it so a
     // Blazor re-render of the bound wrapper style re-asserts the value JS wrote to the DOM.
@@ -275,13 +278,13 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
         // One-time input/wrapper wiring (Enter form-submit suppression + focus-out close).
         if (!_inputsWired)
         {
-            _inputsWired = true;
             var module = await _module.GetAsync(JS, FormDefaults);
             if (module is not null)
             {
                 try
                 {
                     await WireInputsAsync(module);
+                    _inputsWired = true; // latch on success only, so a failed attempt retries next render
                 }
                 catch
                 {

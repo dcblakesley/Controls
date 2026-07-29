@@ -2234,4 +2234,117 @@ public class DatePickerTests : BunitContext
         Assert.Equal("2", selects[0].QuerySelector("option[selected]")!.GetAttribute("value"));
         Assert.Equal("2026", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
     }
+
+    // ----- aria-current on day cells -------------------------------------------------
+
+    [Fact]
+    public void Todays_day_cell_exposes_aria_current_date_in_both_grid_layouts()
+    {
+        // wss-picker-day-today is the visual channel; aria-current="date" is the accessibility one,
+        // matching what the Month/Quarter/Year grids already expose for their own "current" cell.
+        var today = DateTime.Today;
+        var todayDate = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var otherDate = today.AddDays(1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        var flat = RenderPicker(p => p.Add(c => c.Value, today));
+        Open(flat);
+        Assert.Equal("date", flat.Find($"[data-date='{todayDate}']").GetAttribute("aria-current"));
+        Assert.Null(flat.Find($"[data-date='{otherDate}']").GetAttribute("aria-current"));
+
+        // The week-rows layout is a separate markup site (Mode="Week" / ShowWeekNumbers).
+        var rows = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Value, today));
+        Open(rows);
+        Assert.Equal("date", rows.Find($"[data-date='{todayDate}']").GetAttribute("aria-current"));
+        Assert.Null(rows.Find($"[data-date='{otherDate}']").GetAttribute("aria-current"));
+    }
+
+    // ----- DateTime range edges (Mode="Week") ----------------------------------------
+
+    [Fact]
+    public void Week_mode_renders_the_default_datetime_without_underflowing()
+    {
+        // WeekStart walks BACK from the bound value to its week's own first day, which for year 1's
+        // first week isn't representable -- the field display alone hits it before the panel is ever
+        // opened, so an unclamped subtraction threw on first render. The clamp lands on that partial
+        // first week's own start (0001-01-01 itself).
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Value, DateTime.MinValue));
+
+        var rule = CultureInfo.CurrentCulture.DateTimeFormat.CalendarWeekRule;
+        var week = new GregorianCalendar().GetWeekOfYear(DateTime.MinValue, rule, DayOfWeek.Sunday);
+        Assert.Equal($"1-W{week.ToString("00", CultureInfo.InvariantCulture)}",
+            cut.Find(".wss-picker-input-date").GetAttribute("value"));
+
+        Open(cut); // the six per-cell/per-row WeekStart call sites
+        Assert.Equal(42, cut.FindAll(".wss-picker-day").Count);
+    }
+
+    [Fact]
+    public void Week_mode_typed_commit_in_the_last_representable_week_does_not_overflow()
+    {
+        // 9999-12-31 (a Friday) normalizes to the 9999-12-26 week start; the Min half of the
+        // week-granularity commit guard needs that week's END, and an unclamped +6 days runs past
+        // DateTime.MaxValue.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Format, "MM/dd/yyyy")
+            // Min near the range edge on purpose: the guard only reaches the week-end computation when
+            // a Min is set, and a Min decades back would make the year select offer thousands of options.
+            .Add(c => c.Min, new DateTime(9999, 1, 1))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("12/31/9999");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(new DateTime(9999, 12, 26), value);
+    }
+
+    [Fact]
+    public void Week_numbers_follow_the_gregorian_calendar_under_a_non_gregorian_default_culture()
+    {
+        // ar-SA's DEFAULT calendar is Umm al-Qura, and GregorianCultureHelper forces Gregorian by
+        // swapping DateTimeFormat.Calendar only -- so a week number read off the culture's own
+        // Calendar property would be numbered inside the HIJRI year while every other picker-facing
+        // format stayed Gregorian.
+        var arSa = new CultureInfo("ar-SA");
+        // The same clone the helper produces: same language, calendar forced to Gregorian.
+        var forced = (CultureInfo)arSa.Clone();
+        forced.DateTimeFormat.Calendar = new GregorianCalendar();
+        var rule = forced.DateTimeFormat.CalendarWeekRule;
+        var gregorianWeek = new GregorianCalendar().GetWeekOfYear(FeblyWeekStart, rule, DayOfWeek.Sunday);
+        // Keeps the assertions below meaningful: the two calendars really do number this same week
+        // differently, so matching the Gregorian one can't be a coincidence.
+        Assert.NotEqual(arSa.Calendar.GetWeekOfYear(FeblyWeekStart, rule, DayOfWeek.Sunday), gregorianWeek);
+
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = arSa;
+            var cut = Render<DatePicker>(p => p
+                .Add(c => c.Mode, DatePickerMode.Week)
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.Value, Feb14));
+
+            Open(cut);
+
+            // The grid's own week-number column (unpadded) and the field's "yyyy-Www" shorthand
+            // (zero-padded) both route through the one WeekNumberOf.
+            Assert.Equal(gregorianWeek.ToString(CultureInfo.InvariantCulture),
+                cut.FindAll(".wss-picker-week-no")[1].TextContent); // row 2 = Feb 8-14
+            Assert.Equal($"2026-W{gregorianWeek.ToString("00", CultureInfo.InvariantCulture)}",
+                cut.Find(".wss-picker-input-date").GetAttribute("value"));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
 }

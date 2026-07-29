@@ -251,6 +251,7 @@
                                                     data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                                     aria-label="@d.ToString("D", PickerCulture)"
                                                     aria-pressed="@(IsDaySelected(d) ? "true" : "false")"
+                                                    aria-current="@(IsToday(d) ? "date" : null)"
                                                     @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                                         </div>
                                     }
@@ -270,7 +271,8 @@
                                             tabindex="@(IsFocusStop(d) ? "0" : "-1")"
                                             data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                             aria-label="@d.ToString("D", PickerCulture)"
-                                            aria-pressed="@(d == Value?.Date ? "true" : "false")"
+                                            aria-pressed="@(IsDaySelected(d) ? "true" : "false")"
+                                            aria-current="@(IsToday(d) ? "date" : null)"
                                             @onclick="@(() => OnDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>
                                 </div>
                             }
