@@ -216,6 +216,93 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.True(cut.RenderCount - rendersBefore <= 4);
     }
 
+    // ----- ActiveKey fallback notification -------------------------------------
+
+    // Two tabs where the second can be removed or disabled from the outside, built through the raw
+    // builder so the consumer's markup really drops it (the parameter-based helper above can't).
+    static RenderFragment TwoTabs(bool showSecond = true, bool secondDisabled = false) => builder =>
+    {
+        builder.OpenComponent<Tab>(0);
+        builder.AddAttribute(1, "Key", "all");
+        builder.AddAttribute(2, "Title", "All");
+        builder.CloseComponent();
+
+        if (!showSecond) return;
+        builder.OpenComponent<Tab>(3);
+        builder.AddAttribute(4, "Key", "filtered");
+        builder.AddAttribute(5, "Title", "Filtered");
+        builder.AddAttribute(6, "Disabled", secondDisabled);
+        builder.CloseComponent();
+    };
+
+    [Fact]
+    public void Removing_the_active_tab_reports_the_fallback_key()
+    {
+        // ActiveTab silently falls back to the first enabled tab, and only SelectAsync used to raise
+        // ActiveKeyChanged -- so a bound ActiveKey kept naming a tab that is no longer in the strip and
+        // the consumer's own pane/filter state disagreed with the highlighted tab until the next click.
+        var keys = new List<string?>();
+        var cut = Render<Tabs>(p => p
+            .Add(t => t.ChildContent, TwoTabs())
+            .Add(t => t.ActiveKey, "filtered")
+            .Add(t => t.ActiveKeyChanged, EventCallback.Factory.Create<string?>(this, k => keys.Add(k))));
+        Assert.Empty(keys); // nothing changed: "filtered" is present, enabled, and active
+
+        cut.Render(p => p.Add(t => t.ChildContent, TwoTabs(showSecond: false)));
+
+        Assert.Equal(["all"], keys);
+        Assert.Contains("wss-tabs-tab-active", cut.FindAll("[role=tab]")[0].ClassList);
+    }
+
+    [Fact]
+    public void Disabling_the_active_tab_reports_the_fallback_key_exactly_once()
+    {
+        var keys = new List<string?>();
+        var cut = Render<Tabs>(p => p
+            .Add(t => t.ChildContent, TwoTabs())
+            .Add(t => t.ActiveKey, "filtered")
+            .Add(t => t.ActiveKeyChanged, EventCallback.Factory.Create<string?>(this, k => keys.Add(k))));
+
+        cut.Render(p => p.Add(t => t.ChildContent, TwoTabs(secondDisabled: true)));
+
+        // Once, not once per render: this test's consumer ignores the new key (ActiveKey stays
+        // "filtered"), and re-notifying an unchanged fallback would loop forever, since
+        // EventCallback.InvokeAsync re-renders the parent that would notify again.
+        Assert.Equal(["all"], keys);
+        Assert.Contains("wss-tabs-tab-active", cut.FindAll("[role=tab]")[0].ClassList);
+        Assert.True(cut.FindAll("[role=tab]")[1].HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void An_ActiveKey_naming_a_disabled_tab_reports_the_fallback_on_the_first_render()
+    {
+        var keys = new List<string?>();
+        var cut = RenderTabs(
+            activeKey: "missing",
+            changed: EventCallback.Factory.Create<string?>(this, k => keys.Add(k)),
+            middleDisabled: true);
+
+        Assert.Equal(["overdue"], keys);
+        Assert.Contains("wss-tabs-tab-active", cut.FindAll("[role=tab]")[0].ClassList);
+    }
+
+    [Fact]
+    public void A_resolvable_or_unset_ActiveKey_never_reports_a_fallback()
+    {
+        var keys = new List<string?>();
+        var changed = EventCallback.Factory.Create<string?>(this, k => keys.Add(k));
+
+        // Resolvable: the requested tab is present and enabled, through re-renders as well.
+        var bound = RenderTabs(activeKey: "missing", changed: changed);
+        bound.Render(p => p.Add(t => t.TablistLabel, "Filters"));
+        Assert.Empty(keys);
+
+        // Unset: null ActiveKey is the documented "activate the first enabled tab", not a desync --
+        // reporting it would populate a consumer's deliberately-null bound field on first render.
+        RenderTabs(changed: changed);
+        Assert.Empty(keys);
+    }
+
     [Fact]
     public void TabBarExtraContent_renders_beside_the_strip_only_when_set()
     {

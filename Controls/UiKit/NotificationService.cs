@@ -21,13 +21,13 @@ public sealed class NotificationService : INotificationService, IDisposable
     }
 
     /// <inheritdoc/>
-    public void Success(string message, string? description = null, double? duration = null) => Add(NotificationType.Success, message, description, duration);
+    public Guid Success(string message, string? description = null, double? duration = null) => Add(NotificationType.Success, message, description, duration);
     /// <inheritdoc/>
-    public void Info(string message, string? description = null, double? duration = null) => Add(NotificationType.Info, message, description, duration);
+    public Guid Info(string message, string? description = null, double? duration = null) => Add(NotificationType.Info, message, description, duration);
     /// <inheritdoc/>
-    public void Warning(string message, string? description = null, double? duration = null) => Add(NotificationType.Warning, message, description, duration);
+    public Guid Warning(string message, string? description = null, double? duration = null) => Add(NotificationType.Warning, message, description, duration);
     /// <inheritdoc/>
-    public void Error(string message, string? description = null, double? duration = null) => Add(NotificationType.Error, message, description, duration);
+    public Guid Error(string message, string? description = null, double? duration = null) => Add(NotificationType.Error, message, description, duration);
 
     /// <inheritdoc/>
     public void Remove(Guid id) => _queue.Remove(id);
@@ -35,7 +35,7 @@ public sealed class NotificationService : INotificationService, IDisposable
     /// <inheritdoc/>
     public void Clear() => _queue.Clear();
 
-    private void Add(NotificationType type, string message, string? description, double? duration)
+    private Guid Add(NotificationType type, string message, string? description, double? duration)
     {
         var item = new NotificationItem
         {
@@ -45,6 +45,7 @@ public sealed class NotificationService : INotificationService, IDisposable
             Duration = duration ?? 4.5
         };
         _queue.Add(item);
+        return item.Id;
     }
 
     /// <summary>Cancels any pending auto-dismiss timers (called when the DI scope is torn down).</summary>

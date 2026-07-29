@@ -1001,6 +1001,34 @@ public class UiKitTableTests : BunitContext
         Assert.Equal("Alice", selected![0].Name); // first item of SelectedItems kept
     }
 
+    [Fact]
+    public void Switching_Single_back_to_Multiple_applies_the_indeterminate_state()
+    {
+        // Single mode renders no select-all <input> at all, so OnAfterRenderAsync had nothing to mirror
+        // onto -- but its early return only checked !Selectable, so it "applied" the mixed state to a
+        // default ElementReference (a silent no-op) and still recorded _lastIndeterminate. The switch
+        // back to Multiple then short-circuited against that stale mirror and left the real, freshly
+        // created header checkbox plain-unchecked, announced as "not checked" instead of "mixed".
+        var data = Sample(); // Alice, Bob
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .Add(t => t.SelectedItems, new List<Person> { data[0] }) // one of two -> partial selection
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        int IndeterminateCalls() => JSInterop.Invocations.Count(i => i.Identifier == "setIndeterminate");
+        Assert.Empty(cut.FindAll("thead input.wss-table-checkbox")); // no element to mirror onto...
+        Assert.Equal(0, IndeterminateCalls());                       // ...so no JS call is even attempted
+
+        cut.Render(p => p.Add(t => t.SelectionMode, SelectionMode.Multiple));
+
+        Assert.NotNull(cut.Find("thead input.wss-table-checkbox"));
+        Assert.Equal(1, IndeterminateCalls());
+    }
+
     // ----- Controlled expansion / OnExpand -----
 
     [Fact]
@@ -1963,6 +1991,88 @@ public class UiKitTableTests : BunitContext
         cut.Find(".wss-table-filter-reset").Click();
         headers = cut.FindAll("thead th");
         Assert.DoesNotContain("wss-table-cell-filter-open", headers[0].ClassList); // closed again
+    }
+
+    // ----- Column-filter focus hand-off + the fixed-dropdown activation handle -----
+
+    // Two independently filterable columns: the shape that exercises "opening one filter closes the
+    // other" (Table.OpenColumnFilter) and the focus hand-off between them.
+    IRenderedComponent<Table<Person>> RenderTwoFilterableColumns(string? scrollY = null) =>
+        Render<Table<Person>>(p =>
+        {
+            p.Add(t => t.DataSource, new List<Person> { new("Alice", 30), new("Bob", 25) });
+            if (scrollY is not null) p.Add(t => t.ScrollY, scrollY);
+            p.AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v)));
+            p.AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v)));
+        });
+
+    // ElementReference.FocusAsync goes through the JS runtime, so bUnit records it like any other
+    // invocation -- the identifier is a framework internal, hence the substring match.
+    int FocusCalls() =>
+        JSInterop.Invocations.Count(i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase));
+
+    [Fact]
+    public void Opening_another_columns_filter_does_not_pull_focus_back_to_the_first_funnel()
+    {
+        var cut = RenderTwoFilterableColumns();
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click(); // Name's dropdown opens and focuses its panel
+        var afterFirstOpen = FocusCalls();
+        Assert.True(afterFirstOpen > 0, "the panel focus must be observable for the assertion below to mean anything");
+
+        // Opening Age's filter closes Name's (Table.OpenColumnFilter). Name's close path must NOT
+        // restore focus to its own funnel button: that restore used to be awaited behind the JS handle
+        // release (two round trips under ScrollY), so it landed after Age's panel had already focused
+        // itself -- and Age's panel then never saw Escape or any other key. Age's panel focus is the
+        // only new focus call.
+        cut.FindAll(".wss-table-filter-trigger")[1].Click();
+
+        Assert.Equal(afterFirstOpen + 1, FocusCalls());
+        Assert.Equal("true", cut.FindAll(".wss-table-filter-trigger")[1].GetAttribute("aria-expanded"));
+        Assert.Equal("false", cut.FindAll(".wss-table-filter-trigger")[0].GetAttribute("aria-expanded"));
+    }
+
+    [Fact]
+    public void Closing_a_column_filter_on_its_own_still_returns_focus_to_its_funnel_button()
+    {
+        var cut = RenderTwoFilterableColumns();
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click(); // opens, focuses the panel
+        var afterOpen = FocusCalls();
+
+        // Outside click with no other filter opening: the funnel button still gets focus back (the skip
+        // above is only for the another-column-took-over case).
+        cut.Find(".wss-table-filter-backdrop").Click();
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.Equal(afterOpen + 1, FocusCalls());
+    }
+
+    [Fact]
+    public void Reopening_a_column_filter_under_ScrollY_reactivates_the_fixed_dropdown()
+    {
+        // The fixed-position escape hatch's handle is released on close (JsHandle.ReleaseAsync, which
+        // also invalidates any activation still in flight), so the next open must activate a fresh one.
+        // A release that left the old handle in place would silently skip re-activation and the
+        // reopened dropdown would never track its trigger across page scroll again.
+        var cut = RenderTwoFilterableColumns(scrollY: "160px");
+        int ActivateCalls() => JSInterop.Invocations.Count(i => i.Identifier == "activateFixedDropdown");
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        Assert.Equal(1, ActivateCalls()); // and only once, however many renders happen while it's open
+
+        cut.Find(".wss-table-filter-backdrop").Click();      // close
+        cut.FindAll(".wss-table-filter-trigger")[0].Click(); // reopen
+
+        Assert.Equal(2, ActivateCalls());
     }
 
     // ----- ScrollY -----

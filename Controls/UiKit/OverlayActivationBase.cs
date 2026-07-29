@@ -3,10 +3,11 @@ namespace Controls;
 /// <summary>
 /// Shared focus-trap/scroll-lock activation lifecycle for <see cref="Modal"/> and <see cref="Drawer"/>:
 /// imports <c>wss-overlay.js</c> once, calls its <c>activateModal</c> on the transition to visible
-/// (racing the JS call against a close-then-reopen via <see cref="_activationSeq"/>, mirroring
-/// <see cref="PickerBase"/>'s own sequence-token pattern), and releases the returned handle on the
-/// transition to hidden or on dispose. Every JS call degrades gracefully to a no-JS fallback
-/// (prerender, bUnit) via try/catch.
+/// (racing the JS call against a close-then-reopen via <see cref="JsHandle"/>'s sequence token, the
+/// same pattern <see cref="PickerBase"/> uses for its own overlay), and releases the returned handle on
+/// the transition to hidden or on dispose. Every JS call degrades gracefully to a no-JS fallback
+/// (prerender, bUnit): the two holders swallow the failure and the overlay stays usable without the
+/// trap.
 /// </summary>
 /// <remarks>
 /// Mirrors <see cref="PickerBase"/>'s shape: subclasses plug in only <see cref="IsVisible"/> and the
@@ -22,12 +23,11 @@ public abstract class OverlayActivationBase : ComponentBase, IAsyncDisposable
 
     protected ElementReference _panelRef;
     // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
-    // (a null return, which reads the same as the import throwing did).
+    // (a null return, which reads the same as the import throwing did). JsHandle owns activateModal's
+    // returned handle: its sequence token, the release, and the no-JS/element-gone degrade.
     readonly JsModule _module = new("wss-overlay.js");
-    IJSObjectReference? _focusHandle;
+    readonly JsHandle _focusHandle = new();
     bool _active;
-    bool _disposed;
-    int _activationSeq;
 
     /// <summary>
     /// Whether the overlay is currently shown. Delegates to the derived control's own two-way-bindable
@@ -43,63 +43,34 @@ public abstract class OverlayActivationBase : ComponentBase, IAsyncDisposable
         if (IsVisible && !_active)
         {
             _active = true;
-            // Sequence token: a close (and possibly a reopen, which starts a *new* activation)
-            // while this activation's JS call is in flight makes this one stale. Without the token
-            // a close→reopen race left the first handle orphaned — its ref-counted body-scroll
-            // lock was never released, permanently freezing page scroll.
-            var seq = ++_activationSeq;
-            try
-            {
-                // Null = no JS at all (prerender/tests), or disposed while the import itself was in
-                // flight — in which case the holder already cleaned up its own late-arriving reference
-                // (it would otherwise strand for the circuit's life). Either way there is nothing to
-                // activate; the seq/!IsVisible checks below cover the later activateModal handle.
-                var module = await _module.GetAsync(JS, FormDefaults);
-                if (module is null) return;
-                var handle = await module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
-                // Disposed (or closed/reopened) while activateModal was in flight? DisposeAsync already
-                // ran — storing this handle would orphan it, leaking the body-scroll lock + document
-                // listeners for the circuit's life. Release it here instead.
-                if (_disposed || seq != _activationSeq || !IsVisible)
-                {
-                    try { await handle.InvokeVoidAsync("dispose"); await handle.DisposeAsync(); } catch { }
-                }
-                else
-                {
-                    _focusHandle = handle;
-                }
-            }
-            catch { /* no JS — overlay still usable, just no focus trap/scroll lock */ }
+            // Null = no JS at all (prerender/tests), or disposed while the import itself was in
+            // flight — in which case the holder already cleaned up its own late-arriving reference
+            // (it would otherwise strand for the circuit's life). Either way there is nothing to
+            // activate.
+            var module = await _module.GetAsync(JS, FormDefaults);
+            if (module is null) return;
+            // A close (and possibly a reopen, which starts a *new* activation) while this call is in
+            // flight makes it stale, and JsHandle then releases the late-arriving handle instead of
+            // storing it. Without that guard the close→reopen race left the first handle orphaned —
+            // its ref-counted body-scroll lock was never released, permanently freezing page scroll.
+            await _focusHandle.ActivateAsync(module, "activateModal", [_panelRef], () => IsVisible);
         }
         else if (!IsVisible && _active)
         {
             _active = false;
-            _activationSeq++; // invalidate any in-flight activation
-            await ReleaseFocusAsync();
-        }
-    }
-
-    async Task ReleaseFocusAsync()
-    {
-        if (_focusHandle is not null)
-        {
-            try { await _focusHandle.InvokeVoidAsync("dispose"); await _focusHandle.DisposeAsync(); } catch { }
-            _focusHandle = null;
+            await _focusHandle.ReleaseAsync(); // also invalidates any activation still in flight
         }
     }
 
     /// <summary>
-    /// Releases the JS module and any active focus-trap handle. Sets <see cref="_disposed"/> first so
-    /// an in-flight <c>activateModal</c> releases its handle rather than storing it; the module holder
-    /// flips itself closed for the same reason (an import racing this call disposes its own
-    /// late-arriving module instead of stranding it on this dead instance). Virtual so a subclass with
-    /// its own disposable state can extend it (neither current subclass needs to).
+    /// Releases the JS module and any active focus-trap handle. Both holders flip themselves closed
+    /// first, so an activation or an import racing this call releases its own late-arriving reference
+    /// rather than stranding it on this dead instance. Virtual so a subclass with its own disposable
+    /// state can extend it (neither current subclass needs to).
     /// </summary>
     public virtual async ValueTask DisposeAsync()
     {
-        _disposed = true;
-        _activationSeq++; // invalidate any in-flight activation so its handle is released, not stored
-        await ReleaseFocusAsync();
+        await _focusHandle.DisposeAsync();
         await _module.DisposeAsync();
     }
 }

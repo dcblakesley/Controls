@@ -25,7 +25,10 @@ public partial class Tabs
     /// enabled tab. Supports <c>@bind-ActiveKey</c> (bind a <c>string?</c> field).</summary>
     [Parameter] public string? ActiveKey { get; set; }
 
-    /// <summary>Raised with the new key when the selection changes (supports <c>@bind-ActiveKey</c>).</summary>
+    /// <summary>Raised with the new key when the selection changes (supports <c>@bind-ActiveKey</c>).
+    /// Also raised when the tab a non-null <see cref="ActiveKey"/> names is removed or disabled and the
+    /// strip therefore falls back to the first enabled tab, so a bound key can never disagree with the
+    /// tab that is actually highlighted.</summary>
     [Parameter] public EventCallback<string?> ActiveKeyChanged { get; set; }
 
     /// <summary>Accessible name of the tab strip. Override to localize.</summary>
@@ -59,6 +62,11 @@ public partial class Tabs
     // The last selection made through this component (uncontrolled fallback while the consumer
     // doesn't bind ActiveKey).
     string? _selectedKey;
+
+    // The fallback already reported through ActiveKeyChanged: the requested key that no longer names a
+    // usable tab, and the key resolution fell back to. See SyncFallbackKey.
+    string? _reportedFallbackFrom;
+    string? _reportedFallbackTo;
 
     string? _generatedId;
     string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-tabs-{Guid.NewGuid():N}");
@@ -119,6 +127,50 @@ public partial class Tabs
     /// stale for this pass and only self-correct on some later, unrelated render.
     /// </summary>
     internal void NotifyTabChanged() => StateHasChanged();
+
+    /// <inheritdoc/>
+    protected override void OnAfterRender(bool firstRender) => SyncFallbackKey();
+
+    // ActiveTab silently falls back to the first enabled tab when the requested key names a tab that
+    // was removed or disabled, so the strip renders one tab active while a bound ActiveKey still holds
+    // the old, now-unusable key -- and only SelectAsync ever raised ActiveKeyChanged, so nothing told
+    // the consumer. Their own pane/filter state then disagreed with the highlighted tab until the next
+    // click. Notified from OnAfterRender rather than from the promotion in StartCollectingTabs: that
+    // runs mid-render, BEFORE the child Tabs' own OnParametersSet, so a Key/Disabled change on an
+    // already-registered tab is still one pass stale there and would report a fallback that isn't real
+    // (see Existing_tab_Key_change_renders_on_the_same_pass_instead_of_one_behind). By OnAfterRender
+    // every Tab in the batch has its current parameters.
+    void SyncFallbackKey()
+    {
+        var active = ActiveTab;
+        // No usable tab at all (none registered yet, or every one disabled): there is nothing to fall
+        // back TO, and reporting null here would clobber a bound key on the very first render, before
+        // the children have registered.
+        if (active is null) return;
+
+        var requested = ActiveKey ?? _selectedKey;
+        // A null request is not a desync: null is the documented "activate the first enabled tab",
+        // which is exactly what's rendered.
+        if (requested is null || requested == active.Key)
+        {
+            _reportedFallbackFrom = null;
+            _reportedFallbackTo = null;
+            return;
+        }
+        // Report each distinct fallback once. A consumer that honors it re-renders with the new key and
+        // the branch above clears this; one that ignores it (or keeps re-passing the stale key) must
+        // not be told again -- EventCallback.InvokeAsync re-renders the parent, so an unguarded
+        // notification here would loop forever.
+        if (requested == _reportedFallbackFrom && active.Key == _reportedFallbackTo) return;
+        _reportedFallbackFrom = requested;
+        _reportedFallbackTo = active.Key;
+        // Keep the uncontrolled fallback in step too, so an unbound strip doesn't re-report the same
+        // fallback from a _selectedKey that no longer resolves.
+        _selectedKey = active.Key;
+        // Fire-and-forget, mirroring Table's own selection-clamp notification: OnAfterRender is
+        // synchronous (Blazor's lifecycle contract), and EventCallback.InvokeAsync is safe to not await.
+        _ = ActiveKeyChanged.InvokeAsync(active.Key);
+    }
 
     // ----- Interaction -------------------------------------------------------
 

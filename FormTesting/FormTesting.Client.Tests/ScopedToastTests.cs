@@ -97,6 +97,39 @@ public class ScopedToastTests : BunitContext
     }
 
     [Fact]
+    public void Notification_add_returns_an_id_that_dismisses_that_one_notification()
+    {
+        // The four add methods used to return void, which made INotificationService.Remove(Guid)
+        // unreachable for a consumer (nothing handed out an id) -- Clear() was the only programmatic
+        // dismissal, and it took every notification with it. Sticky notifications (duration 0) are the
+        // case that needs one specific id.
+        var svc = new NotificationService();
+        svc.Warning("stays put", duration: 0);
+        var id = svc.Error("dismiss me", "with a description", duration: 0);
+
+        Assert.Equal(2, svc.Items.Count);
+        Assert.Contains(svc.Items, n => n.Id == id);
+
+        svc.Remove(id);
+
+        Assert.Single(svc.Items);
+        Assert.DoesNotContain(svc.Items, n => n.Id == id);
+        Assert.Contains(svc.Items, n => n.Message == "stays put");
+    }
+
+    [Fact]
+    public void Notification_ids_are_distinct_across_the_four_severities()
+    {
+        // One id per notification, so a caller holding several can dismiss exactly the one it means.
+        var svc = new NotificationService();
+        Guid[] ids = [svc.Success("a", duration: 0), svc.Info("b", duration: 0),
+                      svc.Warning("c", duration: 0), svc.Error("d", duration: 0)];
+
+        Assert.Equal(4, ids.Distinct().Count());
+        Assert.Equal(ids, svc.Items.Select(n => n.Id));
+    }
+
+    [Fact]
     public void AddWssControlsToasts_registers_both_services_as_scoped()
     {
         var services = new ServiceCollection();

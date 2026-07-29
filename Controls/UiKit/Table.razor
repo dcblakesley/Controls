@@ -826,6 +826,16 @@
 
         if (!Selectable) _lastIndeterminate = null; // the header checkbox is recreated when re-enabled
 
+        // Same treatment for a SelectionMode switch: Single renders no select-all <input> at all (see
+        // the header markup), so switching back to Multiple brings in a freshly-created one with
+        // indeterminate == false. Forget the mirror so OnAfterRenderAsync re-applies the mixed state
+        // instead of short-circuiting against a value recorded under the other mode.
+        if (SelectionMode != _lastSelectionMode)
+        {
+            _lastIndeterminate = null;
+            _lastSelectionMode = SelectionMode;
+        }
+
         // The styled/unstyled header-checkbox branches (see EffectiveUseStyledCheckbox) render
         // different DOM shapes, so a runtime change of the resolved value swaps in a freshly-created
         // <input> with indeterminate == false. Forget the mirror the same way as the Selectable
@@ -1010,6 +1020,7 @@
 
     bool? _lastIndeterminate;
     bool? _lastUseStyledCheckbox;
+    SelectionMode _lastSelectionMode; // == default(SelectionMode) == Multiple, the parameter's own default
     bool _disposed;
 
     // indeterminate is a DOM property with no HTML attribute, so it can only be set from JS. Runs
@@ -1018,11 +1029,15 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_disposed) return;
-        if (!Selectable)
+        // SelectionMode.Single is checked as well as Selectable: the select-all <input> lives inside
+        // @if (Selectable) *and* @if (SelectionMode == Multiple), so either one being off means there
+        // is no element here to mirror onto — and a fresh one comes back with indeterminate == false
+        // when it returns. Forgetting the mirror is what lets the re-apply happen: Single mode used to
+        // fall through and "apply" the mixed state to a default ElementReference (a silent no-op) while
+        // still recording _lastIndeterminate, so a later switch to Multiple short-circuited and left a
+        // partial selection announced as "not checked" instead of "mixed".
+        if (!Selectable || SelectionMode != SelectionMode.Multiple)
         {
-            // The select-all <input> lives inside @if (Selectable), so toggling Selectable off
-            // destroys it — a fresh element comes back with indeterminate == false. Forget the
-            // mirror so re-enabling re-applies the mixed state instead of short-circuiting.
             _lastIndeterminate = null;
             return;
         }
@@ -1129,6 +1144,12 @@
         column.FilterOpen = false;
         StateHasChanged();
     }
+
+    // Asked by a TableColumnFilter that is closing, before it restores focus to its own funnel button:
+    // when the close was caused by ANOTHER column's filter opening (OpenColumnFilter above closes the
+    // previous one), that column's panel has already focused itself and a late restore here would
+    // steal focus back, leaving the newly opened panel unable to see Escape.
+    internal bool AnyColumnFilterOpen => _columns.Any(c => c.FilterOpen);
 
     // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline. "changed"
     // compares the about-to-be-overwritten Applied set against Pending BEFORE overwriting it -- a

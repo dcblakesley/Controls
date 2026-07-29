@@ -82,9 +82,13 @@
     ElementReference _buttonRef;
     ElementReference _panelRef;
     // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
-    // (a null return, which reads the same as the import throwing did).
+    // (a null return, which reads the same as the import throwing did). JsHandle owns
+    // activateFixedDropdown's returned handle: the sequence token (this file used to re-check "still
+    // open" after the await but had NO token, so a close->reopen across the in-flight round trip
+    // orphaned one handle and leaked its window scroll/resize listeners for the circuit's life), the
+    // two-step release, and the no-JS degrade.
     readonly JsModule _module = new("wss-overlay.js");
-    IJSObjectReference? _scrollHandle; // activateFixedDropdown's dispose handle -- see ReleaseScrollHandleAsync
+    readonly JsHandle _scrollHandle = new();
     bool _pendingFocus;
     bool _wasOpen;
     bool _fixedPositioned;
@@ -136,8 +140,9 @@
     }
 
     // Focus management (mirrors Popover): move focus into the panel once it opens, and back to the
-    // trigger once it closes. The fixed-positioning escape only runs under Table.ScrollY -- the
-    // default (unset) case never touches JS, matching the "JS-free by default" contract above.
+    // trigger once it closes -- unless another column's filter is what closed this one, see the close
+    // branch. The fixed-positioning escape only runs under Table.ScrollY -- the default (unset) case
+    // never touches JS, matching the "JS-free by default" contract above.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_disposed) return;
@@ -158,56 +163,42 @@
                 // clip with, so the CSS-anchored fallback below stands.
                 var module = await _module.GetAsync(JS, FormDefaults);
                 if (module is null) return;
-                try
-                {
-                    // activateFixedDropdown does the initial placement AND wires scroll/resize
-                    // listeners that keep the dropdown tracking the trigger for as long as it stays
-                    // open (a PAGE scroll moves the sticky trigger's rect even though the table's own
-                    // ScrollY wrapper keeps it visually pinned within the wrapper) -- see that
-                    // function's own comment in wss-overlay.js.
-                    var handle = await module.InvokeAsync<IJSObjectReference>("activateFixedDropdown", _buttonRef, _panelRef, 4);
-                    // The dropdown may have closed (or this component been disposed) while that call
-                    // was in flight -- storing the handle then would leak its scroll/resize listeners
-                    // for the circuit's life. Mirrors Modal.razor's activateModal race guard.
-                    if (_disposed || !Column.FilterOpen)
-                    {
-                        try { await handle.InvokeVoidAsync("dispose"); await handle.DisposeAsync(); } catch { /* circuit may be gone */ }
-                    }
-                    else
-                    {
-                        _scrollHandle = handle;
-                        _fixedPositioned = true;
-                    }
-                }
-                catch
-                {
-                    // No JS runtime / module -- the CSS-anchored absolute position stays (may clip
-                    // under a ScrollY wrapper's overflow; this is the documented no-JS fallback).
-                }
+                // activateFixedDropdown does the initial placement AND wires scroll/resize listeners
+                // that keep the dropdown tracking the trigger for as long as it stays open (a PAGE
+                // scroll moves the sticky trigger's rect even though the table's own ScrollY wrapper
+                // keeps it visually pinned within the wrapper) -- see that function's own comment in
+                // wss-overlay.js. False = no JS runtime/module, or the dropdown closed (or closed and
+                // reopened, or this component was disposed) while the call was in flight: JsHandle
+                // released the late-arriving handle, the CSS-anchored absolute position stays (it may
+                // clip under a ScrollY wrapper's overflow -- the documented no-JS fallback), and
+                // leaving _fixedPositioned false lets a later render retry while still open.
+                _fixedPositioned = await _scrollHandle.ActivateAsync(
+                    module, "activateFixedDropdown", [_buttonRef, _panelRef, 4], () => Column.FilterOpen);
             }
         }
         else if (_wasOpen)
         {
             _wasOpen = false;
             _fixedPositioned = false; // the dropdown node is destroyed on close; a fresh one re-measures next open
-            await ReleaseScrollHandleAsync();
-            try { await _buttonRef.FocusAsync(); } catch { /* not focusable / gone */ }
-        }
-    }
-
-    async Task ReleaseScrollHandleAsync()
-    {
-        if (_scrollHandle is not null)
-        {
-            try { await _scrollHandle.InvokeVoidAsync("dispose"); await _scrollHandle.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _scrollHandle = null;
+            // Focus first, release second. Releasing is up to two JS round trips under ScrollY, and
+            // awaiting it first meant that when clicking column B's funnel closed column A's dropdown
+            // (Table.OpenColumnFilter closes the other one), A's late focus restore landed AFTER B's
+            // panel had focused itself -- B then never saw Escape or any other key. Skipped entirely
+            // while another column's filter is open, which is that same race from the other side:
+            // nothing here may pull focus out of the panel that just opened. A plain close (Escape,
+            // outside click, OK/Reset) leaves no filter open and still returns focus to the funnel.
+            if (!Table.AnyColumnFilterOpen)
+            {
+                try { await _buttonRef.FocusAsync(); } catch { /* not focusable / gone */ }
+            }
+            await _scrollHandle.ReleaseAsync(); // also invalidates any activation still in flight
         }
     }
 
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
-        await ReleaseScrollHandleAsync();
+        await _scrollHandle.DisposeAsync();
         await _module.DisposeAsync();
     }
 }

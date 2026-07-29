@@ -66,6 +66,31 @@ public class WasmToastTests : BunitContext
         }
     }
 
+    [Fact]
+    public void Static_notification_facade_forwards_the_new_notifications_id()
+    {
+        // The static facade has to forward the id the four add methods now return, or Remove(Guid) is
+        // just as unreachable here as it was on the interface.
+        WasmNotificationService.Clear();
+        try
+        {
+            var id = WasmNotificationService.Success("sticky", duration: 0);
+            var cut = Render<WasmNotificationContainer>();
+            Assert.NotEqual(Guid.Empty, id);
+
+            WasmNotificationService.Remove(id);
+
+            Assert.Empty(WasmNotificationService.Items);
+            // The container re-renders off OnChange via InvokeAsync, so it lands on the renderer's
+            // dispatcher rather than synchronously on this thread.
+            cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".wss-notification")));
+        }
+        finally
+        {
+            WasmNotificationService.Clear();
+        }
+    }
+
     [Theory]
     [InlineData(NotificationPlacement.TopLeft, "wss-notification-topleft")]
     [InlineData(NotificationPlacement.BottomRight, "wss-notification-bottomright")]

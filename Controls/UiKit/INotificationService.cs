@@ -34,10 +34,19 @@ public interface INotificationService
     /// <summary>Raised whenever <see cref="Items"/> changes so a container can re-render.</summary>
     event Action? OnChange;
 
-    void Success(string message, string? description = null, double? duration = null);
-    void Info(string message, string? description = null, double? duration = null);
-    void Warning(string message, string? description = null, double? duration = null);
-    void Error(string message, string? description = null, double? duration = null);
+    /// <summary>
+    /// Shows a notification and returns its id, which can be passed to <see cref="Remove"/> to dismiss
+    /// that one notification programmatically. The case for it is a sticky notification
+    /// (<c>duration: 0</c>), which has no auto-dismiss timer of its own and otherwise waits for the
+    /// user's close button.
+    /// </summary>
+    Guid Success(string message, string? description = null, double? duration = null);
+    /// <inheritdoc cref="Success"/>
+    Guid Info(string message, string? description = null, double? duration = null);
+    /// <inheritdoc cref="Success"/>
+    Guid Warning(string message, string? description = null, double? duration = null);
+    /// <inheritdoc cref="Success"/>
+    Guid Error(string message, string? description = null, double? duration = null);
     void Remove(Guid id);
     void Clear();
 }

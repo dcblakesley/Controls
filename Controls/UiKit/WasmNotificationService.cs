@@ -23,10 +23,14 @@ public static class WasmNotificationService
         remove => Instance.OnChange -= value;
     }
 
-    public static void Success(string message, string? description = null, double? duration = null) => Instance.Success(message, description, duration);
-    public static void Info(string message, string? description = null, double? duration = null) => Instance.Info(message, description, duration);
-    public static void Warning(string message, string? description = null, double? duration = null) => Instance.Warning(message, description, duration);
-    public static void Error(string message, string? description = null, double? duration = null) => Instance.Error(message, description, duration);
+    /// <inheritdoc cref="INotificationService.Success"/>
+    public static Guid Success(string message, string? description = null, double? duration = null) => Instance.Success(message, description, duration);
+    /// <inheritdoc cref="INotificationService.Success"/>
+    public static Guid Info(string message, string? description = null, double? duration = null) => Instance.Info(message, description, duration);
+    /// <inheritdoc cref="INotificationService.Success"/>
+    public static Guid Warning(string message, string? description = null, double? duration = null) => Instance.Warning(message, description, duration);
+    /// <inheritdoc cref="INotificationService.Success"/>
+    public static Guid Error(string message, string? description = null, double? duration = null) => Instance.Error(message, description, duration);
 
     public static void Remove(Guid id) => Instance.Remove(id);
 
