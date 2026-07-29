@@ -178,7 +178,8 @@ public class PickerSizeAndParsingTests : BunitContext
 
         // {0} is FieldIdentifier.FieldName (the raw property name, "BirthDate") -- same substitution
         // EditDateNative<T>.TryParseValueFromString uses for its own identical-shaped default message.
-        Assert.Contains("The BirthDate field must be a date.", cut.Find(".edit-validation-message").TextContent);
+        // The sr-only region found first shows ValidationHelper's labeled rewrite of that message.
+        Assert.Contains("Birth Date must be a date.", cut.Find(".edit-validation-message").TextContent);
         // aria-invalid/aria-errormessage reach the picker's actual <input> too, mirroring the Required
         // coverage in EditDateTests.
         var input = cut.Find(".wss-picker-input-date");

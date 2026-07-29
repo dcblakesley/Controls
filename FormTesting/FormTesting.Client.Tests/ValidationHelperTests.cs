@@ -45,6 +45,25 @@ public class ValidationHelperTests
     }
 
     [Fact]
+    public void Date_must_be_a_date_message_rewritten()
+    {
+        // EditDate/EditDateNative/EditDateRange's ParsingErrorMessage default, same shape as the
+        // numeric parse message.
+        var msg = ValidationHelper.GetValidationMessage(
+            "The BirthDate field must be a date.", "BirthDate", "Birth Date", valueType: "System.DateTime");
+        Assert.Equal("Must be a date", msg);
+    }
+
+    [Fact]
+    public void Date_must_be_a_date_message_rewritten_with_label()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            "The BirthDate field must be a date.", "BirthDate", "Birth Date", valueType: "System.DateTime",
+            includeLabel: true);
+        Assert.Equal("Birth Date must be a date.", msg);
+    }
+
+    [Fact]
     public void Numeric_range_with_int_max_sentinel_renders_as_min_only()
     {
         // [Range(1, int.MaxValue)] — only the minimum is meaningful.

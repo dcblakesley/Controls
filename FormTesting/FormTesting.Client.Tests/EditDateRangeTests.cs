@@ -729,8 +729,9 @@ public class EditDateRangeTests : BunitContext
         Commit(cut, StartInput, "not a date");
 
         // {0} is the FAILING field's own FieldIdentifier.FieldName, so one format string serves both
-        // endpoints -- same substitution EditDate's identically-shaped default message uses.
-        Assert.Contains("The Start field must be a date.", MessageFor(cut, StartInput));
+        // endpoints -- same substitution EditDate's identically-shaped default message uses. The
+        // sr-only region read here shows ValidationHelper's labeled rewrite of that message.
+        Assert.Contains("Start must be a date.", MessageFor(cut, StartInput));
         Assert.Equal(string.Empty, MessageFor(cut, EndInput)); // End never had text to fail on
         // aria-invalid/aria-errormessage reach the START input only (per-field independence).
         var startInput = cut.Find(StartInput);
@@ -750,7 +751,7 @@ public class EditDateRangeTests : BunitContext
         Commit(cut, EndInput, "garbage");
 
         Assert.Equal(string.Empty, MessageFor(cut, StartInput));
-        Assert.Contains("The End field must be a date.", MessageFor(cut, EndInput));
+        Assert.Contains("End must be a date.", MessageFor(cut, EndInput));
         Assert.Equal("true", cut.Find(EndInput).GetAttribute("aria-invalid"));
         Assert.Null(cut.Find(StartInput).GetAttribute("aria-invalid"));
         Assert.Equal(Feb3, model.End);
@@ -774,7 +775,7 @@ public class EditDateRangeTests : BunitContext
 
         Assert.Equal(string.Empty, MessageFor(cut, StartInput));
         // End's own message survives -- its text was never re-entered, so nothing revalidated it.
-        Assert.Contains("The End field must be a date.", MessageFor(cut, EndInput));
+        Assert.Contains("End must be a date.", MessageFor(cut, EndInput));
         // aria-invalid is omitted entirely once the Start field is valid again, not set to "false".
         Assert.Null(cut.Find(StartInput).GetAttribute("aria-invalid"));
         Assert.Equal(new DateTime(2025, 1, 20), model.Start);

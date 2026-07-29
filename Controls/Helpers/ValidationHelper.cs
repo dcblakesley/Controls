@@ -52,6 +52,9 @@ public static class ValidationHelper
     static string MustBeANumberString() => "Must be a number";
     static string MustBeANumberString(string label) => $"{label} must be a number.";
 
+    static string MustBeADateString() => "Must be a date";
+    static string MustBeADateString(string label) => $"{label} must be a date.";
+
     static string MinValueString(string min) => $"Must be at least {min}";
     static string MinValueString(string min, string label) => $"{label} must be at least {min}";
 
@@ -150,6 +153,11 @@ public static class ValidationHelper
         // name, so this one never sees a [Display(Name)] spelling; harmless to try both.
         if (string.Equals(message, $"The {name} field must be a number."))
             return includeLabel ? MustBeANumberString(label) : MustBeANumberString();
+
+        // Date parse failure — EditDate/EditDateNative/EditDateRange's ParsingErrorMessage default,
+        // formatted the same way as the numeric one.
+        if (string.Equals(message, $"The {name} field must be a date."))
+            return includeLabel ? MustBeADateString(label) : MustBeADateString();
 
         return null;
     }
