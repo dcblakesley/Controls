@@ -66,6 +66,15 @@
     --wss-line-height: 1.5715;
     --wss-padding-h: 11px;
     --wss-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    /* AntD's standard motion easing curve -- static constant, safe at :root per the theming contract
+       (not a derived hover/shadow/focus state). Mirrored as --edit-ease-standard in
+       edit-controls.css, since the two stylesheets load independently. */
+    --wss-ease-standard: cubic-bezier(0.645, 0.045, 0.355, 1);
+    /* The antd checkbox check-glyph vector (16-unit viewBox), applied as a mask in both the checked
+       and (cleared, via mask:none) indeterminate states below. Mirrored as --edit-checkbox-check-svg
+       in edit-controls.css -- same literal, but declared per-file since a consumer may link only one
+       of the two stylesheets. */
+    --wss-checkbox-check-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E");
 
     /* DatePicker / DateRangePicker. Their Figma spec (AntD 5-style) uses 8px/6px/4px radii and
        #e6e6e6 internal splits — kept as picker-scoped tokens rather than bending the kit-wide
@@ -155,7 +164,7 @@
     background-color: var(--wss-color-bg);
     border: 1px solid var(--wss-color-border);
     border-radius: var(--wss-radius);
-    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+    transition: all 0.3s var(--wss-ease-standard);
 }
 
 .wss-select:not(.wss-select-disabled):hover .wss-select-selector {
@@ -423,28 +432,25 @@
 
 /* Touch devices have no hover and only gain :focus-within once the dropdown is open, so the
    clear affordance would be invisible until then — show it whenever it renders (it only renders
-   when there is a value to clear). */
+   when there is a value to clear). Grouped with .wss-picker-clear (Picker section, further down):
+   both clear buttons follow the same touch/hover rules, only their base size differs (12px vs
+   14px, kept in each control's own rule). */
 @media (hover: none) {
-    .wss-select:not(.wss-select-disabled) .wss-select-clear {
+    .wss-select:not(.wss-select-disabled) .wss-select-clear,
+    .wss-picker:not(.wss-picker-disabled) .wss-picker-clear {
         opacity: 1;
     }
 }
 
-.wss-select-clear:hover {
+.wss-select-clear:hover,
+.wss-picker-clear:hover {
     color: var(--wss-color-text-secondary);
 }
 
 /* ----------------------------------------------------------- Dropdown */
 
-.wss-select-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1040;
-    /* cursor:pointer doubles as real-iOS Safari's clickable-element heuristic for synthesizing
-       click from tap on the delegated listener; outline:none because the div is tabindex="-1". */
-    cursor: pointer;
-    outline: none;
-}
+/* .wss-select-backdrop's chrome + z-index is declared in the shared backdrop rule in the Popover
+   section (search this file for .wss-popover-backdrop). */
 
 /* While open, the selector box itself must sit above its own full-screen backdrop — otherwise
    clicking into the search input / a tag's remove button / the clear button hits the backdrop and
@@ -956,13 +962,31 @@
     width: fit-content;
 }
 
-.wss-popover-backdrop, .wss-popconfirm-backdrop {
+/* Full-screen invisible click-outside-to-close backdrop chrome, shared with every other JS-free
+   dropdown/panel in this file (.wss-select-backdrop, .wss-table-filter-backdrop,
+   .wss-picker-backdrop) -- only the stacking z-index differs between the two groups below (a
+   Popover/Popconfirm panel sits below Select/Table-filter/Picker's own dropdowns). cursor:pointer
+   doubles as real-iOS Safari's clickable-element heuristic for synthesizing a click from a tap on
+   the delegated listener; outline:none because each backdrop div is tabindex="-1". */
+.wss-popover-backdrop,
+.wss-popconfirm-backdrop,
+.wss-select-backdrop,
+.wss-table-filter-backdrop,
+.wss-picker-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 1029;
-    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" backdrop. */
     cursor: pointer;
     outline: none;
+}
+
+.wss-popover-backdrop, .wss-popconfirm-backdrop {
+    z-index: 1029;
+}
+
+.wss-select-backdrop,
+.wss-table-filter-backdrop,
+.wss-picker-backdrop {
+    z-index: 1040;
 }
 
 .wss-popover {
@@ -1395,20 +1419,16 @@
     list-style: none;
 }
 
+/* Shared box-button chrome with .wss-dialog-btn (Dialog action buttons section, below) -- both
+   render a 32px AntD-recipe button; only padding/sizing differs, kept in each selector's own rule. */
 .wss-pagination-item,
 .wss-pagination-prev,
-.wss-pagination-next {
+.wss-pagination-next,
+.wss-dialog-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
-    /* min-height (not just height) so a consumer reset like `button { max-height: fit-content }`
-       can't collapse the buttons to content height — a min-height floor beats a max-height clamp,
-       keeping every pager button a consistent 32px square (the icon-only prev/next included). */
     height: 32px;
-    min-height: 32px;
-    box-sizing: border-box;
-    padding: 0 6px;
     font-size: var(--wss-font-size);
     font-family: inherit; /* <button> elements default to the system font otherwise */
     color: var(--wss-color-text);
@@ -1417,6 +1437,18 @@
     border-radius: var(--wss-radius);
     cursor: pointer;
     transition: all 0.2s;
+}
+
+/* min-height (not just height) so a consumer reset like `button { max-height: fit-content }`
+   can't collapse the buttons to content height — a min-height floor beats a max-height clamp,
+   keeping every pager button a consistent 32px square (the icon-only prev/next included). */
+.wss-pagination-item,
+.wss-pagination-prev,
+.wss-pagination-next {
+    min-width: 32px;
+    min-height: 32px;
+    box-sizing: border-box;
+    padding: 0 6px;
 }
 
 .wss-pagination-prev:disabled,
@@ -1546,21 +1578,11 @@
  * these footer buttons are plain <button>s styled here.
  * ============================================================================ */
 
+/* Shared chrome (display/height/font/color/bg/border/cursor/transition) lives on the grouped
+   .wss-pagination-item/-prev/-next, .wss-dialog-btn rule in the Pagination section above. */
 .wss-dialog-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 32px;
     padding: 0 15px;
-    font-size: var(--wss-font-size);
-    font-family: inherit; /* <button> elements default to the system font otherwise */
     line-height: var(--wss-line-height);
-    color: var(--wss-color-text);
-    background: var(--wss-color-bg);
-    border: 1px solid var(--wss-color-border);
-    border-radius: var(--wss-radius);
-    cursor: pointer;
-    transition: all 0.2s;
 }
 
 .wss-dialog-btn:hover {
@@ -2067,8 +2089,8 @@
     position: absolute;
     inset: -1px;
     background: var(--wss-color-on-primary);
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    -webkit-mask: var(--wss-checkbox-check-svg) center / 100% 100% no-repeat;
+    mask: var(--wss-checkbox-check-svg) center / 100% 100% no-repeat;
 }
 
 /* :indeterminate is a real CSS pseudo-class that reflects the DOM property wss-table.js sets on the
@@ -2184,7 +2206,12 @@
     cursor: pointer;
 }
 
-.wss-table-sort-trigger:focus-visible {
+/* Shared with .wss-table-filter-trigger (header filter button, further down this section) -- both
+   are inline header-cell trigger buttons and get the same ring; the shared Accessibility block
+   further down the file omits border-radius (most of its members don't want one), so this pair
+   keeps its own grouped rule instead of joining it. */
+.wss-table-sort-trigger:focus-visible,
+.wss-table-filter-trigger:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 2px;
     border-radius: 2px;
@@ -2334,27 +2361,17 @@
     background: var(--wss-color-bg-hover);
 }
 
-.wss-table-filter-trigger:focus-visible {
-    outline: 2px solid var(--wss-color-primary);
-    outline-offset: 2px;
-}
+/* .wss-table-filter-trigger:focus-visible is grouped with .wss-table-sort-trigger:focus-visible
+   above (same ring, including the 2px radius). */
 
 /* A column with 1+ applied filter value -- same active tint the sort carets already use. */
 .wss-table-filter-active {
     color: var(--wss-color-primary);
 }
 
-/* Full-screen invisible backdrop: clicking anywhere outside the dropdown closes it WITHOUT
-   applying pending changes (AntD applies only on OK) -- the same JS-free pattern as
-   .wss-select-backdrop / .wss-popover-backdrop. tabindex="-1": iOS-class WebKit only synthesizes a
-   click from a tap on a focusable/interactive target chain. */
-.wss-table-filter-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1040;
-    cursor: pointer;
-    outline: none;
-}
+/* Clicking anywhere outside the dropdown closes it WITHOUT applying pending changes (AntD applies
+   only on OK). Chrome + z-index shared with .wss-select-backdrop / .wss-popover-backdrop -- see the
+   backdrop rule in the Popover section. */
 
 /* Right-aligned under the funnel icon (AntD default), anchored to the header cell. JS
    (wss-overlay.js's placeFixedBelow) switches this to position: fixed in viewport coordinates when
@@ -2710,7 +2727,7 @@
     /* The field is tabindex="-1" (keeps focus inside the wrapper when its chrome is clicked) —
        the focused look is owned by the border rules below, not a UA ring. */
     outline: none;
-    transition: border-color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+    transition: border-color 0.3s var(--wss-ease-standard);
 }
 
 .wss-picker:not(.wss-picker-disabled):hover .wss-picker-input {
@@ -2815,17 +2832,8 @@
     opacity: 1;
 }
 
-/* Touch devices have no hover — show the clear affordance whenever it renders (it only renders
-   when there is a value to clear). */
-@media (hover: none) {
-    .wss-picker:not(.wss-picker-disabled) .wss-picker-clear {
-        opacity: 1;
-    }
-}
-
-.wss-picker-clear:hover {
-    color: var(--wss-color-text-secondary);
-}
+/* The touch-reveal @media(hover:none) rule and the :hover color are grouped with
+   .wss-select-clear's own rules in the Select section above. */
 
 .wss-picker-disabled .wss-picker-input {
     color: var(--wss-color-text-disabled);
@@ -2894,14 +2902,8 @@
 
 /* ---------------------------------------------------------------- Dropdown */
 
-.wss-picker-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1040;
-    /* See .wss-select-backdrop: iOS tap-to-click support for the tabindex="-1" backdrop. */
-    cursor: pointer;
-    outline: none;
-}
+/* .wss-picker-backdrop's chrome + z-index is declared in the shared backdrop rule in the Popover
+   section (search this file for .wss-popover-backdrop). */
 
 /* While open, the field must sit above its own full-screen backdrop — otherwise clicking into an
    input / the clear button hits the backdrop and closes the dropdown. (When JS is available the
@@ -3606,7 +3608,7 @@
     border: 1px solid var(--wss-color-border);
     outline: none;
     appearance: none;
-    transition: border-color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+    transition: border-color 0.3s var(--wss-ease-standard);
 }
 
 /* No addon: the input owns the rounded start. */

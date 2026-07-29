@@ -26,6 +26,26 @@ export function fits(space, size, gap, margin) {
     return space >= size + (gap || 0) + (margin || 0);
 }
 
+// Flips `el` above `anchorRect` when there's no room below it (and there IS room above) — the
+// vertical open-upward decision + top/bottom style writes shared by wss-select.js's placeDropdown
+// and this module's own placePanel, which duplicated this verbatim aside from variable names.
+// `anchorRect` is the trigger/wrapper's own getBoundingClientRect(), already computed by both
+// callers for their other positioning math (z-stacking, horizontal clamp); `size` is `el`'s own
+// offsetHeight. Only ever called once the caller's own JS is already running -- when JS is
+// unavailable, neither call site runs at all, so the CSS default (below) is what's already
+// painted, same as before this was factored out.
+export function applyVerticalFlip(el, anchorRect, size, gap) {
+    const roomBelow = window.innerHeight - anchorRect.bottom;
+    const roomAbove = anchorRect.top;
+    if (!fits(roomBelow, size, gap, 0) && fits(roomAbove, size, gap, 0)) {
+        el.style.top = 'auto';
+        el.style.bottom = `calc(100% + ${gap}px)`;
+    } else {
+        el.style.bottom = 'auto';
+        el.style.top = `calc(100% + ${gap}px)`;
+    }
+}
+
 // Assigns the next open-order z-index (see nextZ) to `el` and, if its previous sibling carries
 // `backdropClass`, stacks that backdrop just below it. The one computation site every
 // backdrop-guarded overlay in this module (and wss-select.js's placeDropdown) repeats. Returns the
@@ -305,15 +325,7 @@ export function placePanel(wrapper, panel, backdropClass, gap) {
     const w = wrapper.getBoundingClientRect();
     const ph = panel.offsetHeight;
     const pw = panel.offsetWidth;
-    const roomBelow = window.innerHeight - w.bottom;
-    const roomAbove = w.top;
-    if (!fits(roomBelow, ph, gap, 0) && fits(roomAbove, ph, gap, 0)) {
-        panel.style.top = 'auto';
-        panel.style.bottom = `calc(100% + ${gap}px)`;
-    } else {
-        panel.style.bottom = 'auto';
-        panel.style.top = `calc(100% + ${gap}px)`;
-    }
+    applyVerticalFlip(panel, w, ph, gap);
 
     // Shift left just enough to stay inside the right viewport edge (8px margin), never past the
     // wrapper's own distance from the left edge — a fully off-screen field stays panel-left-aligned.

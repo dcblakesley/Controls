@@ -3,7 +3,7 @@
 // dropdown above the control when there's no room below, and tames the search input's native
 // key defaults (which C# handlers can't do — Blazor has no per-key preventDefault).
 // No third-party or Ant Design dependency.
-import { fits, stackWithBackdrop, clearZ, wireDismissOnFocusOut } from './wss-overlay.js';
+import { applyVerticalFlip, stackWithBackdrop, clearZ, wireDismissOnFocusOut } from './wss-overlay.js';
 export { clearZ };
 
 export function scrollActiveIntoView(container, index, itemSize) {
@@ -47,15 +47,7 @@ export function placeDropdown(wrapper, dropdown, gap) {
     const w = wrapper.getBoundingClientRect();
     const dropdownHeight = dropdown.offsetHeight;
     const dropdownWidth = dropdown.offsetWidth;
-    const roomBelow = window.innerHeight - w.bottom;
-    const roomAbove = w.top;
-    if (!fits(roomBelow, dropdownHeight, gap, 0) && fits(roomAbove, dropdownHeight, gap, 0)) {
-        dropdown.style.top = 'auto';
-        dropdown.style.bottom = `calc(100% + ${gap}px)`;
-    } else {
-        dropdown.style.bottom = 'auto';
-        dropdown.style.top = `calc(100% + ${gap}px)`;
-    }
+    applyVerticalFlip(dropdown, w, dropdownHeight, gap);
 
     // Horizontal clamp: the dropdown normally hangs from the wrapper's left edge (CSS `left: 0`).
     // A dropdown wider than its trigger (long option labels, or the pill variant's content-driven

@@ -8,6 +8,12 @@
        in this file must reuse this token so an unset --color-primary renders one consistent color
        instead of each usage picking its own literal fallback. */
     --edit-color-primary: var(--color-primary, #0066cc);
+    /* Border bridge, same fallback AntD uses (#d9d9d9) -- mirrors wss-controls.css's
+       --wss-color-border (:root there). Not a derived state (hover/shadow/focus): a static bridge
+       constant is fine at :root per the theming contract. NOTE: .edit-theme (below) re-declares this
+       same property name with the same fallback -- that scoped declaration wins for any descendant
+       of .edit-theme, so this :root definition only supplies the unthemed default. */
+    --edit-color-border: var(--border-color, #d9d9d9);
     /* --edit-focus-ring is deliberately NOT declared here: a var() inside a custom property is
        substituted once, where the property is declared, so defining it at :root as
        var(--edit-color-primary) would freeze that lookup at :root and ignore a consumer's scoped
@@ -20,6 +26,19 @@
        the cursor can't cover the bubble. */
     --edit-tooltip-gap: 24px;
     --edit-tooltip-gap-tight: 3px;
+    /* Mirrors --wss-shadow (wss-controls.css :root) -- same three-layer AntD popover/dropdown
+       shadow recipe, same ordering, kept as a separate per-file constant since edit-controls.css and
+       wss-controls.css load independently. */
+    --edit-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    /* Mirrors --wss-ease-standard (wss-controls.css :root) -- AntD's standard motion easing curve.
+       Static constant, safe at :root per the theming contract (not a derived hover/shadow/focus
+       state). */
+    --edit-ease-standard: cubic-bezier(0.645, 0.045, 0.355, 1);
+    /* The antd checkbox check-glyph vector (16-unit viewBox), applied as a mask in both the checked
+       and (cleared, via mask:none) indeterminate states below. Mirrors --wss-checkbox-check-svg in
+       wss-controls.css -- same literal, but declared per-file since the two stylesheets load
+       independently and a consumer may link only one. */
+    --edit-checkbox-check-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E");
 }
 
 /* Visually hidden but available to screen readers (sr-only). Clip-based hiding (not an offscreen
@@ -181,7 +200,7 @@
     inset: 0;
     /* #d9d9d9 (not the library-wide #ccc fallback) — the styled checkbox is pixel-matched to the
        antd checkbox spec, whose default colorBorder is #d9d9d9. */
-    border: 1px solid var(--border-color, #d9d9d9);
+    border: 1px solid var(--edit-color-border);
     border-radius: 4px;
     /* Bridged to the consumer theme like every other color in this block — a hardcoded #fff would
        give dark-theme consumers a fixed white box with no override hook. */
@@ -202,9 +221,11 @@
     content: "";
     position: absolute;
     inset: -1px;
-    background: #fff;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    /* Bridged like every other color here -- a hardcoded #fff would give a dark-theme consumer's
+       primary-colored box a fixed white check even when its own foreground token says otherwise. */
+    background: var(--color-on-primary, #fff);
+    -webkit-mask: var(--edit-checkbox-check-svg) center / 100% 100% no-repeat;
+    mask: var(--edit-checkbox-check-svg) center / 100% 100% no-repeat;
 }
 
 /* :indeterminate is a real CSS pseudo-class that reflects the DOM property EditBool sets via JS
@@ -375,22 +396,29 @@
     cursor: not-allowed;
 }
 
-.edit-radio-button {
+/* Shared plain-button chrome with .edit-file-select-btn (EditFile section, further down) -- both
+   render a 32px AntD-recipe button; only shape/spacing differs, kept in each selector's own rule
+   (this file's .edit-radio-button rule right below; .edit-file-select-btn's rule further down). */
+.edit-radio-button,
+.edit-file-select-btn {
     position: relative;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
     height: 32px;
     padding: 0 15px;
-    margin-inline-start: -1px;
     font-size: 14px;
     line-height: 30px;
     color: var(--color-text, rgba(0, 0, 0, 0.88));
     background: var(--color-bg, #fff);
-    border: 1px solid var(--border-color, #d9d9d9);
+    border: 1px solid var(--edit-color-border);
     cursor: pointer;
     user-select: none;
     transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+.edit-radio-button {
+    justify-content: center;
+    margin-inline-start: -1px;
 }
 
 /* First/last buttons get the group's outer corners; the rest stay square so the row reads as one
@@ -445,7 +473,7 @@
 .edit-radio-button-group-solid .edit-radio-button-input:disabled:checked + .edit-radio-button {
     background: var(--color-bg-disabled, #f5f5f5);
     color: var(--color-text-disabled, rgba(0, 0, 0, 0.25));
-    border-color: var(--border-color, #d9d9d9);
+    border-color: var(--edit-color-border);
 }
 
 /* Size="Small"/"Large" -- button-group-specific dimensions matching antd's Radio.Group size
@@ -693,7 +721,7 @@
     z-index: var(--edit-tooltip-z-index, 10000); /* Ensure it appears above other content */
     width: max-content; /* Adjust width based on content */
     max-width: min(400px, 85vw); /* Prevent too wide popover */
-    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--edit-shadow);
     transition: opacity 0.15s ease, translate 0.15s ease, display 0.15s allow-discrete;
 }
 
@@ -1057,24 +1085,13 @@
 
 /* Variant="Button" -- a compact plain button (Ant Design's plain Upload, vs. the dashed Dragger
    card above). Same invisible-InputFile-overlay technique as the drop zone: the input is the real,
-   focusable, click-catching element stretched over the whole button; everything else is inert. */
+   focusable, click-catching element stretched over the whole button; everything else is inert.
+   Shared chrome (position/height/padding/font/color/bg/border/cursor/user-select/transition) lives
+   on the grouped .edit-radio-button, .edit-file-select-btn rule in the EditRadio section above. */
 .edit-file-select-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
     gap: 8px;
     width: fit-content;
-    height: 32px;
-    padding: 0 15px;
-    font-size: 14px;
-    line-height: 30px;
-    color: var(--color-text, rgba(0, 0, 0, 0.88));
-    background: var(--color-bg, #fff);
-    border: 1px solid var(--border-color, #d9d9d9);
     border-radius: 6px;
-    cursor: pointer;
-    user-select: none;
-    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 
 .edit-file-select-btn:hover {
@@ -1205,7 +1222,7 @@
     background: var(--color-bg, #fff);
     border: 1px solid var(--edit-color-border);
     border-radius: var(--edit-radius);
-    transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+    transition: all 0.3s var(--edit-ease-standard);
 }
 
 /* Hover. :not(:disabled) mirrors wss-select-selector's own disabled guard -- a disabled control's
