@@ -41,6 +41,33 @@ public partial class FormLabel
     /// </summary>
     [Parameter] public bool IsForLabelable { get; set; } = true;
 
+    /// <summary>
+    /// Optional content rendered <em>inside</em> the <c>&lt;label&gt;</c>, before the required star and
+    /// the label text — for a control whose input must nest within its own label
+    /// (<c>&lt;label&gt;&lt;input type="checkbox"&gt; Text&lt;/label&gt;</c>, the checkbox row shape).
+    /// That nesting is the only reason <see cref="EditBool"/> couldn't use this component, which left it
+    /// re-implementing the label text, description, tooltip and visually-hidden fallback inline — and
+    /// silently omitting the required star. When <see cref="IsLabelHidden"/> is set the content renders
+    /// as a <em>sibling</em> immediately after the visually-hidden label instead: nesting it inside an
+    /// <c>.edit-sr-only</c> label would visually hide the very control the label names. Ignored by the
+    /// <see cref="IsLegend"/> branch (a fieldset's inputs are the legend's siblings, never its
+    /// children). Unset for every other caller, and then renders nothing at all.
+    /// </summary>
+    [Parameter] public RenderFragment? NestedInput { get; set; }
+
+    /// <summary>
+    /// Replaces — not appends to — the default <c>edit-label</c> class on the rendered
+    /// <c>&lt;label&gt;</c>. <see cref="EditBool"/>'s checkbox mode needs the checkbox-row layout class
+    /// (<c>edit-checkbox-label</c>, a flex row) and must <em>not</em> also carry <c>edit-label</c>,
+    /// which consumers commonly style as a block-level field label. Ignored by the
+    /// <see cref="IsLegend"/> branch, and by the <see cref="IsLabelHidden"/> branch (which must keep
+    /// <c>edit-sr-only</c>). Defaults to <c>edit-label</c>.
+    /// </summary>
+    [Parameter] public string? LabelClass { get; set; }
+
+    /// <summary> <see cref="LabelClass"/> with its <c>edit-label</c> default applied. </summary>
+    string EffectiveLabelClass => LabelClass ?? "edit-label";
+
     // Resolved once per parameter-change cycle; the razor binds to these instead of calling the
     // helpers on every render path (the legend + label branches in FormLabel.razor evaluate
     // DisplayLabel/DisplayDescription twice otherwise).

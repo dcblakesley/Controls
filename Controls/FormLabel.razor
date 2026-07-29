@@ -9,6 +9,10 @@
     else
     {
         <label class="edit-sr-only" for=@(IsForLabelable ? Id : null) id="lbl-@Id">@DisplayLabel()</label>
+        @* NestedInput deliberately renders OUTSIDE this label, not within it: the label is
+           visually hidden, so a control nested inside it would be hidden too. Renders nothing
+           for every caller that doesn't supply it. *@
+        @NestedInput
     }
 }
 else
@@ -37,7 +41,10 @@ else
     {
         <!-- Typical Label. `for` only when the paired element is labelable — in read-only mode the
              value is a div, and label[for] must reference a labelable element. -->
-		<label class="edit-label" for=@(IsForLabelable ? Id : null) id="lbl-@Id">
+		<label class=@EffectiveLabelClass for=@(IsForLabelable ? Id : null) id="lbl-@Id">
+			@* Any input that has to live inside its own label (the checkbox row EditBool renders)
+			   goes first, so the star + text read after it. Renders nothing when unsupplied. *@
+			@NestedInput
 			@if (_isRequired && !IsStarHidden)
 			{
 				<span class="edit-label-required-star" aria-hidden="true">*</span>

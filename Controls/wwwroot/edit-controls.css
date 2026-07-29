@@ -148,6 +148,11 @@
     align-items: center;
     gap: 8px;
 }
+.edit-checkbox-label > .edit-label-required-star {
+    /* The label's own flex gap already spaces the star from the text -- the star's
+       margin-inline-end (sized for non-flex .edit-label rows) would double it to 16px. */
+    margin-inline-end: 0;
+}
 
 /* Now that the label is a flex container, a plain <input> direct child would pick up any
    consumer-defined `input { flex: ... }` reset (a common app-level default so text inputs fill a

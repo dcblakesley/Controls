@@ -75,9 +75,6 @@ public partial class EditBool : EditControlBase<bool>
 
     [Inject] IJSRuntime JS { get; set; } = default!;
 
-    string _displayLabel = string.Empty;
-    string? _displayDescription;
-
     IJSObjectReference? _jsModule;
     // false (not null) is the "nothing applied yet" baseline -- a freshly-mounted native checkbox is
     // never indeterminate, so the overwhelmingly common case (Indeterminate left at its false default)
@@ -86,10 +83,10 @@ public partial class EditBool : EditControlBase<bool>
     // checkbox in every form, so skipping the no-op call here matters far more than there.
     bool _lastIndeterminate;
     bool? _lastUseStyledCheckbox;
-    // Tracks ShouldHideLabel for the same reason as _lastUseStyledCheckbox: EditBool.razor renders
-    // the checkbox fragment from two structurally different branches depending on this (wrapped
-    // inside the visible <label> vs. a sibling of a visually-hidden one), so a runtime flip remounts
-    // a fresh <input> (indeterminate == false) even though the fragment reference didn't change.
+    // Tracks ShouldHideLabel for the same reason as _lastUseStyledCheckbox: FormLabel renders the
+    // NestedInput fragment from two structurally different branches depending on this (nested inside
+    // the visible <label> vs. a sibling of the visually-hidden one), so a runtime flip remounts a
+    // fresh <input> (indeterminate == false) even though the fragment reference didn't change.
     bool? _lastShouldHideLabel;
     bool _disposed;
 
@@ -100,27 +97,11 @@ public partial class EditBool : EditControlBase<bool>
             $"{nameof(EditBool)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
     }
 
-    protected override void OnParametersSet()
-    {
-        base.OnParametersSet();
-        // Resolved per parameter change (not per render — DisplayDescription used to be evaluated
-        // twice each render) so a dynamic Label (localization switch, runtime text) is reflected;
-        // resolving only at init froze the first value forever. No-op until InitState has run.
-        if (_attributes is not null)
-        {
-            _displayLabel = Label ?? _attributes.GetLabelText(FieldIdentifier);
-            _displayDescription = Description ?? _attributes.Description();
-        }
-    }
-
     // Checkboxes don't bind via string parsing — the value is set directly through CurrentValue
     // by HandleCheckboxChange below. This matches Microsoft's InputCheckbox behavior.
     protected override bool TryParseValueFromString(string? value, out bool result, out string validationErrorMessage)
         => throw new NotSupportedException(
             $"This component does not parse string inputs. Bind to the '{nameof(CurrentValue)}' property, not '{nameof(CurrentValueAsString)}'.");
-
-    string DisplayLabel() => _displayLabel;
-    string? DisplayDescription() => _displayDescription;
 
     // bool default is false. The base ShouldShowComponent already knows CurrentValue is non-null
     // here (bool is a value type), so this override only needs to flag "false == default".
@@ -137,17 +118,17 @@ public partial class EditBool : EditControlBase<bool>
     }
 
     // True while an actual <input type="checkbox"> is in the DOM (either fragment) — mirrors the
-    // @if conditions in EditBool.razor that gate CheckboxFragment/StyledCheckboxFragment.
+    // @if in EditBool.razor that gates the FormLabel carrying CheckboxFragment/StyledCheckboxFragment.
     bool CheckboxRendered => ShouldShowComponent() && (ShowEditor || RenderAsCheckboxWhenReadOnly);
 
     // indeterminate is a DOM property with no HTML attribute, so it can only be set from JS. Runs
     // after a render only when the mixed state actually changed (skipping a JS round-trip per
     // render), and re-applies whenever the checkbox itself was just (re)created — either because it
     // wasn't rendered at all last pass (ShouldShowComponent/ShowEditor toggled), because the
-    // styled/unstyled fragment swapped, or because ShouldHideLabel flipped (EditBool.razor renders
-    // the same fragment from a structurally different branch in that case) — a fresh <input> comes
-    // back with indeterminate == false in all three cases. Degrades to a plain checkbox with no JS
-    // runtime (server prerender, tests) — mirrors Table.OnAfterRenderAsync's identical
+    // styled/unstyled fragment swapped, or because ShouldHideLabel flipped (FormLabel renders the
+    // same NestedInput fragment from a structurally different branch in that case) — a fresh <input>
+    // comes back with indeterminate == false in all three cases. Degrades to a plain checkbox with
+    // no JS runtime (server prerender, tests) — mirrors Table.OnAfterRenderAsync's identical
     // mirror-and-best-effort pattern.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -205,6 +186,16 @@ public partial class EditBool : EditControlBase<bool>
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
+        // Blazor treats IAsyncDisposable and IDisposable as mutually exclusive: when a component
+        // implements IAsyncDisposable the renderer awaits DisposeAsync and never calls
+        // IDisposable.Dispose. So InputBase's explicitly-implemented IDisposable.Dispose — which
+        // unsubscribes its EditContext.OnValidationStateChanged handler and calls the Dispose(bool)
+        // override that drops this control's field registration (see EditControlBase.Dispose) — only
+        // runs if this method invokes it. Every other scalar control gets it for free; EditBool needs
+        // the JS-module cleanup below, so it has to chain the synchronous half by hand. The cast is
+        // required: InputBase implements the interface explicitly (`void IDisposable.Dispose()`), so
+        // there is no public Dispose() to call.
+        ((IDisposable)this).Dispose();
         if (_jsModule is not null)
         {
             try

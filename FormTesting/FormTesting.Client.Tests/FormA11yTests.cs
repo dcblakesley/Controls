@@ -66,9 +66,9 @@ public class FormA11yTests : BunitContext
             b.CloseComponent();
         }));
 
-        // EditBool's edit branch renders its own <label> (not FormLabel), so its hidden-label path used
-        // to emit a bare checkbox with no accessible name. It now renders a visually-hidden label bound
-        // to the checkbox by id — matching the FormLabel path every other control uses.
+        // EditBool's hidden-label path once emitted a bare checkbox with no accessible name; it now
+        // renders a visually-hidden label bound to the checkbox by id. The label markup comes from
+        // FormLabel (via its NestedInput slot) like every other control.
         var srLabel = cut.Find("label.edit-sr-only");
         Assert.Equal("IsActive", srLabel.GetAttribute("for"));
         Assert.Contains("Is Active", srLabel.TextContent);

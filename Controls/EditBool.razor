@@ -7,29 +7,24 @@
 
         @if (ShowEditor || RenderAsCheckboxWhenReadOnly)
         {
-            @* Editable (or opt-in legacy read-only) — render the checkbox *@
-            @if (!ShouldHideLabel)
-            {
-                <label class=@(EffectiveUseStyledCheckbox ? "edit-checkbox-label edit-checkbox-label-styled" : "edit-checkbox-label") for=@_id>
-                    @(EffectiveUseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
-                    @DisplayLabel()
-                    <LabelTooltip Id=@_id Tooltip=@Tooltip Attributes=@_attributes/>
-                </label>
-                @if (DisplayDescription() != null)
-                {
-                    <p class="edit-label-description" id="desc-@_id">
-                        @DisplayDescription()
-                    </p>
-                }
-            }
-            else
-            {
-                @* A hidden label still needs an accessible name — associate a visually-hidden label
-                   with the checkbox (mirrors FormLabel's IsLabelHidden path) instead of shipping an
-                   unnamed control that a screen reader announces as just "checkbox". *@
-                <label class="edit-sr-only" for=@_id>@DisplayLabel()</label>
-                @(EffectiveUseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment)
-            }
+            @* Editable (or opt-in legacy read-only) — render the checkbox. A checkbox label has to wrap
+               its own input, so the checkbox goes through FormLabel's NestedInput slot rather than
+               sitting beside a FormLabel like every other control's input does. Everything else —
+               label text, required star, description, tooltip, and the visually-hidden-label fallback
+               when the label is hidden — is then FormLabel's, resolved identically to every other
+               control. This branch used to re-implement all of it inline and silently omitted the
+               required star, so a required checkbox announced aria-required with nothing visible to
+               match it. *@
+            <FormLabel Id=@_id
+                       FieldIdentifier=@_fieldIdentifier
+                       Attributes=@_attributes
+                       Label=@Label
+                       IsRequired=@IsRequiredResolved
+                       Description=@Description
+                       Tooltip=@Tooltip
+                       IsLabelHidden=@ShouldHideLabel
+                       LabelClass=@(EffectiveUseStyledCheckbox ? "edit-checkbox-label edit-checkbox-label-styled" : "edit-checkbox-label")
+                       NestedInput=@(EffectiveUseStyledCheckbox ? StyledCheckboxFragment : CheckboxFragment) />
         }
         else
         {
