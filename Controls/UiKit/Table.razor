@@ -499,7 +499,9 @@
     Column<TItem>? _sortColumn;
     SortDirection _sortDirection = SortDirection.None;
     ElementReference _selectAllRef;
-    IJSObjectReference? _jsModule;
+    // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
+    // (a null return, which reads the same as the import throwing did).
+    readonly JsModule _jsModule = new("wss-table.js");
 
     string SizeName => Size.ToString().ToLowerInvariant();
 
@@ -1026,42 +1028,26 @@
         }
         var some = _someSelected;
         if (_lastIndeterminate == some) return;
+        // Null = no JS runtime / module (server prerender, tests), or disposed while the import was in
+        // flight (the holder cleaned up its own late-arriving reference). Either way the mirror stays
+        // unset, so a later render retries, and the header checkbox just shows checked/unchecked.
+        var module = await _jsModule.GetAsync(JS, FormDefaults);
+        if (module is null) return;
         try
         {
-            _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-table.js"));
-            if (_disposed)
-            {
-                // Disposed while the import was in flight — DisposeAsync already ran with a null
-                // module, so this reference is ours to clean up.
-                try { await _jsModule.DisposeAsync(); } catch { }
-                _jsModule = null;
-                return;
-            }
-            await _jsModule.InvokeVoidAsync("setIndeterminate", _selectAllRef, some);
+            await module.InvokeVoidAsync("setIndeterminate", _selectAllRef, some);
             _lastIndeterminate = some;
         }
         catch
         {
-            // No JS runtime / module — the header checkbox just shows checked/unchecked.
+            // Element gone / circuit dropped mid-call — same fallback, same retry.
         }
     }
 
     public async ValueTask DisposeAsync()
     {
         _disposed = true;
-        if (_jsModule is not null)
-        {
-            try
-            {
-                await _jsModule.DisposeAsync();
-            }
-            catch
-            {
-                // Circuit may already be gone; nothing to clean up.
-            }
-            _jsModule = null;
-        }
+        await _jsModule.DisposeAsync();
     }
 
     async Task ToggleRow(TItem item, bool on)

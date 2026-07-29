@@ -131,7 +131,7 @@
         try
         {
             var module = await EnsureModuleAsync();
-            if (module is null) return; // disposed while the import was in flight
+            if (module is null) return; // no JS (prerender/tests), or disposed while the import was in flight
             await module.InvokeVoidAsync("focusDeferred", _okButtonRef);
         }
         catch { /* not focusable yet (prerender/tests) */ }

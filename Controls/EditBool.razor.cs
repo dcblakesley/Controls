@@ -75,7 +75,9 @@ public partial class EditBool : EditControlBase<bool>
 
     [Inject] IJSRuntime JS { get; set; } = default!;
 
-    IJSObjectReference? _jsModule;
+    // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
+    // (a null return, which reads the same as the import throwing did).
+    readonly JsModule _jsModule = new("wss-checkbox.js");
     // false (not null) is the "nothing applied yet" baseline -- a freshly-mounted native checkbox is
     // never indeterminate, so the overwhelmingly common case (Indeterminate left at its false default)
     // never pays a JS round-trip at all. Table's identical mirror starts at null instead because its
@@ -162,24 +164,19 @@ public partial class EditBool : EditControlBase<bool>
         }
 
         if (_lastIndeterminate == Indeterminate) return;
+        // Null = no JS runtime / module (server prerender, tests), or disposed while the import was in
+        // flight (the holder cleaned up its own late-arriving reference). Either way the mirror stays
+        // unset, so a later render retries, and the checkbox just shows checked/unchecked.
+        var module = await _jsModule.GetAsync(JS, FormDefaults);
+        if (module is null) return;
         try
         {
-            _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-checkbox.js"));
-            if (_disposed)
-            {
-                // Disposed while the import was in flight — DisposeAsync already ran with a null
-                // module, so this reference is ours to clean up.
-                try { await _jsModule.DisposeAsync(); } catch { }
-                _jsModule = null;
-                return;
-            }
-            await _jsModule.InvokeVoidAsync("setIndeterminate", _id, Indeterminate);
+            await module.InvokeVoidAsync("setIndeterminate", _id, Indeterminate);
             _lastIndeterminate = Indeterminate;
         }
         catch
         {
-            // No JS runtime / module — the checkbox just shows checked/unchecked.
+            // Element gone / circuit dropped mid-call — same fallback, same retry.
         }
     }
 
@@ -196,17 +193,6 @@ public partial class EditBool : EditControlBase<bool>
         // required: InputBase implements the interface explicitly (`void IDisposable.Dispose()`), so
         // there is no public Dispose() to call.
         ((IDisposable)this).Dispose();
-        if (_jsModule is not null)
-        {
-            try
-            {
-                await _jsModule.DisposeAsync();
-            }
-            catch
-            {
-                // Circuit may already be gone; nothing to clean up.
-            }
-            _jsModule = null;
-        }
+        await _jsModule.DisposeAsync();
     }
 }

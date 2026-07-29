@@ -318,7 +318,7 @@ public partial class DateRangePicker : PickerBase
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     // ----- State ------------------------------------------------------------
-    // Shared JS-interop/overlay-lifecycle state (_wrapperRef, _panelRef, _module, _pickerModule,
+    // Shared JS-interop/overlay-lifecycle state (_wrapperRef, _panelRef, the two JsModule holders,
     // _open, _positioned, _disposed, _inputsWired, _openZIndex, _focusDay, _pendingFocusDate,
     // _pendingInputFocus, _suppressOpenOnFocus) lives on PickerBase.
 
@@ -1637,7 +1637,7 @@ public partial class DateRangePicker : PickerBase
     }
 
     // ----- PickerBase hooks (JS-interop + overlay lifecycle) ------------------
-    // GetModuleAsync/GetPickerNavModuleAsync, the OnAfterRenderAsync template, and DisposeAsync all
+    // The JsModule holders, the OnAfterRenderAsync template, and DisposeAsync all
     // live on PickerBase -- these three hooks are this control's only customization of that shared
     // template (two inputs to wire, two grids to init, whichever of start/end is active to reclaim
     // focus onto).

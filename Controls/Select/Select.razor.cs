@@ -24,7 +24,9 @@ public partial class Select<TValue> : IAsyncDisposable
     [Inject] IJSRuntime JS { get; set; } = default!;
     [CascadingParameter] FormDefaults? FormDefaults { get; set; }
 
-    IJSObjectReference? _jsModule;
+    // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
+    // (a null return, which every call site below reads as "take the no-JS path").
+    readonly JsModule _jsModule = new("wss-select.js");
     ElementReference _inputRef;
     ElementReference _dropdownRef;
     ElementReference _wrapperRef;
@@ -39,9 +41,6 @@ public partial class Select<TValue> : IAsyncDisposable
     // clobbering the value JS wrote to the DOM (see WidthStyle). Set once per open (placeDropdown fires
     // once, guarded by _dropdownPositioned) and cleared on every close path.
     int? _openZIndex;
-    // Set first thing in DisposeAsync so an import that completes after disposal disposes its module
-    // instead of stranding it on a dead instance (see GetJsModuleAsync).
-    bool _disposed;
     bool _inputWired;
     SelectMode _wiredMode;
     bool _focused;
@@ -939,39 +938,13 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    // Imports the RCL-local JS module once and hands it back, re-checking _disposed after the awaited
-    // import so a dispose that raced an in-flight import disposes-and-nulls the reference here instead of
-    // stranding it on a dead instance (DisposeAsync saw _jsModule still null). Returns null when the
-    // component is disposed or JS is unavailable (server prerender, unit tests) — every caller then takes
-    // the same no-JS degrade path it had when it caught the import failure itself.
-    async Task<IJSObjectReference?> GetJsModuleAsync()
-    {
-        if (_disposed) return null;
-        try
-        {
-            _jsModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-select.js"));
-        }
-        catch
-        {
-            return null; // no JS runtime / module (prerender, tests)
-        }
-        if (_disposed)
-        {
-            try { await _jsModule.DisposeAsync(); } catch { }
-            _jsModule = null;
-            return null;
-        }
-        return _jsModule;
-    }
-
     // Keeps the keyboard-highlighted row visible in the virtualized dropdown.
     // Uses a tiny RCL-local JS module; degrades to a no-op when JS isn't available
     // (e.g. server prerender or unit tests).
     async Task ScrollActiveIntoViewAsync()
     {
         if (_activeIndex < 0) return;
-        var module = await GetJsModuleAsync();
+        var module = await _jsModule.GetAsync(JS, FormDefaults);
         if (module is null) return;
         try
         {
@@ -995,7 +968,7 @@ public partial class Select<TValue> : IAsyncDisposable
         {
             _inputWired = true;
             _wiredMode = Mode;
-            var module = await GetJsModuleAsync();
+            var module = await _jsModule.GetAsync(JS, FormDefaults);
             if (module is not null)
             {
                 try
@@ -1012,7 +985,7 @@ public partial class Select<TValue> : IAsyncDisposable
 
         if (_open && !_dropdownPositioned)
         {
-            var module = await GetJsModuleAsync();
+            var module = await _jsModule.GetAsync(JS, FormDefaults);
             if (module is not null)
             {
                 try
@@ -1047,8 +1020,9 @@ public partial class Select<TValue> : IAsyncDisposable
             try
             {
                 // Drop the open-order z-index — the wrapper persists in the page, and a stale
-                // high z would poke through later overlays' masks.
-                if (_jsModule is not null) await _jsModule.InvokeVoidAsync("clearZ", _wrapperRef);
+                // high z would poke through later overlays' masks. Current, not GetAsync: nothing was
+                // ever assigned if the module never imported, so there is nothing to clear.
+                if (_jsModule.Current is { } module) await module.InvokeVoidAsync("clearZ", _wrapperRef);
             }
             catch
             {
@@ -1059,23 +1033,10 @@ public partial class Select<TValue> : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        // Set first: an import in flight (GetJsModuleAsync) re-checks this after its await and disposes
-        // its own late-assigned module rather than stranding it on this dead instance.
-        _disposed = true;
         _debounceCts?.Cancel();
         _debounceCts?.Dispose();
-
-        if (_jsModule is not null)
-        {
-            try
-            {
-                await _jsModule.DisposeAsync();
-            }
-            catch
-            {
-                // Circuit may already be gone; nothing to clean up.
-            }
-            _jsModule = null;
-        }
+        // The holder flips itself closed first, so an import in flight disposes its own late-arriving
+        // module rather than stranding it on this dead instance.
+        await _jsModule.DisposeAsync();
     }
 }

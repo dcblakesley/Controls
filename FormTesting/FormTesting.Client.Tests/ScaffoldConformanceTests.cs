@@ -50,8 +50,8 @@ namespace FormTesting.Client.Tests;
 public class ScaffoldConformanceTests : BunitContext
 {
     // Several controls under test (DatePicker, the Select engine) import a JS module during their own
-    // first render (wrapped in try/catch and gracefully degrading -- see Select.razor.cs's
-    // GetJsModuleAsync remarks) — Loose tolerates that unconfigured invocation the same way the other
+    // first render (wrapped in try/catch and gracefully degrading -- see the JsModule helper's
+    // remarks) — Loose tolerates that unconfigured invocation the same way the other
     // mixed-control test files in this project do (DatePickerTests, EditDateRangeModelAttributeTests).
     public ScaffoldConformanceTests() => JSInterop.Mode = JSRuntimeMode.Loose;
 

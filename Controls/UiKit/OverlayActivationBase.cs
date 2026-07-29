@@ -21,7 +21,9 @@ public abstract class OverlayActivationBase : ComponentBase, IAsyncDisposable
     [CascadingParameter] protected FormDefaults? FormDefaults { get; set; }
 
     protected ElementReference _panelRef;
-    IJSObjectReference? _module;
+    // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
+    // (a null return, which reads the same as the import throwing did).
+    readonly JsModule _module = new("wss-overlay.js");
     IJSObjectReference? _focusHandle;
     bool _active;
     bool _disposed;
@@ -48,17 +50,13 @@ public abstract class OverlayActivationBase : ComponentBase, IAsyncDisposable
             var seq = ++_activationSeq;
             try
             {
-                _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-                if (_disposed)
-                {
-                    // Disposed while the import itself was in flight — DisposeAsync already ran with a null
-                    // module, so this reference is ours to clean up (it would otherwise strand for the
-                    // circuit's life). The seq/!IsVisible checks below cover the later activateModal handle.
-                    try { await _module.DisposeAsync(); } catch { }
-                    _module = null;
-                    return;
-                }
-                var handle = await _module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
+                // Null = no JS at all (prerender/tests), or disposed while the import itself was in
+                // flight — in which case the holder already cleaned up its own late-arriving reference
+                // (it would otherwise strand for the circuit's life). Either way there is nothing to
+                // activate; the seq/!IsVisible checks below cover the later activateModal handle.
+                var module = await _module.GetAsync(JS, FormDefaults);
+                if (module is null) return;
+                var handle = await module.InvokeAsync<IJSObjectReference>("activateModal", _panelRef);
                 // Disposed (or closed/reopened) while activateModal was in flight? DisposeAsync already
                 // ran — storing this handle would orphan it, leaking the body-scroll lock + document
                 // listeners for the circuit's life. Release it here instead.
@@ -92,19 +90,16 @@ public abstract class OverlayActivationBase : ComponentBase, IAsyncDisposable
 
     /// <summary>
     /// Releases the JS module and any active focus-trap handle. Sets <see cref="_disposed"/> first so
-    /// an import racing this call disposes its own late-assigned module instead of stranding it on
-    /// this dead instance. Virtual so a subclass with its own disposable state can extend it (neither
-    /// current subclass needs to).
+    /// an in-flight <c>activateModal</c> releases its handle rather than storing it; the module holder
+    /// flips itself closed for the same reason (an import racing this call disposes its own
+    /// late-arriving module instead of stranding it on this dead instance). Virtual so a subclass with
+    /// its own disposable state can extend it (neither current subclass needs to).
     /// </summary>
     public virtual async ValueTask DisposeAsync()
     {
         _disposed = true;
         _activationSeq++; // invalidate any in-flight activation so its handle is released, not stored
         await ReleaseFocusAsync();
-        if (_module is not null)
-        {
-            try { await _module.DisposeAsync(); } catch { }
-            _module = null;
-        }
+        await _module.DisposeAsync();
     }
 }

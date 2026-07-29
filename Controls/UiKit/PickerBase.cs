@@ -26,12 +26,16 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
 
     protected ElementReference _wrapperRef;
     protected ElementReference _panelRef;
-    protected IJSObjectReference? _module;
-    protected IJSObjectReference? _pickerModule;
+    // wss-overlay.js (panel placement / z-index) and wss-picker.js (grid keyboard nav) -- two holders,
+    // because a consumer that never drives the grid(s) by keyboard shouldn't pay for the second import.
+    // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
+    // (null return) that every call site below reads as "take the CSS/no-JS fallback".
+    readonly JsModule _module = new("wss-overlay.js");
+    readonly JsModule _pickerModule = new("wss-picker.js");
     protected bool _open;
     protected bool _positioned;
-    // Set first thing in DisposeAsync so an import that completes after disposal disposes its
-    // module instead of stranding it on a dead instance (see GetModuleAsync).
+    // Set first thing in DisposeAsync, as the instance-is-dead signal for a subclass DisposeAsync
+    // override. The module-import race this used to gate is now JsModule's own business.
     protected bool _disposed;
     // One-time input-wiring guard (initPicker) -- the input(s) are always rendered (not inside an
     // @if), so once is enough regardless of open state.
@@ -260,55 +264,10 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     static bool TryParseTimePartValue(ChangeEventArgs e, out int value) =>
         int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
 
-    // ----- JS interop (module lifecycle) --------------------------------------
-
-    // Imports the RCL-local module once, re-checking _disposed after the awaited import so a
-    // dispose that raced an in-flight import cleans up here instead of stranding the reference.
-    // Returns null when disposed or JS is unavailable (prerender, bUnit) — callers no-JS degrade.
-    protected async Task<IJSObjectReference?> GetModuleAsync()
-    {
-        if (_disposed) return null;
-        try
-        {
-            _module ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-        }
-        catch
-        {
-            return null; // no JS runtime / module (prerender, tests)
-        }
-        if (_disposed)
-        {
-            try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _module = null;
-            return null;
-        }
-        return _module;
-    }
-
-    // Same contract as GetModuleAsync, for the separate wss-picker.js module (arrow-key page-scroll
-    // suppression + post-navigation DOM focus). A distinct module so a consumer that never drives the
-    // grid(s) by keyboard doesn't pay for it, and so this stays decoupled from the unrelated overlay code.
-    protected async Task<IJSObjectReference?> GetPickerNavModuleAsync()
-    {
-        if (_disposed) return null;
-        try
-        {
-            _pickerModule ??= await JS.InvokeAsync<IJSObjectReference>(
-                "import", JsModuleUrl.Resolve(FormDefaults, "wss-picker.js"));
-        }
-        catch
-        {
-            return null; // no JS runtime / module (prerender, tests)
-        }
-        if (_disposed)
-        {
-            try { await _pickerModule.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _pickerModule = null;
-            return null;
-        }
-        return _pickerModule;
-    }
+    // ----- Shared render cycle + module lifecycle -----------------------------
+    // Both JS modules are held by the JsModule fields declared at the top of the class: every call
+    // below is `GetAsync` (import-once, null = no JS or disposed → take the fallback) or `Current`
+    // (use it only if it already imported), and DisposeAsync hands both back.
 
     /// <inheritdoc/>
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -317,7 +276,7 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
         if (!_inputsWired)
         {
             _inputsWired = true;
-            var module = await GetModuleAsync();
+            var module = await _module.GetAsync(JS, FormDefaults);
             if (module is not null)
             {
                 try
@@ -334,7 +293,7 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
 
         if (_open && !_positioned)
         {
-            var module = await GetModuleAsync();
+            var module = await _module.GetAsync(JS, FormDefaults);
             if (module is not null)
             {
                 try
@@ -351,7 +310,7 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
                 }
             }
 
-            var navModule = await GetPickerNavModuleAsync();
+            var navModule = await _pickerModule.GetAsync(JS, FormDefaults);
             if (navModule is not null)
             {
                 foreach (var gridRef in GridRefs)
@@ -377,7 +336,9 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
             _openZIndex = null;
             try
             {
-                if (_module is not null) await _module.InvokeVoidAsync("clearZ", _wrapperRef);
+                // Current, not GetAsync: nothing was ever assigned if the module never imported, so
+                // there is nothing to clear and no reason to import one now just to undo it.
+                if (_module.Current is { } overlay) await overlay.InvokeVoidAsync("clearZ", _wrapperRef);
             }
             catch
             {
@@ -402,7 +363,7 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
         if (_open && _pendingFocusDate is { } focusDate)
         {
             _pendingFocusDate = null;
-            var navModule = await GetPickerNavModuleAsync();
+            var navModule = await _pickerModule.GetAsync(JS, FormDefaults);
             if (navModule is not null)
             {
                 try
@@ -421,23 +382,15 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
-    /// Disposes the imported JS modules. Sets <see cref="_disposed"/> first so an import racing this
-    /// call (<see cref="GetModuleAsync"/>/<see cref="GetPickerNavModuleAsync"/>) disposes its own
-    /// late-assigned module instead of stranding it on this dead instance. Virtual so a subclass with
-    /// its own disposable state can extend it (neither current subclass needs to).
+    /// Disposes the imported JS modules — each holder flips itself closed first, so an import racing
+    /// this call disposes its own late-arriving module instead of stranding it on this dead instance.
+    /// Virtual so a subclass with its own disposable state can extend it (neither current subclass
+    /// needs to).
     /// </summary>
     public virtual async ValueTask DisposeAsync()
     {
         _disposed = true;
-        if (_module is not null)
-        {
-            try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _module = null;
-        }
-        if (_pickerModule is not null)
-        {
-            try { await _pickerModule.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _pickerModule = null;
-        }
+        await _module.DisposeAsync();
+        await _pickerModule.DisposeAsync();
     }
 }

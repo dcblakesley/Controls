@@ -93,9 +93,9 @@ public class SelectOpenZIndexTests : BunitContext
     [Fact]
     public void Disposing_an_open_Select_does_not_throw()
     {
-        // Exercises the L12 path: an open dropdown has imported the module; DisposeAsync sets _disposed
-        // and tears the module down. The race (import completing after disposal) isn't observable in
-        // bUnit, but the guarded disposal must not throw.
+        // Exercises the L12 path: an open dropdown has imported the module; DisposeAsync closes the
+        // JsModule holder and tears the module down. The race (import completing after disposal) isn't
+        // observable in bUnit, but the guarded disposal must not throw.
         FakePlaceDropdown(1051);
 
         var cut = Render<Select<string>>(p => p

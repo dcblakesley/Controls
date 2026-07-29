@@ -29,7 +29,9 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
 
     protected ElementReference _triggerRef;
     protected ElementReference _panelRef;
-    protected IJSObjectReference? _module;
+    // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade;
+    // EnsureModuleAsync below is the (subclass-visible) way in.
+    readonly JsModule _module = new("wss-overlay.js");
     protected bool _open;
     protected bool _positioned;
     protected bool _pendingFocus;
@@ -75,23 +77,16 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
     protected abstract Task FocusPanelAsync();
 
     /// <summary>
-    /// Lazily imports <c>wss-overlay.js</c> into <see cref="_module"/> and hands back the reference to
-    /// invoke on. Returns <c>null</c> when this component was disposed while the import was in flight:
-    /// <see cref="DisposeAsync"/> already ran against a null module, so the late-arriving reference is
-    /// ours to clean up (done here) and the caller must bail out rather than invoke into a dead
-    /// circuit. Every import site — this base's <c>syncTrigger</c>/<c>place</c> calls and a subclass's
-    /// <see cref="FocusPanelAsync"/> — must go through here so none of them can strand a module.
-    /// Throws when there is no JS runtime at all (prerender/unit tests); callers keep their own
-    /// graceful-degradation <c>catch</c>.
+    /// Lazily imports <c>wss-overlay.js</c> and hands back the reference to invoke on. Returns
+    /// <c>null</c> when there is no JS runtime at all (prerender/unit tests) — callers take their own
+    /// no-JS fallback — and when this component was disposed while the import was in flight: the
+    /// holder cleaned up that late-arriving reference itself, and the caller must not invoke into a
+    /// dead circuit. Every import site — this base's <c>syncTrigger</c>/<c>place</c> calls and a
+    /// subclass's <see cref="FocusPanelAsync"/> — goes through here, so none of them can strand a
+    /// module. Callers keep their own graceful-degradation <c>catch</c> for the <c>Invoke*</c> calls
+    /// that follow.
     /// </summary>
-    protected async Task<IJSObjectReference?> EnsureModuleAsync()
-    {
-        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", JsModuleUrl.Resolve(FormDefaults, "wss-overlay.js"));
-        if (!_disposed) return _module;
-        try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-        _module = null;
-        return null;
-    }
+    protected ValueTask<IJSObjectReference?> EnsureModuleAsync() => _module.GetAsync(JS, FormDefaults);
 
     // Single choke point for every open/close, internal or externally-driven: applies _open (the one
     // source of truth OnAfterRenderAsync's JS placement/focus logic reacts to, regardless of who
@@ -138,9 +133,12 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
             try
             {
                 var module = await EnsureModuleAsync();
-                if (module is null) return; // disposed while the import was in flight
-                await module.InvokeVoidAsync("syncTrigger", _triggerRef, _open, TriggerDisabled);
-                _lastSyncedTrigger = pair; // cache only on success, so a no-JS render retries next time
+                if (_disposed) return; // disposed while the import was in flight
+                if (module is not null)
+                {
+                    await module.InvokeVoidAsync("syncTrigger", _triggerRef, _open, TriggerDisabled);
+                    _lastSyncedTrigger = pair; // cache only on success, so a no-JS render retries next time
+                }
             }
             catch { /* no JS — a button child still toggles via its bubbled click; plain content is mouse-only */ }
         }
@@ -154,9 +152,13 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
             string? resolved = null;
             try
             {
+                // A null module (no JS, or disposed mid-import) leaves `resolved` null, which the
+                // guard below and the CSS default placement already handle — same as a throw.
                 var module = await EnsureModuleAsync();
-                if (module is null) return; // disposed while the import was in flight
-                resolved = await module.InvokeAsync<string>("place", _triggerRef, _panelRef, PanelClassPrefix, PlacementName, 10, 8);
+                if (module is not null)
+                {
+                    resolved = await module.InvokeAsync<string>("place", _triggerRef, _panelRef, PanelClassPrefix, PlacementName, 10, 8);
+                }
             }
             catch
             {
@@ -187,7 +189,9 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
             // Restore focus to the real trigger (the interactive child, or the promoted wrapper).
             try
             {
-                if (_module is not null) await _module.InvokeVoidAsync("focusTrigger", _triggerRef);
+                // Current, not EnsureModuleAsync: if the module never imported there is no JS to
+                // restore focus with, and importing one here just to close would be backwards.
+                if (_module.Current is { } overlay) await overlay.InvokeVoidAsync("focusTrigger", _triggerRef);
                 else await _triggerRef.FocusAsync();
             }
             catch { /* no JS / element gone */ }
@@ -197,10 +201,6 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
     public virtual async ValueTask DisposeAsync()
     {
         _disposed = true;
-        if (_module is not null)
-        {
-            try { await _module.DisposeAsync(); } catch { /* circuit may be gone */ }
-            _module = null;
-        }
+        await _module.DisposeAsync();
     }
 }
