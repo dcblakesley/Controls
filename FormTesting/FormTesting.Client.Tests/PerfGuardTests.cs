@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Linq.Expressions;
-using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -17,22 +16,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public sealed class PerfGuardTests : BunitContext
 {
-    // EditForm(editContext) -> CascadingValue<FormOptions> -> inner, matching RequiredResolverTests.
-    IRenderedComponent<ContainerFragment> RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
-        Render(b =>
-        {
-            b.OpenComponent<EditForm>(0);
-            b.AddAttribute(1, "EditContext", editContext);
-            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => formContent =>
-            {
-                formContent.OpenComponent<CascadingValue<FormOptions>>(0);
-                formContent.AddAttribute(1, "Value", formOptions);
-                formContent.AddAttribute(2, "ChildContent", inner);
-                formContent.CloseComponent();
-            }));
-            b.CloseComponent();
-        });
-
     [Fact]
     public void RequiredResolver_is_not_reinvoked_by_validation_state_rerenders()
     {
@@ -49,13 +32,13 @@ public sealed class PerfGuardTests : BunitContext
                 return f.FieldName == nameof(PersonModel.Username);
             },
         };
-        var cut = RenderForm(editContext, formOptions, content =>
+        var cut = Render(RenderForm(editContext, formOptions, content =>
         {
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
             content.CloseComponent();
-        });
+        }));
 
         Assert.NotNull(cut.Find(".edit-label-required-star")); // resolver was consulted on init
         var callsAfterInitialRender = resolverCalls;

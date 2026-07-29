@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
@@ -94,8 +93,7 @@ public class EditSelectSearchE2ETests(AppFixture app, BrowserFixture browser) : 
 
         // Visible AND positioned (not stuck at wss-measuring) proves placeDropdown's JS ran on the
         // externally-driven open, not just that _open flipped.
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
         await Expect(stateDiv).ToHaveTextAsync("Open: True");
 
         // Close externally too -- the round trip back through OpenChanged updates the demo's state div.
@@ -124,8 +122,7 @@ public class EditSelectSearchE2ETests(AppFixture app, BrowserFixture browser) : 
         await select.EvaluateAsync("el => { el.style.position = 'fixed'; el.style.left = (window.innerWidth - 100) + 'px'; el.style.top = '300px'; }");
 
         await select.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         var box = await dropdown.BoundingBoxAsync();
         Assert.NotNull(box);

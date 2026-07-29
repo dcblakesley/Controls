@@ -81,9 +81,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await Field.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await Field.ClickAsync();
-        await Expect(Dropdown).ToBeVisibleAsync();
-        // placePanel reveals the panel (drops wss-measuring) once it has measured and positioned it.
-        await Expect(Dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(Dropdown);
     }
 
     // The in-month day button for a given panel (0 = left, 1 = right) and zero-padded day text.
@@ -124,8 +122,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
         // ~290px panel correctly still fits into). With 80px of room, placePanel must open upward.
         await Field.EvaluateAsync("el => { const r = el.getBoundingClientRect(); window.scrollBy({ top: r.top - (window.innerHeight - 80), behavior: 'instant' }); }");
         await Field.ClickAsync();
-        await Expect(Dropdown).ToBeVisibleAsync();
-        await Expect(Dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(Dropdown);
 
         var f = await Field.BoundingBoxAsync();
         var p = await Dropdown.BoundingBoxAsync();
@@ -347,8 +344,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await MonthField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await MonthField.ClickAsync();
-        await Expect(MonthDropdown).ToBeVisibleAsync();
-        await Expect(MonthDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(MonthDropdown);
     }
 
     [Fact]
@@ -381,8 +377,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await YearField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await YearField.ClickAsync();
-        await Expect(YearDropdown).ToBeVisibleAsync();
-        await Expect(YearDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(YearDropdown);
     }
 
     [Fact]
@@ -416,8 +411,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await WeekField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await WeekField.ClickAsync();
-        await Expect(WeekDropdown).ToBeVisibleAsync();
-        await Expect(WeekDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(WeekDropdown);
     }
 
     // The in-panel day button for a given panel (0 = left/Feb, 1 = right/Mar) and ISO date --
@@ -479,8 +473,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await QuarterField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await QuarterField.ClickAsync();
-        await Expect(QuarterDropdown).ToBeVisibleAsync();
-        await Expect(QuarterDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(QuarterDropdown);
     }
 
     [Fact]
@@ -517,8 +510,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await DateTimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await DateTimeField.ClickAsync();
-        await Expect(DateTimeDropdown).ToBeVisibleAsync();
-        await Expect(DateTimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(DateTimeDropdown);
     }
 
     [Fact]
@@ -570,8 +562,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await TimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await TimeField.ClickAsync();
-        await Expect(TimeDropdown).ToBeVisibleAsync();
-        await Expect(TimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(TimeDropdown);
     }
 
     [Fact]
@@ -615,8 +606,7 @@ public class DateRangePickerE2ETests : IAsyncLifetime
     {
         await DisabledField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await DisabledField.ClickAsync();
-        await Expect(DisabledDropdown).ToBeVisibleAsync();
-        await Expect(DisabledDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(DisabledDropdown);
     }
 
     [Fact]

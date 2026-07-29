@@ -27,8 +27,7 @@ public class EditDateE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         var dropdown = section.Locator(".wss-picker-dropdown");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         await dropdown.Locator("[data-date='2026-02-20']").ClickAsync();
 
@@ -91,8 +90,7 @@ public class EditDateE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         var dropdown = picker.Locator(".wss-picker-dropdown");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         // Pinned model value is 09:30:15 -- change the hour so the commit is observable.
         await dropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("14");
@@ -120,8 +118,7 @@ public class EditDateE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         var dropdown = picker.Locator(".wss-picker-dropdown");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         await dropdown.Locator("[data-date='2026-05-01']").ClickAsync();
 
@@ -146,8 +143,7 @@ public class EditDateE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         var dropdown = picker.Locator(".wss-picker-dropdown");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         // Click a different day in the SAME week (Feb 11, Wednesday) so the commit is observably
         // the week START (Feb 8), not the clicked day.
@@ -177,8 +173,7 @@ public class EditDateE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         await Expect(input).ToHaveValueAsync("2:30 PM");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         await dropdown.Locator("select[aria-label='AM/PM']").SelectOptionAsync("AM");
 

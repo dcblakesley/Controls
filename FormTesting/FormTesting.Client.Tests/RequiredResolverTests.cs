@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -14,23 +13,6 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class RequiredResolverTests : BunitContext
 {
-    // EditForm(editContext) -> CascadingValue<FormOptions> -> inner. No DataAnnotationsValidator:
-    // these tests exercise the validator-agnostic paths.
-    IRenderedComponent<ContainerFragment> RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
-        Render(b =>
-        {
-            b.OpenComponent<EditForm>(0);
-            b.AddAttribute(1, "EditContext", editContext);
-            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => formContent =>
-            {
-                formContent.OpenComponent<CascadingValue<FormOptions>>(0);
-                formContent.AddAttribute(1, "Value", formOptions);
-                formContent.AddAttribute(2, "ChildContent", inner);
-                formContent.CloseComponent();
-            }));
-            b.CloseComponent();
-        });
-
     [Fact]
     public void RequiredResolver_shows_star_and_aria_required_without_the_attribute()
     {
@@ -43,13 +25,13 @@ public class RequiredResolverTests : BunitContext
         {
             RequiredResolver = f => f.FieldName == nameof(PersonModel.Username),
         };
-        var cut = RenderForm(editContext, formOptions, content =>
+        var cut = Render(RenderForm(editContext, formOptions, content =>
         {
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
             content.CloseComponent();
-        });
+        }));
 
         var input = cut.Find("input.edit-string-input");
         Assert.Equal("true", input.GetAttribute("aria-required"));
@@ -111,13 +93,13 @@ public class RequiredResolverTests : BunitContext
         var editContext = new EditContext(model);
         Expression<Func<string>> field = () => model.Username;
         var formOptions = new FormOptions { RequiredResolver = _ => false };
-        var cut = RenderForm(editContext, formOptions, content =>
+        var cut = Render(RenderForm(editContext, formOptions, content =>
         {
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
             content.CloseComponent();
-        });
+        }));
 
         Assert.False(cut.Find("input.edit-string-input").HasAttribute("aria-required"));
         Assert.Empty(cut.FindAll(".edit-label-required-star"));
@@ -131,14 +113,14 @@ public class RequiredResolverTests : BunitContext
         var model = new PersonModel { Name = "Alice" }; // Name has [Required]
         var editContext = new EditContext(model);
         Expression<Func<string>> field = () => model.Name;
-        var cut = RenderForm(editContext, new FormOptions(), content =>
+        var cut = Render(RenderForm(editContext, new FormOptions(), content =>
         {
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Name);
             content.AddAttribute(2, "ValueExpression", field);
             content.AddAttribute(4, "IsRequired", false);
             content.CloseComponent();
-        });
+        }));
 
         Assert.False(cut.Find("input.edit-string-input").HasAttribute("aria-required"));
         Assert.Empty(cut.FindAll(".edit-label-required-star"));
@@ -155,13 +137,13 @@ public class RequiredResolverTests : BunitContext
         var editContext = new EditContext(model);
         var store = new ValidationMessageStore(editContext);
         Expression<Func<string>> field = () => model.Username;
-        var cut = RenderForm(editContext, new FormOptions(), content =>
+        var cut = Render(RenderForm(editContext, new FormOptions(), content =>
         {
             content.OpenComponent<EditString>(0);
             content.AddAttribute(1, "Value", model.Username);
             content.AddAttribute(2, "ValueExpression", field);
             content.CloseComponent();
-        });
+        }));
 
         const string fvStyleMessage = "'Username' must not be empty.";
         cut.InvokeAsync(() =>

@@ -130,4 +130,43 @@ internal static class FormRenderHelpers
         }));
         builder.CloseComponent();
     };
+
+    // EditContext-based analog of WithForm, for tests that need a live EditContext handle (e.g. to
+    // call NotifyValidationStateChanged directly) rather than binding through a model:
+    // EditForm(editContext) -> CascadingValue<FormOptions> -> inner. Consolidates what used to be
+    // byte-identical private `RenderForm` helpers in RequiredResolverTests and PerfGuardTests.
+    public static RenderFragment RenderForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
+        builder =>
+        {
+            builder.OpenComponent<EditForm>(0);
+            builder.AddAttribute(1, "EditContext", editContext);
+            builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => formContent =>
+            {
+                formContent.OpenComponent<CascadingValue<FormOptions>>(0);
+                formContent.AddAttribute(1, "Value", formOptions);
+                formContent.AddAttribute(2, "ChildContent", inner);
+                formContent.CloseComponent();
+            }));
+            builder.CloseComponent();
+        };
+
+    // ValidationStateTests' variant: adds a DataAnnotationsValidator ahead of the CascadingValue so
+    // controls register their fields AND editContext.Validate() actually populates messages.
+    // EditForm(editContext) -> DataAnnotationsValidator + CascadingValue<FormOptions> -> inner.
+    public static RenderFragment RenderValidatedForm(EditContext editContext, FormOptions formOptions, RenderFragment inner) =>
+        builder =>
+        {
+            builder.OpenComponent<EditForm>(0);
+            builder.AddAttribute(1, "EditContext", editContext);
+            builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => formContent =>
+            {
+                formContent.OpenComponent<DataAnnotationsValidator>(0);
+                formContent.CloseComponent();
+                formContent.OpenComponent<CascadingValue<FormOptions>>(1);
+                formContent.AddAttribute(2, "Value", formOptions);
+                formContent.AddAttribute(3, "ChildContent", inner);
+                formContent.CloseComponent();
+            }));
+            builder.CloseComponent();
+        };
 }

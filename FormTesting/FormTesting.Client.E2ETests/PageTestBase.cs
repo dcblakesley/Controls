@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
@@ -82,6 +83,26 @@ public abstract class PageTestBase : IAsyncLifetime
             Type = ScreenshotType.Png,
         });
         VisualRegression.Assert(bytes, $"{GetType().Name}-{name}");
+    }
+
+    /// <summary>
+    /// Waits for a JS-positioned overlay panel (a wss-picker/wss-select dropdown, a popover/popconfirm
+    /// panel, etc.) to be both visible AND fully positioned. The JS placement modules apply a
+    /// "wss-measuring" class while they measure the panel and compute its placement, dropping it only
+    /// once positioning is done -- asserting visibility alone can observe the panel mid-measurement, so
+    /// every open needs both checks. Consolidates the pair that used to be copy-pasted at every open
+    /// site across the picker/select/uikit e2e suites.
+    /// </summary>
+    /// <remarks>
+    /// <c>protected internal</c> rather than <c>protected</c>: <see cref="DatePickerE2ETests"/>,
+    /// <see cref="DateRangePickerE2ETests"/>, and <see cref="UiKitGalleryE2ETests"/> build their own
+    /// <see cref="IAsyncLifetime"/> harness directly against <c>IPage</c> instead of subclassing this
+    /// base, so they need same-assembly (not just derived-type) access.
+    /// </remarks>
+    protected internal static async Task WaitForOpenAndPositionedAsync(ILocator panel)
+    {
+        await Expect(panel).ToBeVisibleAsync();
+        await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
     }
 }
 

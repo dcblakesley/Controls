@@ -30,26 +30,6 @@ public class EditBoolLabelTests : BunitContext
         public bool Optional { get; set; }
     }
 
-    // EditForm(model) -> [CascadingValue<FormOptions>] -> children.
-    static RenderFragment WithForm(object model, FormOptions? formOptions, RenderFragment inner) => builder =>
-    {
-        builder.OpenComponent<EditForm>(0);
-        builder.AddAttribute(1, "Model", model);
-        builder.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
-        {
-            if (formOptions is null)
-            {
-                inner(content);
-                return;
-            }
-            content.OpenComponent<CascadingValue<FormOptions>>(0);
-            content.AddAttribute(1, "Value", formOptions);
-            content.AddAttribute(2, "ChildContent", inner);
-            content.CloseComponent();
-        }));
-        builder.CloseComponent();
-    };
-
     static RenderFragment Bool(Expression<Func<bool>> field, bool value,
         params (string Name, object Value)[] extras) => b =>
     {

@@ -80,8 +80,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await Field.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await Field.ClickAsync();
-        await Expect(Dropdown).ToBeVisibleAsync();
-        await Expect(Dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(Dropdown);
     }
 
     ILocator Day(string dayText) =>
@@ -255,8 +254,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await MonthField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await MonthField.ClickAsync();
-        await Expect(MonthDropdown).ToBeVisibleAsync();
-        await Expect(MonthDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(MonthDropdown);
     }
 
     [Fact]
@@ -310,8 +308,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await YearField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await YearField.ClickAsync();
-        await Expect(YearDropdown).ToBeVisibleAsync();
-        await Expect(YearDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(YearDropdown);
     }
 
     [Fact]
@@ -348,8 +345,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await TimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await TimeField.ClickAsync();
-        await Expect(TimeDropdown).ToBeVisibleAsync();
-        await Expect(TimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(TimeDropdown);
     }
 
     [Fact]
@@ -381,8 +377,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await DateTimeField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await DateTimeField.ClickAsync();
-        await Expect(DateTimeDropdown).ToBeVisibleAsync();
-        await Expect(DateTimeDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(DateTimeDropdown);
     }
 
     ILocator DateTimeDay(string dayText) =>
@@ -422,8 +417,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await WeekField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await WeekField.ClickAsync();
-        await Expect(WeekDropdown).ToBeVisibleAsync();
-        await Expect(WeekDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(WeekDropdown);
     }
 
     [Fact]
@@ -459,8 +453,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await PresetsField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await PresetsField.ClickAsync();
-        await Expect(PresetsDropdown).ToBeVisibleAsync();
-        await Expect(PresetsDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(PresetsDropdown);
     }
 
     [Fact]
@@ -504,8 +497,7 @@ public class DatePickerE2ETests : IAsyncLifetime
     {
         await TwelveHourField.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
         await TwelveHourField.ClickAsync();
-        await Expect(TwelveHourDropdown).ToBeVisibleAsync();
-        await Expect(TwelveHourDropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(TwelveHourDropdown);
     }
 
     [Fact]

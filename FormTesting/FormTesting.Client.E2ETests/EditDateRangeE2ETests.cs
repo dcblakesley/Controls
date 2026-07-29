@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Controls.Demo;
 
 namespace FormTesting.Client.E2ETests;
@@ -29,8 +28,7 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Dem
         var dropdown = section.Locator(".wss-picker-dropdown");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         await dropdown.Locator("[data-date='2026-02-05']").ClickAsync(); // first click: pending start
         await Expect(dropdown).ToBeVisibleAsync(); // still open -- a range pick needs a second click
@@ -59,8 +57,7 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Dem
         var dropdown = editable.Locator(".wss-picker-dropdown");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         // Deliberately NOT "Q1 2026" here even though the task spec named it: the demo's initial
         // PresetStart/PresetEnd (2026-01-01 -> 2026-03-31) already equal that preset's own range, so
@@ -122,8 +119,7 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Dem
         var dropdown = section.Locator(".wss-picker-dropdown");
 
         await field.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         await dropdown.Locator("[data-date='2026-03-01']").ClickAsync(); // first click: pending start
         await Expect(dropdown).ToBeVisibleAsync(); // still open -- a range pick needs a second click
@@ -154,8 +150,7 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Dem
         // sibling; EditDateRange forwards straight through to the same UI-kit control). Exercise
         // the START side first, focusing it directly so the session opens with it active.
         await startInput.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         await dropdown.Locator("[data-date='2026-02-12']").ClickAsync();
         await dropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("10"); // 10 AM -- within Start's own AM period
@@ -169,8 +164,7 @@ public class EditDateRangeE2ETests(AppFixture app, BrowserFixture browser) : Dem
 
         // ...then the END side, proving the commit reaches BOTH bound fields independently.
         await endInput.ClickAsync();
-        await Expect(dropdown).ToBeVisibleAsync();
-        await Expect(dropdown).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await WaitForOpenAndPositionedAsync(dropdown);
 
         await dropdown.Locator("[data-date='2026-02-25']").ClickAsync();
         await dropdown.Locator("select[aria-label='Hour']").SelectOptionAsync("15"); // 3 PM -- within End's own PM period

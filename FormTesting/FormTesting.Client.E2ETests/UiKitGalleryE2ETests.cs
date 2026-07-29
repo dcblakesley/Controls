@@ -924,8 +924,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         // from this externally-driven path, fixed by routing the focus call through
         // wss-overlay.js's focusDeferred instead of a direct FocusAsync() (see its doc comment).
         // Popover's equivalent _panelRef.FocusAsync() below was never affected by the second issue.
-        await Expect(panel).ToBeVisibleAsync();
-        await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(panel);
         await Expect(panel.Locator(".wss-dialog-btn-primary")).ToBeFocusedAsync();
 
         // Toggle again (still the same external button; the popup's own full-viewport backdrop would
@@ -951,8 +950,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await toggle.DispatchEventAsync("click"); // close
         await toggle.DispatchEventAsync("click"); // reopen, with no settling time in between
 
-        await Expect(panel).ToBeVisibleAsync();
-        await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(panel);
         await Expect(panel.Locator(".wss-dialog-btn-primary")).ToBeFocusedAsync();
 
         await toggle.DispatchEventAsync("click");
@@ -969,8 +967,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await Expect(panel).ToHaveCountAsync(0);
         await section.Locator("[data-test-id=controlled-popover-toggle]").ClickAsync();
 
-        await Expect(panel).ToBeVisibleAsync();
-        await Expect(panel).Not.ToHaveClassAsync(new Regex("wss-measuring"));
+        await PageTestBase.WaitForOpenAndPositionedAsync(panel);
         await Expect(panel).ToBeFocusedAsync();
 
         // The popup's own full-viewport backdrop would intercept a real coordinate-based click on
