@@ -239,7 +239,7 @@
    (default border/bg) with a centered 8x8 primary square, not a filled box with a dash. */
 .edit-checkbox-input-styled:indeterminate + .edit-checkbox-box {
     background: var(--color-bg, #fff);
-    border-color: var(--border-color, #d9d9d9);
+    border-color: var(--edit-color-border);
 }
 
 .edit-checkbox-input-styled:indeterminate + .edit-checkbox-box::after {
@@ -357,7 +357,11 @@
 }
 .edit-radio-other-input {
     padding: 0.25rem 0.5rem;
-    border: 1px solid var(--border-color, #ccc);
+    /* Consumes the dedicated border token (see :root ~16 / .edit-theme ~1196) instead of bypassing
+       it with an ad-hoc bridge -- was var(--border-color, #ccc); the unthemed fallback is now
+       #d9d9d9 (the token's own fallback, and the value this file's border comment at ~206-207
+       calls correct) rather than the stray #ccc this rule alone used. */
+    border: 1px solid var(--edit-color-border);
     border-radius: 4px;
     min-width: 150px;
 }
@@ -950,8 +954,13 @@
     align-items: center;
     padding: 36px 16px 16px 16px;
     gap: 16px;
-    background: #f3f3f3;
-    border: 1px dashed #b7b7b7;
+    /* Bridged to the generic tokens like every other color in this file (was a bare literal with
+       no override hook) -- same --color-page-background bridge .edit-file-item:hover uses just
+       below, and the raw --border-color bridge (not the --edit-color-border knob, whose own
+       fallback #d9d9d9 differs from this dashed border's #b7b7b7) so an unthemed consumer's
+       rendering stays byte-identical. */
+    background: var(--color-page-background, #f3f3f3);
+    border: 1px dashed var(--border-color, #b7b7b7);
     border-radius: 4px;
     height: 146px;
     cursor: pointer;
@@ -1001,13 +1010,16 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    color: rgba(28, 28, 28, 1);
+    /* Bridged to the generic text token (was a bare rgba literal) -- the exact literal stays as the
+       fallback so an unthemed consumer's rendering is unchanged. */
+    color: var(--color-text, rgba(28, 28, 28, 1));
     text-align: center;
     pointer-events: none;
 }
 
 .edit-file-formats {
-    color: rgba(0, 0, 0, 0.65);
+    /* Same bridge as .edit-file-size / .bound-value below -- secondary/muted text. */
+    color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
     font-size: 0.85em;
 }
 
@@ -1323,14 +1335,18 @@
 
 /* Sizes. :not(.edit-affix-input) so the redundant size class a host also puts on the naked inner
    editor in affix mode (Size maps to the editor's class in BOTH modes) is a no-op there -- sizing
-   the box is the wrapper's job in affix mode. */
-.edit-theme .edit-input-sm:not(.edit-affix-input),
+   the box is the wrapper's job in affix mode. The extra :not([type="checkbox"]) matches the base
+   chrome rule's shape above (~1217) so this ties its specificity (0,4,0) instead of losing to it
+   (0,3,0) -- without it, Size="Small"/"Large" was a no-op for legacy-mode editors here, since the
+   tie only resolves in this rule's favor via source order (it must stay declared after the base
+   rule). Same technique the .invalid:focus rule already documents further up (~1265-1269). */
+.edit-theme .edit-input-sm:not(.edit-affix-input):not([type="checkbox"]),
 .edit-theme .edit-input-affix-wrapper.edit-input-sm {
     min-height: var(--edit-control-height-sm);
     padding: 0 7px;
 }
 
-.edit-theme .edit-input-lg:not(.edit-affix-input),
+.edit-theme .edit-input-lg:not(.edit-affix-input):not([type="checkbox"]),
 .edit-theme .edit-input-affix-wrapper.edit-input-lg {
     min-height: var(--edit-control-height-lg);
     font-size: var(--edit-font-size-lg);

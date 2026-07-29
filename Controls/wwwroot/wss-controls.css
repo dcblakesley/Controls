@@ -126,7 +126,12 @@
  *   - the DrawerPlacement left/right styles implement an explicit physical side
  *     chosen by the consumer (DrawerPlacement.Left means the left edge);
  *   - the Table's text-align: left matches AntD's fixed table alignment;
- *   - the dropdown's `left: 0; min-width: 100%` spans its full-width anchor.
+ *   - the dropdown's `left: 0; min-width: 100%` spans its full-width anchor;
+ *   - the table filter dropdown's `right: 0` (no-JS fallback) mirrors
+ *     wss-overlay.js's repositionFixedBelow, which right-aligns the panel
+ *     under the funnel icon via the trigger's physical
+ *     getBoundingClientRect().right regardless of text direction -- the CSS
+ *     fallback has to agree with that JS-computed position.
  */
 
 /* ============================================================================
@@ -553,11 +558,6 @@
     padding: 0 7px;
 }
 
-.wss-select-sm.wss-select-single .wss-select-selection-search {
-    right: 7px;
-    left: 7px;
-}
-
 .wss-select-sm.wss-select-single .wss-select-selection-search-input {
     height: 22px;
 }
@@ -754,7 +754,8 @@
 
 .wss-alert-with-description {
     align-items: flex-start;
-    padding: 15px 15px 15px 24px;
+    padding-block: 15px;
+    padding-inline: 24px 15px;
 }
 
 /* Alert.Banner: full-width, borderless, square-cornered (AntD's `Alert banner`). */
@@ -766,7 +767,7 @@
 
 .wss-alert-icon {
     display: inline-flex;
-    margin-right: 8px;
+    margin-inline-end: 8px;
     font-size: 16px;
 }
 
@@ -800,13 +801,13 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-left: 8px;
+    margin-inline-start: 8px;
 }
 
 .wss-alert-close {
     display: inline-flex;
     align-items: center;
-    margin-left: 8px;
+    margin-inline-start: 8px;
     padding: 0;
     font-size: 12px;
     color: var(--wss-color-text-secondary);
@@ -816,7 +817,7 @@
 }
 
 .wss-alert-actions .wss-alert-close {
-    margin-left: 0; /* the actions wrapper's own gap already spaces it from the action slot */
+    margin-inline-start: 0; /* the actions wrapper's own gap already spaces it from the action slot */
 }
 
 .wss-alert-close:hover {
@@ -843,7 +844,7 @@
     padding: 0;
     margin: -1px;
     overflow: hidden;
-    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
     white-space: nowrap;
     border: 0;
 }
@@ -1521,7 +1522,7 @@
 .wss-pagination-size-arrow {
     position: absolute;
     top: 50%;
-    right: 8px;
+    inset-inline-end: 8px;
     width: 12px;
     height: 12px;
     margin-top: -6px;
@@ -2006,15 +2007,14 @@
     text-align: center;
 }
 
-.wss-table-checkbox {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--wss-color-primary);
-    cursor: pointer;
-}
-
-/* SelectionMode.Single's radio-semantics selection -- same footprint/theming as the checkbox. */
-.wss-table-radio {
+/* Row-selection checkbox/radio (SelectionMode.Multiple / .Single) and the column filter dropdown's
+   own checkbox/radio list (.wss-table-filter-checkbox/-radio, further down) share this exact
+   footprint -- grouped here instead of restating it four times. flex: none (needed only by the
+   filter pair, which sits in a flex row) stays a small follow-up rule at its own usage site. */
+.wss-table-checkbox,
+.wss-table-radio,
+.wss-table-filter-checkbox,
+.wss-table-filter-radio {
     width: 16px;
     height: 16px;
     accent-color: var(--wss-color-primary);
@@ -2419,13 +2419,12 @@
     background-color: var(--wss-color-bg-hover);
 }
 
+/* The shared width/height/accent-color/cursor footprint is grouped with .wss-table-checkbox/-radio
+   above -- flex: none is specific to this pair, which sits in a flex row (.wss-table-filter-option-
+   label), so it stays here as its own small rule. */
 .wss-table-filter-checkbox,
 .wss-table-filter-radio {
-    width: 16px;
-    height: 16px;
     flex: none;
-    accent-color: var(--wss-color-primary);
-    cursor: pointer;
 }
 
 .wss-table-filter-footer {
@@ -3230,7 +3229,14 @@
     font-size: var(--wss-font-size-sm);
 }
 
-.wss-picker-grid-week .wss-picker-week-row:hover,
+/* :not() out every range/preview class (DateRangePicker's Week mode, below) so the hover doesn't
+   fight them for the background on this same element -- unlike the day grid, where the range tint
+   paints on a separate ::before layer (see .wss-picker-cell-in-range's comment above) and never
+   competes with .wss-picker-day:hover, the week row's own background IS the range/preview tint, so
+   hover has to yield to it explicitly. Same :not()-based state-exclusion technique
+   .wss-picker-day:hover already uses just above for .wss-picker-day-selected. Plain rows (carrying
+   none of these classes, in either DatePicker's or DateRangePicker's Week mode) keep the hover band. */
+.wss-picker-grid-week .wss-picker-week-row:not(.wss-picker-week-row-start):not(.wss-picker-week-row-end):not(.wss-picker-week-row-in-range):not(.wss-picker-week-row-preview-start):not(.wss-picker-week-row-preview-end):not(.wss-picker-week-row-preview):hover,
 .wss-picker-grid-week .wss-picker-week-row-selected {
     background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
 }
@@ -3768,18 +3774,20 @@
     .wss-pagination-prev,
     .wss-pagination-next,
     .wss-dialog-btn,
-    .wss-alert-close,
-    .wss-modal-close,
-    .wss-drawer-close,
-    .wss-notification-close,
     .wss-picker-input,
     .wss-picker-clear,
     .wss-picker-preset,
     .wss-picker-day,
+    .wss-picker-week-row,
     .wss-picker-month-btn,
     .wss-picker-nav,
     .wss-picker-ok,
-    .wss-picker-today-btn {
+    .wss-picker-today-btn,
+    .wss-table-expand-btn svg,
+    .wss-tabs-tab,
+    .wss-search-input,
+    .wss-search-btn,
+    .wss-search-clear {
         transition: none;
     }
 
