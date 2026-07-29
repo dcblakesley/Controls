@@ -279,11 +279,6 @@ public partial class EditDate<T> : EditControlBase<T>
 
     DatePickerMode EffectiveMode => Mode ?? PickerMode;
 
-    // The Time/DateTime portion of EffectiveDateFormat's own defaults below -- see
-    // PickerMath.TimeFormatString for the ShowSeconds/Use12Hours contract (shared with the inner
-    // DatePicker's own identical property, so read-only and edit mode can't disagree).
-    string TimeFormatPart => PickerMath.TimeFormatString(Use12Hours, ShowSeconds);
-
     // The explicit-override surface for the read-only display format: the DateFormat parameter, else
     // the bound property's own [DisplayFormat]. Shared by EffectiveDateFormat (as the layer ahead of
     // the mode-derived default) and GetDisplayValue's Quarter/Week gate below -- an attribute-supplied
@@ -291,26 +286,15 @@ public partial class EditDate<T> : EditControlBase<T>
     // quarter/week shorthand), not silently get ignored in those two modes.
     string? FormatOverride => DateFormat ?? _attributes.FormatString();
 
-    string EffectiveDateFormat => FormatOverride ?? EffectiveMode switch
-    {
-        DatePickerMode.Date => "MM-dd-yyyy",
-        DatePickerMode.Month => "MM-yyyy",
-        DatePickerMode.DateTime => $"MM-dd-yyyy {TimeFormatPart}",
-        DatePickerMode.Time => TimeFormatPart,
-        DatePickerMode.Year => "yyyy",
-        // Quarter/Week have no .NET format token for their own display -- GetDisplayValue below
-        // special-cases them via PickerMath's shared FormatQuarterDisplay/FormatWeekDisplay instead
-        // of ever calling ToString(EffectiveDateFormat) for either. This "yyyy" is never actually
-        // rendered; it only matters if some future caller starts using EffectiveDateFormat directly.
-        DatePickerMode.Quarter => "yyyy",
-        DatePickerMode.Week => "yyyy",
-        _ => "MM-dd-yyyy"
-    };
-
-    // FirstDayOfWeek resolution mirrors DatePicker's own EffectiveFirstDayOfWeek (culture fallback),
-    // computed independently here for GetDisplayValue's Week special case -- there's no picker
-    // instance to ask once the control is in read-only mode (no <DatePicker> renders at all then).
-    DayOfWeek EffectiveFirstDayOfWeek(CultureInfo culture) => FirstDayOfWeek ?? culture.DateTimeFormat.FirstDayOfWeek;
+    // The read-only display format: the override above, else the same per-mode default the inner
+    // DatePicker derives (PickerMath.ModeDisplayFormat -- shared so read-only and edit mode can't
+    // disagree about the Time/DateTime portion), but over this control's own dash-separated bases
+    // rather than the picker's slashed ones. Quarter/Week have no .NET format token for their own
+    // display -- GetDisplayValue below special-cases them via PickerMath.ReadOnlyDisplay's shared
+    // FormatQuarterDisplay/FormatWeekDisplay instead of ever calling ToString(EffectiveDateFormat)
+    // for either, so that helper's "yyyy" for those two is never actually rendered here.
+    string EffectiveDateFormat =>
+        FormatOverride ?? PickerMath.ModeDisplayFormat(EffectiveMode, "MM-dd-yyyy", "MM-yyyy", Use12Hours, ShowSeconds);
 
     protected override void OnInitialized()
     {
@@ -458,31 +442,25 @@ public partial class EditDate<T> : EditControlBase<T>
         // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
         var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
         // Quarter/Week's null-DateFormat display has no .NET format token to route through
-        // ToString(EffectiveDateFormat) below -- reuses PickerMath's own FormatQuarterDisplay/
-        // FormatWeekDisplay (the single source of truth DatePicker's own display routes through too,
-        // not duplicated regex/format logic here) via PickerValue, the same DateTime? bridge the
-        // picker itself would see. An explicit DateFormat still falls through to the verbatim
-        // ToString path, matching the picker's own Format contract.
-        if (FormatOverride is null && PickerValue is { } pv)
-        {
-            if (EffectiveMode == DatePickerMode.Quarter) return PickerMath.FormatQuarterDisplay(pv, culture);
-            if (EffectiveMode == DatePickerMode.Week) return PickerMath.FormatWeekDisplay(pv, culture, EffectiveFirstDayOfWeek(culture));
-        }
-        try
-        {
-            return CurrentValue switch
+        // ToString(EffectiveDateFormat) -- PickerMath.ReadOnlyDisplay (shared with EditDateRange)
+        // special-cases those two through the very FormatQuarterDisplay/FormatWeekDisplay the inner
+        // DatePicker's own display routes through, not duplicated regex/format logic here. The
+        // shorthand value is PickerValue, the same DateTime? bridge the picker itself would see, and
+        // passing null for it (an explicit DateFormat) is what falls through to the verbatim ToString
+        // path below, matching the picker's own Format contract. FirstDayOfWeek is resolved against
+        // `culture` inside the helper -- there's no picker instance to ask once this control is in
+        // read-only mode (no <DatePicker> renders at all then).
+        return PickerMath.ReadOnlyDisplay(EffectiveMode, FormatOverride is null ? PickerValue : null, culture,
+            FirstDayOfWeek,
+            () => CurrentValue switch
             {
                 DateTime dt => dt.ToString(EffectiveDateFormat, culture),
                 DateTimeOffset dto => dto.ToString(EffectiveDateFormat, culture),
                 DateOnly d => d.ToString(EffectiveDateFormat, culture),
                 TimeOnly t => t.ToString(EffectiveDateFormat, culture),
                 _ => string.Empty
-            };
-        }
-        catch (FormatException)
-        {
-            return CurrentValue?.ToString() ?? string.Empty;
-        }
+            },
+            () => CurrentValue?.ToString() ?? string.Empty);
     }
 
     // default(DateTime)/default(DateTimeOffset)/default(DateOnly)/default(TimeOnly) count as

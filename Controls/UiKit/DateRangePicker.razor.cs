@@ -380,8 +380,11 @@ public partial class DateRangePicker : PickerBase
     /// day-granularity cell disabling) via this switch's default arm, differing only in the markup
     /// (a week-number rows layout instead of the flat grid — see <see cref="ShowWeekRows"/>) and the
     /// commit granularity (a day click resolves to its WEEK START before reaching
-    /// <see cref="OnUnitClickAsync"/> — see <see cref="OnWeekDayClickAsync"/>).</summary>
-    DatePickerMode EffectiveMode => Mode switch
+    /// <see cref="OnUnitClickAsync"/> — see <see cref="OnWeekDayClickAsync"/>). It is also
+    /// <see cref="PickerBase.EffectiveMode"/>, the hook the shared display/parse layer
+    /// (<see cref="PickerBase.FormatDate"/>/<see cref="PickerBase.TryParseDate"/>) keys off — which is
+    /// exactly what this fold already drove for that code before it moved to the base.</summary>
+    internal override DatePickerMode EffectiveMode => Mode switch
     {
         DatePickerMode.DateTime or DatePickerMode.Time => DatePickerMode.Date,
         _ => Mode,
@@ -420,33 +423,19 @@ public partial class DateRangePicker : PickerBase
         }
     }
 
+    // PickerBase's "was Format explicitly set" hook -- what gates Quarter's/Week's shorthand
+    // display/parse (see PickerBase.FormatDate/TryParseDate).
+    internal override string? ExplicitFormat => Format;
+
     // Format/Placeholder resolution: an explicit value always wins; null falls through to Mode's
-    // default -- same per-mode defaults DatePicker's own EffectiveFormat uses (Quarter's bland
-    // "yyyy" included; see DatePicker.EffectiveFormat's doc comment for why). All internal
-    // display/parse code routes through this (never the raw Format parameter). Switches on the raw
-    // Mode (not EffectiveMode) so DateTime/Time get their own time-aware format instead of
+    // default -- the same PickerMath.ModeDisplayFormat defaults DatePicker's own EffectiveFormat uses
+    // (Quarter's and Week's bland "yyyy" included; see that helper's doc comment for why). All
+    // internal display/parse code routes through this (never the raw Format parameter). Keys off the
+    // raw Mode (not EffectiveMode) so DateTime/Time get their own time-aware format instead of
     // EffectiveMode's Date fold's plain "MM/dd/yyyy" -- every other arm is unaffected, since
     // EffectiveMode only ever differs from Mode for those two.
-    string EffectiveFormat => Format ?? Mode switch
-    {
-        DatePickerMode.Month => "MM/yyyy",
-        DatePickerMode.Year => "yyyy",
-        DatePickerMode.Quarter => "yyyy",
-        // Bland placeholder value, same rationale as Quarter's: no .NET format token renders a week
-        // number, so FormatDate/TryParseDate bypass ToString(EffectiveFormat) for Week entirely (see
-        // their own Week special cases below) -- this only matters as TryParseDate's exact-format
-        // fallback attempt, tried after the "yyyy-Www" shorthand.
-        DatePickerMode.Week => "yyyy",
-        // Mirrors DatePicker.EffectiveFormat's own DateTime/Time defaults exactly (same
-        // TimeFormatString helper, shared via PickerMath).
-        DatePickerMode.DateTime => $"MM/dd/yyyy {TimeFormatString}",
-        DatePickerMode.Time => TimeFormatString,
-        _ => "MM/dd/yyyy",
-    };
-
-    // The Time/DateTime portion of EffectiveFormat -- see PickerMath.TimeFormatString for the
-    // ShowSeconds/Use12Hours contract (shared with DatePicker's own identical property).
-    string TimeFormatString => PickerMath.TimeFormatString(Use12Hours, ShowSeconds);
+    internal override string EffectiveFormat =>
+        Format ?? PickerMath.ModeDisplayFormat(Mode, "MM/dd/yyyy", "MM/yyyy", Use12Hours, ShowSeconds);
 
     string DefaultPlaceholder => EffectiveFormat.ToUpperInvariant();
 
@@ -676,8 +665,8 @@ public partial class DateRangePicker : PickerBase
     // actually selected).
     (int From, int To) YearRange(int displayedYear) => PickerMath.YearRange(displayedYear, Min, Max);
 
-    DayOfWeek EffectiveFirstDayOfWeek =>
-        FirstDayOfWeek ?? PickerCulture.DateTimeFormat.FirstDayOfWeek;
+    internal override DayOfWeek EffectiveFirstDayOfWeek =>
+        PickerMath.FirstDayOfWeekOrCulture(FirstDayOfWeek, PickerCulture);
 
     // The weekday header row -- see PickerMath.WeekdayHeaders for the full contract (CLDR/narrow-form
     // note included).
@@ -707,74 +696,35 @@ public partial class DateRangePicker : PickerBase
     // DatePicker.WeekNumberOf.
     int WeekNumberOf(DateTime weekStart) => PickerMath.WeekNumberOf(weekStart, PickerCulture, EffectiveFirstDayOfWeek);
 
-    // Quarter mode's null-Format display: no .NET format token renders a quarter number, so this
-    // bypasses ToString(EffectiveFormat) entirely for that one case -- mirrors DatePicker.FormatDate.
-    // Week mode's null-Format display bypasses it the same way -- no .NET token for a week number
-    // either.
-    string FormatDate(DateTime? value)
-    {
-        if (value is not { } v) return string.Empty;
-        if (EffectiveMode == DatePickerMode.Quarter && Format is null)
-        {
-            return PickerMath.FormatQuarterDisplay(v, PickerCulture);
-        }
-        if (EffectiveMode == DatePickerMode.Week && Format is null)
-        {
-            return PickerMath.FormatWeekDisplay(v, PickerCulture, EffectiveFirstDayOfWeek);
-        }
-        return v.ToString(EffectiveFormat, PickerCulture);
-    }
+    // FormatDate (Quarter's/Week's hand-rolled displays included) and TryParseDate (their inverse
+    // shorthands included) live on PickerBase, over the EffectiveMode/ExplicitFormat/EffectiveFormat/
+    // EffectiveFirstDayOfWeek/NormalizeForMode hooks this class supplies -- they were character-
+    // identical to DatePicker's own apart from which mode each keys off (EffectiveMode's Date fold
+    // here, the raw Mode there).
 
-    // Exact effective format first, then the current culture's general parse -- then normalizes the
-    // parsed result to Mode's own granularity (mirrors SetRangeAsync's normalization so a typed
-    // commit and a click/select commit always land on the same shape of value). Quarter mode (with
-    // Format left null, mirroring FormatDate's special case above) tries the "yyyy-Qn" shorthand
-    // first via PickerMath.TryParseQuarterShorthand -- a plain typed date still falls through to the
-    // general parse below and normalizes to its own quarter, same as every other mode's typed-text
-    // path -- mirrors DatePicker.TryParseDate. Week mode's "yyyy-Www" shorthand
-    // (PickerMath.TryParseWeekShorthand) mirrors that the same way.
-    bool TryParseDate(string text, out DateTime value)
-    {
-        if (EffectiveMode == DatePickerMode.Quarter && Format is null && PickerMath.TryParseQuarterShorthand(text, out value))
-        {
-            return true;
-        }
-        if (EffectiveMode == DatePickerMode.Week && Format is null &&
-            PickerMath.TryParseWeekShorthand(text, PickerCulture, EffectiveFirstDayOfWeek, out value))
-        {
-            return true;
-        }
-        if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out value) ||
-            DateTime.TryParse(text, PickerCulture, DateTimeStyles.None, out value))
-        {
-            value = NormalizeForMode(value);
-            return true;
-        }
-        return false;
-    }
-
-    // Central per-mode normalization, shared by TryParseDate and SetRangeAsync so every commit path
-    // (click, typed text, select change, preset) agrees on the same shape of value. DateTime/Time
+    // Central per-mode normalization, shared by PickerBase.TryParseDate and SetRangeAsync so every
+    // commit path (click, typed text, select change, preset) agrees on the same shape of value. DateTime/Time
     // both route through PickerMath's DateTime-shaped case (preserve date+time, zero the second when
     // !ShowSeconds) rather than its OWN Time case (which re-stamps to the LITERAL current day,
     // discarding whatever date was composed): the per-endpoint date resolution ("this endpoint's
     // existing committed date, or today when unset") already happens at the compose step
-    // (ApplySessionTimePartAsync/TryParseTimePart), mirroring DatePicker's own
+    // (this class's ApplyTimePartAsync override / TryParseTimePart), mirroring DatePicker's own
     // `Value?.Date ?? DateTime.Today` one endpoint at a time -- by the time a value reaches here its
     // date is already correct, so re-stamping it here (as PickerMath's Time case does for the
     // single-Value DatePicker) would discard that per-endpoint resolution instead of preserving it.
-    DateTime NormalizeForMode(DateTime value) => PickerMath.NormalizeForMode(
+    internal override DateTime NormalizeForMode(DateTime value) => PickerMath.NormalizeForMode(
         Mode is DatePickerMode.DateTime or DatePickerMode.Time ? DatePickerMode.DateTime : EffectiveMode,
         EffectiveFirstDayOfWeek, ShowSeconds, value);
 
     // Time mode's typed-text parse: extracts just the time-of-day from the general parse (.NET's own
     // default-date fallback for a bare time string fills in TODAY, which is exactly wrong here -- see
     // the doc comment below) and composes it against `existingValue`'s own date (or today when
-    // null) -- mirrors ApplySessionTimePartAsync's identical existing-date-or-today resolution, but
-    // for a typed commit instead of a time-select change. Unlike DatePicker's own Time mode (which
-    // always re-stamps to the literal current day on every commit, single-Value), each ENDPOINT here
-    // keeps its own date across a typed time-only commit -- see NormalizeForMode's doc comment for
-    // why routing through PickerMath's DateTime case (not its Time case) is what makes that possible.
+    // null) -- mirrors PickerMath.ComposeTimePart's identical existing-date-or-today resolution (which
+    // this class's ApplyTimePartAsync override uses), but for a typed commit instead of a time-select
+    // change. Unlike DatePicker's own Time mode (which always re-stamps to the literal current day on
+    // every commit, single-Value), each ENDPOINT here keeps its own date across a typed time-only
+    // commit -- see NormalizeForMode's doc comment for why routing through PickerMath's DateTime case
+    // (not its Time case) is what makes that possible.
     bool TryParseTimePart(string text, DateTime? existingValue, out DateTime value)
     {
         if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out var parsed) ||
@@ -1568,68 +1518,31 @@ public partial class DateRangePicker : PickerBase
     // never touches an already-committed endpoint still resolves correctly on OK.
     DateTime? ActiveSessionValue => _activeInput == 0 ? (_pendingSessionStart ?? Start) : (_pendingSessionEnd ?? End);
 
-    int SessionDisplayHour => ActiveSessionValue?.Hour ?? 0;
-    int SessionDisplayMinute => ActiveSessionValue?.Minute ?? 0;
-    int SessionDisplaySecond => ActiveSessionValue?.Second ?? 0;
-    bool SessionDisplayIsPM => SessionDisplayHour >= 12;
-
-    // HourStep/MinuteStep/SecondStep clamped to >= 1 at the point of use (never thrown) -- mirrors
-    // DatePicker.EffectiveHourStep/EffectiveMinuteStep/EffectiveSecondStep.
-    int EffectiveHourStep => Math.Max(1, HourStep);
-    int EffectiveMinuteStep => Math.Max(1, MinuteStep);
-    int EffectiveSecondStep => Math.Max(1, SecondStep);
-
-    // The option values the time row's selects offer, before DisabledTime hides/disables any of them
-    // -- see PickerMath.HourOptions/SteppedOptions/HourOptionText for the full contract (never-jump
-    // rule, Use12Hours period filtering), shared verbatim with DatePicker's own time row.
-    IEnumerable<int> SessionHourOptions() => PickerMath.HourOptions(EffectiveHourStep, SessionDisplayHour, Use12Hours);
-    IEnumerable<int> SessionMinuteOptions() => PickerMath.SteppedOptions(59, EffectiveMinuteStep, SessionDisplayMinute);
-    IEnumerable<int> SessionSecondOptions() => PickerMath.SteppedOptions(59, EffectiveSecondStep, SessionDisplaySecond);
-    string SessionHourOptionText(int h) => PickerMath.HourOptionText(h, Use12Hours, PickerCulture);
+    // The value PickerBase's shared time row displays and edits: the ACTIVE endpoint's own resolved
+    // value. (DatePicker's own override is simply its bound Value.) Everything the row derives from it
+    // -- the displayed hour/minute/second/period, the stepped option lists, the four @onchange
+    // handlers, and the compose below -- lives on PickerBase; it was duplicated verbatim here.
+    internal override DateTime? TimeRowValue => ActiveSessionValue;
 
     // Whichever endpoint's DisabledTime callback drives the CURRENTLY VISIBLE time row -- the active
     // side's own (see the class remarks: "the active side's callback drives the visible time row").
     Func<DateTime?, DisabledTimeParts?>? ActiveDisabledTime => _activeInput == 0 ? StartDisabledTime : EndDisabledTime;
 
-    // Composes a new PENDING value for the active endpoint from its current date part (its own
-    // session/committed value's date, or today when neither exists) and its current time-of-day
-    // (ditto) with one H/m/s part replaced -- mirrors DatePicker.ApplyTimePartAsync's identical
-    // compose, but writes to the pending session value instead of committing immediately (nothing
-    // reaches Start/End until OK -- see the class remarks). Rejects (no-ops) when the composed value
-    // hits the active endpoint's own DisabledTime list, same guard DatePicker's version applies
-    // before ever letting a disabled time become the bound value.
-    Task ApplySessionTimePartAsync(int? hour = null, int? minute = null, int? second = null)
+    // PickerBase's ApplyTimePartAsync hook, for the pick session: composes a new PENDING value for the
+    // active endpoint from its current date part (its own session/committed value's date, or today when
+    // neither exists) and its current time-of-day (ditto) with one H/m/s part replaced -- the identical
+    // PickerMath.ComposeTimePart DatePicker's own override uses -- but writes to the pending session
+    // value instead of committing immediately (nothing reaches Start/End until OK -- see the class
+    // remarks). Rejects (no-ops) when the composed value hits the active endpoint's own DisabledTime
+    // list, same guard DatePicker's version applies before ever letting a disabled time become the
+    // bound value.
+    internal override Task ApplyTimePartAsync(int? hour, int? minute, int? second)
     {
         _startEdit = _endEdit = null;
-        var date = ActiveSessionValue?.Date ?? DateTime.Today;
-        var time = ActiveSessionValue?.TimeOfDay ?? TimeSpan.Zero;
-        var seconds = ShowSeconds ? second ?? time.Seconds : 0;
-        var composed = date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, seconds);
+        var composed = PickerMath.ComposeTimePart(TimeRowValue, ShowSeconds, hour, minute, second);
         if (IsEndpointTimeDisabled(_activeInput, composed)) return Task.CompletedTask;
         if (_activeInput == 0) _pendingSessionStart = composed; else _pendingSessionEnd = composed;
         return Task.CompletedTask;
-    }
-
-    Task OnSessionHourSelectChangedAsync(ChangeEventArgs e) =>
-        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var hour)
-            ? ApplySessionTimePartAsync(hour: hour)
-            : Task.CompletedTask;
-
-    Task OnSessionMinuteSelectChangedAsync(ChangeEventArgs e) =>
-        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var minute)
-            ? ApplySessionTimePartAsync(minute: minute)
-            : Task.CompletedTask;
-
-    Task OnSessionSecondSelectChangedAsync(ChangeEventArgs e) =>
-        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var second)
-            ? ApplySessionTimePartAsync(second: second)
-            : Task.CompletedTask;
-
-    // Use12Hours' period select -- mirrors DatePicker.OnPeriodSelectChangedAsync's identical shift.
-    Task OnSessionPeriodSelectChangedAsync(ChangeEventArgs e)
-    {
-        var isPM = string.Equals(e.Value?.ToString(), "PM", StringComparison.Ordinal);
-        return ApplySessionTimePartAsync(hour: SessionDisplayHour % 12 + (isPM ? 12 : 0));
     }
 
     // DateTime mode's day click: sets the active endpoint's PENDING date, preserving its own

@@ -177,7 +177,34 @@
                             </div>
                         }
                     }
-                    @SessionTimeRowFragment
+                    @* The Time/DateTime pick session's time row -- the same PickerTimeRow DatePicker's own
+                       Time/DateTime panel renders (see that component for the markup and the three
+                       render-time invariants it owns). Each select's change writes to the ACTIVE
+                       endpoint's pending session value via PickerBase's shared handlers ->
+                       ApplyTimePartAsync (this class's override) instead of committing immediately -- OK
+                       is this session's commit signal, not the select change itself. ActiveDisabledTime
+                       is invoked exactly once here, for the whole row, against the active endpoint's own
+                       resolved date part. *@
+                    <PickerTimeRow Hour="@TimeRowHour"
+                                   Minute="@TimeRowMinute"
+                                   Second="@TimeRowSecond"
+                                   IsPM="@TimeRowIsPM"
+                                   HourOptions="@(TimeRowHourOptions(HourStep, Use12Hours))"
+                                   MinuteOptions="@(TimeRowMinuteOptions(MinuteStep))"
+                                   SecondOptions="@(TimeRowSecondOptions(SecondStep))"
+                                   DisabledParts="@(ActiveDisabledTime?.Invoke(ActiveSessionValue?.Date))"
+                                   ShowSeconds="@ShowSeconds"
+                                   Use12Hours="@Use12Hours"
+                                   HideDisabledTimeOptions="@HideDisabledTimeOptions"
+                                   HourSelectLabel="@HourSelectLabel"
+                                   MinuteSelectLabel="@MinuteSelectLabel"
+                                   SecondSelectLabel="@SecondSelectLabel"
+                                   PeriodSelectLabel="@PeriodSelectLabel"
+                                   Culture="@PickerCulture"
+                                   HourChanged="OnHourSelectChangedAsync"
+                                   MinuteChanged="OnMinuteSelectChangedAsync"
+                                   SecondChanged="OnSecondSelectChangedAsync"
+                                   PeriodChanged="OnPeriodSelectChangedAsync" />
                     @if (ExtraFooter is not null)
                     {
                         <div class="wss-picker-extra-footer">@ExtraFooter</div>
@@ -451,70 +478,3 @@
         </div>
     }
 </div>
-
-@code {
-    // Time/DateTime pick session's hour/minute/[second]/[period] selects -- markup-identical to
-    // DatePicker's own TimeRowFragment (deliberate duplication, per this repo's established
-    // convention that time-row MARKUP may be duplicated across the two .razor files as long as the
-    // C# logic behind it is shared -- see PickerMath.HourOptions/SteppedOptions/HourOptionText/
-    // IsTimePartDisabled). Each select's own @onchange writes to the ACTIVE endpoint's pending
-    // session value via ApplySessionTimePartAsync instead of committing immediately -- OK is this
-    // session's commit signal, not the select change itself. ActiveDisabledTime is invoked exactly
-    // once for the whole fragment (not once per option) and cached in disabledParts below, against
-    // the active endpoint's own resolved date part.
-    RenderFragment SessionTimeRowFragment => @<div class="wss-picker-time-row">
-        @{ var disabledParts = ActiveDisabledTime?.Invoke(ActiveSessionValue?.Date); }
-        <span class="wss-picker-select">
-            <select aria-label="@HourSelectLabel" value="@SessionDisplayHour" @onchange="OnSessionHourSelectChangedAsync">
-                @foreach (var h in SessionHourOptions())
-                {
-                    var disabled = PickerMath.IsTimePartDisabled(disabledParts?.Hours, h);
-                    if (!disabled || !HideDisabledTimeOptions || h == SessionDisplayHour)
-                    {
-                        <option value="@h" disabled="@disabled" selected="@(h == SessionDisplayHour)">@SessionHourOptionText(h)</option>
-                    }
-                }
-            </select>
-            @PickerIcons.DownIcon
-        </span>
-        <span class="wss-picker-select">
-            <select aria-label="@MinuteSelectLabel" value="@SessionDisplayMinute" @onchange="OnSessionMinuteSelectChangedAsync">
-                @foreach (var m in SessionMinuteOptions())
-                {
-                    var disabled = PickerMath.IsTimePartDisabled(disabledParts?.Minutes, m);
-                    if (!disabled || !HideDisabledTimeOptions || m == SessionDisplayMinute)
-                    {
-                        <option value="@m" disabled="@disabled" selected="@(m == SessionDisplayMinute)">@m.ToString("00", CultureInfo.InvariantCulture)</option>
-                    }
-                }
-            </select>
-            @PickerIcons.DownIcon
-        </span>
-        @if (ShowSeconds)
-        {
-            <span class="wss-picker-select">
-                <select aria-label="@SecondSelectLabel" value="@SessionDisplaySecond" @onchange="OnSessionSecondSelectChangedAsync">
-                    @foreach (var s in SessionSecondOptions())
-                    {
-                        var disabled = PickerMath.IsTimePartDisabled(disabledParts?.Seconds, s);
-                        if (!disabled || !HideDisabledTimeOptions || s == SessionDisplaySecond)
-                        {
-                            <option value="@s" disabled="@disabled" selected="@(s == SessionDisplaySecond)">@s.ToString("00", CultureInfo.InvariantCulture)</option>
-                        }
-                    }
-                </select>
-                @PickerIcons.DownIcon
-            </span>
-        }
-        @if (Use12Hours)
-        {
-            <span class="wss-picker-select">
-                <select aria-label="@PeriodSelectLabel" value="@(SessionDisplayIsPM ? "PM" : "AM")" @onchange="OnSessionPeriodSelectChangedAsync">
-                    <option value="AM" selected="@(!SessionDisplayIsPM)">@PickerCulture.DateTimeFormat.AMDesignator</option>
-                    <option value="PM" selected="@SessionDisplayIsPM">@PickerCulture.DateTimeFormat.PMDesignator</option>
-                </select>
-                @PickerIcons.DownIcon
-            </span>
-        }
-    </div>;
-}

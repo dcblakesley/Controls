@@ -61,7 +61,6 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// star and <c>aria-required</c> share one computation site and can never disagree.
     /// </summary>
     protected bool? IsRequiredResolved => _isRequired is not null;
-    EditContext? _subscribedEditContext;
 
     /// <summary>
     /// True when this field currently has a validation error. List controls aren't
@@ -110,7 +109,8 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         // Required-ness resolves through the shared helper (IsRequired param → [Required] attribute
         // → FormOptions.RequiredResolver) so aria-required always matches the FormLabel star.
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _fieldIdentifier);
-        FormOptions?.RegisterField(_fieldIdentifier, _id, this);
+        // Paired with Dispose below — see EditControlInit.RegisterField's remarks.
+        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
 
         // Resolve the ARIA references (error-msg id + aria-describedby token list). Recomputed in
         // OnParametersSet too, so a runtime Description/Tooltip/label-hidden change is reflected and
@@ -125,7 +125,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// first would validate the stale (pre-write) value, leaving the error state one interaction
     /// behind (e.g. a <c>[MinLength(2)]</c> error lingering after a second item is added). Shared by
     /// <see cref="ToggleAsync"/> (single-item toggle) and any wrapper that replaces the whole list at
-    /// once (e.g. <c>EditMultiSelect.OnValuesChanged</c>).
+    /// once (e.g. <c>EditMultiSelect.OnValuesChanged</c>, <c>EditFile</c>'s own file-list updates).
     /// </summary>
     protected async Task SetValueAsync(List<TItem> newValue)
     {
@@ -164,9 +164,10 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
 
     /// <summary>
     /// List controls are <c>ComponentBase</c>, not <see cref="InputBase{TValue}"/>, so they don't
-    /// re-render automatically when validation state changes. Subscribe to the cascading
-    /// <see cref="EditContext"/> so <see cref="IsInvalid"/> / <c>aria-invalid</c> update live (e.g.
-    /// after a form submit) the way the scalar controls do.
+    /// re-render automatically when validation state changes. Subscribing to the cascading
+    /// <see cref="EditContext"/> (via <see cref="EditControlParametersBase.SyncValidationSubscription"/>,
+    /// shared with <see cref="EditDateRange"/>) is what makes <see cref="IsInvalid"/> /
+    /// <c>aria-invalid</c> update live (e.g. after a form submit) the way the scalar controls do.
     /// </summary>
     protected override void OnParametersSet()
     {
@@ -178,37 +179,21 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
             (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
         }
 
-        if (ReferenceEquals(EditContext, _subscribedEditContext)) return;
-        if (_subscribedEditContext is not null)
-            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
-        if (EditContext is not null)
-            EditContext.OnValidationStateChanged += OnValidationStateChanged;
-        _subscribedEditContext = EditContext;
+        // A false return means the same EditContext is still cascading, so the cached FieldIdentifier
+        // is still live and there's nothing to re-register.
+        if (!SyncValidationSubscription()) return;
 
-        // The EditContext changes when the parent swaps the model instance (form reset, reload).
-        // The cached FieldIdentifier still pointed at the old model, so NotifyFieldChanged and
-        // validation lookups silently targeted dead state forever — re-derive it against the
-        // current model and re-register so the validation summary links keep working. (The scalar
-        // InputBase controls throw on a context swap; list controls support it instead.)
-        if (_fieldIdentifierFactory is not null)
-        {
-            // Drop the previous (old-model) registration before adding the new one — otherwise every
-            // swap leaves a dead FieldIdentifier behind and ValidationView iterates all of them each
-            // render, growing with the swap count.
-            FormOptions?.UnregisterField(_fieldIdentifier, this);
-            _fieldIdentifier = _fieldIdentifierFactory();
-            FormOptions?.RegisterField(_fieldIdentifier, _id, this);
-        }
+        // The context changed, which is how a parent swapping the model instance (form reset, reload)
+        // surfaces — re-derive the FieldIdentifier against the current model and move the registration
+        // onto it. See SyncFieldRegistration for why the unregister has to come first.
+        SyncFieldRegistration(ref _fieldIdentifier, _fieldIdentifierFactory, _id);
     }
-
-    void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => StateHasChanged();
 
     /// <summary> Detaches the validation-state listener and drops the field registration so a removed
     /// control (e.g. behind a conditional <c>@if</c>) doesn't leave stale state in the validation summary. </summary>
     public void Dispose()
     {
-        if (_subscribedEditContext is not null)
-            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
-        FormOptions?.UnregisterField(_fieldIdentifier, this);
+        DetachValidationSubscription();
+        EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
     }
 }

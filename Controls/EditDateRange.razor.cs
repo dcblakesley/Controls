@@ -229,7 +229,10 @@ public partial class EditDateRange : IDisposable
     /// <inheritdoc cref="DateRangePicker.PeriodSelectLabel"/>
     [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
 
-    // Standard derived state — mirrors EditControlListBase's fields, duplicated per bound field.
+    // Standard derived state — mirrors EditControlListBase's fields, duplicated per bound field. (The
+    // validation-state subscription and the field-registration sequence that used to sit alongside
+    // these are shared with the list base on EditControlParametersBase; only the per-field derived
+    // state the markup binds directly stays here.)
     string _id = string.Empty;
     string _endId = string.Empty;
     string? _isRequired;
@@ -242,7 +245,6 @@ public partial class EditDateRange : IDisposable
     string? _endIsRequired;
     string _endErrorMsgId = string.Empty;
     string _endDescribedBy = string.Empty;
-    EditContext? _subscribedEditContext;
     Func<FieldIdentifier>? _startFieldIdentifierFactory;
     Func<FieldIdentifier>? _endFieldIdentifierFactory;
 
@@ -397,9 +399,10 @@ public partial class EditDateRange : IDisposable
 
         _isRequired = EditControlInit.AriaRequired(_attributes, IsRequired, FormOptions, _startFieldIdentifier);
         // Each field registers under its own input's DOM id (DateRangePicker's Id/EndId), so a
-        // ValidationView link for an End-only error lands on the End input, not Start's.
-        FormOptions?.RegisterField(_startFieldIdentifier, _id, this);
-        FormOptions?.RegisterField(_endFieldIdentifier, _endId, this);
+        // ValidationView link for an End-only error lands on the End input, not Start's. Paired with
+        // Dispose below — see EditControlInit.RegisterField's remarks.
+        EditControlInit.RegisterField(FormOptions, _startFieldIdentifier, _id, this);
+        EditControlInit.RegisterField(FormOptions, _endFieldIdentifier, _endId, this);
 
         (_errorMsgId, _describedBy) = EditControlInit.ResolveAriaRefs(_id, ShouldHideLabel, Description, Tooltip, _attributes);
         // The End field's ARIA state is independent of Start's. Description/Tooltip belong to the
@@ -421,28 +424,17 @@ public partial class EditDateRange : IDisposable
             (_endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaRefs(_endId, true, null, null, _endAttributes);
         }
 
-        if (ReferenceEquals(EditContext, _subscribedEditContext)) return;
-        if (_subscribedEditContext is not null)
-            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
-        if (EditContext is not null)
-            EditContext.OnValidationStateChanged += OnValidationStateChanged;
-        _subscribedEditContext = EditContext;
+        // A false return means the same EditContext is still cascading, so both cached
+        // FieldIdentifiers are still live and there's nothing to re-register.
+        if (!SyncValidationSubscription()) return;
 
-        // The EditContext changes when the parent swaps the model instance (form reset, reload) —
-        // re-derive both FieldIdentifiers against the current model, mirroring
-        // EditControlListBase.OnParametersSet.
-        if (_startFieldIdentifierFactory is not null && _endFieldIdentifierFactory is not null)
-        {
-            FormOptions?.UnregisterField(_startFieldIdentifier, this);
-            FormOptions?.UnregisterField(_endFieldIdentifier, this);
-            _startFieldIdentifier = _startFieldIdentifierFactory();
-            _endFieldIdentifier = _endFieldIdentifierFactory();
-            FormOptions?.RegisterField(_startFieldIdentifier, _id, this);
-            FormOptions?.RegisterField(_endFieldIdentifier, _endId, this);
-        }
+        // The context changed, which is how a parent swapping the model instance (form reset, reload)
+        // surfaces — re-derive BOTH FieldIdentifiers against the current model and move each
+        // registration onto its own new one, through the same shared helper (on
+        // EditControlParametersBase) EditControlListBase.OnParametersSet calls once for its single field.
+        SyncFieldRegistration(ref _startFieldIdentifier, _startFieldIdentifierFactory, _id);
+        SyncFieldRegistration(ref _endFieldIdentifier, _endFieldIdentifierFactory, _endId);
     }
-
-    void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => StateHasChanged();
 
     // Write the new value back to the bound model BEFORE notifying the EditContext — the validator
     // reads the property live off the model via reflection during NotifyFieldChanged (see
@@ -479,31 +471,13 @@ public partial class EditDateRange : IDisposable
         }
     }
 
-    // The Time/DateTime portion of EffectiveDateFormat's own defaults below -- see
-    // PickerMath.TimeFormatString for the ShowSeconds/Use12Hours contract (shared with the inner
-    // DateRangePicker's own identical property, so read-only and edit mode can't disagree).
-    string TimeFormatPart => PickerMath.TimeFormatString(Use12Hours, ShowSeconds);
-
-    // Mirrors EditDate.EffectiveDateFormat one-for-one, keyed off this control's own Mode
-    // (there's no separate Type/Mode fork here -- Mode is the only lever). Quarter/Week's "yyyy" is
-    // never actually rendered -- FormatOne bypasses ToString(EffectiveDateFormat) for both via
-    // PickerMath's shared FormatQuarterDisplay/FormatWeekDisplay (see FormatOne below).
-    string EffectiveDateFormat => FormatOverride ?? Mode switch
-    {
-        DatePickerMode.Date => "MM-dd-yyyy",
-        DatePickerMode.Month => "MM-yyyy",
-        DatePickerMode.DateTime => $"MM-dd-yyyy {TimeFormatPart}",
-        DatePickerMode.Time => TimeFormatPart,
-        DatePickerMode.Year => "yyyy",
-        DatePickerMode.Quarter => "yyyy",
-        DatePickerMode.Week => "yyyy",
-        _ => "MM-dd-yyyy"
-    };
-
-    // FirstDayOfWeek resolution mirrors DateRangePicker's own EffectiveFirstDayOfWeek (culture
-    // fallback), computed independently here for FormatOne's Week special case -- there's no picker
-    // instance to ask once the control is in read-only mode (no <DateRangePicker> renders at all then).
-    DayOfWeek EffectiveFirstDayOfWeek(CultureInfo culture) => FirstDayOfWeek ?? culture.DateTimeFormat.FirstDayOfWeek;
+    // Mirrors EditDate.EffectiveDateFormat one-for-one (the same shared PickerMath.ModeDisplayFormat
+    // over the same dash-separated bases), keyed off this control's own Mode -- there's no separate
+    // Type/Mode fork here, Mode is the only lever. That helper's Quarter/Week "yyyy" is never actually
+    // rendered: FormatOne bypasses ToString(EffectiveDateFormat) for both via PickerMath's shared
+    // FormatQuarterDisplay/FormatWeekDisplay (see FormatOne below).
+    string EffectiveDateFormat =>
+        FormatOverride ?? PickerMath.ModeDisplayFormat(Mode, "MM-dd-yyyy", "MM-yyyy", Use12Hours, ShowSeconds);
 
     string GetDisplayValue()
     {
@@ -520,32 +494,25 @@ public partial class EditDateRange : IDisposable
     {
         if (value is not { } v) return string.Empty;
         // Quarter/Week's null-DateFormat display has no .NET format token to route through
-        // ToString(EffectiveDateFormat) below -- reuses PickerMath's own FormatQuarterDisplay/
-        // FormatWeekDisplay (the single source of truth DateRangePicker's own display routes through
-        // too, not duplicated regex/format logic here). An explicit DateFormat still falls through to
-        // the verbatim ToString path, matching the picker's own Format contract.
-        if (FormatOverride is null)
-        {
-            if (Mode == DatePickerMode.Quarter) return PickerMath.FormatQuarterDisplay(v, culture);
-            if (Mode == DatePickerMode.Week) return PickerMath.FormatWeekDisplay(v, culture, EffectiveFirstDayOfWeek(culture));
-        }
-        try
-        {
-            return v.ToString(EffectiveDateFormat, culture);
-        }
-        catch (FormatException)
-        {
-            return v.ToString(culture);
-        }
+        // ToString(EffectiveDateFormat) -- PickerMath.ReadOnlyDisplay (shared with EditDate) special-
+        // cases those two through the very FormatQuarterDisplay/FormatWeekDisplay the inner
+        // DateRangePicker's own display routes through, not duplicated regex/format logic here.
+        // Passing null as the shorthand value (an explicit DateFormat) falls through to the verbatim
+        // ToString path instead, matching the picker's own Format contract. FirstDayOfWeek is resolved
+        // against `culture` inside the helper -- there's no picker instance to ask once this control is
+        // in read-only mode (no <DateRangePicker> renders at all then).
+        return PickerMath.ReadOnlyDisplay(Mode, FormatOverride is null ? v : (DateTime?)null, culture,
+            FirstDayOfWeek,
+            () => v.ToString(EffectiveDateFormat, culture),
+            () => v.ToString(culture));
     }
 
     /// <summary> Detaches the validation-state listener and drops both field registrations so a removed
     /// control (e.g. behind a conditional <c>@if</c>) doesn't leave stale state in the validation summary. </summary>
     public void Dispose()
     {
-        if (_subscribedEditContext is not null)
-            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
-        FormOptions?.UnregisterField(_startFieldIdentifier, this);
-        FormOptions?.UnregisterField(_endFieldIdentifier, this);
+        DetachValidationSubscription();
+        EditControlInit.UnregisterField(FormOptions, _startFieldIdentifier, this);
+        EditControlInit.UnregisterField(FormOptions, _endFieldIdentifier, this);
     }
 }

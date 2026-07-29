@@ -93,6 +93,173 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     /// <see cref="DateRangePicker"/>.</summary>
     protected abstract ElementReference FocusReclaimTarget { get; }
 
+    // ----- Shared display/parse layer ----------------------------------------
+    // FormatDate/TryParseDate are character-identical between the two pickers apart from which mode
+    // each keys off, so they live here once, over the five hooks below. Everything in this section
+    // and the next is `internal`, not protected: both implementations live in this assembly and
+    // PickerBase is not a public extensibility point (see the class remarks), so none of it widens
+    // the consumer-facing API. Internal *virtual* with a working default rather than internal
+    // abstract, so even a (nominally impossible) external subclass keeps compiling.
+
+    /// <summary>The mode <see cref="FormatDate"/>/<see cref="TryParseDate"/> key off: the raw
+    /// <c>Mode</c> parameter for <see cref="DatePicker"/>, and <see cref="DateRangePicker"/>'s own
+    /// calendar-shape fold of it (which collapses its DateTime/Time pick-session modes onto Date) for
+    /// the range picker. Both subclasses override this; the default is never observed.</summary>
+    internal virtual DatePickerMode EffectiveMode => DatePickerMode.Date;
+
+    /// <summary>The subclass's own <c>Format</c> parameter, exactly as the consumer set it — null means
+    /// "no explicit format", which is what enables Quarter's/Week's shorthand display/parse below (an
+    /// explicit format is always used verbatim, per each picker's <c>Format</c> doc comment). Distinct
+    /// from <see cref="EffectiveFormat"/>, which substitutes the mode-derived default for null.</summary>
+    internal virtual string? ExplicitFormat => null;
+
+    /// <summary>The format string actually used for <c>ToString</c>/<c>TryParseExact</c>:
+    /// <see cref="ExplicitFormat"/> when set, else the subclass's mode-derived default (see
+    /// <see cref="PickerMath.ModeDisplayFormat"/>). A subclass hook rather than shared code here
+    /// because each picker derives its default from its own raw <c>Mode</c> — deliberately NOT
+    /// <see cref="EffectiveMode"/>, so DateTime/Time keep a time-aware format instead of the range
+    /// picker's Date fold.</summary>
+    internal virtual string EffectiveFormat => "MM/dd/yyyy";
+
+    /// <summary>The first day of the calendar week, per the subclass's own <c>FirstDayOfWeek</c>
+    /// parameter with a culture fallback (see <see cref="PickerMath.FirstDayOfWeekOrCulture"/>) —
+    /// consumed here by Week mode's shorthand display/parse, and by each subclass's own grid layout
+    /// and Home/End navigation.</summary>
+    internal virtual DayOfWeek EffectiveFirstDayOfWeek => PickerCulture.DateTimeFormat.FirstDayOfWeek;
+
+    /// <summary>Normalizes a committed value to the subclass's own per-mode granularity, so every
+    /// commit path (click, typed text, select change) lands on the same shape of value — see
+    /// <see cref="PickerMath.NormalizeForMode"/> and each override's own doc comment (the range
+    /// picker's differs: its DateTime/Time endpoints must keep the date they were composed with).</summary>
+    internal virtual DateTime NormalizeForMode(DateTime value) => value.Date;
+
+    /// <summary>
+    /// The field text for <paramref name="value"/>: Quarter's and Week's null-<see cref="ExplicitFormat"/>
+    /// displays bypass <c>ToString(EffectiveFormat)</c> entirely (no .NET format token renders a quarter
+    /// or a week number — see <see cref="PickerMath.FormatQuarterDisplay"/>/<see cref="PickerMath.FormatWeekDisplay"/>);
+    /// everything else formats through <see cref="EffectiveFormat"/> in <see cref="PickerCulture"/>. An
+    /// explicitly-set <c>Format</c> always takes the verbatim <c>ToString</c> path, including in those two
+    /// modes.
+    /// </summary>
+    internal string FormatDate(DateTime? value)
+    {
+        if (value is not { } v) return string.Empty;
+        if (EffectiveMode == DatePickerMode.Quarter && ExplicitFormat is null)
+        {
+            return PickerMath.FormatQuarterDisplay(v, PickerCulture);
+        }
+        if (EffectiveMode == DatePickerMode.Week && ExplicitFormat is null)
+        {
+            return PickerMath.FormatWeekDisplay(v, PickerCulture, EffectiveFirstDayOfWeek);
+        }
+        return v.ToString(EffectiveFormat, PickerCulture);
+    }
+
+    /// <summary>
+    /// The exact inverse of <see cref="FormatDate"/> for typed text: Quarter's <c>"yyyy-Qn"</c> and Week's
+    /// <c>"yyyy-Www"</c> shorthands first (null-<see cref="ExplicitFormat"/> only, mirroring
+    /// <see cref="FormatDate"/>'s own special cases), then <see cref="EffectiveFormat"/> as an exact
+    /// format, then <see cref="PickerCulture"/>'s general parse — normalizing whatever the general parse
+    /// produced to <see cref="NormalizeForMode"/>'s own granularity, so a typed commit and a click/select
+    /// commit always land on the same shape of value. A plain typed date still falls through to the
+    /// general parse in Quarter/Week mode and normalizes to its own quarter/week, same as every other
+    /// mode's typed-text path.
+    /// </summary>
+    internal bool TryParseDate(string text, out DateTime value)
+    {
+        if (EffectiveMode == DatePickerMode.Quarter && ExplicitFormat is null &&
+            PickerMath.TryParseQuarterShorthand(text, out value))
+        {
+            return true;
+        }
+        if (EffectiveMode == DatePickerMode.Week && ExplicitFormat is null &&
+            PickerMath.TryParseWeekShorthand(text, PickerCulture, EffectiveFirstDayOfWeek, out value))
+        {
+            return true;
+        }
+        if (DateTime.TryParseExact(text, EffectiveFormat, PickerCulture, DateTimeStyles.None, out value) ||
+            DateTime.TryParse(text, PickerCulture, DateTimeStyles.None, out value))
+        {
+            value = NormalizeForMode(value);
+            return true;
+        }
+        return false;
+    }
+
+    // ----- Shared time-row layer (Mode.Time / Mode.DateTime) ------------------
+    // Both pickers render the SAME <PickerTimeRow> (see that component for the three render-time
+    // invariants it owns) over the same displayed hour/minute/second/period and the same stepped
+    // option lists -- the only difference is WHICH value the row reflects, which is the TimeRowValue
+    // hook below: DatePicker's bound Value (a select change commits immediately) vs. DateRangePicker's
+    // ACTIVE endpoint's own resolved session value (a select change writes pending state; OK commits).
+
+    /// <summary>The value whose time-of-day the shared time row displays and edits. Null (this default,
+    /// and either subclass with nothing resolved yet) reads as midnight — matching AntD's "12 AM /
+    /// 00:00" default.</summary>
+    internal virtual DateTime? TimeRowValue => null;
+
+    internal int TimeRowHour => TimeRowValue?.Hour ?? 0;
+    internal int TimeRowMinute => TimeRowValue?.Minute ?? 0;
+    internal int TimeRowSecond => TimeRowValue?.Second ?? 0;
+
+    /// <summary>Whether the displayed hour falls in the PM half of the day — the default
+    /// <see cref="TimeRowHour"/> of 0 is AM. Drives <c>Use12Hours</c>' period select and the hour
+    /// option list's period filtering (see <see cref="PickerMath.HourOptions"/>).</summary>
+    internal bool TimeRowIsPM => TimeRowHour >= 12;
+
+    /// <summary><c>HourStep</c>/<c>MinuteStep</c>/<c>SecondStep</c> clamped to &gt;= 1 at the point of
+    /// use (never thrown) — the raw parameters stay whatever a consumer set (even 0 or negative) so
+    /// nothing but option-list construction ever second-guesses them.</summary>
+    internal static int EffectiveStep(int step) => Math.Max(1, step);
+
+    // The hour/minute/second values each of the row's selects offers, before DisabledTime hides/
+    // disables any of them -- see PickerMath.HourOptions/SteppedOptions for the full contract
+    // (never-jump rule, Use12Hours period filtering). Parameterized by the caller's own raw step /
+    // Use12Hours parameters rather than reading them through further hooks: those stay declared on
+    // each subclass, which owns their (differently-worded) public doc comments.
+    internal IEnumerable<int> TimeRowHourOptions(int hourStep, bool use12Hours) =>
+        PickerMath.HourOptions(EffectiveStep(hourStep), TimeRowHour, use12Hours);
+
+    internal IEnumerable<int> TimeRowMinuteOptions(int minuteStep) =>
+        PickerMath.SteppedOptions(59, EffectiveStep(minuteStep), TimeRowMinute);
+
+    internal IEnumerable<int> TimeRowSecondOptions(int secondStep) =>
+        PickerMath.SteppedOptions(59, EffectiveStep(secondStep), TimeRowSecond);
+
+    /// <summary>
+    /// Applies one changed time part (the other two are null) to <see cref="TimeRowValue"/>'s own
+    /// date+time — see <see cref="PickerMath.ComposeTimePart"/> for the compose both overrides share,
+    /// and each override for where the composed value goes (an immediate commit vs. pending session
+    /// state) and which <c>DisabledTime</c> list guards it. The no-op default is never reached: only the
+    /// four handlers below call this, and they only render inside a time row.
+    /// </summary>
+    internal virtual Task ApplyTimePartAsync(int? hour, int? minute, int? second) => Task.CompletedTask;
+
+    // The time row's four @onchange handlers. A malformed/unparseable event value is a no-op (the
+    // select's own displayed value reverts to TimeRowValue's on the next render) -- the same permissive
+    // fallback the period select gives anything that isn't exactly "PM".
+    internal Task OnHourSelectChangedAsync(ChangeEventArgs e) =>
+        TryParseTimePartValue(e, out var hour) ? ApplyTimePartAsync(hour, null, null) : Task.CompletedTask;
+
+    internal Task OnMinuteSelectChangedAsync(ChangeEventArgs e) =>
+        TryParseTimePartValue(e, out var minute) ? ApplyTimePartAsync(null, minute, null) : Task.CompletedTask;
+
+    internal Task OnSecondSelectChangedAsync(ChangeEventArgs e) =>
+        TryParseTimePartValue(e, out var second) ? ApplyTimePartAsync(null, null, second) : Task.CompletedTask;
+
+    /// <summary><c>Use12Hours</c>' period select: re-applies the CURRENT hour shifted into the other
+    /// period, through the same <see cref="ApplyTimePartAsync"/> every other time-row change routes
+    /// through (so it gets the same DisabledTime guard and in-progress-text clearing). "PM" is the only
+    /// value that flips the shift — anything else, including a malformed event, is treated as AM.</summary>
+    internal Task OnPeriodSelectChangedAsync(ChangeEventArgs e)
+    {
+        var isPM = string.Equals(e.Value?.ToString(), "PM", StringComparison.Ordinal);
+        return ApplyTimePartAsync(TimeRowHour % 12 + (isPM ? 12 : 0), null, null);
+    }
+
+    static bool TryParseTimePartValue(ChangeEventArgs e, out int value) =>
+        int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+
     // ----- JS interop (module lifecycle) --------------------------------------
 
     // Imports the RCL-local module once, re-checking _disposed after the awaited import so a

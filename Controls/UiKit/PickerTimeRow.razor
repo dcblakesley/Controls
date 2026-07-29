@@ -1,0 +1,140 @@
+@namespace Controls
+
+@* The hour/minute/[second]/[period] select row shared by DatePicker (Mode.Time renders it as the whole
+   panel; Mode.DateTime appends it below the day calendar) and DateRangePicker (its Time/DateTime pick
+   session). Purely presentational: every value it shows and every change it reports is a parameter, so
+   the two pickers' genuinely different behavior behind the row (DatePicker commits a select change
+   immediately; DateRangePicker writes pending session state and commits on OK) stays in the pickers.
+
+   THREE INVARIANTS THIS ROW OWNS -- all three are why the markup can't be inlined per-mode:
+
+   1. DisabledTime is evaluated ONCE for the whole row, not once per option. The caller invokes its own
+      callback (DatePicker's DisabledTime against the bound value's date; DateRangePicker's ACTIVE
+      endpoint's callback against that endpoint's own resolved date) and passes the result as
+      DisabledParts; each option then only checks its own unit's list via PickerMath.IsTimePartDisabled.
+
+   2. Step filtering composes with disabled filtering, STEP FIRST. The *Options parameters already have
+      HourStep/MinuteStep/SecondStep applied (with their own never-jump rule -- see
+      PickerMath.SteppedOptions); the disabled/hide check below then runs over that lattice.
+
+   3. NEVER-JUMP: a select always renders its own current value, even when DisabledParts lists it and
+      HideDisabledTimeOptions would otherwise omit it (it renders selected, and disabled too) -- so a
+      select can never silently show a value that isn't the one actually bound.
+
+   The seconds select is omitted entirely when ShowSeconds is false; a fourth period (AM/PM) select is
+   appended after it when Use12Hours is true. No AdditionalAttributes splat, deliberately: this is an
+   internal composition piece of the two pickers' panels, not a consumer-facing kit component -- the
+   pickers own this DOM. *@
+<div class="wss-picker-time-row">
+    <span class="wss-picker-select">
+        <select aria-label="@HourSelectLabel" value="@Hour" @onchange="HourChanged">
+            @foreach (var h in HourOptions)
+            {
+                var disabled = PickerMath.IsTimePartDisabled(DisabledParts?.Hours, h);
+                if (!disabled || !HideDisabledTimeOptions || h == Hour)
+                {
+                    <option value="@h" disabled="@disabled" selected="@(h == Hour)">@PickerMath.HourOptionText(h, Use12Hours, Culture)</option>
+                }
+            }
+        </select>
+        @PickerIcons.DownIcon
+    </span>
+    <span class="wss-picker-select">
+        <select aria-label="@MinuteSelectLabel" value="@Minute" @onchange="MinuteChanged">
+            @foreach (var m in MinuteOptions)
+            {
+                var disabled = PickerMath.IsTimePartDisabled(DisabledParts?.Minutes, m);
+                if (!disabled || !HideDisabledTimeOptions || m == Minute)
+                {
+                    <option value="@m" disabled="@disabled" selected="@(m == Minute)">@m.ToString("00", CultureInfo.InvariantCulture)</option>
+                }
+            }
+        </select>
+        @PickerIcons.DownIcon
+    </span>
+    @if (ShowSeconds)
+    {
+        <span class="wss-picker-select">
+            <select aria-label="@SecondSelectLabel" value="@Second" @onchange="SecondChanged">
+                @foreach (var s in SecondOptions)
+                {
+                    var disabled = PickerMath.IsTimePartDisabled(DisabledParts?.Seconds, s);
+                    if (!disabled || !HideDisabledTimeOptions || s == Second)
+                    {
+                        <option value="@s" disabled="@disabled" selected="@(s == Second)">@s.ToString("00", CultureInfo.InvariantCulture)</option>
+                    }
+                }
+            </select>
+            @PickerIcons.DownIcon
+        </span>
+    }
+    @if (Use12Hours)
+    {
+        <span class="wss-picker-select">
+            <select aria-label="@PeriodSelectLabel" value="@(IsPM ? "PM" : "AM")" @onchange="PeriodChanged">
+                <option value="AM" selected="@(!IsPM)">@Culture.DateTimeFormat.AMDesignator</option>
+                <option value="PM" selected="@IsPM">@Culture.DateTimeFormat.PMDesignator</option>
+            </select>
+            @PickerIcons.DownIcon
+        </span>
+    }
+</div>
+
+@code {
+    // Not a supported standalone control: this is DatePicker/DateRangePicker's own time row, factored
+    // out so the 55-line markup and its three invariants exist once. It is public only because Razor
+    // always compiles a .razor component to a public class -- treat it as internal to the pickers.
+
+    /// <summary>The displayed hour, as a 24-hour value (0-23) even under <see cref="Use12Hours"/>.</summary>
+    [Parameter] public int Hour { get; set; }
+    /// <summary>The displayed minute (0-59).</summary>
+    [Parameter] public int Minute { get; set; }
+    /// <summary>The displayed second (0-59). Only rendered when <see cref="ShowSeconds"/> is true.</summary>
+    [Parameter] public int Second { get; set; }
+    /// <summary>Whether the period select shows PM (<see cref="Use12Hours"/> only). Always derivable from
+    /// <see cref="Hour"/>, but passed so the row never re-derives what the caller already resolved.</summary>
+    [Parameter] public bool IsPM { get; set; }
+
+    /// <summary>The hour select's option values (24-hour), already step-filtered and — under
+    /// <see cref="Use12Hours"/> — already narrowed to <see cref="Hour"/>'s own AM/PM period.</summary>
+    [Parameter] public IEnumerable<int> HourOptions { get; set; } = [];
+    /// <summary>The minute select's option values, already step-filtered.</summary>
+    [Parameter] public IEnumerable<int> MinuteOptions { get; set; } = [];
+    /// <summary>The second select's option values, already step-filtered.</summary>
+    [Parameter] public IEnumerable<int> SecondOptions { get; set; } = [];
+
+    /// <summary>The caller's already-invoked <c>DisabledTime</c> result (invariant 1 above) — null means
+    /// nothing is disabled, as does a null list within it.</summary>
+    [Parameter] public DisabledTimeParts? DisabledParts { get; set; }
+
+    /// <summary>Render the seconds select. False omits it entirely.</summary>
+    [Parameter] public bool ShowSeconds { get; set; }
+    /// <summary>Render 12-hour hour options plus a trailing AM/PM period select.</summary>
+    [Parameter] public bool Use12Hours { get; set; }
+    /// <summary>Omit a <see cref="DisabledParts"/>-disabled option instead of rendering it disabled —
+    /// except a select's own current value, which always renders (invariant 3 above).</summary>
+    [Parameter] public bool HideDisabledTimeOptions { get; set; }
+
+    /// <summary>Accessible name of the hour select.</summary>
+    [Parameter] public string? HourSelectLabel { get; set; }
+    /// <summary>Accessible name of the minute select.</summary>
+    [Parameter] public string? MinuteSelectLabel { get; set; }
+    /// <summary>Accessible name of the second select.</summary>
+    [Parameter] public string? SecondSelectLabel { get; set; }
+    /// <summary>Accessible name of the AM/PM period select.</summary>
+    [Parameter] public string? PeriodSelectLabel { get; set; }
+
+    /// <summary>Culture for the hour option text and the AM/PM designators — the pickers pass their own
+    /// Gregorian-forced <c>PickerCulture</c>, so the row's digits match the field's own display.</summary>
+    [Parameter] public CultureInfo Culture { get; set; } = CultureInfo.CurrentCulture;
+
+    /// <summary>Raised by the hour select's own change event, unparsed (the callers share one
+    /// int-parse + apply path — see <c>PickerBase.OnHourSelectChangedAsync</c>).</summary>
+    [Parameter] public EventCallback<ChangeEventArgs> HourChanged { get; set; }
+    /// <summary>Raised by the minute select's own change event, unparsed.</summary>
+    [Parameter] public EventCallback<ChangeEventArgs> MinuteChanged { get; set; }
+    /// <summary>Raised by the second select's own change event, unparsed.</summary>
+    [Parameter] public EventCallback<ChangeEventArgs> SecondChanged { get; set; }
+    /// <summary>Raised by the period select's own change event, unparsed ("AM"/"PM").</summary>
+    [Parameter] public EventCallback<ChangeEventArgs> PeriodChanged { get; set; }
+}

@@ -4,8 +4,10 @@ namespace Controls;
 
 /// <summary>
 /// Pure, instance-independent date/culture arithmetic shared by <see cref="DatePicker"/> and
-/// <see cref="DateRangePicker"/> (and, via the promoted quarter/week display statics, by
-/// <see cref="EditDate{T}"/>'s read-only view). Every member takes its inputs explicitly --
+/// <see cref="DateRangePicker"/> (and, via the promoted display helpers —
+/// <see cref="ModeDisplayFormat"/>, <see cref="ReadOnlyDisplay"/>, <see cref="FirstDayOfWeekOrCulture"/>
+/// and the quarter/week formatters — by <see cref="EditDate{T}"/>'s and <see cref="EditDateRange"/>'s
+/// read-only views, so edit mode and read-only mode can't drift). Every member takes its inputs explicitly --
 /// no component state, no <c>Value</c>/<c>Min</c>/<c>Max</c> -- so it can be shared without either
 /// picker needing an instance of the other.
 /// </summary>
@@ -237,8 +239,80 @@ internal static class PickerMath
     public static string MonthName(CultureInfo culture, int month) =>
         culture.DateTimeFormat.AbbreviatedMonthNames[month - 1];
 
-    // Central per-mode normalization, shared by DatePicker's TryParseDate and SetValueAsync so every
-    // commit path (click, typed text, select change) agrees on the same shape of value.
+    /// <summary>The <c>FirstDayOfWeek</c> a picker (or an <see cref="EditDate{T}"/>/<see cref="EditDateRange"/>
+    /// read-only view, which has no picker instance to ask) actually uses: an explicitly-set
+    /// <paramref name="explicitValue"/> wins, otherwise <paramref name="culture"/>'s own first day. The
+    /// single resolution site for all four, so edit mode and the read-only display can never disagree
+    /// about which day a week starts on (and therefore about a Week-mode week number).</summary>
+    public static DayOfWeek FirstDayOfWeekOrCulture(DayOfWeek? explicitValue, CultureInfo culture) =>
+        explicitValue ?? culture.DateTimeFormat.FirstDayOfWeek;
+
+    /// <summary>
+    /// The default (null-<c>Format</c>) display/parse format string for <paramref name="mode"/>, built
+    /// from the caller's own two base formats: <paramref name="dateBase"/> (the full date, e.g.
+    /// <c>"MM/dd/yyyy"</c> for the pickers' input display, <c>"MM-dd-yyyy"</c> for the form controls'
+    /// read-only display) and <paramref name="monthBase"/> (the same shape without the day, e.g.
+    /// <c>"MM/yyyy"</c>). Passed rather than derived so each caller's own literals stay visible at its
+    /// own call site and no string surgery can silently reshape them.
+    /// </summary>
+    /// <remarks>
+    /// <c>DateTime</c> is <paramref name="dateBase"/> plus a space plus <see cref="TimeFormatString"/>;
+    /// <c>Time</c> is that time portion alone. Year/Quarter/Week are all a bland <c>"yyyy"</c>: Quarter's
+    /// and Week's real displays have no .NET format token at all (see <see cref="FormatQuarterDisplay"/>/
+    /// <see cref="FormatWeekDisplay"/>, which every caller special-cases ahead of this), so for those two
+    /// the value only ever matters as a typed-text exact-format fallback. An unrecognized mode falls back
+    /// to <paramref name="dateBase"/>, same as <c>Date</c>.
+    /// </remarks>
+    public static string ModeDisplayFormat(DatePickerMode mode, string dateBase, string monthBase, bool use12Hours, bool showSeconds) => mode switch
+    {
+        DatePickerMode.Month => monthBase,
+        DatePickerMode.DateTime => $"{dateBase} {TimeFormatString(use12Hours, showSeconds)}",
+        DatePickerMode.Time => TimeFormatString(use12Hours, showSeconds),
+        DatePickerMode.Year or DatePickerMode.Quarter or DatePickerMode.Week => "yyyy",
+        _ => dateBase,
+    };
+
+    /// <summary>
+    /// The read-only (non-editing) display shared by <see cref="EditDate{T}"/> and
+    /// <see cref="EditDateRange"/>: the Quarter/Week shorthand when it applies, otherwise
+    /// <paramref name="format"/>'s own <c>ToString(format, culture)</c> result, falling back to
+    /// <paramref name="formatFallback"/> when the format string is one .NET rejects.
+    /// </summary>
+    /// <param name="mode">The control's effective picker mode — only Quarter and Week take the shorthand.</param>
+    /// <param name="shorthandValue">The value to render the Quarter/Week shorthand for, or <c>null</c> to
+    /// skip the shorthand entirely — which is how a caller expresses "an explicit format override applies,
+    /// so use it verbatim" (matching the pickers' own <c>Format</c> contract).</param>
+    /// <param name="culture">Culture for both the shorthand's digits and the <c>ToString</c> fallthrough
+    /// (the callers force Gregorian here, like the pickers' own display).</param>
+    /// <param name="firstDayOfWeek">The control's explicit <c>FirstDayOfWeek</c>, or null to follow
+    /// <paramref name="culture"/> — resolved through <see cref="FirstDayOfWeekOrCulture"/>.</param>
+    /// <param name="format">The caller's own <c>ToString(format, culture)</c>, as a delegate because each
+    /// caller formats a different shape (<see cref="EditDate{T}"/> switches over its four bound CLR types;
+    /// <see cref="EditDateRange"/> formats one endpoint <c>DateTime</c>).</param>
+    /// <param name="formatFallback">What to render when <paramref name="format"/> throws
+    /// <see cref="FormatException"/> — a consumer-supplied format string .NET rejects must degrade to
+    /// something readable rather than throw mid-render.</param>
+    public static string ReadOnlyDisplay(DatePickerMode mode, DateTime? shorthandValue, CultureInfo culture,
+        DayOfWeek? firstDayOfWeek, Func<string> format, Func<string> formatFallback)
+    {
+        if (shorthandValue is { } v)
+        {
+            if (mode == DatePickerMode.Quarter) return FormatQuarterDisplay(v, culture);
+            if (mode == DatePickerMode.Week) return FormatWeekDisplay(v, culture, FirstDayOfWeekOrCulture(firstDayOfWeek, culture));
+        }
+        try
+        {
+            return format();
+        }
+        catch (FormatException)
+        {
+            return formatFallback();
+        }
+    }
+
+    // Central per-mode normalization, reached through each picker's own NormalizeForMode override, so
+    // every commit path (PickerBase.TryParseDate's typed text, a click, a select change) agrees on the
+    // same shape of value.
     public static DateTime NormalizeForMode(DatePickerMode mode, DayOfWeek firstDayOfWeek, bool showSeconds, DateTime value) => mode switch
     {
         DatePickerMode.Date => value.Date,
@@ -266,8 +340,8 @@ internal static class PickerMath
     // _quarterPattern above.
     static readonly Regex _weekPattern = new(@"^\s*(\d{1,4})\s*-?\s*[Ww]\s*(\d{1,2})\s*$", RegexOptions.Compiled);
 
-    // Quarter mode's null-Format typed-text parse: the pure regex+arithmetic core of DatePicker's
-    // TryParseDate special case. Returns false (leaving `value` at its default) for anything that
+    // Quarter mode's null-Format typed-text parse: the pure regex+arithmetic core of
+    // PickerBase.TryParseDate's special case. Returns false (leaving `value` at its default) for anything that
     // doesn't match the shorthand -- the caller falls through to the general DateTime parse, same as
     // any other malformed text.
     public static bool TryParseQuarterShorthand(string text, out DateTime value)
@@ -285,8 +359,8 @@ internal static class PickerMath
         return false;
     }
 
-    // Week mode's null-Format typed-text parse: the pure regex+arithmetic core of DatePicker's
-    // TryParseDate special case -- the exact inverse of FormatWeekDisplay's display: walk the week
+    // Week mode's null-Format typed-text parse: the pure regex+arithmetic core of
+    // PickerBase.TryParseDate's special case -- the exact inverse of FormatWeekDisplay's display: walk the week
     // starts whose calendar year is the typed year and return the one GetWeekOfYear numbers N. Plain
     // arithmetic from WeekStart(Jan 1) can't do this -- under CalendarWeekRule.FirstDay a year that
     // doesn't begin on firstDayOfWeek numbers its partial first week 1, so every later week start is
@@ -402,4 +476,25 @@ internal static class PickerMath
     public static string TimeFormatString(bool use12Hours, bool showSeconds) => use12Hours
         ? (showSeconds ? "h:mm:ss tt" : "h:mm tt")
         : (showSeconds ? "HH:mm:ss" : "HH:mm");
+
+    /// <summary>
+    /// The candidate value a time-row select change produces: <paramref name="current"/>'s own date part
+    /// (or <see cref="DateTime.Today"/> when it has none) plus its own time-of-day (or midnight) with the
+    /// one supplied <paramref name="hour"/>/<paramref name="minute"/>/<paramref name="second"/> part
+    /// replaced — pass null for the parts the change didn't touch.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="showSeconds"/> false zeroes the second here (not just in
+    /// <see cref="NormalizeForMode"/>) so an hour/minute change can never be rejected by a
+    /// <c>DisabledTime</c> guard over a stale second no select can even change. Shared verbatim by
+    /// <see cref="DatePicker"/>'s immediate commit and <see cref="DateRangePicker"/>'s pending pick
+    /// session — the two differ only in where the composed value is written, never in how it's composed.
+    /// </remarks>
+    public static DateTime ComposeTimePart(DateTime? current, bool showSeconds, int? hour, int? minute, int? second)
+    {
+        var date = current?.Date ?? DateTime.Today;
+        var time = current?.TimeOfDay ?? TimeSpan.Zero;
+        var seconds = showSeconds ? second ?? time.Seconds : 0;
+        return date + new TimeSpan(hour ?? time.Hours, minute ?? time.Minutes, seconds);
+    }
 }
