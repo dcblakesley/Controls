@@ -3,7 +3,11 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the <input> below, whose
+       own inline style is the control's (the calendar-icon padding reserve). *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
@@ -11,7 +15,9 @@
             <EditInputShell IsInvalid=@IsInvalid
                             IsDisabled=@IsDisabled
                             WrapperClass=@(EditInputShell.SizeClass(Size))>
-                <input type=@HtmlInputType
+                @* Splat first so every explicit attribute below wins. *@
+                <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+                       type=@HtmlInputType
                        @bind-value=@CurrentValueAsString
                        @bind-value:event="@UpdateEventName"
                        class=@InputClass

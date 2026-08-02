@@ -36,6 +36,30 @@ internal static class AttributeSplat
         return rest.Count == 0 ? null : rest;
     }
 
+    /// <summary>
+    /// <see cref="Rest"/> with the component's <paramref name="own"/> attributes layered on top, for an
+    /// element that already binds an <c>@attributes</c> dictionary of its own (the radio fieldsets'
+    /// <c>RadioAria.Fieldset(...)</c> block, the text editors' <c>EditorInputAttributes</c>). Razor
+    /// allows only one <c>@attributes</c> per element, so the two have to be merged rather than
+    /// splatted side by side — and <paramref name="own"/> wins every collision, which is the same
+    /// "explicit beats splat" precedence a splat-first markup position gives the hand-written
+    /// attributes beside it.
+    /// </summary>
+    /// <remarks>
+    /// Returns one of the inputs unchanged whenever the other contributes nothing, so the common
+    /// no-consumer-attributes case allocates nothing and renders exactly the frames it did before.
+    /// </remarks>
+    public static IReadOnlyDictionary<string, object>? RestWith(
+        IReadOnlyDictionary<string, object>? attributes, IReadOnlyDictionary<string, object>? own)
+    {
+        var rest = Rest(attributes);
+        if (own is null || own.Count == 0) return rest;
+        if (rest is null) return own;
+        var merged = new Dictionary<string, object>(rest);
+        foreach (var kv in own) merged[kv.Key] = kv.Value;
+        return merged;
+    }
+
     static string? Get(IReadOnlyDictionary<string, object>? attributes, string key) =>
         attributes is not null &&
         attributes.TryGetValue(key, out var value) &&

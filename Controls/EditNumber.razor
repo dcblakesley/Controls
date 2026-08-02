@@ -3,7 +3,10 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the <input> below. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
@@ -20,7 +23,11 @@
                             WrapperClass=@(EditInputShell.SizeClass(Size))
                             Prefix=@Prefix
                             Suffix=@Suffix>
-                <input type="number"
+                @* Splat first so every explicit attribute below wins (inputmode/readonly/spellcheck/
+                   data-*/aria-* are the point; `class` travels CssClass and `style` the wrapper, so
+                   AttributeSplat.Rest withholds both). A null splat emits no frames at all. *@
+                <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+                       type="number"
                        disabled=@IsDisabled
                        id=@_id
                        data-test-id=@_id

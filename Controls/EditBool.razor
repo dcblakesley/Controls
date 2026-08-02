@@ -3,7 +3,10 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the checkbox itself. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
 
         @if (ShowEditor || RenderAsCheckboxWhenReadOnly)
         {
@@ -45,7 +48,10 @@
     // fragment parameterized by a bool) matters: EditBool.razor.cs's remount tracking relies on
     // NestedInput actually receiving a structurally different render — a bare <input> here vs. an
     // <input> wrapped in a styled <span> below — whenever EffectiveUseStyledCheckbox flips.
-    RenderFragment CheckboxInput(string cssClass) => @<input type="checkbox"
+    // Splatted first so every explicit attribute below wins; `class` travels CssClass and `style` the
+    // wrapper, so AttributeSplat.Rest withholds both. A null splat emits no frames at all.
+    RenderFragment CheckboxInput(string cssClass) => @<input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+                                                type="checkbox"
                                                 value="@CurrentValue"
                                                 @onchange="HandleCheckboxChange"
                                                 @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"

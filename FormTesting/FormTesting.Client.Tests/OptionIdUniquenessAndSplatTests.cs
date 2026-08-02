@@ -23,6 +23,14 @@ namespace FormTesting.Client.Tests;
 /// <c>EditCheckedEnumList</c> and <c>EditFile</c>. They now splat onto the root wrapper, with
 /// <c>class</c> still travelling its single existing channel.
 /// </para>
+/// <para>
+/// The scalar controls had the same hole for longer and less visibly: <c>InputBase</c> captures
+/// unmatched attributes for free, so nothing threw — the attributes were simply never rendered, and
+/// <c>class</c> (which travels <c>CssClass</c>) was the only one that ever reached the DOM. Each
+/// control now splats the rest onto the element they describe (the editor, the radio fieldset, the
+/// select engine's wrapper) and merges <c>style</c> onto the root wrapper, the one element every
+/// control in the library agrees on for it.
+/// </para>
 /// </summary>
 public class OptionIdUniquenessAndSplatTests : BunitContext
 {
@@ -476,6 +484,166 @@ public class OptionIdUniquenessAndSplatTests : BunitContext
         var cut = RenderStringList(new PersonModel(), ["a"], cssClass: "my-class");
 
         Assert.False(cut.Find(".edit-control-wrapper").HasAttribute("style"));
+    }
+
+    // ----- scalar controls: splat lands on the editor, style on the wrapper -----------------------
+
+    [Fact]
+    public void EditNumber_forwards_inputmode_and_data_attributes_to_its_input()
+    {
+        var model = new PersonModel { Age = 30 };
+        Expression<Func<int?>> field = () => model.Age;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<int?>>(0);
+            b.AddAttribute(1, "Value", model.Age);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-class");
+            b.AddAttribute(4, "style", "width:8rem");
+            b.AddAttribute(5, "data-foo", "bar");
+            b.AddAttribute(6, "inputmode", "numeric");
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input[type=number]");
+        Assert.Equal("bar", input.GetAttribute("data-foo"));
+        Assert.Equal("numeric", input.GetAttribute("inputmode"));
+        // class keeps its single channel (CssClass -> the input) and style its own (the wrapper);
+        // neither is re-emitted by the splat, so neither can double-render.
+        Assert.Contains("my-class", input.ClassList);
+        Assert.False(input.HasAttribute("style"));
+        var wrapper = cut.Find(".edit-control-wrapper");
+        Assert.Equal("width:8rem", wrapper.GetAttribute("style"));
+        Assert.DoesNotContain("my-class", wrapper.ClassList);
+    }
+
+    [Fact]
+    public void EditNumber_renders_no_splat_or_style_when_the_consumer_supplies_no_extra_attributes()
+    {
+        // The legacy DOM has to stay byte-identical for the overwhelmingly common case.
+        var model = new PersonModel { Age = 30 };
+        Expression<Func<int?>> field = () => model.Age;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<int?>>(0);
+            b.AddAttribute(1, "Value", model.Age);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        Assert.False(cut.Find(".edit-control-wrapper").HasAttribute("style"));
+        var input = cut.Find("input[type=number]");
+        Assert.False(input.HasAttribute("style"));
+        // The whole attribute list, in order, so an accidentally-emitted empty splat (or a reordering
+        // from moving one) fails here rather than silently in a visual baseline. `value` and
+        // `blazor:onchange` trail the hand-written ones because bUnit's htmlizer defers the bound
+        // value/event; everything before them is this control's own markup order.
+        Assert.Equal(
+            "type|id|data-test-id|min|max|class|aria-required|aria-describedby|value|blazor:onchange",
+            string.Join("|", input.Attributes.Select(a => a.Name)));
+    }
+
+    [Fact]
+    public void EditTextArea_forwards_spellcheck_and_data_attributes_alongside_its_own_input_handler()
+    {
+        // ShowCount + UpdateOn=Change is the combination that makes EditTextInputBase splat an
+        // `oninput` handler dictionary of its own onto this same element -- an element can carry only
+        // one @attributes, so the consumer's attributes have to merge with it rather than replace it.
+        var model = new PersonModel { Name = "hello" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditTextArea>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ShowCount", true);
+            b.AddAttribute(4, "UpdateOn", UpdateTrigger.Change);
+            b.AddAttribute(5, "class", "my-class");
+            b.AddAttribute(6, "style", "resize:none");
+            b.AddAttribute(7, "data-foo", "bar");
+            b.AddAttribute(8, "spellcheck", "false");
+            b.CloseComponent();
+        }));
+
+        var textarea = cut.Find("textarea");
+        Assert.Equal("bar", textarea.GetAttribute("data-foo"));
+        Assert.Equal("false", textarea.GetAttribute("spellcheck"));
+        Assert.Contains("my-class", textarea.ClassList);
+        // Never on the textarea: its inline style is JS-owned while AutoSize is on.
+        Assert.False(textarea.HasAttribute("style"));
+        Assert.Equal("resize:none", cut.Find(".edit-control-wrapper").GetAttribute("style"));
+    }
+
+    [Fact]
+    public void EditTextArea_own_attributes_win_over_a_consumer_splatting_the_same_name()
+    {
+        // AttributeSplat.RestWith layers the control's own dictionary on top of the consumer's, and
+        // the merged splat sits FIRST, so the hand-written attributes beside it win too.
+        var model = new PersonModel { Name = "hello" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditTextArea>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "id", "consumer-id");       // matches the Id parameter, so never splatted
+            b.AddAttribute(4, "data-test-id", "consumer"); // unmatched, but the control writes its own
+            b.CloseComponent();
+        }));
+
+        var textarea = cut.Find("textarea");
+        Assert.Equal("consumer-id", textarea.Id);          // Id="..." is a real parameter
+        Assert.Equal("consumer-id", textarea.GetAttribute("data-test-id"));
+    }
+
+    [Fact]
+    public void EditBool_forwards_data_and_aria_attributes_to_its_checkbox()
+    {
+        var model = new PersonModel { IsActive = true };
+        Expression<Func<bool>> field = () => model.IsActive;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditBool>(0);
+            b.AddAttribute(1, "Value", model.IsActive);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-class");
+            b.AddAttribute(4, "style", "margin-top:4px");
+            b.AddAttribute(5, "data-foo", "bar");
+            b.AddAttribute(6, "aria-keyshortcuts", "Alt+A");
+            b.CloseComponent();
+        }));
+
+        var box = cut.Find("input[type=checkbox]");
+        Assert.Equal("bar", box.GetAttribute("data-foo"));
+        Assert.Equal("Alt+A", box.GetAttribute("aria-keyshortcuts"));
+        Assert.Contains("my-class", box.ClassList);
+        Assert.False(box.HasAttribute("style"));
+        Assert.Equal("margin-top:4px", cut.Find(".edit-control-wrapper").GetAttribute("style"));
+    }
+
+    [Fact]
+    public void EditSelectEnum_forwards_data_and_title_attributes_to_its_select()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-class");
+            b.AddAttribute(4, "style", "max-width:12rem");
+            b.AddAttribute(5, "data-foo", "bar");
+            b.AddAttribute(6, "title", "pick one");
+            b.CloseComponent();
+        }));
+
+        var select = cut.Find("select");
+        Assert.Equal("bar", select.GetAttribute("data-foo"));
+        Assert.Equal("pick one", select.GetAttribute("title"));
+        Assert.Contains("my-class", select.ClassList);
+        Assert.False(select.HasAttribute("style"));
+        Assert.Equal("max-width:12rem", cut.Find(".edit-control-wrapper").GetAttribute("style"));
     }
 
     // ----- EditFile read-only label association ---------------------------------------------------

@@ -28,6 +28,28 @@ namespace Controls;
 /// passes it to <see cref="InitState"/> — so that a leftover <c>Field="..."</c> attribute in consumer
 /// markup is a build error rather than an unmatched-parameter throw at first render.
 /// </para>
+/// <para>
+/// <b>Unmatched attributes.</b> <see cref="InputBase{TValue}"/> captures them into
+/// <c>AdditionalAttributes</c>, but capturing is not rendering — every derived control's markup has to
+/// place them, and the placement is uniform across the library:
+/// <list type="bullet">
+/// <item><c>class</c> travels the single <see cref="InputBase{TValue}.CssClass"/> channel onto the
+/// field element (the editor, or the read-only value), merged with the EditContext's field-state
+/// classes. It is never re-emitted anywhere else — <c>ContainerClass</c> is the wrapper's knob.</item>
+/// <item><c>style</c> is hand-merged onto the root <c>.edit-control-wrapper</c> via
+/// <c>AttributeSplat.MergeStyle</c> — the same element the list-bound controls put it on, so one rule
+/// covers every control, and it keeps a consumer's declarations off the elements whose inline style is
+/// JS-owned (<c>EditTextArea</c>'s AutoSize height, the <c>Select</c> engine's open-order z-index).</item>
+/// <item>Everything else (<c>inputmode</c>, <c>readonly</c>, <c>spellcheck</c>, <c>data-*</c>,
+/// <c>aria-*</c>, …) is splatted with <c>AttributeSplat.Rest</c> onto the element it describes: the
+/// editor element for the single-editor controls, the <c>role="radiogroup"</c> fieldset for the radio
+/// groups, and (via a forwarded <c>AdditionalAttributes</c>) the engine wrapper for
+/// <c>EditSelectSearch</c>. Always splatted FIRST, so every explicitly-written attribute beside it wins
+/// — Blazor resolves duplicate attribute names left-to-right, last one wins.</item>
+/// </list>
+/// A control that renders no editor in read-only mode drops the splat with it, exactly as it already
+/// drops the editor's own attributes; <c>class</c> and <c>style</c> still apply.
+/// </para>
 /// </remarks>
 public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
 {

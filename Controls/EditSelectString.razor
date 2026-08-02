@@ -3,12 +3,17 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the <select> below. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
         {
-            <select @bind=@CurrentValueAsString
+            @* Splat first so every explicit attribute below wins. *@
+            <select @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+                    @bind=@CurrentValueAsString
                     id=@_id
                     data-test-id=@_id
                     disabled=@IsDisabled

@@ -2,7 +2,10 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the <input> below. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
 
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
@@ -23,10 +26,15 @@
                             ShowPasswordToggle=@EffectiveIsPassword
                             IsPasswordRevealed=@_passwordRevealed
                             OnTogglePassword=@TogglePasswordVisibility>
-                <input @bind-value="CurrentValue"
+                @* One @attributes per element, so the consumer's unmatched attributes and this
+                   control's own oninput handler are merged (the control's own win) -- and the splat is
+                   FIRST, so every explicitly-written attribute below, including the ones @bind-value
+                   emits, wins over a consumer's. `class` travels CssClass and `style` the wrapper, so
+                   AttributeSplat withholds both; a null merge emits no frames at all. *@
+                <input @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorInputAttributes)"
+                       @bind-value="CurrentValue"
                        @bind-value:event="@UpdateEventName"
                        @bind-value:after="OnValueCommittedAsync"
-                       @attributes="EditorInputAttributes"
                        @ref="_editorRef"
                        disabled=@IsDisabled
                        id=@_id
