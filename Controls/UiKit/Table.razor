@@ -63,7 +63,7 @@
                             {
                                 <span class="wss-table-checkbox-wrap">
                                     <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled"
-                                           aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
+                                           aria-label="@SelectAllLabel"
                                            checked="@_allSelected" disabled="@_headerSelectAllDisabled"
                                            @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
                                     <span class="wss-table-checkbox-box" aria-hidden="true"></span>
@@ -72,7 +72,7 @@
                             else
                             {
                                 <input type="checkbox" class="wss-table-checkbox"
-                                       aria-label="@(IsPaged ? "Select all rows on this page" : "Select all rows")"
+                                       aria-label="@SelectAllLabel"
                                        checked="@_allSelected" disabled="@_headerSelectAllDisabled"
                                        @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
                             }
@@ -208,7 +208,7 @@
                                     @if (EffectiveUseStyledCheckbox)
                                     {
                                         <span class="wss-table-checkbox-wrap">
-                                            <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled" aria-label="Select row" checked="@IsSelected(item)"
+                                            <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
                                                    disabled="@(!IsRowSelectableFor(item))"
                                                    @onchange="@(e => ToggleRow(item, e.Value is true))" />
                                             <span class="wss-table-checkbox-box" aria-hidden="true"></span>
@@ -216,14 +216,14 @@
                                     }
                                     else
                                     {
-                                        <input type="checkbox" class="wss-table-checkbox" aria-label="Select row" checked="@IsSelected(item)"
+                                        <input type="checkbox" class="wss-table-checkbox" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
                                                disabled="@(!IsRowSelectableFor(item))"
                                                @onchange="@(e => ToggleRow(item, e.Value is true))" />
                                     }
                                 }
                                 else
                                 {
-                                    <input type="radio" class="wss-table-radio" name="@_radioGroupName" aria-label="Select row" checked="@IsSelected(item)"
+                                    <input type="radio" class="wss-table-radio" name="@_radioGroupName" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
                                            disabled="@(!IsRowSelectableFor(item))"
                                            @onchange="@(() => SelectSingleAsync(item))" />
                                 }
@@ -401,6 +401,17 @@
     /// </summary>
     [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
 
+    /// <summary>Accessible name of a row's selection checkbox/radio. Override to localize.</summary>
+    [Parameter] public string SelectRowLabel { get; set; } = "Select row";
+
+    /// <summary>Accessible name of the header select-all checkbox while the table is paged — it only
+    /// toggles the current page, which the default text says. Override to localize.</summary>
+    [Parameter] public string SelectAllRowsOnPageLabel { get; set; } = "Select all rows on this page";
+
+    /// <summary>Accessible name of the header select-all checkbox while the table shows every row.
+    /// Override to localize.</summary>
+    [Parameter] public string SelectAllRowsLabel { get; set; } = "Select all rows";
+
     /// <summary>Accessible name of a collapsed row's expand button. Override to localize.</summary>
     [Parameter] public string ExpandRowLabel { get; set; } = "Expand row";
 
@@ -550,6 +561,10 @@
     string PagerAlignName => PagerAlign.ToString().ToLowerInvariant();
 
     bool IsPaged => _pageSize > 0;
+
+    // The header select-all's accessible name follows its actual scope: ToggleAll only ever affects
+    // the current page, so a paged table says so.
+    string SelectAllLabel => IsPaged ? SelectAllRowsOnPageLabel : SelectAllRowsLabel;
 
     bool HasPager => IsPaged && _items.Count > 0;
     bool ShowTopPager => HasPager && PagerPosition is PagerPosition.Top or PagerPosition.Both;

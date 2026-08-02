@@ -164,6 +164,72 @@ public class UiKitTableTests : BunitContext
     }
 
     [Fact]
+    public void Paged_select_all_label_says_it_only_covers_the_page_and_both_are_overridable()
+    {
+        // Every other user-facing string on Table/Pagination has an override; the selection labels
+        // were the last hardcoded English left, so a localized table announced its own checkboxes in
+        // the wrong language.
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        var paged = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.PageSize, 2)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+        Assert.Equal("Select all rows on this page",
+            paged.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+
+        var localized = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectRowLabel, "Zeile auswählen")
+            .Add(t => t.SelectAllRowsLabel, "Alle Zeilen auswählen")
+            .Add(t => t.SelectAllRowsOnPageLabel, "Alle Zeilen dieser Seite auswählen")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Equal("Alle Zeilen auswählen",
+            localized.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+        Assert.All(localized.FindAll("tbody input.wss-table-checkbox"),
+            cb => Assert.Equal("Zeile auswählen", cb.GetAttribute("aria-label")));
+    }
+
+    [Fact]
+    public void Selection_label_overrides_reach_the_styled_checkbox_and_the_single_mode_radio()
+    {
+        var data = Sample();
+        var styled = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.UseStyledCheckbox, true)
+            .Add(t => t.SelectRowLabel, "Zeile auswählen")
+            .Add(t => t.SelectAllRowsLabel, "Alle Zeilen auswählen")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Equal("Alle Zeilen auswählen",
+            styled.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+        Assert.All(styled.FindAll("tbody input.wss-table-checkbox"),
+            cb => Assert.Equal("Zeile auswählen", cb.GetAttribute("aria-label")));
+
+        var single = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .Add(t => t.SelectRowLabel, "Zeile auswählen")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.All(single.FindAll("tbody input.wss-table-radio"),
+            r => Assert.Equal("Zeile auswählen", r.GetAttribute("aria-label")));
+    }
+
+    [Fact]
     public void Table_prunes_selection_when_the_data_source_is_swapped_uncontrolled()
     {
         List<Person>? selected = null;
