@@ -45,14 +45,26 @@ namespace Controls.Helpers;
 /// genuine "must fit in an int" constraint — <c>5000000000</c> violates it — not the "no bound" idiom
 /// it is on an <c>int</c> property; a mixed pair like <c>(int.MinValue, long.MaxValue)</c> on a
 /// <c>long</c> is one-sided (the max is long's own vacuous ceiling, the min is a real int-sized floor).
-/// This is why every predicate below takes the property's own type and requires an EXACT row match
-/// (not "any row"): <see cref="IsMin(decimal, System.Type?)"/>/<see cref="IsMax(decimal, System.Type?)"/>
+/// This is why every predicate below takes the property's own type: <see cref="IsMin(decimal, System.Type?)"/>/<see cref="IsMax(decimal, System.Type?)"/>
 /// take the real CLR <see cref="System.Type"/> the DOM layer has from the generic
 /// <c>EditNumber&lt;T&gt;</c>; the <c>string</c> overloads take the message layer's only type context —
 /// <c>Type.ToString()</c> text, with <c>Nullable&lt;T&gt;</c>'s <c>"System.Nullable`1[...]"</c> spelling
 /// unwrapped first. A <see langword="null"/>/unresolvable property type is conservative BY DESIGN — it
 /// always answers "not a sentinel" (a real bound), never "collapse this to no-bound-at-all": a caller
 /// with no type context cannot tell "no bound" from "long fits an int", so it must not guess.
+/// </para>
+/// <para>
+/// <b>Unreachable is vacuous too.</b> An exact row match alone is not the whole gate, or the six
+/// integral types with no row of their own (<c>sbyte</c>/<c>byte</c>/<c>short</c>/<c>ushort</c>/
+/// <c>uint</c>/<c>ulong</c>) would match nothing and keep every bound: <c>[Range(0, int.MaxValue)]</c>
+/// on a <c>short?</c> rendered <c>max="2147483647"</c> and "Must be between 0 and 2147483647" — a
+/// ceiling the type cannot reach and a number the user can never satisfy their way past. So a row also
+/// counts when its extreme sits AT OR OUTSIDE what the bound property can represent on that side
+/// (<see cref="Representable"/>). Both halves are required: the second is still restricted to values
+/// that are SOME type's extreme, which is what keeps <c>[Range(0, 255)]</c> on a <c>byte</c> naming
+/// both bounds (255 is byte's own ceiling, but no row's) while <c>[Range(int.MinValue, int.MaxValue)]</c>
+/// on a <c>long</c> stays the real "must fit in an int" constraint it is (int's extremes are rows, but
+/// they sit strictly INSIDE long's range).
 /// </para>
 /// </remarks>
 internal static class RangeSentinels
@@ -94,31 +106,59 @@ internal static class RangeSentinels
         (typeof(float), typeof(float).ToString(), null, null, () => ((double)float.MinValue).ToString(), () => ((double)float.MaxValue).ToString()),
     ];
 
+    // What each numeric type can actually hold, which is the second way a row above qualifies: an
+    // extreme at or outside this range is a bound the property could never reach, i.e. "no bound" for
+    // that property whether or not the type has an extreme row of its own. Held as double purely so
+    // one table can span decimal's, float's and double's magnitudes as well as the integral ones --
+    // only ROW extremes are ever compared against PROPERTY extremes here, and the two are equal only
+    // when the types are (which the exact-row check has already answered), so double's precision at
+    // long/ulong magnitudes never decides an answer. char is included because it is an integral type a
+    // model can declare and reflection can hand us, not because it is a sensible [Range] target.
+    static readonly (Type Type, string TypeName, double Min, double Max)[] Representable =
+    [
+        (typeof(sbyte), typeof(sbyte).ToString(), sbyte.MinValue, sbyte.MaxValue),
+        (typeof(byte), typeof(byte).ToString(), byte.MinValue, byte.MaxValue),
+        (typeof(short), typeof(short).ToString(), short.MinValue, short.MaxValue),
+        (typeof(ushort), typeof(ushort).ToString(), ushort.MinValue, ushort.MaxValue),
+        (typeof(char), typeof(char).ToString(), char.MinValue, char.MaxValue),
+        (typeof(int), typeof(int).ToString(), int.MinValue, int.MaxValue),
+        (typeof(uint), typeof(uint).ToString(), uint.MinValue, uint.MaxValue),
+        (typeof(long), typeof(long).ToString(), long.MinValue, long.MaxValue),
+        (typeof(ulong), typeof(ulong).ToString(), ulong.MinValue, ulong.MaxValue),
+        (typeof(decimal), typeof(decimal).ToString(), (double)decimal.MinValue, (double)decimal.MaxValue),
+        (typeof(float), typeof(float).ToString(), float.MinValue, float.MaxValue),
+        (typeof(double), typeof(double).ToString(), double.MinValue, double.MaxValue),
+    ];
+
     /// <summary>
-    /// True when <paramref name="bound"/> is <paramref name="propertyType"/>'s OWN extreme spelling
-    /// "no floor" (<see cref="Nullable{T}"/> unwrapped first). <see langword="false"/> whenever
-    /// <paramref name="propertyType"/> is <see langword="null"/> -- conservative by design, see the
-    /// type-gating remarks above.
+    /// True when <paramref name="bound"/> spells "no floor" for <paramref name="propertyType"/>
+    /// (<see cref="Nullable{T}"/> unwrapped first) — that type's own extreme, or another type's
+    /// extreme at or below everything <paramref name="propertyType"/> can hold. <see langword="false"/>
+    /// whenever <paramref name="propertyType"/> is <see langword="null"/> -- conservative by design,
+    /// see the type-gating remarks above.
     /// </summary>
     internal static bool IsMin(decimal bound, Type? propertyType)
     {
         var type = Unwrap(propertyType);
         if (type is null) return false;
+        var property = RangeOf(type);
         foreach (var extreme in Extremes)
-            if (extreme.Type == type && extreme.Min == bound) return true;
+            if (extreme.Min == bound && Qualifies(extreme.Type, type, property, isMin: true)) return true;
         return false;
     }
 
     /// <summary>
-    /// True when <paramref name="bound"/> is <paramref name="propertyType"/>'s OWN extreme spelling
-    /// "no ceiling". See <see cref="IsMin(decimal, System.Type?)"/> for the null/unknown-type rule.
+    /// True when <paramref name="bound"/> spells "no ceiling" for <paramref name="propertyType"/>.
+    /// See <see cref="IsMin(decimal, System.Type?)"/> for the two ways a bound qualifies and for the
+    /// null/unknown-type rule.
     /// </summary>
     internal static bool IsMax(decimal bound, Type? propertyType)
     {
         var type = Unwrap(propertyType);
         if (type is null) return false;
+        var property = RangeOf(type);
         foreach (var extreme in Extremes)
-            if (extreme.Type == type && extreme.Max == bound) return true;
+            if (extreme.Max == bound && Qualifies(extreme.Type, type, property, isMin: false)) return true;
         return false;
     }
 
@@ -133,8 +173,9 @@ internal static class RangeSentinels
     {
         var typeName = UnwrapTypeName(valueType);
         if (typeName is null) return false;
+        var property = RangeOf(typeName);
         foreach (var extreme in Extremes)
-            if (extreme.TypeName == typeName && extreme.MinText() == bound) return true;
+            if (extreme.MinText() == bound && Qualifies(extreme.TypeName, typeName, property, isMin: true)) return true;
         return false;
     }
 
@@ -143,9 +184,36 @@ internal static class RangeSentinels
     {
         var typeName = UnwrapTypeName(valueType);
         if (typeName is null) return false;
+        var property = RangeOf(typeName);
         foreach (var extreme in Extremes)
-            if (extreme.TypeName == typeName && extreme.MaxText() == bound) return true;
+            if (extreme.MaxText() == bound && Qualifies(extreme.TypeName, typeName, property, isMin: false)) return true;
         return false;
+    }
+
+    // The two ways a matching extreme row counts for this property: it is the property's own row, or
+    // it lies at/outside what the property can represent on this side. Split by Type and by type name
+    // only because the two layers have different type context; the rule is the same.
+    static bool Qualifies(Type rowType, Type propertyType, (double Min, double Max)? property, bool isMin) =>
+        rowType == propertyType || Unreachable(RangeOf(rowType), property, isMin);
+
+    static bool Qualifies(string rowTypeName, string propertyTypeName, (double Min, double Max)? property, bool isMin) =>
+        rowTypeName == propertyTypeName || Unreachable(RangeOf(rowTypeName), property, isMin);
+
+    static bool Unreachable((double Min, double Max)? row, (double Min, double Max)? property, bool isMin) =>
+        row is { } r && property is { } p && (isMin ? r.Min <= p.Min : r.Max >= p.Max);
+
+    static (double Min, double Max)? RangeOf(Type type)
+    {
+        foreach (var row in Representable)
+            if (row.Type == type) return (row.Min, row.Max);
+        return null;
+    }
+
+    static (double Min, double Max)? RangeOf(string typeName)
+    {
+        foreach (var row in Representable)
+            if (row.TypeName == typeName) return (row.Min, row.Max);
+        return null;
     }
 
     static Type? Unwrap(Type? type) => type is null ? null : Nullable.GetUnderlyingType(type) ?? type;
