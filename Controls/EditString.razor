@@ -46,21 +46,11 @@
                 <!-- Masks with eye icons to show/hide masked text in EditMode  -->
                 @if (!_showMaskedValue)
                 {
-                    <div class="edit-masked-value" id=@_id data-test-id=@_id aria-labelledby="lbl-@_id">
-                        <span class="edit-readonly-value">@GetMaskValue()</span>
-                        <button type="button" aria-label="Show value" class="edit-icon-eye-invisible" @onclick=@(() => _showMaskedValue = !_showMaskedValue)>
-                            @EditIcons.EyeInvisible
-                        </button>
-                    </div>
+                    @MaskedValueRow(GetMaskValue(), "Show value", "edit-icon-eye-invisible", EditIcons.EyeInvisible)
                 }
                 else
                 {
-                    <div class="edit-masked-value" id=@_id data-test-id=@_id aria-labelledby="lbl-@_id">
-                        <span class="edit-readonly-value">@Value</span>
-                        <button type="button" aria-label="Hide value" class="edit-icon-eye" @onclick=@(() => _showMaskedValue = !_showMaskedValue)>
-                            @EditIcons.Eye
-                        </button>
-                    </div>
+                    @MaskedValueRow(Value, "Hide value", "edit-icon-eye", EditIcons.Eye)
                 }
             }
             else
@@ -89,4 +79,16 @@
 
         <BoundValueDisplay Text=@CurrentValueAsString />
     </div>
+}
+
+@code {
+    // Shared by both masked-value read-only rows above -- identical markup, differing only in which
+    // text shows and the eye-toggle button's label/class/icon (revealed vs. hidden).
+    RenderFragment MaskedValueRow(string? text, string toggleAriaLabel, string iconClass, MarkupString icon) =>
+        @<div class="edit-masked-value" id=@_id data-test-id=@_id aria-labelledby="lbl-@_id">
+            <span class="edit-readonly-value">@text</span>
+            <button type="button" aria-label="@toggleAriaLabel" class="@iconClass" @onclick=@(() => _showMaskedValue = !_showMaskedValue)>
+                @icon
+            </button>
+        </div>;
 }
