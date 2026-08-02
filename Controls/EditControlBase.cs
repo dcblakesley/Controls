@@ -39,7 +39,11 @@ namespace Controls;
 /// <item><c>style</c> is hand-merged onto the root <c>.edit-control-wrapper</c> via
 /// <c>AttributeSplat.MergeStyle</c> — the same element the list-bound controls put it on, so one rule
 /// covers every control, and it keeps a consumer's declarations off the elements whose inline style is
-/// JS-owned (<c>EditTextArea</c>'s AutoSize height, the <c>Select</c> engine's open-order z-index).</item>
+/// JS-owned (<c>EditTextArea</c>'s AutoSize height, the <c>Select</c> engine's open-order z-index).
+/// The two picker-backed controls (<see cref="EditDate{T}"/>, <c>EditDateRange</c>) are the exception:
+/// they forward the whole splat, <c>style</c> included, to the inner picker's own
+/// <c>AdditionalAttributes</c>, which is where their <c>class</c> has to go too (it carries the
+/// EditContext state classes onto the picker wrapper).</item>
 /// <item>Everything else (<c>inputmode</c>, <c>readonly</c>, <c>spellcheck</c>, <c>data-*</c>,
 /// <c>aria-*</c>, …) is splatted with <c>AttributeSplat.Rest</c> onto the element it describes: the
 /// editor element for the single-editor controls, the <c>role="radiogroup"</c> fieldset for the radio
