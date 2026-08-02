@@ -327,13 +327,27 @@ export function focusDeferred(el, maxFrames) {
     requestAnimationFrame(tryFocus);
 }
 
-// --- DateRangePicker ---------------------------------------------------------------------------
-// Field-anchored panel placement — wss-select.js/placeDropdown's model (flip above when there's no
-// room below, open-order z stacking, return the wrapper z for C# to mirror into the bound style),
-// generalized with a horizontal viewport clamp: the picker panel is far wider than its field, so a
-// field near the right edge would otherwise push the panel off-screen. Degrades to the default CSS
-// placement (below, left-aligned) when JS is unavailable.
-export function placePanel(wrapper, panel, backdropClass, gap) {
+// --- Wrapper-anchored panel placement ----------------------------------------------------------
+// The whole orchestration behind BOTH the Select dropdown and the picker panel: stack in open order
+// (backdrop below, wrapper above), flip above the anchor when there's no room below, then shift
+// horizontally just enough to keep the panel inside the viewport — expressed as a `left` offset from
+// the wrapper, since the CSS default is left: 0 (the panel is absolute inside the position: relative
+// wrapper, which has no border or padding, so `left: 0` and the wrapper's own client rect start at the
+// same x). Returns the z-index assigned to the wrapper so C# can mirror it into the Blazor-bound
+// `style`: the value is written twice — here to the DOM immediately (no flicker) and by Blazor on its
+// next diff — and both agree, so a bound-style re-render while open can't clobber this inline write and
+// drop the wrapper below its own backdrop. Degrades to the default downward CSS placement when JS is
+// unavailable (the invoke throws, C# leaves its mirrored z null, and the CSS fallback applies).
+//
+// wss-select.js's placeDropdown and this module's own placePanel ran this identical sequence and
+// differed only in the three knobs below; both are now thin wrappers over it.
+//
+// `edgeMargin` is the viewport reserve for the horizontal clamp — a pixel count, or a
+// (panelWidth, viewportWidth) => pixels function for a caller whose reserve depends on how wide the
+// panel turned out (see placeDropdown). `clearRightAnchor` neutralizes any stale `right` the caller's
+// CSS may have left on the panel before writing `left`; callers whose stylesheet never sets `right`
+// leave it off rather than pinning the property to a value their own RTL rules can't override.
+export function placeAnchoredPanel(wrapper, panel, backdropClass, gap, edgeMargin, clearRightAnchor) {
     if (!wrapper || !panel) {
         return 0;
     }
@@ -346,17 +360,25 @@ export function placePanel(wrapper, panel, backdropClass, gap) {
     const pw = panel.offsetWidth;
     applyVerticalFlip(panel, w, ph, gap);
 
-    // Shift horizontally just enough to keep the panel inside the viewport (8px margin) — the panel
-    // is far wider than its field, so a field near the right edge would otherwise push it off-screen.
-    // Expressed as a `left` offset from the wrapper, since the CSS default is left: 0 (the panel is
-    // absolute inside the wrapper). Via the shared two-sided clampAxis, so a field whose own left
-    // edge sits past the left viewport margin (horizontally scrolled, or a field wider than the
-    // screen) now gets the panel nudged back to the margin rather than trailing the field off-screen
-    // to the left — the previous one-sided version could only ever shift left.
-    const left = clampAxis(w.left, pw, window.innerWidth, 8);
+    // Via the shared two-sided clampAxis, so a wrapper whose own left edge sits past the left viewport
+    // margin (horizontally scrolled, or wider than the screen) gets the panel nudged back to the margin
+    // rather than trailing off-screen to the left — see clampAxis for why the near edge wins.
+    const margin = typeof edgeMargin === 'function' ? edgeMargin(pw, window.innerWidth) : edgeMargin;
+    const left = clampAxis(w.left, pw, window.innerWidth, margin);
+    if (clearRightAnchor) {
+        panel.style.right = 'auto';
+    }
     panel.style.left = `${Math.round(left - w.left)}px`;
 
     return z;
+}
+
+// --- DateRangePicker ---------------------------------------------------------------------------
+// The picker panel is far wider than its field, so a field near the right edge would otherwise push
+// the panel off-screen: a flat 8px viewport reserve. Its stylesheet never anchors the panel's `right`,
+// so there's nothing to neutralize.
+export function placePanel(wrapper, panel, backdropClass, gap) {
+    return placeAnchoredPanel(wrapper, panel, backdropClass, gap, 8, false);
 }
 
 // Removes the open-order z-index applied by placePanel once the panel closes (the wrapper persists
