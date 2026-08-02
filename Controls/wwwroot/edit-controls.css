@@ -1,9 +1,13 @@
 :root {
     /* Centralized fallbacks so the danger + focus colors aren't repeated as literals throughout this
        file. Bridges to the consumer's --color-* vars where present (mirroring wss-controls.css). */
-    /* Fallback darkened from the AntDesign #ff4d4f (3.27:1 on white — fails WCAG 1.4.3 for the
-       validation message / summary text) to #cf1322 (~5.9:1). Consumers' --color-danger still wins. */
-    --edit-color-danger: var(--color-danger, #cf1322);
+    /* Unified with wss-controls.css's --wss-color-error fallback (#ff4d4f, the AntD default) so an
+       unthemed form doesn't paint two different invalid-state reds across the two stylesheets.
+       NOTE: #ff4d4f is only 3.27:1 on white, which fails WCAG 1.4.3 for the validation message /
+       summary text -- this token previously used a darkened #cf1322 (~5.9:1) instead. Unifying
+       reintroduces that contrast gap for consumers who never set --color-danger; flagged here rather
+       than silently dropped. Consumers' own --color-danger still wins regardless. */
+    --edit-color-danger: var(--color-danger, #ff4d4f);
     /* Single source of truth for the primary/interactive fallback -- every var(--color-primary, ...)
        in this file must reuse this token so an unset --color-primary renders one consistent color
        instead of each usage picking its own literal fallback. */
@@ -417,7 +421,9 @@
     padding: 0 15px;
     font-size: 14px;
     line-height: 30px;
-    color: var(--color-text, rgba(0, 0, 0, 0.88));
+    /* Unified fallback -- see this file's --color-text single-fallback policy note near
+       .edit-file-drop-text further down. */
+    color: var(--color-text, #262626);
     background: var(--color-bg, #fff);
     border: 1px solid var(--edit-color-border);
     cursor: pointer;
@@ -1019,16 +1025,21 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    /* Bridged to the generic text token (was a bare rgba literal) -- the exact literal stays as the
-       fallback so an unthemed consumer's rendering is unchanged. */
-    color: var(--color-text, rgba(28, 28, 28, 1));
+    /* --color-text single-fallback policy: every var(--color-text, ...) in this file uses this same
+       #262626 literal (see .edit-radio-button/.edit-file-select-btn and .edit-tooltip-container) --
+       this site and .edit-tooltip-container previously each carried their own close-but-different
+       literal (rgba(28, 28, 28, 1) / rgba(0, 0, 0, 0.88)), which is exactly the drift this note now
+       prevents. */
+    color: var(--color-text, #262626);
     text-align: center;
     pointer-events: none;
 }
 
 .edit-file-formats {
-    /* Same bridge as .edit-file-size / .bound-value below -- secondary/muted text. */
-    color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    /* --color-text-secondary single-fallback policy: same literal as .edit-file-size / .bound-value
+       (below/above) -- this rule previously used its own rgba(0, 0, 0, 0.65), a real, visible drift
+       the old comment here incorrectly asserted didn't exist. */
+    color: var(--color-text-secondary, #8c8c8c);
     font-size: 0.85em;
 }
 
@@ -1066,7 +1077,8 @@
 .edit-file-size {
     flex-shrink: 0;
     white-space: nowrap;
-    color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+    /* --color-text-secondary single-fallback policy -- see .edit-file-formats above. */
+    color: var(--color-text-secondary, #8c8c8c);
     font-size: 0.85em;
 }
 
