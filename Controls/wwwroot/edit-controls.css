@@ -111,7 +111,15 @@
     /* The description for each of the "Edit" Controls */
 
 }
-.edit-readonly-value { /* The text that is displayed when IsEditMode=false and within EditDisplay*/ }
+.edit-readonly-value {
+    /* The text that is displayed when IsEditMode=false and within EditDisplay. Backs every control's
+       read-only view, so a single long unbroken token (a URL, an ID, a token with no spaces) needs to
+       wrap rather than overflow its container -- min-width: 0 lets it actually shrink inside a flex
+       ancestor (e.g. .edit-masked-value below), where the default min-width: auto would otherwise
+       refuse to yield and push a sibling (the eye toggle) out instead. */
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
 
 /* Applied to every editable element — <input>, <textarea>, <InputSelect>, <InputDate>.
    Consumers should style this single class instead of styling per-element-selector
@@ -524,7 +532,11 @@
 .edit-select-option { /* The options within the select control */ }
 
 /************************************************ EditString *********************************************/
-.edit-string-link { /* <a style when IsEditMode=false and Url!=null */ }
+.edit-string-link {
+    /* <a style when IsEditMode=false and Url!=null. Same overflow-wrap protection as
+       .edit-readonly-value -- a long unbroken URL/token shouldn't overflow its container. */
+    overflow-wrap: anywhere;
+}
 .edit-string-input { /* The input for the "EditString" control */ }
 
 /* Read-only masked-value wrapper: the masked/unmasked <span> plus the eye-toggle <button>.
@@ -533,6 +545,12 @@
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    /* Without min-width: 0 this flex row refuses to shrink below its content's intrinsic width -- a
+       long unbroken masked token pushes the row, and with it the eye toggle, past a clipped/scrolling
+       container's edge; max-width caps it at the container so a wrapped .edit-readonly-value child
+       (min-width: 0 already covered by that class's own rule above) has somewhere to wrap into. */
+    min-width: 0;
+    max-width: 100%;
 }
 
 /************************************************ Input + InvalidIcon wrapper ********************************/
@@ -610,9 +628,13 @@
     /* EditString's mask show/hide toggle buttons, plus EditInputShell's affix-mode clear and
        password-toggle buttons — reset the native <button> chrome. One shared group so the reset
        never has to be restated per button; extend this list rather than duplicating the rule.
-       inline-flex (not the reset block's concern) centers the 1em svg glyph inside the button box. */
+       inline-flex (not the reset block's concern) centers the 1em svg glyph inside the button box.
+       flex-shrink: 0 keeps all four at their intrinsic size when a sibling (e.g. a long unbroken
+       .edit-readonly-value token in .edit-masked-value) is squeezed in a clipped/scrolling container
+       -- without it a flex row with no free space could shrink the button/icon itself instead. */
     display: inline-flex;
     align-items: center;
+    flex-shrink: 0;
     background: none;
     border: none;
     cursor: pointer;
@@ -728,6 +750,9 @@
     /* The bubble sits inside a <button>, which centers text by default. */
     text-align: start;
     white-space: normal;
+    /* max-width caps the bubble, but never wraps an unbroken token (a long URL/id in a consumer's
+       help text) on its own -- overflow-wrap lets it break mid-token instead of overflowing. */
+    overflow-wrap: anywhere;
     /* The bubble stays pointer-interactive (unlike data-tooltip's pseudo-elements): WCAG 1.4.13
        "hoverable" requires that the pointer can move onto the revealed content without it
        disappearing, and as a child of the trigger button, hovering it keeps the reveal alive.

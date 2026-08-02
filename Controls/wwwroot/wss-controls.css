@@ -789,6 +789,7 @@
 
 .wss-alert-message {
     color: var(--wss-color-text);
+    overflow-wrap: anywhere;
 }
 
 .wss-alert-with-description .wss-alert-message {
@@ -799,6 +800,7 @@
 .wss-alert-description {
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
+    overflow-wrap: anywhere;
 }
 
 /* Alert.Action: groups the action slot + close button on the trailing edge (only rendered when
@@ -1050,6 +1052,11 @@
 .wss-popconfirm-title {
     color: var(--wss-color-text);
     font-weight: 600;
+    /* A flex item beside the confirm icon (default min-width: auto refuses to shrink below its
+       content's intrinsic width) inside a max-width-capped panel -- min-width: 0 lets it actually
+       shrink, and overflow-wrap lets a long unbroken token wrap instead of overflowing the panel. */
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .wss-popover-content {
@@ -1057,6 +1064,7 @@
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
     line-height: var(--wss-line-height);
+    overflow-wrap: anywhere;
 }
 
 .wss-popover-arrow, .wss-popconfirm-arrow {
@@ -1135,6 +1143,9 @@
     white-space: normal;
     width: max-content;
     max-width: min(340px, 85vw);
+    /* max-width caps the bubble, but never wraps an unbroken token (a long URL/id) on its own --
+       overflow-wrap lets it break mid-token instead of overflowing. */
+    overflow-wrap: anywhere;
     pointer-events: none;
     opacity: 0;
     display: none;
@@ -1932,6 +1943,10 @@
     padding: 16px 16px;
     text-align: left;
     border-bottom: 1px solid var(--wss-color-split);
+    /* Harmless for ordinary spaced text -- only engages for an unbroken token (a long id/URL) that
+       would otherwise overflow the cell. .wss-table-cell-ellipsis (opt-in, further down) stays the
+       stronger truncating tier for columns that request it. */
+    overflow-wrap: anywhere;
 }
 
 .wss-table-thead .wss-table-cell {
@@ -2558,9 +2573,14 @@
     font-size: 16px;
 }
 
-/* Text content beside the message icon. */
+/* Text content beside the message icon. flex: 1 with the default min-width: auto refuses to shrink
+   below its content's intrinsic width -- min-width: 0 lets it actually shrink, and overflow-wrap lets
+   a long unbroken token wrap instead of growing this fixed-position toast past the viewport (same
+   precedent as .wss-notification-body, below). */
 .wss-msg-content {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .wss-msg-icon-success { color: var(--wss-color-success); }
@@ -2669,12 +2689,14 @@
     color: var(--wss-color-text);
     font-size: 16px;
     line-height: 24px;
+    overflow-wrap: anywhere;
 }
 
 .wss-notification-description {
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
     line-height: var(--wss-line-height);
+    overflow-wrap: anywhere;
 }
 
 /* Shared close-button chrome + hover are grouped with .wss-alert-close/-hover (Alert section, above)
