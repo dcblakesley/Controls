@@ -13,8 +13,20 @@
              class="edit-readonly-value @Class"
              style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
              aria-labelledby=@(string.IsNullOrEmpty(Label) ? null : $"lbl-{_id}")>
-
-            @Text
+            @* The same hidden line-height placeholder ReadOnlyValue renders for an empty value (see
+               that component). Without it an empty EditDisplay collapses to zero height while every
+               sibling read-only field still reserves a line, so the row it sits in loses alignment.
+               ReadOnlyValue itself can't be reused here: this div also carries the consumer's
+               splatted attributes, merged style and the Class parameter, none of which that
+               component takes. *@
+            @if (!string.IsNullOrEmpty(Text))
+            {
+                @Text
+            }
+            else
+            {
+                <span aria-hidden="true" style="visibility: hidden">No Value</span>
+            }
         </div>
         
   </div>

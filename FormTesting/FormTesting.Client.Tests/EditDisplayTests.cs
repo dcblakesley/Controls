@@ -134,4 +134,26 @@ public class EditDisplayTests : BunitContext
         Assert.Equal("margin-top:4px", value.GetAttribute("style"));
         Assert.Equal("volume", value.GetAttribute("data-testid"));
     }
+
+    [Fact]
+    public void EditDisplay_with_no_text_reserves_a_line_like_every_other_read_only_value()
+    {
+        // EditDisplay hand-builds its read-only div instead of using ReadOnlyValue, and had missed
+        // that component's hidden "No Value" placeholder -- so an empty one collapsed to zero height
+        // beside sibling read-only fields that each reserve a line, and the row lost its alignment.
+        var cut = Render<EditDisplay>(p => p.Add(d => d.Label, "Volume"));
+
+        var placeholder = cut.Find(".edit-readonly-value span");
+        Assert.Equal("true", placeholder.GetAttribute("aria-hidden"));
+        Assert.Contains("visibility: hidden", placeholder.GetAttribute("style"));
+    }
+
+    [Fact]
+    public void EditDisplay_with_text_renders_no_placeholder()
+    {
+        var cut = Render<EditDisplay>(p => p.Add(d => d.Text, "15.3 oz"));
+
+        Assert.Empty(cut.FindAll(".edit-readonly-value span"));
+        Assert.Equal("15.3 oz", cut.Find(".edit-readonly-value").TextContent.Trim());
+    }
 }

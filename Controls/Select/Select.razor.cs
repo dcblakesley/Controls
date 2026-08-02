@@ -673,6 +673,12 @@ public partial class Select<TValue> : IAsyncDisposable
         _searchText = string.Empty;
         _debounceCts?.Cancel();
         _searchPending = false;
+        // The non-searchable type-ahead prefix goes too. It only self-clears after a 1s pause between
+        // keystrokes, so without this a close (or a selection/clear/tag commit) followed by a quick
+        // reopen resumed the previous session's accumulated prefix -- the first letter typed then
+        // jumped somewhere that letter alone doesn't explain. A native <select> starts fresh the same
+        // way. _lastTypeAheadUtc needs no reset: an empty buffer is already a fresh start.
+        _typeAheadBuffer = string.Empty;
         RebuildFiltered();
     }
 

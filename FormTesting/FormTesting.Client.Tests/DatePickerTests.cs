@@ -2629,6 +2629,38 @@ public class DatePickerTests : BunitContext
         }
     }
 
+    [Fact]
+    public void Weekday_headers_truncate_on_grapheme_boundaries_not_char_boundaries()
+    {
+        // PickerMath.WeekdayHeaders shortens AbbreviatedDayNames to the CLDR-style two-character form.
+        // A plain `name[..2]` slice cuts a surrogate pair in half whenever the SECOND character is
+        // astral, leaving a lone high surrogate the browser draws as U+FFFD. No shipping ICU culture
+        // has such a day name, so the case is synthesized here on a Gregorian-calendar clone (which
+        // GregorianCultureHelper hands back untouched, overrides intact).
+        var culture = (CultureInfo)CultureInfo.GetCultureInfo("en-US").Clone();
+        culture.DateTimeFormat.AbbreviatedDayNames =
+            [.. Enumerable.Range(0, 7).Select(i => $"{(char)('a' + i)}\U0001F600z")];
+
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = culture;
+            var cut = Render<DatePicker>(p => p.Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday));
+            Open(cut);
+
+            var headers = cut.FindAll(".wss-picker-week-day").Select(h => h.TextContent).ToList();
+            Assert.Equal(7, headers.Count);
+            // Two whole grapheme clusters -- the letter plus the complete astral glyph (3 chars).
+            Assert.Equal("a\U0001F600", headers[0]);
+            // No header ends on an unpaired HIGH surrogate -- the old slice's exact failure mode.
+            Assert.All(headers, h => Assert.False(char.IsHighSurrogate(h[^1])));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
     // ----- Disabled => closed, and the commit funnel's own guard --------------
 
     [Fact]

@@ -375,9 +375,24 @@ internal static class PickerMath
         var names = culture.DateTimeFormat.AbbreviatedDayNames;
         for (var i = 0; i < 7; i++)
         {
-            var name = names[((int)firstDayOfWeek + i) % 7];
-            yield return name.Length <= 2 ? name : name[..2];
+            yield return TwoTextElements(names[((int)firstDayOfWeek + i) % 7]);
         }
+    }
+
+    // The first two GRAPHEME CLUSTERS of `name`, not its first two chars. A plain `name[..2]` splits
+    // a surrogate pair in half (a name whose second character is astral -- "a" + an emoji-plane
+    // glyph -- yielded a lone high surrogate the browser draws as U+FFFD) and can sever a combining
+    // mark from the base it modifies. The header is decorative and aria-hidden (each day button
+    // carries its own full "D"-format name), so this is cheap insurance rather than a correctness
+    // requirement -- and it stays allocation-free for every name already short enough, including
+    // every ASCII and single-glyph (ja, zh) culture, which is all of the realistic ones.
+    static string TwoTextElements(string name)
+    {
+        var span = name.AsSpan();
+        var first = StringInfo.GetNextTextElementLength(span);
+        if (first >= span.Length) return name;
+        var take = first + StringInfo.GetNextTextElementLength(span[first..]);
+        return take >= span.Length ? name : name[..take];
     }
 
     public static string MonthName(CultureInfo culture, int month) =>

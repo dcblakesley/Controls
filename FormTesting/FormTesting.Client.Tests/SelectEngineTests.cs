@@ -576,4 +576,30 @@ public class SelectEngineTests : BunitContext
 
         Assert.Equal("error-msg-Field", cut.Find("input.wss-select-selection-search-input").GetAttribute("aria-errormessage"));
     }
+
+    [Fact]
+    public void TypeAhead_starts_from_an_empty_prefix_after_a_close_and_reopen()
+    {
+        // The prefix buffer only self-cleared after a 1s pause between keystrokes, so a close followed
+        // by a quick reopen resumed the previous session's accumulated prefix: the first letter typed
+        // then matched (or, as here, failed to match) against something the user never typed.
+        string? selected = null;
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, Opts(("Alpha", false), ("Beta", false), ("AB", false)))
+            .Add(s => s.ShowSearch, false)
+            .Add(s => s.ValueChanged, (string v) => selected = v));
+
+        var input = cut.Find("input.wss-select-selection-search-input");
+        input.KeyDown(new KeyboardEventArgs { Key = "a" });      // prefix "a"  -> Alpha
+        input.KeyDown(new KeyboardEventArgs { Key = "b" });      // prefix "ab" -> AB
+        input.KeyDown(new KeyboardEventArgs { Key = "Escape" }); // close
+
+        cut.Find(".wss-select").Click();                         // reopen, well inside the 1s window
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "b" });
+        cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        // A stale buffer would have made this "abb", matched nothing, and left Enter on whatever the
+        // reopen highlighted (Alpha).
+        Assert.Equal("Beta", selected);
+    }
 }
