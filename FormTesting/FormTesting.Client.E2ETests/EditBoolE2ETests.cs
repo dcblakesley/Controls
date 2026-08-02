@@ -116,6 +116,27 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
     }
 
     [Fact]
+    public async Task A_real_user_click_does_not_permanently_desync_the_indeterminate_mirror()
+    {
+        // Finding 61: the browser's pre-click activation steps set the DOM `indeterminate` property to
+        // false the instant the user clicks -- but here Indeterminate (the C# parameter) never changes
+        // (it stays bound to the same true value throughout), so the control's internal mirror used to
+        // go stale and skip re-applying it forever (see EditBool.razor.cs's HandleCheckboxChange /
+        // OnAfterRenderAsync). After the fix, the click's own re-render notices the DOM/mirror
+        // mismatch and reapplies the dash via JS.
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section").Nth(6);
+        var checkbox = section.Locator("input[type=checkbox]").First;
+
+        Assert.True(await checkbox.EvaluateAsync<bool>("el => el.indeterminate"));
+
+        await checkbox.ClickAsync();
+
+        await Expect(checkbox).ToBeCheckedAsync(); // the click toggled the bound value normally
+        Assert.True(await checkbox.EvaluateAsync<bool>("el => el.indeterminate"));
+    }
+
+    [Fact]
     public async Task Indeterminate_styled_checkbox_draws_the_mixed_square_not_the_checkmark()
     {
         await NavigateAsync();

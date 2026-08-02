@@ -110,6 +110,15 @@ public partial class EditBool : EditControlBase<bool>
         // Only update the value if the checkbox is not disabled
         if (ShowEditor && !IsDisabled)
             CurrentValue = (bool)args.Value!;
+
+        // The browser's pre-click activation steps set the DOM `indeterminate` property to false the
+        // moment the user clicks -- but Indeterminate (the parameter) doesn't necessarily change, so
+        // without this the mirror still says "true" while the DOM now says false, and
+        // `if (_lastIndeterminate == Indeterminate) return;` in OnAfterRenderAsync blocks
+        // re-application forever (a parent re-asserting Indeterminate=true after this click would be
+        // silently ignored). Reset the mirror here so the next render notices the mismatch and
+        // reapplies via JS.
+        _lastIndeterminate = false;
     }
 
     // True while an actual <input type="checkbox"> is in the DOM (either fragment) — mirrors the
