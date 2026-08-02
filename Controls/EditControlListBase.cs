@@ -124,8 +124,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{ControlName} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
+        InitState(EditControlInit.RequireBinding(ValueExpression, this));
     }
 
     /// <summary>
@@ -139,10 +138,10 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// </summary>
     protected void InitState(Expression<Func<List<TItem>>> field)
     {
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        // Resolve + register in one call, shared with the scalar base and EditRadio — the registration
+        // is paired with Dispose below (see EditControlInit.RegisterField's remarks).
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions);
         _fieldIdentifierFactory = () => FieldIdentifier.Create(field);
-        // Paired with Dispose below — see EditControlInit.RegisterField's remarks.
-        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
         _stateInitialized = true;
         RefreshAriaState();
     }
@@ -153,8 +152,8 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     void RefreshAriaState()
     {
         if (_attributes is null) return;
-        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
-            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
+        (_isRequired, _errorMsgId, _describedBy) =
+            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier);
     }
 
     /// <summary>

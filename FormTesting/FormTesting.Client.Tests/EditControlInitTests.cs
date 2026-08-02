@@ -27,6 +27,83 @@ public class EditControlInitTests
         Assert.Equal("my-id", id);
     }
 
+    // --- The shared init/aria entry points the three control bases call ---
+
+    // Minimal IEditControl stand-in: the helpers below read only the interface, so the tests don't
+    // need a rendered control to pin their contract.
+    sealed class FakeControl : IEditControl
+    {
+        public string? Id { get; set; }
+        public string? IdPrefix { get; set; }
+        public bool IsEditMode { get; set; } = true;
+        public bool IsDisabled { get; set; }
+        public string? Label { get; set; }
+        public string? Description { get; set; }
+        public string? Tooltip { get; set; }
+        public string? ContainerClass { get; set; }
+        public HidingMode? Hiding { get; set; }
+        public bool IsHidden { get; set; }
+        public bool? IsRequired { get; set; }
+        public bool IsLabelHidden { get; set; }
+    }
+
+    [Fact]
+    public void InitAndRegister_resolves_the_state_and_registers_the_field_under_its_id()
+    {
+        // The pairing each control base used to re-type: a control that resolves its state but never
+        // registers is a field the validation summary can't link to.
+        var control = new FakeControl { IdPrefix = "modal" };
+        var formOptions = new FormOptions();
+
+        var (id, attributes, fid) = EditControlInit.InitAndRegister(
+            () => _model.Name, control, formOptions, formGroupOptions: null);
+
+        Assert.Equal("modal-Name", id);
+        Assert.NotNull(attributes);
+        Assert.Equal(nameof(PersonModel.Name), fid.FieldName);
+        Assert.Contains(fid, formOptions.FieldIdentifiers);
+        Assert.Equal("modal-Name", formOptions.FieldIds[fid]);
+
+        // Registered with the control as owner, so its own unregister releases it.
+        formOptions.UnregisterField(fid, control);
+        Assert.DoesNotContain(fid, formOptions.FieldIdentifiers);
+    }
+
+    [Fact]
+    public void RequireBinding_returns_the_expression_or_names_the_control_and_the_missing_binding()
+    {
+        Expression<Func<string>> field = () => _model.Name;
+        Assert.Same(field, EditControlInit.RequireBinding(field, new FakeControl()));
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => EditControlInit.RequireBinding<string>(null, new FakeControl()));
+        Assert.Equal("FakeControl requires a two-way @bind-Value binding (which supplies ValueExpression).", ex.Message);
+
+        // EditDateRange binds two fields, so it names the specific half that's missing.
+        var startEx = Assert.Throws<InvalidOperationException>(
+            () => EditControlInit.RequireBinding<DateTime?>(null, new FakeControl(), "@bind-Start", "StartExpression"));
+        Assert.Equal("FakeControl requires a two-way @bind-Start binding (which supplies StartExpression).", startEx.Message);
+    }
+
+    [Fact]
+    public void ResolveAriaState_from_a_control_matches_the_explicit_overload()
+    {
+        // The short form the bases call reads Description/Tooltip/IsRequired off the control and
+        // resolves ShouldHideLabel itself — it must agree with the granular overload exactly.
+        var control = new FakeControl { Description = "a description", Tooltip = "a tooltip" };
+        var formOptions = new FormOptions();
+        var (attrs, fid) = InitFor(() => _model.Name);
+
+        Assert.Equal(
+            EditControlInit.ResolveAriaState("Name", false, "a description", "a tooltip", attrs, null, formOptions, fid),
+            EditControlInit.ResolveAriaState(control, formOptions, "Name", attrs, fid));
+
+        // ...including the form-wide label-hidden setting, which drops the desc-/tooltip- references.
+        formOptions.IsLabelHidden = true;
+        var hidden = EditControlInit.ResolveAriaState(control, formOptions, "Name", attrs, fid);
+        Assert.Equal("error-msg-Name", hidden.DescribedBy);
+    }
+
     // --- Required-ness resolution (IsRequired param → [Required] attribute → RequiredResolver) ---
 
     (List<Attribute> Attributes, FieldIdentifier Fid) InitFor<T>(Expression<Func<T>> field)

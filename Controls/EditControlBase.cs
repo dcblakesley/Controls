@@ -112,8 +112,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         // Chains to InputBase even though it doesn't override this today — every control's own
         // OnInitialized did, and hoisting them here must not quietly drop the call.
         base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{ControlName} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
+        InitState(EditControlInit.RequireBinding(ValueExpression, this));
     }
 
     /// <summary>
@@ -132,9 +131,9 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// </remarks>
     protected void InitState(Expression<Func<TValue>> field)
     {
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        // Paired with the Dispose override below — see EditControlInit.RegisterField's remarks.
-        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
+        // Resolve + register in one call, shared with the list base and EditRadio — the registration
+        // is paired with the Dispose override below (see EditControlInit.RegisterField's remarks).
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions);
         _stateInitialized = true;
         RefreshAriaState();
     }
@@ -156,8 +155,8 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     void RefreshAriaState()
     {
         if (_attributes is null) return;
-        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
-            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
+        (_isRequired, _errorMsgId, _describedBy) =
+            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier);
     }
 
     /// <summary>

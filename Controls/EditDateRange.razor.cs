@@ -417,10 +417,10 @@ public partial class EditDateRange : IDisposable
         // Captured into locals (rather than closing over the nullable StartExpression/EndExpression
         // properties directly) so the factories below close over a provably non-null Expression —
         // nullable flow analysis doesn't carry a property's null-check narrowing into a lambda.
-        var startExpression = StartExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditDateRange)} requires a two-way @bind-Start binding (which supplies {nameof(StartExpression)}).");
-        var endExpression = EndExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditDateRange)} requires a two-way @bind-End binding (which supplies {nameof(EndExpression)}).");
+        var startExpression = EditControlInit.RequireBinding(
+            StartExpression, this, "@bind-Start", nameof(StartExpression));
+        var endExpression = EditControlInit.RequireBinding(
+            EndExpression, this, "@bind-End", nameof(EndExpression));
 
         (_id, _attributes, _startFieldIdentifier) = EditControlInit.Init(startExpression, Id, FormGroupOptions, IdPrefix);
         _startFieldIdentifierFactory = () => FieldIdentifier.Create(startExpression);
