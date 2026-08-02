@@ -1516,8 +1516,6 @@ A library-wide hardening release: six adversarial review rounds (documented acro
 
 ### 1.13.4
 - EditDate and other controls. Add a null value string to display when the value is null, such as a dash instead of blank space.
-- IsRequired parameter on all controls. When set forces the “edit-label-required-star” to show up without being required in the DataAnnotations.
-- Accessibility updates for EditCheckedStringList
 
 ### 1.13.3
 - Current stable release
@@ -1525,39 +1523,39 @@ A library-wide hardening release: six adversarial review rounds (documented acro
 
 ### 1.0.13.2
 - EditCheckedListEnum
-- 
+
 ### 1.0.13.1
 - Rename icons to have edit- in front of the current names
-  - .icon-eye => .edit-icon-eye
- - Icon-invalid, icon-eye-invisible
+  - `.icon-eye` => `.edit-icon-eye`
+  - Icon-invalid, icon-eye-invisible
 - EditSelectEnum no longer requires specifying the type.
 - Tooltips exist on the controls
- - Only from attributes right now [Tooltip(“My cool tooltip”)
- - 
+  - Only from attributes right now `[Tooltip("My cool tooltip")]`
+
 ### 1.0.12.11
 - Import js into application in App.razor or index.html
-   -     <script src="_content/WssBlazorControls/editControls.js"></script>
-  - This is to add the functionality of “When submit is clicked, but invalid, scroll to the first input that is invalid.
+  - `<script src="_content/WssBlazorControls/editControls.js"></script>`
+  - This is to add the functionality of "When submit is clicked, but invalid, scroll to the first input that is invalid."
   - Use JsInteropEc to access js methods. Use JsInteropEc.FocusFirstInvalidField() when there are validation errors while submitting.
 - EditCheckedStringList
   - Error message shows up on each checkbox
 
 ### 1.0.12.10
-- IsRequired parameter on all controls. When set forces the “edit-label-required-star” to show up without being required in the DataAnnotations.
+- IsRequired parameter on all controls. When set forces the "edit-label-required-star" to show up without being required in the DataAnnotations.
 - Accessibility updates for EditCheckedStringList
-- 
+
 ### 1.0.12.x
 - moved away from utilizing bootstrap css classes such as form-group to using classes that start with edit- to avoid conflicts with other libraries
 - New Features
- - IsHidden to hide controls withougt wrapping them in an if statement
- - Hiding allows hiding controls based on their own property for [Never, WhenReadonlyAndNull, WhenReadonly, etc.]
-   - This also exists within FormOptions, so the hiding can be controlled over a large group of controls.
+  - IsHidden to hide controls without wrapping them in an if statement
+  - Hiding allows hiding controls based on their own property for `[Never, WhenReadonlyAndNull, WhenReadonly, etc.]`
+    - This also exists within FormOptions, so the hiding can be controlled over a large group of controls.
 - Control Changes
- - EditRadio and EditCheckedList
-   - Change parameter from HasHorizontalButtons -> IsHorizontal
-   - Removed the need for "Type" parameter, now uses the type of the value passed in.
- - EditSelectEnum
-   - Removed the need for "Type" parameter, now uses the type of the value passed in.
+  - EditRadio and EditCheckedList
+    - Change parameter from HasHorizontalButtons -> IsHorizontal
+    - Removed the need for "Type" parameter, now uses the type of the value passed in.
+  - EditSelectEnum
+    - Removed the need for "Type" parameter, now uses the type of the value passed in.
 - New Controls
   - EditBoolNullRadio
 
