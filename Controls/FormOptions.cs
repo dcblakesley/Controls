@@ -16,10 +16,13 @@ public class FormOptions
     /// recomputing a guess that misses those. </summary>
     public Dictionary<FieldIdentifier, string> FieldIds { get; } = new();
 
-    // Live registrant controls per field. RegisterField dedups because two controls may bind the
-    // same property (page section + edit modal); this tracks who still holds the shared entry so
-    // UnregisterField doesn't drop it while another registrant is alive and rendering.
-    readonly Dictionary<FieldIdentifier, HashSet<object>> _fieldOwners = new();
+    // Live registrant controls per field, each with the DOM id it registered under. RegisterField
+    // dedups because two controls may bind the same property (page section + edit modal); this tracks
+    // who still holds the shared entry so UnregisterField doesn't drop it while another registrant is
+    // alive and rendering -- and, since FieldIds is last-writer-wins, what to put BACK in FieldIds
+    // when the last writer is the one that goes away. A list (not a set) so "the surviving owner" is
+    // resolved in registration order, matching the write order FieldIds saw.
+    readonly Dictionary<FieldIdentifier, List<(object Owner, string? Id)>> _fieldOwners = new();
 
     /// <summary> Registers a field (and its resolved element id) for the validation summary, ignoring
     /// duplicates. Without this a control that re-initializes (or two controls bound to the same
@@ -36,7 +39,11 @@ public class FormOptions
         {
             if (!_fieldOwners.TryGetValue(field, out var owners))
                 _fieldOwners[field] = owners = [];
-            owners.Add(owner);
+            var existing = owners.FindIndex(o => ReferenceEquals(o.Owner, owner));
+            if (existing >= 0)
+                owners[existing] = (owner, id); // same control re-registering (e.g. a runtime Id change)
+            else
+                owners.Add((owner, id));
         }
     }
 
@@ -47,15 +54,35 @@ public class FormOptions
     /// model/<see cref="EditContext"/> swap (the list base, <c>EditDateRange</c>) additionally call this
     /// before re-registering, since the old-model <see cref="FieldIdentifier"/> is dead. When
     /// <paramref name="owner"/> is supplied, the entry is only dropped once no other registered owner
-    /// remains (two controls bound to the same property share one entry); a null owner removes it
+    /// remains (two controls bound to the same property share one entry) and the surviving owner's own
+    /// element id is restored into <see cref="FieldIds"/>; a null owner removes it
     /// unconditionally. </summary>
+    /// <remarks>
+    /// The id restore is what keeps a <see cref="ValidationView"/> link pointing at an element that
+    /// still exists. <see cref="FieldIds"/> is last-writer-wins, so the page-section + edit-modal
+    /// pairing (the modal registers last, under its own <c>IdPrefix</c>) left the modal's DOM id in
+    /// place after the modal closed — the summary then anchored <c>href="#modal-Name"</c> at a removed
+    /// element and the link went nowhere.
+    /// </remarks>
     public void UnregisterField(FieldIdentifier field, object? owner = null)
     {
         if (owner is not null && _fieldOwners.TryGetValue(field, out var owners))
         {
-            owners.Remove(owner);
+            owners.RemoveAll(o => ReferenceEquals(o.Owner, owner));
             if (owners.Count > 0)
-                return; // another live control still holds this field — keep the shared entry
+            {
+                // Another live control still holds this field — keep the shared entry, and hand
+                // FieldIds back to the most recently registered survivor that has an id of its own.
+                for (var i = owners.Count - 1; i >= 0; i--)
+                {
+                    if (owners[i].Id is { } survivingId)
+                    {
+                        FieldIds[field] = survivingId;
+                        break;
+                    }
+                }
+                return;
+            }
         }
         _fieldOwners.Remove(field);
         FieldIdentifiers.Remove(field);

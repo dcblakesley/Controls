@@ -244,6 +244,48 @@ public class FieldRegistrationTests : BunitContext
     }
 
     [Fact]
+    public void Disposing_the_modal_copy_restores_the_page_control_element_id()
+    {
+        // FieldIds is last-writer-wins, and the page-section + edit-modal pairing registers the modal
+        // LAST (under its own IdPrefix). When the modal closed, the owner set kept the shared entry
+        // alive but FieldIds still held the modal's dead DOM id, so ValidationView anchored
+        // href="#modal-Name" at an element that no longer existed. The survivor's own id is restored.
+        var model = new PersonModel { Name = "Alice" };
+        var formOptions = new FormOptions();
+        Expression<Func<string>> field = () => model.Name;
+        var fieldIdentifier = FieldIdentifier.Create(field);
+        var showModal = true;
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, FormOptionsScope(formOptions, inner =>
+            {
+                inner.OpenComponent<EditString>(0);
+                inner.AddAttribute(1, "Value", model.Name);
+                inner.AddAttribute(2, "ValueExpression", field);
+                inner.CloseComponent();
+
+                if (!showModal) return;
+                inner.OpenComponent<EditString>(10);
+                inner.AddAttribute(11, "Value", model.Name);
+                inner.AddAttribute(12, "ValueExpression", field);
+                inner.AddAttribute(13, "IdPrefix", "modal");
+                inner.CloseComponent();
+            })));
+
+        Assert.Equal("modal-Name", formOptions.FieldIds[fieldIdentifier]); // last writer wins
+
+        showModal = false;
+        cut.Render(ps => ps.Add(f => f.Model, model));
+
+        // The shared registration survives (the page control still renders) and now points at the
+        // page control's own element, which is still in the DOM.
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name");
+        Assert.Equal("Name", formOptions.FieldIds[fieldIdentifier]);
+        Assert.NotNull(cut.Find($"#{formOptions.FieldIds[fieldIdentifier]}"));
+    }
+
+    [Fact]
     public void Registering_the_same_field_twice_does_not_duplicate()
     {
         // Two controls bound to the same property (or one re-created) must not grow FieldIdentifiers.
