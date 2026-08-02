@@ -75,9 +75,6 @@
         <FieldValidationDisplay Id=@_id FieldIdentifier=_startFieldIdentifier Attributes=_attributes Label=@Label />
         <FieldValidationDisplay Id=@_endId FieldIdentifier=_endFieldIdentifier Attributes=_endAttributes Label=@EndLabel />
 
-        @if (FormOptions != null && FormOptions.ShowBoundValues)
-        {
-            <div class="bound-value">@GetDisplayValue()</div>
-        }
+        <BoundValueDisplay Text=@GetDisplayValue() />
     </div>
 }

@@ -132,9 +132,6 @@
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
-        @if (FormOptions != null && FormOptions.ShowBoundValues)
-        {
-            <div class="bound-value">@(Value?.Count == 0 ? "(none)" : string.Join(", ", (Value ?? []).Select(f => f.Name)))</div>
-        }
+        <BoundValueDisplay Text=@BoundValueText />
     </div>
 }

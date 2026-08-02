@@ -239,6 +239,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         _ => $"{bytes} B",
     };
 
+    // BoundValueDisplay's debug text -- the one place this control's "no files selected" wording
+    // lives, rather than an inline ternary at the markup call site.
+    string BoundValueText => Value?.Count == 0 ? "(none)" : string.Join(", ", (Value ?? []).Select(f => f.Name));
+
     // Name + size + last-modified is the same identity a user would judge by eye and is cheap to
     // compare (no content hashing) — good enough to catch the common case of re-dropping the same
     // file without reading it twice.

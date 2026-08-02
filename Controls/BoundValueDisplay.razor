@@ -1,0 +1,8 @@
+@* Debug-only echo of a control's current bound value -- the same block used to be copy-pasted
+   verbatim into every scalar/list control in the library. Sibling of ReadOnlyValue/
+   FieldValidationDisplay: reads the cascaded FormOptions itself, so a caller just supplies the text
+   to show while the debug flag is off. *@
+@if (FormOptions != null && FormOptions.ShowBoundValues)
+{
+    <div class="bound-value">@Text</div>
+}
