@@ -90,11 +90,15 @@ public static class ValidationHelper
 
         // Numeric range — e.g. "The field Min must be between -2 and 55."
         // Uses a regex so multi-word field names ("Order Total") and trailing-period variations don't
-        // break the parse. When one bound is the type's min/max sentinel we render a one-sided message
-        // ("Cannot exceed 100"); when both are sentinels ([Range(int.MinValue, int.MaxValue)], used
-        // purely to trigger numeric parsing validation) there is no bound left to name at all, so we
-        // fall back to the same "Must be a number" wording the parse-failure path uses; otherwise we
-        // render the full range.
+        // break the parse. When one bound is the BOUND PROPERTY'S OWN type's min/max sentinel we render
+        // a one-sided message ("Cannot exceed 100"); when both are sentinels for its own type
+        // ([Range(int.MinValue, int.MaxValue)] on an int, used purely to trigger numeric parsing
+        // validation) there is no bound left to name at all, so we fall back to the same "Must be a
+        // number" wording the parse-failure path uses; otherwise we render the full range. "Own type"
+        // matters: [Range(int.MinValue, int.MaxValue)] on a LONG is a genuine "must fit in an int"
+        // constraint (5000000000 violates it), not the vacuous idiom it is on an int -- RangeSentinels
+        // gates on valueType so this collapses only when the bound is truly vacuous for the field being
+        // validated, never for a same-magnitude bound that happens to be a smaller type's extreme.
         if (message.Contains(" must be between "))
         {
             var match = _numericRangeRegex.Match(message);
@@ -102,8 +106,8 @@ public static class ValidationHelper
             {
                 var minValue = match.Groups["min"].Value;
                 var maxValue = match.Groups["max"].Value;
-                var isMinSentinel = RangeSentinels.IsMin(minValue);
-                var isMaxSentinel = RangeSentinels.IsMax(maxValue);
+                var isMinSentinel = RangeSentinels.IsMin(minValue, valueType);
+                var isMaxSentinel = RangeSentinels.IsMax(maxValue, valueType);
 
                 if (isMinSentinel && isMaxSentinel)
                     return includeLabel ? MustBeANumberString(label) : MustBeANumberString();

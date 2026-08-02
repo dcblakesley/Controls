@@ -256,21 +256,25 @@ public class AttributesHelperTests
     [Fact]
     public void Int_extreme_Range_bounds_are_unbounded_like_ValidationHelpers_one_sided_rewrite()
     {
-        // The integer-typed spelling of the one-sided idiom. ValidationHelper already rewrites these
-        // sentinels into one-sided messages ("Cannot exceed 100"), so rendering must agree -- a bound
-        // the message layer presents as absent can't appear in the DOM as min="-2147483648".
+        // The integer-typed spelling of the one-sided idiom, on an int property -- the bound property's
+        // own type, so int.MinValue/int.MaxValue really are vacuous here. ValidationHelper already
+        // rewrites these sentinels into one-sided messages ("Cannot exceed 100"), so rendering must
+        // agree -- a bound the message layer presents as absent can't appear in the DOM as
+        // min="-2147483648". (On a WIDER type -- e.g. a long property -- these same bounds are a real
+        // "must fit in an int" constraint instead; see the type-gating tests below.)
         var capped = new List<Attribute> { new RangeAttribute(int.MinValue, 100) };
-        Assert.Null(capped.MinNumber());
-        Assert.Equal(100m, capped.MaxNumber());
+        Assert.Null(capped.MinNumber(typeof(int)));
+        Assert.Equal(100m, capped.MaxNumber(typeof(int)));
 
         var floored = new List<Attribute> { new RangeAttribute(0, int.MaxValue) };
-        Assert.Equal(0m, floored.MinNumber());
-        Assert.Null(floored.MaxNumber());
+        Assert.Equal(0m, floored.MinNumber(typeof(int)));
+        Assert.Null(floored.MaxNumber(typeof(int)));
     }
 
     [Fact]
     public void Long_extreme_Range_string_bounds_are_unbounded()
     {
+        // long.MinValue on a long property -- the bound property's own type, so it's genuinely vacuous.
         var attrs = new List<Attribute>
         {
             new RangeAttribute(typeof(long), long.MinValue.ToString(CultureInfo.InvariantCulture), "100")
@@ -278,8 +282,48 @@ public class AttributesHelperTests
                 ParseLimitsInInvariantCulture = true
             }
         };
-        Assert.Null(attrs.MinNumber());
-        Assert.Equal(100m, attrs.MaxNumber());
+        Assert.Null(attrs.MinNumber(typeof(long)));
+        Assert.Equal(100m, attrs.MaxNumber(typeof(long)));
+    }
+
+    // ----- Type-gated sentinels: the extreme must be the BOUND PROPERTY'S OWN type ----------------
+    // [Range(int.MinValue, int.MaxValue)] on a LONG is a genuine "must fit in an int" constraint --
+    // 5000000000 violates it -- not the vacuous "no bound" idiom it is on an int. RangeSentinels (and
+    // therefore MinNumber/MaxNumber) must only suppress a bound that is the SUPPLIED valueType's own
+    // extreme, never merely "some type's" extreme.
+
+    [Fact]
+    public void Int_extremes_are_real_bounds_on_a_wider_long_property()
+    {
+        var attrs = new List<Attribute> { new RangeAttribute(int.MinValue, int.MaxValue) };
+        Assert.Equal((decimal)int.MinValue, attrs.MinNumber(typeof(long)));
+        Assert.Equal((decimal)int.MaxValue, attrs.MaxNumber(typeof(long)));
+    }
+
+    [Fact]
+    public void Mixed_int_min_long_max_on_a_long_property_suppresses_only_the_long_side()
+    {
+        // The max IS long's own sentinel (vacuous); the min is int's extreme, a real floor for a long.
+        var attrs = new List<Attribute>
+        {
+            new RangeAttribute(typeof(long), int.MinValue.ToString(CultureInfo.InvariantCulture), long.MaxValue.ToString(CultureInfo.InvariantCulture))
+            {
+                ParseLimitsInInvariantCulture = true
+            }
+        };
+        Assert.Equal((decimal)int.MinValue, attrs.MinNumber(typeof(long)));
+        Assert.Null(attrs.MaxNumber(typeof(long)));
+    }
+
+    [Fact]
+    public void No_valueType_is_conservative_and_never_suppresses_a_bound()
+    {
+        // Without a real property type to gate on, MinNumber/MaxNumber must not guess -- a bound this
+        // code can't verify as vacuous renders as a real one, same rationale as ValidationHelper's
+        // both-sentinel collapse when valueType is unavailable.
+        var attrs = new List<Attribute> { new RangeAttribute(int.MinValue, int.MaxValue) };
+        Assert.Equal((decimal)int.MinValue, attrs.MinNumber());
+        Assert.Equal((decimal)int.MaxValue, attrs.MaxNumber());
     }
 
     [Fact]

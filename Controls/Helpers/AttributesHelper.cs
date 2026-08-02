@@ -64,13 +64,22 @@ public static class AttributesHelper
     /// extremes via the string ctor) are equally unbounded on the [Range] fallback path -- see
     /// <see cref="RangeSentinels"/>, the one predicate this and ValidationHelper's one-sided message
     /// rewrite share so the rendered bound and the message can never disagree.
+    ///
+    /// <paramref name="valueType"/> is the bound property's own CLR type (e.g. <c>typeof(long)</c> for
+    /// a <c>long</c>/<c>long?</c> property) -- <see cref="RangeSentinels"/> only treats a bound as
+    /// vacuous when it is THAT type's own extreme, so <c>[Range(int.MinValue, int.MaxValue)]</c> on a
+    /// <c>long</c> renders as a real bound (a genuine "must fit in an int" constraint) rather than
+    /// being suppressed. Omit it (or pass null) only when no real property type is available -- the
+    /// omission is conservative: every extreme then renders as a real bound rather than risk hiding
+    /// one that's actually meaningful. <see cref="EditNumber{T}"/> always supplies its own
+    /// <c>Nullable&lt;T&gt;</c>-unwrapped type.
     /// </summary>
-    public static decimal? MinNumber(this List<Attribute>? attrs) => NumberBound(attrs, isMin: true);
+    public static decimal? MinNumber(this List<Attribute>? attrs, Type? valueType = null) => NumberBound(attrs, isMin: true, valueType);
 
     /// <summary>See <see cref="MinNumber"/> -- identical rules, the other bound.</summary>
-    public static decimal? MaxNumber(this List<Attribute>? attrs) => NumberBound(attrs, isMin: false);
+    public static decimal? MaxNumber(this List<Attribute>? attrs, Type? valueType = null) => NumberBound(attrs, isMin: false, valueType);
 
-    private static decimal? NumberBound(List<Attribute>? attrs, bool isMin)
+    private static decimal? NumberBound(List<Attribute>? attrs, bool isMin, Type? valueType)
     {
         if (attrs is null)
             return null;
@@ -95,16 +104,18 @@ public static class AttributesHelper
         var culture = range.ParseLimitsInInvariantCulture ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture;
         var operand = isMin ? range.Minimum : range.Maximum;
         // RangeAttribute requires BOTH bounds, so "no minimum" is conventionally spelled int.MinValue
-        // (or long/decimal's). Rendering has to agree with the one-sided message ValidationHelper
-        // rewrites those very bounds into ("Cannot exceed 100") -- a bound the message layer presents
-        // as absent can't show up in the DOM as min="-2147483648" -- so both layers share the ONE
-        // predicate in RangeSentinels rather than each keeping a list. double/float extremes never
-        // reach the check at all (unrepresentable as decimal -> already null above). Applies only to
-        // the [Range] fallback: [MinValue]/[MaxValue] are one-sided by design, so a bound written
-        // there is always intentional and renders verbatim.
+        // (or long/decimal's) -- but ONLY for the bound property's OWN type; that same spelling on a
+        // wider type (int extremes on a long) is a real, narrower constraint. Rendering has to agree
+        // with the one-sided message ValidationHelper rewrites those very bounds into ("Cannot exceed
+        // 100") -- a bound the message layer presents as absent can't show up in the DOM as
+        // min="-2147483648" -- so both layers share the ONE type-gated predicate in RangeSentinels
+        // rather than each keeping a list. double/float extremes never reach the check at all
+        // (unrepresentable as decimal -> already null above). Applies only to the [Range] fallback:
+        // [MinValue]/[MaxValue] are one-sided by design, so a bound written there is always intentional
+        // and renders verbatim.
         if (!MinMaxValueComparer.TryConvertBoundToDecimal(operand, culture, out var rangeBound))
             return null;
-        var isSentinel = isMin ? RangeSentinels.IsMin(rangeBound) : RangeSentinels.IsMax(rangeBound);
+        var isSentinel = isMin ? RangeSentinels.IsMin(rangeBound, valueType) : RangeSentinels.IsMax(rangeBound, valueType);
         return isSentinel ? null : rangeBound;
     }
 
