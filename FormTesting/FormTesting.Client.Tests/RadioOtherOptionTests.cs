@@ -115,6 +115,40 @@ public class RadioOtherOptionTests : BunitContext
     }
 
     [Fact]
+    public void EditRadioEnum_forgets_the_preserved_text_when_the_parent_clears_it_while_Other_is_selected()
+    {
+        // The preserved copy exists to survive a switch away; a parent clearing OtherValue while Other
+        // is STILL selected (form reset, reload) is a real clear, so nothing must be re-committed the
+        // next time the user comes back to Other.
+        var model = new PersonModel { Priority = Priority.Critical };
+        string? capturedOther = "unset";
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var otherChanged = EventCallback.Factory.Create<string?>(this, (string? v) => capturedOther = v);
+
+        var cut = Render<EditRadioEnum<Priority?>>(ps => ps
+            .Add(c => c.Value, model.Priority)
+            .Add(c => c.ValueExpression, field)
+            .Add(c => c.HasOtherOption, true)
+            .Add(c => c.OtherValue, "details")
+            .Add(c => c.OtherValueChanged, otherChanged));
+
+        cut.Render(ps => ps
+            .Add(c => c.Value, model.Priority)
+            .Add(c => c.ValueExpression, field)
+            .Add(c => c.HasOtherOption, true)
+            .Add(c => c.OtherValue, null)
+            .Add(c => c.OtherValueChanged, otherChanged));
+
+        capturedOther = "unset";
+        cut.Find("#rb-Priority-Low").Change("Low");
+        Assert.Equal("unset", capturedOther); // nothing on the model to clear -> no callback at all
+
+        cut.Find("#rb-Priority-Critical").Change("Critical");
+        Assert.Equal("unset", capturedOther); // ...and nothing stale to put back
+        Assert.True(string.IsNullOrEmpty(cut.Find("input.edit-radio-other-input").GetAttribute("value")));
+    }
+
+    [Fact]
     public void EditRadioEnum_read_only_with_an_empty_other_text_renders_no_dangling_separator()
     {
         var model = new PersonModel { Priority = Priority.Critical };

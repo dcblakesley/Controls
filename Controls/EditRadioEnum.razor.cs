@@ -73,9 +73,14 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         // Runs after Refresh so the ids track a reordered/resized option list. Cheap: ToId memoizes.
         _optionIds = EnumHelpers.ToUniqueIds(_cache.Options);
         // Remember whatever text the model currently carries, so switching away from Other can take it
-        // off the model while still showing it (see OnSelectionChangedAsync).
+        // off the model while still showing it (see OnSelectionChangedAsync). An empty OtherValue
+        // while Other is STILL the selected option is a real clear by the parent (form reset, reload),
+        // so the preserved copy goes too -- unlike the empty it holds right after a switch away, which
+        // this control wrote itself and must not read as an instruction to forget the text.
         if (!string.IsNullOrEmpty(OtherValue))
             _otherTextCache = OtherValue;
+        else if (IsOtherSelected)
+            _otherTextCache = null;
     }
 
     // The last "Other" text this control saw -- typed into the box or supplied on the model. Kept
