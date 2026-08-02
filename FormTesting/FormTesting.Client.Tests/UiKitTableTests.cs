@@ -990,15 +990,13 @@ public class UiKitTableTests : BunitContext
     }
 
     [Fact]
-    public void Table_column_inserted_between_two_skipped_columns_lands_after_them_known_limitation()
+    public void Table_column_inserted_after_a_skipped_column_lands_in_declaration_order()
     {
-        // The one residual, pinned so it cannot drift silently. When a newcomer and one or more
-        // parameter-skipped columns share the same gap between anchors, the registrations are
-        // identical for "declared before them" and "declared after them", so the merge has to pick
-        // one: it keeps the skipped columns where they were and puts the newcomer after them (the
-        // reading that is right for the far more common trailing insertion). The rebuild does not
-        // step in here because an anchor exists, and rebuilding would tear down a column that CAN
-        // hold filter/sort state -- a worse trade than a misplaced spacer column.
+        // The half of the ambiguous gap the merge gets RIGHT. A newcomer declared AFTER a
+        // parameter-skipped column, with an anchor following: the pass reports nothing about where
+        // the newcomer sits relative to the skipped column, and the merge's choice -- skipped columns
+        // keep their place, the newcomer goes after them -- happens to be the declared order here.
+        // Pinned as correct behavior, next to the mirror shape below where the same choice is wrong.
         var showNew = false;
         RenderFragment Columns() => builder =>
         {
@@ -1027,11 +1025,89 @@ public class UiKitTableTests : BunitContext
         showNew = true;
         cut.Render(p => p.Add(t => t.ChildContent, Columns()));
 
-        // Declared [Spacer, New, Name]; both this and [New, Spacer, Name] are consistent with what
-        // the renderer reported, and this is the one the merge commits to. It is at least stable:
         Assert.Equal(["Spacer", "New", "Name"], Headers(cut));
         cut.Render(p => p.Add(t => t.ChildContent, Columns()));
         Assert.Equal(["Spacer", "New", "Name"], Headers(cut));
+    }
+
+    [Fact]
+    public void Table_column_declared_before_a_skipped_column_still_renders_after_it_known_limitation()
+    {
+        // The one residual, pinned by the shape that actually exhibits it (the mirror of the test
+        // above): declared [New, Spacer, Name], rendered [Spacer, New, Name]. A newcomer and a
+        // parameter-skipped column share the gap before the anchor, and the registrations Blazor
+        // delivers are IDENTICAL for "the newcomer is before the skipped column" and "after it" --
+        // only Name re-registers, and it reports nothing about either. The merge commits to keeping
+        // skipped columns where they were and appending the newcomer after them, which is right for
+        // the far more common trailing insertion and wrong here.
+        //
+        // Not fixed, deliberately. The only mechanism that could tell the two apart is the generation
+        // @key rebuild, and the gate that fires it (anchors == 0) is what proves the teardown is
+        // state-free: every previously-rendered column was one Blazor skipped, so none of them can be
+        // sorted, filtered, or hold a template. Firing it per AMBIGUOUS GAP instead would tear down
+        // live anchors -- here, Name -- discarding real sort/filter state and re-creating any
+        // non-column content in ChildContent, to move a column that by construction has none. A
+        // misplaced parameter-less column is the cheaper wrong answer, and it self-corrects the
+        // moment any pass changes one of the affected columns' parameters. (Tabs CAN do the
+        // finer-grained thing precisely because a Tab has no such state; see
+        // TabsAndSearchInputTests.) Documented on Table.ChildContent.
+        var showNew = false;
+        RenderFragment Columns() => builder =>
+        {
+            if (showNew)
+            {
+                builder.OpenComponent<Column<Person>>(0);
+                builder.AddAttribute(1, "Title", "New");
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<Column<Person>>(2);
+            builder.AddAttribute(3, "Title", "Spacer");
+            builder.CloseComponent();
+
+            builder.OpenComponent<PropertyColumn<Person, string>>(4);
+            builder.AddAttribute(5, "Title", "Name");
+            builder.AddAttribute(6, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Spacer", "Name"], Headers(cut));
+
+        showNew = true;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        // Declared ["New", "Spacer", "Name"]. This is what it currently does -- the honest assertion,
+        // so that a future fix breaks this test loudly instead of drifting past it.
+        Assert.Equal(["Spacer", "New", "Name"], Headers(cut));
+
+        // At least it is stable: further re-renders neither drift nor rebuild.
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Spacer", "New", "Name"], Headers(cut));
+
+        // ...and it recovers as soon as a pass actually REPORTS the order: change both columns'
+        // parameters and they re-register in document order, which the merge takes verbatim. (One of
+        // the two is not enough -- the other is still a straggler and still keeps its wrong place.)
+        RenderFragment Touched() => builder =>
+        {
+            builder.OpenComponent<Column<Person>>(0);
+            builder.AddAttribute(1, "Title", "New!");
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(2);
+            builder.AddAttribute(3, "Title", "Spacer!");
+            builder.CloseComponent();
+
+            builder.OpenComponent<PropertyColumn<Person, string>>(4);
+            builder.AddAttribute(5, "Title", "Name");
+            builder.AddAttribute(6, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+        };
+
+        cut.Render(p => p.Add(t => t.ChildContent, Touched()));
+        Assert.Equal(["New!", "Spacer!", "Name"], Headers(cut));
     }
 
     [Fact]
