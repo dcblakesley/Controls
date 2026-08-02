@@ -43,6 +43,15 @@
        wss-controls.css -- same literal, but declared per-file since the two stylesheets load
        independently and a consumer may link only one. */
     --edit-checkbox-check-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E");
+    /* EditFile's upload/attach glyph (Hatch/Spot icon set), shared by .edit-icon-upload,
+       .edit-icon-upload-error and .edit-icon-upload-btn (further down) via the same mask technique as
+       --edit-checkbox-check-svg above -- the fill baked into this source SVG is irrelevant to the
+       rendered color (each rule below supplies its own `background`); it's kept fully opaque (white)
+       purely so the mask itself reads as solid, matching that same precedent. */
+    --edit-icon-upload-svg: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23fff"/></svg>');
+    /* EditFile's delete/remove glyph, shared by .edit-icon-delete (further down). Same fully-opaque
+       mask-source rationale as --edit-icon-upload-svg above. */
+    --edit-icon-delete-svg: url('data:image/svg+xml,<svg viewBox="-1 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.625 1.875H3.5C3.56875 1.875 3.625 1.81875 3.625 1.75V1.875H8.375V1.75C8.375 1.81875 8.43125 1.875 8.5 1.875H8.375V3H9.5V1.75C9.5 1.19844 9.05156 0.75 8.5 0.75H3.5C2.94844 0.75 2.5 1.19844 2.5 1.75V3H3.625V1.875ZM11.5 3H0.5C0.223437 3 0 3.22344 0 3.5V4C0 4.06875 0.05625 4.125 0.125 4.125H1.06875L1.45469 12.2969C1.47969 12.8297 1.92031 13.25 2.45312 13.25H9.54688C10.0813 13.25 10.5203 12.8313 10.5453 12.2969L10.9312 4.125H11.875C11.9438 4.125 12 4.06875 12 4V3.5C12 3.22344 11.7766 3 11.5 3ZM9.42656 12.125H2.57344L2.19531 4.125H9.80469L9.42656 12.125Z" fill="%23fff"/></svg>');
 }
 
 /* Visually hidden but available to screen readers (sr-only). Clip-based hiding (not an offscreen
@@ -925,22 +934,30 @@
 */
 
 /********************************************** EditFile ************************************************/
-/* Icons — SVG data URIs, sized to match the Hatch/Spot icon set */
-.edit-icon-upload {
-    height: 36px;
-    width: 36px;
-    display: inline-block;
-    flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23277C6C"/></svg>');
-}
+/* Icons — SVG data URIs, sized to match the Hatch/Spot icon set. The upload/upload-error/delete
+   glyphs are applied as masks (see --edit-icon-upload-svg/--edit-icon-delete-svg above) with the
+   visible color set via `background`, so they follow themeable tokens instead of a color baked into
+   the image -- same technique the styled checkbox uses (--edit-checkbox-check-svg). .edit-icon-
+   paperclip keeps its plain baked-color background-image; it wasn't part of this pass. */
+.edit-icon-upload,
 .edit-icon-upload-error {
     height: 36px;
     width: 36px;
     display: inline-block;
     flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23CF1322"/></svg>');
+    -webkit-mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+    mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+}
+.edit-icon-upload {
+    /* No existing generic --color-* bridge represents this brand teal, so it's a plain override
+       knob declared only here at its usage site (not a derived hover/shadow/focus state -- a static
+       usage-site fallback is fine per the theming contract) rather than a new :root declaration. */
+    background: var(--edit-color-file-icon, #277c6c);
+}
+.edit-icon-upload-error {
+    /* Was baking the *fallback* value of --edit-color-danger (#cf1322) directly into the image --
+       a themed consumer's real --color-danger never reached this icon. Now it does. */
+    background: var(--edit-color-danger);
 }
 .edit-icon-paperclip {
     height: 14px;
@@ -955,8 +972,10 @@
     width: 14px;
     display: inline-block;
     flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-image: url('data:image/svg+xml,<svg viewBox="-1 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.625 1.875H3.5C3.56875 1.875 3.625 1.81875 3.625 1.75V1.875H8.375V1.75C8.375 1.81875 8.43125 1.875 8.5 1.875H8.375V3H9.5V1.75C9.5 1.19844 9.05156 0.75 8.5 0.75H3.5C2.94844 0.75 2.5 1.19844 2.5 1.75V3H3.625V1.875ZM11.5 3H0.5C0.223437 3 0 3.22344 0 3.5V4C0 4.06875 0.05625 4.125 0.125 4.125H1.06875L1.45469 12.2969C1.47969 12.8297 1.92031 13.25 2.45312 13.25H9.54688C10.0813 13.25 10.5203 12.8313 10.5453 12.2969L10.9312 4.125H11.875C11.9438 4.125 12 4.06875 12 4V3.5C12 3.22344 11.7766 3 11.5 3ZM9.42656 12.125H2.57344L2.19531 4.125H9.80469L9.42656 12.125Z" fill="%23277C6C"/></svg>');
+    -webkit-mask: var(--edit-icon-delete-svg) center / 100% 100% no-repeat;
+    mask: var(--edit-icon-delete-svg) center / 100% 100% no-repeat;
+    /* Same brand-teal override knob as .edit-icon-upload above. */
+    background: var(--edit-color-file-icon, #277c6c);
 }
 
 /* Drop zone */
@@ -1173,9 +1192,12 @@
     width: 14px;
     display: inline-block;
     flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23277C6C"/></svg>');
+    /* center / 100% 100% -- the box and the SVG's viewBox are both 1:1, so this is equivalent to the
+       previous background-size: contain, just expressed via the mask shorthand (see
+       --edit-icon-upload-svg's own comment for why it's a mask now). */
+    -webkit-mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+    mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+    background: var(--edit-color-file-icon, #277c6c);
 }
 
 /* ============================================================================
