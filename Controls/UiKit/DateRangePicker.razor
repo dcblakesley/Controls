@@ -146,8 +146,14 @@
                     {
                         <div class="wss-picker-extra-footer">@ExtraFooter</div>
                     }
+                    @* OK renders DISABLED (never a silent no-op) whenever confirming the current
+                       pending pair would be rejected -- nothing resolved yet, an active value that
+                       can't advance, or a pair the commit guards reject. See SessionOkDisabled, the
+                       single predicate OnSessionOkAsync itself gates on, so the attribute and the
+                       handler can never disagree. *@
                     <div class="wss-picker-footer">
-                        <button type="button" class="wss-picker-ok" disabled="@(ActiveSessionValue is null)"
+                        <button type="button" class="wss-picker-ok" disabled="@SessionOkDisabled"
+                                aria-disabled="@(SessionOkDisabled ? "true" : null)"
                                 @onclick="OnSessionOkAsync">@OkText</button>
                     </div>
                 </div>

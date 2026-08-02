@@ -1153,6 +1153,170 @@ public class DateRangePickerTests : BunitContext
     }
 
     [Fact]
+    public void Session_time_select_change_is_rejected_when_min_disables_the_composed_day()
+    {
+        // The session's time selects were guarded by only the per-endpoint TIME half of
+        // IsCommitDisabled -- and with neither endpoint set the composed date falls back to
+        // DateTime.Today (PickerMath.ComposeTimePart), so an hour change could park a pending value
+        // on a date thirty days before Min that every other route in this file rejects.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Min, DateTime.Today.AddDays(30)));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("9"); // hour
+
+        Assert.DoesNotContain("09:00", cut.Find(".wss-picker-input-start").GetAttribute("value") ?? string.Empty);
+    }
+
+    [Fact]
+    public void Session_time_select_change_is_unaffected_by_a_min_the_composed_day_satisfies()
+    {
+        // Regression guard for the widened guard above: an in-range date must still accept an
+        // ordinary hour change.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.Min, new DateTime(2025, 1, 1)));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("9");
+
+        Assert.Equal("01/15/2025 09:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Session_day_click_guard_ignores_a_second_that_showseconds_false_will_zero()
+    {
+        // ShowSeconds=false zeroes the second at normalization, so the value this click resolves to
+        // is 13:45:00 -- whose second nothing disables. Guarding the raw composed value instead
+        // rejected the pick over a stale :30 no select in this row can even change.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.ShowSeconds, false)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 45, 30))
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Seconds: [30]))));
+
+        Open(cut);
+        Assert.False(SessionDay(cut, 20).HasAttribute("disabled"));
+        SessionDay(cut, 20).Click();
+
+        Assert.Equal("01/20/2025 13:45", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Session_ok_renders_disabled_when_committing_the_pending_pair_would_be_rejected()
+    {
+        // The OK guards used to reject silently: OK rendered enabled, produced no callback, no
+        // close, no advance and no visible change at all. It now renders disabled (and
+        // aria-disabled) whenever committing the pending pair would be rejected -- the same
+        // convention the Now link and every day button in these pickers already follow.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 10, 9, 0, 0))
+            .Add(c => c.End, new DateTime(2025, 1, 20, 17, 0, 0)) // an endpoint the CONSUMER bound
+            .Add(c => c.EndDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [17]))));
+
+        Open(cut);                   // active = start
+        SessionDay(cut, 12).Click(); // a perfectly valid start pick -- the field previews it
+
+        Assert.Equal("01/12/2025 09:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+        var ok = cut.Find(".wss-picker-ok");
+        Assert.True(ok.HasAttribute("disabled"));
+        Assert.Equal("true", ok.GetAttribute("aria-disabled"));
+
+        // ...and the dead end is recoverable: focusing the end field re-points the time row at End,
+        // whose offending hour renders disabled, and picking a legal one re-enables OK.
+        cut.Find(".wss-picker-input-end").Focus();
+        var endHours = TimeSelects(cut)[0].QuerySelectorAll("option");
+        Assert.True(endHours.Single(o => o.GetAttribute("value") == "17").HasAttribute("disabled"));
+
+        TimeSelects(cut)[0].Change("16");
+        Assert.False(cut.Find(".wss-picker-ok").HasAttribute("disabled"));
+        Assert.Null(cut.Find(".wss-picker-ok").GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Session_ok_renders_enabled_for_an_ordinary_resolvable_pair()
+    {
+        // Regression guard for the disabled-OK rendering: nothing about an ordinary session may
+        // gain a disabled attribute (the existing "disabled until something resolves" rule is the
+        // only one that applies here).
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3));
+
+        Open(cut);
+
+        var ok = cut.Find(".wss-picker-ok");
+        Assert.False(ok.HasAttribute("disabled"));
+        Assert.Null(ok.GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void Session_ok_commits_a_backwards_pair_whose_swap_makes_both_endpoints_legal()
+    {
+        // Both endpoints are bound backwards, so SetRangeAsync swaps them. StartDisabledTime
+        // rejects the hour the START side currently carries -- but after the swap that value lands
+        // in End, where nothing disables it, and the value that lands in Start is legal there. The
+        // final normalize -> swap -> guard accepts the pair; the pre-advance guard evaluated the raw
+        // pre-swap value against the endpoint it is about to LEAVE and rejected it.
+        DateTime? start = null, end = null;
+        var today = DateTime.Today;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Start, today.AddHours(20))
+            .Add(c => c.End, today.AddHours(9))
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [20])))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut); // active = start
+
+        Assert.False(cut.Find(".wss-picker-ok").HasAttribute("disabled")); // the pair IS committable
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Equal(today.AddHours(9), start);
+        Assert.Equal(today.AddHours(20), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void A_rejected_session_ok_does_not_pin_the_active_endpoint_to_a_stale_pending_value()
+    {
+        // OK used to write the active endpoint's resolved value into pending state BEFORE the final
+        // pair guard's own `return`, turning "fall back to the committed Start" into an explicit
+        // pending value on a rejected OK -- which then shadows a Start the consumer changes while
+        // the panel is still open. The write must happen only on a path that actually proceeds.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 10, 9, 0, 0))
+            .Add(c => c.End, new DateTime(2025, 1, 20, 17, 0, 0))
+            .Add(c => c.EndDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [17]))));
+
+        Open(cut);
+        cut.Find(".wss-picker-ok").Click(); // rejected -- the End side's own hour is disabled
+
+        // The consumer moves Start while the panel is still open.
+        cut.Render(p => p.Add(c => c.Start, new DateTime(2025, 1, 11, 8, 0, 0)));
+
+        Assert.Equal("01/11/2025 08:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
     public void Session_time_select_change_rerenders_the_picker_with_no_bound_callback()
     {
         // Mirror of DatePickerTests' own receiver guard: the shared time-row slot binds its change

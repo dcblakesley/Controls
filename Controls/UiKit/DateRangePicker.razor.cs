@@ -1557,14 +1557,20 @@ public partial class DateRangePicker : PickerBase
     // neither exists) and its current time-of-day (ditto) with one H/m/s part replaced -- the identical
     // PickerMath.ComposeTimePart DatePicker's own override uses -- but writes to the pending session
     // value instead of committing immediately (nothing reaches Start/End until OK -- see the class
-    // remarks). Rejects (no-ops) when the composed value hits the active endpoint's own DisabledTime
-    // list, same guard DatePicker's version applies before ever letting a disabled time become the
-    // bound value.
+    // remarks). Rejects (no-ops) when the composed value is one this Mode won't accept for the active
+    // endpoint, same guard DatePicker's version applies before ever letting a disabled time become
+    // the bound value.
+    //
+    // The guard is the FULL IsCommitDisabled, not just its per-endpoint time half: Mode.DateTime's
+    // composed DATE is not necessarily one anything validated -- ComposeTimePart falls back to
+    // DateTime.Today when the endpoint resolves to nothing, so with (say) a Min a month out, an hour
+    // change was the one route that could park a pending value on today. (Mode.Time's own arm of the
+    // dispatcher IS just the time half -- no date-range concept there -- so nothing changes for it.)
     internal override Task ApplyTimePartAsync(int? hour, int? minute, int? second)
     {
         _startEdit = _endEdit = null;
         var composed = PickerMath.ComposeTimePart(TimeRowValue, ShowSeconds, hour, minute, second);
-        if (IsEndpointTimeDisabled(_activeInput, composed)) return Task.CompletedTask;
+        if (IsCommitDisabled(_activeInput, composed)) return Task.CompletedTask;
         if (_activeInput == 0) _pendingSessionStart = composed; else _pendingSessionEnd = composed;
         return Task.CompletedTask;
     }
@@ -1580,10 +1586,16 @@ public partial class DateRangePicker : PickerBase
     // A rejected click no-ops (nothing pending changes, the panel stays put), same as theirs; the
     // never-jump rule keeps the time row showing the endpoint's own unchanged value. Mirrors
     // DatePicker.OnDayClickAsync's identical DateTime-mode guard.
+    //
+    // The guard (and the pending value it writes) uses the NORMALIZED composition: this mode's
+    // normalization zeroes the second when ShowSeconds is false, and SetRangeAsync will apply it on
+    // the way to Start/End anyway. Guarding the raw value instead rejected a pick over a stale second
+    // that no select in this row can even change and that the eventual commit would discard -- the
+    // exact bug ApplyTimePartAsync's own ComposeTimePart zeroing exists to prevent.
     Task OnSessionDayClickAsync(DateTime day)
     {
         var time = ActiveSessionValue?.TimeOfDay ?? TimeSpan.Zero;
-        var composed = day.Date + time;
+        var composed = NormalizeForMode(day.Date + time);
         if (IsEndpointTimeDisabled(_activeInput, composed)) return Task.CompletedTask;
         _startEdit = _endEdit = null;
         if (_activeInput == 0) _pendingSessionStart = composed; else _pendingSessionEnd = composed;
@@ -1631,56 +1643,95 @@ public partial class DateRangePicker : PickerBase
         return cls;
     }
 
+    // Whether the OK button renders DISABLED -- and, being the single predicate OnSessionOkAsync
+    // itself gates on, exactly the condition under which OK would do nothing. Rendering the dead end
+    // instead of swallowing the click is the convention this file (and DatePicker's Now/Today links,
+    // and every disabled day button) already follows: a rejection the user can SEE.
+    //
+    // Three ways OK does nothing:
+    //   * nothing is resolved for the active endpoint yet (the original rule -- a session must pick
+    //     something before it can confirm it);
+    //   * only the active endpoint is resolved, so OK would ADVANCE to the other one, but the active
+    //     value can never commit -- advancing on it would strand the session;
+    //   * both endpoints are resolved, so OK would COMMIT, and the pair SetRangeAsync would actually
+    //     produce is one the guards reject.
+    //
+    // The commit case guards exactly what SetRangeAsync produces -- normalized and swapped as it does
+    // -- so the start guard always sees the value that lands in Start (the same
+    // normalize-then-swap-then-guard order OnPresetClickAsync uses for the identical reason). There
+    // is deliberately NO separate pre-swap check of the active endpoint in that case: the swap can
+    // move the active value to the OTHER endpoint, where a different DisabledTime applies, so a
+    // pre-swap check rejects pairs this one accepts. The advance case has no other endpoint to swap
+    // against yet, so there the active value IS checked at its own endpoint.
+    //
+    // Re-checking at all matters because neither resolved value is necessarily one this session's own
+    // guarded paths produced: either side can fall back to a committed Start/End a consumer bound
+    // directly, and Min/Max/DisabledDate/Start/EndDisabledTime are ordinary parameters that can change
+    // between a pick and the OK that confirms it. Without the re-check OK is the one route that can
+    // fire StartChanged/EndChanged with a value every other route rejects. Cost: one extra
+    // DisabledDate/DisabledTime invocation per render of the session panel.
+    bool SessionOkDisabled
+    {
+        get
+        {
+            if (ActiveSessionValue is not { } activeValue) return true;
+            if (OtherSessionValue is not { } otherValue)
+            {
+                return IsCommitDisabled(_activeInput, NormalizeForMode(activeValue));
+            }
+            var (normalizedStart, normalizedEnd) = NormalizedSessionPair(activeValue, otherValue);
+            return IsCommitDisabled(0, normalizedStart) || IsCommitDisabled(1, normalizedEnd);
+        }
+    }
+
+    // The (Start, End) pair a session OK would actually commit: the active/other values assigned to
+    // their sides, each normalized, then swapped if backwards -- mirroring SetRangeAsync exactly.
+    // Shared by SessionOkDisabled's own guard and OnSessionOkAsync so the button's disabled state and
+    // the handler can never disagree about which pair is being judged.
+    (DateTime Start, DateTime End) NormalizedSessionPair(DateTime activeValue, DateTime otherValue)
+    {
+        var start = NormalizeForMode(_activeInput == 0 ? activeValue : otherValue);
+        var end = NormalizeForMode(_activeInput == 0 ? otherValue : activeValue);
+        return end < start ? (end, start) : (start, end);
+    }
+
     // The OK button: confirms the ACTIVE endpoint's resolved value (pending, or its already-committed
     // fallback -- see ActiveSessionValue) into this session's own pending state. If the OTHER
     // endpoint has neither a pending nor a committed value, the session isn't done -- switch to it
     // (the active underline moves; DateTime mode re-anchors its single calendar on the target's own
     // value, falling back to the just-confirmed one so the panel always shows something relevant).
     // Otherwise both endpoints are now resolved, so commit them together (SetRangeAsync swaps a
-    // backwards pair, same as every other mode) and close. Guarded by ActiveSessionValue being
-    // non-null -- mirrors the OK button's own `disabled` attribute (see the .razor markup) so a
-    // caller that invokes this directly can never commit nothing.
+    // backwards pair, same as every other mode) and close.
     //
-    // Both endpoint values are ALSO re-checked against IsCommitDisabled here, mirroring the typed
-    // routes (CommitStartTextAsync/CommitEndTextAsync) and OnPresetClickAsync's own guard: neither
-    // resolved value is necessarily one this session's own guarded paths produced -- either side can
-    // fall back to a committed Start/End a consumer bound directly, and Start/EndDisabledTime are
-    // ordinary parameters that can change between a pick and the OK that confirms it. Without the
-    // re-check OK is the one route that can fire StartChanged/EndChanged with a value every other
-    // route rejects.
+    // SessionOkDisabled above is the whole guard -- the same predicate the button's own `disabled`
+    // attribute renders from (see the .razor markup), re-checked here as defense in depth so a caller
+    // that invokes this directly (or a test harness that doesn't honor `disabled`) can't slip past it.
+    // Nothing mutates before that guard: the pending write below used to sit ahead of the pair check's
+    // own `return`, which turned "fall back to the committed Start/End" into an explicit pending value
+    // on a REJECTED OK -- one that then shadows a Start/End the consumer changes while the panel is
+    // still open.
     async Task OnSessionOkAsync()
     {
-        var activeValue = ActiveSessionValue;
-        if (activeValue is null) return;
-        // The active side first, so a value that can never commit doesn't silently advance the
-        // session to the other endpoint either.
-        if (IsCommitDisabled(_activeInput, activeValue.Value)) return;
+        if (SessionOkDisabled) return;
+        var activeValue = ActiveSessionValue!.Value;
+        var otherValue = OtherSessionValue;
 
         if (_activeInput == 0) _pendingSessionStart = activeValue; else _pendingSessionEnd = activeValue;
 
-        var otherValue = OtherSessionValue;
         if (otherValue is null)
         {
             _activeInput = 1 - _activeInput;
             if (Mode == DatePickerMode.DateTime)
             {
-                var anchor = (_activeInput == 0 ? Start : End) ?? activeValue.Value;
+                var anchor = (_activeInput == 0 ? Start : End) ?? activeValue;
                 _viewMonth = ClampView(FirstOfMonth(anchor));
             }
             _focusDay = null;
             return;
         }
 
-        var start = _activeInput == 0 ? activeValue.Value : otherValue.Value;
-        var end = _activeInput == 0 ? otherValue.Value : activeValue.Value;
-        // Guard the endpoints SetRangeAsync will actually produce -- normalized and swapped exactly
-        // as it does, so the start guard always sees the value that lands in Start (the same
-        // normalize-then-swap-then-guard order OnPresetClickAsync uses for the identical reason).
-        var normalizedStart = NormalizeForMode(start);
-        var normalizedEnd = NormalizeForMode(end);
-        if (normalizedEnd < normalizedStart) (normalizedStart, normalizedEnd) = (normalizedEnd, normalizedStart);
-        if (IsCommitDisabled(0, normalizedStart) || IsCommitDisabled(1, normalizedEnd)) return;
-        await SetRangeAsync(start, end);
+        await SetRangeAsync(_activeInput == 0 ? activeValue : otherValue.Value,
+                            _activeInput == 0 ? otherValue.Value : activeValue);
         _pendingInputFocus = true; // the OK button is about to unmount
         await CloseAsync();
     }
