@@ -145,6 +145,13 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     readonly List<string> _uploadErrors = [];
     string _hoverClass = string.Empty;
+    // The bound list this control itself last committed, or last observed on a parameter set -- what
+    // OnParametersSet compares against to tell an EXTERNAL write (a parent swapping the bound record)
+    // from the echo of our own commit. Reference identity, deliberately not contents: a commit hands
+    // the parent a brand-new list instance and gets that same instance straight back, while a swapped
+    // record always brings a different one -- including the case that matters most, where the old and
+    // new records both hold no files at all and so compare equal by content.
+    List<IBrowserFile>? _observedValue;
     // Set by RemoveFile, consumed by OnAfterRenderAsync: the element to focus once the list re-renders
     // (a keyboard remove otherwise drops focus on <body>). Focused by id, so it survives the re-render.
     string? _pendingFocusId;
@@ -211,9 +218,45 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     }
 
     // Don't light up the drop zone as if it accepts a drop when it doesn't — the drop is refused when
-    // disabled, so the hover highlight would be a lie.
+    // disabled, so the hover highlight would be a lie. (This only covers a drag that STARTS while
+    // disabled; a drag already in progress when the control goes disabled is cleared by
+    // OnParametersSet.)
     void OnDragEnter(Microsoft.AspNetCore.Components.Web.DragEventArgs _) { if (!IsDisabled) _hoverClass = "hover"; }
     void OnDragLeave(Microsoft.AspNetCore.Components.Web.DragEventArgs _) => _hoverClass = string.Empty;
+
+    /// <summary>
+    /// Beyond the base's EditContext/ARIA resync, drops the transient upload-time UI state that a
+    /// changed parameter invalidates: the rejection messages (which drive <c>aria-invalid</c>, the red
+    /// drop zone and a <c>role="alert"</c> block) and the drag-hover highlight. Neither survives a
+    /// re-render that changes nothing relevant — the three conditions below are each about state that
+    /// has become a lie.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        // An external write to the bound list means a different set of files -- typically a parent
+        // swapping the bound record -- and the last upload's rejections belong to the old one. The
+        // reference check is what keeps this off our OWN commit's parameter echo: a single batch can
+        // legitimately both accept some files (the commit) and reject others (the messages that have
+        // to stay on screen).
+        if (!ReferenceEquals(Value, _observedValue))
+        {
+            _observedValue = Value;
+            _uploadErrors.Clear();
+        }
+
+        // The editor isn't rendered (read-only, per-control or form-wide), so neither is the error
+        // block -- and the rejection describes an upload gesture the user can no longer make. Cleared
+        // on the way OUT rather than on the way back in, so nothing can resurrect a stale red drop
+        // zone on an IsEditMode round trip.
+        if (!ShowEditor) _uploadErrors.Clear();
+
+        // A drag that was already in progress when the control went disabled (or left edit mode)
+        // otherwise leaves the drop zone rendering "hover disabled" -- lit up as accepting a drop it
+        // now refuses. OnDragEnter's own guard only covers a drag that STARTS while disabled.
+        if (IsDisabled || !ShowEditor) _hoverClass = string.Empty;
+    }
 
     // "10 MB limit", "500 KB limit" — integer MB division reported "0 MB" for sub-MB caps.
     static string FormatSize(long bytes) => bytes switch
@@ -370,8 +413,18 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         {
             // A null bound list (model property never initialized) starts fresh instead of throwing.
             List<IBrowserFile> updated = Value is null ? toAdd : [.. Value, .. toAdd];
-            await SetValueAsync(updated);
+            await CommitFilesAsync(updated);
         }
+    }
+
+    // Commits a new bound list and records it as this control's own, so the parameter echo that
+    // follows isn't mistaken for an external record swap in OnParametersSet (which would wipe the
+    // rejection messages this very batch may have just produced). Every commit path goes through
+    // here rather than SetValueAsync directly.
+    Task CommitFilesAsync(List<IBrowserFile> updated)
+    {
+        _observedValue = updated;
+        return SetValueAsync(updated);
     }
 
     async Task RemoveFile(IBrowserFile file)
@@ -390,7 +443,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
             ? _id
             : $"del-{_id}-{Math.Min(removedIndex, updated.Count - 1)}";
 
-        await SetValueAsync(updated);
+        await CommitFilesAsync(updated);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

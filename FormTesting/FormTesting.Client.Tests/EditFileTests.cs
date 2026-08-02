@@ -1087,4 +1087,121 @@ public class EditFileTests : BunitContext
         Assert.NotNull(changed);
         Assert.Equal(["a"], changed);
     }
+
+    // ----- Upload-error state vs. parameter changes ---------------------------
+    // _uploadErrors drives aria-invalid, the red drop zone and the role="alert" block, and nothing
+    // used to reset it on a parameter change -- so a rejection outlived the IsEditMode round trip
+    // that hid it and followed the control onto a swapped bound record.
+
+    class ErrorStateHolder
+    {
+        public FileModel Model = new() { Files = [] };
+        public bool IsEditMode = true;
+        public bool IsDisabled;
+    }
+
+    // The one harness these need that RenderEditFile can't give: a re-renderable parent, so
+    // IsEditMode/IsDisabled/the bound record can each change AFTER the first render. Every attribute
+    // is read from the holder at render time; `cut.Render(...)` on the EditForm replays the fragment.
+    IRenderedComponent<EditForm> RenderErrorStateHost(ErrorStateHolder holder) =>
+        Render<EditForm>(ps => ps
+            .Add(f => f.Model, holder.Model)
+            .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
+            {
+                b.OpenComponent<EditFile>(0);
+                b.AddAttribute(1, "Value", holder.Model.Files);
+                b.AddAttribute(2, "ValueChanged", EventCallback.Factory.Create<List<IBrowserFile>>(
+                    this, v => holder.Model.Files = v));
+                b.AddAttribute(3, "ValueExpression", (Expression<Func<List<IBrowserFile>>>)(() => holder.Model.Files));
+                b.AddAttribute(4, "IsEditMode", holder.IsEditMode);
+                b.AddAttribute(5, "IsDisabled", holder.IsDisabled);
+                b.AddAttribute(6, "AllowedExtensions", new[] { ".pdf" });
+                b.CloseComponent();
+            })));
+
+    // Re-runs the parent's render with whatever the holder now says, the way a real parent re-renders
+    // after its own state changed.
+    static void Rerender(IRenderedComponent<EditForm> cut, ErrorStateHolder holder) =>
+        cut.Render(ps => ps.Add(f => f.Model, holder.Model));
+
+    [Fact]
+    public void An_upload_rejection_does_not_survive_an_IsEditMode_round_trip()
+    {
+        var holder = new ErrorStateHolder();
+        var cut = RenderErrorStateHost(holder);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt")); // wrong extension
+        Assert.Single(cut.FindAll(".edit-validation-message[role='alert']"));
+        Assert.Equal("true", cut.Find("input[type=file]").GetAttribute("aria-invalid"));
+
+        holder.IsEditMode = false;
+        Rerender(cut, holder);
+        Assert.Empty(cut.FindAll(".edit-validation-message[role='alert']"));
+
+        holder.IsEditMode = true;
+        Rerender(cut, holder);
+
+        // The rejection belonged to an upload gesture two mode flips ago -- it must not come back with
+        // the editor, red drop zone and aria-invalid included.
+        Assert.Empty(cut.FindAll(".edit-validation-message[role='alert']"));
+        Assert.False(cut.Find("input[type=file]").HasAttribute("aria-invalid"));
+        Assert.DoesNotContain("error", cut.Find(".edit-file-drop-zone").ClassList);
+    }
+
+    [Fact]
+    public void An_upload_rejection_does_not_follow_a_swapped_bound_record()
+    {
+        var holder = new ErrorStateHolder();
+        var cut = RenderErrorStateHost(holder);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+        Assert.Single(cut.FindAll(".edit-validation-message[role='alert']"));
+
+        // The parent swaps the bound record (an empty file list either side, so only the list's
+        // identity distinguishes them -- exactly the case a content comparison would miss).
+        holder.Model = new FileModel { Files = [] };
+        Rerender(cut, holder);
+
+        Assert.Empty(cut.FindAll(".edit-validation-message[role='alert']"));
+        Assert.False(cut.Find("input[type=file]").HasAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void A_batch_that_both_accepts_and_rejects_keeps_its_rejection_messages()
+    {
+        // The other half of the record-swap reset: one batch can accept some files (a commit, whose
+        // parameter echo must NOT read as an external change) while rejecting others, and those
+        // rejections are the only feedback the user gets about the skipped files.
+        var holder = new ErrorStateHolder();
+        var cut = RenderErrorStateHost(holder);
+
+        cut.FindComponent<InputFile>().UploadFiles(
+            InputFileContent.CreateFromText("1", "good.pdf"),
+            InputFileContent.CreateFromText("2", "bad.txt"));
+
+        // The parent re-renders on the commit, as a real @bind-Value parent does.
+        Rerender(cut, holder);
+
+        Assert.Single(holder.Model.Files);
+        Assert.Contains("bad.txt", cut.Find(".edit-validation-message[role='alert']").TextContent);
+    }
+
+    [Fact]
+    public void Going_disabled_mid_drag_clears_the_drop_zone_hover_highlight()
+    {
+        // OnDragEnter's own guard only covers a drag that STARTS while disabled -- a drag already in
+        // progress left the zone rendering "hover disabled", lit up as accepting a drop it refuses.
+        var holder = new ErrorStateHolder();
+        var cut = RenderErrorStateHost(holder);
+
+        cut.Find(".edit-file-drop-zone").DragEnter();
+        Assert.Contains("hover", cut.Find(".edit-file-drop-zone").ClassList);
+
+        holder.IsDisabled = true;
+        Rerender(cut, holder);
+
+        var zone = cut.Find(".edit-file-drop-zone");
+        Assert.DoesNotContain("hover", zone.ClassList);
+        Assert.Contains("disabled", zone.ClassList);
+    }
 }
