@@ -160,6 +160,63 @@ public class ControlSmokeTests : BunitContext
     }
 
     [Theory]
+    // The WHATWG URL parser has a SEPARATE, EARLIER preprocessing step than the tab/newline removal
+    // above: it trims any leading/trailing C0 control (U+0000-U+001F) or space (U+0020) from the input
+    // before it ever looks at the scheme. Uri.TryCreate does not do this -- a leading C0 control isn't
+    // a valid scheme character, so parsing as absolute fails and (pre-fix) the old code fell through to
+    // "unparseable means safe relative URL" and returned the raw string, control byte and all. The
+    // browser performs its own trim when resolving the href, exposing the javascript: scheme underneath.
+    [InlineData("\u0001javascript:alert(1)")]           // leading C0 control (SOH)
+    [InlineData("\u001Fjavascript:alert(1)")]           // leading C0 control (US, the top of the C0 range)
+    [InlineData("\u0000javascript:alert(1)")]           // leading NUL -- not DOM-exploitable (HTML5
+                                                          // tokenization replaces it with U+FFFD before it
+                                                          // reaches the attribute) but stripped anyway: the
+                                                          // DOM isn't the only consumer of this value.
+    [InlineData(" \u0001javascript:alert(1)")]          // leading space THEN control -- both trimmed
+    [InlineData("\u0001java\tscript:alert(1)")]         // composed bypass: leading control + interior tab
+    [InlineData("\u0001data:text/html,alert(1)")]       // leading control hiding a data: URL
+    [InlineData("\u0001vbscript:alert(1)")]             // leading control hiding a vbscript: URL
+    public void EditString_read_only_link_blocks_javascript_scheme_hidden_by_c0_control(string maliciousUrl)
+    {
+        var model = new PersonModel { Name = "Click" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", maliciousUrl);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("a"));   // no script-executing link is rendered
+        Assert.Contains("Click", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Fact]
+    public void EditString_read_only_link_blocks_javascript_scheme_hidden_by_leading_space()
+    {
+        // Pre-existing behavior: Uri.TryCreate already trims an ordinary leading space itself, so this
+        // was blocked before the C0 fix too. Guard it explicitly so the new explicit C0-or-space trim
+        // doesn't regress the case that used to work "by accident".
+        var model = new PersonModel { Name = "Click" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", " javascript:alert(1)");
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("a"));
+        Assert.Contains("Click", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Theory]
     [InlineData("http://example.com", "http://example.com")]
     [InlineData("https://example.com", "https://example.com")]
     [InlineData("mailto:person@example.com", "mailto:person@example.com")]
@@ -169,6 +226,10 @@ public class ControlSmokeTests : BunitContext
     // value, not the raw one.
     [InlineData("ht\ttp://example.com", "http://example.com")]
     [InlineData("https://exa\nmple.com", "https://example.com")]
+    // Leading/trailing C0 control or space is trimmed the same way -- but only at the edges: the
+    // meaningful trailing content right before the trimmed control byte is preserved verbatim.
+    [InlineData("\u0001https://example.com/page", "https://example.com/page")]
+    [InlineData("https://example.com/page\u0001", "https://example.com/page")]
     public void EditString_read_only_link_allows_safe_schemes_and_strips_tab_or_newline(string url, string expectedHref)
     {
         var model = new PersonModel { Name = "Click" };

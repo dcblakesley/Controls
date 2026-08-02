@@ -85,32 +85,58 @@ public partial class EditString : EditTextInputBase
         Size, CssClass);
 
     /// <summary>
-    /// The href to render in read-only link mode: the <see cref="Url"/>, with all ASCII tab/CR/LF
-    /// characters stripped, when it is relative or uses an allow-listed scheme (http/https/mailto);
-    /// otherwise null, so a <c>javascript:</c> / <c>data:</c> URL (e.g. bound from model data) can't
-    /// render a script-executing link. When null the control falls back to plain read-only text.
+    /// The href to render in read-only link mode: the <see cref="Url"/>, preprocessed the same way a
+    /// browser preprocesses an href before parsing it, when the result is relative or uses an
+    /// allow-listed scheme (http/https/mailto); otherwise null, so a <c>javascript:</c> / <c>data:</c>
+    /// URL (e.g. bound from model data) can't render a script-executing link. When null the control
+    /// falls back to plain read-only text.
     /// </summary>
     /// <remarks>
-    /// The WHATWG URL basic parser strips all ASCII tab/newline (<c>\t\r\n</c>) from a URL before
-    /// parsing it, so a browser given <c>href="java&#9;script:alert(1)"</c> re-forms and runs
-    /// <c>javascript:alert(1)</c> on click. <see cref="Uri.TryCreate(string?, UriKind, out Uri?)"/>
-    /// does not strip those characters -- it just fails to parse the string as absolute, which used to
-    /// fall through to the "anything unparseable is a safe relative URL" branch below and return the
-    /// raw (unstripped) value verbatim. Stripping first, before the scheme check, makes the allow-list
-    /// see exactly what the browser will see -- and returning the stripped value (not <see cref="Url"/>
-    /// itself) means the rendered <c>href</c> never contains the bypass characters either.
+    /// The WHATWG URL basic parser applies two preprocessing steps, in order, before it ever looks at
+    /// the scheme: (1) trim any leading/trailing C0 control (<c>U+0000</c>-<c>U+001F</c>) or space
+    /// (<c>U+0020</c>) from the input; (2) remove every ASCII tab/CR/LF (<c>\t\r\n</c>) from what's
+    /// left, wherever it occurs. Both steps can hide a <c>javascript:</c> scheme from
+    /// <see cref="Uri.TryCreate(string?, UriKind, out Uri?)"/>, which does neither -- a leading C0
+    /// control isn't a valid scheme character and an embedded tab/newline splits the scheme token, so
+    /// the string fails to parse as absolute either way. That used to fall through to the "anything
+    /// unparseable is a safe relative URL" branch below and return the raw value verbatim, control
+    /// bytes and all -- e.g. <c>"\u0001javascript:alert(1)"</c> parses as relative (a C0 control isn't a
+    /// valid scheme character) yet a browser trims the leading control byte itself when resolving the
+    /// href, exposing <c>javascript:</c> as the scheme, and the script runs on click. Preprocessing
+    /// first, in the browser's order, before the scheme check, makes the allow-list see exactly what
+    /// the browser will see -- and returning the fully-preprocessed value (never <see cref="Url"/>
+    /// itself) means the rendered <c>href</c> can never contain the bypass characters either.
     /// </remarks>
     string? SafeUrl
     {
         get
         {
             if (string.IsNullOrWhiteSpace(Url)) return null;
-            var stripped = StripAsciiTabAndNewlines(Url);
+            var trimmed = TrimLeadingAndTrailingC0OrSpace(Url);
+            var stripped = StripAsciiTabAndNewlines(trimmed);
             // Absolute URLs must use an allow-listed scheme; relative URLs (no scheme) are fine.
             if (Uri.TryCreate(stripped, UriKind.Absolute, out var uri))
                 return uri.Scheme is "http" or "https" or "mailto" ? stripped : null;
             return stripped;
         }
+    }
+
+    /// <summary>
+    /// Step 1 of the WHATWG href preprocessing: trims any leading/trailing codepoint <c>&lt;= U+0020</c>
+    /// (every C0 control, <c>U+0000</c>-<c>U+001F</c>, plus <c>U+0020</c> SPACE). <c>U+007F</c> (DEL) is
+    /// deliberately NOT included -- it is not part of the WHATWG "C0 control or space" definition, so
+    /// browsers don't trim it either; a leading DEL still isn't a valid scheme-start character, so it
+    /// fails to parse as absolute in both <see cref="Uri.TryCreate(string?, UriKind, out Uri?)"/> and the
+    /// browser's own URL parser, landing both in the same safe "unparseable/relative" bucket -- there is
+    /// no bypass to close, and trimming it would just diverge from what the browser actually does.
+    /// </summary>
+    static string TrimLeadingAndTrailingC0OrSpace(string url)
+    {
+        var start = 0;
+        var end = url.Length;
+        while (start < end && url[start] <= ' ') start++;
+        while (end > start && url[end - 1] <= ' ') end--;
+        return start == 0 && end == url.Length ? url : url[start..end];
     }
 
     static string StripAsciiTabAndNewlines(string url) =>
