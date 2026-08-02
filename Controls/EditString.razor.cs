@@ -85,22 +85,36 @@ public partial class EditString : EditTextInputBase
         Size, CssClass);
 
     /// <summary>
-    /// The href to render in read-only link mode: the <see cref="Url"/> when it is relative or uses an
-    /// allow-listed scheme (http/https/mailto); otherwise null, so a <c>javascript:</c> / <c>data:</c>
-    /// URL (e.g. bound from model data) can't render a script-executing link. When null the control
-    /// falls back to plain read-only text.
+    /// The href to render in read-only link mode: the <see cref="Url"/>, with all ASCII tab/CR/LF
+    /// characters stripped, when it is relative or uses an allow-listed scheme (http/https/mailto);
+    /// otherwise null, so a <c>javascript:</c> / <c>data:</c> URL (e.g. bound from model data) can't
+    /// render a script-executing link. When null the control falls back to plain read-only text.
     /// </summary>
+    /// <remarks>
+    /// The WHATWG URL basic parser strips all ASCII tab/newline (<c>\t\r\n</c>) from a URL before
+    /// parsing it, so a browser given <c>href="java&#9;script:alert(1)"</c> re-forms and runs
+    /// <c>javascript:alert(1)</c> on click. <see cref="Uri.TryCreate(string?, UriKind, out Uri?)"/>
+    /// does not strip those characters -- it just fails to parse the string as absolute, which used to
+    /// fall through to the "anything unparseable is a safe relative URL" branch below and return the
+    /// raw (unstripped) value verbatim. Stripping first, before the scheme check, makes the allow-list
+    /// see exactly what the browser will see -- and returning the stripped value (not <see cref="Url"/>
+    /// itself) means the rendered <c>href</c> never contains the bypass characters either.
+    /// </remarks>
     string? SafeUrl
     {
         get
         {
             if (string.IsNullOrWhiteSpace(Url)) return null;
+            var stripped = StripAsciiTabAndNewlines(Url);
             // Absolute URLs must use an allow-listed scheme; relative URLs (no scheme) are fine.
-            if (Uri.TryCreate(Url, UriKind.Absolute, out var uri))
-                return uri.Scheme is "http" or "https" or "mailto" ? Url : null;
-            return Url;
+            if (Uri.TryCreate(stripped, UriKind.Absolute, out var uri))
+                return uri.Scheme is "http" or "https" or "mailto" ? stripped : null;
+            return stripped;
         }
     }
+
+    static string StripAsciiTabAndNewlines(string url) =>
+        url.IndexOfAny(['\t', '\r', '\n']) < 0 ? url : url.Replace("\t", "").Replace("\r", "").Replace("\n", "");
 
     /// <summary> rel for the read-only link; hardens <c>target="_blank"</c> against reverse tabnabbing. </summary>
     string? UrlRel => string.Equals(UrlTarget, "_blank", StringComparison.OrdinalIgnoreCase) ? "noopener noreferrer" : null;

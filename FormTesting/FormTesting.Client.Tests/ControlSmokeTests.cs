@@ -132,6 +132,60 @@ public class ControlSmokeTests : BunitContext
         Assert.Contains("Click", cut.Find(".edit-readonly-value").TextContent);
     }
 
+    [Theory]
+    // Finding 59: Uri.TryCreate(..., UriKind.Absolute) fails to parse a URL carrying an ASCII
+    // tab/CR/LF inside or right after the scheme -- the old code then fell through to "anything
+    // unparseable is a safe relative URL" and returned it verbatim. The WHATWG URL parser strips all
+    // ASCII tab/newline before parsing, so a browser re-forms and runs the javascript: URL on click.
+    [InlineData("java\tscript:alert(1)")]   // tab inside the scheme
+    [InlineData("javascript\t:alert(1)")]   // tab right after the scheme
+    [InlineData("java\nscript:alert(1)")]   // LF inside the scheme
+    [InlineData("java\rscript:alert(1)")]   // CR inside the scheme
+    public void EditString_read_only_link_blocks_javascript_scheme_hidden_by_tab_or_newline(string maliciousUrl)
+    {
+        var model = new PersonModel { Name = "Click" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", maliciousUrl);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("a"));   // no script-executing link is rendered
+        Assert.Contains("Click", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Theory]
+    [InlineData("http://example.com", "http://example.com")]
+    [InlineData("https://example.com", "https://example.com")]
+    [InlineData("mailto:person@example.com", "mailto:person@example.com")]
+    [InlineData("/relative/path", "/relative/path")]           // no scheme -- relative URLs are fine
+    // A tab/newline embedded in an otherwise-safe URL is stripped (matching what the browser's own
+    // URL parser does), not treated as a reason to block it -- and the rendered href is the stripped
+    // value, not the raw one.
+    [InlineData("ht\ttp://example.com", "http://example.com")]
+    [InlineData("https://exa\nmple.com", "https://example.com")]
+    public void EditString_read_only_link_allows_safe_schemes_and_strips_tab_or_newline(string url, string expectedHref)
+    {
+        var model = new PersonModel { Name = "Click" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", url);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal(expectedHref, cut.Find("a.edit-string-link").GetAttribute("href"));
+    }
+
     [Fact]
     public void EditString_read_only_blank_link_gets_noopener_rel()
     {
