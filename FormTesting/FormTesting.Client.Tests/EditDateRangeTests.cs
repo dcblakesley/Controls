@@ -271,10 +271,12 @@ public class EditDateRangeTests : BunitContext
     [Fact]
     public void PickerAttributes_class_merge_is_byte_identical_after_the_shared_builder_extraction()
     {
-        // Pins the exact wrapper class string (not just Contains) across the
-        // EditControlInit.BuildPickerAttributes extraction (finding 35) -- FieldCssClass must still
-        // overwrite the raw consumer "class", landing in the same "wss-picker consumerClass
-        // fieldClass" composition DateRangePicker's own markup produces.
+        // Pins the exact wrapper class string (not just Contains) now that this control's splat
+        // actually routes through EditControlInit.BuildPickerAttributes -- finding 35's hoist claimed
+        // it did, but the inline copy stayed until this test's own comment was corrected.
+        // FieldCssClass must still overwrite the raw consumer "class", landing in the same
+        // "wss-picker consumerClass fieldClass" composition DateRangePicker's own markup produces,
+        // and any other consumer attribute must ride through the builder untouched.
         var model = new RangeModel(); // Start empty -> [Required] fails; End carries no annotation
         var editContext = new EditContext(model);
         Expression<Func<DateTime?>> startField = () => model.Start;
@@ -294,6 +296,7 @@ public class EditDateRangeTests : BunitContext
                 content.AddAttribute(4, "End", model.End);
                 content.AddAttribute(5, "EndExpression", endField);
                 content.AddAttribute(6, "class", "consumer-class");
+                content.AddAttribute(7, "data-test-hook", "range");
                 content.CloseComponent();
             }));
             b.CloseComponent();
@@ -301,7 +304,9 @@ public class EditDateRangeTests : BunitContext
 
         cut.InvokeAsync(() => editContext.Validate());
 
-        Assert.Equal("wss-picker consumer-class invalid", cut.Find(".wss-picker").GetAttribute("class"));
+        var wrapper = cut.Find(".wss-picker");
+        Assert.Equal("wss-picker consumer-class invalid", wrapper.GetAttribute("class"));
+        Assert.Equal("range", wrapper.GetAttribute("data-test-hook"));
     }
 
     [Fact]

@@ -579,20 +579,14 @@ public partial class EditDateRange : IDisposable
     // The validation-state ARIA goes through DateRangePicker's dedicated per-input Aria* parameters
     // (straight onto the two actual <input>s, each reflecting its own field's state); this splat
     // carries only the consumer's own attributes plus the state classes, landing on the picker's
-    // outer wrapper (its documented AdditionalAttributes target).
-    IReadOnlyDictionary<string, object> PickerAttributes
-    {
-        get
-        {
-            var attrs = new Dictionary<string, object>();
-            if (AdditionalAttributes is not null)
-                foreach (var kv in AdditionalAttributes) attrs[kv.Key] = kv.Value;
-            // Overwrite the raw consumer "class" (if any) with FieldCssClass so the wrapper picks up
-            // the Start field's validation-state styling hooks (see FieldCssClass's remarks).
-            if (FieldCssClass is not null) attrs["class"] = FieldCssClass;
-            return attrs;
-        }
-    }
+    // outer wrapper (its documented AdditionalAttributes target). Overwriting the raw consumer
+    // "class" with FieldCssClass is what gives the wrapper the Start field's (and, folded in, the End
+    // field's) validation-state styling hooks -- see FieldCssClass's remarks. Shared builder: see
+    // BuildPickerAttributes's own remarks for why this and EditDate's twin differ only in that class
+    // source. FieldCssClass never returns "" (only null or a non-empty string), so the builder's
+    // IsNullOrEmpty guard is exactly the null check this used to make inline.
+    IReadOnlyDictionary<string, object> PickerAttributes =>
+        EditControlInit.BuildPickerAttributes(AdditionalAttributes, FieldCssClass);
 
     // Mirrors EditDate.EffectiveDateFormat one-for-one (the same shared PickerMath.ModeDisplayFormat
     // over the same dash-separated bases), keyed off this control's own Mode -- there's no separate
