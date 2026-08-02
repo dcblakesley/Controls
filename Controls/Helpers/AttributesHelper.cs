@@ -165,7 +165,7 @@ public static class AttributesHelper
     /// <summary>
     /// The model-declared autocomplete token for a text field (<see cref="AutocompleteAttribute"/>),
     /// e.g. "email", "name", "postal-code". Null when absent, so the caller falls through to its own
-    /// default (EditString's "one-time-code").
+    /// default (EditString's "new-password"/"one-time-code" pair -- see its EffectiveAutocomplete).
     /// </summary>
     public static string? Autocomplete(this List<Attribute>? attrs) =>
         attrs?.OfType<AutocompleteAttribute>().FirstOrDefault()?.Value;
@@ -434,8 +434,8 @@ public class PlaceholderAttribute(string value) : Attribute
 /// Declares the HTML <c>autocomplete</c> token for a text field on the model property (e.g. "email",
 /// "name", "tel", "postal-code"), so the field's data semantics live next to the field they describe —
 /// the same rationale as <see cref="PlaceholderAttribute"/>. Resolution: the control's own
-/// <c>Autocomplete</c> parameter → this attribute → the control's built-in default ("one-time-code",
-/// which suppresses browser autofill).
+/// <c>Autocomplete</c> parameter → this attribute → the control's built-in autofill suppressor
+/// ("new-password" on a password field, "one-time-code" otherwise).
 /// </summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
 public class AutocompleteAttribute(string value) : Attribute

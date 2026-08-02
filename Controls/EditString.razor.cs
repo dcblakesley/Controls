@@ -32,17 +32,28 @@ public partial class EditString : EditTextInputBase
 
     /// <summary>
     /// Sets the autocomplete attribute on the input element. Falls back to the bound property's
-    /// <c>[Autocomplete]</c> when unset, then to "one-time-code" to prevent browser autofill/extensions
-    /// from intercepting input events -- see <see cref="EffectiveAutocomplete"/>.
+    /// <c>[Autocomplete]</c> when unset, then to a built-in default that prevents browser
+    /// autofill/extensions from intercepting input events -- see <see cref="EffectiveAutocomplete"/>.
     /// </summary>
     [Parameter] public string? Autocomplete { get; set; }
 
     /// <summary>
     /// The autocomplete token actually rendered: the <see cref="Autocomplete"/> parameter, else the
-    /// model property's <c>[Autocomplete]</c>, else <c>"one-time-code"</c> (the control's built-in
-    /// default).
+    /// model property's <c>[Autocomplete]</c>, else the control's built-in default --
+    /// <c>"new-password"</c> for a password field (see <see cref="EffectiveIsPassword"/>),
+    /// <c>"one-time-code"</c> otherwise.
     /// </summary>
-    string EffectiveAutocomplete => Autocomplete ?? _attributes.Autocomplete() ?? "one-time-code";
+    /// <remarks>
+    /// Both defaults exist to keep autofill out of the way; they differ because "out of the way"
+    /// differs by field. <c>"one-time-code"</c> is the general suppressor, but on a password field it
+    /// is a lie the platform acts on: iOS and Android read it as "this is an SMS/OTP field" and offer
+    /// the one-time-code keyboard affordance over the password the user is actually typing.
+    /// <c>"new-password"</c> is the standard token for exactly this case -- it suppresses filling a
+    /// stored credential without claiming the field is something it isn't. (The non-password default
+    /// stays <c>"one-time-code"</c>: that is a locked decision, not an oversight.)
+    /// </remarks>
+    string EffectiveAutocomplete =>
+        Autocomplete ?? _attributes.Autocomplete() ?? (EffectiveIsPassword ? "new-password" : "one-time-code");
 
     /// <summary> Optional leading affix content (e.g. a currency symbol or icon), rendered by <see cref="EditInputShell"/>. Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Prefix { get; set; }
@@ -51,9 +62,13 @@ public partial class EditString : EditTextInputBase
     [Parameter] public RenderFragment? Suffix { get; set; }
 
     /// <summary>
-    /// Renders the input as <c>type="password"</c> with a show/hide toggle (via <see cref="EditInputShell"/>).
-    /// Independent of the read-only <see cref="MaskText"/> feature. Falls back to the bound property's
-    /// <c>[DataType(DataType.Password)]</c> when unset -- see <see cref="EffectiveIsPassword"/>.
+    /// Marks the field as a secret. In edit mode it renders as <c>type="password"</c> with a show/hide
+    /// toggle (via <see cref="EditInputShell"/>); in read-only mode it renders the same masked row
+    /// <see cref="MaskText"/> produces, bulleted to the value's length -- a password field must not
+    /// print its secret as plain text just because the form switched to read-only. An explicit
+    /// <see cref="MaskText"/> still wins there (see <see cref="EffectiveMaskText"/>). Falls back to the
+    /// bound property's <c>[DataType(DataType.Password)]</c> when unset -- see
+    /// <see cref="EffectiveIsPassword"/>.
     /// </summary>
     [Parameter] public bool? IsPassword { get; set; }
 
@@ -63,6 +78,36 @@ public partial class EditString : EditTextInputBase
     /// matching the control's old default.
     /// </summary>
     bool EffectiveIsPassword => IsPassword ?? _attributes.IsPasswordField();
+
+    /// <summary>
+    /// The bullet a password field's read-only mask is built from (U+2022, matching what a browser
+    /// paints in a <c>type="password"</c> input) -- see <see cref="EffectiveMaskText"/>. Spelled as an
+    /// escape so the character can't be mangled by a source-encoding round trip.
+    /// </summary>
+    const string PasswordMask = "\u2022";
+
+    /// <summary>
+    /// The mask the read-only view actually applies: <see cref="MaskText"/> when the consumer set one,
+    /// else a single bullet for a password field (which, by the single-character rule in
+    /// <see cref="GetMaskValue"/>, repeats to cover the whole value), else null -- no masked row.
+    /// </summary>
+    /// <remarks>
+    /// Read-only mode used to key off <see cref="MaskText"/> alone, so a field declared secret through
+    /// <see cref="IsPassword"/> or <c>[DataType(DataType.Password)]</c> printed its value in the clear
+    /// the moment the form went read-only -- the control knew it was a secret and disclosed it anyway.
+    /// A set <see cref="MaskText"/> still wins: it is the more specific instruction, and a consumer who
+    /// asked for "last four visible" on a secret field meant it.
+    /// </remarks>
+    string? EffectiveMaskText => string.IsNullOrEmpty(MaskText) ? (EffectiveIsPassword ? PasswordMask : null) : MaskText;
+
+    /// <summary>
+    /// What the debug bound-value echo (<see cref="BoundValueDisplay"/>, shown only while
+    /// <see cref="FormOptions.ShowBoundValues"/> is on) prints: the value, or a redacted stand-in for a
+    /// password field. That flag is a development aid, but it is set form-wide -- so a form that turned
+    /// it on to inspect its models was writing every password bound to it into the DOM in plain text,
+    /// where it also reaches anything that scrapes the rendered page.
+    /// </summary>
+    string? BoundValueText => EffectiveIsPassword ? $"({CurrentValue?.Length ?? 0} chars, hidden)" : CurrentValueAsString;
 
     bool _showMaskedValue;
     bool _passwordRevealed;
@@ -227,9 +272,10 @@ public partial class EditString : EditTextInputBase
     }
 
     /// <summary>
-    /// The masked read-only text: <see cref="MaskText"/> followed by whatever tail of the value it
-    /// doesn't cover (or the mask alone once it's at least as long as the value). A single-character
-    /// mask is the special case -- it repeats to cover the whole value rather than prefixing it.
+    /// The masked read-only text: <see cref="EffectiveMaskText"/> followed by whatever tail of the
+    /// value it doesn't cover (or the mask alone once it's at least as long as the value). A
+    /// single-character mask is the special case -- it repeats to cover the whole value rather than
+    /// prefixing it, which is also how a password field's bullet mask covers its secret.
     /// </summary>
     /// <remarks>
     /// Both paths count in text elements rather than <c>char</c>s where it matters, because a UTF-16
@@ -244,18 +290,20 @@ public partial class EditString : EditTextInputBase
     /// </remarks>
     string? GetMaskValue()
     {
-        if (string.IsNullOrEmpty(MaskText) || CurrentValue == null)
+        var mask = EffectiveMaskText;
+        if (string.IsNullOrEmpty(mask) || CurrentValue == null)
             return CurrentValue;
 
         // A single-character mask covers the whole value: one mask character per visible character,
-        // so the mask's width matches the width of what it replaces.
-        if (MaskText.Length == 1)
-            return new string(MaskText[0], GraphemeCount(CurrentValue));
+        // so the mask's width matches the width of what it replaces. This is also the path a password
+        // field takes -- its bullet is a single-character mask.
+        if (mask.Length == 1)
+            return new string(mask[0], GraphemeCount(CurrentValue));
 
-        if (MaskText.Length >= CurrentValue.Length)
-            return MaskText;
+        if (mask.Length >= CurrentValue.Length)
+            return mask;
 
-        var tailStart = MaskText.Length;
+        var tailStart = mask.Length;
         if (char.IsLowSurrogate(CurrentValue[tailStart])) tailStart++;
         return MaskText + CurrentValue[tailStart..];
     }

@@ -47,12 +47,17 @@
                but still-clickable <a>. An empty value therefore falls through to the plain read-only
                value, which has its own reserved-space placeholder.
 
+               The mask is EffectiveMaskText, not MaskText: a password field masks here too (with a
+               bullet), because read-only is not a reason to print a secret in the clear. A set
+               MaskText still wins -- see EffectiveMaskText.
+
                IsNullOrEmpty, not IsNullOrWhiteSpace, on the mask: an all-whitespace MaskText is still
                a mask the consumer asked for. Skipping the masked branch for one printed the raw value
                instead -- a silent disclosure -- and disagreed with GetMaskValue's own guard. Note the
-               link branch below needs no MaskText check: it is only reachable when the branch above
-               was declined, and with a non-empty value that can only mean an empty mask. *@
-            @if (!string.IsNullOrEmpty(MaskText) && !string.IsNullOrEmpty(Value))
+               link branch below needs no mask check: it is only reachable when the branch above was
+               declined, and with a non-empty value that can only mean an empty effective mask (so a
+               password field never renders as a link either). *@
+            @if (!string.IsNullOrEmpty(EffectiveMaskText) && !string.IsNullOrEmpty(Value))
             {
                 <!-- Masks with eye icons to show/hide masked text in EditMode  -->
                 @if (!_showMaskedValue)
@@ -84,7 +89,7 @@
         }
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
 
-        <BoundValueDisplay Text=@CurrentValueAsString />
+        <BoundValueDisplay Text=@BoundValueText />
     </div>
 }
 
