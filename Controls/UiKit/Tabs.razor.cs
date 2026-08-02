@@ -18,8 +18,39 @@ namespace Controls;
 public partial class Tabs
 {
     /// <summary>The <see cref="Tab"/> children. Each one renders its own button into the tab
-    /// strip, so the strip's order is the order they are declared in — including a tab that is
-    /// conditionally rendered (<c>@if</c>) or produced by a loop.</summary>
+    /// strip, so the <i>rendered</i> strip is always in declaration order — including a tab that is
+    /// conditionally rendered (<c>@if</c>), produced by a loop, or moved by <c>@key</c>. The
+    /// render-tree diff places those buttons and nothing this component tracks can move one.</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Declare only <see cref="Tab"/> here.</b> This fragment renders inside the strip's
+    /// <c>role="tablist"</c> element, so anything else declared directly inside
+    /// <c>&lt;Tabs&gt;</c> — a stray <c>&lt;div&gt;</c>, a component of your own — becomes a child
+    /// of the tablist, which is an ARIA <c>aria-required-children</c> violation and will be reported
+    /// by an accessibility audit. Put it in a tab's pane content (<see cref="Tab.ChildContent"/>),
+    /// in <see cref="TabBarExtraContent"/> for the right-aligned slot beside the strip, or beside
+    /// the <c>&lt;Tabs&gt;</c> element. Conditional (<c>@if</c>) and looped <see cref="Tab"/>
+    /// declarations are fine — it is only non-tab content that has nowhere legal to go.
+    /// </para>
+    /// <para>
+    /// <b>Limitation — keyboard order after an unanchored change.</b> Two behaviors read a tab
+    /// <i>list</i> this component maintains rather than the rendered strip: which tab the arrow keys
+    /// move to, and which tab a null <see cref="ActiveKey"/> falls back to. Blazor skips
+    /// <c>SetParametersAsync</c> for a child whose own parameters are all unchanged immutable values,
+    /// so on a pass where every sibling was skipped — the bare filter strip, where every parameter
+    /// is a constant string — nothing reports a position: a newly revealed tab cannot be placed and
+    /// is appended, and a pure reorder (a <c>@key</c>ed loop whose items change places) is not seen
+    /// at all.
+    /// </para>
+    /// <para>
+    /// The strip renders correctly regardless. What can differ until some later pass makes a
+    /// neighbour re-register is that the arrows may reach a tab out of its rendered position, and an
+    /// unbound <see cref="ActiveKey"/> may highlight the tab that was first <i>before</i> the change.
+    /// It does not arise when any sibling re-registers on the same pass — a tab carrying pane content
+    /// re-registers on every pass, because a <c>RenderFragment</c> is a fresh delegate each time —
+    /// nor on a removal, nor on the first render.
+    /// </para>
+    /// </remarks>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>The active tab's <see cref="Tab.Key"/>. Null (default) activates the first
@@ -146,6 +177,7 @@ public partial class Tabs
     /// Rebuilds <c>_tabs</c> from the tabs that registered this pass plus the ones that did not.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Blazor skips <c>SetParametersAsync</c> entirely for a child whose own parameters are all
     /// unchanged immutable values, so a pass sees only a <i>subsequence</i> of the declared order:
     /// content-less tabs (the bare filter strip) never re-register unless their own text changes.
@@ -154,11 +186,30 @@ public partial class Tabs
     /// A brand-new tab is the one thing neither list places, so it is held until the next tab that
     /// did re-register pins it — "as late as its neighbours allow". With no such neighbour at all
     /// (every sibling skipped, the classic conditional leading/trailing tab) the position is simply
-    /// not in the data, and it is appended. That guess is invisible in two of the three consumers of
-    /// this list: the rendered strip does not read it at all, and arrow navigation is cyclic, so a
-    /// rotation of the true order still visits the same neighbours in the same direction. Only the
-    /// "first enabled tab" fallback for an unbound <see cref="ActiveKey"/> can differ, and only
-    /// until any pass in which a neighbour re-registers.
+    /// not in the data, and it is appended.
+    /// </para>
+    /// <para>
+    /// That append is a <b>guess, and it can be wrong in a way the user can observe</b> — see the
+    /// limitation on <see cref="ChildContent"/>. It is not "at worst a rotation": no placement rule
+    /// can promise that, because for a middle insertion neither appending nor prepending produces
+    /// one (declared <c>[a, b, mid, c]</c> has rotations <c>[a,b,mid,c] [b,mid,c,a] [mid,c,a,b]
+    /// [c,a,b,mid]</c>, and the two candidates are <c>[a,b,c,mid]</c> and <c>[mid,a,b,c]</c>).
+    /// Arrow navigation is cyclic, so a rotation would indeed be unobservable there, and a leading
+    /// or trailing insertion does happen to produce one; a middle insertion does not, and the arrows
+    /// then reach the newcomer out of its rendered position. The "first enabled tab" fallback for an
+    /// unbound <see cref="ActiveKey"/> can differ in every one of these shapes. Both self-correct on
+    /// the first later pass in which a neighbour re-registers, which may never come.
+    /// </para>
+    /// <para>
+    /// Removing the guess needs an exact re-collection in declaration order, which no bookkeeping
+    /// here can produce: the information is not in the pass. Dropping <c>IsFixed</c> from the
+    /// cascade does make every live tab report on every pass, but in cascade-subscription order
+    /// (construction order, newcomers last), which is the same wrong answer for the price of an
+    /// extra render per tab per pass — pinned by
+    /// <c>Blazor_offers_no_document_ordered_re_registration_of_parameter_skipped_children</c>. The
+    /// mechanisms that <i>are</i> exact re-create the children (a generation <c>@key</c> rebuild,
+    /// which tears down everything declared inside <c>&lt;Tabs&gt;</c>) or read the rendered DOM.
+    /// </para>
     /// </remarks>
     void ResolveOrder()
     {
@@ -210,13 +261,18 @@ public partial class Tabs
     }
 
     /// <summary>
-    /// Requests a follow-up render of the strip after an already-registered <see cref="Tab"/>
-    /// changed a parameter the <i>strip's own</i> markup is built from (its key, its disabled state,
-    /// or whether it has pane content). That markup is built from the <see cref="Tab"/> instances in
-    /// <c>_tabs</c> before the changed tab's own <c>OnParametersSet</c> runs, so it would otherwise
-    /// render stale for this pass and only self-correct on some later, unrelated render. A tab's
-    /// label and count need no notification — they are rendered by the tab itself.
+    /// Requests a follow-up render of the strip after an already-registered <see cref="Tab"/>'s
+    /// parameters changed. The strip's own markup — active-tab resolution and the panel, which
+    /// embeds <c>ActiveTab.ChildContent</c> — is built from the <see cref="Tab"/> instances in
+    /// <c>_tabs</c> before the changed tab's <c>OnParametersSet</c> runs, so it renders the previous
+    /// pass' values and would only self-correct on some later, unrelated render.
     /// </summary>
+    /// <remarks>
+    /// The label and count are rendered by the tab itself and need no help from here, but they are
+    /// still part of the signal: a change to any of them means the consumer's fragment produced new
+    /// values this pass, which is the strip's cue that the pane delegate it embedded is one pass
+    /// stale. See <see cref="Tab"/>'s snapshot for why that is the available signal.
+    /// </remarks>
     internal void NotifyTabChanged() => StateHasChanged();
 
     /// <inheritdoc/>
