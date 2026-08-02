@@ -210,13 +210,18 @@ public partial class Tabs
     }
 
     /// <summary>
-    /// Requests a follow-up render of the strip after an already-registered <see cref="Tab"/>
-    /// changed a parameter the <i>strip's own</i> markup is built from (its key, its disabled state,
-    /// or whether it has pane content). That markup is built from the <see cref="Tab"/> instances in
-    /// <c>_tabs</c> before the changed tab's own <c>OnParametersSet</c> runs, so it would otherwise
-    /// render stale for this pass and only self-correct on some later, unrelated render. A tab's
-    /// label and count need no notification — they are rendered by the tab itself.
+    /// Requests a follow-up render of the strip after an already-registered <see cref="Tab"/>'s
+    /// parameters changed. The strip's own markup — active-tab resolution and the panel, which
+    /// embeds <c>ActiveTab.ChildContent</c> — is built from the <see cref="Tab"/> instances in
+    /// <c>_tabs</c> before the changed tab's <c>OnParametersSet</c> runs, so it renders the previous
+    /// pass' values and would only self-correct on some later, unrelated render.
     /// </summary>
+    /// <remarks>
+    /// The label and count are rendered by the tab itself and need no help from here, but they are
+    /// still part of the signal: a change to any of them means the consumer's fragment produced new
+    /// values this pass, which is the strip's cue that the pane delegate it embedded is one pass
+    /// stale. See <see cref="Tab"/>'s snapshot for why that is the available signal.
+    /// </remarks>
     internal void NotifyTabChanged() => StateHasChanged();
 
     /// <inheritdoc/>

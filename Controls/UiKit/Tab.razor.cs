@@ -38,30 +38,50 @@ public partial class Tab : IDisposable
 
     bool _initialized;
     string? _lastKey;
+    string? _lastTitle;
+    int? _lastCount;
     bool _lastDisabled;
+    bool _lastHasTitleContent;
     bool _lastHasChildContent;
 
-    // Register on every render pass so the strip's tab set follows the markup. Display parameters
-    // (Title/TitleContent/Count) are deliberately NOT snapshotted here: they only feed this
-    // component's own button, and a parameter change already re-renders it. Key, Disabled and
-    // "has pane content" are different -- they feed the STRIP's own markup (active-tab resolution
-    // and the panel), which is built before this method runs, so a change to one of them needs the
-    // corrective re-render below. The snapshot comparison is what tells a real change from a
-    // re-run and is what keeps that notification from looping: OnParametersSet runs on every parent
-    // render regardless of whether anything changed (a RenderFragment parameter is a new delegate
-    // each pass, so Blazor cannot skip the call).
+    // Register on every render pass so the strip's tab set follows the markup.
+    //
+    // The snapshot covers every parameter, including the display ones (Title/TitleContent/Count)
+    // that only this component's own button renders. Those look redundant -- a parameter change
+    // already re-renders the button that shows them -- but they are the strip's only signal that
+    // the CONSUMER's fragment produced new values this pass, and the strip's own markup embeds one
+    // thing it cannot re-read for itself: the active tab's pane, which it takes from
+    // ActiveTab.ChildContent while building its render tree, i.e. one pass before the diff assigns
+    // this tab the delegate the same fragment just produced. Narrowing the snapshot to the
+    // strip-facing parameters left a Title-plus-pane change rendering the new title above the
+    // previous pane whenever the pane fragment closed over a local (a foreach variable) rather than
+    // a field, because nothing asked the strip to render again. A pane-only change (no other
+    // parameter moved) is still one pass behind -- long-standing, and not something a snapshot can
+    // see, since a RenderFragment is a fresh delegate on every pass and comparing identities would
+    // request a corrective render forever.
+    //
+    // The snapshot comparison is what tells a real change from a re-run and is what keeps the
+    // notification from looping: OnParametersSet runs on every parent render regardless of whether
+    // anything changed (a RenderFragment parameter is a new delegate each pass, so Blazor cannot
+    // skip the call), and the corrective pass it requests re-runs this method with the values it
+    // just recorded, so the second time through nothing has moved.
     protected override void OnParametersSet()
     {
-        var stripInputChanged = _initialized &&
-            (_lastKey != Key || _lastDisabled != Disabled || _lastHasChildContent != (ChildContent is not null));
+        var changed = _initialized &&
+            (_lastKey != Key || _lastTitle != Title || _lastCount != Count || _lastDisabled != Disabled ||
+             _lastHasTitleContent != (TitleContent is not null) ||
+             _lastHasChildContent != (ChildContent is not null));
 
         _lastKey = Key;
+        _lastTitle = Title;
+        _lastCount = Count;
         _lastDisabled = Disabled;
+        _lastHasTitleContent = TitleContent is not null;
         _lastHasChildContent = ChildContent is not null;
         _initialized = true;
 
         Tabs?.Register(this);
-        if (stripInputChanged) Tabs?.NotifyTabChanged();
+        if (changed) Tabs?.NotifyTabChanged();
     }
 
     // Strip-level state (which tab is active, whether a panel exists, the id root) is not a

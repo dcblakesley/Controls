@@ -163,9 +163,10 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Equal("12", cut.Find(".wss-tabs-count").TextContent);
 
         // The auditor's exact repro shape: the parent re-renders with a changed Count on an
-        // already-registered tab (no tab added or removed). The count chip is now rendered by the
-        // tab itself, so the parameter change that carries it also re-renders it -- and, unlike a
-        // key/disabled change, it needs no corrective render of the strip at all.
+        // already-registered tab (no tab added or removed). The count chip is rendered by the tab
+        // itself, so the parameter change that carries it also re-renders it; the strip is asked for
+        // one corrective pass as well, because a tab reporting new parameter values is its only cue
+        // that the pane delegate it embedded came from the fragment's previous execution.
         var rendersBefore = cut.RenderCount;
         count = 34;
         cut.Render(p => p.Add(t => t.ChildContent, Children()));
@@ -174,7 +175,12 @@ public class TabsAndSearchInputTests : BunitContext
         // Bounded, not a runaway loop -- an unguarded notification would re-trigger on every
         // subsequent pass, since ChildContent is a new delegate each time. (RenderCount also counts
         // the tabs' own renders below this component, hence bounds larger than the pass count.)
-        Assert.True(cut.RenderCount - rendersBefore <= 4, $"render delta {cut.RenderCount - rendersBefore}");
+        Assert.True(cut.RenderCount - rendersBefore <= 6, $"render delta {cut.RenderCount - rendersBefore}");
+
+        // ...and it has settled: an identical re-render afterwards costs nothing but the pass-through.
+        rendersBefore = cut.RenderCount;
+        cut.Render(p => p.Add(t => t.ChildContent, Children()));
+        Assert.True(cut.RenderCount - rendersBefore <= 2, $"idle render delta {cut.RenderCount - rendersBefore}");
     }
 
     [Fact]
@@ -259,6 +265,82 @@ public class TabsAndSearchInputTests : BunitContext
             .Add(t => t.ChildContent, Children())
             .Add(t => t.ActiveKey, "saved"));
         Assert.True(cut.RenderCount - rendersBefore <= 2, $"idle render delta {cut.RenderCount - rendersBefore}");
+    }
+
+    [Fact]
+    public void A_title_and_pane_change_on_the_same_pass_shows_the_new_pane_not_the_previous_one()
+    {
+        // The strip embeds the active tab's pane while building its own render tree, which is one
+        // pass before the diff hands that tab the delegate the consumer's fragment just produced --
+        // so a pass that changes both the title and the pane would otherwise paint the new title
+        // above the OLD pane. It bites exactly when the pane fragment closes over a local (a foreach
+        // variable, a method argument) instead of a field, because then the previous delegate is
+        // still holding the previous value rather than reading the current one.
+        static RenderFragment Body(string title, string pane) => builder =>
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "a");
+            builder.AddAttribute(2, "Title", title);
+            builder.AddAttribute(3, "ChildContent", (RenderFragment)(b => b.AddContent(0, pane)));
+            builder.CloseComponent();
+
+            builder.OpenComponent<Tab>(4);
+            builder.AddAttribute(5, "Key", "b");
+            builder.AddAttribute(6, "Title", "B");
+            builder.AddAttribute(7, "ChildContent", (RenderFragment)(b => b.AddContent(0, "Pane B")));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, Body("T1", "P1")));
+        Assert.Equal("P1", cut.Find("[role=tabpanel]").TextContent.Trim());
+
+        cut.Render(p => p.Add(t => t.ChildContent, Body("T2", "P2")));
+
+        Assert.Equal("T2", cut.FindAll(".wss-tabs-label")[0].TextContent.Trim());
+        Assert.Equal("P2", cut.Find("[role=tabpanel]").TextContent.Trim());
+    }
+
+    [Fact]
+    public void A_static_strip_settles_instead_of_correcting_itself_forever()
+    {
+        // The corrective render above is requested from a snapshot COMPARISON, and that is the only
+        // thing keeping it finite. A gate that compared the pane delegate's reference identity
+        // instead would never settle: re-executing the consumer's fragment mints a fresh
+        // RenderFragment every pass, so "the delegate changed" is true forever and each corrective
+        // render re-arms the next one -- an invisible treadmill (no DOM change at all) that costs a
+        // SignalR round trip per pass on Blazor Server. Identical re-renders must cost a constant,
+        // bounded number of passes.
+        static RenderFragment Body() => builder =>
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "a");
+            builder.AddAttribute(2, "Title", "A");
+            builder.AddAttribute(3, "Count", 3);
+            builder.AddAttribute(4, "ChildContent", (RenderFragment)(b => b.AddContent(0, "Pane A")));
+            builder.CloseComponent();
+
+            builder.OpenComponent<Tab>(5);
+            builder.AddAttribute(6, "Key", "b");
+            builder.AddAttribute(7, "Title", "B");
+            builder.AddAttribute(8, "ChildContent", (RenderFragment)(b => b.AddContent(0, "Pane B")));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, Body()));
+
+        var deltas = new List<int>();
+        for (var i = 0; i < 4; i++)
+        {
+            var before = cut.RenderCount;
+            cut.Render(p => p.Add(t => t.ChildContent, Body()));
+            deltas.Add(cut.RenderCount - before);
+        }
+
+        var trace = string.Join(",", deltas);
+        Assert.All(deltas, d => Assert.True(d <= 4, $"per-pass render delta {d} (deltas: {trace})"));
+        // Constant, not creeping: every identical pass costs the same as the one before it.
+        Assert.True(deltas.Distinct().Count() == 1, $"render cost is not constant at rest (deltas: {trace})");
+        Assert.Equal("Pane A", cut.Find("[role=tabpanel]").TextContent.Trim());
     }
 
     // ----- ActiveKey fallback notification -------------------------------------
