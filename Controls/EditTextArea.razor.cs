@@ -161,10 +161,44 @@ public partial class EditTextArea : EditTextInputBase
             ? new Dictionary<string, object>(1) { ["oninput"] = EventCallback.Factory.Create(this, AutoSizeAsync) }
             : null;
 
+    // Mirrors -- compared each render so a value/AutoSize change that did NOT come from the user typing
+    // (see OnAfterRenderAsync below) still triggers a re-measure. _lastMeasuredValue is kept in sync by
+    // AutoSizeAsync itself, so every path that already measures (OnClearedAsync, OnValueChangedAsync,
+    // first render) leaves it up to date and the user-typing path below never measures twice for the
+    // same keystroke.
+    string? _lastMeasuredValue;
+    bool _lastAutoSize;
+
+    /// <summary>
+    /// Re-measures on first render (when <see cref="ResolvedAutoSize"/> is on), and on every later
+    /// render where something OTHER than the user typing changed the height requirement: the bound
+    /// value was set from outside the control (a parent assigning the model property directly bypasses
+    /// <see cref="OnValueChangedAsync"/>/<see cref="OnClearedAsync"/> entirely, so nothing else would
+    /// re-measure), or <see cref="ResolvedAutoSize"/> just flipped false-to-true at runtime (the class
+    /// toggles on with no measurement of its own). Skips the user-typing path deliberately: that path
+    /// already measures via <c>@bind-value:after</c>/<see cref="AutoSizeInputAttribute"/>, which updates
+    /// <see cref="_lastMeasuredValue"/> before this render even starts, so
+    /// <see cref="InputBase{TValue}.CurrentValue"/> already equals the mirror here and the comparison
+    /// below is a no-op -- no double measurement per keystroke.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && ResolvedAutoSize) await AutoSizeAsync();
+        if (firstRender)
+        {
+            if (ResolvedAutoSize) await AutoSizeAsync();
+            _lastAutoSize = ResolvedAutoSize;
+            return;
+        }
+
+        if (ResolvedAutoSize && (!_lastAutoSize || CurrentValue != _lastMeasuredValue))
+            await AutoSizeAsync();
+
+        _lastAutoSize = ResolvedAutoSize;
     }
 
-    Task AutoSizeAsync() => JsInteropEc.AutoSizeTextArea(JS, _id, ResolvedMinRows ?? ResolvedRows, ResolvedMaxRows, FormDefaults);
+    Task AutoSizeAsync()
+    {
+        _lastMeasuredValue = CurrentValue;
+        return JsInteropEc.AutoSizeTextArea(JS, _id, ResolvedMinRows ?? ResolvedRows, ResolvedMaxRows, FormDefaults);
+    }
 }

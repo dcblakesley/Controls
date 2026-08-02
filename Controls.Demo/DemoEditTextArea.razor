@@ -107,8 +107,38 @@
         <pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
     </section>
 
-    @* The two AutoSize sections must stay LAST on this page: EditTextAreaE2ETests anchors on
-       section.demo-section.Last to reach the "AutoSize" one. Append new sections ABOVE these two. *@
+    @* The two AutoSize sections below must stay LAST on this page: EditTextAreaE2ETests anchors on
+       section.demo-section.Last to reach the "AutoSize" one. Append new sections ABOVE this comment. *@
+    <section class="demo-section">
+        <h3>AutoSize -- programmatic value change</h3>
+        <p>
+            AutoSize is already on here -- "Load long text" sets the bound value directly (not by
+            typing into the box), which must still re-measure and grow it.
+        </p>
+
+        <EditTextArea @bind-Value="_model.AutoSizeProgrammatic" AutoSize="true" MinRows="2" MaxRows="6"/>
+
+        <button type="button" @onclick="LoadLongProgrammaticText">Load long text</button>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_autoSizeProgrammaticExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>AutoSize -- toggled on at runtime</h3>
+        <p>
+            AutoSize starts off on a box that already holds several lines of content -- switching it
+            on must measure immediately rather than waiting for the next keystroke.
+        </p>
+
+        <EditTextArea @bind-Value="_model.AutoSizeToggleTarget" AutoSize="_autoSizeToggledOn" MinRows="2" MaxRows="6"/>
+
+        <button type="button" @onclick="EnableAutoSizeToggle">Enable AutoSize</button>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_autoSizeToggleExample</code></pre>
+    </section>
+
     <section class="demo-section">
         <h3>AutoSize + UpdateOn=Change</h3>
 
@@ -134,6 +164,15 @@
 @code {
     readonly DemoEditTextAreaModel _model = new();
 
+    // Finding 60 demo: AutoSize starts off here, so "Enable AutoSize" exercises the false->true
+    // runtime flip against content that's already several lines long.
+    bool _autoSizeToggledOn;
+
+    void LoadLongProgrammaticText() =>
+        _model.AutoSizeProgrammatic = string.Join("\n", Enumerable.Range(1, 10).Select(i => $"line {i}"));
+
+    void EnableAutoSizeToggle() => _autoSizeToggledOn = true;
+
     public class DemoEditTextAreaModel
     {
         [Description("Basic Description")]
@@ -156,6 +195,9 @@
         public string Counted { get; set; } = "";
         public string AutoSized { get; set; } = "";
         public string AutoSizedChangeTrigger { get; set; } = "";
+        public string AutoSizeProgrammatic { get; set; } = "";
+        public string AutoSizeToggleTarget { get; set; } =
+            string.Join("\n", Enumerable.Range(1, 8).Select(i => $"line {i}"));
 
         [Placeholder("Describe your experience, thoughts, or feedback...")]
         public string WithPlaceholderAttribute { get; set; } = "";
@@ -225,6 +267,20 @@ public string Disabled { get; set; } = ""This textarea is disabled"";";
              MinRows=""2""
              MaxRows=""6""
              UpdateOn=""UpdateTrigger.Change""/>";
+
+    readonly string _autoSizeProgrammaticExample = @"<EditTextArea @bind-Value=""_model.AutoSizeProgrammatic""
+             AutoSize=""true""
+             MinRows=""2""
+             MaxRows=""6""/>
+
+<button @onclick=""LoadLongProgrammaticText"">Load long text</button>";
+
+    readonly string _autoSizeToggleExample = @"<EditTextArea @bind-Value=""_model.AutoSizeToggleTarget""
+             AutoSize=""@_autoSizeToggledOn""
+             MinRows=""2""
+             MaxRows=""6""/>
+
+<button @onclick=""EnableAutoSizeToggle"">Enable AutoSize</button>";
 
     readonly string _placeholderAttributeExample = @"<EditTextArea @bind-Value=""_model.WithPlaceholderAttribute""
              Rows=""3""/>";

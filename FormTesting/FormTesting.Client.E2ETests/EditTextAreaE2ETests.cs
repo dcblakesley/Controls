@@ -134,6 +134,46 @@ public class EditTextAreaE2ETests(AppFixture app, BrowserFixture browser) : Demo
         await Expect(boundValue).ToContainTextAsync("line one");
     }
 
+    [Fact]
+    public async Task AutoSize_re_measures_when_the_value_changes_programmatically_not_by_typing()
+    {
+        // Finding 60: DemoEditTextArea's "AutoSize -- programmatic value change" section (AutoSize
+        // already on). "Load long text" sets the bound model property directly (a button click, not
+        // typing into the textarea) -- before the fix, measurement only ran on first render and on
+        // the textarea's own bound DOM event, so a parent-driven value change left the box clipped at
+        // its old height.
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "programmatic value change" });
+        var textarea = section.Locator("textarea").First;
+
+        var initialBox = await textarea.BoundingBoxAsync();
+        Assert.NotNull(initialBox);
+
+        await section.Locator("button", new() { HasTextString = "Load long text" }).ClickAsync();
+
+        await WaitForHeightAboveAsync(textarea, initialBox.Height);
+        Assert.Contains("line 1", await textarea.InputValueAsync()); // confirms the button actually set the value
+    }
+
+    [Fact]
+    public async Task AutoSize_measures_immediately_when_flipped_on_at_runtime()
+    {
+        // DemoEditTextArea's "AutoSize -- toggled on at runtime" section: AutoSize starts off on a
+        // box that already holds several lines of content. "Enable AutoSize" exercises the
+        // false-to-true runtime flip -- the class toggles on with no measurement of its own unless
+        // OnAfterRenderAsync notices the flip.
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "toggled on at runtime" });
+        var textarea = section.Locator("textarea").First;
+
+        var boxBeforeToggle = await textarea.BoundingBoxAsync();
+        Assert.NotNull(boxBeforeToggle);
+
+        await section.Locator("button", new() { HasTextString = "Enable AutoSize" }).ClickAsync();
+
+        await WaitForHeightAboveAsync(textarea, boxBeforeToggle.Height);
+    }
+
     /// <summary>
     /// Polls <paramref name="locator"/>'s bounding-box height until it exceeds <paramref name="thresholdPx"/>
     /// or <paramref name="timeoutMs"/> elapses. Preferred over a fixed <c>WaitForTimeoutAsync</c> sleep
