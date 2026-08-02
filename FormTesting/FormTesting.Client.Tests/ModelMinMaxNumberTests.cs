@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -46,6 +47,24 @@ public class ModelMinMaxNumberTests : BunitContext
 
         [MinValue(0)]
         public int? ValidatedBound { get; set; }
+
+        // int.MinValue/int.MaxValue are int's own "no bound" idiom, not long's -- on a long property
+        // this is a genuine "must fit in an int" constraint, so both bounds must render (Finding: the
+        // type-blind RangeSentinels regression). Type-gating threads through EditNumber<long?>'s own
+        // UnderlyingNumericType.
+        [Range(int.MinValue, int.MaxValue)]
+        public long? WithIntExtremesOnLong { get; set; }
+
+        // Same constraint as WithIntExtremesOnLong, but via the (Type, string, string) ctor with
+        // OperandType=long: RangeAttribute's (int, int) ctor converts the VALUE to Int32 before
+        // comparing (Convert.ToInt32), which THROWS OverflowException -- uncaught by RangeAttribute
+        // itself -- for a genuinely out-of-int-range long, rather than failing gracefully. That's a
+        // pre-existing BCL sharp edge unrelated to this fix, not something to route around silently in
+        // production code; the string-ctor spelling here (which real code migrating to a wider type
+        // would use to avoid the crash) compares as long throughout, so validation degrades to a normal,
+        // message-producing failure -- what the end-to-end test below actually exercises.
+        [Range(typeof(long), "-2147483648", "2147483647", ParseLimitsInInvariantCulture = true)]
+        public long? WithIntExtremesOnLongViaStringCtor { get; set; }
     }
 
     [Fact]
@@ -141,6 +160,28 @@ public class ModelMinMaxNumberTests : BunitContext
     }
 
     [Fact]
+    public void Int_extreme_Range_bounds_render_as_real_min_and_max_on_a_long_property()
+    {
+        // Regression coverage for the type-blind RangeSentinels defect: [Range(int.MinValue,
+        // int.MaxValue)] used to be suppressed on EVERY numeric type (rendering no min/max at all),
+        // even though on a long property it's a real "must fit in an int" bound -- 5000000000 violates
+        // it. EditNumber<long?> now passes its own UnderlyingNumericType through, so both bounds render.
+        var model = new MinMaxModel();
+        Expression<Func<long?>> field = () => model.WithIntExtremesOnLong;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<long?>>(0);
+            b.AddAttribute(1, "Value", model.WithIntExtremesOnLong);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input.edit-number-input");
+        Assert.Equal(int.MinValue.ToString(CultureInfo.InvariantCulture), input.GetAttribute("min"));
+        Assert.Equal(int.MaxValue.ToString(CultureInfo.InvariantCulture), input.GetAttribute("max"));
+    }
+
+    [Fact]
     public void Renders_no_min_or_max_attribute_when_neither_parameter_nor_model_attribute_is_set()
     {
         var model = new MinMaxModel();
@@ -202,5 +243,38 @@ public class ModelMinMaxNumberTests : BunitContext
         Assert.Equal("true", input.GetAttribute("aria-invalid"));
         var message = cut.Find("#error-msg-ValidatedBound").TextContent;
         Assert.False(string.IsNullOrWhiteSpace(message));
+    }
+
+    [Fact]
+    public void Int_extreme_Range_violation_on_a_long_property_renders_the_real_bounded_message()
+    {
+        // End-to-end proof of the type-blindness fix, through the REAL reflection path
+        // (FieldValidationDisplay.GetPropertyTypeName -> "System.Int64", not a hand-typed string):
+        // 5000000000 is a valid long but fails this int-sized bound, and the rendered message must name
+        // the true bound rather than collapse to "Must be a number".
+        var model = new MinMaxModel { WithIntExtremesOnLongViaStringCtor = 5_000_000_000L };
+        var editContext = new EditContext(model);
+        Expression<Func<long?>> field = () => model.WithIntExtremesOnLongViaStringCtor;
+        // ShowFieldNameInValidation: false so the visible region is the short rewritten form (no label
+        // prefix) -- FormOptions.DefaultShowFieldNameInValidation is true, and this test isn't about
+        // label rendering.
+        var cut = Render(RenderValidatedForm(editContext, new FormOptions { ShowFieldNameInValidation = false }, content =>
+        {
+            content.OpenComponent<EditNumber<long?>>(0);
+            content.AddAttribute(1, "Value", model.WithIntExtremesOnLongViaStringCtor);
+            content.AddAttribute(2, "ValueExpression", field);
+            content.CloseComponent();
+        }));
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        var input = cut.Find("input.edit-number-input");
+        Assert.Equal("true", input.GetAttribute("aria-invalid"));
+        // The visible (non-screen-reader) region -- the short form without the label prefix; see
+        // FieldValidationDisplay.razor's two regions and FieldValidationDisplayTests' RenderMessages.
+        var message = cut.Find(".edit-validation-message:not(.edit-sr-only) > div").TextContent;
+        Assert.Equal(
+            $"Must be between {int.MinValue.ToString(CultureInfo.InvariantCulture)} and {int.MaxValue.ToString(CultureInfo.InvariantCulture)}",
+            message);
     }
 }

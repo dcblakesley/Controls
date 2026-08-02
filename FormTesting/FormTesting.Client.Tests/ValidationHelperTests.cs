@@ -185,6 +185,92 @@ public class ValidationHelperTests
         }
     }
 
+    // ----- Both-sentinel collapse is TYPE-GATED, not just value-gated ---------------------------
+    // [Range(int.MinValue, int.MaxValue)] is the vacuous "trigger numeric parsing only" idiom on an
+    // int -- but on a LONG it's a genuine "must fit in an int" constraint (5000000000 violates it).
+    // Before this fix, RangeSentinels.IsMin/IsMax matched ANY extreme in the table regardless of the
+    // bound property's own type, so a long field with this attribute wrongly rendered "Must be a
+    // number" for an out-of-int-range value that IS a number. The collapse (and the one-sided
+    // rewrite) must only fire when the bound is vacuous for the field actually being validated.
+
+    [Fact]
+    public void Numeric_range_with_int_both_sentinels_collapses_on_a_nullable_int_property_too()
+    {
+        // Nullable<T>'s Type.ToString() spelling ("System.Nullable`1[System.Int32]") must unwrap to
+        // the same row as "System.Int32" -- an int? field is still int's own type.
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between {int.MinValue} and {int.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Nullable`1[System.Int32]");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_int_both_sentinels_on_a_long_property_is_a_real_bounded_range()
+    {
+        // Same attribute text as the int case above, but the field is long -- int.MinValue/int.MaxValue
+        // are NOT long's own extremes, so this is a genuine (if generous) bounded range, not "no bound
+        // at all". Collapsing this to "Must be a number" would hide a real constraint that
+        // 5000000000 actually violates.
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between {int.MinValue} and {int.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Int64");
+        Assert.Equal($"Must be between {int.MinValue} and {int.MaxValue}", msg);
+    }
+
+    [Fact]
+    public void Mixed_int_min_long_max_on_a_long_property_is_one_sided_on_the_real_int_floor()
+    {
+        // The max IS long's own sentinel (vacuous, long.MaxValue); the min is int.MinValue, a real
+        // (if unusual) floor for a long field -- classified per-side, exactly like the pre-existing
+        // one-sided int/byte/short tests above, just with the roles of "which side is real" flipped by
+        // the field's own wider type instead of a narrower literal.
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between {int.MinValue} and {long.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Int64");
+        Assert.Equal($"Must be at least {int.MinValue}", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_long_both_sentinels_still_collapses_on_a_long_property()
+    {
+        // Confirms the type-gated rewrite still recognizes long's OWN extremes as vacuous on a long
+        // field -- the fix narrows "which extremes count", it doesn't stop long from ever collapsing.
+        // (Mirrors Numeric_range_with_long_both_sentinels_falls_back_to_must_be_a_number above; kept
+        // as an explicit type-gating case for this section's own record.)
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between {long.MinValue} and {long.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Int64");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("de-DE")]
+    public void Int_extremes_on_a_wider_long_property_are_a_real_bounded_range_under_any_culture(string cultureName)
+    {
+        // Same culture hazard as the sentinel-detection theories above: int.MinValue/int.MaxValue's
+        // text (and NumberRangeString's rendering of it) must be produced under the culture active at
+        // validation time, and the type-gated verdict (a real bound here, not a sentinel) must hold
+        // regardless of which culture spells the negative sign.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(cultureName);
+            var minText = int.MinValue.ToString();
+            var maxText = int.MaxValue.ToString();
+
+            var msg = ValidationHelper.GetValidationMessage(
+                $"The field Quantity must be between {minText} and {maxText}.",
+                "Quantity", "Quantity", valueType: "System.Int64");
+
+            Assert.Equal($"Must be between {minText} and {maxText}", msg);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
     // ----- Zero-as-a-real-floor (not a sentinel) ------------------------------------------------
     // byte/uint/ulong/ushort.MinValue.ToString() are ALL "0" — IsTypeMinSentinel used to treat "0"
     // itself as a type-min sentinel, so the ubiquitous [Range(0, ...)] "non-negative" idiom lost its
@@ -284,7 +370,20 @@ public class ValidationHelperTests
     // Every numeric type extreme, each paired with a concrete bound on the other side (a
     // both-sentinel [Range] is a fully-unbounded annotation with nothing to rewrite). The message
     // layer and the DOM-attribute layer must reach the SAME verdict on each: a bound the message
-    // presents as absent can't show up in the DOM as min="-32768", and vice versa.
+    // presents as absent can't show up in the DOM as min="-32768", and vice versa. Both sides are
+    // given the SAME bound-property type (decimal, matching the RangeAttribute's own OperandType
+    // below) -- that's what makes "agree" meaningful post-type-gating: an extreme that belongs to some
+    // OTHER type (e.g. int.MinValue here, where the field is decimal) is a real bound on both layers,
+    // not a coincidental shared blind spot.
+    //
+    // double/float's own extremes are deliberately absent from this decimal-typed set: their magnitude
+    // (~1.8E308 / ~3.4E38) exceeds decimal's own range (~7.9E28), so a decimal-typed [Range] literally
+    // cannot carry one -- decimal.TryParse rejects the text before either layer ever asks
+    // RangeSentinels a type-gating question, and a real RangeAttribute(typeof(decimal), thatText, ...)
+    // would itself misbehave at validation time. Pairing them here would test two layers separately
+    // (and coincidentally) failing to parse an ill-formed bound, not whether their SENTINEL verdicts
+    // agree -- that pairing already has its own coverage in the both-sentinel section above (one
+    // fact per type, matched to its own type).
     public static TheoryData<string, string> TypeExtremeRangeBounds()
     {
         var inv = CultureInfo.InvariantCulture;
@@ -292,8 +391,7 @@ public class ValidationHelperTests
         foreach (var min in new[]
         {
             sbyte.MinValue.ToString(inv), short.MinValue.ToString(inv), int.MinValue.ToString(inv),
-            long.MinValue.ToString(inv), decimal.MinValue.ToString(inv), double.MinValue.ToString(inv),
-            float.MinValue.ToString(inv), ((double)float.MinValue).ToString(inv),
+            long.MinValue.ToString(inv), decimal.MinValue.ToString(inv),
         })
             data.Add(min, "100");
 
@@ -302,7 +400,6 @@ public class ValidationHelperTests
             sbyte.MaxValue.ToString(inv), byte.MaxValue.ToString(inv), short.MaxValue.ToString(inv),
             ushort.MaxValue.ToString(inv), int.MaxValue.ToString(inv), uint.MaxValue.ToString(inv),
             long.MaxValue.ToString(inv), ulong.MaxValue.ToString(inv), decimal.MaxValue.ToString(inv),
-            double.MaxValue.ToString(inv), float.MaxValue.ToString(inv), ((double)float.MaxValue).ToString(inv),
         })
             data.Add("1", max);
 
@@ -329,8 +426,8 @@ public class ValidationHelperTests
                 $"The field Value must be between {minText} and {maxText}.",
                 "Value", "Value", valueType: "System.Decimal");
 
-            Assert.Equal(attrs.MinNumber() is not null, msg.Contains(minText, StringComparison.Ordinal));
-            Assert.Equal(attrs.MaxNumber() is not null, msg.Contains(maxText, StringComparison.Ordinal));
+            Assert.Equal(attrs.MinNumber(typeof(decimal)) is not null, msg.Contains(minText, StringComparison.Ordinal));
+            Assert.Equal(attrs.MaxNumber(typeof(decimal)) is not null, msg.Contains(maxText, StringComparison.Ordinal));
         }
         finally
         {

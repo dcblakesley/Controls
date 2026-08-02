@@ -80,17 +80,20 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// The minimum bound actually rendered: the <see cref="Min"/> parameter, else the model property's
     /// <c>[MinValue]</c>/<c>[Range]</c> lower bound. Null when neither is set (or the bound isn't
     /// representable as <see cref="decimal"/>), so the <c>min</c> attribute is omitted rather than
-    /// rendered as an unbounded floor.
+    /// rendered as an unbounded floor. Passes <see cref="UnderlyingNumericType"/> so a <c>[Range]</c>
+    /// bound is only treated as vacuous when it's <typeparamref name="T"/>'s OWN extreme -- see
+    /// <see cref="Helpers.RangeSentinels"/>.
     /// </summary>
-    decimal? EffectiveMin => Min ?? _attributes.MinNumber();
+    decimal? EffectiveMin => Min ?? _attributes.MinNumber(UnderlyingNumericType);
 
     /// <summary>
     /// The maximum bound actually rendered: the <see cref="Max"/> parameter, else the model property's
     /// <c>[MaxValue]</c>/<c>[Range]</c> upper bound. Null when neither is set (or the bound isn't
     /// representable as <see cref="decimal"/>), so the <c>max</c> attribute is omitted rather than
-    /// rendered as an unbounded ceiling.
+    /// rendered as an unbounded ceiling. Passes <see cref="UnderlyingNumericType"/> -- see
+    /// <see cref="EffectiveMin"/>.
     /// </summary>
-    decimal? EffectiveMax => Max ?? _attributes.MaxNumber();
+    decimal? EffectiveMax => Max ?? _attributes.MaxNumber(UnderlyingNumericType);
 
     /// <summary>
     /// Placeholder text to display in the input when empty. Falls back to the bound property's
