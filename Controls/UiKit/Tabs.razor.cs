@@ -120,9 +120,10 @@ public partial class Tabs
 
     // Arrow-key navigation moves DOM focus onto a nav button, and the consumer's ActiveKeyChanged
     // handler is free to insert a tab in response -- which is the one situation where a re-collection
-    // destroys the very button the strip just focused. True for the whole keyboard operation, so a
-    // re-collection landing anywhere inside it is recognized; false at every other moment, so one
-    // triggered by unrelated consumer state can never pull focus out of wherever the user actually is.
+    // destroys the very button the strip just focused. True from the keypress until the render cycle
+    // it starts has completed, so a re-collection anywhere in that cycle is recognized; false at
+    // every other moment, so one driven by consumer state the user never touched (a poll, a timer, a
+    // sibling component) can never pull focus out of wherever the user actually is.
     bool _keyboardNav;
     bool _restoreFocus;  // a re-collection tore down the button _keyboardNav had focused
 
@@ -335,6 +336,7 @@ public partial class Tabs
             _restoreFocus = false;
             if (ActiveTab is { } active) _ = TryFocusAsync(active);
         }
+        _keyboardNav = false;
     }
 
     // ActiveTab silently falls back to the first enabled tab when the requested key names a tab that
@@ -411,18 +413,16 @@ public partial class Tabs
 
         // Raised for the whole operation, not just around the focus call: SelectAsync dispatches
         // ActiveKeyChanged, the consumer's handler may reveal a tab, and the re-collection that
-        // follows can land before or after the focus below. Either way this cycle is meant to end
-        // with DOM focus on a nav button, which is what OnAfterRender needs to know.
+        // repairs the order then destroys the very button focused below. None of that runs inside
+        // this method -- a render requested from an event handler is processed after the handler
+        // returns -- so the flag cannot be cleared here; OnAfterRender clears it when the cycle this
+        // starts has finished. StateHasChanged guarantees there is such a cycle even in the corner
+        // where SelectAsync finds nothing to do.
         _keyboardNav = true;
-        try
-        {
-            await SelectAsync(target);
-            await TryFocusAsync(target);
-        }
-        finally
-        {
-            _keyboardNav = false;
-        }
+        StateHasChanged();
+
+        await SelectAsync(target);
+        await TryFocusAsync(target);
     }
 
     static async Task TryFocusAsync(Tab tab)
