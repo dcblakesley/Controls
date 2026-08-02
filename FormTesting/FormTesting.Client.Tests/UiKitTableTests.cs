@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
 
 namespace FormTesting.Client.Tests;
@@ -1180,6 +1181,41 @@ public class UiKitTableTests : BunitContext
 
         Assert.Throws<Bunit.MissingEventHandlerException>(() => cut.Find("tbody .wss-table-actions").Click());
         Assert.Null(clicked);
+    }
+
+    [Fact]
+    public void Clicking_an_ActionColumn_cells_padding_does_not_toggle_ExpandRowByClick()
+    {
+        // The guard used to sit on the inner .wss-table-actions div, which is inline-flex -- it only
+        // covers the buttons. .wss-table-cell has 16px of padding around them, and a click there
+        // bubbled straight into the row handler, expanding the row the consumer was trying to act on.
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandRowByClick, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name))
+            .AddChildContent<ActionColumn<Person>>(cp => cp
+                .Add(c => c.ChildContent, (RenderFragment<Person>)(_ => b => b.AddMarkupContent(0, "<button type=\"button\">Edit</button>")))));
+
+        // Cells of the first row: [0] the expand chevron's own cell, [1] Name, [2] the actions.
+        IElement Cell(int index) =>
+            cut.FindAll("tbody .wss-table-row")[0].QuerySelectorAll("td.wss-table-cell")[index];
+
+        // A click on an ordinary cell does toggle the row (the behavior being protected from here).
+        Cell(1).Click();
+        Assert.Single(cut.FindAll(".wss-table-expanded-row"));
+        Cell(1).Click();
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+
+        // The action column's <td> -- the padding around the buttons -- is severed instead: bUnit
+        // models stopPropagation by cutting the bubble path, so the click reaches no handler at all
+        // and throws. That exception IS the assertion that the row's toggle can't be reached.
+        var actionCell = Cell(2);
+        Assert.Throws<Bunit.MissingEventHandlerException>(() => actionCell.Click());
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
     }
 
     [Fact]

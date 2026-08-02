@@ -231,7 +231,12 @@
                         }
                         @foreach (var col in _columns)
                         {
-                            <td @key="col" class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)">@col.CellFor(item)</td>
+                            @* stopPropagation on the <td> itself, like the selection/expand cells above:
+                               an ActionColumn's own .wss-table-actions wrapper is inline-flex, so a
+                               guard on it leaves the cell's padding bubbling into the row handler. The
+                               builder only emits the frame when the value is true, so every other
+                               column's cell keeps its exact previous shape. *@
+                            <td @key="col" class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)" @onclick:stopPropagation="col.StopsRowClickPropagation">@col.CellFor(item)</td>
                         }
                     </tr>
                     @if (HasRowDetail && IsExpanded(item))

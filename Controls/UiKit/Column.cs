@@ -215,6 +215,10 @@ public class Column<TItem> : ComponentBase, IDisposable
     public virtual RenderFragment CellFor(TItem item) =>
         ChildContent != null ? ChildContent(item) : _ => { };
 
+    // Whether the Table should stop click propagation on this column's whole <td> -- see
+    // ActionColumn<TItem>, the only column that does.
+    internal virtual bool StopsRowClickPropagation => false;
+
     // Columns are declarative metadata only — they emit nothing themselves.
     protected override void BuildRenderTree(RenderTreeBuilder builder) { }
 
