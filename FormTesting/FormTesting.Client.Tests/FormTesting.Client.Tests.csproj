@@ -25,6 +25,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Controls\Controls.csproj" />
+    <!-- Controls.Demo is a PUBLISHED package (WssBlazorControls.Demo), so its components have to
+         survive being dropped into a consumer's app on any host. See UiKitGalleryHostTests. -->
+    <ProjectReference Include="..\..\Controls.Demo\Controls.Demo.csproj" />
   </ItemGroup>
 
   <ItemGroup>
