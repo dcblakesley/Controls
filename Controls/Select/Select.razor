@@ -78,8 +78,7 @@
                    that <input> down and recreates it instead of patching it in place, so it drops
                    real DOM focus to <body> with nothing to restore it (FocusInputAsync's _inputRef
                    is the fresh element and its own .focus() call already ran by then). _selectedSet
-                   is a HashSet, so option.Value is always unique among visible tags -- same fix
-                   shape as the nav button @key in Tabs.razor. *@
+                   is a HashSet, so option.Value is always unique among visible tags. *@
                 @foreach (var (option, index) in VisibleTags())
                 {
                     <span class="wss-select-selection-item" @key="option.Value">
