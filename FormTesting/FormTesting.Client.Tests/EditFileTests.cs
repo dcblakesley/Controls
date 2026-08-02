@@ -177,6 +177,31 @@ public class EditFileTests : BunitContext
     }
 
     [Fact]
+    public void Input_and_drop_zone_carry_no_aria_label_so_the_FormLabel_for_wiring_supplies_the_name()
+    {
+        // Finding 62: aria-label wins by accname precedence over an associated <label for>, so a
+        // literal "Choose files"/"File upload area" aria-label meant the field's own label text (and
+        // required/description state FormLabel wires up) was never actually announced. The <label for>
+        // is the whole reason FormLabel's IsForLabelable wiring exists -- let it supply the name.
+        var model = new FileModel { Files = [] };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Label", "Attachments");
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input[type=file]");
+        Assert.False(input.HasAttribute("aria-label"));
+        Assert.False(cut.Find(".edit-file-drop-zone").HasAttribute("aria-label"));
+        // The label association itself is unaffected by the removal.
+        Assert.Equal(input.GetAttribute("id"), cut.Find("label.edit-label").GetAttribute("for"));
+    }
+
+    [Fact]
     public void IsDisabled_disables_the_file_input_and_remove_buttons()
     {
         List<IBrowserFile>? uploaded = null;
@@ -391,6 +416,25 @@ public class EditFileTests : BunitContext
 
         // The drop is refused when disabled, so the zone must not light up as if it accepts one.
         Assert.DoesNotContain("hover", cut.Find(".edit-file-drop-zone").ClassList);
+    }
+
+    [Fact]
+    public void Drop_zone_has_no_managed_dragover_handler()
+    {
+        // Finding 64: dragover fires continuously (~60/s) while a file is dragged over the zone; on
+        // Blazor Server each one used to ship a serialized DataTransfer payload over SignalR for a
+        // no-op re-render. dragenter/dragleave alone drive the hover highlight now -- dragover keeps
+        // only the (handler-less) :preventDefault directive HTML5 drag-and-drop needs for the drop
+        // event to fire at all. Triggering a raw dragover with no registered handler throws
+        // MissingEventHandlerException, proving the managed handler is actually gone (not just unused).
+        var cut = RenderEditFile(new FileModel { Files = [] });
+        var zone = cut.Find(".edit-file-drop-zone");
+
+        Assert.Throws<Bunit.MissingEventHandlerException>(() => zone.DragOver());
+
+        // dragenter still drives the highlight on its own, unaffected by the removal.
+        zone.DragEnter();
+        Assert.Contains("hover", cut.Find(".edit-file-drop-zone").ClassList);
     }
 
     [Fact]
