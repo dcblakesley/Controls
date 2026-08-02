@@ -19,6 +19,22 @@ public partial class Tabs
 {
     /// <summary>The <see cref="Tab"/> children (declarative metadata — they emit no markup of
     /// their own and may be conditionally rendered).</summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Limitation.</b> When a <see cref="Tab"/> is conditionally inserted <i>before</i> siblings
+    /// whose own parameters did not change, Blazor's diff skips those siblings entirely and the strip
+    /// cannot learn the newcomer's declared position from them. Its only recovery is to rebuild this
+    /// whole fragment so every <see cref="Tab"/> registers again in document order — which also tears
+    /// down and reconstructs any <i>other</i> component declared inside <c>&lt;Tabs&gt;</c>, losing
+    /// that component's instance state (cached lookups, element references, subscriptions, timers).
+    /// </para>
+    /// <para>
+    /// It happens only on a structural insertion of that shape, never on an ordinary re-render or on
+    /// a removal. If a child component of yours holds state that must survive it, declare it outside
+    /// the <c>&lt;Tabs&gt;</c> element (e.g. in the tab's own pane content, which lives in the strip's
+    /// render tree, or as a sibling of <c>&lt;Tabs&gt;</c>) and pass what it needs in as parameters.
+    /// </para>
+    /// </remarks>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>The active tab's <see cref="Tab.Key"/>. Null (default) activates the first
@@ -134,9 +150,14 @@ public partial class Tabs
     // order -- the only way to recover an order the diff withheld, since a Tab whose parameters are
     // all unchanged primitives is skipped entirely and can't be asked to re-register any other way
     // (a cascading-value change notifies subscribers in subscription order, not document order).
-    // Tabs render no markup of their own and their pane content lives in this component's own panel
-    // render tree, so rebuilding them destroys no state; it costs two extra render passes, only on a
-    // structural insertion, and only when tabs were actually skipped that pass.
+    // Tabs themselves render no markup and their pane content lives in this component's own panel
+    // render tree, so no Tab state is lost -- but the rebuild replaces the whole ChildContent subtree,
+    // which is NOT free: a Tab instance is recreated (which is why the nav <button> is keyed by it, so
+    // its @ref is re-captured -- see Tabs.razor), and any OTHER component a consumer declared inside
+    // <Tabs> is torn down and reconstructed along with it, losing its instance state. See the
+    // ChildContent parameter's remarks for the consumer-facing statement of that limitation. It costs
+    // two extra render passes, only on a structural insertion, and only when tabs were actually
+    // skipped that pass.
     internal int CollectGeneration => _collectGeneration;
     int _collectGeneration;
     bool _awaitingRecollect;
@@ -239,9 +260,19 @@ public partial class Tabs
         {
             await target.ButtonRef.FocusAsync();
         }
-        catch
+        catch (Exception ex) when (ex is InvalidOperationException or JSException or JSDisconnectedException)
         {
-            // No JS runtime (prerender, tests) — the selection still moved; only focus is lost.
+            // Exactly three tolerated failures, none of which the strip can do anything about:
+            //   InvalidOperationException  - no JS runtime at all (static SSR / prerender), or the
+            //                                ElementReference was never captured. The SECOND case used
+            //                                to be a live bug this bare `catch` hid (see the @key on
+            //                                the nav button in Tabs.razor); it is not expected any
+            //                                more, but a Tab that has not rendered its button yet can
+            //                                still legitimately reach it.
+            //   JSException                - the browser rejected the focus call (element detached).
+            //   JSDisconnectedException    - the Blazor Server circuit went away mid-call.
+            // The selection has already moved either way; only DOM focus is lost. Anything else is a
+            // real defect and must not be swallowed.
         }
     }
 }

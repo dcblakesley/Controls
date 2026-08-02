@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -361,6 +362,48 @@ public class TabsAndSearchInputTests : BunitContext
         // path the merge always handled correctly).
         cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
         Assert.Equal(["A", "B"], Titles());
+    }
+
+    // Tabs.ButtonRef is internal (no InternalsVisibleTo), and the rendered tab set is private -- both
+    // are read here because the defect below is invisible in the DOM: the markup is completely correct
+    // and only the captured element references are wrong.
+    static List<Tab> RenderedTabs(Tabs tabs) =>
+        (List<Tab>)typeof(Tabs).GetField("_tabs", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tabs)!;
+
+    static ElementReference ButtonRefOf(Tab tab) =>
+        (ElementReference)typeof(Tab).GetField("ButtonRef", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tab)!;
+
+    [Fact]
+    public void Every_tab_still_has_a_captured_button_reference_after_an_insertion_rebuild()
+    {
+        // The insertion above recovers the declared order by bumping CollectGeneration, which rebuilds
+        // the ChildContent subtree so every Tab instance is replaced. The nav <button>s, though, live
+        // in Tabs' OWN render tree -- outside that subtree -- and Blazor re-runs an element-reference
+        // capture only for an element it CREATES, never for one it retains. Unkeyed, the buttons were
+        // retained and all three fresh Tab instances kept default(ElementReference).
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
+        Assert.All(RenderedTabs(cut.Instance), t => Assert.NotNull(ButtonRefOf(t).Id));
+
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, false)));
+
+        var unset = RenderedTabs(cut.Instance).Where(t => ButtonRefOf(t).Id is null).Select(t => t.Key).ToArray();
+        Assert.True(unset.Length == 0, $"tabs with no captured ButtonRef after the rebuild: {string.Join(",", unset)}");
+    }
+
+    [Fact]
+    public void Arrow_navigation_after_an_insertion_rebuild_still_moves_DOM_focus()
+    {
+        // The observable half of the same defect: FocusAsync on an uncaptured ElementReference throws
+        // before it ever reaches the renderer, so no focus call was issued at all -- the roving
+        // tabindex then pointed at a button the browser had not focused, the next arrow key re-fired
+        // from the old button, and Tab left the strip entirely.
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, false)));
+
+        cut.FindAll(".wss-tabs-tab")[0].KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        Assert.Equal("A", cut.Find(".wss-tabs-tab-active .wss-tabs-label").TextContent.Trim());
+        Assert.NotEmpty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
     }
 
     [Fact]

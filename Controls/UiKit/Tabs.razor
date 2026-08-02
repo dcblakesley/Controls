@@ -46,7 +46,15 @@
             @foreach (var tab in _tabs)
             {
                 var t = tab;
+                @* @key="t": the button is in Tabs' OWN render tree, outside the keyed subtree the
+                   generation rebuild replaces (see CollectGeneration), and Blazor only re-runs an
+                   element-reference capture for an element it CREATES -- never for one it retains.
+                   Unkeyed, a rebuild left every fresh Tab instance holding default(ElementReference),
+                   so arrow-key navigation's FocusAsync threw and DOM focus never moved. Keying by the
+                   Tab instance also makes a plain reorder move each button with its own tab instead of
+                   re-pointing one tab's @ref at another tab's retained element. *@
                 <button type="button"
+                        @key="t"
                         role="tab"
                         id="@($"{BaseId}-tab-{t.Key}")"
                         class="wss-tabs-tab @(IsActive(t) ? "wss-tabs-tab-active" : null)"
