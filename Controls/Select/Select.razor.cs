@@ -782,19 +782,25 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    async Task RemoveAsync(TValue value)
+    // restoreFocus is true only for the × button. The × the user just activated is removed from the
+    // DOM by this render, and removal fires no focusout — so keyboard focus fell to <body>: Tab
+    // restarted at the top of the page and an open dropdown stayed open with focus outside it (the
+    // focus-out dismiss never ran). Putting focus back on the search input is exactly what the
+    // multiple-mode SelectAsync and CommitTagAsync paths do, and it's safe here specifically because
+    // this control has no focus-driven open path (no @onfocus on the input or the wrapper), so
+    // refocusing can't reopen anything on its own.
+    //
+    // The Backspace path passes false: nothing left the DOM from under the focus there — the search
+    // input is what received the keydown and still has focus. On Blazor Server every FocusAsync is a
+    // circuit round-trip, so refocusing it turned holding Backspace to clear 20 tags into 20 interop
+    // calls where the same gesture previously issued zero.
+    async Task RemoveAsync(TValue value, bool restoreFocus)
     {
         if (Disabled) return;
         RemoveSelected(value);
         PruneTagOption(value);
         await RaiseValuesChangedAsync();
-        // The × the user just activated is removed from the DOM by this render, and removal fires no
-        // focusout — so keyboard focus fell to <body>: Tab restarted at the top of the page and an open
-        // dropdown stayed open with focus outside it (the focus-out dismiss never ran). Put focus back
-        // on the search input, exactly as the multiple-mode SelectAsync and CommitTagAsync paths do.
-        // Safe here specifically because this control has no focus-driven open path (no @onfocus on the
-        // input or the wrapper) — refocusing can't reopen anything on its own.
-        await FocusInputAsync();
+        if (restoreFocus) await FocusInputAsync();
     }
 
     // A user-created tag that is no longer selected leaves the option list too (matching AntD) —
@@ -945,7 +951,7 @@ public partial class Select<TValue> : IAsyncDisposable
             case "Backspace":
                 if (IsMultiple && string.IsNullOrEmpty(_searchText) && _selected.Count > 0)
                 {
-                    await RemoveAsync(_selected[^1]);
+                    await RemoveAsync(_selected[^1], restoreFocus: false);
                 }
                 break;
 

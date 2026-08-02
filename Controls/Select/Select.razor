@@ -84,7 +84,7 @@
                             <button type="button"
                                     class="wss-select-selection-item-remove"
                                     aria-label="@(string.Format(CultureInfo.CurrentCulture, RemoveItemLabelFormat, option.Label))"
-                                    @onclick="@(e => RemoveAsync(option.Value))"
+                                    @onclick="@(e => RemoveAsync(option.Value, restoreFocus: true))"
                                     @onclick:stopPropagation>
                                 @CloseCross
                             </button>

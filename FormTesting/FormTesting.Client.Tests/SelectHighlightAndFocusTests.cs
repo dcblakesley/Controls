@@ -268,16 +268,22 @@ public class SelectHighlightAndFocusTests : BunitContext
     }
 
     [Fact]
-    public void Backspace_removing_the_last_tag_puts_focus_back_on_the_search_input()
+    public void Backspace_removing_the_last_tag_does_not_re_focus_the_search_input()
     {
+        // The refocus above exists for the x button, whose element leaves the DOM and drops focus to
+        // <body>. The Backspace path never loses focus -- the search input is what received the
+        // keydown -- so refocusing it is pure overhead: on Blazor Server every FocusAsync is a
+        // circuit round-trip, and holding Backspace to clear 20 tags issued 20 interop calls where
+        // the same gesture previously issued zero.
         var cut = Render<Select<string>>(p => p
             .Add(s => s.Mode, SelectMode.Multiple)
             .Add(s => s.Options, new List<SelectOption<string>> { Opt("A"), Opt("B") })
             .Add(s => s.Values, new List<string> { "A", "B" }));
 
         cut.Find(InputSelector).KeyDown(Key("Backspace"));
+        cut.Find(InputSelector).KeyDown(Key("Backspace"));
 
-        JSInterop.VerifyFocusAsyncInvoke(1);
+        Assert.Equal(0, JSInterop.Invocations.Count(i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase)));
     }
 
     [Fact]
