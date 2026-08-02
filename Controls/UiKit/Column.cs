@@ -125,6 +125,17 @@ public class Column<TItem> : ComponentBase, IDisposable
         // see PruneAppliedFilter.
         var filterPruned = _initialized && !OptionsEqual(_lastFilterOptions, FilterOptions) && PruneAppliedFilter();
 
+        // A column that stops offering a filter takes its funnel button AND its dropdown out of the
+        // header with it, so an open dropdown must not stay "open" in state. Two things read this
+        // flag and both broke: Table.AnyColumnFilterOpen stayed permanently true, which made every
+        // OTHER column's filter skip its focus restore on close and drop focus to <body> for the
+        // table's lifetime; and if options later came back, the dropdown reappeared already open --
+        // full-screen invisible backdrop and all -- with no user interaction, swallowing the next
+        // click. Keyed off CanFilter rather than the prune below, which only runs when the OPTIONS
+        // changed and returns early when nothing was selected (opening a dropdown and ticking
+        // nothing is exactly the case that left it stuck).
+        if (!CanFilter) FilterOpen = false;
+
         CaptureDisplayState();
         _initialized = true;
 

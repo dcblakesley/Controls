@@ -1,3 +1,4 @@
+using System.Reflection;
 using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
 
@@ -2284,6 +2285,79 @@ public class UiKitTableTests : BunitContext
 
         Assert.Equal(["Bob"], RenderedNames(cut));
         Assert.Contains("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+    }
+
+    // Two columns, the first filterable only while it has options -- the shape a data-refresh takes
+    // when a column's options are derived from rows that all left.
+    static RenderFragment OptionalFilterColumns(IReadOnlyList<TableFilterOption>? options) => builder =>
+    {
+        builder.OpenComponent<PropertyColumn<Person, string>>(0);
+        builder.AddAttribute(1, "Title", "Name");
+        builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+        builder.AddAttribute(3, "FilterOptions", options);
+        builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+        builder.CloseComponent();
+        builder.OpenComponent<PropertyColumn<Person, int>>(5);
+        builder.AddAttribute(6, "Title", "Age");
+        builder.AddAttribute(7, "Property", (Func<Person, int>)(x => x.Age));
+        builder.CloseComponent();
+    };
+
+    [Fact]
+    public void A_column_that_stops_offering_a_filter_closes_its_open_dropdown()
+    {
+        // FilterOpen used to survive the column losing its filter entirely: the header kept the
+        // wss-table-cell-filter-open promotion, and Table.AnyColumnFilterOpen reported true for the
+        // rest of the table's life -- which makes every OTHER column's filter skip its focus restore
+        // on close and drop focus to <body>.
+        IReadOnlyList<TableFilterOption>? options = NameOptions();
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, OptionalFilterColumns(options)));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        Assert.Single(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.Contains("wss-table-cell-filter-open", cut.FindAll("thead th")[0].ClassList);
+
+        options = null;
+        cut.Render(p => p.Add(t => t.ChildContent, OptionalFilterColumns(options)));
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-trigger"));
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.DoesNotContain("wss-table-cell-filter-open", cut.FindAll("thead th")[0].ClassList);
+
+        var anyOpen = (bool)typeof(Table<Person>)
+            .GetProperty("AnyColumnFilterOpen", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(cut.Instance)!;
+        Assert.False(anyOpen);
+    }
+
+    [Fact]
+    public void Options_coming_back_do_not_reopen_the_dropdown_on_their_own()
+    {
+        // The other consequence of the stuck flag: the dropdown (and its full-screen invisible
+        // backdrop) reappeared already open the moment options returned, with no user interaction --
+        // the next click anywhere on the page hit the backdrop instead of what it aimed at.
+        IReadOnlyList<TableFilterOption>? options = NameOptions();
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, OptionalFilterColumns(options)));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        Assert.Single(cut.FindAll(".wss-table-filter-dropdown"));
+
+        options = null;
+        cut.Render(p => p.Add(t => t.ChildContent, OptionalFilterColumns(options)));
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+
+        options = [new("Carol", "Carol")];
+        cut.Render(p => p.Add(t => t.ChildContent, OptionalFilterColumns(options)));
+
+        Assert.Single(cut.FindAll(".wss-table-filter-trigger"));
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.Empty(cut.FindAll(".wss-table-filter-backdrop"));
     }
 
     // ----- ScrollY sticky header + Loading mask stacking (Fix 1) -----
