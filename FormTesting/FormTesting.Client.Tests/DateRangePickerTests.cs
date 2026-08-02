@@ -54,6 +54,17 @@ public class DateRangePickerTests : BunitContext
     static IElement YearButton(IRenderedComponent<DateRangePicker> cut, int panel, int index) =>
         cut.FindAll(".wss-picker-month")[panel].QuerySelectorAll(".wss-picker-month-btn")[index];
 
+    // Every rendered attribute (name-ordered) plus the text content, as one comparable string --
+    // for asserting that two render paths produce the SAME element. bUnit's own `blazor:*` event
+    // bookkeeping attributes are excluded: their handler ids are per-render, so they differ between
+    // two components that render identically. (Mirrors DatePickerTests' own copy.)
+    static string ElementSignature(IElement element) =>
+        string.Join('|', element.Attributes
+            .Where(a => !a.Name.StartsWith("blazor:", StringComparison.Ordinal))
+            .OrderBy(a => a.Name, StringComparer.Ordinal)
+            .Select(a => $"{a.Name}={a.Value}")
+            .Append($"[text]={element.TextContent}"));
+
     [Fact]
     public void Closed_picker_renders_the_field_only_with_format_derived_placeholders()
     {
@@ -2038,6 +2049,65 @@ public class DateRangePickerTests : BunitContext
         Assert.Contains("wss-picker-week-row-in-range", leftRows[2].ClassList);
         // Exactly one roving-tabindex stop across both grids -- the keyboard entry point.
         Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
+    }
+
+    [Fact]
+    public void Both_dual_panel_day_grid_layouts_render_identical_day_buttons()
+    {
+        // The dual-panel flat 42-cell grids and the week-number rows layout render the same day
+        // button from one shared fragment (across BOTH panels). This pins that they agree on every
+        // one of its attributes across the representative states -- outside-month days, Min/Max
+        // disabled days, the two range endpoints and the in-range span, and the roving-tabindex
+        // focus stop.
+        IReadOnlyList<string> DayButtons(bool weekRows)
+        {
+            var cut = Render<DateRangePicker>(p => p
+                .Add(c => c.Format, "MM/dd/yyyy")
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.ShowWeekNumbers, weekRows)
+                .Add(c => c.Start, Jan15)
+                .Add(c => c.End, Feb3)
+                .Add(c => c.Min, new DateTime(2025, 1, 10))
+                .Add(c => c.Max, new DateTime(2025, 2, 20)));
+            Open(cut);
+            return [.. cut.FindAll(".wss-picker-day").Select(ElementSignature)];
+        }
+
+        var flat = DayButtons(false);
+        Assert.Equal(84, flat.Count); // 42 x 2 panels
+        Assert.Contains(flat, b => b.Contains("disabled=", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-selected", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("tabindex=0", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-outside", StringComparison.Ordinal));
+        Assert.Equal(flat, DayButtons(true));
+    }
+
+    [Fact]
+    public void Both_session_day_grid_layouts_render_identical_day_buttons()
+    {
+        // Same pinning for the Time/DateTime pick session's own single-panel grids, which use their
+        // own fragment (session classing/focus/pressed, no pointer-enter hover preview).
+        IReadOnlyList<string> DayButtons(bool weekRows)
+        {
+            var cut = Render<DateRangePicker>(p => p
+                .Add(c => c.Mode, DatePickerMode.DateTime)
+                .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.ShowWeekNumbers, weekRows)
+                .Add(c => c.Start, new DateTime(2025, 1, 15, 9, 0, 0))
+                .Add(c => c.End, new DateTime(2025, 1, 20, 17, 0, 0))
+                .Add(c => c.Min, new DateTime(2025, 1, 10))
+                .Add(c => c.Max, new DateTime(2025, 1, 25)));
+            Open(cut);
+            return [.. cut.FindAll(".wss-picker-day").Select(ElementSignature)];
+        }
+
+        var flat = DayButtons(false);
+        Assert.Equal(42, flat.Count); // one panel
+        Assert.Contains(flat, b => b.Contains("disabled=", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-selected", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("tabindex=0", StringComparison.Ordinal));
+        Assert.Equal(flat, DayButtons(true));
     }
 
     [Fact]

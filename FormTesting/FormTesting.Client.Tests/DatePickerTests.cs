@@ -42,6 +42,17 @@ public class DatePickerTests : BunitContext
     static IElement MonthButton(IRenderedComponent<DatePicker> cut, int monthNumber) =>
         cut.FindAll(".wss-picker-month-btn")[monthNumber - 1];
 
+    // Every rendered attribute (name-ordered) plus the text content, as one comparable string --
+    // for asserting that two render paths produce the SAME element. bUnit's own `blazor:*` event
+    // bookkeeping attributes are excluded: their handler ids are per-render, so they differ between
+    // two components that render identically.
+    static string ElementSignature(IElement element) =>
+        string.Join('|', element.Attributes
+            .Where(a => !a.Name.StartsWith("blazor:", StringComparison.Ordinal))
+            .OrderBy(a => a.Name, StringComparer.Ordinal)
+            .Select(a => $"{a.Name}={a.Value}")
+            .Append($"[text]={element.TextContent}"));
+
     [Fact]
     public void Closed_picker_renders_the_field_only_with_the_spec_placeholder()
     {
@@ -1667,6 +1678,42 @@ public class DatePickerTests : BunitContext
         var rows = cut.FindAll(".wss-picker-week-row");
         Assert.Contains("wss-picker-week-row-selected", rows[1].ClassList); // Feb 8-14
         Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
+    }
+
+    [Fact]
+    public void Both_day_grid_layouts_render_identical_day_buttons()
+    {
+        // The flat 42-cell grid and the week-number rows layout render the same day button from one
+        // shared fragment. This pins that they agree on every one of its attributes across the
+        // representative states -- outside-month days, Min/Max-disabled days, the selected day, the
+        // roving-tabindex focus stop, and (second pair) today's aria-current.
+        IReadOnlyList<string> DayButtons(bool weekRows, DateTime? value, DateTime? min, DateTime? max)
+        {
+            var cut = Render<DatePicker>(p => p
+                .Add(c => c.Format, "MM/dd/yyyy")
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.ShowWeekNumbers, weekRows)
+                .Add(c => c.Value, value)
+                .Add(c => c.Min, min)
+                .Add(c => c.Max, max));
+            Open(cut);
+            return [.. cut.FindAll(".wss-picker-day").Select(ElementSignature)];
+        }
+
+        var min = new DateTime(2026, 2, 10);
+        var max = new DateTime(2026, 2, 20);
+        var flat = DayButtons(false, Feb14, min, max);
+        Assert.Equal(42, flat.Count);
+        Assert.Contains(flat, b => b.Contains("disabled=", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-selected", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("tabindex=0", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-outside", StringComparison.Ordinal));
+        Assert.Equal(flat, DayButtons(true, Feb14, min, max));
+
+        // No value: the view anchors on today, which carries aria-current="date".
+        var todayFlat = DayButtons(false, null, null, null);
+        Assert.Contains(todayFlat, b => b.Contains("aria-current=date", StringComparison.Ordinal));
+        Assert.Equal(todayFlat, DayButtons(true, null, null, null));
     }
 
     [Fact]
