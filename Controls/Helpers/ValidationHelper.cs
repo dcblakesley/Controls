@@ -43,7 +43,7 @@ public static class ValidationHelper
     static string MaxLengthString(int? max) => $"Cannot contain more than {max} characters";
     static string MaxLengthString(int? max, string label) => $"{label} cannot contain more than {max} characters";
 
-    static string MaxLengthList(int? max) => $"Cannot exceed {max} selections.";
+    static string MaxLengthList(int? max) => $"Cannot exceed {max} selections";
     static string MaxLengthList(int? max, string label) => $"{label} cannot exceed {max} selections";
 
     static string RangeString(int? min, int? max) => $"Must be between {min} and {max} characters";
@@ -171,13 +171,21 @@ public static class ValidationHelper
     // cultures with customized number formats (CultureInfo clones, Windows user-override vs
     // GetCultureInfo instances). This path only runs while a Range message containing
     // " must be between " is being rewritten, where ~a dozen short ToString calls are noise.
-    // The "-3.4028234663852886E+38" literal is the textual form Microsoft emits for float.MinValue,
-    // which can differ slightly from float.MinValue.ToString() depending on culture / formatter.
+    // The "-3.4028234663852886E+38"/"3.4028234663852886E+38" literals are the textual forms
+    // Microsoft emits for float.MinValue/float.MaxValue once RangeAttribute has widened them to
+    // double (its ctor only takes double bounds), which can differ slightly from
+    // float.MinValue.ToString()/float.MaxValue.ToString() depending on culture / formatter.
+    //
+    // byte/uint/ulong/ushort.MinValue are ALL "0" — deliberately excluded here (unlike every other
+    // signed/floating type's MinValue) so [Range(0, 100)] renders both bounds instead of losing its
+    // real floor to a false-positive sentinel match; only [Range(0, TYPE.MaxValue)] still collapses
+    // to the one-sided "at least 0" message, via the max side alone. Matches
+    // AttributesHelper.IsRangeSentinel, which excludes 0 from DOM-rendered bounds for the same
+    // reason — the message layer and the rendered min/max attribute must agree on what "no real
+    // floor" looks like.
     static bool IsTypeMinSentinel(string value) =>
         value == int.MinValue.ToString() || value == long.MinValue.ToString()
         || value == short.MinValue.ToString() || value == sbyte.MinValue.ToString()
-        || value == byte.MinValue.ToString() || value == uint.MinValue.ToString()
-        || value == ulong.MinValue.ToString() || value == ushort.MinValue.ToString()
         || value == double.MinValue.ToString() || value == float.MinValue.ToString()
         || value == decimal.MinValue.ToString() || value == "-3.4028234663852886E+38";
 
@@ -187,5 +195,5 @@ public static class ValidationHelper
         || value == byte.MaxValue.ToString() || value == uint.MaxValue.ToString()
         || value == ulong.MaxValue.ToString() || value == ushort.MaxValue.ToString()
         || value == double.MaxValue.ToString() || value == float.MaxValue.ToString()
-        || value == decimal.MaxValue.ToString();
+        || value == decimal.MaxValue.ToString() || value == "3.4028234663852886E+38";
 }
