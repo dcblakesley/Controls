@@ -378,6 +378,61 @@ public class UiKitTableTests : BunitContext
     }
 
     [Fact]
+    public void Pager_and_sort_accessible_names_default_unchanged_and_are_overridable()
+    {
+        // The last hardcoded English in the Table: the embedded Pagination's aria-label (three
+        // literals, with no Table-level way to reach Pagination.AriaLabel) and the sort button's
+        // title-less fallback. Same naming/doc style as SelectRowLabel/SelectAllRowsLabel.
+        IRenderedComponent<Table<Person>> RenderPagers(PagerPosition position, bool localized) =>
+            Render<Table<Person>>(p =>
+            {
+                p.Add(t => t.DataSource, Sample())
+                 .Add(t => t.PageSize, 1)
+                 .Add(t => t.PagerPosition, position);
+                if (localized)
+                {
+                    p.Add(t => t.PaginationLabel, "Paginación")
+                     .Add(t => t.TopPaginationLabel, "Paginación (arriba)")
+                     .Add(t => t.BottomPaginationLabel, "Paginación (abajo)")
+                     .Add(t => t.SortLabel, "Ordenar");
+                }
+                p.AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                    .Add(c => c.Property, x => x.Name) // no Title: the sort button needs the fallback
+                    .Add(c => c.Sortable, true));
+            });
+
+        // Defaults render byte-identically to before the parameters existed.
+        Assert.Equal("Pagination", RenderPagers(PagerPosition.Bottom, false).Find("nav.wss-pagination").GetAttribute("aria-label"));
+        var bothDefault = RenderPagers(PagerPosition.Both, false).FindAll("nav.wss-pagination");
+        Assert.Equal("Pagination (top)", bothDefault[0].GetAttribute("aria-label"));
+        Assert.Equal("Pagination (bottom)", bothDefault[1].GetAttribute("aria-label"));
+        Assert.Equal("Sort", RenderPagers(PagerPosition.Bottom, false).Find("button.wss-table-sort-trigger").GetAttribute("aria-label"));
+
+        // ...and every one of them is now reachable.
+        Assert.Equal("Paginación", RenderPagers(PagerPosition.Bottom, true).Find("nav.wss-pagination").GetAttribute("aria-label"));
+        var bothLocalized = RenderPagers(PagerPosition.Both, true).FindAll("nav.wss-pagination");
+        Assert.Equal("Paginación (arriba)", bothLocalized[0].GetAttribute("aria-label"));
+        Assert.Equal("Paginación (abajo)", bothLocalized[1].GetAttribute("aria-label"));
+        Assert.Equal("Ordenar", RenderPagers(PagerPosition.Bottom, true).Find("button.wss-table-sort-trigger").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void SortLabel_also_names_a_title_less_TitleContent_sort_button()
+    {
+        // The other branch of the fallback: a TitleContent template renders OUTSIDE the sort button,
+        // so the button has no visible content of its own and always needs the aria-label.
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.SortLabel, "Ordenar")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.Sortable, true)
+                .Add(c => c.TitleContent, (RenderFragment)(b => b.AddContent(0, "hi")))));
+
+        Assert.Equal("Ordenar", cut.Find("button.wss-table-sort-trigger").GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void Table_custom_column_with_SortBy_is_sortable()
     {
         var cut = Render<Table<Person>>(p => p

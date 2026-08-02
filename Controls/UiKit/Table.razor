@@ -31,7 +31,7 @@
 }
 @if (ShowTopPager)
 {
-    @PagerFragment("top", PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")
+    @PagerFragment("top", PagerPosition == PagerPosition.Both ? TopPaginationLabel : PaginationLabel)
 }
 <div class="wss-table-wrapper @(ScrollY is not null ? "wss-table-wrapper-scroll-y" : null)"
      style="@(ScrollY is not null ? $"max-height:{ScrollY};" : null)">
@@ -218,7 +218,7 @@
 
 @if (ShowBottomPager)
 {
-    @PagerFragment("bottom", PagerPosition == PagerPosition.Both ? "Pagination (bottom)" : "Pagination")
+    @PagerFragment("bottom", PagerPosition == PagerPosition.Both ? BottomPaginationLabel : PaginationLabel)
 }
 </div>
 
@@ -424,6 +424,25 @@
     /// <summary>Accessible name of the header select-all checkbox while the table shows every row.
     /// Override to localize.</summary>
     [Parameter] public string SelectAllRowsLabel { get; set; } = "Select all rows";
+
+    /// <summary>Accessible name of the embedded pager, forwarded to <see cref="Pagination.AriaLabel"/>.
+    /// Used when only one pager is rendered; <see cref="PagerPosition.Both"/> uses
+    /// <see cref="TopPaginationLabel"/>/<see cref="BottomPaginationLabel"/> instead, so the two are
+    /// distinguishable. Override to localize.</summary>
+    [Parameter] public string PaginationLabel { get; set; } = "Pagination";
+
+    /// <summary>Accessible name of the top pager while <see cref="PagerPosition.Both"/> renders two.
+    /// Override to localize.</summary>
+    [Parameter] public string TopPaginationLabel { get; set; } = "Pagination (top)";
+
+    /// <summary>Accessible name of the bottom pager while <see cref="PagerPosition.Both"/> renders two.
+    /// Override to localize.</summary>
+    [Parameter] public string BottomPaginationLabel { get; set; } = "Pagination (bottom)";
+
+    /// <summary>Accessible-name fallback for a column's sort button when the column has no header
+    /// text to name it (and for a <c>TitleContent</c> header, whose template renders outside the
+    /// button). Override to localize.</summary>
+    [Parameter] public string SortLabel { get; set; } = "Sort";
 
     /// <summary>Accessible name of a collapsed row's expand button. Override to localize.</summary>
     [Parameter] public string ExpandRowLabel { get; set; } = "Expand row";
@@ -726,8 +745,8 @@
     // Title/HeaderText when set, "Sort" otherwise.
     string? SortButtonLabel(Column<TItem> col) =>
         col.TitleContent is not null
-            ? (col.HeaderText is { Length: > 0 } h ? h : "Sort")
-            : (string.IsNullOrEmpty(col.HeaderText) ? "Sort" : null);
+            ? (col.HeaderText is { Length: > 0 } h ? h : SortLabel)
+            : (string.IsNullOrEmpty(col.HeaderText) ? SortLabel : null);
 
     // aria-sort per WAI-ARIA: the active column reports its direction, other sortable columns "none".
     string AriaSortFor(Column<TItem> col) =>
