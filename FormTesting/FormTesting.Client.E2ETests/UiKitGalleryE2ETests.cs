@@ -1033,6 +1033,32 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Tabs_arrow_key_focuses_a_conditionally_inserted_tab()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "TabBarExtraContent, Centered, Card type" });
+
+        // Inserts "Priority" BEFORE Tab 1/2/3 -- none of those tabs' own parameters change on this
+        // toggle, so Blazor's diff skips them entirely and the strip can only learn the newcomer's
+        // position via the CollectGeneration rebuild (see Tabs.razor.cs ChildContent remarks). That
+        // rebuild tears down and reconstructs every Tab instance, including Tab 1's, so its nav
+        // button's @ref is re-captured fresh -- this test's real point is that FocusAsync against
+        // that freshly-captured ref still lands DOM focus, which bUnit cannot observe (no JS runtime).
+        await section.Locator("[data-test-id=toggle-priority-tab]").CheckAsync();
+
+        var priorityTab = section.Locator("[role=tab]", new() { HasTextString = "Priority" });
+        await Expect(priorityTab).ToBeVisibleAsync();
+
+        var tab1 = section.Locator("[role=tab]", new() { HasTextString = "Tab 1" });
+        await tab1.FocusAsync();
+        await _page.Keyboard.PressAsync("ArrowLeft"); // wraps/moves onto the newly-inserted Priority tab
+
+        await Expect(priorityTab).ToHaveAttributeAsync("aria-selected", "true");
+        await Expect(priorityTab).ToBeFocusedAsync(); // real DOM focus, not just the interop call
+        await Expect(section.Locator("[role=tabpanel]")).ToContainTextAsync("Pane priority");
+    }
+
+    [Fact]
     public async Task Alert_banner_and_action_section_renders_as_expected()
     {
         await GotoAsync();
