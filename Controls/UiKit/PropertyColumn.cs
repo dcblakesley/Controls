@@ -41,9 +41,16 @@ public class PropertyColumn<TItem, TProp> : Column<TItem>
 
     // Format is the one extra scalar the Table renders from this column (through CellFor), so it
     // joins the base snapshot that decides whether a same-set parameter change needs a corrective
-    // Table render -- see Column<TItem>.OnParametersSet. Sortable/Property need no entry of their
-    // own: the base already tracks CanSort, which they feed.
+    // Table render -- see Column<TItem>.OnParametersSet. Sortable needs no entry of its own: the base
+    // already tracks CanSort, which it feeds.
     string? _lastFormat;
+
+    // Property does NOT reduce to CanSort, though, and it flows through the identical CellFor that
+    // Format does: swapping the selector itself ("selector = x => x.Age.ToString()" replacing
+    // "x => x.Name") left the cells rendering the old property indefinitely, because nothing else
+    // re-rendered the table. It joins the row-state snapshot rather than the display one because the
+    // derived sort comparison reads it too (see Compare), so an active sort has to be re-run.
+    Delegate? _lastProperty;
 
     private protected override bool DisplayStateChanged() => base.DisplayStateChanged() || _lastFormat != Format;
 
@@ -51,6 +58,14 @@ public class PropertyColumn<TItem, TProp> : Column<TItem>
     {
         base.CaptureDisplayState();
         _lastFormat = Format;
+    }
+
+    private protected override bool RowStateChanged() => base.RowStateChanged() || DelegateChanged(_lastProperty, Property);
+
+    private protected override void CaptureRowState()
+    {
+        base.CaptureRowState();
+        _lastProperty = Property;
     }
 
     public override int Compare(TItem a, TItem b) =>

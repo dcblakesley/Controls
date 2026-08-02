@@ -2241,9 +2241,12 @@ public class UiKitTableTests : BunitContext
         // The orphaned value is dropped, so the column stops narrowing anything...
         Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
         Assert.DoesNotContain("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
-        // ...silently: OnFilterChanged reports user intent (OK/Reset/a filtered column leaving the
-        // table), not the consumer's own parameter change echoed back at it mid-render.
-        Assert.Null(raised);
+        // ...and the consumer is told, with the surviving selection -- exactly what happens when a
+        // filtered column drops out of the table. Pruning silently left a consumer's own filter-summary
+        // display showing a value that no longer narrows anything, which is the defect the
+        // removed-column path was already fixed for; one component cannot hold both policies.
+        Assert.NotNull(raised);
+        Assert.Empty(raised.Value.Values);
 
         // The dropdown re-opens on the new options with nothing ticked.
         cut.Find(".wss-table-filter-trigger").Click();
@@ -2396,6 +2399,207 @@ public class UiKitTableTests : BunitContext
 
         Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
         Assert.DoesNotContain("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+    }
+
+    [Fact]
+    public void A_partial_prune_reports_the_values_that_survived_it()
+    {
+        // The other half of the notification: the payload is the selection that is still applied, not
+        // an unconditional "empty" -- a consumer's filter summary has to keep showing Bob.
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        var options = NameOptions();
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        CheckOption(cut, "Bob");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        raised = null;
+        options = [new("Bob", "Bob"), new("Carol", "Carol")]; // Alice orphaned, Bob survives
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.NotNull(raised);
+        Assert.Equal(["Bob"], raised.Value.Values);
+        Assert.Equal(["Bob"], RenderedNames(cut));
+    }
+
+    [Fact]
+    public void A_prune_that_removes_nothing_raises_nothing()
+    {
+        // The guard on the notification: options changing without orphaning an applied value is not a
+        // filter change, and a consumer must not get a spurious "it changed" (or a render loop out of
+        // hearing its own parameter change back).
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        var options = NameOptions();
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        raised = null;
+        var rendersBefore = cut.RenderCount;
+        options = [new("Alice", "Alice"), new("Dave", "Dave")]; // Alice still offered
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Null(raised);
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+    }
+
+    // ----- Swapped row-affecting delegates (Property / OnFilter / SortBy) -----
+
+    [Fact]
+    public void Swapping_the_Property_selector_updates_the_cells()
+    {
+        // Property flows through the identical CellFor that Format does, but only Format was tracked.
+        // The justification for leaving delegates out -- "a lambda closes over the parent's state, so
+        // its output is already current" -- does not hold when the parent SELECTS A DIFFERENT
+        // delegate: nothing re-renders the table, so the cells showed the old property forever.
+        Func<Person, string> selector = x => x.Name;
+        var data = new List<Person> { new("Alice", 30) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Value");
+            builder.AddAttribute(2, "Property", selector);
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ChildContent, Columns()));
+        Assert.Equal("Alice", cut.Find("tbody td.wss-table-cell").TextContent.Trim());
+
+        selector = x => x.Age.ToString();
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal("30", cut.Find("tbody td.wss-table-cell").TextContent.Trim());
+    }
+
+    [Fact]
+    public void Swapping_OnFilter_while_a_filter_is_applied_re_derives_the_rows()
+    {
+        // _filtered is cached and only re-derived from the explicit mutation points, so a swapped
+        // predicate (exact match -> contains) left the previously narrowed row set in place forever.
+        Func<Person, string, bool> predicate = (x, v) => x.Name == v;
+        var data = new List<Person> { new("Alice", 30), new("Alicia", 25), new("Bob", 40) };
+        var options = new List<TableFilterOption> { new("Ali", "Ali"), new("Bob", "Bob") };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", predicate);
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Ali");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Single(cut.FindAll("tbody .wss-table-placeholder")); // exact match: nothing is called "Ali"
+
+        predicate = (x, v) => x.Name.Contains(v, StringComparison.Ordinal);
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal(["Alice", "Alicia"], RenderedNames(cut));
+    }
+
+    [Fact]
+    public void Swapping_SortBy_while_a_sort_is_active_re_orders_the_rows()
+    {
+        // Same class for _sorted: the comparison is only ever run from ToggleSort and the pipeline
+        // entry points, so a swapped Comparison left the old order in place indefinitely.
+        Comparison<Person> comparison = (a, b) => string.CompareOrdinal(a.Name, b.Name);
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "SortBy", comparison);
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-sort-trigger").Click(); // ascending by name
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+
+        comparison = (a, b) => a.Age.CompareTo(b.Age);
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal(["Bob", "Alice", "Carol"], RenderedNames(cut)); // 25, 30, 40
+    }
+
+    [Fact]
+    public void Re_passing_an_equivalent_capturing_lambda_does_not_loop()
+    {
+        // The reason delegates were excluded in the first place, and the constraint the fix has to
+        // respect: markup lambdas that capture a local are a fresh delegate object on every pass, so
+        // comparing them by INSTANCE would report a change forever -- and each report queues another
+        // Table render, which hands out fresh delegates again. Method identity is stable across those.
+        var suffix = "!";
+        var data = new List<Person> { new("Alice", 30) };
+
+        RenderFragment Columns() => builder =>
+        {
+            var local = suffix;
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name + local));
+            builder.AddAttribute(3, "SortBy", (Comparison<Person>)((a, b) => string.CompareOrdinal(a.Name + local, b.Name + local)));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ChildContent, Columns()));
+
+        var rendersBefore = cut.RenderCount;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.True(cut.RenderCount - rendersBefore <= 4, $"render count ran away: {cut.RenderCount - rendersBefore}");
+        Assert.Equal("Alice!", cut.Find("tbody td.wss-table-cell").TextContent.Trim());
     }
 
     // ----- ScrollY sticky header + Loading mask stacking (Fix 1) -----

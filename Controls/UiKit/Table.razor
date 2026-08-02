@@ -1,4 +1,4 @@
-@namespace Controls
+﻿@namespace Controls
 @typeparam TItem
 @implements IAsyncDisposable
 @inject IJSRuntime JS
@@ -998,18 +998,37 @@
     internal void NotifyColumnChanged() => StateHasChanged();
 
     /// <summary>
-    /// A column pruned applied filter values that its new <see cref="Column{TItem}.FilterOptions"/>
-    /// no longer offers. Rows the orphaned values were excluding have to come back, so re-derive
-    /// filtered -> sorted -> paged before rendering — the same pipeline OK/Reset run, minus the
-    /// page reset and the <see cref="OnFilterChanged"/> notification (this is the consumer's own
-    /// parameter change, not a user action; see <see cref="Column{TItem}"/>'s prune comment).
+    /// Re-derives filtered -&gt; sorted -&gt; paged and re-renders, for a column-driven change the
+    /// cached pipeline cannot notice on its own: a pruned filter selection (see
+    /// <see cref="NotifyColumnFilterPruned"/>) or a swapped <see cref="Column{TItem}.OnFilter"/> /
+    /// <see cref="Column{TItem}.SortBy"/> / <c>Property</c> delegate. The same pipeline OK/Reset run,
+    /// minus the page reset — the user did not ask for a different page.
     /// </summary>
-    internal void NotifyColumnFilterPruned()
+    internal void RecomputeColumnDerivedState()
     {
         ApplyFilters();
         ApplySort();
         RebuildPageItems();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// A column pruned applied filter values that its new <see cref="Column{TItem}.FilterOptions"/>
+    /// no longer offers. Rows the orphaned values were excluding have to come back, and the consumer
+    /// has to hear about it: <see cref="OnFilterChanged"/> fires with the surviving selection, exactly
+    /// as it does when a filtered column drops out of the table (see StartCollectingColumns). The
+    /// alternative — pruning silently — left a consumer's own filter-summary display showing a value
+    /// that no longer narrows anything, which is the same defect that path was already fixed for; two
+    /// opposite policies for one situation in one component is worse than either.
+    /// </summary>
+    internal void NotifyColumnFilterPruned(Column<TItem> column)
+    {
+        RecomputeColumnDerivedState();
+        // Fire-and-forget, same reasoning as the removed-column path: this runs from the column's
+        // synchronous OnParametersSet, so there is no await point. It cannot loop: the column has
+        // already captured the new options snapshot, so the re-render this causes finds nothing left
+        // to prune, and the prune only reports when it actually removed an applied value.
+        if (OnFilterChanged.HasDelegate) _ = OnFilterChanged.InvokeAsync((column, column.AppliedFilterValues));
     }
 
     internal void Unregister(Column<TItem> column)

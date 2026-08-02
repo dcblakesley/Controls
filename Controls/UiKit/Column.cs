@@ -110,6 +110,11 @@ public class Column<TItem> : ComponentBase, IDisposable
     // prune below never ran, which is the exact failure the by-value comparison was written for.
     IReadOnlyList<TableFilterOption>? _lastFilterOptions;
 
+    // The delegates the Table's own derived state (_filtered / _sorted) is computed FROM, tracked by
+    // method identity -- see DelegateChanged.
+    Delegate? _lastOnFilter;
+    Delegate? _lastSortBy;
+
     // Re-register on every render so the Table re-collects its columns in document order each pass.
     // This makes conditionally-rendered columns (@if) drop and re-appear in their declared position
     // instead of leaving a stale registration or appending a duplicate. The Table only adds during
@@ -134,6 +139,9 @@ public class Column<TItem> : ComponentBase, IDisposable
         // Applied filter values that the new FilterOptions no longer offers are pruned -- see
         // PruneAppliedFilter.
         var filterPruned = _initialized && optionsChanged && PruneAppliedFilter();
+        // A swapped row-affecting delegate needs more than a re-render: the Table caches _filtered
+        // and _sorted, neither of which is re-derived by a bare StateHasChanged -- see RowStateChanged.
+        var rowStateChanged = _initialized && RowStateChanged();
 
         // A column that stops offering a filter takes its funnel button AND its dropdown out of the
         // header with it, so an open dropdown must not stay "open" in state. Two things read this
@@ -148,18 +156,49 @@ public class Column<TItem> : ComponentBase, IDisposable
 
         if (optionsChanged) _lastFilterOptions = FilterOptions?.ToArray();
         CaptureDisplayState();
+        CaptureRowState();
         _initialized = true;
 
         Table?.Register(this);
-        if (filterPruned) Table?.NotifyColumnFilterPruned();
+        // The prune path already re-derives everything a row-state change needs, so it subsumes it.
+        if (filterPruned) Table?.NotifyColumnFilterPruned(this);
+        else if (rowStateChanged) Table?.RecomputeColumnDerivedState();
         else if (displayChanged) Table?.NotifyColumnChanged();
     }
 
-    // Everything the Table's markup reads off a column, by value. Delegates (ChildContent, OnFilter,
-    // Property, SortBy) are deliberately compared only through the booleans they feed: a lambda is a
-    // new instance on every parent render, but it also closes over the parent's own state, so the
-    // content it produces is already current when the Table invokes it -- only the scalars, which
-    // were computed into this instance too late for this pass, can actually go stale.
+    // Whether a delegate parameter now points at DIFFERENT CODE than the one previously captured.
+    //
+    // Compared by method, never by instance: a lambda written in markup is a brand-new delegate object
+    // on most renders (one that closes over a local allocates a display class every pass), so an
+    // instance comparison would report a change on every single render -- and with the corrective
+    // renders below, that is an infinite render loop. The method identity is what changes when the
+    // parent SELECTS A DIFFERENT delegate ("_byAge ? x => x.Age : x => x.Name", or a swapped Func
+    // field), which is the case the Table cannot recover from on its own.
+    //
+    // A delegate whose method is unchanged but whose captured state moved on still produces current
+    // output, because CellFor/OnFilter/Compare are all invoked live at render time -- that is the case
+    // the original "delegates close over parent state" reasoning covers correctly.
+    private protected static bool DelegateChanged(Delegate? last, Delegate? current) =>
+        last is null ? current is not null : current is null || last.Method != current.Method;
+
+    // The delegates the Table's cached row pipeline is derived from, as opposed to the ones it merely
+    // invokes while rendering. A change here has to re-run ApplyFilters/ApplySort, not just re-render:
+    // swapping OnFilter (exact -> contains) while a filter is applied leaves the previously computed
+    // _filtered list in place, and swapping SortBy while a sort is active leaves _sorted in place, both
+    // indefinitely.
+    private protected virtual bool RowStateChanged() =>
+        DelegateChanged(_lastOnFilter, OnFilter) || DelegateChanged(_lastSortBy, SortBy);
+
+    private protected virtual void CaptureRowState()
+    {
+        _lastOnFilter = OnFilter;
+        _lastSortBy = SortBy;
+    }
+
+    // Everything the Table's markup reads off a column, by value. ChildContent is deliberately not
+    // compared: it is a template the Table invokes live at render time, and the Table re-renders
+    // whenever the parent that owns it does, so its output is never stale. The delegates the row
+    // pipeline is DERIVED from are handled separately -- see RowStateChanged.
     private protected virtual bool DisplayStateChanged() =>
         _lastHeaderText != HeaderText
         || _lastHasTitleContent != (TitleContent is not null)
