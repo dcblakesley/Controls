@@ -125,6 +125,8 @@ public partial class EditDateRange : IDisposable
     [Parameter] public bool AllowClear { get; set; } = true;
     /// <inheritdoc cref="DateRangePicker.Width"/>
     [Parameter] public string? Width { get; set; }
+    /// <inheritdoc cref="DateRangePicker.Size"/>
+    [Parameter] public SelectSize Size { get; set; } = SelectSize.Default;
     /// <inheritdoc cref="DateRangePicker.FirstDayOfWeek"/>
     [Parameter] public DayOfWeek? FirstDayOfWeek { get; set; }
 
@@ -345,10 +347,11 @@ public partial class EditDateRange : IDisposable
     /// <summary>
     /// True when a range endpoint is either unset or the uninitialized <c>default(DateTime)</c>
     /// (0001-01-01) — the same semantically-empty value <see cref="EditDate{T}"/>'s
-    /// <c>IsValueDefault</c> override treats as empty (see <see cref="EditControlBase{TValue}.IsValueDefault"/>'s
-    /// remarks for why a boxed default DateTime isn't caught by a plain null check).
+    /// <c>IsValueDefault</c> override treats as empty, through the same shared helper (see
+    /// <see cref="EditControlBase{TValue}.IsValueDefault"/>'s remarks for why a boxed default DateTime
+    /// isn't caught by a plain null check).
     /// </summary>
-    static bool IsEmpty(DateTime? value) => value is null || value.Value == default;
+    static bool IsEmpty(DateTime? value) => EditControlInit.IsDateValueDefault(value);
 
     // Both default to the resolved Label plus a " start"/" end" suffix — aria-label wins the
     // accessible-name computation over the visible FormLabel's label[for] association (see the class
@@ -388,12 +391,26 @@ public partial class EditDateRange : IDisposable
     // inputs, so there's no "leak onto the other field" concern to avoid -- the opposite problem
     // applies instead. The natural annotation is [MinValue] on Start and [MaxValue] on End (the
     // property each bound most obviously constrains), but a single [Range(typeof(DateTime), ...)] on
-    // just one property also supplies both bounds at once, so each effective value prefers its
-    // "natural" field's attributes first and falls back to the other field's -- the union of what
-    // either field's own validation would accept, so the shared calendar bound can never be tighter
-    // than both fields' own annotations and block a value either field's own validation would allow.
-    DateTime? EffectiveMin => Min ?? _attributes.MinDate() ?? _endAttributes.MinDate();
-    DateTime? EffectiveMax => Max ?? _endAttributes.MaxDate() ?? _attributes.MaxDate();
+    // just one property also supplies both bounds at once, so the shared calendar bound is the TRUE
+    // union of what either field's own validation would accept (min-of-mins, max-of-maxes) -- see
+    // UnionMin/UnionMax below -- so the shared calendar can never be tighter than both fields' own
+    // annotations and block a value either field's own validation would allow.
+    DateTime? EffectiveMin => Min ?? UnionMin(_attributes.MinDate(), _endAttributes.MinDate());
+    DateTime? EffectiveMax => Max ?? UnionMax(_attributes.MaxDate(), _endAttributes.MaxDate());
+
+    // The union of two optional lower bounds: whichever ONE field declares when only one does (there's
+    // nothing to compare against, and the "natural pairing" -- [MinValue] on Start alone, say -- must
+    // still reach the shared calendar); the EARLIER (more permissive) of the two when BOTH fields
+    // declare one, since a shared floor tighter than either field's own minimum would block a value
+    // that field's own validation accepts -- the actual bug this replaces: a first-non-null pick that
+    // preferred whichever field's attribute happened to be checked first (Start for Min, End for Max)
+    // even when the OTHER field's own bound was looser.
+    static DateTime? UnionMin(DateTime? start, DateTime? end) =>
+        start is null ? end : end is null ? start : (start < end ? start : end);
+
+    /// <inheritdoc cref="UnionMin"/>
+    static DateTime? UnionMax(DateTime? start, DateTime? end) =>
+        start is null ? end : end is null ? start : (start > end ? start : end);
 
     protected override void OnInitialized()
     {
@@ -442,9 +459,31 @@ public partial class EditDateRange : IDisposable
         // label-hidden toggle).
         RefreshAriaState();
 
+        // Captured before SyncValidationSubscription overwrites it (cascading parameters, including
+        // EditContext, are already bound to their NEW values by the time OnParametersSet runs -- only
+        // the base's own tracking field still holds the OLD one at this point), so the cleanup below
+        // can still target the OLD EditContext once a genuine swap is confirmed.
+        var previousEditContext = _subscribedEditContext;
+
         // A false return means the same EditContext is still cascading, so both cached
         // FieldIdentifiers are still live and there's nothing to re-register.
         if (!SyncValidationSubscription()) return;
+
+        // The EditContext changed -- _parseErrorMessages (if this control ever created one) is bound
+        // to the OLD context via AddParseErrorAsync's `??=` and would otherwise keep silently
+        // writing/clearing entries there forever: nothing renders from a context that no longer
+        // cascades here, so a parse error typed after the swap would show no message and never set
+        // aria-invalid. Clear its entries against the OLD context/FieldIdentifiers -- BEFORE
+        // SyncFieldRegistration below re-derives _startFieldIdentifier/_endFieldIdentifier against the
+        // new model -- and drop the store so the very next parse error lazily rebinds a fresh one to
+        // the NEW EditContext.
+        if (_parseErrorMessages is not null)
+        {
+            _parseErrorMessages.Clear(_startFieldIdentifier);
+            _parseErrorMessages.Clear(_endFieldIdentifier);
+            previousEditContext?.NotifyValidationStateChanged();
+            _parseErrorMessages = null;
+        }
 
         // The context changed, which is how a parent swapping the model instance (form reset, reload)
         // surfaces — re-derive BOTH FieldIdentifiers against the current model and move each
@@ -482,7 +521,11 @@ public partial class EditDateRange : IDisposable
     // InputBase-style built-in parsing-error path to route through. Multiple independent
     // ValidationMessageStores over one EditContext compose fine -- each only ever touches the entries
     // it added itself, so clearing this one can never drop a DataAnnotations message and vice versa.
-    // Mirrors EditDate's own _parseErrorMessages, doubled onto two FieldIdentifiers.
+    // Mirrors EditDate's own _parseErrorMessages, doubled onto two FieldIdentifiers. Bound to whichever
+    // EditContext was current the first time AddParseErrorAsync ran (the `??=` below) -- NOT
+    // necessarily forever: OnParametersSet drops it back to null on a genuine EditContext swap (unlike
+    // EditDate, this control supports swaps at all -- see OnParametersSet's own remarks), so the next
+    // parse error lazily rebinds a fresh store to whatever EditContext is current then.
     ValidationMessageStore? _parseErrorMessages;
 
     /// <summary>

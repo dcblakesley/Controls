@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Linq.Expressions;
+using System.Reflection;
 using AngleSharp.Dom;
 using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
@@ -143,6 +144,39 @@ public class EditDateTests : BunitContext
         Assert.Equal("true", input.GetAttribute("aria-invalid"));
         Assert.StartsWith("error-msg-", input.GetAttribute("aria-errormessage"));
         Assert.Contains("required", cut.Find(".edit-validation-message").TextContent);
+    }
+
+    [Fact]
+    public void PickerAttributes_class_merge_is_byte_identical_after_the_shared_builder_extraction()
+    {
+        // Pins the exact wrapper class string (not just Contains) across the
+        // EditControlInit.BuildPickerAttributes extraction (finding 35) -- CssClass (InputBase's own
+        // "{consumerClass} {fieldClass}" merge) must still overwrite the raw consumer "class", landing
+        // in the same "wss-picker wss-picker-single consumerClass fieldClass" composition DatePicker's
+        // own markup produces.
+        var model = new PersonModel(); // BirthDate empty -> [Required] fails
+        var editContext = new EditContext(model);
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditDate<DateTime?>>(1);
+                content.AddAttribute(2, "Value", model.BirthDate);
+                content.AddAttribute(3, "ValueExpression", field);
+                content.AddAttribute(4, "class", "consumer-class");
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        Assert.Equal("wss-picker wss-picker-single consumer-class invalid", cut.Find(".wss-picker").GetAttribute("class"));
     }
 
     [Fact]
@@ -290,6 +324,39 @@ public class EditDateTests : BunitContext
     }
 
     [Fact]
+    public void Read_only_mode_gregorian_fallback_applies_when_DateFormat_is_incompatible()
+    {
+        // The FormatException degrade path (an incompatible/malformed DateFormat) must stay
+        // Gregorian-forced too, same as the primary path above -- it previously fell back to a bare
+        // ToString() (CurrentCulture), so a th-TH consumer with a bad DateFormat would see the
+        // primary path's Gregorian year and the degraded fallback's Buddhist year disagree.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("th-TH");
+            var model = new PersonModel { BirthDate = new DateTime(2020, 3, 5) };
+            Expression<Func<DateTime?>> field = () => model.BirthDate;
+            var cut = Render(WithForm(model, b =>
+            {
+                b.OpenComponent<EditDate<DateTime?>>(0);
+                b.AddAttribute(1, "Value", model.BirthDate);
+                b.AddAttribute(2, "ValueExpression", field);
+                b.AddAttribute(3, "DateFormat", "'unterminated"); // unterminated literal -> FormatException
+                b.AddAttribute(4, "IsEditMode", false);
+                b.CloseComponent();
+            }));
+
+            var text = cut.Find(".edit-readonly-value").TextContent;
+            Assert.False(string.IsNullOrWhiteSpace(text)); // degraded, didn't crash
+            Assert.DoesNotContain("2563", text);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
     public void Field_registers_with_FormOptions()
     {
         var model = new PersonModel { BirthDate = new DateTime(2020, 1, 1) };
@@ -382,7 +449,7 @@ public class EditDateTests : BunitContext
     }
 
     // EditDate<T> generalizes beyond the original DateTime?-only binding -- these cover the
-    // conversion bridge to/from the inner DatePicker's DateTime? (PickerValue/OnValueChanged/FromPickerValue).
+    // conversion bridge to/from the inner DatePicker's DateTime? (PickerValue/OnValueChanged/TryFromPickerValue).
 
     [Fact]
     public void DateOnly_binding_round_trips_through_the_picker()
@@ -506,7 +573,7 @@ public class EditDateTests : BunitContext
         Open(cut);
         Day(cut, 20).Click();
 
-        // FromPickerValue assumes the local offset for the picker's Unspecified-Kind value -- the
+        // TryFromPickerValue assumes the local offset for the picker's Unspecified-Kind value -- the
         // commit is the LOCAL day-20 instant, not day 20 at the original UTC offset.
         Assert.Equal(new DateTimeOffset(new DateTime(2020, 3, 20)), model.ShipDate);
     }
@@ -526,6 +593,64 @@ public class EditDateTests : BunitContext
         }));
 
         Assert.Empty(cut.FindAll(".edit-control-wrapper"));
+    }
+
+    // ----- DateTimeOffset UTC-instant overflow guard (TryToDateTimeOffset) ---------------------
+    //
+    // new DateTimeOffset(DateTime) resolves its offset from TimeZoneInfo.Local, so a genuine end-to-end
+    // repro (a year-1 picker commit under an east-of-UTC zone, or year-9999 under a west-of-UTC zone)
+    // depends on the HOST machine's own time zone -- not reproducible deterministically across dev
+    // machines/CI. TryToDateTimeOffset takes the offset as an explicit parameter for exactly this
+    // reason (see its own doc comment), so its boundary math is exercised directly here via reflection,
+    // independent of the caller's ambient TimeZoneInfo.Local.
+
+    static readonly MethodInfo TryToDateTimeOffsetMethod =
+        typeof(EditDate<DateTimeOffset>).GetMethod("TryToDateTimeOffset", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+    static bool TryToDateTimeOffset(DateTime value, TimeSpan offset, out DateTimeOffset result)
+    {
+        var args = new object?[] { value, offset, null };
+        var ok = (bool)TryToDateTimeOffsetMethod.Invoke(null, args)!;
+        result = ok ? (DateTimeOffset)args[2]! : default;
+        return ok;
+    }
+
+    [Fact]
+    public void TryToDateTimeOffset_underflows_for_a_year_one_value_under_an_east_of_utc_offset()
+    {
+        // DateTime.MinValue (year 1) minus a positive (east-of-UTC) offset pushes the UTC instant
+        // below DateTime.MinValue -- the exact case new DateTimeOffset(DateTime) throws
+        // ArgumentOutOfRangeException for.
+        var ok = TryToDateTimeOffset(DateTime.MinValue, TimeSpan.FromHours(5), out _);
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void TryToDateTimeOffset_overflows_for_a_year_9999_value_under_a_west_of_utc_offset()
+    {
+        // DateTime.MaxValue (year 9999) minus a negative (west-of-UTC) offset pushes the UTC instant
+        // above DateTime.MaxValue -- the mirror-image overflow.
+        var ok = TryToDateTimeOffset(DateTime.MaxValue, TimeSpan.FromHours(-5), out _);
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void TryToDateTimeOffset_succeeds_for_an_ordinary_value_regardless_of_offset_sign()
+    {
+        var ok = TryToDateTimeOffset(new DateTime(2020, 3, 5), TimeSpan.FromHours(5), out var result);
+        Assert.True(ok);
+        Assert.Equal(new DateTimeOffset(new DateTime(2020, 3, 5), TimeSpan.FromHours(5)), result);
+    }
+
+    [Fact]
+    public void TryToDateTimeOffset_succeeds_at_the_exact_boundary_with_a_zero_offset()
+    {
+        // No offset at all can never overflow -- DateTime.MinValue/MaxValue themselves are always
+        // valid DateTimeOffset UTC instants.
+        Assert.True(TryToDateTimeOffset(DateTime.MinValue, TimeSpan.Zero, out var min));
+        Assert.Equal(DateTimeOffset.MinValue, min);
+        Assert.True(TryToDateTimeOffset(DateTime.MaxValue, TimeSpan.Zero, out var max));
+        Assert.Equal(DateTimeOffset.MaxValue, max);
     }
 
     [Fact]

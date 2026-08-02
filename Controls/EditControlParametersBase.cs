@@ -52,7 +52,11 @@ public abstract class EditControlParametersBase : ComponentBase, IEditControl
     // from. Per-field derived state (ids, attribute lists, the FieldIdentifiers themselves) deliberately
     // stays on each subclass: the markup binds those directly, and the two shapes genuinely differ.
 
-    EditContext? _subscribedEditContext;
+    // Protected (not private) so a subclass that owns extra per-EditContext state of its own --
+    // EditDateRange's _parseErrorMessages store -- can read the OLD value in its own OnParametersSet
+    // BEFORE calling SyncValidationSubscription below overwrites it, in order to clean that state up
+    // against the context it actually belongs to rather than the one that just started cascading.
+    protected EditContext? _subscribedEditContext;
 
     /// <summary>
     /// Points this control's validation-state handler at the CURRENT cascading

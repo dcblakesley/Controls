@@ -67,8 +67,6 @@ public class ValidationHelperTests
     public void Numeric_range_with_int_max_sentinel_renders_as_min_only()
     {
         // [Range(1, int.MaxValue)] — only the minimum is meaningful.
-        // (Using 1 not 0 because "0" also matches byte.MinValue/uint.MinValue/etc., which would
-        // make the minimum look like a sentinel too — pre-existing behavior of the helper.)
         var msg = ValidationHelper.GetValidationMessage(
             $"The field FloorValue must be between 1 and {int.MaxValue}.",
             "FloorValue", "Floor Value", valueType: "System.Int32");
@@ -92,6 +90,84 @@ public class ValidationHelperTests
             "The field Age must be between 1 and 120.",
             "Age", "Age", valueType: "System.Int32");
         Assert.Equal("Must be between 1 and 120", msg);
+    }
+
+    // ----- Zero-as-a-real-floor (not a sentinel) ------------------------------------------------
+    // byte/uint/ulong/ushort.MinValue.ToString() are ALL "0" — IsTypeMinSentinel used to treat "0"
+    // itself as a type-min sentinel, so the ubiquitous [Range(0, ...)] "non-negative" idiom lost its
+    // real floor. AttributesHelper.IsRangeSentinel already excluded 0 for DOM min/max rendering; the
+    // message rewrite must agree with it.
+
+    [Fact]
+    public void Range_zero_min_with_int_max_sentinel_renders_as_min_only_at_least_zero()
+    {
+        // [Range(0, int.MaxValue)] — the ubiquitous "non-negative" idiom. Before the fix, "0" was
+        // misread as a min sentinel too, so BOTH bounds looked like sentinels and neither one-sided
+        // branch matched — the raw framework text (with 2147483647 verbatim) reached the user.
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between 0 and {int.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Int32");
+        Assert.Equal("Must be at least 0", msg);
+    }
+
+    [Fact]
+    public void Range_zero_min_with_a_concrete_max_renders_both_bounds()
+    {
+        // [Range(0, 100)] — "0" must NOT be read as a sentinel here, or the real floor is lost and
+        // the message silently degrades to a max-only "Cannot exceed 100".
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Percent must be between 0 and 100.",
+            "Percent", "Percent", valueType: "System.Int32");
+        Assert.Equal("Must be between 0 and 100", msg);
+    }
+
+    [Fact]
+    public void Range_with_decimal_min_sentinel_still_renders_max_only()
+    {
+        // decimal.MinValue is NOT "0" — unlike byte/uint/ulong/ushort.MinValue, it must keep being
+        // treated as a sentinel after the zero-collision exclusion above.
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Balance must be between {decimal.MinValue} and 100.",
+            "Balance", "Balance", valueType: "System.Decimal");
+        Assert.Equal("Cannot exceed 100", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_float_max_sentinel_renders_as_min_only()
+    {
+        // [Range(-100f, float.MaxValue)] — RangeAttribute's ctor only takes double bounds, so the
+        // float literal widens to a double whose ToString() is Microsoft's textual form of
+        // float.MaxValue-as-a-double, not float.MaxValue.ToString() itself (mirrors the existing
+        // float.MinValue sentinel literal — see IsTypeMaxSentinel's own remarks). Before the fix,
+        // only the min side of this pair rewrote correctly; the max side showed the raw huge number.
+        var maxText = ((double)float.MaxValue).ToString();
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Reading must be between -100 and {maxText}.",
+            "Reading", "Reading", valueType: "System.Single");
+        Assert.Equal("Must be at least -100", msg);
+    }
+
+    // ----- MaxLengthList punctuation -------------------------------------------------------------
+
+    [Fact]
+    public void MaxLength_list_message_rewritten_without_a_trailing_period()
+    {
+        // Every neighboring message (MinLengthList, MaxLengthString, etc.) omits the trailing
+        // period; the unlabeled MaxLengthList wording used to be the one outlier.
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Tags must be a string or array type with a maximum length of '5'.",
+            "Tags", "Tags", valueType: "System.Collections.Generic.List`1[System.String]", max: 5);
+        Assert.Equal("Cannot exceed 5 selections", msg);
+    }
+
+    [Fact]
+    public void MaxLength_list_message_with_label_matches_the_unlabeled_wording()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Tags must be a string or array type with a maximum length of '5'.",
+            "Tags", "Chosen Tags", valueType: "System.Collections.Generic.List`1[System.String]", max: 5,
+            includeLabel: true);
+        Assert.Equal("Chosen Tags cannot exceed 5 selections", msg);
     }
 
     [Fact]
