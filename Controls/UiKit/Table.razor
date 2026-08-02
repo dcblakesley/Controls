@@ -4,11 +4,16 @@
 @inject IJSRuntime JS
 
 @* Reset the per-render column buffer before the columns below register into it (they do so in
-   document order during their OnParametersSet); OnAfterRender then promotes the buffer to the
-   rendered set. This is what lets a conditionally-rendered column drop / reappear in its declared
-   position instead of leaving a zombie or a duplicate. *@
+   document order during their OnParametersSet); the next pass promotes the buffer to the rendered
+   set. This is what lets a conditionally-rendered column drop / reappear in its declared position
+   instead of leaving a zombie or a duplicate.
+
+   @key="_columnGeneration" is the last-resort recovery for the one case document order cannot be
+   inferred from the registrations alone -- see StartCollectingColumns. It is a teardown, so it is
+   gated on a condition that provably makes the teardown state-free; the gate is what that method's
+   comments are mostly about. *@
 @{ StartCollectingColumns(); }
-<CascadingValue Value="this" IsFixed="true">
+<CascadingValue Value="this" IsFixed="true" @key="_columnGeneration">
     @ChildContent
 </CascadingValue>
 
@@ -285,7 +290,13 @@
 
     /// <summary>The rows to render. Treated as an immutable parameter: reassign a new collection to refresh — the Table only re-reads on a reference change, so mutating in place is not seen.</summary>
     [Parameter] public IEnumerable<TItem>? DataSource { get; set; }
-    /// <summary>The column definitions: <see cref="Column{TItem}"/> / <c>PropertyColumn</c> / <c>ActionColumn</c> children (declarative metadata — they emit no markup of their own and may be conditionally rendered).</summary>
+    /// <summary>The column definitions: <see cref="Column{TItem}"/> / <c>PropertyColumn</c> / <c>ActionColumn</c> children (declarative metadata — they emit no markup of their own and may be conditionally rendered).
+    /// <para>Limitation: a <em>non-column</em> component declared in here loses its instance state
+    /// on one narrow structural change — a column appearing or disappearing on a pass where no
+    /// already-rendered column has any template, <c>Property</c>, <c>SortBy</c>, <c>OnFilter</c> or
+    /// <c>FilterOptions</c> parameter. That is the only case where declaration order cannot be
+    /// recovered without rebuilding this content (columns themselves hold no state in it — see
+    /// <c>Table.MergeCollectedColumns</c>). It never happens on an ordinary re-render.</para></summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
     /// <summary>Draws borders around every cell (AntD "bordered" look) instead of row separators only.</summary>
     [Parameter] public bool Bordered { get; set; }
@@ -529,6 +540,7 @@
     List<Column<TItem>> _columns = new();        // promoted, ordered column set the body renders
     List<Column<TItem>>? _collecting;            // buffer the current pass collects into (promoted next pass)
     readonly List<Column<TItem>> _liveColumns = new(); // registered and not yet disposed (see StartCollectingColumns)
+    int _columnGeneration;                       // @key on the ChildContent cascade; see MergeCollectedColumns
     readonly Dictionary<object, TItem> _selected = new(); // row key -> item
     static readonly object NullKey = new();
 
@@ -925,21 +937,13 @@
     {
         if (_collecting is not null)
         {
-            // A column whose parameters are all Blazor-"immutable" and unchanged (e.g. a title-only
-            // spacer with no template) is skipped by the diff entirely — its OnParametersSet never
-            // runs, so it never re-registers into the buffer. Merge still-live stragglers back in
-            // at their previous position rather than silently dropping them from the table.
-            var promoted = _collecting;
-            if (promoted.Count != _liveColumns.Count)
+            var promoted = MergeCollectedColumns(_collecting);
+            if (promoted is null)
             {
-                foreach (var straggler in _liveColumns)
-                {
-                    if (!promoted.Contains(straggler))
-                    {
-                        var prevIdx = _columns.IndexOf(straggler);
-                        promoted.Insert(Math.Min(prevIdx < 0 ? promoted.Count : prevIdx, promoted.Count), straggler);
-                    }
-                }
+                // Ambiguous: the rebuild below is running instead. Leave the rendered set alone for
+                // this pass (the fresh columns promote on the next one) and start a clean buffer.
+                _collecting = new List<Column<TItem>>();
+                return;
             }
 
             if (!_columns.SequenceEqual(promoted))
@@ -996,6 +1000,111 @@
             }
         }
         _collecting = new List<Column<TItem>>();
+    }
+
+    // Turns one pass's registrations into the ordered set the header and body render from, or null
+    // to ask for the document-order rebuild (see the @key at the top of this file).
+    //
+    // What the two inputs are actually worth:
+    //
+    //   `collected` is a DOCUMENT-ORDERED SUBSEQUENCE of the live columns. Blazor's diff visits a
+    //   parent's retained child components in declaration order and calls SetParametersAsync on the
+    //   ones whose parameters may have changed, so every column carrying a delegate, template,
+    //   Property or FilterOptions (i.e. anything Blazor cannot prove unchanged) re-registers on
+    //   every pass, in order. That is the only document-order signal a component can observe.
+    //
+    //   `_liveColumns` is the exact membership, but its order is component-CREATION order, which
+    //   stops matching declaration order the moment a column is inserted ahead of an existing one.
+    //   It is used for membership only. (Subscribing the columns to a non-fixed cascade would make
+    //   all of them re-register every pass, but via the cascade's subscriber list — creation order
+    //   again, so it buys membership we already have and no ordering at all.)
+    //
+    // A "straggler" is a live column that did not re-register: all of its parameters are ones
+    // Blazor treats as immutable (Title/Ellipsis/Sortable/FilterMultiple), so the diff skipped it
+    // entirely. Stragglers are placed by their PREVIOUS position relative to the "anchors" — the
+    // columns that both re-registered this pass and were already rendered — which pins them exactly
+    // whenever an anchor separates them from whatever moved. Two properties matter as much as the
+    // placement: an unchanged set always reproduces the previous order (so no unrelated interaction
+    // can reshuffle columns), and a set that changed never re-splices a straggler at a stale index.
+    List<Column<TItem>>? MergeCollectedColumns(List<Column<TItem>> collected)
+    {
+        // Everyone re-registered: `collected` IS the declaration order, nothing to infer.
+        if (collected.Count == _liveColumns.Count) return collected;
+
+        var previous = _columns;
+        var stragglers = new List<Column<TItem>>();
+        foreach (var c in previous)
+            if (_liveColumns.Contains(c) && !collected.Contains(c)) stragglers.Add(c);
+        // Live, unregistered, and not previously rendered either — it registered during a pass that
+        // never got promoted. There is nothing to order it by, so it goes last.
+        foreach (var c in _liveColumns)
+            if (!collected.Contains(c) && !stragglers.Contains(c)) stragglers.Add(c);
+
+        var anchors = 0;
+        var newcomers = 0;
+        foreach (var c in collected)
+        {
+            if (previous.Contains(c)) anchors++;
+            else newcomers++;
+        }
+
+        // The unresolvable case, and the only one the rebuild exists for: something was declared
+        // that was not rendered before, every previously-rendered column sat the pass out, and so
+        // nothing in this pass's evidence says whether the newcomer belongs before or after them.
+        // The inputs here are byte-identical for "inserted first" and "appended last", so no merge
+        // rule can be right for both -- only re-collecting from scratch can, and that means letting
+        // the render tree rebuild the columns.
+        //
+        // A @key bump is a teardown, so the gate matters more than the mechanism. `anchors == 0`
+        // with a non-empty `previous` means every previously-rendered column is one Blazor proved
+        // unchanged, which means it has no ChildContent, TitleContent, SortBy, OnFilter,
+        // FilterOptions or Property -- so CanSort and CanFilter are both false, it can hold no
+        // filter selection and cannot be _sortColumn, and the cells it contributes are empty. The
+        // columns this destroys and rebuilds provably carry no state, and the newcomer that
+        // triggered it has none yet either. Any column that does hold state re-registers on every
+        // pass by construction, which makes it an anchor, which switches the merge above on and
+        // this branch off -- pinned by the tests.
+        //
+        // What it does NOT protect is non-Column content a consumer declared inside <Table>: that
+        // is inside the keyed subtree and is torn down with the columns. Documented on ChildContent.
+        if (newcomers > 0 && anchors == 0 && previous.Count > 0)
+        {
+            _columnGeneration++;
+            return null;
+        }
+
+        // Merge the two ordered streams. `bound[j]` is the previous index of the next anchor at or
+        // after collected[j] (int.MaxValue past the last one): every straggler that used to sit
+        // before that anchor has to be emitted before collected[j] can be. Stragglers win ties --
+        // inside a gap with no anchor to separate them, keeping them ahead of a newcomer reproduces
+        // the append behaviour that has always been correct for the common trailing insertion.
+        var result = new List<Column<TItem>>(_liveColumns.Count);
+        var nextBound = int.MaxValue;
+        var bounds = new int[collected.Count];
+        for (var j = collected.Count - 1; j >= 0; j--)
+        {
+            var prevIdx = previous.IndexOf(collected[j]);
+            if (prevIdx >= 0) nextBound = prevIdx;
+            bounds[j] = nextBound;
+        }
+
+        // int.MaxValue for the never-rendered stragglers appended above: they compare after every
+        // bound, so they fall through to the tail rather than jumping to the front on -1.
+        var ranks = new int[stragglers.Count];
+        for (var i = 0; i < stragglers.Count; i++)
+        {
+            var idx = previous.IndexOf(stragglers[i]);
+            ranks[i] = idx < 0 ? int.MaxValue : idx;
+        }
+
+        var next = 0;
+        for (var j = 0; j < collected.Count; j++)
+        {
+            while (next < stragglers.Count && ranks[next] < bounds[j]) result.Add(stragglers[next++]);
+            result.Add(collected[j]);
+        }
+        while (next < stragglers.Count) result.Add(stragglers[next++]);
+        return result;
     }
 
     internal void Register(Column<TItem> column)
