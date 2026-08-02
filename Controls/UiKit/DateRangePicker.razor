@@ -94,45 +94,20 @@
                 <div class="wss-picker-month">
                     @if (Mode == DatePickerMode.DateTime)
                     {
-                        <div class="wss-picker-month-header">
-                            <button type="button" class="wss-picker-nav" aria-label="@PrevMonthLabel"
-                                    disabled="@SessionPrevMonthDisabled" @onclick="PrevMonth">@PickerIcons.PrevIcon</button>
-                            <div class="wss-picker-month-selects">
-                                <span class="wss-picker-select">
-                                    <select aria-label="@MonthSelectLabel" value="@_viewMonth.Month"
-                                            @onchange="@(e => OnMonthSelectChanged(0, e))">
-                                        @for (var m = 1; m <= 12; m++)
-                                        {
-                                            <option value="@m" selected="@(m == _viewMonth.Month)">@MonthName(m)</option>
-                                        }
-                                    </select>
-                                    @PickerIcons.DownIcon
-                                </span>
-                                <span class="wss-picker-select">
-                                    <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
-                                            @onchange="@(e => OnYearSelectChanged(0, e))">
-                                        @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
-                                        @for (var y = fromYear; y <= toYear; y++)
-                                        {
-                                            <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
-                                        }
-                                    </select>
-                                    @PickerIcons.DownIcon
-                                </span>
-                            </div>
-                            <button type="button" class="wss-picker-nav" aria-label="@NextMonthLabel"
-                                    disabled="@SessionNextMonthDisabled" @onclick="NextMonth">@PickerIcons.NextIcon</button>
-                        </div>
-                        <div class="@(ShowWeekRows ? "wss-picker-week-header wss-picker-week-header-weeks" : "wss-picker-week-header")" aria-hidden="true">
-                            @if (ShowWeekRows)
-                            {
-                                <div class="wss-picker-week-no-header"></div>
-                            }
-                            @foreach (var name in WeekdayHeaders)
-                            {
-                                <div class="wss-picker-week-day">@name</div>
-                            }
-                        </div>
+                        @* The pick session's lone panel takes the same single-panel header
+                           DatePicker's own day calendar does -- prev/next both live on it, unlike
+                           the dual-panel layout below, which splits them across its two panels.
+                           SessionPrev/NextMonthDisabled (not the dual-panel pair) for exactly that
+                           reason -- see their own comments. *@
+                        <PickerMonthHeader PrevLabel="@PrevMonthLabel" PrevDisabled="@SessionPrevMonthDisabled" OnPrev="PrevMonth"
+                                           NextLabel="@NextMonthLabel" NextDisabled="@SessionNextMonthDisabled" OnNext="NextMonth"
+                                           MonthSelectLabel="@MonthSelectLabel" Month="@_viewMonth.Month"
+                                           OnMonthChanged="@(e => OnMonthSelectChanged(0, e))"
+                                           YearSelectLabel="@YearSelectLabel" Year="@_viewMonth.Year"
+                                           YearRange="@YearRange(_viewMonth.Year)"
+                                           OnYearChanged="@(e => OnYearSelectChanged(0, e))"
+                                           Culture="@PickerCulture" />
+                        <PickerWeekdayHeader ShowWeekNumberColumn="@ShowWeekRows" Names="@WeekdayHeaders" />
                         @if (ShowWeekRows)
                         {
                             <div class="wss-picker-grid-rows" @ref="_gridRefs[0]" @onkeydown="OnSessionGridKeyDown">
@@ -339,6 +314,13 @@
                         var month = _viewMonth.AddMonths(panel);
                         var (fromYear, toYear) = YearRange(month.Year);
                         <div class="wss-picker-month">
+                            @* NOT PickerMonthHeader (which the session panel above and DatePicker's own
+                               day calendar share): this dual-panel header renders each nav button only on
+                               the panel that owns it and an invisible placeholder span on the other -- a
+                               structural difference (a <span>, not a <button>), and the one thing about
+                               this header that isn't just a different parameter value. Folding it in would
+                               need show-prev/show-next switches on the shared component; left inline
+                               deliberately rather than pretending the difference away. *@
                             <div class="wss-picker-month-header">
                                 @if (panel == 0)
                                 {
@@ -384,16 +366,7 @@
                                     <span class="wss-picker-nav wss-picker-nav-placeholder" aria-hidden="true"></span>
                                 }
                             </div>
-                            <div class="@(ShowWeekRows ? "wss-picker-week-header wss-picker-week-header-weeks" : "wss-picker-week-header")" aria-hidden="true">
-                                @if (ShowWeekRows)
-                                {
-                                    <div class="wss-picker-week-no-header"></div>
-                                }
-                                @foreach (var name in WeekdayHeaders)
-                                {
-                                    <div class="wss-picker-week-day">@name</div>
-                                }
-                            </div>
+                            <PickerWeekdayHeader ShowWeekNumberColumn="@ShowWeekRows" Names="@WeekdayHeaders" />
                             @* The pointer handlers only exist while a range pick is in progress: wiring them
                                unconditionally would re-render the component (a SignalR round trip per cell on
                                Blazor Server) for every cell the idle pointer crosses. An EventCallback without

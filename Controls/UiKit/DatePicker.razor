@@ -194,45 +194,14 @@
             else
             {
                 <div class="wss-picker-month">
-                    <div class="wss-picker-month-header">
-                        <button type="button" class="wss-picker-nav" aria-label="@PrevMonthLabel"
-                                disabled="@PrevMonthDisabled" @onclick="PrevMonth">@PickerIcons.PrevIcon</button>
-                        <div class="wss-picker-month-selects">
-                            <span class="wss-picker-select">
-                                <select aria-label="@MonthSelectLabel" value="@_viewMonth.Month"
-                                        @onchange="OnMonthSelectChanged">
-                                    @for (var m = 1; m <= 12; m++)
-                                    {
-                                        <option value="@m" selected="@(m == _viewMonth.Month)">@MonthName(m)</option>
-                                    }
-                                </select>
-                                @PickerIcons.DownIcon
-                            </span>
-                            <span class="wss-picker-select">
-                                <select aria-label="@YearSelectLabel" value="@_viewMonth.Year"
-                                        @onchange="OnYearSelectChanged">
-                                    @{ var (fromYear, toYear) = YearRange(_viewMonth.Year); }
-                                    @for (var y = fromYear; y <= toYear; y++)
-                                    {
-                                        <option value="@y" selected="@(y == _viewMonth.Year)">@y.ToString(PickerCulture)</option>
-                                    }
-                                </select>
-                                @PickerIcons.DownIcon
-                            </span>
-                        </div>
-                        <button type="button" class="wss-picker-nav" aria-label="@NextMonthLabel"
-                                disabled="@NextMonthDisabled" @onclick="NextMonth">@PickerIcons.NextIcon</button>
-                    </div>
-                    <div class="@(ShowWeekRows ? "wss-picker-week-header wss-picker-week-header-weeks" : "wss-picker-week-header")" aria-hidden="true">
-                        @if (ShowWeekRows)
-                        {
-                            <div class="wss-picker-week-no-header"></div>
-                        }
-                        @foreach (var name in WeekdayHeaders)
-                        {
-                            <div class="wss-picker-week-day">@name</div>
-                        }
-                    </div>
+                    <PickerMonthHeader PrevLabel="@PrevMonthLabel" PrevDisabled="@PrevMonthDisabled" OnPrev="PrevMonth"
+                                       NextLabel="@NextMonthLabel" NextDisabled="@NextMonthDisabled" OnNext="NextMonth"
+                                       MonthSelectLabel="@MonthSelectLabel" Month="@_viewMonth.Month"
+                                       OnMonthChanged="OnMonthSelectChanged"
+                                       YearSelectLabel="@YearSelectLabel" Year="@_viewMonth.Year"
+                                       YearRange="@YearRange(_viewMonth.Year)" OnYearChanged="OnYearSelectChanged"
+                                       Culture="@PickerCulture" />
+                    <PickerWeekdayHeader ShowWeekNumberColumn="@ShowWeekRows" Names="@WeekdayHeaders" />
                     @if (ShowWeekRows)
                     {
                         <div class="@(Mode == DatePickerMode.Week ? "wss-picker-grid-rows wss-picker-grid-week" : "wss-picker-grid-rows")" @ref="_gridRef" @onkeydown="OnGridKeyDown">

@@ -1,0 +1,84 @@
+@namespace Controls
+
+@* A single day-calendar panel's header: prev nav, month + year quick-select dropdowns, next nav.
+   Shared by DatePicker's Date/DateTime/Week panel and DateRangePicker's Time/DateTime pick session,
+   whose copies were character-identical apart from which handlers they bound.
+
+   DateRangePicker's DUAL-panel header is deliberately NOT routed through this: each of its two
+   panels renders only the nav button on its own outer side and an invisible
+   wss-picker-nav-placeholder span in place of the other, so every header keeps three flex children
+   and space-between centers the selects instead of shoving them at the panel divider. That is a
+   real structural difference (a <span>, not a <button>), not drift -- see the comment at that call
+   site in DateRangePicker.razor. *@
+<div class="wss-picker-month-header">
+    <button type="button" class="wss-picker-nav" aria-label="@PrevLabel"
+            disabled="@PrevDisabled" @onclick="OnPrev">@PickerIcons.PrevIcon</button>
+    <div class="wss-picker-month-selects">
+        <span class="wss-picker-select">
+            <select aria-label="@MonthSelectLabel" value="@Month"
+                    @onchange="OnMonthChanged">
+                @for (var m = 1; m <= 12; m++)
+                {
+                    <option value="@m" selected="@(m == Month)">@PickerMath.MonthName(Culture, m)</option>
+                }
+            </select>
+            @PickerIcons.DownIcon
+        </span>
+        <span class="wss-picker-select">
+            <select aria-label="@YearSelectLabel" value="@Year"
+                    @onchange="OnYearChanged">
+                @for (var y = YearRange.From; y <= YearRange.To; y++)
+                {
+                    <option value="@y" selected="@(y == Year)">@y.ToString(Culture)</option>
+                }
+            </select>
+            @PickerIcons.DownIcon
+        </span>
+    </div>
+    <button type="button" class="wss-picker-nav" aria-label="@NextLabel"
+            disabled="@NextDisabled" @onclick="OnNext">@PickerIcons.NextIcon</button>
+</div>
+
+@code {
+    // Not a supported standalone control: this is DatePicker/DateRangePicker's own panel header,
+    // factored out so it exists once. It is public only because Razor always compiles a .razor
+    // component to a public class -- treat it as internal to the pickers.
+
+    /// <summary>Accessible name of the previous-month button.</summary>
+    [Parameter] public string? PrevLabel { get; set; }
+    /// <summary>Whether the previous-month button renders disabled (the view is already at the
+    /// representable range's edge, or at Min's own month).</summary>
+    [Parameter] public bool PrevDisabled { get; set; }
+    /// <summary>Raised by the previous-month button's click.</summary>
+    [Parameter] public EventCallback OnPrev { get; set; }
+
+    /// <summary>Accessible name of the next-month button.</summary>
+    [Parameter] public string? NextLabel { get; set; }
+    /// <summary>Whether the next-month button renders disabled.</summary>
+    [Parameter] public bool NextDisabled { get; set; }
+    /// <summary>Raised by the next-month button's click.</summary>
+    [Parameter] public EventCallback OnNext { get; set; }
+
+    /// <summary>Accessible name of the month select.</summary>
+    [Parameter] public string? MonthSelectLabel { get; set; }
+    /// <summary>The displayed month (1-12) — the select's own selected option.</summary>
+    [Parameter] public int Month { get; set; }
+    /// <summary>Raised by the month select's change event, unparsed (the callers share one
+    /// int-parse + re-anchor path).</summary>
+    [Parameter] public EventCallback<ChangeEventArgs> OnMonthChanged { get; set; }
+
+    /// <summary>Accessible name of the year select.</summary>
+    [Parameter] public string? YearSelectLabel { get; set; }
+    /// <summary>The displayed year — the select's own selected option.</summary>
+    [Parameter] public int Year { get; set; }
+    /// <summary>The inclusive year range the select offers (see <c>PickerMath.YearRange</c>, which
+    /// always includes <see cref="Year"/> itself so the select can't show a value that isn't in its
+    /// own option list).</summary>
+    [Parameter] public (int From, int To) YearRange { get; set; }
+    /// <summary>Raised by the year select's change event, unparsed.</summary>
+    [Parameter] public EventCallback<ChangeEventArgs> OnYearChanged { get; set; }
+
+    /// <summary>Culture for the abbreviated month names and the year digits — the pickers pass their
+    /// own Gregorian-forced <c>PickerCulture</c>, so the header matches the field's own display.</summary>
+    [Parameter] public CultureInfo Culture { get; set; } = CultureInfo.CurrentCulture;
+}

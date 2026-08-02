@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -2050,6 +2051,55 @@ public class DateRangePickerTests : BunitContext
         // Exactly one roving-tabindex stop across both grids -- the keyboard entry point.
         Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
     }
+
+    [Fact]
+    public void The_single_panel_month_header_and_weekday_strip_are_shared_with_datepicker()
+    {
+        // The pick session's panel header and DatePicker's own day-calendar header render from one
+        // shared component (PickerMonthHeader), as do all three weekday strips (PickerWeekdayHeader).
+        // Given the same month, bounds and labels the two must be identical markup -- which is the
+        // whole point of sharing them, and what the three separate copies used to have to be kept to
+        // by hand.
+        var min = new DateTime(2025, 1, 5);
+        var max = new DateTime(2025, 1, 25);
+
+        var single = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Value, Jan15)
+            .Add(c => c.Min, min)
+            .Add(c => c.Max, max));
+        single.Find(".wss-picker-input").Click();
+
+        var session = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.Min, min)
+            .Add(c => c.Max, max));
+        Open(session);
+
+        Assert.Equal(
+            CleanMarkup(single.Find(".wss-picker-month-header").OuterHtml),
+            CleanMarkup(session.Find(".wss-picker-month-header").OuterHtml));
+
+        // The weekday strip's third call site is the dual-panel layout -- same component, so both of
+        // its panels' strips match the other two as well.
+        var dual = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(dual);
+        var expected = CleanMarkup(single.Find(".wss-picker-week-header").OuterHtml);
+        Assert.Equal(expected, CleanMarkup(session.Find(".wss-picker-week-header").OuterHtml));
+        foreach (var strip in dual.FindAll(".wss-picker-week-header"))
+        {
+            Assert.Equal(expected, CleanMarkup(strip.OuterHtml));
+        }
+    }
+
+    // Rendered markup with bUnit's per-render `blazor:*` event bookkeeping attributes removed and
+    // whitespace runs collapsed -- for comparing two components that should render the same element.
+    static string CleanMarkup(string markup) => Regex.Replace(
+        Regex.Replace(markup, @"\s*blazor:[a-zA-Z0-9:_-]+(=""[^""]*"")?", string.Empty), @"\s+", " ");
 
     [Fact]
     public void Both_dual_panel_day_grid_layouts_render_identical_day_buttons()
