@@ -70,8 +70,10 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     protected bool _suppressOpenOnFocus;
 
     // The picker is a Gregorian-calendar control — see GregorianCultureHelper for the contract.
-    // Every picker-internal format and the typed-input parse route through this culture.
-    protected CultureInfo PickerCulture => GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
+    // Every picker-internal format and the typed-input parse route through this culture. Also
+    // `internal` so the shared panel pieces (PickerTimeRowSlot) can read it off the picker they
+    // render for, without each subclass having to forward it.
+    protected internal CultureInfo PickerCulture => GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
 
     // Appends the C#-owned open z-index (see _openZIndex) as a trailing CSS declaration onto
     // `prefix` (a subclass's own base inline style, or null) -- shared by DatePicker/
@@ -219,19 +221,57 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     /// nothing but option-list construction ever second-guesses them.</summary>
     internal static int EffectiveStep(int step) => Math.Max(1, step);
 
+    // ----- The rest of the row's inputs, as subclass hooks --------------------
+    // Each of these is one of the two subclasses' own [Parameter]s (each owns its differently-worded
+    // public doc comment) forwarded to a single name here, so PickerTimeRowSlot can render the row's
+    // 20-argument invocation ONCE for both pickers instead of each .razor transcribing it. The
+    // defaults are never observed -- both subclasses override every one.
+
+    /// <summary>The caller's already-invoked <c>DisabledTime</c> result for the row's own date part
+    /// (invoked exactly ONCE per row render, never per option — see <see cref="PickerTimeRow"/>'s
+    /// first invariant). DatePicker's own <c>DisabledTime</c> against the bound value's date;
+    /// DateRangePicker's ACTIVE endpoint's callback against that endpoint's own resolved date.</summary>
+    internal virtual DisabledTimeParts? TimeRowDisabledParts => null;
+
+    internal virtual bool TimeRowShowSeconds => true;
+    internal virtual bool TimeRowUse12Hours => false;
+    internal virtual bool TimeRowHideDisabledOptions => false;
+    internal virtual int TimeRowHourStep => 1;
+    internal virtual int TimeRowMinuteStep => 1;
+    internal virtual int TimeRowSecondStep => 1;
+    internal virtual string? TimeRowHourLabel => null;
+    internal virtual string? TimeRowMinuteLabel => null;
+    internal virtual string? TimeRowSecondLabel => null;
+    internal virtual string? TimeRowPeriodLabel => null;
+
     // The hour/minute/second values each of the row's selects offers, before DisabledTime hides/
     // disables any of them -- see PickerMath.HourOptions/SteppedOptions for the full contract
-    // (never-jump rule, Use12Hours period filtering). Parameterized by the caller's own raw step /
-    // Use12Hours parameters rather than reading them through further hooks: those stay declared on
-    // each subclass, which owns their (differently-worded) public doc comments.
-    internal IEnumerable<int> TimeRowHourOptions(int hourStep, bool use12Hours) =>
-        PickerMath.HourOptions(EffectiveStep(hourStep), TimeRowHour, use12Hours);
+    // (never-jump rule, Use12Hours period filtering).
+    internal IEnumerable<int> TimeRowHourOptions =>
+        PickerMath.HourOptions(EffectiveStep(TimeRowHourStep), TimeRowHour, TimeRowUse12Hours);
 
-    internal IEnumerable<int> TimeRowMinuteOptions(int minuteStep) =>
-        PickerMath.SteppedOptions(59, EffectiveStep(minuteStep), TimeRowMinute);
+    internal IEnumerable<int> TimeRowMinuteOptions =>
+        PickerMath.SteppedOptions(59, EffectiveStep(TimeRowMinuteStep), TimeRowMinute);
 
-    internal IEnumerable<int> TimeRowSecondOptions(int secondStep) =>
-        PickerMath.SteppedOptions(59, EffectiveStep(secondStep), TimeRowSecond);
+    internal IEnumerable<int> TimeRowSecondOptions =>
+        PickerMath.SteppedOptions(59, EffectiveStep(TimeRowSecondStep), TimeRowSecond);
+
+    // The row's four change callbacks, bound with THIS PICKER as the EventCallback receiver rather
+    // than the PickerTimeRowSlot that renders the row. The receiver is what the renderer calls
+    // StateHasChanged on after the handler runs, and every one of these mutates picker state (an
+    // immediate commit, or the pick session's pending value) that the picker's own panel must
+    // re-render for -- binding them inside the slot would leave the picker showing stale selects.
+    internal EventCallback<ChangeEventArgs> TimeRowHourChanged =>
+        EventCallback.Factory.Create<ChangeEventArgs>(this, OnHourSelectChangedAsync);
+
+    internal EventCallback<ChangeEventArgs> TimeRowMinuteChanged =>
+        EventCallback.Factory.Create<ChangeEventArgs>(this, OnMinuteSelectChangedAsync);
+
+    internal EventCallback<ChangeEventArgs> TimeRowSecondChanged =>
+        EventCallback.Factory.Create<ChangeEventArgs>(this, OnSecondSelectChangedAsync);
+
+    internal EventCallback<ChangeEventArgs> TimeRowPeriodChanged =>
+        EventCallback.Factory.Create<ChangeEventArgs>(this, OnPeriodSelectChangedAsync);
 
     /// <summary>
     /// Applies one changed time part (the other two are null) to <see cref="TimeRowValue"/>'s own

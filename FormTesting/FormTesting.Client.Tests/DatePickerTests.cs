@@ -42,6 +42,17 @@ public class DatePickerTests : BunitContext
     static IElement MonthButton(IRenderedComponent<DatePicker> cut, int monthNumber) =>
         cut.FindAll(".wss-picker-month-btn")[monthNumber - 1];
 
+    // Every rendered attribute (name-ordered) plus the text content, as one comparable string --
+    // for asserting that two render paths produce the SAME element. bUnit's own `blazor:*` event
+    // bookkeeping attributes are excluded: their handler ids are per-render, so they differ between
+    // two components that render identically.
+    static string ElementSignature(IElement element) =>
+        string.Join('|', element.Attributes
+            .Where(a => !a.Name.StartsWith("blazor:", StringComparison.Ordinal))
+            .OrderBy(a => a.Name, StringComparer.Ordinal)
+            .Select(a => $"{a.Name}={a.Value}")
+            .Append($"[text]={element.TextContent}"));
+
     [Fact]
     public void Closed_picker_renders_the_field_only_with_the_spec_placeholder()
     {
@@ -835,6 +846,75 @@ public class DatePickerTests : BunitContext
     }
 
     [Fact]
+    public void Datetime_mode_day_click_is_rejected_when_disabledtime_disables_the_carried_hour()
+    {
+        // DisabledTime is evaluated per DATE: Feb 20 disables 13:00, Feb 14 does not. The clicked
+        // day's own button is enabled (Min/Max/DisabledDate say nothing about it) -- only the
+        // time-of-day the click would CARRY onto it is disabled, which the typed path and the time
+        // selects both already reject. The click must reject it too, leaving the value untouched.
+        DateTime? value = new DateTime(2026, 2, 14, 13, 45, 30);
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, value)
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(date =>
+                date?.Day == 20 ? new DisabledTimeParts(Hours: [13]) : null))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+
+        Assert.False(Day(cut, 20).HasAttribute("disabled")); // the DAY itself is selectable
+
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2026, 2, 14, 13, 45, 30), value); // rejected -- unchanged
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+
+        // A day whose own DisabledTime allows 13:00 still commits, so the guard is targeted, not a
+        // blanket block on day clicks once DisabledTime is supplied at all.
+        Day(cut, 18).Click();
+        Assert.Equal(new DateTime(2026, 2, 18, 13, 45, 30), value);
+    }
+
+    [Fact]
+    public void Datetime_mode_day_click_is_unaffected_by_a_disabledtime_that_misses_the_carried_time()
+    {
+        // Regression guard for the guard itself: DisabledTime that lists an hour the value doesn't
+        // carry must not block the pick (nor may Mode.Date ever consult DisabledTime at all).
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 9, 0, 0))
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13])))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2026, 2, 20, 9, 0, 0), value);
+    }
+
+    [Fact]
+    public void Time_select_change_rerenders_the_picker_with_no_bound_callback()
+    {
+        // The time row is rendered through a shared slot component, but its four change callbacks
+        // are bound with the PICKER as their EventCallback receiver -- the receiver is what the
+        // renderer calls StateHasChanged on once the handler has run. Nothing is bound here, so the
+        // picker's own re-render is the only thing that can update the field and the select: if the
+        // slot were the receiver, both would still show 10:00:00.
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 0, 0)));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("15"); // hour
+
+        Assert.Equal("15:00:00", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+        Assert.Equal("15", TimeSelects(cut)[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
     public void Datetime_mode_ok_button_closes_the_panel()
     {
         var cut = Render<DatePicker>(p => p
@@ -1556,6 +1636,103 @@ public class DatePickerTests : BunitContext
         cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
 
         Assert.Equal(FeblyWeekStart, value);
+    }
+
+    [Fact]
+    public void Typed_week_mode_text_carrying_a_time_still_commits_the_week_start_at_midnight()
+    {
+        // Week mode's null-Format exact parse is a bland "yyyy" (see EffectiveFormat), so text like
+        // this falls through to the general culture parse and arrives carrying 13:45 -- the one
+        // commit path that can hand PickerMath.NormalizeForMode a time-of-day. Every rendered week
+        // start is a midnight date, so the normalization has to truncate: without it the committed
+        // value equals no week start the grid ever paints.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("02/14/2026 13:45");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(FeblyWeekStart, value);
+        Assert.Equal(TimeSpan.Zero, value!.Value.TimeOfDay);
+    }
+
+    [Fact]
+    public void Max_on_a_week_start_day_accepts_a_typed_commit_carrying_a_time()
+    {
+        // The week-granularity guard compares the normalized week start against Max.Date. A week
+        // start that kept 13:45 compares GREATER than Max's own midnight, so the typed commit was
+        // rejected for a week whose day buttons a click accepts -- the two guards disagreeing about
+        // the same week purely because of a time-of-day the mode has no concept of.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Max, FeblyWeekStart) // exactly the target week's own start
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("02/14/2026 13:45");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(FeblyWeekStart, value);
+    }
+
+    [Fact]
+    public void Week_mode_bound_to_a_time_carrying_value_still_paints_and_keeps_a_focus_stop()
+    {
+        // A consumer can bind Value straight from model data that carries a time-of-day. The row
+        // paint and the roving tabindex both compare against midnight week starts, so nothing here
+        // may depend on Value having been normalized by one of the control's own commit paths.
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 9, 0, 0)));
+
+        Open(cut);
+
+        var rows = cut.FindAll(".wss-picker-week-row");
+        Assert.Contains("wss-picker-week-row-selected", rows[1].ClassList); // Feb 8-14
+        Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
+    }
+
+    [Fact]
+    public void Both_day_grid_layouts_render_identical_day_buttons()
+    {
+        // The flat 42-cell grid and the week-number rows layout render the same day button from one
+        // shared fragment. This pins that they agree on every one of its attributes across the
+        // representative states -- outside-month days, Min/Max-disabled days, the selected day, the
+        // roving-tabindex focus stop, and (second pair) today's aria-current.
+        IReadOnlyList<string> DayButtons(bool weekRows, DateTime? value, DateTime? min, DateTime? max)
+        {
+            var cut = Render<DatePicker>(p => p
+                .Add(c => c.Format, "MM/dd/yyyy")
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.ShowWeekNumbers, weekRows)
+                .Add(c => c.Value, value)
+                .Add(c => c.Min, min)
+                .Add(c => c.Max, max));
+            Open(cut);
+            return [.. cut.FindAll(".wss-picker-day").Select(ElementSignature)];
+        }
+
+        var min = new DateTime(2026, 2, 10);
+        var max = new DateTime(2026, 2, 20);
+        var flat = DayButtons(false, Feb14, min, max);
+        Assert.Equal(42, flat.Count);
+        Assert.Contains(flat, b => b.Contains("disabled=", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-selected", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("tabindex=0", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-outside", StringComparison.Ordinal));
+        Assert.Equal(flat, DayButtons(true, Feb14, min, max));
+
+        // No value: the view anchors on today, which carries aria-current="date".
+        var todayFlat = DayButtons(false, null, null, null);
+        Assert.Contains(todayFlat, b => b.Contains("aria-current=date", StringComparison.Ordinal));
+        Assert.Equal(todayFlat, DayButtons(true, null, null, null));
     }
 
     [Fact]

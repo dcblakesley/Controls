@@ -276,7 +276,9 @@ public partial class DateRangePicker : PickerBase
     /// (the row shown while it's the active endpoint) -- see <see cref="DatePicker.DisabledTime"/>
     /// for the full per-option contract (invoked with the active endpoint's own date part, disabled
     /// options render disabled or are omitted per <see cref="HideDisabledTimeOptions"/>, and a
-    /// pending/typed commit landing on a disabled part is rejected).</summary>
+    /// pending/typed commit landing on a disabled part is rejected). Every route into this endpoint's
+    /// value is guarded: a time select, a typed commit, a preset, a session day click (which carries
+    /// the endpoint's own time-of-day onto a date that may disable it) and the session's own OK.</summary>
     [Parameter] public Func<DateTime?, DisabledTimeParts?>? StartDisabledTime { get; set; }
     /// <summary>Same contract as <see cref="StartDisabledTime"/>, for the END endpoint.</summary>
     [Parameter] public Func<DateTime?, DisabledTimeParts?>? EndDisabledTime { get; set; }
@@ -600,35 +602,23 @@ public partial class DateRangePicker : PickerBase
         return cls;
     }
 
-    // DisabledDate is folded into every granularity's Is*Disabled helper below (not called
-    // separately anywhere else) so every consumer of them -- the cell disabled attributes, the
-    // DefaultFocus*/FirstEnabled* skip logic, and IsUnitDisabled's typed-text/preset commit guards --
-    // picks it up automatically and can never disagree about what counts as disabled. Mirrors
-    // DatePicker's identical fold.
-    bool IsDayDisabled(DateTime day) =>
-        (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date) ||
-        (DisabledDate?.Invoke(day) ?? false);
+    // The five Min/Max/DisabledDate predicates, each binding this instance's own parameters to the
+    // matching PickerMath helper -- see those for the per-granularity contracts (DisabledDate is
+    // folded into every one of them, so the cell `disabled` attributes, the DefaultFocus*/
+    // FirstEnabled* skip logic and IsUnitDisabled's typed-text/preset commit guards can never
+    // disagree about what counts as disabled). They were character-identical to DatePicker's own.
+    bool IsDayDisabled(DateTime day) => PickerMath.IsDayDisabled(day, Min, Max, DisabledDate);
 
-    // Month-mode equivalent of IsDayDisabled: a whole month is disabled once it falls entirely
-    // outside [Min, Max] at month granularity -- same granularity DatePicker.IsMonthDisabled uses.
-    bool IsMonthDisabled(DateTime month) =>
-        (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max)) ||
-        (DisabledDate?.Invoke(month) ?? false);
+    bool IsMonthDisabled(DateTime month) => PickerMath.IsMonthDisabled(month, Min, Max, DisabledDate);
 
-    // Year-mode equivalent, one granularity up.
-    bool IsYearDisabled(DateTime year) =>
-        (Min is { } min && year < FirstOfYear(min)) || (Max is { } max && year > FirstOfYear(max)) ||
-        (DisabledDate?.Invoke(year) ?? false);
+    bool IsYearDisabled(DateTime year) => PickerMath.IsYearDisabled(year, Min, Max, DisabledDate);
 
-    // Quarter-mode equivalent, at quarter granularity. `quarterStart` is already QuarterStart-shaped.
     bool IsQuarterDisabled(DateTime quarterStart) =>
-        (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max)) ||
-        (DisabledDate?.Invoke(quarterStart) ?? false);
+        PickerMath.IsQuarterDisabled(quarterStart, Min, Max, DisabledDate);
 
-    // Week-mode equivalent of IsDayDisabled, at week granularity -- see
-    // PickerMath.IsWeekDisabledForCommit for the full contract (including the overflow-safe week end,
-    // which a typed commit in year 9999's last week needs), shared verbatim with
-    // DatePicker.IsWeekDisabledForCommit. `weekStart` is already WeekStart-shaped.
+    // Week granularity -- the one predicate whose bounds check isn't a plain comparison (see
+    // PickerMath.IsWeekDisabledForCommit for the overflow-safe week end a typed commit in year 9999's
+    // last week needs). `weekStart` is already WeekStart-shaped.
     bool IsWeekDisabledForCommit(DateTime weekStart) =>
         PickerMath.IsWeekDisabledForCommit(weekStart, Min, Max, DisabledDate);
 
@@ -842,15 +832,11 @@ public partial class DateRangePicker : PickerBase
         return FirstEnabledDay(_viewMonth) ?? FirstEnabledDay(_viewMonth.AddMonths(1)) ?? _viewMonth;
     }
 
-    // The first enabled, in-month day in `month`'s grid, or null if every in-month day is disabled.
-    DateTime? FirstEnabledDay(DateTime month)
-    {
-        foreach (var day in GridDays(month))
-        {
-            if (day.Month == month.Month && day.Year == month.Year && !IsDayDisabled(day)) return day;
-        }
-        return null;
-    }
+    // The first enabled, in-month day in `month`'s grid, or null if every in-month day is disabled --
+    // see PickerMath.FirstEnabledDay (shared verbatim with DatePicker; the callers above pass each
+    // panel's month in turn).
+    DateTime? FirstEnabledDay(DateTime month) =>
+        PickerMath.FirstEnabledDay(month, EffectiveFirstDayOfWeek, Min, Max, DisabledDate);
 
     // _focusDay once a keyboard move has set it, but only while it's still on-screen — a month/year
     // select change (or a nav button) clears _focusDay explicitly, but this guard also covers any
@@ -1030,15 +1016,7 @@ public partial class DateRangePicker : PickerBase
         _ => DateTime.Today,
     };
 
-    DateTime? FirstEnabledMonth(int year)
-    {
-        for (var m = 1; m <= 12; m++)
-        {
-            var month = new DateTime(year, m, 1);
-            if (!IsMonthDisabled(month)) return month;
-        }
-        return null;
-    }
+    DateTime? FirstEnabledMonth(int year) => PickerMath.FirstEnabledMonth(year, Min, Max, DisabledDate);
 
     DateTime DefaultFocusMonth()
     {
@@ -1050,15 +1028,7 @@ public partial class DateRangePicker : PickerBase
         return FirstEnabledMonth(LeftYear) ?? FirstEnabledMonth(RightYear) ?? new DateTime(LeftYear, 1, 1);
     }
 
-    DateTime? FirstEnabledQuarter(int year)
-    {
-        for (var q = 1; q <= 4; q++)
-        {
-            var quarterStart = QuarterStart(year, q);
-            if (!IsQuarterDisabled(quarterStart)) return quarterStart;
-        }
-        return null;
-    }
+    DateTime? FirstEnabledQuarter(int year) => PickerMath.FirstEnabledQuarter(year, Min, Max, DisabledDate);
 
     DateTime DefaultFocusQuarter()
     {
@@ -1070,17 +1040,10 @@ public partial class DateRangePicker : PickerBase
         return FirstEnabledQuarter(LeftYear) ?? FirstEnabledQuarter(RightYear) ?? QuarterStart(LeftYear, 1);
     }
 
-    // Only scans the decade's own 10 real years (never the two dimmed adjacent-decade cells) --
-    // mirrors DatePicker.FirstEnabledYear.
-    DateTime? FirstEnabledYear(int decadeStart)
-    {
-        for (var y = decadeStart; y <= decadeStart + 9; y++)
-        {
-            var year = new DateTime(y, 1, 1);
-            if (!IsYearDisabled(year)) return year;
-        }
-        return null;
-    }
+    // Only scans the decade's own 10 real years (never the two dimmed adjacent-decade cells) -- see
+    // PickerMath.FirstEnabledYear; the callers below pass each panel's own decade in turn.
+    DateTime? FirstEnabledYear(int decadeStart) =>
+        PickerMath.FirstEnabledYear(decadeStart, Min, Max, DisabledDate);
 
     DateTime DefaultFocusYear()
     {
@@ -1574,6 +1537,21 @@ public partial class DateRangePicker : PickerBase
     // side's own (see the class remarks: "the active side's callback drives the visible time row").
     Func<DateTime?, DisabledTimeParts?>? ActiveDisabledTime => _activeInput == 0 ? StartDisabledTime : EndDisabledTime;
 
+    // The rest of the time row's inputs, forwarded from this control's own parameters -- see
+    // PickerBase's own declarations for what each feeds. The ACTIVE endpoint's DisabledTime is
+    // invoked exactly once here, for the whole row, against that endpoint's own resolved date part.
+    internal override DisabledTimeParts? TimeRowDisabledParts => ActiveDisabledTime?.Invoke(ActiveSessionValue?.Date);
+    internal override bool TimeRowShowSeconds => ShowSeconds;
+    internal override bool TimeRowUse12Hours => Use12Hours;
+    internal override bool TimeRowHideDisabledOptions => HideDisabledTimeOptions;
+    internal override int TimeRowHourStep => HourStep;
+    internal override int TimeRowMinuteStep => MinuteStep;
+    internal override int TimeRowSecondStep => SecondStep;
+    internal override string? TimeRowHourLabel => HourSelectLabel;
+    internal override string? TimeRowMinuteLabel => MinuteSelectLabel;
+    internal override string? TimeRowSecondLabel => SecondSelectLabel;
+    internal override string? TimeRowPeriodLabel => PeriodSelectLabel;
+
     // PickerBase's ApplyTimePartAsync hook, for the pick session: composes a new PENDING value for the
     // active endpoint from its current date part (its own session/committed value's date, or today when
     // neither exists) and its current time-of-day (ditto) with one H/m/s part replaced -- the identical
@@ -1593,14 +1571,21 @@ public partial class DateRangePicker : PickerBase
 
     // DateTime mode's day click: sets the active endpoint's PENDING date, preserving its own
     // pending/committed time-of-day (null time -- no session value and no committed value yet --
-    // becomes midnight, the same default DatePicker's own DateTime day-click uses). No disabled
-    // guard here -- same convention as every other grid click handler in this file: a disabled
-    // button's `disabled` attribute already prevents the browser from ever dispatching this click.
+    // becomes midnight, the same default DatePicker's own DateTime day-click uses). The DAY itself
+    // needs no guard here -- same convention as every other grid click handler in this file: a
+    // disabled button's `disabled` attribute already prevents the browser from ever dispatching this
+    // click. The carried TIME-OF-DAY does: the active endpoint's DisabledTime is evaluated per DATE,
+    // so the clicked day can disable the very hour/minute/second this click would move onto it --
+    // exactly what ApplyTimePartAsync above and the typed route (IsCommitDisabled) already reject.
+    // A rejected click no-ops (nothing pending changes, the panel stays put), same as theirs; the
+    // never-jump rule keeps the time row showing the endpoint's own unchanged value. Mirrors
+    // DatePicker.OnDayClickAsync's identical DateTime-mode guard.
     Task OnSessionDayClickAsync(DateTime day)
     {
-        _startEdit = _endEdit = null;
         var time = ActiveSessionValue?.TimeOfDay ?? TimeSpan.Zero;
         var composed = day.Date + time;
+        if (IsEndpointTimeDisabled(_activeInput, composed)) return Task.CompletedTask;
+        _startEdit = _endEdit = null;
         if (_activeInput == 0) _pendingSessionStart = composed; else _pendingSessionEnd = composed;
         _focusDay = day;
         return Task.CompletedTask;
@@ -1655,10 +1640,21 @@ public partial class DateRangePicker : PickerBase
     // backwards pair, same as every other mode) and close. Guarded by ActiveSessionValue being
     // non-null -- mirrors the OK button's own `disabled` attribute (see the .razor markup) so a
     // caller that invokes this directly can never commit nothing.
+    //
+    // Both endpoint values are ALSO re-checked against IsCommitDisabled here, mirroring the typed
+    // routes (CommitStartTextAsync/CommitEndTextAsync) and OnPresetClickAsync's own guard: neither
+    // resolved value is necessarily one this session's own guarded paths produced -- either side can
+    // fall back to a committed Start/End a consumer bound directly, and Start/EndDisabledTime are
+    // ordinary parameters that can change between a pick and the OK that confirms it. Without the
+    // re-check OK is the one route that can fire StartChanged/EndChanged with a value every other
+    // route rejects.
     async Task OnSessionOkAsync()
     {
         var activeValue = ActiveSessionValue;
         if (activeValue is null) return;
+        // The active side first, so a value that can never commit doesn't silently advance the
+        // session to the other endpoint either.
+        if (IsCommitDisabled(_activeInput, activeValue.Value)) return;
 
         if (_activeInput == 0) _pendingSessionStart = activeValue; else _pendingSessionEnd = activeValue;
 
@@ -1677,6 +1673,13 @@ public partial class DateRangePicker : PickerBase
 
         var start = _activeInput == 0 ? activeValue.Value : otherValue.Value;
         var end = _activeInput == 0 ? otherValue.Value : activeValue.Value;
+        // Guard the endpoints SetRangeAsync will actually produce -- normalized and swapped exactly
+        // as it does, so the start guard always sees the value that lands in Start (the same
+        // normalize-then-swap-then-guard order OnPresetClickAsync uses for the identical reason).
+        var normalizedStart = NormalizeForMode(start);
+        var normalizedEnd = NormalizeForMode(end);
+        if (normalizedEnd < normalizedStart) (normalizedStart, normalizedEnd) = (normalizedEnd, normalizedStart);
+        if (IsCommitDisabled(0, normalizedStart) || IsCommitDisabled(1, normalizedEnd)) return;
         await SetRangeAsync(start, end);
         _pendingInputFocus = true; // the OK button is about to unmount
         await CloseAsync();

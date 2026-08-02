@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -53,6 +54,17 @@ public class DateRangePickerTests : BunitContext
     // order -- index 0 and 11 are the dimmed adjacent-decade cells.
     static IElement YearButton(IRenderedComponent<DateRangePicker> cut, int panel, int index) =>
         cut.FindAll(".wss-picker-month")[panel].QuerySelectorAll(".wss-picker-month-btn")[index];
+
+    // Every rendered attribute (name-ordered) plus the text content, as one comparable string --
+    // for asserting that two render paths produce the SAME element. bUnit's own `blazor:*` event
+    // bookkeeping attributes are excluded: their handler ids are per-render, so they differ between
+    // two components that render identically. (Mirrors DatePickerTests' own copy.)
+    static string ElementSignature(IElement element) =>
+        string.Join('|', element.Attributes
+            .Where(a => !a.Name.StartsWith("blazor:", StringComparison.Ordinal))
+            .OrderBy(a => a.Name, StringComparer.Ordinal)
+            .Select(a => $"{a.Name}={a.Value}")
+            .Append($"[text]={element.TextContent}"));
 
     [Fact]
     public void Closed_picker_renders_the_field_only_with_format_derived_placeholders()
@@ -1035,6 +1047,132 @@ public class DateRangePickerTests : BunitContext
     }
 
     [Fact]
+    public void Session_day_click_is_rejected_when_the_active_endpoints_disabledtime_disables_the_carried_hour()
+    {
+        // StartDisabledTime is evaluated per DATE: Jan 20 disables 13:00, Jan 15 does not. The day
+        // button itself is enabled (nothing about the DATE is disabled) -- only the time-of-day the
+        // click would carry onto it. The time selects and the typed route both reject exactly that,
+        // so the click must too, leaving the pending preview on the endpoint's own committed value.
+        DateTime? start = null;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 0, 0))
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(date =>
+                date?.Day == 20 ? new DisabledTimeParts(Hours: [13]) : null))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        Open(cut); // active = start
+
+        Assert.False(SessionDay(cut, 20).HasAttribute("disabled")); // the DAY itself is selectable
+
+        SessionDay(cut, 20).Click();
+
+        Assert.Null(start); // a session pick never commits anyway...
+        // ...but the pending preview must not have moved either.
+        Assert.Equal("01/15/2025 13:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+
+        // A day whose own DisabledTime allows 13:00 still picks -- the guard is targeted.
+        SessionDay(cut, 18).Click();
+        Assert.Equal("01/18/2025 13:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Session_ok_does_not_commit_an_endpoint_value_its_own_disabledtime_rejects()
+    {
+        // Both endpoints resolve from already-committed values a consumer bound directly (neither
+        // was produced by one of this session's guarded paths), and EndDisabledTime rejects End's
+        // own hour. OK is the only route that could push that pair into StartChanged/EndChanged, so
+        // it re-checks both before committing -- the same rejection the typed route gives.
+        DateTime? start = null, end = null;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 10, 9, 0, 0))
+            .Add(c => c.End, new DateTime(2025, 1, 20, 17, 0, 0))
+            .Add(c => c.EndDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [17])))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut); // active = start; both sides already resolve, so OK would commit immediately
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Null(start);
+        Assert.Null(end);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // rejected -- nothing committed, stays open
+    }
+
+    [Fact]
+    public void Session_ok_does_not_advance_to_the_other_endpoint_on_a_rejected_active_value()
+    {
+        // The active side's own value is disabled and the OTHER side is unset, so OK would otherwise
+        // confirm it and move the active underline -- advancing the session on a value that can
+        // never commit. The guard runs before the switch for exactly that reason.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 0, 0)) // End left unset
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13]))));
+
+        Open(cut);
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Contains("wss-picker-slot-active", cut.FindAll(".wss-picker-input-slot")[0].ClassList); // still the start side
+    }
+
+    [Fact]
+    public void Session_ok_still_commits_a_pair_neither_disabledtime_rejects()
+    {
+        // Regression guard for the two guards above: an ordinary session must be entirely unaffected
+        // by DisabledTime callbacks that list hours neither endpoint carries.
+        DateTime? start = null, end = null;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [23])))
+            .Add(c => c.EndDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [23])))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        SessionDay(cut, 10).Click();
+        TimeSelects(cut)[0].Change("9"); // hour, start side
+        cut.Find(".wss-picker-ok").Click(); // End unset -- advances
+        SessionDay(cut, 20).Click();
+        TimeSelects(cut)[0].Change("14"); // hour, end side
+        cut.Find(".wss-picker-ok").Click(); // both resolved -- commits and closes
+
+        Assert.Equal(new DateTime(2025, 1, 10, 9, 0, 0), start);
+        Assert.Equal(new DateTime(2025, 1, 20, 14, 0, 0), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void Session_time_select_change_rerenders_the_picker_with_no_bound_callback()
+    {
+        // Mirror of DatePickerTests' own receiver guard: the shared time-row slot binds its change
+        // callbacks with the PICKER as receiver, so the pending session value's preview updates in
+        // the field even though nothing is bound to StartChanged/EndChanged (a session commits on
+        // OK, never on a select change).
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 10, 0, 0)));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("15"); // hour
+
+        Assert.Equal("01/15/2025 15:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+        Assert.Equal("15", TimeSelects(cut)[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
     public void Hidedisabledtimeoptions_omits_other_disabled_hours_but_keeps_the_current_value_visible()
     {
         var cut = Render<DateRangePicker>(p => p
@@ -1906,6 +2044,140 @@ public class DateRangePickerTests : BunitContext
         Assert.DoesNotContain("wss-picker-day-selected", Day(cut, 0, 5).ClassList);
         Assert.Empty(cut.FindAll(".wss-picker-cell-in-range"));
         Assert.Empty(cut.FindAll(".wss-picker-cell-range-start"));
+    }
+
+    [Fact]
+    public void Week_mode_paints_and_keeps_a_focus_stop_for_time_carrying_bound_endpoints()
+    {
+        // Start/End are ordinary bindable parameters, so a consumer can hand this control model data
+        // that carries a time-of-day. DisplayRange normalizes both through Week mode's own week-start
+        // normalization before comparing them against the grid's (always-midnight) week starts -- if
+        // that normalization kept 09:00 the endpoints would equal no rendered row at all: the range
+        // would never paint AND no day button would be a focus stop, leaving both grids
+        // keyboard-unreachable (no tabindex="0" anywhere).
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 5, 9, 0, 0))    // Jan's row 1, 09:00
+            .Add(c => c.End, new DateTime(2025, 2, 16, 23, 59, 59))); // Feb's row 3, 23:59:59
+
+        Open(cut);
+
+        var leftRows = cut.FindAll(".wss-picker-month")[0].QuerySelectorAll(".wss-picker-week-row");
+        var rightRows = cut.FindAll(".wss-picker-month")[1].QuerySelectorAll(".wss-picker-week-row");
+        Assert.Contains("wss-picker-week-row-start", leftRows[1].ClassList);
+        Assert.Contains("wss-picker-week-row-end", rightRows[3].ClassList);
+        Assert.Contains("wss-picker-week-row-in-range", leftRows[2].ClassList);
+        // Exactly one roving-tabindex stop across both grids -- the keyboard entry point.
+        Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
+    }
+
+    [Fact]
+    public void The_single_panel_month_header_and_weekday_strip_are_shared_with_datepicker()
+    {
+        // The pick session's panel header and DatePicker's own day-calendar header render from one
+        // shared component (PickerMonthHeader), as do all three weekday strips (PickerWeekdayHeader).
+        // Given the same month, bounds and labels the two must be identical markup -- which is the
+        // whole point of sharing them, and what the three separate copies used to have to be kept to
+        // by hand.
+        var min = new DateTime(2025, 1, 5);
+        var max = new DateTime(2025, 1, 25);
+
+        var single = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Value, Jan15)
+            .Add(c => c.Min, min)
+            .Add(c => c.Max, max));
+        single.Find(".wss-picker-input").Click();
+
+        var session = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.Min, min)
+            .Add(c => c.Max, max));
+        Open(session);
+
+        Assert.Equal(
+            CleanMarkup(single.Find(".wss-picker-month-header").OuterHtml),
+            CleanMarkup(session.Find(".wss-picker-month-header").OuterHtml));
+
+        // The weekday strip's third call site is the dual-panel layout -- same component, so both of
+        // its panels' strips match the other two as well.
+        var dual = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(dual);
+        var expected = CleanMarkup(single.Find(".wss-picker-week-header").OuterHtml);
+        Assert.Equal(expected, CleanMarkup(session.Find(".wss-picker-week-header").OuterHtml));
+        foreach (var strip in dual.FindAll(".wss-picker-week-header"))
+        {
+            Assert.Equal(expected, CleanMarkup(strip.OuterHtml));
+        }
+    }
+
+    // Rendered markup with bUnit's per-render `blazor:*` event bookkeeping attributes removed and
+    // whitespace runs collapsed -- for comparing two components that should render the same element.
+    static string CleanMarkup(string markup) => Regex.Replace(
+        Regex.Replace(markup, @"\s*blazor:[a-zA-Z0-9:_-]+(=""[^""]*"")?", string.Empty), @"\s+", " ");
+
+    [Fact]
+    public void Both_dual_panel_day_grid_layouts_render_identical_day_buttons()
+    {
+        // The dual-panel flat 42-cell grids and the week-number rows layout render the same day
+        // button from one shared fragment (across BOTH panels). This pins that they agree on every
+        // one of its attributes across the representative states -- outside-month days, Min/Max
+        // disabled days, the two range endpoints and the in-range span, and the roving-tabindex
+        // focus stop.
+        IReadOnlyList<string> DayButtons(bool weekRows)
+        {
+            var cut = Render<DateRangePicker>(p => p
+                .Add(c => c.Format, "MM/dd/yyyy")
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.ShowWeekNumbers, weekRows)
+                .Add(c => c.Start, Jan15)
+                .Add(c => c.End, Feb3)
+                .Add(c => c.Min, new DateTime(2025, 1, 10))
+                .Add(c => c.Max, new DateTime(2025, 2, 20)));
+            Open(cut);
+            return [.. cut.FindAll(".wss-picker-day").Select(ElementSignature)];
+        }
+
+        var flat = DayButtons(false);
+        Assert.Equal(84, flat.Count); // 42 x 2 panels
+        Assert.Contains(flat, b => b.Contains("disabled=", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-selected", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("tabindex=0", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-outside", StringComparison.Ordinal));
+        Assert.Equal(flat, DayButtons(true));
+    }
+
+    [Fact]
+    public void Both_session_day_grid_layouts_render_identical_day_buttons()
+    {
+        // Same pinning for the Time/DateTime pick session's own single-panel grids, which use their
+        // own fragment (session classing/focus/pressed, no pointer-enter hover preview).
+        IReadOnlyList<string> DayButtons(bool weekRows)
+        {
+            var cut = Render<DateRangePicker>(p => p
+                .Add(c => c.Mode, DatePickerMode.DateTime)
+                .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+                .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+                .Add(c => c.ShowWeekNumbers, weekRows)
+                .Add(c => c.Start, new DateTime(2025, 1, 15, 9, 0, 0))
+                .Add(c => c.End, new DateTime(2025, 1, 20, 17, 0, 0))
+                .Add(c => c.Min, new DateTime(2025, 1, 10))
+                .Add(c => c.Max, new DateTime(2025, 1, 25)));
+            Open(cut);
+            return [.. cut.FindAll(".wss-picker-day").Select(ElementSignature)];
+        }
+
+        var flat = DayButtons(false);
+        Assert.Equal(42, flat.Count); // one panel
+        Assert.Contains(flat, b => b.Contains("disabled=", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("wss-picker-day-selected", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("tabindex=0", StringComparison.Ordinal));
+        Assert.Equal(flat, DayButtons(true));
     }
 
     [Fact]

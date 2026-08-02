@@ -1,0 +1,36 @@
+@namespace Controls
+
+@* The day calendar's weekday strip, shared by DatePicker's Date/DateTime/Week panel and BOTH of
+   DateRangePicker's day-grid layouts (its dual panels and its Time/DateTime pick session) -- the
+   three copies were character-identical. Decorative only: aria-hidden, since each day button already
+   carries a full "D"-format accessible name. The names themselves (ordering, the CLDR short-form
+   truncation) come from PickerMath.WeekdayHeaders at the caller, so the header and the grid derive
+   from the same first-day-of-week.
+
+   The leading empty cell and the -weeks class modifier appear together, gated by the caller's own
+   ShowWeekRows: the strip has to grow the same extra column the rows layout does, or the weekday
+   labels sit one cell left of the days they label. *@
+<div class="@(ShowWeekNumberColumn ? "wss-picker-week-header wss-picker-week-header-weeks" : "wss-picker-week-header")" aria-hidden="true">
+    @if (ShowWeekNumberColumn)
+    {
+        <div class="wss-picker-week-no-header"></div>
+    }
+    @foreach (var name in Names)
+    {
+        <div class="wss-picker-week-day">@name</div>
+    }
+</div>
+
+@code {
+    // Not a supported standalone control: this is DatePicker/DateRangePicker's own weekday strip,
+    // factored out so it exists once. It is public only because Razor always compiles a .razor
+    // component to a public class -- treat it as internal to the pickers.
+
+    /// <summary>Whether the grid beside this strip renders a leading week-number column, which this
+    /// strip must match with an empty leading cell of its own.</summary>
+    [Parameter] public bool ShowWeekNumberColumn { get; set; }
+
+    /// <summary>The seven weekday abbreviations, already ordered to match the grid's own first day
+    /// of the week (see <c>PickerMath.WeekdayHeaders</c>).</summary>
+    [Parameter] public IEnumerable<string> Names { get; set; } = [];
+}
