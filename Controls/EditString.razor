@@ -101,15 +101,29 @@
             }
             else if (SafeUrl != null && !string.IsNullOrEmpty(Value))
             {
+                @* aria-labelledby lists the label AND the link's own id. Naming a link with the
+                   label alone OVERWRITES its text, so every URL field announced as just "Email" --
+                   two same-labeled fields in a list were indistinguishable, and the destination the
+                   user is about to navigate to was never spoken (2.4.4 / 2.5.3: the visible text
+                   must be part of the name). Referencing the element's own id is legal ARIA and
+                   concatenates the link text after the label. *@
                 <a class="edit-string-link @CssClass"
                    id=@_id
                    data-test-id=@_id
                    aria-describedby=@_describedBy
-                   aria-labelledby="lbl-@_id"
+                   aria-labelledby="lbl-@_id @_id"
                    href=@SafeUrl
                    target=@UrlTarget
                    rel=@UrlRel>
                     @Value
+                    @if (OpensInNewTab)
+                    {
+                        @* A link that swaps the browsing context out from under the user has to say
+                           so before it is followed. Visually hidden -- sighted users get the
+                           convention from the target itself -- and it rides inside the <a>, so the
+                           self-reference above folds it into the accessible name for free. *@
+                        <span class="edit-sr-only"> (opens in new tab)</span>
+                    }
                 </a>
             }
             else

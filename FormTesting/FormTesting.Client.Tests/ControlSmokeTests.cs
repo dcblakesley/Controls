@@ -268,6 +268,70 @@ public class ControlSmokeTests : BunitContext
         Assert.Equal("noopener noreferrer", a.GetAttribute("rel"));
     }
 
+    [Fact]
+    public void EditString_read_only_link_is_named_by_the_label_AND_its_own_text()
+    {
+        // aria-labelledby="lbl-Name" alone OVERWRITES the link text, so every URL field announced as
+        // just its label ("Email") and never its destination -- two same-labeled links in a list were
+        // indistinguishable to a screen reader working through them. Referencing the element's own id
+        // is legal ARIA and concatenates the link text after the label.
+        var model = new PersonModel { Name = "example.com" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", "https://example.com");
+            b.CloseComponent();
+        }));
+
+        var a = cut.Find("a.edit-string-link");
+        Assert.Equal("Name", a.GetAttribute("id"));            // the self-reference has to resolve
+        Assert.Equal("lbl-Name Name", a.GetAttribute("aria-labelledby"));
+        Assert.Equal("lbl-Name", cut.Find("label").Id);        // ...and so does the label reference
+    }
+
+    [Theory]
+    [InlineData("_blank", true)]
+    [InlineData("_BLANK", true)]   // keyword matching is case-insensitive, as everywhere else here
+    [InlineData(null, false)]
+    [InlineData("_self", false)]
+    // A NAMED target reuses an existing context when one by that name is open, so "opens in a new
+    // tab" would be a claim the control can't make.
+    [InlineData("vendor", false)]
+    public void EditString_read_only_link_announces_a_new_tab_only_for_blank(string? target, bool expectAnnouncement)
+    {
+        var model = new PersonModel { Name = "Home" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", "https://example.com");
+            b.AddAttribute(6, "UrlTarget", target);
+            b.CloseComponent();
+        }));
+
+        var a = cut.Find("a.edit-string-link");
+        var hidden = a.QuerySelector("span.edit-sr-only");
+        if (expectAnnouncement)
+        {
+            // Inside the <a>, so the self-referencing aria-labelledby above folds it into the name.
+            Assert.NotNull(hidden);
+            Assert.Equal("(opens in new tab)", hidden.TextContent.Trim());
+            Assert.Contains("Home", a.TextContent);   // the visible text is still the whole label
+        }
+        else
+        {
+            Assert.Null(hidden);
+            Assert.Equal("Home", a.TextContent.Trim());
+        }
+    }
+
     [Theory]
     // A protocol-relative URL has no scheme, so Uri.TryCreate(..., Absolute) fails and the old code
     // fell through to "unparseable means safe relative URL" -- but a browser resolves "//host/path"

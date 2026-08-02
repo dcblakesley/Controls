@@ -235,6 +235,18 @@ public partial class EditString : EditTextInputBase
         url.IndexOfAny(['\t', '\r', '\n']) < 0 ? url : url.Replace("\t", "").Replace("\r", "").Replace("\n", "");
 
     /// <summary>
+    /// Whether the read-only link opens in a new browsing context the user did not ask for --
+    /// <c>_blank</c>, matched case-insensitively like every other <see cref="UrlTarget"/> keyword
+    /// check here. Drives the visually-hidden "(opens in new tab)" suffix inside the link.
+    /// </summary>
+    /// <remarks>
+    /// Only <c>_blank</c>, not the named targets <see cref="UrlRel"/> also hardens. A named target
+    /// reuses an existing context when one by that name is open, so "opens in a new tab" would be a
+    /// claim the control can't make; <c>_blank</c> always creates one.
+    /// </remarks>
+    bool OpensInNewTab => string.Equals(UrlTarget, "_blank", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
     /// rel for the read-only link: <c>"noopener noreferrer"</c> for any <see cref="UrlTarget"/> that
     /// can hand another browsing context a <c>window.opener</c> handle on this page, null for the
     /// keywords that can't.
