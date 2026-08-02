@@ -1038,12 +1038,11 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await GotoAsync();
         var section = _page.Locator("section.demo-section", new() { HasTextString = "TabBarExtraContent, Centered, Card type" });
 
-        // Inserts "Priority" BEFORE Tab 1/2/3 -- none of those tabs' own parameters change on this
-        // toggle, so Blazor's diff skips them entirely and the strip can only learn the newcomer's
-        // position via the CollectGeneration rebuild (see Tabs.razor.cs ChildContent remarks). That
-        // rebuild tears down and reconstructs every Tab instance, including Tab 1's, so its nav
-        // button's @ref is re-captured fresh -- this test's real point is that FocusAsync against
-        // that freshly-captured ref still lands DOM focus, which bUnit cannot observe (no JS runtime).
+        // Inserts "Priority" BEFORE Tab 1/2/3 -- a structural insertion whose position only the
+        // render-tree diff knows, which is why each Tab renders its own nav button (see Tab.razor).
+        // The newcomer's button and its @ref capture are created together by that diff; this test's
+        // real point is that arrow navigation's FocusAsync against the freshly-captured ref lands
+        // real DOM focus, which bUnit cannot observe (no JS runtime).
         await section.Locator("[data-test-id=toggle-priority-tab]").CheckAsync();
 
         var priorityTab = section.Locator("[role=tab]", new() { HasTextString = "Priority" });

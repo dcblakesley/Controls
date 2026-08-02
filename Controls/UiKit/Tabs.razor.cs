@@ -17,24 +17,9 @@ namespace Controls;
 /// </remarks>
 public partial class Tabs
 {
-    /// <summary>The <see cref="Tab"/> children (declarative metadata — they emit no markup of
-    /// their own and may be conditionally rendered).</summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Limitation.</b> When a <see cref="Tab"/> is conditionally inserted <i>before</i> siblings
-    /// whose own parameters did not change, Blazor's diff skips those siblings entirely and the strip
-    /// cannot learn the newcomer's declared position from them. Its only recovery is to rebuild this
-    /// whole fragment so every <see cref="Tab"/> registers again in document order — which also tears
-    /// down and reconstructs any <i>other</i> component declared inside <c>&lt;Tabs&gt;</c>, losing
-    /// that component's instance state (cached lookups, element references, subscriptions, timers).
-    /// </para>
-    /// <para>
-    /// It happens only on a structural insertion of that shape, never on an ordinary re-render or on
-    /// a removal. If a child component of yours holds state that must survive it, declare it outside
-    /// the <c>&lt;Tabs&gt;</c> element (e.g. in the tab's own pane content, which lives in the strip's
-    /// render tree, or as a sibling of <c>&lt;Tabs&gt;</c>) and pass what it needs in as parameters.
-    /// </para>
-    /// </remarks>
+    /// <summary>The <see cref="Tab"/> children. Each one renders its own button into the tab
+    /// strip, so the strip's order is the order they are declared in — including a tab that is
+    /// conditionally rendered (<c>@if</c>) or produced by a loop.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>The active tab's <see cref="Tab.Key"/>. Null (default) activates the first
@@ -72,9 +57,11 @@ public partial class Tabs
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
-    List<Tab> _tabs = new();          // promoted, ordered tab set the strip renders
-    List<Tab>? _collecting;           // buffer the current pass collects into (promoted next pass)
-    readonly List<Tab> _liveTabs = new(); // registered and not yet disposed
+    readonly List<Tab> _liveTabs = new();  // registered and not yet disposed, in construction order
+    List<Tab> _tabs = new();               // the live set in declaration order (see ResolveOrder)
+    List<Tab> _orderBeforePass = new();    // _tabs as it stood when the current render pass began
+    List<Tab> _passOrder = new();          // tabs that (re-)registered during this pass, in order
+
     // The last selection made through this component (uncontrolled fallback while the consumer
     // doesn't bind ActiveKey).
     string? _selectedKey;
@@ -85,103 +72,150 @@ public partial class Tabs
     string? _reportedFallbackTo;
 
     string? _generatedId;
-    string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-tabs-{Guid.NewGuid():N}");
+    internal string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-tabs-{Guid.NewGuid():N}");
 
     // Resolution: the bound ActiveKey wins, then the last local selection, then the first enabled tab.
     internal Tab? ActiveTab =>
         _tabs.FirstOrDefault(t => t.Key == (ActiveKey ?? _selectedKey) && !t.Disabled)
         ?? _tabs.FirstOrDefault(t => !t.Disabled);
 
-    bool IsActive(Tab tab) => ReferenceEquals(tab, ActiveTab);
+    internal bool IsActive(Tab tab) => ReferenceEquals(tab, ActiveTab);
 
-    bool HasPanel => ActiveTab?.ChildContent is not null;
+    internal bool HasPanel => ActiveTab?.ChildContent is not null;
 
-    // ----- Child registration (the Table column collect/promote pattern) -----
+    // ----- Render pass bookkeeping -------------------------------------------
+    //
+    // Nothing here places a button: each Tab renders its own, so the rendered strip is whatever the
+    // render-tree diff makes of the ChildContent. What the strip still needs is the tab SET -- to
+    // render the active tab's pane below the nav -- and its declaration ORDER, which exactly two
+    // behaviors read: the "first enabled tab" fallback when no key resolves, and the arrow-key
+    // neighbor order.
 
-    void StartCollectingTabs()
+    // Strip-level state the tabs' own buttons are built from, as last pushed to them. See BeginPass.
+    Tab? _pushedActive;
+    bool _pushedHasPanel;
+    string? _pushedBaseId;
+
+    // Called from the top of the markup, i.e. once per render of this component.
+    void BeginPass()
     {
-        if (_collecting is not null)
-        {
-            // Merge still-live stragglers whose parameters were all unchanged (their
-            // OnParametersSet never ran this pass) back in at their previous position.
-            var promoted = _collecting;
-            if (promoted.Count != _liveTabs.Count)
-            {
-                // A tab that registered this pass but was never in the rendered set is NEW, and its
-                // declared position relative to the stragglers is simply not in this data: the
-                // stragglers know only their old index among each other, and the newcomer has no old
-                // index at all -- "declared first" and "declared last" produce byte-identical
-                // registration state. Re-inserting stragglers at their old index (below) silently
-                // guesses "appended", so a tab declared BEFORE skipped siblings rendered after them
-                // permanently, since a skipped tab never re-registers to correct it. Ask for one
-                // clean pass instead (see _collectGeneration) and settle the order from that.
-                var hasNewTab = promoted.Any(t => !_tabs.Contains(t));
+        _orderBeforePass = _tabs;
+        _passOrder = new List<Tab>();
 
-                foreach (var straggler in _liveTabs)
-                {
-                    if (!promoted.Contains(straggler))
-                    {
-                        var prevIdx = _tabs.IndexOf(straggler);
-                        promoted.Insert(Math.Min(prevIdx < 0 ? promoted.Count : prevIdx, promoted.Count), straggler);
-                    }
-                }
+        // Everything a tab's button shows that is NOT one of its own parameters: which tab is
+        // active (underline, aria-selected, the roving tabindex), whether there is a panel to point
+        // aria-controls at, and the id root. None of that is visible to Blazor's parameter diff, so
+        // a tab whose own parameters are unchanged is skipped and would keep rendering the previous
+        // selection. Mark every live tab dirty when it changes; they render later in this same batch
+        // and read the settled state, so this costs no extra render pass and no extra paint.
+        // (Queueing a render for a tab this pass removes is a documented no-op in the renderer.)
+        var active = ActiveTab;
+        var hasPanel = active?.ChildContent is not null;
+        if (ReferenceEquals(active, _pushedActive) && hasPanel == _pushedHasPanel && BaseId == _pushedBaseId) return;
 
-                // Once per ambiguity: the re-collection pass itself must not be able to re-trigger
-                // this (a disposal that lands late would leave the counts mismatched for one more
-                // pass), or the strip would rebuild its children forever.
-                if (hasNewTab && !_awaitingRecollect)
-                {
-                    _awaitingRecollect = true;
-                    _collectGeneration++;
-                }
-            }
-            else
-            {
-                // Everything live re-registered: this pass IS the document order, nothing to recover.
-                _awaitingRecollect = false;
-            }
-            if (!_tabs.SequenceEqual(promoted)) _tabs = promoted;
-        }
-        _collecting = new List<Tab>();
+        _pushedActive = active;
+        _pushedHasPanel = hasPanel;
+        _pushedBaseId = BaseId;
+        foreach (var tab in _liveTabs) tab.Refresh();
     }
-
-    // @key of the CascadingValue that wraps ChildContent (see Tabs.razor). Bumping it makes Blazor
-    // tear down and rebuild that subtree, so every Tab is constructed fresh and registers in document
-    // order -- the only way to recover an order the diff withheld, since a Tab whose parameters are
-    // all unchanged primitives is skipped entirely and can't be asked to re-register any other way
-    // (a cascading-value change notifies subscribers in subscription order, not document order).
-    // Tabs themselves render no markup and their pane content lives in this component's own panel
-    // render tree, so no Tab state is lost -- but the rebuild replaces the whole ChildContent subtree,
-    // which is NOT free: a Tab instance is recreated (which is why the nav <button> is keyed by it, so
-    // its @ref is re-captured -- see Tabs.razor), and any OTHER component a consumer declared inside
-    // <Tabs> is torn down and reconstructed along with it, losing its instance state. See the
-    // ChildContent parameter's remarks for the consumer-facing statement of that limitation. It costs
-    // two extra render passes, only on a structural insertion, and only when tabs were actually
-    // skipped that pass.
-    internal int CollectGeneration => _collectGeneration;
-    int _collectGeneration;
-    bool _awaitingRecollect;
 
     internal void Register(Tab tab)
     {
-        if (!_liveTabs.Contains(tab)) _liveTabs.Add(tab);
-        if (_collecting is null || _collecting.Contains(tab)) return;
-        _collecting.Add(tab);
-        if (!_tabs.Contains(tab)) StateHasChanged();
+        var isNew = !_liveTabs.Contains(tab);
+        if (isNew) _liveTabs.Add(tab);
+        if (_passOrder.Contains(tab)) return;
+
+        _passOrder.Add(tab);
+        ResolveOrder();
+
+        // The strip's own markup (the pane below the nav) was built before this tab registered, so a
+        // newcomer needs one corrective render. Re-registrations must not request one -- they happen
+        // on every pass, and an unguarded request would never settle.
+        if (isNew) StateHasChanged();
     }
 
     internal void Unregister(Tab tab)
     {
-        _liveTabs.Remove(tab);
-        if (_tabs.Contains(tab)) StateHasChanged();
+        if (!_liveTabs.Remove(tab)) return;
+        _passOrder.Remove(tab);
+        ResolveOrder();
+        StateHasChanged();
     }
 
     /// <summary>
-    /// Requests a follow-up render of the strip after an already-registered <see cref="Tab"/>'s
-    /// display-relevant parameters changed. The strip's markup is built from the <see cref="Tab"/>
-    /// instances in <c>_tabs</c> before that <see cref="Tab"/>'s own <c>OnParametersSet</c> runs, so
-    /// a parameter change (Count, Title, Disabled, ...) on an existing tab would otherwise render
-    /// stale for this pass and only self-correct on some later, unrelated render.
+    /// Rebuilds <c>_tabs</c> from the tabs that registered this pass plus the ones that did not.
+    /// </summary>
+    /// <remarks>
+    /// Blazor skips <c>SetParametersAsync</c> entirely for a child whose own parameters are all
+    /// unchanged immutable values, so a pass sees only a <i>subsequence</i> of the declared order:
+    /// content-less tabs (the bare filter strip) never re-register unless their own text changes.
+    /// The tabs that did register give the exact relative order of everything in that subsequence;
+    /// the ones that did not keep their previous relative order and are slotted back around it.
+    /// A brand-new tab is the one thing neither list places, so it is held until the next tab that
+    /// did re-register pins it — "as late as its neighbours allow". With no such neighbour at all
+    /// (every sibling skipped, the classic conditional leading/trailing tab) the position is simply
+    /// not in the data, and it is appended. That guess is invisible in two of the three consumers of
+    /// this list: the rendered strip does not read it at all, and arrow navigation is cyclic, so a
+    /// rotation of the true order still visits the same neighbours in the same direction. Only the
+    /// "first enabled tab" fallback for an unbound <see cref="ActiveKey"/> can differ, and only
+    /// until any pass in which a neighbour re-registers.
+    /// </remarks>
+    void ResolveOrder()
+    {
+        var order = new List<Tab>(_liveTabs.Count);
+        List<Tab>? pending = null;  // newcomers waiting for the anchor that pins them
+        var next = 0;               // read position in the previous order
+
+        foreach (var registered in _passOrder)
+        {
+            var was = _orderBeforePass.IndexOf(registered);
+            if (was < 0)
+            {
+                (pending ??= new List<Tab>()).Add(registered);
+                continue;
+            }
+            while (next < was) TakeStraggler(_orderBeforePass[next++]);
+            TakePending();
+            if (!order.Contains(registered)) order.Add(registered);
+            next = Math.Max(next, was + 1);
+        }
+
+        while (next < _orderBeforePass.Count) TakeStraggler(_orderBeforePass[next++]);
+        TakePending();
+        // Defensive: every live tab is in one of the two lists, but a tab that somehow reached
+        // neither still belongs in the set rather than vanishing from keyboard navigation.
+        foreach (var tab in _liveTabs)
+        {
+            if (!order.Contains(tab)) order.Add(tab);
+        }
+
+        if (!_tabs.SequenceEqual(order)) _tabs = order;
+
+        // A tab from the previous order that did not re-register this pass keeps its place; one that
+        // did is placed by the loop above instead, and one that was disposed is dropped.
+        void TakeStraggler(Tab tab)
+        {
+            if (_liveTabs.Contains(tab) && !_passOrder.Contains(tab) && !order.Contains(tab)) order.Add(tab);
+        }
+
+        void TakePending()
+        {
+            if (pending is null) return;
+            foreach (var tab in pending)
+            {
+                if (!order.Contains(tab)) order.Add(tab);
+            }
+            pending = null;
+        }
+    }
+
+    /// <summary>
+    /// Requests a follow-up render of the strip after an already-registered <see cref="Tab"/>
+    /// changed a parameter the <i>strip's own</i> markup is built from (its key, its disabled state,
+    /// or whether it has pane content). That markup is built from the <see cref="Tab"/> instances in
+    /// <c>_tabs</c> before the changed tab's own <c>OnParametersSet</c> runs, so it would otherwise
+    /// render stale for this pass and only self-correct on some later, unrelated render. A tab's
+    /// label and count need no notification — they are rendered by the tab itself.
     /// </summary>
     internal void NotifyTabChanged() => StateHasChanged();
 
@@ -192,11 +226,11 @@ public partial class Tabs
     // was removed or disabled, so the strip renders one tab active while a bound ActiveKey still holds
     // the old, now-unusable key -- and only SelectAsync ever raised ActiveKeyChanged, so nothing told
     // the consumer. Their own pane/filter state then disagreed with the highlighted tab until the next
-    // click. Notified from OnAfterRender rather than from the promotion in StartCollectingTabs: that
-    // runs mid-render, BEFORE the child Tabs' own OnParametersSet, so a Key/Disabled change on an
-    // already-registered tab is still one pass stale there and would report a fallback that isn't real
-    // (see Existing_tab_Key_change_renders_on_the_same_pass_instead_of_one_behind). By OnAfterRender
-    // every Tab in the batch has its current parameters.
+    // click. Notified from OnAfterRender rather than from Register: that runs mid-render, BEFORE the
+    // remaining Tabs' own OnParametersSet, so a Key/Disabled change on an already-registered tab is
+    // still one pass stale there and would report a fallback that isn't real (see
+    // Existing_tab_Key_change_renders_on_the_same_pass_instead_of_one_behind). By OnAfterRender every
+    // Tab in the batch has its current parameters.
     void SyncFallbackKey()
     {
         var active = ActiveTab;
@@ -231,16 +265,21 @@ public partial class Tabs
 
     // ----- Interaction -------------------------------------------------------
 
-    async Task SelectAsync(Tab tab)
+    internal async Task SelectAsync(Tab tab)
     {
         if (tab.Disabled || IsActive(tab)) return;
         _selectedKey = tab.Key;
+        // The click was handled by the tab, so Blazor re-renders the TAB, not the strip. Every other
+        // button's active state and the pane below the nav are the strip's business: without this an
+        // unbound strip (no ActiveKeyChanged handler to re-render the parent) would move nothing but
+        // the clicked button.
+        StateHasChanged();
         await ActiveKeyChanged.InvokeAsync(tab.Key);
     }
 
     // ARIA tabs pattern, automatic activation: arrows select the neighboring enabled tab and move
     // focus onto it (the roving tabindex above keeps the strip a single Tab stop).
-    async Task OnKeyDownAsync(KeyboardEventArgs e, Tab from)
+    internal async Task OnKeyDownAsync(KeyboardEventArgs e, Tab from)
     {
         var enabled = _tabs.Where(t => !t.Disabled).ToList();
         if (enabled.Count == 0) return;
@@ -264,11 +303,10 @@ public partial class Tabs
         {
             // Exactly three tolerated failures, none of which the strip can do anything about:
             //   InvalidOperationException  - no JS runtime at all (static SSR / prerender), or the
-            //                                ElementReference was never captured. The SECOND case used
-            //                                to be a live bug this bare `catch` hid (see the @key on
-            //                                the nav button in Tabs.razor); it is not expected any
-            //                                more, but a Tab that has not rendered its button yet can
-            //                                still legitimately reach it.
+            //                                ElementReference was never captured. The capture now
+            //                                lives in the same render tree as the button it captures
+            //                                (see Tab.razor), so the second case is limited to a tab
+            //                                whose button has not rendered yet.
             //   JSException                - the browser rejected the focus call (element detached).
             //   JSDisconnectedException    - the Blazor Server circuit went away mid-call.
             // The selection has already moved either way; only DOM focus is lost. Anything else is a

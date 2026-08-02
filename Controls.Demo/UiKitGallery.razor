@@ -289,9 +289,9 @@
         </p>
         <label style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
             <input type="checkbox" data-test-id="toggle-priority-tab" @bind="_showPriorityTab" />
-            Insert a "Priority" tab before Tab 1 (exercises the conditional-insertion rebuild --
-            Tab 1/2/3's own parameters never change on this toggle, so the strip must recover the
-            newcomer's position via the CollectGeneration rebuild described on Tabs' ChildContent).
+            Insert a "Priority" tab before Tab 1 (exercises conditional insertion -- Tab 1/2/3's own
+            parameters never change on this toggle, so nothing but the render-tree diff can place
+            the newcomer, which is why each Tab renders its own nav button).
         </label>
         <Tabs @bind-ActiveKey="_cardTab" Id="demo-tabs-card" Type="TabsType.Card" Centered="true">
             <TabBarExtraContent><button class="wss-dialog-btn wss-dialog-btn-sm" data-test-id="tabs-extra-btn">+ Add</button></TabBarExtraContent>

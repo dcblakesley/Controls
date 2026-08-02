@@ -1,16 +1,10 @@
 @namespace Controls
 
-@* Reset the per-render tab buffer before the children below register into it (they do so in
-   document order during their OnParametersSet); the next pass promotes the buffer to the rendered
-   set — the same collect/promote mechanism as Table's columns, so a conditionally-rendered Tab
-   drops / reappears in its declared position. *@
-@{ StartCollectingTabs(); }
-@* @key: a changed CollectGeneration rebuilds this subtree so every Tab registers again, in document
-   order. That is the recovery path for an insertion the diff hid -- see CollectGeneration. The key is
-   otherwise constant, so the ordinary case never rebuilds anything. *@
-<CascadingValue Value="this" IsFixed="true" @key="CollectGeneration">
-    @ChildContent
-</CascadingValue>
+@* Every live Tab is marked dirty before this pass' markup is built: a Tab renders its own nav
+   button, and strip-level state (which tab is active, whether a panel exists, BaseId) is invisible
+   to Blazor's parameter diff, so nothing else would re-render a button whose own parameters are
+   unchanged. They render later in this same batch and read the settled state. *@
+@{ BeginPass(); }
 
 <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
      class="wss-tabs @(Type == TabsType.Card ? "wss-tabs-card" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
@@ -43,34 +37,14 @@
     // when it's actually set (see the @if/@else above) without duplicating this block verbatim.
     RenderFragment NavFragment =>
         @<div class="wss-tabs-nav @(Centered ? "wss-tabs-nav-centered" : null)" role="tablist" aria-label="@TablistLabel">
-            @foreach (var tab in _tabs)
-            {
-                var t = tab;
-                @* @key="t": the button is in Tabs' OWN render tree, outside the keyed subtree the
-                   generation rebuild replaces (see CollectGeneration), and Blazor only re-runs an
-                   element-reference capture for an element it CREATES -- never for one it retains.
-                   Unkeyed, a rebuild left every fresh Tab instance holding default(ElementReference),
-                   so arrow-key navigation's FocusAsync threw and DOM focus never moved. Keying by the
-                   Tab instance also makes a plain reorder move each button with its own tab instead of
-                   re-pointing one tab's @ref at another tab's retained element. *@
-                <button type="button"
-                        @key="t"
-                        role="tab"
-                        id="@($"{BaseId}-tab-{t.Key}")"
-                        class="wss-tabs-tab @(IsActive(t) ? "wss-tabs-tab-active" : null)"
-                        aria-selected="@(IsActive(t) ? "true" : "false")"
-                        aria-controls="@(HasPanel && IsActive(t) ? $"{BaseId}-panel" : null)"
-                        tabindex="@(IsActive(t) ? 0 : -1)"
-                        disabled="@t.Disabled"
-                        @ref="t.ButtonRef"
-                        @onclick="@(() => SelectAsync(t))"
-                        @onkeydown="@(e => OnKeyDownAsync(e, t))">
-                    @if (t.Count is not null)
-                    {
-                        <span class="wss-tabs-count">@t.Count</span>
-                    }
-                    <span class="wss-tabs-label">@t.LabelFor()</span>
-                </button>
-            }
+            @* ChildContent renders HERE, and each Tab emits its own nav button (see Tab.razor), so
+               the strip's button order IS the ChildContent's document order -- placed by the
+               render-tree diff, which is the only thing that knows where a conditionally rendered
+               tab was declared. Nothing this component tracks can move a button, so no ordering
+               heuristic, @key rebuild, or teardown of the consumer's subtree is involved.
+               IsFixed: a Tab's owning strip never changes, so no subscription bookkeeping. *@
+            <CascadingValue Value="this" IsFixed="true">
+                @ChildContent
+            </CascadingValue>
         </div>;
 }

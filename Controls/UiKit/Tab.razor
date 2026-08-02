@@ -1,0 +1,32 @@
+@namespace Controls
+@implements IDisposable
+
+@* The tab renders its own nav button, into the tablist its parent strip opened around
+   Tabs.ChildContent. Declaring the button here (rather than having Tabs loop over a collected tab
+   list) is what makes a conditionally rendered tab land in its declared position: the render-tree
+   diff places these frames, and it is the only thing that knows where the tab was declared.
+
+   Nothing renders without a strip: Razor compiles every component to a public class, so a Tab
+   constructed outside <Tabs> is reachable from consumer code and must degrade instead of NRE-ing.
+   The pattern-matched local also keeps the handler lambdas below null-safe (flow state does not
+   survive into a lambda that captures a property). *@
+@if (Tabs is { } strip)
+{
+    <button type="button"
+            role="tab"
+            id="@($"{strip.BaseId}-tab-{Key}")"
+            class="wss-tabs-tab @(strip.IsActive(this) ? "wss-tabs-tab-active" : null)"
+            aria-selected="@(strip.IsActive(this) ? "true" : "false")"
+            aria-controls="@(strip.HasPanel && strip.IsActive(this) ? $"{strip.BaseId}-panel" : null)"
+            tabindex="@(strip.IsActive(this) ? 0 : -1)"
+            disabled="@Disabled"
+            @ref="ButtonRef"
+            @onclick="@(() => strip.SelectAsync(this))"
+            @onkeydown="@(e => strip.OnKeyDownAsync(e, this))">
+        @if (Count is not null)
+        {
+            <span class="wss-tabs-count">@Count</span>
+        }
+        <span class="wss-tabs-label">@LabelFor()</span>
+    </button>
+}
