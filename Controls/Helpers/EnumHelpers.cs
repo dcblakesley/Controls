@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Text;
 
 namespace Controls.Helpers;
 
@@ -70,7 +71,32 @@ public static class EnumHelpers
         }
 
         // Fallback: split camelCase into words ("InProgress" → "In Progress")
-        return (string.Concat(memberName.Select(c => char.IsUpper(c) ? " " + c : c.ToString())).TrimStart(' '), false);
+        return (SplitCamelCase(memberName), false);
+    }
+
+    /// <summary>
+    /// Splits camelCase/PascalCase into spaced words — <c>InProgress</c> → <c>"In Progress"</c>.
+    /// </summary>
+    /// <remarks>
+    /// A space goes in before an upper-case letter only when the previous character isn't already
+    /// whitespace. That guard is what keeps a combined <c>[Flags]</c> value readable: its
+    /// <c>ToString()</c> is already <c>"A, B"</c>, and inserting unconditionally turned that into
+    /// <c>"A,  B"</c> (two spaces) — then <see cref="GetName"/> memoized the doubled space, so every
+    /// checked-enum-list / radio-enum read-only view showed it for the process lifetime.
+    /// </remarks>
+    static string SplitCamelCase(string name)
+    {
+        var result = new StringBuilder(name.Length + 8);
+        for (var i = 0; i < name.Length; i++)
+        {
+            var c = name[i];
+            if (i > 0 && char.IsUpper(c) && !char.IsWhiteSpace(name[i - 1]))
+                result.Append(' ');
+            result.Append(c);
+        }
+        // Preserved from the original expression: a leading space (only reachable for a non-enum
+        // object whose ToString starts with one) is dropped rather than rendered.
+        return result.ToString().TrimStart(' ');
     }
 
     // Trimming (IL2070): callers only reach this behind an IsEnum check, and ILLink keeps all

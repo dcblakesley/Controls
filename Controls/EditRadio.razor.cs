@@ -93,6 +93,10 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
 
     protected override void OnInitialized()
     {
+        // Chained for the same reason the control bases document it (and the same reason this control's
+        // OnParametersSet already chains): InputRadioGroup owns the group-name/context setup, so an
+        // unchained override here is exactly the "silently skipped base init" the library warns about.
+        base.OnInitialized();
         var accessor = ValueExpression ?? throw new InvalidOperationException(
             $"{nameof(EditRadio<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)}).");
         (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(accessor, Id, FormGroupOptions, IdPrefix);
