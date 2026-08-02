@@ -422,6 +422,8 @@ All form controls implement the `IEditControl` interface and provide:
 - **Validation**: required-ness from `[Required]`, the three-state `IsRequired` parameter, or `FormOptions.RequiredResolver` — see [Validation stacks](#validation-stacks-dataannotations-fluentvalidation-custom)
 - **Conditional Display**: `Hiding` modes and `HidingMode` enum
 
+> **`HidingMode.WhenNull`/`WhenNullOrDefault` apply in edit mode too**, unlike their `WhenReadOnly*` siblings — so pairing either with a field the user can empty from inside the control (`EditDateRange` with `AllowClear`, a nullable-bound `EditNumber<int?>`/`EditDate<T?>`, or `EditString`'s `AllowClear` under `WhenNullOrDefault`, which clears to `""`) **unmounts the control the moment it's cleared**, taking the only way to put a value back with it. That is the intended reading of the mode — the rule is about the value, and it behaves the same however the value got emptied — but for the usual "hide empty optional fields on a detail view" goal, reach for `WhenReadOnlyAndNull`/`WhenReadOnlyAndNullOrDefault` instead.
+
 ## Validation stacks (DataAnnotations, FluentValidation, custom)
 
 The runtime validation plumbing is **validator-agnostic**: validation messages, `aria-invalid`, `aria-errormessage`, the invalid icon/red styling, and the `ValidationView` summary all read from the cascading `EditContext`, so anything that writes a `ValidationMessageStore` (DataAnnotations, [Blazored.FluentValidation](https://github.com/Blazored/FluentValidation), a hand-rolled validator) works out of the box. Labels are also independent of the validation stack — `[DisplayName]`/`[Display]` and the auto-generated property-name fallback keep working.
