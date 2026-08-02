@@ -2628,4 +2628,77 @@ public class DatePickerTests : BunitContext
             CultureInfo.CurrentCulture = original;
         }
     }
+
+    // ----- Disabled => closed, and the commit funnel's own guard --------------
+
+    [Fact]
+    public void Flipping_Disabled_while_the_panel_is_open_closes_it()
+    {
+        // Same invariant Select enforces: an open panel on a disabled control is fully interactive
+        // (day cells, presets, header selects all carry live click handlers), so the panel has to go.
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+
+        cut.Render(p => p.Add(c => c.Disabled, true));
+
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+        Assert.Empty(cut.FindAll(".wss-picker-backdrop"));
+        Assert.Empty(cut.FindAll(".wss-picker-day"));
+    }
+
+    [Fact]
+    public void A_disabled_picker_refuses_to_commit()
+    {
+        // Defense in depth behind the invariant above: SetValueAsync is the single funnel every commit
+        // path takes (day/month/year/quarter click, preset, Today/Now, time selects, typed text), so a
+        // disabled picker can't write through along ANY of them. Driven here through the typed path --
+        // the one commit route whose element survives the panel close.
+        DateTime? raised = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.ValueChanged, (DateTime? v) => raised = v));
+        Open(cut);
+
+        cut.Render(p => p.Add(c => c.Disabled, true));
+        cut.Find(".wss-picker-input-date").Input("03/05/2026");
+        cut.Find(".wss-picker-input-date").Change("03/05/2026");
+
+        Assert.Null(raised);
+        Assert.Equal(Feb14, cut.Instance.Value);
+    }
+
+    // ----- Half-typed text vs. an external Value change -----------------------
+
+    [Fact]
+    public void An_external_Value_change_discards_half_typed_text()
+    {
+        // The buffer belongs to the value it was typed against: swapping the bound record must not
+        // leave the previous record's keystrokes on screen, nor let the next Enter/blur commit them.
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        cut.Find(".wss-picker-input-date").Input("12/3");
+        Assert.Equal("12/3", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+
+        var mar20 = new DateTime(2026, 3, 20);
+        cut.Render(p => p.Add(c => c.Value, mar20));
+
+        Assert.Equal("03/20/2026", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+
+        // "12/3" parses fine under the general fallback, so a surviving buffer would commit here.
+        cut.Find(".wss-picker-input-date").Change("");
+        Assert.Equal(mar20, cut.Instance.Value);
+    }
+
+    [Fact]
+    public void A_re_render_that_leaves_Value_alone_keeps_half_typed_text()
+    {
+        // The other half of the contract: a parent re-rendering for its own reasons (any unrelated
+        // parameter) must not eat the keystrokes of a user mid-type.
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        cut.Find(".wss-picker-input-date").Input("12/3");
+
+        cut.Render(p => p.Add(c => c.Width, "300px"));
+
+        Assert.Equal("12/3", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+    }
 }

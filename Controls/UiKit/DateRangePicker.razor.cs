@@ -372,6 +372,12 @@ public partial class DateRangePicker : PickerBase
     // In-progress typed text per input (null = show the formatted bound value).
     string? _startEdit;
     string? _endEdit;
+    // The Start/End last seen on a parameter set -- what OnParametersSetAsync compares against to tell
+    // an EXTERNAL change (a parent swapping the bound record, a form reset, a programmatic set) from a
+    // re-render that left the endpoint alone. Tracked per side, so typing into one input survives an
+    // external change to the OTHER. See OnParametersSetAsync for the full rationale.
+    DateTime? _lastStartParam;
+    DateTime? _lastEndParam;
 
     // ----- Time/DateTime pick session state ----------------------------------
     // A session edits ONE endpoint at a time (whichever _activeInput points at). Neither field ever
@@ -1152,6 +1158,44 @@ public partial class DateRangePicker : PickerBase
         }
     }
 
+    // ----- Parameter reconciliation ------------------------------------------
+
+    /// <summary>
+    /// Two parameter-driven invariants, both about state this control holds that a changed parameter
+    /// invalidates -- the range-picker twin of <c>DatePicker.OnParametersSetAsync</c>.
+    /// <para>
+    /// <b>Disabled =&gt; closed</b>, mirroring <c>Select.OnParametersSetAsync</c>'s identical
+    /// invariant. Without it, a panel that was open when the consumer flipped <see cref="Disabled"/>
+    /// stays fully interactive: every unit cell, preset, header select and the session OK button goes
+    /// on committing through <see cref="SetRangeAsync"/> on a control the consumer has taken out of
+    /// service (only the clear button, the field click and the input focus were ever guarded). Routed
+    /// through the normal <see cref="CloseAsync"/> so the JS/focus teardown -- and the in-progress
+    /// pick/session discard -- runs exactly as it does for a user-driven close.
+    /// </para>
+    /// <para>
+    /// <b>An external <see cref="Start"/>/<see cref="End"/> change discards that side's half-typed
+    /// text</b> (see <c>_lastStartParam</c>/<c>_lastEndParam</c>): the buffer belongs to the endpoint
+    /// it was typed against, so a swapped bound record must not display -- or, on the next
+    /// Enter/blur, commit -- the previous record's keystrokes. Per side, so an external change to one
+    /// endpoint leaves the other's in-progress typing alone.
+    /// </para>
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Disabled && _open) await CloseAsync();
+
+        if (Start != _lastStartParam)
+        {
+            _lastStartParam = Start;
+            _startEdit = null;
+        }
+        if (End != _lastEndParam)
+        {
+            _lastEndParam = End;
+            _endEdit = null;
+        }
+    }
+
     // ----- Interaction ------------------------------------------------------
 
     Task OnFieldClickAsync()
@@ -1480,8 +1524,14 @@ public partial class DateRangePicker : PickerBase
 
     // Central commit: normalizes both endpoints to Mode's own granularity, swaps a backwards pair,
     // and raises only the callbacks whose side actually changed.
+    // Defense in depth for OnParametersSetAsync's Disabled => closed invariant: that closes the panel
+    // (unmounting every cell) the moment Disabled is observed, so nothing reachable gets this far --
+    // but every commit path in the control funnels through here, so one guard makes it structurally
+    // impossible for a disabled picker to write through, whatever route a caller (or an event queued
+    // against the pre-disable render tree) takes to reach it.
     async Task SetRangeAsync(DateTime? start, DateTime? end)
     {
+        if (Disabled) return;
         start = start is { } s ? NormalizeForMode(s) : null;
         end = end is { } e ? NormalizeForMode(e) : null;
         if (start is { } a && end is { } b && b < a) (start, end) = (end, start);

@@ -2889,4 +2889,86 @@ public class DateRangePickerTests : BunitContext
         Assert.Equal("half past nine", endText);
         Assert.Null(cut.Instance.End);
     }
+
+    // ----- Disabled => closed, and the commit funnel's own guard --------------
+
+    [Fact]
+    public void Flipping_Disabled_while_the_panel_is_open_closes_it()
+    {
+        // Same invariant Select enforces: an open panel on a disabled control is fully interactive
+        // (unit cells, presets, header selects all carry live click handlers), so the panel has to go.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3));
+        Open(cut);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+
+        cut.Render(p => p.Add(c => c.Disabled, true));
+
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+        Assert.Empty(cut.FindAll(".wss-picker-backdrop"));
+        Assert.Empty(cut.FindAll(".wss-picker-day"));
+    }
+
+    [Fact]
+    public void A_disabled_range_picker_refuses_to_commit()
+    {
+        // Defense in depth behind the invariant above: SetRangeAsync is the single funnel every commit
+        // path takes (unit click, preset, session OK, time selects, typed text), so a disabled picker
+        // can't write through along ANY of them. Driven here through the typed path -- the one commit
+        // route whose element survives the panel close.
+        DateTime? raised = null;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3)
+            .Add(c => c.StartChanged, (DateTime? v) => raised = v));
+        Open(cut);
+
+        cut.Render(p => p.Add(c => c.Disabled, true));
+        cut.Find(".wss-picker-input-start").Input("01/02/2025");
+        cut.Find(".wss-picker-input-start").Change("01/02/2025");
+
+        Assert.Null(raised);
+        Assert.Equal(Jan15, cut.Instance.Start);
+    }
+
+    // ----- Half-typed text vs. an external endpoint change --------------------
+
+    [Fact]
+    public void An_external_endpoint_change_discards_only_that_sides_half_typed_text()
+    {
+        // Each buffer belongs to the endpoint it was typed against, so the reset is per side: swapping
+        // the bound record's Start must not leave the previous record's start keystrokes on screen,
+        // and must not touch in-progress typing in the end input.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3));
+        cut.Find(".wss-picker-input-start").Input("12/3");
+        cut.Find(".wss-picker-input-end").Input("12/9");
+
+        var jan20 = new DateTime(2025, 1, 20);
+        cut.Render(p => p.Add(c => c.Start, jan20));
+
+        Assert.Equal("01/20/2025", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+        Assert.Equal("12/9", cut.Find(".wss-picker-input-end").GetAttribute("value"));
+
+        // "12/3" parses fine under the general fallback, so a surviving start buffer would commit here.
+        cut.Find(".wss-picker-input-start").Change("");
+        Assert.Equal(jan20, cut.Instance.Start);
+    }
+
+    [Fact]
+    public void A_re_render_that_leaves_the_endpoints_alone_keeps_half_typed_text()
+    {
+        // The other half of the contract: a parent re-rendering for its own reasons (any unrelated
+        // parameter) must not eat the keystrokes of a user mid-type.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3));
+        cut.Find(".wss-picker-input-start").Input("12/3");
+
+        cut.Render(p => p.Add(c => c.Width, "400px"));
+
+        Assert.Equal("12/3", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
 }

@@ -331,6 +331,12 @@ public partial class DatePicker : PickerBase
     DateTime _viewMonth = FirstOfMonth(DateTime.Today);
     // In-progress typed text (null = show the formatted bound value).
     string? _edit;
+    // The Value last seen on a parameter set -- what OnParametersSetAsync compares against to tell an
+    // EXTERNAL change (a parent swapping the bound record, a form reset, a programmatic set) from a
+    // re-render that left Value alone. Half-typed text belongs to the value it was typed against, so
+    // an external change has to drop it; a re-render carrying the SAME value must not (that would eat
+    // the keystrokes of a user typing while the parent happens to re-render).
+    DateTime? _lastValueParam;
 
     // ----- Display helpers (used by the .razor markup) ------------------------
 
@@ -917,6 +923,38 @@ public partial class DatePicker : PickerBase
         await CloseAsync();
     }
 
+    // ----- Parameter reconciliation ------------------------------------------
+
+    /// <summary>
+    /// Two parameter-driven invariants, both about state this control holds that a changed parameter
+    /// invalidates.
+    /// <para>
+    /// <b>Disabled =&gt; closed</b>, mirroring <c>Select.OnParametersSetAsync</c>'s identical invariant.
+    /// Without it, a panel that was open when the consumer flipped <see cref="Disabled"/> stays fully
+    /// interactive: every day/month/year/quarter cell, preset, footer link and header select goes on
+    /// committing through <see cref="SetValueAsync"/> on a control the consumer has taken out of
+    /// service (only the clear button, the field click and the input focus were ever guarded). Routed
+    /// through the normal <see cref="CloseAsync"/> so the JS/focus teardown runs exactly as it does
+    /// for a user-driven close.
+    /// </para>
+    /// <para>
+    /// <b>An external <see cref="Value"/> change discards the half-typed text</b> (see
+    /// <c>_lastValueParam</c>): the buffer belongs to the value it was typed against, so a swapped
+    /// bound record must not display -- or, on the next Enter/blur, commit -- the previous record's
+    /// keystrokes.
+    /// </para>
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Disabled && _open) await CloseAsync();
+
+        if (Value != _lastValueParam)
+        {
+            _lastValueParam = Value;
+            _edit = null;
+        }
+    }
+
     // ----- Interaction ------------------------------------------------------
 
     Task OnFieldClickAsync()
@@ -1121,8 +1159,14 @@ public partial class DatePicker : PickerBase
     }
 
     // Central commit: normalizes to Mode's shape and raises the callback only when it actually changed.
+    // Defense in depth for OnParametersSetAsync's Disabled => closed invariant: that closes the panel
+    // (unmounting every cell) the moment Disabled is observed, so nothing reachable gets this far --
+    // but every commit path in the control funnels through here, so one guard makes it structurally
+    // impossible for a disabled picker to write through, whatever route a caller (or an event queued
+    // against the pre-disable render tree) takes to reach it.
     async Task SetValueAsync(DateTime? value)
     {
+        if (Disabled) return;
         value = value is { } v ? NormalizeForMode(v) : null;
         if (Value == value) return;
         Value = value;
