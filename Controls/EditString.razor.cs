@@ -191,19 +191,49 @@ public partial class EditString : EditTextInputBase
     /// <summary> Toggles the password reveal state driving the shell's show/hide button.</summary>
     void TogglePasswordVisibility() => _passwordRevealed = !_passwordRevealed;
 
+    /// <summary>
+    /// The masked read-only text: <see cref="MaskText"/> followed by whatever tail of the value it
+    /// doesn't cover (or the mask alone once it's at least as long as the value). A single-character
+    /// mask is the special case -- it repeats to cover the whole value rather than prefixing it.
+    /// </summary>
+    /// <remarks>
+    /// Both paths count in text elements rather than <c>char</c>s where it matters, because a UTF-16
+    /// code unit is not a character the user can see. A single-character mask repeats once per
+    /// grapheme cluster, so an astral character (an emoji, say) is replaced by one mask glyph instead
+    /// of being widened into two, and a combining sequence by one instead of one per combining mark.
+    /// A multi-character mask's cut point is a UTF-16 offset that can land between the two halves of a
+    /// surrogate pair; keeping the orphaned low half would render a replacement character right after
+    /// the mask, so the cut moves forward to swallow the whole pair. A cut landing between a base
+    /// character and its combining marks is deliberately left alone: the marks render against the
+    /// mask's last glyph, which is odd-looking but discloses nothing and never mojibakes.
+    /// </remarks>
     string? GetMaskValue()
     {
         if (string.IsNullOrEmpty(MaskText) || CurrentValue == null)
             return CurrentValue;
 
+        // A single-character mask covers the whole value: one mask character per visible character,
+        // so the mask's width matches the width of what it replaces.
         if (MaskText.Length == 1)
-        {
-            // If MaskText is a single character, return it as a mask for the entire value
-            return new string(MaskText[0], CurrentValue.Length);
-        }
+            return new string(MaskText[0], GraphemeCount(CurrentValue));
 
-        return MaskText.Length > CurrentValue.Length
-            ? MaskText
-            : MaskText + CurrentValue[MaskText.Length..];
+        if (MaskText.Length >= CurrentValue.Length)
+            return MaskText;
+
+        var tailStart = MaskText.Length;
+        if (char.IsLowSurrogate(CurrentValue[tailStart])) tailStart++;
+        return MaskText + CurrentValue[tailStart..];
+    }
+
+    /// <summary>
+    /// Counts grapheme clusters -- what <c>new StringInfo(value).LengthInTextElements</c> returns,
+    /// without allocating the <c>StringInfo</c>.
+    /// </summary>
+    static int GraphemeCount(string value)
+    {
+        var count = 0;
+        for (var remaining = value.AsSpan(); !remaining.IsEmpty; count++)
+            remaining = remaining[StringInfo.GetNextTextElementLength(remaining)..];
+        return count;
     }
 }

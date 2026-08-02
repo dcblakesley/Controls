@@ -40,7 +40,10 @@
         else
         {
             <!-- Read-Only Views -->
-            @if (!string.IsNullOrWhiteSpace(MaskText))
+            @* IsNullOrEmpty, not IsNullOrWhiteSpace: an all-whitespace MaskText is still a mask the
+               consumer asked for. Skipping the masked branch for one printed the raw value instead --
+               a silent disclosure -- and disagreed with GetMaskValue's own IsNullOrEmpty guard. *@
+            @if (!string.IsNullOrEmpty(MaskText))
             {
                 <!-- Masks with eye icons to show/hide masked text in EditMode  -->
                 @if (!_showMaskedValue)
