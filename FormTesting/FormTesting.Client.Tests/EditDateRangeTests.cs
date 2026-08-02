@@ -918,4 +918,65 @@ public class EditDateRangeTests : BunitContext
         Assert.Contains("Start must be a date.", MessageFor(cut, StartInput));
         Assert.Equal("true", cut.Find(StartInput).GetAttribute("aria-invalid"));
     }
+
+    [Fact]
+    public void Required_state_after_an_EditContext_swap_resolves_against_the_new_model()
+    {
+        // OnParametersSet used to run RefreshAriaState BEFORE the two SyncFieldRegistration calls, so
+        // on a swap aria-required (and the FormLabel star, which shares the same computation) was
+        // resolved through FormOptions.RequiredResolver against the DEAD model's FieldIdentifiers.
+        // Ordering is now: parse-error cleanup (needs the OLD identifiers) → re-registration → ARIA
+        // refresh. Asserted on what the resolver was HANDED, with the EditContext cascaded directly
+        // so the swap is exactly one parameter cycle (see the list base's twin test).
+        var holder = new Holder { Model = new RangeModel { Start = Jan15, End = Feb3 } };
+        var resolvedModels = new List<object?>();
+        var formOptions = new FormOptions
+        {
+            RequiredResolver = fi =>
+            {
+                resolvedModels.Add(fi.Model);
+                return true;
+            }
+        };
+        Expression<Func<DateTime?>> startField = () => holder.Model.Start;
+        Expression<Func<DateTime?>> endField = () => holder.Model.End;
+
+        RenderFragment content = b =>
+        {
+            b.OpenComponent<CascadingValue<FormOptions>>(0);
+            b.AddAttribute(1, "Value", formOptions);
+            b.AddAttribute(2, "ChildContent", (RenderFragment)(inner =>
+            {
+                inner.OpenComponent<EditDateRange>(0);
+                inner.AddAttribute(1, "Start", holder.Model.Start);
+                inner.AddAttribute(2, "StartExpression", startField);
+                inner.AddAttribute(3, "StartChanged", EventCallback.Factory.Create<DateTime?>(this, v => holder.Model.Start = v));
+                inner.AddAttribute(4, "End", holder.Model.End);
+                inner.AddAttribute(5, "EndExpression", endField);
+                inner.AddAttribute(6, "EndChanged", EventCallback.Factory.Create<DateTime?>(this, v => holder.Model.End = v));
+                inner.CloseComponent();
+            }));
+            b.CloseComponent();
+        };
+
+        var cut = Render<CascadingValue<EditContext>>(ps => ps
+            .Add(c => c.Value, new EditContext(holder.Model))
+            .Add(c => c.ChildContent, content));
+
+        Assert.Equal("true", cut.Find(StartInput).GetAttribute("aria-required"));
+        Assert.Single(cut.FindAll(".edit-label-required-star"));
+
+        var deadModel = holder.Model;
+        resolvedModels.Clear();
+        holder.Model = new RangeModel { Start = Jan15, End = Feb3 };
+        cut.Render(ps => ps
+            .Add(c => c.Value, new EditContext(holder.Model))
+            .Add(c => c.ChildContent, content));
+
+        Assert.NotEmpty(resolvedModels);
+        Assert.DoesNotContain(resolvedModels, m => ReferenceEquals(m, deadModel));
+        Assert.All(resolvedModels, m => Assert.Same(holder.Model, m)); // both fields, new model only
+        Assert.Equal("true", cut.Find(StartInput).GetAttribute("aria-required"));
+        Assert.Single(cut.FindAll(".edit-label-required-star"));
+    }
 }

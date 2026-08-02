@@ -206,18 +206,20 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// </summary>
     protected override void OnParametersSet()
     {
-        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
-        // label-hidden toggle).
-        RefreshAriaState();
-
         // A false return means the same EditContext is still cascading, so the cached FieldIdentifier
-        // is still live and there's nothing to re-register.
-        if (!SyncValidationSubscription()) return;
+        // is still live and there's nothing to re-register. A true one means the context changed,
+        // which is how a parent swapping the model instance (form reset, reload) surfaces — re-derive
+        // the FieldIdentifier against the current model and move the registration onto it. See
+        // SyncFieldRegistration for why the unregister has to come first.
+        if (SyncValidationSubscription())
+            SyncFieldRegistration(ref _fieldIdentifier, _fieldIdentifierFactory, _id);
 
-        // The context changed, which is how a parent swapping the model instance (form reset, reload)
-        // surfaces — re-derive the FieldIdentifier against the current model and move the registration
-        // onto it. See SyncFieldRegistration for why the unregister has to come first.
-        SyncFieldRegistration(ref _fieldIdentifier, _fieldIdentifierFactory, _id);
+        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
+        // label-hidden toggle) — and deliberately AFTER the re-registration above: aria-required
+        // resolves through FormOptions.RequiredResolver against _fieldIdentifier, so refreshing
+        // first left the star and aria-required answering for the swapped-away model until some
+        // later parameter cycle happened to run. Same ordering in EditDateRange.OnParametersSet.
+        RefreshAriaState();
     }
 
     /// <summary> Detaches the validation-state listener and drops the field registration so a removed

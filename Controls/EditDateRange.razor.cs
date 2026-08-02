@@ -455,10 +455,6 @@ public partial class EditDateRange : IDisposable
 
     protected override void OnParametersSet()
     {
-        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
-        // label-hidden toggle).
-        RefreshAriaState();
-
         // Captured before SyncValidationSubscription overwrites it (cascading parameters, including
         // EditContext, are already bound to their NEW values by the time OnParametersSet runs -- only
         // the base's own tracking field still holds the OLD one at this point), so the cleanup below
@@ -467,30 +463,40 @@ public partial class EditDateRange : IDisposable
 
         // A false return means the same EditContext is still cascading, so both cached
         // FieldIdentifiers are still live and there's nothing to re-register.
-        if (!SyncValidationSubscription()) return;
-
-        // The EditContext changed -- _parseErrorMessages (if this control ever created one) is bound
-        // to the OLD context via AddParseErrorAsync's `??=` and would otherwise keep silently
-        // writing/clearing entries there forever: nothing renders from a context that no longer
-        // cascades here, so a parse error typed after the swap would show no message and never set
-        // aria-invalid. Clear its entries against the OLD context/FieldIdentifiers -- BEFORE
-        // SyncFieldRegistration below re-derives _startFieldIdentifier/_endFieldIdentifier against the
-        // new model -- and drop the store so the very next parse error lazily rebinds a fresh one to
-        // the NEW EditContext.
-        if (_parseErrorMessages is not null)
+        if (SyncValidationSubscription())
         {
-            _parseErrorMessages.Clear(_startFieldIdentifier);
-            _parseErrorMessages.Clear(_endFieldIdentifier);
-            previousEditContext?.NotifyValidationStateChanged();
-            _parseErrorMessages = null;
+            // The EditContext changed -- _parseErrorMessages (if this control ever created one) is
+            // bound to the OLD context via AddParseErrorAsync's `??=` and would otherwise keep
+            // silently writing/clearing entries there forever: nothing renders from a context that no
+            // longer cascades here, so a parse error typed after the swap would show no message and
+            // never set aria-invalid. Clear its entries against the OLD context/FieldIdentifiers --
+            // BEFORE SyncFieldRegistration below re-derives _startFieldIdentifier/_endFieldIdentifier
+            // against the new model -- and drop the store so the very next parse error lazily rebinds
+            // a fresh one to the NEW EditContext.
+            if (_parseErrorMessages is not null)
+            {
+                _parseErrorMessages.Clear(_startFieldIdentifier);
+                _parseErrorMessages.Clear(_endFieldIdentifier);
+                previousEditContext?.NotifyValidationStateChanged();
+                _parseErrorMessages = null;
+            }
+
+            // A changed context is how a parent swapping the model instance (form reset, reload)
+            // surfaces — re-derive BOTH FieldIdentifiers against the current model and move each
+            // registration onto its own new one, through the same shared helper (on
+            // EditControlParametersBase) EditControlListBase.OnParametersSet calls once for its
+            // single field.
+            SyncFieldRegistration(ref _startFieldIdentifier, _startFieldIdentifierFactory, _id);
+            SyncFieldRegistration(ref _endFieldIdentifier, _endFieldIdentifierFactory, _endId);
         }
 
-        // The context changed, which is how a parent swapping the model instance (form reset, reload)
-        // surfaces — re-derive BOTH FieldIdentifiers against the current model and move each
-        // registration onto its own new one, through the same shared helper (on
-        // EditControlParametersBase) EditControlListBase.OnParametersSet calls once for its single field.
-        SyncFieldRegistration(ref _startFieldIdentifier, _startFieldIdentifierFactory, _id);
-        SyncFieldRegistration(ref _endFieldIdentifier, _endFieldIdentifierFactory, _endId);
+        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
+        // label-hidden toggle) — and deliberately LAST: aria-required resolves through
+        // FormOptions.RequiredResolver against the two FieldIdentifiers, so refreshing before the
+        // re-registration above left the star and aria-required answering for the swapped-away model.
+        // (The parse-error clear still runs first for the mirror-image reason: it must see the OLD
+        // identifiers/context.) Same ordering in EditControlListBase.OnParametersSet.
+        RefreshAriaState();
     }
 
     // Write the new value back to the bound model BEFORE notifying the EditContext — the validator

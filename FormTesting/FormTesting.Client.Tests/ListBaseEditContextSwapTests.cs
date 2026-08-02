@@ -95,6 +95,64 @@ public class ListBaseEditContextSwapTests : BunitContext
     }
 
     [Fact]
+    public void Swapping_the_model_refreshes_required_state_against_the_new_model()
+    {
+        // OnParametersSet used to run RefreshAriaState BEFORE SyncFieldRegistration, so on a swap the
+        // required-ness (and with it aria-required / the FormLabel star) was resolved through
+        // FormOptions.RequiredResolver against the DEAD model's FieldIdentifier. The resolver is the
+        // only required-ness source that can tell the two model instances apart, so the assertion is
+        // on what it was HANDED.
+        //
+        // The EditContext is cascaded directly rather than through an EditForm on purpose: an
+        // EditForm model swap fans out into several parameter cycles, and the later ones papered over
+        // the stale first one. One cascade + one re-render is the single parameter cycle the ordering
+        // actually has to be right in.
+        var holder = new Holder();
+        var resolvedModels = new List<object?>();
+        var formOptions = new FormOptions
+        {
+            RequiredResolver = fi =>
+            {
+                resolvedModels.Add(fi.Model);
+                return true;
+            }
+        };
+
+        RenderFragment content = b =>
+        {
+            b.OpenComponent<CascadingValue<FormOptions>>(0);
+            b.AddAttribute(1, "Value", formOptions);
+            b.AddAttribute(2, "ChildContent", (RenderFragment)(inner =>
+            {
+                inner.OpenComponent<EditCheckedStringList>(0);
+                inner.AddAttribute(1, "Value", holder.Model.Items);
+                inner.AddAttribute(2, "ValueExpression", (Expression<Func<List<string>>>)(() => holder.Model.Items));
+                inner.AddAttribute(3, "Options", new List<string> { "a", "b" });
+                inner.CloseComponent();
+            }));
+            b.CloseComponent();
+        };
+
+        var cut = Render<CascadingValue<EditContext>>(ps => ps
+            .Add(c => c.Value, new EditContext(holder.Model))
+            .Add(c => c.ChildContent, content));
+
+        Assert.Single(cut.FindAll(".edit-label-required-star"));
+
+        var deadModel = holder.Model;
+        resolvedModels.Clear();
+        holder.Model = new ItemsModel();
+        cut.Render(ps => ps
+            .Add(c => c.Value, new EditContext(holder.Model))
+            .Add(c => c.ChildContent, content));
+
+        Assert.NotEmpty(resolvedModels);
+        Assert.DoesNotContain(resolvedModels, m => ReferenceEquals(m, deadModel));
+        Assert.All(resolvedModels, m => Assert.Same(holder.Model, m));
+        Assert.Single(cut.FindAll(".edit-label-required-star"));
+    }
+
+    [Fact]
     public void List_control_works_without_an_EditForm()
     {
         var model = new ItemsModel();
