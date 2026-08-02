@@ -8,23 +8,32 @@ namespace FormTesting.Client.Tests;
 /// removal racing the assertions.
 /// </summary>
 /// <remarks>
-/// The containers themselves now fail fast off the browser (their static state is shared by every
-/// circuit on Server), and bUnit runs with <c>OperatingSystem.IsBrowser() == false</c> — that guard is
-/// asserted below, and the rendering assertions go through the shared <c>MessageListView</c> /
-/// <c>NotificationListView</c> the containers delegate to, which is where that DOM actually comes from.
+/// The containers fail fast on the Blazor Server renderer only (their static state is shared by every
+/// circuit there), which the host-guard tests below drive through bUnit's <c>SetRendererInfo</c>. The
+/// rendering assertions go through the shared <c>MessageListView</c> / <c>NotificationListView</c> the
+/// containers delegate to, which is where that DOM actually comes from.
 /// </remarks>
 public class WasmToastTests : BunitContext
 {
+    // The four RendererInfo.Name values the framework's own renderers report. "Server" is the only
+    // host where one process serves more than one user, so it is the only one the containers refuse.
+    static readonly RendererInfo StaticSsr = new("Static", isInteractive: false);
+    static readonly RendererInfo Server = new("Server", isInteractive: true);
+    static readonly RendererInfo WebAssembly = new("WebAssembly", isInteractive: true);
+    static readonly RendererInfo WebView = new("WebView", isInteractive: true);
+
     [Fact]
-    public void MessageContainer_throws_when_hosted_outside_the_browser()
+    public void MessageContainer_throws_on_the_Blazor_Server_renderer()
     {
-        // A Server app dropping in <WasmMessageContainer /> used to compile and work in single-user
-        // dev, then leak one user's messages onto every other circuit in production.
+        // A Server app dropping in <WasmMessageContainer /> compiles and works in single-user dev,
+        // then leaks one user's messages onto every other circuit in production.
         WasmMessageService.Clear();
         try
         {
+            SetRendererInfo(Server);
             var ex = Assert.Throws<InvalidOperationException>(() => Render<WasmMessageContainer>());
-            Assert.Contains("WebAssembly-only", ex.Message);
+            Assert.Contains("Blazor Server", ex.Message);
+            Assert.Contains("InteractiveAuto", ex.Message); // names the nondeterministic Auto case
             Assert.Contains("MessageContainer", ex.Message); // points at the DI-scoped replacement
         }
         finally
@@ -34,19 +43,83 @@ public class WasmToastTests : BunitContext
     }
 
     [Fact]
-    public void NotificationContainer_throws_when_hosted_outside_the_browser()
+    public void NotificationContainer_throws_on_the_Blazor_Server_renderer()
     {
         WasmNotificationService.Clear();
         try
         {
+            SetRendererInfo(Server);
             var ex = Assert.Throws<InvalidOperationException>(() => Render<WasmNotificationContainer>());
-            Assert.Contains("WebAssembly-only", ex.Message);
+            Assert.Contains("Blazor Server", ex.Message);
+            Assert.Contains("InteractiveAuto", ex.Message);
             Assert.Contains("NotificationContainer", ex.Message);
         }
         finally
         {
             WasmNotificationService.Clear();
         }
+    }
+
+    public static TheoryData<string, bool> PermittedRenderers() => new()
+    {
+        // WebView is Blazor Hybrid (MAUI/WPF/WinForms BlazorWebView): outside the browser, so the old
+        // !OperatingSystem.IsBrowser() guard hard-threw there -- yet Hybrid is one process serving
+        // exactly ONE user, which is the very condition that makes the process-static state safe.
+        { "WebView", true },
+        { "WebAssembly", true },
+        // A WASM app's own prerender pass. OnAfterRender does not run during prerender, but the guard
+        // must not reject it if the host ever renders statically and interactively in one process.
+        { "Static", false },
+    };
+
+    [Theory]
+    [MemberData(nameof(PermittedRenderers))]
+    public void Containers_render_on_every_single_user_host(string rendererName, bool isInteractive)
+    {
+        WasmMessageService.Clear();
+        WasmNotificationService.Clear();
+        try
+        {
+            SetRendererInfo(new RendererInfo(rendererName, isInteractive));
+
+            Assert.NotNull(Render<WasmMessageContainer>().Instance);
+            Assert.NotNull(Render<WasmNotificationContainer>().Instance);
+        }
+        finally
+        {
+            WasmMessageService.Clear();
+            WasmNotificationService.Clear();
+        }
+    }
+
+    [Fact]
+    public void A_permitted_container_actually_renders_the_static_services_items()
+    {
+        // Not just "it did not throw": the container must be live and wired to the static service on
+        // a Hybrid host, which is the whole point of permitting it.
+        WasmMessageService.Clear();
+        try
+        {
+            SetRendererInfo(WebView);
+            var cut = Render<WasmMessageContainer>();
+
+            WasmMessageService.Success("Saved!", duration: 0);
+            cut.WaitForAssertion(() => Assert.Contains("Saved!", cut.Find(".wss-msg-content").TextContent));
+        }
+        finally
+        {
+            WasmMessageService.Clear();
+        }
+    }
+
+    [Fact]
+    public void The_static_prerender_renderer_is_not_mistaken_for_a_server_circuit()
+    {
+        // Guards the exact discrimination the fix rests on: "Static" is a prerender pass whose output
+        // is thrown away, "Server" is a live multi-circuit host. Only the latter is refused.
+        Assert.NotEqual(StaticSsr.Name, Server.Name);
+        SetRendererInfo(StaticSsr);
+        Assert.NotNull(Render<WasmNotificationContainer>().Instance);
     }
 
     [Fact]

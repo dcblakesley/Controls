@@ -14,24 +14,30 @@
     protected override void OnInitialized() => WasmNotificationService.OnChange += HandleChange;
 
     /// <summary>
-    /// Fails fast when this WASM-only container is hosted anywhere else. <see cref="WasmNotificationService"/>
-    /// keeps its state in process-wide statics, so on Blazor Server one process serves every circuit
-    /// and user A's notifications render on user B's screen -- a silent cross-user leak that only shows
-    /// up under real multi-user load, never in single-user dev. Asserted here rather than in
-    /// <c>OnInitialized</c>: a WASM app's own server-side prerender pass runs with
-    /// <c>IsBrowser() == false</c> and would false-positive, while <c>OnAfterRender</c> only runs once
-    /// the component is live on the render host it will actually stay on.
+    /// Fails fast when this container is hosted on Blazor Server. <see cref="WasmNotificationService"/>
+    /// keeps its state in process-wide statics, so on Server one process serves every circuit and
+    /// user A's notifications render on user B's screen -- a silent cross-user leak that only shows up
+    /// under real multi-user load, never in single-user dev. The check is
+    /// <see cref="WasmToastHost.IsSharedServerHost"/>, not "am I in the browser": Blazor Hybrid also
+    /// runs outside the browser but serves exactly one user per process, which is what makes the
+    /// static safe. Asserted here rather than in <c>OnInitialized</c> because a WASM app's own
+    /// server-side prerender pass would false-positive, while <c>OnAfterRender</c> only runs once the
+    /// component is live on the render host it will actually stay on.
     /// </summary>
     protected override void OnAfterRender(bool firstRender)
     {
-        if (firstRender && !OperatingSystem.IsBrowser())
+        if (firstRender && WasmToastHost.IsSharedServerHost(RendererInfo))
         {
             throw new InvalidOperationException(
-                "WasmNotificationContainer (and WasmNotificationService) are WebAssembly-only: their " +
-                "state is process-static, which on Blazor Server is shared by every circuit, so one " +
-                "user's notifications would render for all of them. Register the scoped services with " +
+                "WasmNotificationContainer (and WasmNotificationService) cannot run on Blazor Server: " +
+                "their state is process-static, which on Server is shared by every circuit, so one " +
+                "user's notifications would render for all of them. This also covers the server phase " +
+                "of an InteractiveAuto component, where the same sharing applies and the failure is " +
+                "nondeterministic (the first load runs on Server and throws, a later one runs on " +
+                "WebAssembly and succeeds). Register the scoped services with " +
                 "builder.Services.AddWssControlsToasts(), inject INotificationService, and use " +
-                "<NotificationContainer /> instead.");
+                "<NotificationContainer /> instead. WebAssembly and WebView (Blazor Hybrid) hosts are " +
+                "supported as-is.");
         }
     }
 
