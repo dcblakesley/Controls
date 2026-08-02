@@ -1455,6 +1455,23 @@
     padding-inline-end: 2rem;
 }
 
+/* Size follow-up: the 2rem reserve above was tuned for the default-size box only -- unscaled, a
+   Size="Small" legacy-mode editor got the same 2rem end-reserve as its 7px start padding (the -sm
+   rule's own padding: 0 7px, further up), a lopsided 7px/32px split on a 24px-tall control; Large
+   was left under-reserved for its larger InvalidIcon glyph (font-size: var(--edit-font-size-lg),
+   1em wider than the default's icon). Chaining .edit-theme with BOTH classes (0,5,0) beats the plain
+   rule above (0,4,0) regardless of source order -- unlike that rule's own tie-via-declaration-order
+   trick, this one can't be silently defeated by re-ordering the file. Scoped to .edit-theme: like
+   edit-input-sm/-lg themselves, Size is an inert hook unthemed (no scaling happens to un-reserve
+   space for), so the default (no Size) case stays byte/pixel-identical either way. */
+.edit-theme .edit-input-legacy-padding.edit-input-sm:not(.edit-affix-input):not([type="checkbox"]) {
+    padding-inline-end: 1.5rem;
+}
+
+.edit-theme .edit-input-legacy-padding.edit-input-lg:not(.edit-affix-input):not([type="checkbox"]) {
+    padding-inline-end: 2.25rem;
+}
+
 /* Honor the OS "reduce motion" setting (WCAG 2.3.3), mirroring wss-controls.css: the bubble just
    appears/disappears — no slide, no fade. (The 0.35s hover-intent delay rides the reveal
    transition, so it goes too; intent-filtering is a nicety, not motion.) Also covers the .edit-theme
