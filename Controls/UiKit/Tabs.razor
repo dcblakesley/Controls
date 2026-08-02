@@ -40,9 +40,12 @@
             @* ChildContent renders HERE, and each Tab emits its own nav button (see Tab.razor), so
                the strip's button order IS the ChildContent's document order -- placed by the
                render-tree diff, which is the only thing that knows where a conditionally rendered
-               tab was declared. Nothing this component tracks can move a button, so no ordering
-               heuristic, @key rebuild, or teardown of the consumer's subtree is involved.
-               IsFixed: a Tab's owning strip never changes, so no subscription bookkeeping. *@
+               tab was declared. Nothing this component tracks can move a BUTTON, so no @key rebuild
+               or teardown of the consumer's subtree is involved. The tab LIST behind the arrow keys
+               and the first-enabled fallback is a separate thing and still needs a placement
+               heuristic (see Tabs.ResolveOrder and the ChildContent limitation).
+               IsFixed: a Tab's owning strip never changes, so no subscription bookkeeping -- and
+               dropping it would not recover declaration order anyway, only subscription order. *@
             <CascadingValue Value="this" IsFixed="true">
                 @ChildContent
             </CascadingValue>

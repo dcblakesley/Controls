@@ -491,48 +491,272 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Equal(["A", "B"], Titles());
     }
 
-    [Fact]
-    public void The_keyboard_order_follows_a_tab_inserted_before_parameter_skipped_siblings()
+    // The four tests below pin the EXACT keyboard order the strip ends up with when a tab is
+    // inserted among siblings that all skipped their parameters. Three of them pin behavior that is
+    // wrong -- deliberately, and named so. They replace a guard that asserted the order was "at
+    // worst a rotation of the declared order", which cyclic arrow navigation cannot observe. That
+    // invariant is false and unachievable: with no anchor the newcomer's position is simply not in
+    // the data, and no placement rule can make every case a rotation. Declared [a, b, mid, c] with
+    // mid the newcomer has rotations [a,b,mid,c], [b,mid,c,a], [mid,c,a,b] and [c,a,b,mid]; append
+    // yields [a,b,c,mid] and prepend yields [mid,a,b,c], and neither is in that set.
+    //
+    // Fixing them needs an exact re-collection in document order, which Blazor does not offer for
+    // a parameter-skipped child (see Blazor_offers_no_document_ordered_re_registration_of_
+    // parameter_skipped_children below). Until one of the mechanisms that CAN be exact is adopted,
+    // these record what actually happens so a change to it is deliberate rather than accidental.
+
+    static string[] StripOrder(IRenderedComponent<Tabs> cut) =>
+        RenderedTabs(cut.Instance).Select(t => t.Key).ToArray();
+
+    static int ActiveIndex(IRenderedComponent<Tabs> cut) => cut.FindAll(".wss-tabs-tab").ToList()
+        .FindIndex(e => e.ClassList.Contains("wss-tabs-tab-active"));
+
+    // Walks the strip with one arrow key, always from the button that currently holds the Tab stop
+    // (the only one the keyboard can reach), and reports the rendered index visited at each step.
+    static int[] ArrowWalk(IRenderedComponent<Tabs> cut, string key, int steps)
     {
-        // The rendered order is the diff's, but arrow navigation walks a list the strip keeps, and
-        // only tabs that re-registered this pass report their position. Here NOTHING re-registers
-        // except the newcomer (every sibling's parameters are unchanged strings), so its position in
-        // that list is genuinely not in the data and it is appended -- see Tabs.ResolveOrder. What
-        // must still hold is that the list is that rotation and nothing worse: the surviving tabs
-        // keep their relative order, so arrow navigation, which is cyclic, still walks the strip in
-        // rendered order in both directions.
+        var visited = new List<int> { ActiveIndex(cut) };
+        for (var i = 0; i < steps; i++)
+        {
+            cut.FindAll(".wss-tabs-tab")[ActiveIndex(cut)].KeyDown(new KeyboardEventArgs { Key = key });
+            visited.Add(ActiveIndex(cut));
+        }
+        return [.. visited];
+    }
+
+    [Fact]
+    public void Arrow_navigation_after_a_LEADING_insertion_into_an_all_skipped_strip_still_walks_rendered_order()
+    {
+        // The one shape that survives the ambiguity. Declared [new, a, b]; the newcomer is appended,
+        // giving [a, b, new] -- which happens to be a rotation of the declared order, and arrow
+        // navigation is cyclic, so it visits the same neighbours in the same direction anyway.
         var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
         cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, false)));
 
         Assert.Equal(["New", "A", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
-        var strip = RenderedTabs(cut.Instance).Select(t => t.Key).ToArray();
-        Assert.True(IsRotationOf(strip, ["new", "a", "b"]), $"keyboard order was [{string.Join(",", strip)}]");
+        Assert.Equal(["a", "b", "new"], StripOrder(cut));
 
-        // Walking with the arrows -- always from the tab that currently holds the Tab stop, which is
-        // the only button the keyboard can reach -- steps to the next RENDERED button each time, all
-        // the way round, and back the other way.
-        int ActiveIndex() => cut.FindAll(".wss-tabs-tab").ToList()
-            .FindIndex(e => e.ClassList.Contains("wss-tabs-tab-active"));
+        // The walk starts on rendered index 1, not 0: the highlighted tab after an unanchored
+        // leading insertion is the one that used to be first (see the unbound-strip test below).
+        // From wherever it starts, though, each arrow steps to the adjacent RENDERED button.
+        Assert.Equal([1, 2, 0, 1], ArrowWalk(cut, "ArrowRight", 3));
+        Assert.Equal([1, 0, 2, 1], ArrowWalk(cut, "ArrowLeft", 3));
+    }
 
-        for (var step = 0; step < 3; step++)
+    // A content-less strip whose conditional tab is declared in the MIDDLE. Every parameter is a
+    // string, so no sibling re-registers to anchor it.
+    static RenderFragment ConditionalMiddleTab(bool showMid) => builder =>
+    {
+        builder.OpenComponent<Tab>(0);
+        builder.AddAttribute(1, "Key", "a");
+        builder.AddAttribute(2, "Title", "A");
+        builder.CloseComponent();
+
+        builder.OpenComponent<Tab>(3);
+        builder.AddAttribute(4, "Key", "b");
+        builder.AddAttribute(5, "Title", "B");
+        builder.CloseComponent();
+
+        if (showMid)
         {
-            var from = ActiveIndex();
-            cut.FindAll(".wss-tabs-tab")[from].KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
-            Assert.Equal((from + 1) % 3, ActiveIndex());
+            builder.OpenComponent<Tab>(6);
+            builder.AddAttribute(7, "Key", "mid");
+            builder.AddAttribute(8, "Title", "Mid");
+            builder.CloseComponent();
         }
 
-        for (var step = 0; step < 3; step++)
+        builder.OpenComponent<Tab>(9);
+        builder.AddAttribute(10, "Key", "c");
+        builder.AddAttribute(11, "Title", "C");
+        builder.CloseComponent();
+    };
+
+    [Fact]
+    public void Arrow_navigation_after_a_MIDDLE_insertion_into_an_all_skipped_strip_skips_the_newcomer()
+    {
+        // A middle insertion is not a rotation, so this one is observable and it is an ARIA defect:
+        // the ARIA tabs pattern says an arrow moves to the ADJACENT tab. Declared [a, b, mid, c]
+        // renders correctly, but the newcomer is appended to the keyboard order, so ArrowRight from
+        // the first button visits rendered indices 0, 1, 3, 2 -- skipping Mid and then moving
+        // backwards onto it. SHOULD be [0, 1, 2, 3, 0] / [0, 3, 2, 1, 0].
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(false)));
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(true)));
+
+        // The RENDERED strip is right -- each tab emits its own button, so the diff places it.
+        Assert.Equal(["A", "B", "Mid", "C"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["a", "b", "c", "mid"], StripOrder(cut));
+
+        Assert.Equal([0, 1, 3, 2, 0], ArrowWalk(cut, "ArrowRight", 4));
+        Assert.Equal([0, 2, 3, 1, 0], ArrowWalk(cut, "ArrowLeft", 4));
+    }
+
+    // Two conditional tabs revealed on the same pass, interleaved with skipped siblings.
+    static RenderFragment TwoConditionalTabs(bool show) => builder =>
+    {
+        if (show)
         {
-            var from = ActiveIndex();
-            cut.FindAll(".wss-tabs-tab")[from].KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
-            Assert.Equal((from + 2) % 3, ActiveIndex());
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "p1");
+            builder.AddAttribute(2, "Title", "P1");
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<Tab>(3);
+        builder.AddAttribute(4, "Key", "a");
+        builder.AddAttribute(5, "Title", "A");
+        builder.CloseComponent();
+
+        if (show)
+        {
+            builder.OpenComponent<Tab>(6);
+            builder.AddAttribute(7, "Key", "p2");
+            builder.AddAttribute(8, "Title", "P2");
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<Tab>(9);
+        builder.AddAttribute(10, "Key", "b");
+        builder.AddAttribute(11, "Title", "B");
+        builder.CloseComponent();
+    };
+
+    [Fact]
+    public void Two_newcomers_on_one_pass_into_an_all_skipped_strip_both_land_at_the_end()
+    {
+        // Declared [p1, a, p2, b]. Both newcomers are unanchored, so both are appended and even
+        // their relation to each other's neighbours is lost. SHOULD be [p1, a, p2, b].
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, TwoConditionalTabs(false)));
+        cut.Render(p => p.Add(t => t.ChildContent, TwoConditionalTabs(true)));
+
+        Assert.Equal(["P1", "A", "P2", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["a", "b", "p1", "p2"], StripOrder(cut));
+    }
+
+    [Fact]
+    public void An_unbound_strip_after_a_leading_insertion_highlights_the_second_rendered_button()
+    {
+        // ActiveKey's documented contract is that null "activates the first enabled tab" -- the
+        // first one the consumer declared, which is the first one rendered. With no bound key and no
+        // prior click, resolution falls through to _tabs[0], and after an unanchored leading
+        // insertion that is the tab that USED to be first. So the strip renders [New, A, B] and
+        // highlights A. SHOULD highlight New.
+        var cut = Render<Tabs>(p => p
+            .Add(t => t.ChildContent, ConditionalLeadingTabs(false, false))
+            .Add(t => t.Id, "s"));
+        Assert.Equal("s-tab-a", cut.Find(".wss-tabs-tab-active").GetAttribute("id"));
+
+        cut.Render(p => p
+            .Add(t => t.ChildContent, ConditionalLeadingTabs(true, false))
+            .Add(t => t.Id, "s"));
+
+        Assert.Equal(["New", "A", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal("s-tab-a", cut.Find(".wss-tabs-tab-active").GetAttribute("id"));
+        // Exactly one Tab stop and one selected tab, at least -- the ARIA invariant holds either way.
+        var buttons = cut.FindAll("[role=tab]");
+        Assert.Equal(1, buttons.Count(e => e.GetAttribute("tabindex") == "0"));
+        Assert.Equal(1, buttons.Count(e => e.GetAttribute("aria-selected") == "true"));
+    }
+
+    // A stand-in for Tabs/Tab, used only to pin the framework behavior the whole ordering problem
+    // rests on. It is deliberately not the real components: the point is that this is Blazor's
+    // behavior, not the strip's, so no amount of bookkeeping inside Tabs can work around it.
+    sealed class OrderProbeParent : ComponentBase
+    {
+        [Parameter] public RenderFragment? ChildContent { get; set; }
+        [Parameter] public bool Fixed { get; set; }
+
+        internal readonly List<string> Registered = new();
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            Registered.Clear();
+            builder.OpenComponent<CascadingValue<OrderProbeParent>>(0);
+            builder.AddAttribute(1, "Value", this);
+            builder.AddAttribute(2, "IsFixed", Fixed);
+            builder.AddAttribute(3, "ChildContent", (RenderFragment)(b => b.AddContent(0, ChildContent)));
+            builder.CloseComponent();
         }
     }
 
-    static bool IsRotationOf(IReadOnlyList<string> actual, IReadOnlyList<string> expected) =>
-        actual.Count == expected.Count &&
-        Enumerable.Range(0, expected.Count).Any(offset =>
-            Enumerable.Range(0, expected.Count).All(i => actual[i] == expected[(i + offset) % expected.Count]));
+    sealed class OrderProbeChild : ComponentBase
+    {
+        [CascadingParameter] public OrderProbeParent? Parent { get; set; }
+        [Parameter] public string Name { get; set; } = "";
+
+        protected override void OnParametersSet() => Parent?.Registered.Add(Name);
+    }
+
+    // Razor-compiler-shaped sequence numbers: the conditional child owns its own range, so revealing
+    // it does not renumber its siblings (which would defeat the diff's skip optimization and make
+    // the probe meaningless).
+    static RenderFragment OrderProbeChildren(bool showLead, bool showMid) => builder =>
+    {
+        if (showLead)
+        {
+            builder.OpenComponent<OrderProbeChild>(0);
+            builder.AddAttribute(1, "Name", "lead");
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<OrderProbeChild>(2);
+        builder.AddAttribute(3, "Name", "a");
+        builder.CloseComponent();
+
+        if (showMid)
+        {
+            builder.OpenComponent<OrderProbeChild>(4);
+            builder.AddAttribute(5, "Name", "mid");
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<OrderProbeChild>(6);
+        builder.AddAttribute(7, "Name", "b");
+        builder.CloseComponent();
+    };
+
+    [Fact]
+    public void Blazor_offers_no_document_ordered_re_registration_of_parameter_skipped_children()
+    {
+        // Why Tabs keeps an ordering heuristic at all, and why the obvious cure does not work.
+        //
+        // A component whose own parameters are all unchanged immutable values is skipped by the
+        // render-tree diff -- SetParametersAsync is never called -- so a content-less Tab cannot
+        // report where it was declared. Dropping IsFixed from the CascadingValue looks like the fix,
+        // and it does make every live child report in every pass. It does NOT report them in
+        // document order: CascadingValue notifies its subscribers from SetParametersAsync, BEFORE it
+        // re-renders its ChildContent, and it walks a HashSet built as children first subscribed. So
+        // the survivors come back in construction order and any newcomer, which is created later by
+        // the diff, always lands last no matter where it was declared -- and it never self-corrects.
+        //
+        // That is the same wrong answer the current append heuristic gives, at the cost of one extra
+        // render per child per pass. An exact answer needs a mechanism that re-creates the children
+        // (a generation @key rebuild, which tears the subtree down) or that reads the rendered DOM.
+        var loose = Render<OrderProbeParent>(p => p
+            .Add(x => x.Fixed, false)
+            .Add(x => x.ChildContent, OrderProbeChildren(false, false)));
+        Assert.Equal(["a", "b"], loose.Instance.Registered);
+
+        loose.Render(p => p.Add(x => x.Fixed, false).Add(x => x.ChildContent, OrderProbeChildren(true, false)));
+        // The SET is complete...
+        Assert.Equal(["a", "b", "lead"], loose.Instance.Registered.Order());
+        // ...but the ORDER is subscription order; document order is [lead, a, b].
+        Assert.Equal(["a", "b", "lead"], loose.Instance.Registered);
+
+        // A middle insertion on top, and a later pass that changes nothing: still never corrected.
+        loose.Render(p => p.Add(x => x.Fixed, false).Add(x => x.ChildContent, OrderProbeChildren(true, true)));
+        Assert.Equal(["a", "b", "lead", "mid"], loose.Instance.Registered);
+        loose.Render(p => p.Add(x => x.Fixed, false).Add(x => x.ChildContent, OrderProbeChildren(true, true)));
+        Assert.Equal(["a", "b", "lead", "mid"], loose.Instance.Registered);
+
+        // The control: with IsFixed (what Tabs uses), only the newcomer reports at all.
+        var pinned = Render<OrderProbeParent>(p => p
+            .Add(x => x.Fixed, true)
+            .Add(x => x.ChildContent, OrderProbeChildren(false, false)));
+        Assert.Equal(["a", "b"], pinned.Instance.Registered);
+
+        pinned.Render(p => p.Add(x => x.Fixed, true).Add(x => x.ChildContent, OrderProbeChildren(true, false)));
+        Assert.Equal(["lead"], pinned.Instance.Registered);
+    }
 
     [Fact]
     public void A_tab_inserted_beside_a_sibling_that_re_registers_lands_exactly_in_the_keyboard_order()
