@@ -66,6 +66,14 @@
     --wss-line-height: 1.5715;
     --wss-padding-h: 11px;
     --wss-shadow: 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    /* Popover/Popconfirm arrow shadow color -- was two drifted literals (0.07 on the default/top-side
+       direction, 0.06 on the bottom-placement override) baked directly into each usage site's
+       box-shadow (Popover section, further down). Unified behind one token (both sites now reference
+       it, keeping their own directional offset/blur, which genuinely differs per placement) so a
+       consumer gets one override point instead of two, and the two directions read as one consistent
+       shadow weight instead of a barely-perceptible drift between them. 0.06 matches this file's other
+       hairline shadows (--wss-color-thead-split, --wss-skeleton-base). */
+    --wss-arrow-shadow: rgba(0, 0, 0, 0.06);
     /* AntD's standard motion easing curve -- static constant, safe at :root per the theming contract
        (not a derived hover/shadow/focus state). Mirrored as --edit-ease-standard in
        edit-controls.css, since the two stylesheets load independently. */
@@ -1073,7 +1081,7 @@
     height: 8px;
     background: var(--wss-color-bg);
     transform: rotate(45deg);
-    box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.07);
+    box-shadow: 3px 3px 7px var(--wss-arrow-shadow);
 }
 
 /* --wss-shift (set by wss-overlay.js) keeps the panel in the viewport; the arrow counter-shifts
@@ -1083,7 +1091,7 @@
 .wss-popover-top .wss-popover-arrow, .wss-popconfirm-top .wss-popconfirm-arrow { bottom: -4px; left: 50%; margin-left: -4px; transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
 .wss-popover-bottom, .wss-popconfirm-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
-.wss-popover-bottom .wss-popover-arrow, .wss-popconfirm-bottom .wss-popconfirm-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px rgba(0, 0, 0, 0.06); transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
+.wss-popover-bottom .wss-popover-arrow, .wss-popconfirm-bottom .wss-popconfirm-arrow { top: -4px; left: 50%; margin-left: -4px; box-shadow: -2px -2px 5px var(--wss-arrow-shadow); transform: translateX(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }
 
 .wss-popover-left, .wss-popconfirm-left { right: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
 .wss-popover-left .wss-popover-arrow, .wss-popconfirm-left .wss-popconfirm-arrow { right: -4px; top: 50%; margin-top: -4px; transform: translateY(calc(-1 * var(--wss-shift, 0px))) rotate(45deg); }

@@ -619,12 +619,22 @@
     margin-inline-start: 0;
 }
 .edit-input-clear,
-.edit-input-password-toggle,
-.edit-input-count {
-    /* Unthemed color for the affix suffix's clear/password buttons and the count span -- same
-       secondary-text token .bound-value already uses, so a consumer running fully unthemed still
-       gets a legible (not black-on-black) icon/text instead of default button/text color. */
+.edit-input-password-toggle {
+    /* Unthemed color for the affix suffix's clear/password ICON buttons -- same secondary-text token
+       .bound-value already uses, so a consumer running fully unthemed still gets a legible
+       (not black-on-black) icon instead of default button color. #8c8c8c is only 3.36:1 on white,
+       which fails WCAG 1.4.3's 4.5:1 floor for TEXT -- but these are icons/UI components, which only
+       need 1.4.11's looser 3:1, so it stays as-is here. .edit-input-count below needs a darker split
+       because it IS text. */
     color: var(--color-text-secondary, #8c8c8c);
+}
+/* Count text (EditString's inline count; EditTextArea's below-the-editor count -- see
+   .edit-textarea-count further down, which reuses this same bridge) is real TEXT, not an icon, so it
+   needs the 4.5:1 floor the icon color above fails. Dedicated bridge token (not a reuse of
+   --color-text-secondary) so a consumer can tune count-text contrast independently of icon color;
+   #595959 is ~7.4:1 on white. */
+.edit-input-count {
+    color: var(--color-text-secondary-strong, #595959);
 }
 .edit-icon-eye,
 .edit-icon-eye-invisible,
@@ -664,7 +674,9 @@
 .edit-textarea-count {
     flex-basis: 100%;
     text-align: end;
-    color: var(--color-text-secondary, #8c8c8c);
+    /* Same count-is-text-not-an-icon contrast split as .edit-input-count above -- see that rule's
+       comment. */
+    color: var(--color-text-secondary-strong, #595959);
 }
 
 /* EditTextArea's AutoSize=true: the browser's manual resize grip fights a JS-driven height (the user
@@ -1254,12 +1266,22 @@
     --edit-color-primary: var(--color-primary, #1890ff);
     --edit-color-border: var(--border-color, #d9d9d9);
     --edit-color-bg-disabled: var(--color-bg-disabled, #f5f5f5);
-    --edit-color-placeholder: #bfbfbf;
+    /* #bfbfbf on white is 1.84:1 -- illegible (WCAG 1.4.3 doesn't technically cover placeholder text,
+       but a placeholder this faint fails on readability grounds regardless). rgba(0, 0, 0, 0.55) is
+       ~6.5:1. */
+    --edit-color-placeholder: rgba(0, 0, 0, 0.55);
     --edit-color-text-disabled: rgba(0, 0, 0, 0.25);
-    /* Secondary-text tint for the affix suffix's clear/count/password items and the textarea's
-       below-the-editor count -- overrides the unthemed fallback (#8c8c8c via the generic
-       --color-text-secondary bridge) at those same selectors, further down. */
+    /* Secondary-text tint for the affix suffix's clear/password items -- overrides the unthemed
+       fallback (#8c8c8c via the generic --color-text-secondary bridge) at those same selectors,
+       further down. Icons only (1.4.11's 3:1 floor); --edit-color-text-secondary-strong below is the
+       count-TEXT equivalent (1.4.3's 4.5:1 floor). */
     --edit-color-text-secondary: rgba(0, 0, 0, 0.45);
+    /* Count text (.edit-input-count/.edit-textarea-count) needs WCAG 1.4.3's 4.5:1, which the
+       secondary tint above (rgba(0, 0, 0, 0.45), ~4.1:1) doesn't quite clear. rgba(0, 0, 0, 0.65) is
+       ~7.4:1 -- and resolves to the same #595959-ish gray as the unthemed fallback those same
+       selectors use (see --color-text-secondary-strong there), so themed and unthemed count text read
+       as the same color. */
+    --edit-color-text-secondary-strong: rgba(0, 0, 0, 0.65);
     --edit-radius: 2px;
     --edit-control-height: 32px;
     --edit-control-height-sm: 24px;
@@ -1298,10 +1320,18 @@
 
 /* Focus. AntD applies the border+glow on plain :focus/:focus-within, not only :focus-visible -- the
    wrapper has no focus of its own (the naked inner editor is what actually receives it), so
-   :focus-within is its equivalent. */
-.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
-.edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
+   :focus-within is its equivalent. Kept as two separate rules (not one comma-joined selector list,
+   though each selector's own specificity -- and so the invalid:focus tie documented below -- is
+   unaffected either way): the wrapper's border-color is now the plain --edit-color-primary rather
+   than this color-mix derivation (see that selector's own rule, just below), since the derivation
+   measured ~2.63:1 against the page background -- too weak as a WCAG 2.4.7 focus indicator (3:1). */
+.edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus {
     border-color: var(--edit-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--edit-color-primary) 82%, #fff)));
+    box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+}
+
+.edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
+    border-color: var(--edit-color-primary);
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
@@ -1374,10 +1404,15 @@
 }
 
 .edit-theme .edit-input-clear,
-.edit-theme .edit-input-count,
-.edit-theme .edit-input-password-toggle,
-.edit-theme .edit-textarea-count {
+.edit-theme .edit-input-password-toggle {
     color: var(--edit-color-text-secondary);
+}
+
+/* Count text needs the darker -strong split (see --edit-color-text-secondary-strong's own comment,
+   theme token block above) -- the icons above don't. */
+.edit-theme .edit-input-count,
+.edit-theme .edit-textarea-count {
+    color: var(--edit-color-text-secondary-strong);
 }
 
 /* Sizes. :not(.edit-affix-input) so the redundant size class a host also puts on the naked inner
