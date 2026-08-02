@@ -303,6 +303,66 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Empty(keys);
     }
 
+    // ----- Declaration order across parameter-skipped siblings ------------------
+
+    // Three content-less tabs (the bare filter-strip shape), the first two conditional. Every
+    // parameter is a string, so Blazor's diff skips SetParametersAsync on any tab whose own
+    // parameters didn't change -- those tabs never re-register, and the strip has to reconstruct
+    // their position without help from them.
+    static RenderFragment ConditionalLeadingTabs(bool showFirst, bool showSecond) => builder =>
+    {
+        if (showFirst)
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "new");
+            builder.AddAttribute(2, "Title", "New");
+            builder.CloseComponent();
+        }
+
+        if (showSecond)
+        {
+            builder.OpenComponent<Tab>(3);
+            builder.AddAttribute(4, "Key", "mid");
+            builder.AddAttribute(5, "Title", "Mid");
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<Tab>(6);
+        builder.AddAttribute(7, "Key", "a");
+        builder.AddAttribute(8, "Title", "A");
+        builder.CloseComponent();
+
+        builder.OpenComponent<Tab>(9);
+        builder.AddAttribute(10, "Key", "b");
+        builder.AddAttribute(11, "Title", "B");
+        builder.CloseComponent();
+    };
+
+    [Fact]
+    public void A_tab_shown_before_parameter_skipped_siblings_lands_in_its_declared_position()
+    {
+        // The straggler merge used to re-insert each skipped tab at its OLD _tabs index, which for a
+        // tab declared BEFORE them means the newcomer gets pushed past every one of them -- and no
+        // later pass corrects it, because a skipped tab never re-registers. Declared [new, a, b] used
+        // to render [a, b, new], permanently.
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
+
+        string[] Titles() => cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()).ToArray();
+        Assert.Equal(["A", "B"], Titles());
+
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, false)));
+        Assert.Equal(["New", "A", "B"], Titles());
+
+        // A second insertion, this time between the newcomer and the still-skipped siblings.
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, true)));
+        Assert.Equal(["New", "Mid", "A", "B"], Titles());
+
+        // ...and hiding them again returns the strip to the remaining declared order (the removal
+        // path the merge always handled correctly).
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
+        Assert.Equal(["A", "B"], Titles());
+    }
+
     [Fact]
     public void TabBarExtraContent_renders_beside_the_strip_only_when_set()
     {

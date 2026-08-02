@@ -5,7 +5,10 @@
    set — the same collect/promote mechanism as Table's columns, so a conditionally-rendered Tab
    drops / reappears in its declared position. *@
 @{ StartCollectingTabs(); }
-<CascadingValue Value="this" IsFixed="true">
+@* @key: a changed CollectGeneration rebuilds this subtree so every Tab registers again, in document
+   order. That is the recovery path for an insertion the diff hid -- see CollectGeneration. The key is
+   otherwise constant, so the ordinary case never rebuilds anything. *@
+<CascadingValue Value="this" IsFixed="true" @key="CollectGeneration">
     @ChildContent
 </CascadingValue>
 

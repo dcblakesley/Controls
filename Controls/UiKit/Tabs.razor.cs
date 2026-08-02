@@ -91,6 +91,16 @@ public partial class Tabs
             var promoted = _collecting;
             if (promoted.Count != _liveTabs.Count)
             {
+                // A tab that registered this pass but was never in the rendered set is NEW, and its
+                // declared position relative to the stragglers is simply not in this data: the
+                // stragglers know only their old index among each other, and the newcomer has no old
+                // index at all -- "declared first" and "declared last" produce byte-identical
+                // registration state. Re-inserting stragglers at their old index (below) silently
+                // guesses "appended", so a tab declared BEFORE skipped siblings rendered after them
+                // permanently, since a skipped tab never re-registers to correct it. Ask for one
+                // clean pass instead (see _collectGeneration) and settle the order from that.
+                var hasNewTab = promoted.Any(t => !_tabs.Contains(t));
+
                 foreach (var straggler in _liveTabs)
                 {
                     if (!promoted.Contains(straggler))
@@ -99,11 +109,37 @@ public partial class Tabs
                         promoted.Insert(Math.Min(prevIdx < 0 ? promoted.Count : prevIdx, promoted.Count), straggler);
                     }
                 }
+
+                // Once per ambiguity: the re-collection pass itself must not be able to re-trigger
+                // this (a disposal that lands late would leave the counts mismatched for one more
+                // pass), or the strip would rebuild its children forever.
+                if (hasNewTab && !_awaitingRecollect)
+                {
+                    _awaitingRecollect = true;
+                    _collectGeneration++;
+                }
+            }
+            else
+            {
+                // Everything live re-registered: this pass IS the document order, nothing to recover.
+                _awaitingRecollect = false;
             }
             if (!_tabs.SequenceEqual(promoted)) _tabs = promoted;
         }
         _collecting = new List<Tab>();
     }
+
+    // @key of the CascadingValue that wraps ChildContent (see Tabs.razor). Bumping it makes Blazor
+    // tear down and rebuild that subtree, so every Tab is constructed fresh and registers in document
+    // order -- the only way to recover an order the diff withheld, since a Tab whose parameters are
+    // all unchanged primitives is skipped entirely and can't be asked to re-register any other way
+    // (a cascading-value change notifies subscribers in subscription order, not document order).
+    // Tabs render no markup of their own and their pane content lives in this component's own panel
+    // render tree, so rebuilding them destroys no state; it costs two extra render passes, only on a
+    // structural insertion, and only when tabs were actually skipped that pass.
+    internal int CollectGeneration => _collectGeneration;
+    int _collectGeneration;
+    bool _awaitingRecollect;
 
     internal void Register(Tab tab)
     {
