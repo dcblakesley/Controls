@@ -952,6 +952,33 @@
         if (!_columns.Contains(column)) StateHasChanged();
     }
 
+    /// <summary>
+    /// Requests a follow-up render after an already-registered <see cref="Column{TItem}"/>'s
+    /// display-relevant parameters changed. The header and body above are built from the
+    /// <see cref="Column{TItem}"/> instances in <c>_columns</c> BEFORE the diff reaches that column's
+    /// own <c>SetParametersAsync</c>, so a parameter change (Title, Ellipsis, sortability, filter
+    /// options, ...) on an existing column would otherwise render stale for this pass and only
+    /// self-correct on some later, unrelated render. Mirrors <c>Tabs.NotifyTabChanged</c>; the
+    /// column's own snapshot comparison is what keeps this from looping (see
+    /// <see cref="Column{TItem}.OnParametersSet"/>).
+    /// </summary>
+    internal void NotifyColumnChanged() => StateHasChanged();
+
+    /// <summary>
+    /// A column pruned applied filter values that its new <see cref="Column{TItem}.FilterOptions"/>
+    /// no longer offers. Rows the orphaned values were excluding have to come back, so re-derive
+    /// filtered -> sorted -> paged before rendering — the same pipeline OK/Reset run, minus the
+    /// page reset and the <see cref="OnFilterChanged"/> notification (this is the consumer's own
+    /// parameter change, not a user action; see <see cref="Column{TItem}"/>'s prune comment).
+    /// </summary>
+    internal void NotifyColumnFilterPruned()
+    {
+        ApplyFilters();
+        ApplySort();
+        RebuildPageItems();
+        StateHasChanged();
+    }
+
     internal void Unregister(Column<TItem> column)
     {
         _liveColumns.Remove(column);

@@ -1960,6 +1960,153 @@ public class UiKitTableTests : BunitContext
         Assert.Equal(3, cut.FindAll("tbody .wss-table-row").Count);
     }
 
+    // ----- Runtime parameter changes on an already-registered column -----
+
+    [Fact]
+    public void Changing_a_bound_column_Title_updates_the_header_on_the_same_render_cycle()
+    {
+        // Register only queued a re-render for columns that were NEW to the rendered set, so a
+        // same-set parameter change queued nothing: the Table's header is built from the column
+        // instances BEFORE the diff reaches Column.SetParametersAsync, leaving
+        // <Column Title="@($"Results ({count})")"> showing the previous value indefinitely -- until
+        // some unrelated event happened to re-render the table.
+        var title = "Results (2)";
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", title);
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+        Assert.Equal("Results (2)", cut.Find("thead th").TextContent.Trim());
+
+        var rendersBefore = cut.RenderCount;
+        title = "Results (7)";
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal("Results (7)", cut.Find("thead th").TextContent.Trim());
+        // Bounded corrective re-render, not a runaway loop -- notifying on every pass would recurse
+        // forever, since each Table render hands the column a fresh Property/ChildContent delegate.
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+    }
+
+    [Fact]
+    public void Repeated_renders_with_an_inline_FilterOptions_list_do_not_loop()
+    {
+        // FilterOptions built inline in markup is a brand-new list instance every pass; comparing it
+        // by reference would report "changed" forever, and with the corrective render above that is
+        // an infinite render loop rather than a stale header.
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)NameOptions());
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+
+        var rendersBefore = cut.RenderCount;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+        Assert.Single(cut.FindAll(".wss-table-filter-trigger"));
+    }
+
+    [Fact]
+    public void Swapping_FilterOptions_prunes_applied_values_that_no_longer_exist()
+    {
+        // Data-derived options swap with the data. PassesFilter reads FilterApplied raw, so a value
+        // that left the options kept excluding every row: an empty table, a dropdown with nothing
+        // ticked to explain it (OK a no-op, only Reset recovering), and a consumer summary reporting
+        // no filter, because AppliedFilterValues already intersects with the current options.
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        var options = NameOptions(); // Alice, Bob, Carol
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice"], RenderedNames(cut));
+        Assert.NotNull(raised);
+
+        // Alice leaves the options.
+        raised = null;
+        options = [new("Bob", "Bob"), new("Carol", "Carol")];
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        // The orphaned value is dropped, so the column stops narrowing anything...
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.DoesNotContain("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+        // ...silently: OnFilterChanged reports user intent (OK/Reset/a filtered column leaving the
+        // table), not the consumer's own parameter change echoed back at it mid-render.
+        Assert.Null(raised);
+
+        // The dropdown re-opens on the new options with nothing ticked.
+        cut.Find(".wss-table-filter-trigger").Click();
+        var boxes = cut.FindAll(".wss-table-filter-checkbox");
+        Assert.Equal(2, boxes.Count);
+        Assert.All(boxes, b => Assert.False(b.HasAttribute("checked")));
+    }
+
+    [Fact]
+    public void Swapping_FilterOptions_keeps_applied_values_that_survive()
+    {
+        // The other half of the prune: only the orphans go, and a still-offered value keeps filtering
+        // (no silent full reset of the user's selection on every options refresh).
+        var options = NameOptions();
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        CheckOption(cut, "Bob");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice", "Bob"], RenderedNames(cut));
+
+        options = [new("Bob", "Bob"), new("Carol", "Carol")]; // Alice gone, Bob stays
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal(["Bob"], RenderedNames(cut));
+        Assert.Contains("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+    }
+
     // ----- ScrollY sticky header + Loading mask stacking (Fix 1) -----
 
     [Fact]
