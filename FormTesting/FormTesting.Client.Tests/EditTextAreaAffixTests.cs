@@ -140,9 +140,13 @@ public class EditTextAreaAffixTests : BunitContext
         Assert.Equal("5 / 20", wrapper.QuerySelector(".edit-textarea-count")!.TextContent);
         // Not EditString's inline count span -- CountBelow moves it out of edit-input-suffix.
         Assert.Empty(cut.FindAll(".edit-input-count"));
-        // A trailing sibling of edit-input-suffix -- the wrapper's last child -- not nested inside it.
-        Assert.Contains("edit-textarea-count", wrapper.Children[^1].ClassList);
-        Assert.Contains("edit-input-suffix", wrapper.Children[^2].ClassList);
+        // A trailing sibling of edit-input-suffix, not nested inside it. The two visually-hidden spans
+        // the counter's AT wiring adds (the spoken count + its role="status" region -- see
+        // CharacterCountAccessibilityTests) follow it, out of flow and irrelevant to the layout this
+        // test is about, so the visible count is the last IN-FLOW child rather than the last child.
+        var inFlow = wrapper.Children.Where(c => !c.ClassList.Contains("edit-sr-only")).ToList();
+        Assert.Contains("edit-textarea-count", inFlow[^1].ClassList);
+        Assert.Contains("edit-input-suffix", inFlow[^2].ClassList);
     }
 
     [Fact]

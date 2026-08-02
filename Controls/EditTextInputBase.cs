@@ -94,6 +94,30 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     /// </summary>
     protected string? CountText => EditInputShell.BuildCountText(ShowCount, EditorText?.Length ?? 0, EffectiveMaxLength);
 
+    /// <summary>
+    /// The id of the shell's visually-hidden spoken-count span, which this control's
+    /// <c>aria-describedby</c> references — see <see cref="HasCharacterCount"/>. Null when no count
+    /// renders, so nothing unreferenced is emitted.
+    /// </summary>
+    protected string? CountId => ShowCount ? $"count-{_id}" : null;
+
+    /// <summary>The spoken form of <see cref="CountText"/> — see <see cref="EditInputShell.BuildCountAccessibleText"/>.</summary>
+    protected string? CountAccessibleText =>
+        EditInputShell.BuildCountAccessibleText(ShowCount, EditorText?.Length ?? 0, EffectiveMaxLength);
+
+    /// <summary>The near-the-limit live-region text — see <see cref="EditInputShell.BuildCountLimitStatus"/>.</summary>
+    protected string? CountLimitStatus =>
+        EditInputShell.BuildCountLimitStatus(ShowCount, EditorText?.Length ?? 0, EffectiveMaxLength);
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Both halves are required. <see cref="ShowCount"/> because a field with no counter must keep a
+    /// byte-identical <c>aria-describedby</c>; <see cref="EditControlBase{TValue}.ShowEditor"/>
+    /// because the count lives in <see cref="EditInputShell"/>, which the read-only views don't
+    /// render — a <c>count-{id}</c> token there would dangle.
+    /// </remarks>
+    protected override bool HasCharacterCount => ShowCount && ShowEditor;
+
     // ───────────────────── live editor text under a commit-on-blur binding ─────────────────────
 
     /// <summary>

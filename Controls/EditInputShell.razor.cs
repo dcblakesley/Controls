@@ -36,8 +36,32 @@ public partial class EditInputShell
     [Parameter] public EventCallback OnClear { get; set; }
 
     /// <summary>Non-null renders the character-count span (e.g. <c>"12"</c> or <c>"12 / 100"</c>)
-    /// and switches the shell into affix-mode layout. Null renders no count span.</summary>
+    /// and switches the shell into affix-mode layout. Null renders no count span. The span itself is
+    /// <c>aria-hidden</c> — see <see cref="CountId"/> for what assistive tech gets instead.</summary>
     [Parameter] public string? CountText { get; set; }
+
+    /// <summary>
+    /// The id for the visually-hidden span carrying <see cref="CountAccessibleText"/>, which the
+    /// host's own <c>aria-describedby</c> references (<c>count-{id}</c>). Null omits the whole
+    /// assistive-tech half of the counter: there is nothing for a describedby to point at, so an
+    /// unreferenced sr-only span would only add browse-mode noise.
+    /// </summary>
+    /// <remarks>
+    /// A host that sets <see cref="CountText"/> passes this and
+    /// <see cref="CountAccessibleText"/>/<see cref="CountLimitStatus"/> together — see
+    /// <see cref="EditTextInputBase"/>, where all four come off one <c>ShowCount</c>.
+    /// </remarks>
+    [Parameter] public string? CountId { get; set; }
+
+    /// <summary>The spoken character count (<see cref="BuildCountAccessibleText"/>), rendered into the
+    /// <see cref="CountId"/> span. The visible <see cref="CountText"/> is <c>aria-hidden</c> in its
+    /// favour.</summary>
+    [Parameter] public string? CountAccessibleText { get; set; }
+
+    /// <summary>The near-the-limit announcement (<see cref="BuildCountLimitStatus"/>), rendered into a
+    /// visually-hidden <c>role="status"</c> region. Null/empty leaves the region present but silent —
+    /// it has to exist before it has anything to say, or the first announcement is missed.</summary>
+    [Parameter] public string? CountLimitStatus { get; set; }
 
     /// <summary>
     /// Textarea-only layout: when true and <see cref="CountText"/> is non-null, the count renders as
@@ -143,6 +167,52 @@ public partial class EditInputShell
     /// </summary>
     public static string? BuildCountText(bool showCount, int length, int? maxLength) =>
         !showCount ? null : maxLength is null ? $"{length}" : $"{length} / {maxLength}";
+
+    /// <summary>
+    /// The spoken form of <see cref="BuildCountText"/> — <c>"12 of 100 characters"</c>, or
+    /// <c>"12 characters"</c> with no maximum — for the visually-hidden span
+    /// <c>aria-describedby</c> points at. Null when <paramref name="showCount"/> is false.
+    /// </summary>
+    /// <remarks>
+    /// The visible span can't do this job: <c>"12 / 100"</c> is read as "twelve slash one hundred" or
+    /// (worse) "twelve one hundred" depending on the screen reader's punctuation level, and as a bare
+    /// unlabelled number it is meaningless out of its visual context. So the visible span is
+    /// <c>aria-hidden</c> and this text is what AT gets — which also fixes the other half of the
+    /// problem: the count was reachable in browse mode as orphan noise but was NOT part of the
+    /// field's description, so a user focusing the field never learned there was a limit at all.
+    /// </remarks>
+    public static string? BuildCountAccessibleText(bool showCount, int length, int? maxLength) =>
+        !showCount ? null
+            : maxLength is { } max ? $"{length} of {max} characters"
+            : length == 1 ? "1 character"
+            : $"{length} characters";
+
+    /// <summary>
+    /// The near-the-limit live-region text — <c>"N characters remaining"</c>, or
+    /// <c>"Character limit reached"</c> at or past the maximum — or null when the user is nowhere
+    /// near it (the overwhelmingly common case), which renders an empty region that says nothing.
+    /// </summary>
+    /// <remarks>
+    /// Announcing every keystroke's count would be a firehose that drowns out the typing itself, so
+    /// this only speaks inside the last <c>min(10, 10% of the maximum)</c> characters (floor 1): ten
+    /// characters is a useful warning distance for a long field but half of a twenty-character one,
+    /// and 10% of a thousand-character field is a warning that arrives far too early. The
+    /// limit-reached case is the one that most needs saying — <c>maxlength</c> silently truncates a
+    /// paste, with no other signal that anything was dropped.
+    /// </remarks>
+    public static string? BuildCountLimitStatus(bool showCount, int length, int? maxLength)
+    {
+        if (!showCount || maxLength is not { } max || max <= 0) return null;
+
+        var remaining = max - length;
+        if (remaining > Math.Clamp(max / 10, 1, 10)) return null;
+        return remaining switch
+        {
+            <= 0 => "Character limit reached",
+            1 => "1 character remaining",
+            _ => $"{remaining} characters remaining"
+        };
+    }
 
     bool UseAffixLayout => UsesAffixLayout(Prefix, Suffix, AllowClear, CountText, ShowPasswordToggle);
 }

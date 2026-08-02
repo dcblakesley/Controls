@@ -192,15 +192,25 @@ public static class EditControlInit
     /// <summary>
     /// Builds the space-separated <c>aria-describedby</c> token list for an edit control, including
     /// only the IDs that will actually render: the validation message (always present) plus the
-    /// description and tooltip when they exist. Computed once at init — the result is stable for the
-    /// control's lifetime — so the markup binds a cached string instead of re-interpolating it (and
-    /// never references a missing <c>desc-</c>/<c>tooltip-</c> element).
+    /// description, tooltip and character count when they exist. Computed once at init — the result
+    /// is stable for the control's lifetime — so the markup binds a cached string instead of
+    /// re-interpolating it (and never references a missing
+    /// <c>desc-</c>/<c>tooltip-</c>/<c>count-</c> element).
     /// </summary>
-    public static string BuildDescribedBy(string id, bool hasDescription, bool hasTooltip)
+    /// <remarks>
+    /// <paramref name="hasCount"/> is last in the token list, and defaulted, for the same reason it
+    /// is threaded through at all: the count is the least important of the three descriptions (it is
+    /// read after the field's own instructions), and every control that has no character counter must
+    /// keep a byte-identical <c>aria-describedby</c>. Only <see cref="EditTextInputBase"/>'s two
+    /// controls pass it, and only while their <c>ShowCount</c> is on AND the editor is actually
+    /// rendering — the read-only views render no count span for the token to point at.
+    /// </remarks>
+    public static string BuildDescribedBy(string id, bool hasDescription, bool hasTooltip, bool hasCount = false)
     {
         var describedBy = $"error-msg-{id}";
         if (hasDescription) describedBy += $" desc-{id}";
         if (hasTooltip) describedBy += $" tooltip-{id}";
+        if (hasCount) describedBy += $" count-{id}";
         return describedBy;
     }
 
@@ -214,12 +224,13 @@ public static class EditControlInit
     /// <c>desc-</c>/<c>tooltip-</c> element.
     /// </summary>
     public static (string ErrorMsgId, string DescribedBy) ResolveAriaRefs(
-        string id, bool shouldHideLabel, string? description, string? tooltip, List<Attribute>? attributes)
+        string id, bool shouldHideLabel, string? description, string? tooltip, List<Attribute>? attributes,
+        bool hasCount = false)
     {
         var errorMsgId = $"error-msg-{id}";
         var hasDescription = !shouldHideLabel && !string.IsNullOrEmpty(description ?? attributes.Description());
         var hasTooltip = !shouldHideLabel && !string.IsNullOrEmpty(tooltip ?? attributes.Tooltip());
-        return (errorMsgId, BuildDescribedBy(id, hasDescription, hasTooltip));
+        return (errorMsgId, BuildDescribedBy(id, hasDescription, hasTooltip, hasCount));
     }
 
     /// <summary>
@@ -232,15 +243,16 @@ public static class EditControlInit
     /// </summary>
     public static (string? AriaRequired, string ErrorMsgId, string DescribedBy) ResolveAriaState(
         string id, bool shouldHideLabel, string? description, string? tooltip,
-        List<Attribute>? attributes, bool? isRequiredParam, FormOptions? formOptions, FieldIdentifier fieldIdentifier)
+        List<Attribute>? attributes, bool? isRequiredParam, FormOptions? formOptions, FieldIdentifier fieldIdentifier,
+        bool hasCount = false)
     {
         var ariaRequired = AriaRequired(attributes, isRequiredParam, formOptions, fieldIdentifier);
-        var (errorMsgId, describedBy) = ResolveAriaRefs(id, shouldHideLabel, description, tooltip, attributes);
+        var (errorMsgId, describedBy) = ResolveAriaRefs(id, shouldHideLabel, description, tooltip, attributes, hasCount);
         return (ariaRequired, errorMsgId, describedBy);
     }
 
     /// <summary>
-    /// <see cref="ResolveAriaState(string, bool, string?, string?, List{Attribute}?, bool?, FormOptions?, FieldIdentifier)"/>
+    /// <see cref="ResolveAriaState(string, bool, string?, string?, List{Attribute}?, bool?, FormOptions?, FieldIdentifier, bool)"/>
     /// for a control's own single bound field: everything the overload above needs except the id, the
     /// attribute list and the FieldIdentifier comes off <paramref name="control"/> itself (including
     /// the <see cref="ShouldHideLabel"/> resolution, which each caller previously repeated).
@@ -253,9 +265,10 @@ public static class EditControlInit
     /// label-hidden answer than its host control's.
     /// </remarks>
     public static (string? AriaRequired, string ErrorMsgId, string DescribedBy) ResolveAriaState(
-        IEditControl control, FormOptions? formOptions, string id, List<Attribute>? attributes, FieldIdentifier fieldIdentifier) =>
+        IEditControl control, FormOptions? formOptions, string id, List<Attribute>? attributes,
+        FieldIdentifier fieldIdentifier, bool hasCount = false) =>
         ResolveAriaState(id, ShouldHideLabel(control.IsLabelHidden, formOptions), control.Description, control.Tooltip,
-            attributes, control.IsRequired, formOptions, fieldIdentifier);
+            attributes, control.IsRequired, formOptions, fieldIdentifier, hasCount);
 
     /// <summary>
     /// The shared <c>InputBase&lt;TValue&gt;.TryParseValueFromString</c> body for the controls that hand

@@ -148,6 +148,14 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         RefreshAriaState();
     }
 
+    /// <summary>
+    /// Whether this control renders a character-count element for <c>aria-describedby</c> to point at
+    /// (<c>count-{id}</c>). False here and overridden only by <see cref="EditTextInputBase"/>, whose
+    /// two controls have a <c>ShowCount</c> — every other control must keep a byte-identical
+    /// describedby, and a control that renders no count span must never reference one.
+    /// </summary>
+    protected virtual bool HasCharacterCount => false;
+
     // aria-required plus the error-msg id and aria-describedby token list, all through the one shared
     // helper (required-ness resolves as IsRequired param → [Required] attribute →
     // FormOptions.RequiredResolver, so aria-required always matches the FormLabel star). No-op until
@@ -156,7 +164,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     {
         if (_attributes is null) return;
         (_isRequired, _errorMsgId, _describedBy) =
-            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier);
+            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier, HasCharacterCount);
     }
 
     /// <summary>

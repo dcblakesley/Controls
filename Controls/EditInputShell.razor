@@ -38,7 +38,7 @@
             }
             @if (CountText is not null && !CountBelow)
             {
-                <span class="edit-input-count">@CountText</span>
+                <span class="edit-input-count" aria-hidden="true">@CountText</span>
             }
             @if (Suffix is not null)
             {
@@ -67,7 +67,22 @@
         </span>
         @if (CountText is not null && CountBelow)
         {
-            <span class="edit-textarea-count">@CountText</span>
+            <span class="edit-textarea-count" aria-hidden="true">@CountText</span>
+        }
+        @if (CountText is not null && CountId is not null)
+        {
+            @* The counter's assistive-tech half, in ONE place regardless of which visible placement
+               above is in use: both spans are visually hidden and out of flow, so their position in
+               the wrapper is irrelevant, and aria-describedby is a reference, not a reading-order
+               claim. The visible span is aria-hidden because "12 / 100" is read as "twelve slash one
+               hundred" (or just "twelve one hundred") and, worse, was never part of the field's
+               description at all -- audible as orphan noise in browse mode, absent on focus.
+
+               The status region renders whenever the counter does, even while it has nothing to say:
+               a live region has to be in the DOM before its content changes, or the first
+               announcement -- the one that matters, at the limit -- is the one that gets missed. *@
+            <span class="edit-sr-only" id="@CountId">@CountAccessibleText</span>
+            <span class="edit-sr-only" role="status">@CountLimitStatus</span>
         }
     </div>
 }
