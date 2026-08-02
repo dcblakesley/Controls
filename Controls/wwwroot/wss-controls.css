@@ -1508,7 +1508,10 @@
     height: 32px;
     min-height: 32px;
     margin: 0;
-    padding: 0 28px 0 8px;
+    /* Logical (not physical 0 28px 0 8px): the arrow below is already inset-inline-end, so a physical
+       padding pairs the wrong side with it under dir="rtl" (arrow flips left, 28px of dead space
+       lands on the right). padding-inline computes to the same 8px/28px split under LTR. */
+    padding-inline: 8px 28px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
     font-family: inherit;
@@ -3077,7 +3080,11 @@
 .wss-picker-select select {
     width: 100%;
     margin: 0;
-    padding: 1px 28px 1px 8px;
+    /* Logical (not physical 1px 28px 1px 8px): the arrow below is already inset-inline-end, so a
+       physical padding pairs the wrong side with it under dir="rtl" -- same RTL straggler as
+       .wss-pagination-size-select above. Computes to the same 8px/28px split under LTR. */
+    padding-block: 1px;
+    padding-inline: 8px 28px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
     line-height: 22px;
@@ -3783,11 +3790,14 @@
     .wss-picker-nav,
     .wss-picker-ok,
     .wss-picker-today-btn,
+    .wss-table-expand-btn,
     .wss-table-expand-btn svg,
     .wss-tabs-tab,
     .wss-search-input,
     .wss-search-btn,
-    .wss-search-clear {
+    .wss-search-clear,
+    [data-tooltip]::before,
+    [data-tooltip]::after {
         transition: none;
     }
 
