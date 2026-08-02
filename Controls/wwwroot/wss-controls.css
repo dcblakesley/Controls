@@ -98,6 +98,12 @@
     --wss-color-warning: #faad14;
     --wss-color-warning-bg: #fffbe6;
     --wss-color-warning-border: #ffe58f;
+    /* #ff4d4f (3.27:1 on white) is the plain AntD default -- kept as-is here rather than darkened.
+       edit-controls.css's --edit-color-danger deliberately uses a darker #cf1322 (~5.9:1) instead:
+       this token backs chrome/borders/backgrounds (WCAG 1.4.11, needs 3:1), while the edit token
+       backs validation message/summary TEXT (WCAG 1.4.3, needs 4.5:1) -- different requirements
+       legitimately yield different unthemed defaults. Not drift; don't unify these. A consumer's own
+       --color-danger overrides both identically either way. */
     --wss-color-error: var(--color-danger, #ff4d4f);
     --wss-color-error-bg: #fff2f0;
     --wss-color-error-border: #ffccc7;

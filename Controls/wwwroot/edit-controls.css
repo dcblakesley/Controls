@@ -1,13 +1,9 @@
 :root {
     /* Centralized fallbacks so the danger + focus colors aren't repeated as literals throughout this
        file. Bridges to the consumer's --color-* vars where present (mirroring wss-controls.css). */
-    /* Unified with wss-controls.css's --wss-color-error fallback (#ff4d4f, the AntD default) so an
-       unthemed form doesn't paint two different invalid-state reds across the two stylesheets.
-       NOTE: #ff4d4f is only 3.27:1 on white, which fails WCAG 1.4.3 for the validation message /
-       summary text -- this token previously used a darkened #cf1322 (~5.9:1) instead. Unifying
-       reintroduces that contrast gap for consumers who never set --color-danger; flagged here rather
-       than silently dropped. Consumers' own --color-danger still wins regardless. */
-    --edit-color-danger: var(--color-danger, #ff4d4f);
+    /* Fallback darkened from the AntDesign #ff4d4f (3.27:1 on white — fails WCAG 1.4.3 for the
+       validation message / summary text) to #cf1322 (~5.9:1). Consumers' --color-danger still wins. */
+    --edit-color-danger: var(--color-danger, #cf1322);
     /* Single source of truth for the primary/interactive fallback -- every var(--color-primary, ...)
        in this file must reuse this token so an unset --color-primary renders one consistent color
        instead of each usage picking its own literal fallback. */
