@@ -19,44 +19,11 @@
                 <div class=@(IsHorizontal
                             ? "edit-radio-buttons-container-horizontal"
                             : "edit-radio-buttons-container-vertical")>
-                    <label class="edit-radio-label">
-                        <input type="radio"
-                               name=@_id
-                               value="false"
-                               checked="@(CurrentValue == false)"
-                               @onchange="@(() => OnValueChanged(false))"
-                               id=@($"rb-{_id}-false")
-                               data-test-id=@($"rb-{_id}-false")
-                               class="edit-radio-input @CssClass"
-                               disabled=@IsDisabled />
-                        @EffectiveFalseText
-                    </label>
-                    <label class="edit-radio-label">
-                        <input type="radio"
-                               name=@_id
-                               value="true"
-                               checked="@(CurrentValue == true)"
-                               @onchange="@(() => OnValueChanged(true))"
-                               id=@($"rb-{_id}-true")
-                               data-test-id=@($"rb-{_id}-true")
-                               class="edit-radio-input @CssClass"
-                               disabled=@IsDisabled />
-                        @EffectiveTrueText
-                    </label>
+                    @RadioOption(false, "false", EffectiveFalseText)
+                    @RadioOption(true, "true", EffectiveTrueText)
                     @if (ShowNullOption)
                     {
-                        <label class="edit-radio-label">
-                            <input type="radio"
-                                   name=@_id
-                                   value=""
-                                   checked="@(!CurrentValue.HasValue)"
-                                   @onchange="@(() => OnValueChanged(null))"
-                                   id=@($"rb-{_id}-none")
-                                   data-test-id=@($"rb-{_id}-none")
-                                   class="edit-radio-input @CssClass"
-                                   disabled=@IsDisabled />
-                            @EffectiveNullText
-                        </label>
+                        @RadioOption(null, "none", EffectiveNullText)
                     }
                 </div>
             }
@@ -71,4 +38,21 @@
             <BoundValueDisplay Text=@CurrentValueAsString />
         </fieldset>
     </div>
+}
+
+@code {
+    // Shared by all three radios above -- the false/true/null options are identical apart from the
+    // bound value, the id/data-test-id suffix, and the displayed text.
+    RenderFragment RadioOption(bool? value, string idSuffix, string text) => @<label class="edit-radio-label">
+        <input type="radio"
+               name=@_id
+               value="@(value switch { true => "true", false => "false", null => "" })"
+               checked="@(CurrentValue == value)"
+               @onchange="@(() => OnValueChanged(value))"
+               id=@($"rb-{_id}-{idSuffix}")
+               data-test-id=@($"rb-{_id}-{idSuffix}")
+               class="edit-radio-input @CssClass"
+               disabled=@IsDisabled />
+        @text
+    </label>;
 }
