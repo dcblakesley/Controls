@@ -107,10 +107,14 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     }
 
     // InputRadioGroup uses OnParametersSet to set up the group name/context — call base first, then
-    // refresh the cached ARIA state so a runtime Description/Tooltip/label change is reflected.
+    // re-resolve the element id (a runtime Id/IdPrefix change; see EditControlInit.SyncResolvedId)
+    // and the cached ARIA state, so a runtime Description/Tooltip/label change is reflected too.
+    // _attributes is the "init completed" flag here, as it is for RefreshAriaState below.
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+        if (_attributes is not null)
+            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, _fieldIdentifier);
         RefreshAriaState();
     }
 

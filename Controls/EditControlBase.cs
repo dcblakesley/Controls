@@ -161,12 +161,18 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     }
 
     /// <summary>
-    /// Re-resolves the cached ARIA state on parameter change (e.g. a runtime Description/Tooltip
-    /// or label-hidden toggle) so aria-describedby stays accurate and never dangles.
+    /// Re-resolves the element id and the cached ARIA state on parameter change (e.g. a runtime
+    /// Id/IdPrefix change, or a Description/Tooltip or label-hidden toggle) so the rendered id, the
+    /// label's <c>for</c>, <c>aria-describedby</c> and the <see cref="FormOptions"/> registration all
+    /// stay in step and never dangle. See <see cref="EditControlInit.SyncResolvedId"/>.
     /// </summary>
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+        // Gated on _stateInitialized only so a control whose init threw (missing @bind-Value) can't
+        // resolve an id against a default FieldIdentifier — the same guard Dispose uses.
+        if (_stateInitialized)
+            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, _fieldIdentifier);
         RefreshAriaState();
     }
 

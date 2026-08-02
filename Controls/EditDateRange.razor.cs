@@ -465,6 +465,24 @@ public partial class EditDateRange : IDisposable
         (_endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaRefs(_endId, true, null, null, null);
     }
 
+    // The two-field form of EditControlInit.SyncResolvedId (see its remarks for the whole rationale).
+    // A no-op until OnInitialized has run -- _attributes is null before then, and the ids would
+    // otherwise be resolved against a default FieldIdentifier.
+    void SyncResolvedIds()
+    {
+        if (_attributes is null) return;
+        var resolvedId = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, _startFieldIdentifier);
+        if (string.Equals(resolvedId, _id, StringComparison.Ordinal)) return;
+
+        _id = resolvedId;
+        _endId = $"{_id}-end";
+        // Each field re-registers under its own input's DOM id, exactly as OnInitialized did -- a
+        // repeat call from the same owner updates FormOptions.FieldIds in place, so the ValidationView
+        // link follows the element instead of pointing at the id the control no longer renders.
+        EditControlInit.RegisterField(FormOptions, _startFieldIdentifier, _id, this);
+        EditControlInit.RegisterField(FormOptions, _endFieldIdentifier, _endId, this);
+    }
+
     protected override void OnParametersSet()
     {
         // Captured before SyncValidationSubscription overwrites it (cascading parameters, including
@@ -472,6 +490,14 @@ public partial class EditDateRange : IDisposable
         // the base's own tracking field still holds the OLD one at this point), so the cleanup below
         // can still target the OLD EditContext once a genuine swap is confirmed.
         var previousEditContext = SubscribedEditContext;
+
+        // Re-resolve both element ids from the CURRENT Id/IdPrefix/group name -- BEFORE the
+        // registration work below, so a re-registration lands under the current ids rather than
+        // re-registering the stale ones. Done by hand rather than through
+        // EditControlInit.SyncResolvedId because only the Start id is resolved: _endId is derived
+        // from it, and both registrations move together when it changes. Same "the FieldName is
+        // unchanged across a model swap" reasoning as the list base's single-field call.
+        SyncResolvedIds();
 
         // A false return means the same EditContext is still cascading, so both cached
         // FieldIdentifiers are still live and there's nothing to re-register.

@@ -209,6 +209,13 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// </summary>
     protected override void OnParametersSet()
     {
+        // BEFORE the registration work below, so a re-registration lands under the CURRENT id rather
+        // than re-registering the stale one and then having to move it. The FieldName the id derives
+        // from is the same on either side of a model swap, so resolving it against the outgoing
+        // FieldIdentifier is safe. See EditControlInit.SyncResolvedId.
+        if (_stateInitialized)
+            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, _fieldIdentifier);
+
         // A false return means the same EditContext is still cascading, so the cached FieldIdentifier
         // is still live and there's nothing to re-register. A true one means the context changed,
         // which is how a parent swapping the model instance (form reset, reload) surfaces — re-derive

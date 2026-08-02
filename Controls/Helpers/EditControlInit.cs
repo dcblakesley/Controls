@@ -55,6 +55,41 @@ public static class EditControlInit
     }
 
     /// <summary>
+    /// Re-resolves a control's element id from its CURRENT <see cref="IEditControl.Id"/>/
+    /// <see cref="IEditControl.IdPrefix"/> and the cascaded group name, and — when the answer changed
+    /// — writes it back through <paramref name="id"/> and moves the control's
+    /// <see cref="FormOptions"/> registration onto it. Returns whether it changed, so the caller can
+    /// skip any further per-id work (a rebuilt <c>aria-describedby</c>) on the overwhelmingly common
+    /// no-change parameter cycle.
+    /// </summary>
+    /// <remarks>
+    /// Called from every control root's <c>OnParametersSet</c>. The id used to be resolved once in
+    /// <c>OnInitialized</c> and never again, so a runtime <c>IdPrefix</c>/<c>Id</c> change (a control
+    /// re-used for a different row/record, a form group renaming itself) left the element rendering
+    /// under a stale id while the label's <c>for</c>, the <c>aria-describedby</c>/<c>aria-errormessage</c>
+    /// targets and the <see cref="FormOptions.FieldIds"/> entry the validation summary links to all
+    /// kept pointing at ids that no longer existed. <see cref="EditDisplay"/> — the one control that
+    /// already re-resolved every parameter cycle — is the pattern this generalizes.
+    /// <para>
+    /// Re-registering (rather than unregister + register) is deliberate: the
+    /// <see cref="FieldIdentifier"/> is unchanged, and <see cref="FormOptions.RegisterField"/> already
+    /// treats a repeat call from the same owner as "this control's id moved", updating both
+    /// <see cref="FormOptions.FieldIds"/> and its own owner record in place. Unregistering first would
+    /// briefly drop a field that a second control may be sharing.
+    /// </para>
+    /// </remarks>
+    public static bool SyncResolvedId(ref string id, IEditControl control, FormOptions? formOptions,
+        FormGroupOptions? formGroupOptions, FieldIdentifier fieldIdentifier)
+    {
+        var resolved = AttributesHelper.GetId(control.Id, formGroupOptions, control.IdPrefix, fieldIdentifier);
+        if (string.Equals(resolved, id, StringComparison.Ordinal))
+            return false;
+        id = resolved;
+        RegisterField(formOptions, fieldIdentifier, resolved, control);
+        return true;
+    }
+
+    /// <summary>
     /// Returns <paramref name="expression"/>, or throws the standard "this control needs a two-way
     /// binding" diagnostic naming <paramref name="control"/>. The compiler-supplied
     /// <c>ValueExpression</c> (or <c>StartExpression</c>/<c>EndExpression</c>) is what all of a

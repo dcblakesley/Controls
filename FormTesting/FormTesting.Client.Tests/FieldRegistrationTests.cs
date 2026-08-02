@@ -10,6 +10,13 @@ namespace FormTesting.Client.Tests;
 /// happens during control init and survives conditional rendering — previously, registration lived
 /// in <c>FieldValidationDisplay.OnInitialized</c> and was skipped whenever the control was hidden,
 /// so the validation summary couldn't link to those fields.
+/// <para>
+/// Plus the id's own lifetime, at the bottom of the file: the resolved element id used to be computed
+/// once in <c>OnInitialized</c> and never again, so a runtime <c>Id</c>/<c>IdPrefix</c> change (a
+/// control re-used for a different record, a group renaming itself) left the label's <c>for</c>, the
+/// <c>aria-describedby</c> targets and the <see cref="FormOptions.FieldIds"/> entry pointing at ids
+/// nothing rendered any more.
+/// </para>
 /// </summary>
 public class FieldRegistrationTests : BunitContext
 {
@@ -306,5 +313,168 @@ public class FieldRegistrationTests : BunitContext
         }));
 
         Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Name");
+    }
+
+    // ----- runtime Id/IdPrefix changes ------------------------------------------------------------
+    //
+    // One representative per control root: EditControlBase (EditString), EditControlListBase
+    // (EditCheckedStringList), EditRadio's own copy (EditRadioEnum sits on EditControlBase, so
+    // EditRadio<T> is the one that isn't already covered), and EditDateRange's two-id variant.
+
+    // Everything downstream of the resolved id, asserted together — the rendered element, the label
+    // that points at it, the describedby tokens derived from it, and the registration the validation
+    // summary links through.
+    static void AssertIdIsWiredThrough(IRenderedComponent<EditForm> cut, FormOptions formOptions,
+        string expectedId, string fieldName, string elementSelector)
+    {
+        var element = cut.Find(elementSelector);
+        Assert.Equal(expectedId, element.Id);
+        Assert.Equal(expectedId, cut.Find("label").GetAttribute("for"));
+        Assert.Equal($"error-msg-{expectedId}", element.GetAttribute("aria-describedby"));
+        var entry = Assert.Single(formOptions.FieldIds, kv => kv.Key.FieldName == fieldName);
+        Assert.Equal(expectedId, entry.Value);
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == fieldName);
+    }
+
+    [Fact]
+    public void Changing_IdPrefix_at_runtime_retargets_a_scalar_control_everywhere()
+    {
+        var model = new PersonModel { Name = "Alice" };
+        var formOptions = new FormOptions();
+        Expression<Func<string>> field = () => model.Name;
+        var idPrefix = "a";
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, FormOptionsScope(formOptions, inner =>
+            {
+                inner.OpenComponent<EditString>(0);
+                inner.AddAttribute(1, "Value", model.Name);
+                inner.AddAttribute(2, "ValueExpression", field);
+                inner.AddAttribute(3, "IdPrefix", idPrefix);
+                inner.CloseComponent();
+            })));
+
+        AssertIdIsWiredThrough(cut, formOptions, "a-Name", "Name", "input.edit-string-input");
+
+        idPrefix = "b";
+        cut.Render(ps => ps.Add(f => f.Model, model));
+
+        // Everything moves together, and nothing is left behind: one FieldIdentifier, one FieldIds
+        // entry, and it names the id the element actually renders under.
+        AssertIdIsWiredThrough(cut, formOptions, "b-Name", "Name", "input.edit-string-input");
+        Assert.Empty(cut.FindAll("#a-Name"));
+    }
+
+    [Fact]
+    public void Changing_IdPrefix_at_runtime_retargets_a_list_control_everywhere()
+    {
+        var model = new PersonModel();
+        var formOptions = new FormOptions();
+        Expression<Func<List<string>>> field = () => model.Tags;
+        var idPrefix = "a";
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, FormOptionsScope(formOptions, inner =>
+            {
+                inner.OpenComponent<EditCheckedStringList>(0);
+                inner.AddAttribute(1, "Value", model.Tags);
+                inner.AddAttribute(2, "ValueExpression", field);
+                inner.AddAttribute(3, "Options", new List<string> { "x" });
+                inner.AddAttribute(4, "IdPrefix", idPrefix);
+                inner.CloseComponent();
+            })));
+
+        Assert.Equal("a-Tags", cut.Find("fieldset.edit-checkedList-fieldset").Id);
+
+        idPrefix = "b";
+        cut.Render(ps => ps.Add(f => f.Model, model));
+
+        Assert.Equal("b-Tags", cut.Find("fieldset.edit-checkedList-fieldset").Id);
+        Assert.Equal("error-msg-b-Tags", cut.Find("input[type=checkbox]").GetAttribute("aria-describedby"));
+        Assert.NotNull(cut.Find("#lbl-b-Tags"));
+        var entry = Assert.Single(formOptions.FieldIds, kv => kv.Key.FieldName == "Tags");
+        Assert.Equal("b-Tags", entry.Value);
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Tags");
+    }
+
+    [Fact]
+    public void Changing_IdPrefix_at_runtime_retargets_EditRadio_everywhere()
+    {
+        // EditRadio inherits InputRadioGroup, so it keeps its own copy of the id/ARIA plumbing.
+        var model = new PersonModel { Priority = Priority.Low };
+        var formOptions = new FormOptions();
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var idPrefix = "a";
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, FormOptionsScope(formOptions, inner =>
+            {
+                inner.OpenComponent<EditRadio<Priority?>>(0);
+                inner.AddAttribute(1, "Value", model.Priority);
+                inner.AddAttribute(2, "ValueExpression", field);
+                inner.AddAttribute(3, "IdPrefix", idPrefix);
+                inner.AddAttribute(4, "ChildContent", (RenderFragment)(_ => { }));
+                inner.CloseComponent();
+            })));
+
+        Assert.Equal("a-Priority", cut.Find("fieldset.edit-radio-fieldset").Id);
+
+        idPrefix = "b";
+        cut.Render(ps => ps.Add(f => f.Model, model));
+
+        var fieldset = cut.Find("fieldset.edit-radio-fieldset");
+        Assert.Equal("b-Priority", fieldset.Id);
+        Assert.Equal("lbl-b-Priority", fieldset.GetAttribute("aria-labelledby"));
+        Assert.Equal("error-msg-b-Priority", fieldset.GetAttribute("aria-describedby"));
+        Assert.NotNull(cut.Find("#lbl-b-Priority"));
+        var entry = Assert.Single(formOptions.FieldIds, kv => kv.Key.FieldName == "Priority");
+        Assert.Equal("b-Priority", entry.Value);
+        Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Priority");
+    }
+
+    [Fact]
+    public void Changing_IdPrefix_at_runtime_retargets_both_of_EditDateRanges_ids()
+    {
+        var model = new RangeModel();
+        var formOptions = new FormOptions();
+        Expression<Func<DateTime?>> start = () => model.Start;
+        Expression<Func<DateTime?>> end = () => model.End;
+        var idPrefix = "a";
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, FormOptionsScope(formOptions, inner =>
+            {
+                inner.OpenComponent<EditDateRange>(0);
+                inner.AddAttribute(1, "Start", model.Start);
+                inner.AddAttribute(2, "StartExpression", start);
+                inner.AddAttribute(3, "End", model.End);
+                inner.AddAttribute(4, "EndExpression", end);
+                inner.AddAttribute(5, "IdPrefix", idPrefix);
+                inner.CloseComponent();
+            })));
+
+        Assert.NotNull(cut.Find("#a-Start"));
+        Assert.NotNull(cut.Find("#a-Start-end"));
+
+        idPrefix = "b";
+        cut.Render(ps => ps.Add(f => f.Model, model));
+
+        Assert.NotNull(cut.Find("#b-Start"));
+        Assert.NotNull(cut.Find("#b-Start-end"));
+        Assert.Empty(cut.FindAll("#a-Start"));
+        // The End field's id is derived from Start's, and both registrations move with it.
+        Assert.Equal("b-Start", formOptions.FieldIds.Single(kv => kv.Key.FieldName == "Start").Value);
+        Assert.Equal("b-Start-end", formOptions.FieldIds.Single(kv => kv.Key.FieldName == "End").Value);
+        Assert.Equal(2, formOptions.FieldIdentifiers.Count);
+    }
+
+    class RangeModel
+    {
+        public DateTime? Start { get; set; }
+        public DateTime? End { get; set; }
     }
 }
