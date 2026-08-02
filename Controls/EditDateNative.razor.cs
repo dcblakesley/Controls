@@ -167,33 +167,39 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     // on a TimeOnly), so a mis-set format degrades instead of throwing.
     string GetDisplayValue()
     {
+        // Gregorian-forced like EditDate's own read-only display, so the two controls (documented as
+        // interchangeable -- same bound types, same Type values, native input vs. calendar dropdown
+        // is the only difference) can never disagree about the year under a non-Gregorian-default
+        // culture (th-TH, ar-SA).
+        var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);
         try
         {
             return CurrentValue switch
             {
                 null => string.Empty,
-                DateTime dt => dt.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
-                DateTimeOffset dto => dto.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
-                DateOnly d => d.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
-                TimeOnly t => t.ToString(EffectiveDateFormat, CultureInfo.CurrentCulture),
+                DateTime dt => dt.ToString(EffectiveDateFormat, culture),
+                DateTimeOffset dto => dto.ToString(EffectiveDateFormat, culture),
+                DateOnly d => d.ToString(EffectiveDateFormat, culture),
+                TimeOnly t => t.ToString(EffectiveDateFormat, culture),
                 _ => CurrentValue.ToString() ?? string.Empty
             };
         }
         catch (FormatException)
         {
-            return CurrentValue?.ToString() ?? string.Empty;
+            return CurrentValue switch
+            {
+                DateTime dt => dt.ToString(culture),
+                DateTimeOffset dto => dto.ToString(culture),
+                DateOnly d => d.ToString(culture),
+                TimeOnly t => t.ToString(culture),
+                _ => CurrentValue?.ToString() ?? string.Empty
+            };
         }
     }
 
     // Detect default DateTime / DateTimeOffset even when boxed inside a nullable T —
     // EqualityComparer<DateTime?>.Default.Equals(default(DateTime), null) is false, but the
-    // wrapped default value is still semantically empty for hiding purposes.
-    protected override bool IsValueDefault() => CurrentValue switch
-    {
-        DateTime dt => dt == default,
-        DateTimeOffset dto => dto == default,
-        DateOnly d => d == default,
-        TimeOnly t => t == default,
-        _ => EqualityComparer<T>.Default.Equals(CurrentValue, default!)
-    };
+    // wrapped default value is still semantically empty for hiding purposes. Shared with EditDate's
+    // and EditDateRange's identical need -- see EditControlInit.IsDateValueDefault.
+    protected override bool IsValueDefault() => EditControlInit.IsDateValueDefault(CurrentValue);
 }

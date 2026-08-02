@@ -370,6 +370,17 @@ public partial class EditDate<T> : EditControlBase<T>
     // handful of concrete value types are fully trim/AOT-safe (no reflection over T's members).
     void OnValueChanged(DateTime? value)
     {
+        if (!TryFromPickerValue(value, out var result))
+        {
+            // The picker's value is a well-formed DateTime, but the DateTimeOffset it would produce
+            // overflows the UTC-instant range (see TryFromPickerValue's DateTimeOffset arm) -- treat
+            // this exactly like any other unparseable entry instead of letting the constructor throw
+            // an ArgumentOutOfRangeException out of a rendering circuit: add the same ParsingErrorMessage
+            // and leave CurrentValue untouched (the picker itself already reverted its own display).
+            _ = OnPickerParseErrorAsync(FieldIdentifier.FieldName);
+            return;
+        }
+
         // A value only ever reaches here once the picker itself successfully committed it -- clear
         // any stale parse-error message from a prior unparseable entry (see OnPickerParseErrorAsync)
         // so it can never outlive the very next valid commit.
@@ -378,31 +389,65 @@ public partial class EditDate<T> : EditControlBase<T>
             _parseErrorMessages.Clear(FieldIdentifier);
             EditContext.NotifyValidationStateChanged();
         }
-        CurrentValue = FromPickerValue(value);
+        CurrentValue = result;
     }
 
-    static T FromPickerValue(DateTime? value)
+    // Returns false only for the DateTimeOffset/DateTimeOffset? arm, and only when the conversion
+    // below would throw -- every other T always succeeds.
+    static bool TryFromPickerValue(DateTime? value, out T result)
     {
-        if (typeof(T) == typeof(DateTime)) return (T)(object)(value ?? default(DateTime));
-        if (typeof(T) == typeof(DateTime?)) return (T)(object)value!;
+        if (typeof(T) == typeof(DateTime)) { result = (T)(object)(value ?? default(DateTime)); return true; }
+        if (typeof(T) == typeof(DateTime?)) { result = (T)(object)value!; return true; }
         // The picker never sets Kind -- its values carry Kind.Unspecified (or, from the Time-mode
         // DateTime.Today anchor, Kind.Local). Both assume the local offset when constructing a
         // DateTimeOffset, matching BindConverter's parse semantics for datetime-local text. Computed
         // only inside the DateTimeOffset arms: within the local offset of DateTime.MinValue (a typed
-        // year-1 date in an east-of-UTC zone) the constructor itself throws, and no other T needs it.
+        // year-1 date in an east-of-UTC zone) -- or DateTime.MaxValue in a west-of-UTC zone -- the
+        // UTC instant falls outside DateTimeOffset's own range, so TryToDateTimeOffset (below) guards
+        // it instead of letting the constructor throw, and no other T needs the guard.
         if (typeof(T) == typeof(DateTimeOffset) || typeof(T) == typeof(DateTimeOffset?))
         {
-            DateTimeOffset? dto = value is { } vo ? new DateTimeOffset(vo) : null;
-            if (typeof(T) == typeof(DateTimeOffset)) return (T)(object)(dto ?? default(DateTimeOffset));
-            return (T)(object)dto!;
+            DateTimeOffset? dto = null;
+            if (value is { } vo)
+            {
+                if (!TryToDateTimeOffset(vo, TimeZoneInfo.Local.GetUtcOffset(vo), out var converted))
+                {
+                    result = default!;
+                    return false;
+                }
+                dto = converted;
+            }
+            result = typeof(T) == typeof(DateTimeOffset) ? (T)(object)(dto ?? default(DateTimeOffset)) : (T)(object)dto!;
+            return true;
         }
         DateOnly? dateOnly = value is { } v ? DateOnly.FromDateTime(v) : null;
-        if (typeof(T) == typeof(DateOnly)) return (T)(object)(dateOnly ?? default(DateOnly));
-        if (typeof(T) == typeof(DateOnly?)) return (T)(object)dateOnly!;
+        if (typeof(T) == typeof(DateOnly)) { result = (T)(object)(dateOnly ?? default(DateOnly)); return true; }
+        if (typeof(T) == typeof(DateOnly?)) { result = (T)(object)dateOnly!; return true; }
         TimeOnly? timeOnly = value is { } vt ? TimeOnly.FromDateTime(vt) : null;
-        if (typeof(T) == typeof(TimeOnly)) return (T)(object)(timeOnly ?? default(TimeOnly));
-        if (typeof(T) == typeof(TimeOnly?)) return (T)(object)timeOnly!;
+        if (typeof(T) == typeof(TimeOnly)) { result = (T)(object)(timeOnly ?? default(TimeOnly)); return true; }
+        if (typeof(T) == typeof(TimeOnly?)) { result = (T)(object)timeOnly!; return true; }
         throw UnsupportedType();
+    }
+
+    /// <summary>
+    /// The exact bounds check <c>new DateTimeOffset(DateTime, TimeSpan)</c> performs internally
+    /// (<c>value.Ticks - offset.Ticks</c> must stay within <see cref="DateTime.MinValue"/>/
+    /// <see cref="DateTime.MaxValue"/>), exposed as a non-throwing TryXxx so a year-1/year-9999 local
+    /// value under a non-UTC offset can be treated as an ordinary conversion failure instead of an
+    /// unhandled <see cref="ArgumentOutOfRangeException"/>. <paramref name="offset"/> is a parameter
+    /// (rather than this reading <see cref="TimeZoneInfo.Local"/> itself) purely so the boundary math
+    /// is unit-testable independent of the host machine's own time zone.
+    /// </summary>
+    static bool TryToDateTimeOffset(DateTime value, TimeSpan offset, out DateTimeOffset result)
+    {
+        var utcTicks = value.Ticks - offset.Ticks;
+        if (utcTicks < DateTime.MinValue.Ticks || utcTicks > DateTime.MaxValue.Ticks)
+        {
+            result = default;
+            return false;
+        }
+        result = new DateTimeOffset(value, offset);
+        return true;
     }
 
     static NotSupportedException UnsupportedType() => new(
@@ -412,21 +457,12 @@ public partial class EditDate<T> : EditControlBase<T>
     // The validation-state ARIA goes through DatePicker's dedicated Aria* parameters (straight onto
     // its actual <input>); this splat carries only the consumer's own attributes plus the state
     // classes, landing on the picker's outer wrapper (its documented AdditionalAttributes target).
-    IReadOnlyDictionary<string, object> PickerAttributes
-    {
-        get
-        {
-            var attrs = new Dictionary<string, object>();
-            if (AdditionalAttributes is not null)
-                foreach (var kv in AdditionalAttributes) attrs[kv.Key] = kv.Value;
-            // Overwrite the raw consumer "class" (if any) with CssClass — InputBase's own merge of
-            // that same raw class with the EditContext's modified/valid/invalid classes — so the
-            // wrapper picks up validation-state styling hooks the same way every other control's
-            // native input does via `class="edit-input ... @CssClass"`.
-            if (!string.IsNullOrEmpty(CssClass)) attrs["class"] = CssClass;
-            return attrs;
-        }
-    }
+    // CssClass is InputBase's own merge of the raw consumer "class" with the EditContext's
+    // modified/valid/invalid classes -- overwriting the raw consumer value with it is what gives the
+    // wrapper the same validation-state styling hooks every other control's native input gets via
+    // `class="edit-input ... @CssClass"`. Shared builder: see BuildPickerAttributes's own remarks for
+    // why this and EditDateRange's twin differ only in that class source.
+    IReadOnlyDictionary<string, object> PickerAttributes => EditControlInit.BuildPickerAttributes(AdditionalAttributes, CssClass);
 
     string GetDisplayValue()
     {
@@ -453,19 +489,24 @@ public partial class EditDate<T> : EditControlBase<T>
                 TimeOnly t => t.ToString(EffectiveDateFormat, culture),
                 _ => string.Empty
             },
-            () => CurrentValue?.ToString() ?? string.Empty);
+            // The FormatException fallback for a consumer-supplied DateFormat .NET rejects -- must
+            // stay Gregorian-forced too (the same `culture`), or a th-TH/ar-SA consumer would see edit
+            // mode's picker disagree with THIS degraded read-only year, the exact mismatch the
+            // primary formatter above already guards against. Mirrors EditDateRange.FormatOne's twin.
+            () => CurrentValue switch
+            {
+                DateTime dt => dt.ToString(culture),
+                DateTimeOffset dto => dto.ToString(culture),
+                DateOnly d => d.ToString(culture),
+                TimeOnly t => t.ToString(culture),
+                _ => string.Empty
+            });
     }
 
     // default(DateTime)/default(DateTimeOffset)/default(DateOnly)/default(TimeOnly) count as
-    // semantically empty for date controls -- mirrors EditDateNative<T>'s IsValueDefault override,
-    // including the same boxed-Nullable<T> pattern-match trick (see PickerValue above) so any of
-    // this control's four nullable shapes falls through to the EqualityComparer arm on null.
-    protected override bool IsValueDefault() => CurrentValue switch
-    {
-        DateTime dt => dt == default,
-        DateTimeOffset dto => dto == default,
-        DateOnly d => d == default,
-        TimeOnly t => t == default,
-        _ => EqualityComparer<T>.Default.Equals(CurrentValue, default!)
-    };
+    // semantically empty for date controls -- mirrors EditDateNative<T>'s IsValueDefault override
+    // (and EditDateRange's per-field variant) through the one shared helper, including the same
+    // boxed-Nullable<T> pattern-match trick (see PickerValue above) so any of this control's four
+    // nullable shapes falls through to the EqualityComparer arm on null.
+    protected override bool IsValueDefault() => EditControlInit.IsDateValueDefault(CurrentValue);
 }
