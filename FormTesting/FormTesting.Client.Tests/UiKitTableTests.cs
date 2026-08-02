@@ -1685,6 +1685,51 @@ public class UiKitTableTests : BunitContext
         Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
     }
 
+    IRenderedComponent<Table<Person>> RenderHeaderlessFilterable(string? filterLabel = null) =>
+        Render<Table<Person>>(p =>
+        {
+            p.Add(t => t.DataSource, Sample());
+            if (filterLabel is not null) p.Add(t => t.FilterLabel, filterLabel);
+            p.AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Property, x => x.Name) // no Title: the filter button needs the fallback
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v)));
+        });
+
+    [Fact]
+    public void FilterLabel_defaults_to_Filter_for_a_headerless_column()
+    {
+        // Byte-identical to before FilterLabel existed: the fallback was a hardcoded "Filter" literal.
+        var cut = RenderHeaderlessFilterable();
+
+        Assert.Equal("Filter", cut.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void FilterLabel_is_overridable_for_a_headerless_column()
+    {
+        var cut = RenderHeaderlessFilterable("Filtrar");
+
+        Assert.Equal("Filtrar", cut.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void A_column_with_a_header_uses_FilterButtonLabelFormat_not_FilterLabel()
+    {
+        // A custom FilterLabel must not leak into the header-present branch, which stays on
+        // FilterButtonLabelFormat -- mirrors SortLabel only naming the title-less fallback.
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.FilterLabel, "Filtrar")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
+
+        Assert.Equal("Filter Name", cut.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+    }
+
     [Fact]
     public void Clicking_the_filter_button_opens_a_dropdown_with_a_checkbox_per_option()
     {

@@ -253,11 +253,11 @@
             </span>
         </button>;
 
-    // The filter control, with the three forwarded label parameters, on each of the three header shapes.
+    // The filter control, with the four forwarded label parameters, on each of the three header shapes.
     RenderFragment ColumnFilter(Column<TItem> col) =>
         @<TableColumnFilter TItem="TItem" Column="col" Table="this"
                             FilterButtonLabelFormat="@FilterButtonLabelFormat"
-                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />;
+                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" FilterLabel="@FilterLabel" />;
 
     // Selection checkboxes: the styled variant is the same <input> plus a wrapper and one extra
     // class, so the box markup lives here once for both the header and the rows. The header's own
@@ -506,7 +506,7 @@
     [Parameter] public EventCallback<(Column<TItem> Column, IReadOnlyList<string> SelectedValues)> OnFilterChanged { get; set; }
 
     /// <summary>Accessible-name format for a column's filter button; <c>{0}</c> is the column's
-    /// header text (falls back to plain "Filter" for a headerless column). Override to localize.</summary>
+    /// header text (falls back to <see cref="FilterLabel"/> for a headerless column). Override to localize.</summary>
     [Parameter] public string FilterButtonLabelFormat { get; set; } = "Filter {0}";
 
     /// <summary>Label of a filter dropdown's clear-this-column button. Override to localize.</summary>
@@ -514,6 +514,10 @@
 
     /// <summary>Label of a filter dropdown's apply button. Override to localize.</summary>
     [Parameter] public string FilterOkLabel { get; set; } = "OK";
+
+    /// <summary>Accessible-name fallback for a column's filter button when the column has no header
+    /// text to name it. Override to localize.</summary>
+    [Parameter] public string FilterLabel { get; set; } = "Filter";
 
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
