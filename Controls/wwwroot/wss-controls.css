@@ -98,6 +98,12 @@
     --wss-color-warning: #faad14;
     --wss-color-warning-bg: #fffbe6;
     --wss-color-warning-border: #ffe58f;
+    /* #ff4d4f (3.27:1 on white) is the plain AntD default -- kept as-is here rather than darkened.
+       edit-controls.css's --edit-color-danger deliberately uses a darker #cf1322 (~5.9:1) instead:
+       this token backs chrome/borders/backgrounds (WCAG 1.4.11, needs 3:1), while the edit token
+       backs validation message/summary TEXT (WCAG 1.4.3, needs 4.5:1) -- different requirements
+       legitimately yield different unthemed defaults. Not drift; don't unify these. A consumer's own
+       --color-danger overrides both identically either way. */
     --wss-color-error: var(--color-danger, #ff4d4f);
     --wss-color-error-bg: #fff2f0;
     --wss-color-error-border: #ffccc7;
@@ -804,23 +810,36 @@
     margin-inline-start: 8px;
 }
 
-.wss-alert-close {
+/* Shared "x" close-button chrome, grouped with Modal/Drawer/Notification's own identical close
+   buttons (.wss-modal-close, .wss-drawer-close, .wss-notification-close, further down this file) --
+   only font-size (icon glyph size) and this component's own extra margin-inline-start differ, kept
+   as small per-selector follow-ups right below. */
+.wss-alert-close,
+.wss-modal-close,
+.wss-drawer-close,
+.wss-notification-close {
     display: inline-flex;
     align-items: center;
-    margin-inline-start: 8px;
     padding: 0;
-    font-size: 12px;
     color: var(--wss-color-text-secondary);
     background: transparent;
     border: none;
     cursor: pointer;
 }
 
+.wss-alert-close {
+    margin-inline-start: 8px;
+    font-size: 12px;
+}
+
 .wss-alert-actions .wss-alert-close {
     margin-inline-start: 0; /* the actions wrapper's own gap already spaces it from the action slot */
 }
 
-.wss-alert-close:hover {
+.wss-alert-close:hover,
+.wss-modal-close:hover,
+.wss-drawer-close:hover,
+.wss-notification-close:hover {
     color: var(--wss-color-text);
 }
 
@@ -992,6 +1011,12 @@
 
 .wss-popover {
     position: absolute;
+    /* Deliberately above the Modal/Drawer static no-JS baseline (1000, see .wss-modal-wrap/
+       .wss-drawer-root) -- matches AntD's own default popover-over-dialog layering, so a popover
+       triggered from inside a modal still paints over its own mask. This is only the no-JS/pre-
+       hydration fallback rank: once wss-overlay.js runs, Popover/Popconfirm/Modal/Drawer all get an
+       inline z-index from the shared open-order counter (nextZ(), see activateModal/place in
+       wss-overlay.js), so whichever actually opened LAST wins regardless of these static values. */
     z-index: 1030;
     min-width: 177px;
     max-width: 320px;
@@ -1504,17 +1529,27 @@
     align-items: center;
 }
 
-.wss-pagination-size-select {
+/* Shared native-control chrome (page-size <select> + jumper <input>, both kept dependency-free --
+   no Select<T>/JS) -- box-model specifics (width, padding, cursor, appearance) differ per control
+   and stay in each one's own small rule below. */
+.wss-pagination-size-select,
+.wss-pagination-jumper-input {
     height: 32px;
     min-height: 32px;
-    margin: 0;
-    padding: 0 28px 0 8px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
     font-family: inherit;
     background: var(--wss-color-bg);
     border: 1px solid var(--wss-color-border);
     border-radius: var(--wss-radius);
+}
+
+.wss-pagination-size-select {
+    margin: 0;
+    /* Logical (not physical 0 28px 0 8px): the arrow below is already inset-inline-end, so a physical
+       padding pairs the wrong side with it under dir="rtl" (arrow flips left, 28px of dead space
+       lands on the right). padding-inline computes to the same 8px/28px split under LTR. */
+    padding-inline: 8px 28px;
     appearance: none;
     cursor: pointer;
 }
@@ -1541,17 +1576,9 @@
 
 .wss-pagination-jumper-input {
     width: 50px;
-    height: 32px;
-    min-height: 32px;
     box-sizing: border-box;
     padding: 0 8px;
-    color: var(--wss-color-text);
-    font-size: var(--wss-font-size);
-    font-family: inherit;
     text-align: center;
-    background: var(--wss-color-bg);
-    border: 1px solid var(--wss-color-border);
-    border-radius: var(--wss-radius);
 }
 
 /* AntD's compact pagination size: smaller buttons, tighter footprint. CSS-only (Small="true"). */
@@ -1677,19 +1704,12 @@
     color: var(--wss-color-text);
 }
 
-.wss-modal-close {
-    display: inline-flex;
-    align-items: center;
-    padding: 0;
+/* Shared close-button chrome + hover are grouped with .wss-alert-close/-hover (Alert section, above
+   -- search this file for .wss-alert-close). Only font-size is declared here, shared with
+   .wss-drawer-close (Drawer section, below). */
+.wss-modal-close,
+.wss-drawer-close {
     font-size: 16px;
-    color: var(--wss-color-text-secondary);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-}
-
-.wss-modal-close:hover {
-    color: var(--wss-color-text);
 }
 
 .wss-modal-body {
@@ -1787,20 +1807,9 @@
     gap: 12px;
 }
 
-.wss-drawer-close {
-    display: inline-flex;
-    align-items: center;
-    padding: 0;
-    font-size: 16px;
-    color: var(--wss-color-text-secondary);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-}
-
-.wss-drawer-close:hover {
-    color: var(--wss-color-text);
-}
+/* Shared close-button chrome + hover are grouped with .wss-alert-close/-hover (Alert section) --
+   font-size is grouped with .wss-modal-close (Modal section, above) -- see either for the full
+   rule. */
 
 .wss-drawer-body {
     flex: 1;
@@ -1833,6 +1842,7 @@
 
 .wss-popconfirm {
     position: absolute;
+    /* Deliberately above the Modal/Drawer static baseline -- see .wss-popover's own comment above. */
     z-index: 1030;
     min-width: 150px;
     max-width: 280px;
@@ -2667,19 +2677,10 @@
     line-height: var(--wss-line-height);
 }
 
+/* Shared close-button chrome + hover are grouped with .wss-alert-close/-hover (Alert section, above)
+   -- only font-size is declared here. */
 .wss-notification-close {
-    display: inline-flex;
-    align-items: center;
-    padding: 0;
     font-size: 14px;
-    color: var(--wss-color-text-secondary);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-}
-
-.wss-notification-close:hover {
-    color: var(--wss-color-text);
 }
 
 @keyframes wss-notification-in {
@@ -3077,7 +3078,11 @@
 .wss-picker-select select {
     width: 100%;
     margin: 0;
-    padding: 1px 28px 1px 8px;
+    /* Logical (not physical 1px 28px 1px 8px): the arrow below is already inset-inline-end, so a
+       physical padding pairs the wrong side with it under dir="rtl" -- same RTL straggler as
+       .wss-pagination-size-select above. Computes to the same 8px/28px split under LTR. */
+    padding-block: 1px;
+    padding-inline: 8px 28px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
     line-height: 22px;
@@ -3116,23 +3121,35 @@
 
 /* In-range tint: drawn on the cell (full width, day-box height) so consecutive cells form a
    continuous band; endpoint cells tint only their inner half so the band butts up against the
-   filled endpoint day. */
+   filled endpoint day. Hover-range preview (DateRangePicker only, further below) shares this exact
+   structural ::before (content/position/inset) -- only the tint color differs, in the two `background`
+   follow-up rules below. */
 .wss-picker-cell-in-range::before,
 .wss-picker-cell-range-start::before,
-.wss-picker-cell-range-end::before {
+.wss-picker-cell-range-end::before,
+.wss-picker-cell-preview::before,
+.wss-picker-cell-preview-start::before,
+.wss-picker-cell-preview-end::before {
     content: "";
     position: absolute;
     top: 3px;
     bottom: 3px;
     inset-inline: 0;
+}
+
+.wss-picker-cell-in-range::before,
+.wss-picker-cell-range-start::before,
+.wss-picker-cell-range-end::before {
     background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
 }
 
-.wss-picker-cell-range-start::before {
+.wss-picker-cell-range-start::before,
+.wss-picker-cell-preview-start::before {
     inset-inline-start: 50%;
 }
 
-.wss-picker-cell-range-end::before {
+.wss-picker-cell-range-end::before,
+.wss-picker-cell-preview-end::before {
     inset-inline-end: 50%;
 }
 
@@ -3142,20 +3159,7 @@
 .wss-picker-cell-preview::before,
 .wss-picker-cell-preview-start::before,
 .wss-picker-cell-preview-end::before {
-    content: "";
-    position: absolute;
-    top: 3px;
-    bottom: 3px;
-    inset-inline: 0;
     background: var(--wss-picker-preview-bg, color-mix(in srgb, var(--wss-color-primary) 5%, #fff));
-}
-
-.wss-picker-cell-preview-start::before {
-    inset-inline-start: 50%;
-}
-
-.wss-picker-cell-preview-end::before {
-    inset-inline-end: 50%;
 }
 
 .wss-picker-day {
@@ -3783,11 +3787,14 @@
     .wss-picker-nav,
     .wss-picker-ok,
     .wss-picker-today-btn,
+    .wss-table-expand-btn,
     .wss-table-expand-btn svg,
     .wss-tabs-tab,
     .wss-search-input,
     .wss-search-btn,
-    .wss-search-clear {
+    .wss-search-clear,
+    [data-tooltip]::before,
+    [data-tooltip]::after {
         transition: none;
     }
 

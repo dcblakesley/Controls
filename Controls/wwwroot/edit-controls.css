@@ -39,6 +39,15 @@
        wss-controls.css -- same literal, but declared per-file since the two stylesheets load
        independently and a consumer may link only one. */
     --edit-checkbox-check-svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M12.4688 3.84961C12.6699 3.84961 12.789 4.0837 12.6602 4.24414L12.6592 4.24316L6.9375 11.4961H6.93652C6.7256 11.7609 6.32265 11.7619 6.1123 11.4961L2.90234 7.42969C2.77666 7.27029 2.89024 7.0353 3.09375 7.03516H3.91309L4.03027 7.04883C4.06878 7.05769 4.10681 7.07051 4.14258 7.08789C4.21376 7.12255 4.2762 7.17315 4.3252 7.23535L6.52344 10.0215L11.2383 4.0498C11.3373 3.92341 11.4895 3.84973 11.6494 3.84961H12.4688Z' fill='%23fff' stroke='%23fff' stroke-width='0.3'/%3E%3C/svg%3E");
+    /* EditFile's upload/attach glyph (Hatch/Spot icon set), shared by .edit-icon-upload,
+       .edit-icon-upload-error and .edit-icon-upload-btn (further down) via the same mask technique as
+       --edit-checkbox-check-svg above -- the fill baked into this source SVG is irrelevant to the
+       rendered color (each rule below supplies its own `background`); it's kept fully opaque (white)
+       purely so the mask itself reads as solid, matching that same precedent. */
+    --edit-icon-upload-svg: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23fff"/></svg>');
+    /* EditFile's delete/remove glyph, shared by .edit-icon-delete (further down). Same fully-opaque
+       mask-source rationale as --edit-icon-upload-svg above. */
+    --edit-icon-delete-svg: url('data:image/svg+xml,<svg viewBox="-1 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.625 1.875H3.5C3.56875 1.875 3.625 1.81875 3.625 1.75V1.875H8.375V1.75C8.375 1.81875 8.43125 1.875 8.5 1.875H8.375V3H9.5V1.75C9.5 1.19844 9.05156 0.75 8.5 0.75H3.5C2.94844 0.75 2.5 1.19844 2.5 1.75V3H3.625V1.875ZM11.5 3H0.5C0.223437 3 0 3.22344 0 3.5V4C0 4.06875 0.05625 4.125 0.125 4.125H1.06875L1.45469 12.2969C1.47969 12.8297 1.92031 13.25 2.45312 13.25H9.54688C10.0813 13.25 10.5203 12.8313 10.5453 12.2969L10.9312 4.125H11.875C11.9438 4.125 12 4.06875 12 4V3.5C12 3.22344 11.7766 3 11.5 3ZM9.42656 12.125H2.57344L2.19531 4.125H9.80469L9.42656 12.125Z" fill="%23fff"/></svg>');
 }
 
 /* Visually hidden but available to screen readers (sr-only). Clip-based hiding (not an offscreen
@@ -114,10 +123,20 @@
 
 /* Keyboard-focus indicator for the editable elements. The library can't rely on the browser default
    outline — consumers commonly reset it — so a visible :focus-visible ring is shipped as a baseline
-   a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. */
+   a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. Grouped with the
+   icon-button family (EditString's mask toggles, EditInputShell's affix clear/password-toggle
+   buttons, further down this file) -- they share this exact 3-property ring; mirrors how
+   wss-controls.css's own Accessibility section groups its focus rings. (The LabelTooltip trigger's
+   own :focus-visible ring stays local to the Tooltip section -- it sits between a plain :focus
+   reset and an @supports override at equal specificity, so merging it in here would flip which one
+   wins.) */
 .edit-input:focus-visible,
 .edit-radio-input:focus-visible,
-.edit-checkedList-checkbox:focus-visible {
+.edit-checkedList-checkbox:focus-visible,
+.edit-icon-eye:focus-visible,
+.edit-icon-eye-invisible:focus-visible,
+.edit-input-clear:focus-visible,
+.edit-input-password-toggle:focus-visible {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
@@ -257,7 +276,14 @@
     mask: none;
 }
 
-.edit-checkbox-input-styled:focus-visible + .edit-checkbox-box {
+/* Same ring recipe as the file's other focus-visible rings (General section, near the top) but
+   without border-radius: 2px -- each of these three elements already carries its own border-radius
+   on the box the outline wraps (this checkbox's own box further up, the file drop zone, the file
+   select button, both further down this file), so restating a generic corner radius here would
+   fight it. Grouped since all three share this exact 2-property body. */
+.edit-checkbox-input-styled:focus-visible + .edit-checkbox-box,
+.edit-file-drop-zone:focus-within,
+.edit-file-select-btn:focus-within {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
 }
@@ -279,14 +305,18 @@
 
 /************************************************ EditCheckedList(String and Enum) ***********************/
 .edit-checkedList-fieldset { }
-.edit-checkedList-checkboxes-container-vertical {
+/* Byte-identical to .edit-radio-buttons-container-vertical/-horizontal (EditRadio section, below) --
+   grouped here since both container families share the exact same layout. */
+.edit-checkedList-checkboxes-container-vertical,
+.edit-radio-buttons-container-vertical {
     /* default/vertical display */
     display: flex;
     flex-direction: column;
     gap: 8px;
     cursor: pointer;
 }
-.edit-checkedList-checkboxes-container-horizontal {
+.edit-checkedList-checkboxes-container-horizontal,
+.edit-radio-buttons-container-horizontal {
     /* IsHorizontal = true */
     display: flex;
     flex-direction: row;
@@ -316,22 +346,8 @@
     padding: 0;
     min-width: 0;
 }
-.edit-radio-buttons-container-vertical {
-    /* default/vertical display */
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    cursor: pointer;
-}
-
-.edit-radio-buttons-container-horizontal {
-    /* IsHorizontal = true */
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-    cursor: pointer;
-}
+/* Layout is grouped with .edit-checkedList-checkboxes-container-vertical/-horizontal
+   (EditCheckedList section, above) -- byte-identical, see there for the shared rule. */
 
 .edit-radio-label {
     /* edit-label is also applied to these labels, so if you want it to look the same you don't have to change this */
@@ -417,7 +433,9 @@
     padding: 0 15px;
     font-size: 14px;
     line-height: 30px;
-    color: var(--color-text, rgba(0, 0, 0, 0.88));
+    /* Unified fallback -- see this file's --color-text single-fallback policy note near
+       .edit-file-drop-text further down. */
+    color: var(--color-text, #262626);
     background: var(--color-bg, #fff);
     border: 1px solid var(--edit-color-border);
     cursor: pointer;
@@ -606,14 +624,8 @@
 .edit-input-clear:hover {
     color: var(--color-text, #262626);
 }
-.edit-icon-eye:focus-visible,
-.edit-icon-eye-invisible:focus-visible,
-.edit-input-clear:focus-visible,
-.edit-input-password-toggle:focus-visible {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-    border-radius: 2px;
-}
+/* :focus-visible ring is grouped with .edit-input's own (General section, near the top of this
+   file) -- see there for the shared rule. */
 
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input { }
@@ -651,7 +663,9 @@
     position: relative;
     display: inline-block; /* Or block, depending on layout */
     background: transparent;
-    margin-left: 4px;
+    /* Logical (not physical margin-left): the last non-centering physical offset in this file --
+       under dir="rtl" a physical left margin puts the gap on the wrong side of the trigger icon. */
+    margin-inline-start: 4px;
     margin-top: -8px;
     width: auto;
     vertical-align: middle;
@@ -667,14 +681,11 @@
     outline: none;
 }
 
-/* Show outline only for keyboard navigation */
-.edit-tooltip-container:focus-visible {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-    border-radius: 2px;
-}
-
-/* Fallback for browsers that don't support :focus-visible */
+/* Show outline only for keyboard navigation, with a same-bodied fallback for browsers that don't
+   support :focus-visible (grouped -- this pair must stay right here, between the plain :focus reset
+   above and the @supports override below, since both sit at equal specificity and rely on this
+   source order). */
+.edit-tooltip-container:focus-visible,
 .edit-tooltip-container:focus:not(:hover) {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
@@ -860,9 +871,16 @@
 
 /* Honor the OS "reduce motion" setting (WCAG 2.3.3), mirroring wss-controls.css: the bubble just
    appears/disappears — no slide, no fade. (The 0.35s hover-intent delay rides the reveal
-   transition, so it goes too; intent-filtering is a nicety, not motion.) */
+   transition, so it goes too; intent-filtering is a nicety, not motion.) Also covers the .edit-theme
+   input-chrome border/shadow transition and the button-mode radio/EditFile-button color transitions
+   -- the byte-equivalent wss-select-selector recipe in wss-controls.css is already suppressed there;
+   this closes the same gap in this file. */
 @media (prefers-reduced-motion: reduce) {
-    .edit-tooltip-content {
+    .edit-tooltip-content,
+    .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]),
+    .edit-theme .edit-input-affix-wrapper,
+    .edit-radio-button,
+    .edit-file-select-btn {
         transition: none;
     }
 }
@@ -910,22 +928,30 @@
 */
 
 /********************************************** EditFile ************************************************/
-/* Icons — SVG data URIs, sized to match the Hatch/Spot icon set */
-.edit-icon-upload {
-    height: 36px;
-    width: 36px;
-    display: inline-block;
-    flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23277C6C"/></svg>');
-}
+/* Icons — SVG data URIs, sized to match the Hatch/Spot icon set. The upload/upload-error/delete
+   glyphs are applied as masks (see --edit-icon-upload-svg/--edit-icon-delete-svg above) with the
+   visible color set via `background`, so they follow themeable tokens instead of a color baked into
+   the image -- same technique the styled checkbox uses (--edit-checkbox-check-svg). .edit-icon-
+   paperclip keeps its plain baked-color background-image; it wasn't part of this pass. */
+.edit-icon-upload,
 .edit-icon-upload-error {
     height: 36px;
     width: 36px;
     display: inline-block;
     flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23CF1322"/></svg>');
+    -webkit-mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+    mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+}
+.edit-icon-upload {
+    /* No existing generic --color-* bridge represents this brand teal, so it's a plain override
+       knob declared only here at its usage site (not a derived hover/shadow/focus state -- a static
+       usage-site fallback is fine per the theming contract) rather than a new :root declaration. */
+    background: var(--edit-color-file-icon, #277c6c);
+}
+.edit-icon-upload-error {
+    /* Was baking the *fallback* value of --edit-color-danger (#cf1322) directly into the image --
+       a themed consumer's real --color-danger never reached this icon. Now it does. */
+    background: var(--edit-color-danger);
 }
 .edit-icon-paperclip {
     height: 14px;
@@ -940,8 +966,10 @@
     width: 14px;
     display: inline-block;
     flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-image: url('data:image/svg+xml,<svg viewBox="-1 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.625 1.875H3.5C3.56875 1.875 3.625 1.81875 3.625 1.75V1.875H8.375V1.75C8.375 1.81875 8.43125 1.875 8.5 1.875H8.375V3H9.5V1.75C9.5 1.19844 9.05156 0.75 8.5 0.75H3.5C2.94844 0.75 2.5 1.19844 2.5 1.75V3H3.625V1.875ZM11.5 3H0.5C0.223437 3 0 3.22344 0 3.5V4C0 4.06875 0.05625 4.125 0.125 4.125H1.06875L1.45469 12.2969C1.47969 12.8297 1.92031 13.25 2.45312 13.25H9.54688C10.0813 13.25 10.5203 12.8313 10.5453 12.2969L10.9312 4.125H11.875C11.9438 4.125 12 4.06875 12 4V3.5C12 3.22344 11.7766 3 11.5 3ZM9.42656 12.125H2.57344L2.19531 4.125H9.80469L9.42656 12.125Z" fill="%23277C6C"/></svg>');
+    -webkit-mask: var(--edit-icon-delete-svg) center / 100% 100% no-repeat;
+    mask: var(--edit-icon-delete-svg) center / 100% 100% no-repeat;
+    /* Same brand-teal override knob as .edit-icon-upload above. */
+    background: var(--edit-color-file-icon, #277c6c);
 }
 
 /* Drop zone */
@@ -979,10 +1007,8 @@
     cursor: pointer;
 }
 
-.edit-file-drop-zone:focus-within {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-}
+/* :focus-within ring is grouped with .edit-checkbox-input-styled's own (EditBool section, near the
+   top of this file) -- see there for the shared rule. */
 
 .edit-file-drop-zone.hover {
     border-color: var(--edit-color-primary);
@@ -1010,16 +1036,21 @@
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    /* Bridged to the generic text token (was a bare rgba literal) -- the exact literal stays as the
-       fallback so an unthemed consumer's rendering is unchanged. */
-    color: var(--color-text, rgba(28, 28, 28, 1));
+    /* --color-text single-fallback policy: every var(--color-text, ...) in this file uses this same
+       #262626 literal (see .edit-radio-button/.edit-file-select-btn and .edit-tooltip-container) --
+       this site and .edit-tooltip-container previously each carried their own close-but-different
+       literal (rgba(28, 28, 28, 1) / rgba(0, 0, 0, 0.88)), which is exactly the drift this note now
+       prevents. */
+    color: var(--color-text, #262626);
     text-align: center;
     pointer-events: none;
 }
 
 .edit-file-formats {
-    /* Same bridge as .edit-file-size / .bound-value below -- secondary/muted text. */
-    color: var(--color-text-secondary, rgba(0, 0, 0, 0.65));
+    /* --color-text-secondary single-fallback policy: same literal as .edit-file-size / .bound-value
+       (below/above) -- this rule previously used its own rgba(0, 0, 0, 0.65), a real, visible drift
+       the old comment here incorrectly asserted didn't exist. */
+    color: var(--color-text-secondary, #8c8c8c);
     font-size: 0.85em;
 }
 
@@ -1057,7 +1088,8 @@
 .edit-file-size {
     flex-shrink: 0;
     white-space: nowrap;
-    color: var(--color-text-secondary, rgba(0, 0, 0, 0.45));
+    /* --color-text-secondary single-fallback policy -- see .edit-file-formats above. */
+    color: var(--color-text-secondary, #8c8c8c);
     font-size: 0.85em;
 }
 
@@ -1116,10 +1148,8 @@
     border-color: var(--edit-color-primary);
 }
 
-.edit-file-select-btn:focus-within {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-}
+/* :focus-within ring is grouped with .edit-checkbox-input-styled's own (EditBool section, near the
+   top of this file) -- see there for the shared rule. */
 
 .edit-file-select-btn.error {
     border-color: var(--edit-color-danger);
@@ -1152,9 +1182,12 @@
     width: 14px;
     display: inline-block;
     flex-shrink: 0;
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-image: url('data:image/svg+xml,<svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M35.4934 14.9198L35.484 14.8823L30.2247 1.51826C29.9903 0.763568 29.2919 0.243256 28.4997 0.243256H7.18092C6.38404 0.243256 5.67623 0.772943 5.45123 1.53701L0.534043 14.7651L0.519981 14.7979L0.510605 14.8354C0.449668 15.0651 0.430918 15.2995 0.46373 15.5292C0.459043 15.6042 0.454355 15.6792 0.454355 15.7542V32.9058C0.455595 33.6612 0.75626 34.3854 1.29047 34.9196C1.82468 35.4538 2.54887 35.7545 3.30436 35.7558H32.7044C34.2747 35.7558 35.5544 34.4761 35.559 32.9058V15.7542C35.559 15.6933 35.559 15.6323 35.5544 15.5808C35.5731 15.3511 35.5544 15.1308 35.4934 14.9198ZM21.6278 12.9042L21.6137 13.6401C21.5762 15.7448 20.1231 17.1604 17.9997 17.1604C16.9637 17.1604 16.0731 16.8276 15.4309 16.1948C14.7887 15.562 14.4372 14.6808 14.4184 13.6401L14.4044 12.9042H4.75748L8.48404 3.84326H27.1965L31.0262 12.9042H21.6278ZM4.04967 16.5042H11.4231C12.5622 19.1808 14.9856 20.7604 18.0044 20.7604C19.584 20.7604 21.0512 20.3198 22.2372 19.4854C23.2778 18.7542 24.0887 17.7323 24.6137 16.5042H31.9497V32.1558H4.04967V16.5042Z" fill="%23277C6C"/></svg>');
+    /* center / 100% 100% -- the box and the SVG's viewBox are both 1:1, so this is equivalent to the
+       previous background-size: contain, just expressed via the mask shorthand (see
+       --edit-icon-upload-svg's own comment for why it's a mask now). */
+    -webkit-mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+    mask: var(--edit-icon-upload-svg) center / 100% 100% no-repeat;
+    background: var(--edit-color-file-icon, #277c6c);
 }
 
 /* ============================================================================
