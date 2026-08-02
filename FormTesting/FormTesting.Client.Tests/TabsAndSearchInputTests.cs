@@ -847,6 +847,16 @@ public class TabsAndSearchInputTests : BunitContext
     static int GenerationOf(Tabs tabs) =>
         (int)typeof(Tabs).GetField("_generation", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tabs)!;
 
+    // The keyboard-navigation latch and the count of arrow-key operations still running. Both are
+    // private and deliberately invisible in the DOM -- they only decide whether a re-collection is
+    // ALLOWED to move focus -- so a left-armed latch (which would let an unrelated later rebuild yank
+    // focus into the strip) can only be pinned by reading them.
+    static bool KeyboardNavOf(Tabs tabs) =>
+        (bool)typeof(Tabs).GetField("_keyboardNav", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tabs)!;
+
+    static int KeyboardNavInFlightOf(Tabs tabs) =>
+        (int)typeof(Tabs).GetField("_keyboardNavInFlight", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tabs)!;
+
     [Fact]
     public void Every_tab_still_has_a_captured_button_reference_after_an_insertion()
     {
@@ -1195,6 +1205,98 @@ public class TabsAndSearchInputTests : BunitContext
             .Select(i => ((ElementReference)i.Arguments[0]!).Id)
             .ToArray();
         Assert.Contains(ButtonRefOf(live).Id, focused);
+
+        // The latch is spent: nothing is in flight, so a LATER re-collection the user did not
+        // navigate into cannot inherit this keypress's permission to move focus.
+        Assert.Equal(0, KeyboardNavInFlightOf(strip.Instance));
+        Assert.False(KeyboardNavOf(strip.Instance));
+    }
+
+    // The same consumer, with an ASYNC ActiveKeyChanged handler -- the far more common shape (an
+    // await on a fetch, a service call, a debounce). Awaiting it flushes the strip's pending render
+    // WHILE the handler is suspended, and the tab is revealed only when the handler resumes, after
+    // that render.
+    sealed class AsyncInsertOnSelectHost : ComponentBase
+    {
+        string? _activeKey;
+        bool _revealed;
+
+        internal TaskCompletionSource Gate { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<Tabs>(0);
+            builder.AddAttribute(1, "Id", "h");
+            builder.AddAttribute(2, "ActiveKey", _activeKey);
+            builder.AddAttribute(3, "ActiveKeyChanged", EventCallback.Factory.Create<string?>(this, async k =>
+            {
+                _activeKey = k;
+                await Gate.Task;
+                _revealed = true;
+            }));
+            builder.AddAttribute(4, "ChildContent", (RenderFragment)(b =>
+            {
+                b.OpenComponent<Tab>(0);
+                b.AddAttribute(1, "Key", "a");
+                b.AddAttribute(2, "Title", "A");
+                b.CloseComponent();
+
+                if (_revealed)
+                {
+                    b.OpenComponent<Tab>(3);
+                    b.AddAttribute(4, "Key", "mid");
+                    b.AddAttribute(5, "Title", "Mid");
+                    b.CloseComponent();
+                }
+
+                b.OpenComponent<Tab>(6);
+                b.AddAttribute(7, "Key", "b");
+                b.AddAttribute(8, "Title", "B");
+                b.CloseComponent();
+            }));
+            builder.CloseComponent();
+        }
+    }
+
+    [Fact]
+    public void Arrow_navigation_into_an_async_consumer_insertion_still_lands_focus_on_a_live_button()
+    {
+        // The async half of the test above, and the reason the latch counts operations instead of
+        // being cleared by the first render after the keypress. Dispatching ActiveKeyChanged
+        // re-renders the consumer around the await, so a render -- and its OnAfterRender -- happens
+        // while the handler is still suspended; the insertion, the re-collection, and the teardown of
+        // the focused button all come one render LATER, when the handler resumes. Clearing on that
+        // first render disarmed the latch before the re-collection it exists for and focus fell to
+        // <body>, silently, only for consumers whose handler awaits.
+        var host = Render<AsyncInsertOnSelectHost>();
+        var strip = host.FindComponent<Tabs>();
+        Assert.Equal(["A", "B"], host.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+
+        host.FindAll("[role=tab]")[0].KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        // Mid-flight: the handler is parked on the gate, a render has already been taken, and the
+        // latch must still be armed.
+        Assert.Equal(["A", "B"], host.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.True(KeyboardNavOf(strip.Instance), "the latch was cleared while the handler was still awaiting");
+        Assert.Equal(1, KeyboardNavInFlightOf(strip.Instance));
+
+        host.InvokeAsync(() => host.Instance.Gate.SetResult());
+        host.WaitForState(() => host.FindAll(".wss-tabs-label").Count == 3, TimeSpan.FromSeconds(2));
+
+        Assert.Equal(1, GenerationOf(strip.Instance));
+        Assert.Equal(["A", "Mid", "B"], host.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["a", "mid", "b"], RenderedTabs(strip.Instance).Select(t => t.Key));
+
+        var live = RenderedTabs(strip.Instance).Single(t => t.Key == "b");
+        var focused = JSInterop.Invocations["Blazor._internal.domWrapper.focus"]
+            .Select(i => ((ElementReference)i.Arguments[0]!).Id)
+            .ToArray();
+        Assert.Contains(ButtonRefOf(live).Id, focused);
+
+        // ...and the operation is fully unwound afterwards: the count is back to zero and the render
+        // the finally guarantees has cleared the latch, so the next unrelated rebuild leaves focus be.
+        host.WaitForState(() => !KeyboardNavOf(strip.Instance), TimeSpan.FromSeconds(2));
+        Assert.Equal(0, KeyboardNavInFlightOf(strip.Instance));
     }
 
     [Fact]
