@@ -896,6 +896,110 @@ public class DatePickerTests : BunitContext
     }
 
     [Fact]
+    public void Datetime_mode_day_click_guard_ignores_a_second_that_showseconds_false_will_zero()
+    {
+        // ShowSeconds=false zeroes the second at normalization, so the value the click actually
+        // commits is 13:45:00 -- whose second nothing disables. The guard must therefore test the
+        // NORMALIZED value, not the raw composed one carrying a stale :30 no select can even change
+        // (the same reason ApplyTimePartAsync composes through ComposeTimePart's own zeroing).
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.ShowSeconds, false)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 13, 45, 30))
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Seconds: [30])))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Assert.False(Day(cut, 20).HasAttribute("disabled")); // the button renders enabled...
+        Day(cut, 20).Click();                               // ...so the click must not be rejected
+
+        Assert.Equal(new DateTime(2026, 2, 20, 13, 45, 0), value);
+    }
+
+    [Fact]
+    public void Datetime_mode_day_click_still_rejects_a_disabled_second_when_showseconds_is_on()
+    {
+        // Regression guard for the guard above: with ShowSeconds true the second survives
+        // normalization, so a DisabledTime that lists it must still reject the click.
+        DateTime? value = new DateTime(2026, 2, 14, 13, 45, 30);
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, value)
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(date =>
+                date?.Day == 20 ? new DisabledTimeParts(Seconds: [30]) : null))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2026, 2, 14, 13, 45, 30), value); // unchanged
+    }
+
+    [Fact]
+    public void Datetime_mode_time_select_change_is_rejected_when_min_disables_the_composed_day()
+    {
+        // The time selects were the ONE commit route guarded by only the time half of
+        // IsDisabledForCommit -- and with a null Value the composed date falls back to
+        // DateTime.Today (see PickerMath.ComposeTimePart), so an hour change could commit a DATE
+        // nothing had validated, thirty days before Min. Every other route already rejects it.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.ShowNow, true)
+            .Add(c => c.Min, DateTime.Today.AddDays(30))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        // The panel already tells the user today is unreachable through every other route.
+        Assert.True(cut.Find(".wss-picker-today-btn").HasAttribute("disabled")); // the Now link
+
+        TimeSelects(cut)[0].Change("9"); // hour
+
+        Assert.Null(value);
+    }
+
+    [Fact]
+    public void Datetime_mode_time_select_change_is_rejected_when_disableddate_rejects_the_composed_day()
+    {
+        // The same hole with no Min/Max at all -- DisabledDate alone is enough, since the time
+        // selects never consulted it either.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.DisabledDate, (Func<DateTime, bool>)(d => d == DateTime.Today))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("9");
+
+        Assert.Null(value);
+    }
+
+    [Fact]
+    public void Time_mode_time_select_change_still_ignores_min_and_max()
+    {
+        // Mode.Time has no date-range concept (IsDisabledForCommit's Time arm never consults
+        // Min/Max/DisabledDate), so widening the time-select guard to the full dispatcher must not
+        // start rejecting a perfectly ordinary time pick just because Min is in the future.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Min, DateTime.Today.AddDays(30))
+            .Add(c => c.Max, DateTime.Today.AddDays(60))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("9");
+
+        Assert.Equal(DateTime.Today.AddHours(9), value);
+    }
+
+    [Fact]
     public void Time_select_change_rerenders_the_picker_with_no_bound_callback()
     {
         // The time row is rendered through a shared slot component, but its four change callbacks

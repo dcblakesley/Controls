@@ -1015,7 +1015,19 @@ public partial class DatePicker : PickerBase
         // ApplyTimePartAsync), so guard it here too -- a no-op rejection, same as theirs, leaving the
         // bound value (and the panel) exactly as they were. Same shape as the Week guard above: a
         // rejected click never reaches the _edit clear below either.
-        if (Mode == DatePickerMode.DateTime && IsTimeDisabledForCommit(composed)) return;
+        //
+        // Guard the NORMALIZED value, not the raw composition: SetValueAsync normalizes before
+        // committing, and Mode.DateTime's normalization zeroes the second when ShowSeconds is false.
+        // Testing the raw value would reject a click over a stale second that no select in the row
+        // can even change and that the commit itself would discard -- the exact bug
+        // ApplyTimePartAsync's own ComposeTimePart zeroing exists to prevent. (Only the DateTime arm
+        // is normalized here; Mode.Week's normalization would move the value to its week start,
+        // which OnDayClick's own Week guard above already handles at week granularity.)
+        if (Mode == DatePickerMode.DateTime)
+        {
+            composed = NormalizeForMode(composed);
+            if (IsTimeDisabledForCommit(composed)) return;
+        }
         // A calendar pick supersedes any half-typed input text.
         _edit = null;
         await SetValueAsync(composed);
@@ -1147,18 +1159,24 @@ public partial class DatePicker : PickerBase
     // current date part (Value's date, or DateTime.Today when unset -- Mode.Time discards this anyway)
     // and the current time-of-day (Value's, or midnight) with one HH/mm/ss part replaced (see
     // PickerMath.ComposeTimePart, shared with DateRangePicker's own session override), then commits --
-    // unless DisabledTime rejects the composed H/m/s, in which case this no-ops (the select's own
-    // displayed value reverts to Value's on the next render, same revert semantics a Min/Max rejection
-    // gets elsewhere). ShowSeconds false zeroes the second in the compose (not just in
+    // unless the composed value is one this Mode won't accept, in which case this no-ops (the select's
+    // own displayed value reverts to Value's on the next render, same revert semantics a Min/Max
+    // rejection gets elsewhere). ShowSeconds false zeroes the second in the compose (not just in
     // NormalizeForMode) so the DisabledTime guard below never rejects an hour/minute change over a
     // stale second that no select can even change. The three per-select handlers (and Use12Hours'
     // period shift) that call this live on PickerBase -- they were duplicated verbatim.
+    //
+    // The guard is the FULL IsDisabledForCommit, not just its time half: Mode.DateTime's composed
+    // DATE is not necessarily one anything validated -- ComposeTimePart falls back to DateTime.Today
+    // when Value is null, so with (say) a Min a month out, an hour change was the one route that
+    // could commit today. (Mode.Time's own arm of the dispatcher IS just the time half -- a
+    // time-of-day has no date-range concept there -- so nothing changes for it.)
     internal override Task ApplyTimePartAsync(int? hour, int? minute, int? second)
     {
         // A select change supersedes any half-typed input text, same as a day/month click.
         _edit = null;
         var composed = PickerMath.ComposeTimePart(TimeRowValue, ShowSeconds, hour, minute, second);
-        return IsTimeDisabledForCommit(composed) ? Task.CompletedTask : SetValueAsync(composed);
+        return IsDisabledForCommit(composed) ? Task.CompletedTask : SetValueAsync(composed);
     }
 
     // The OK button is Time/DateTime mode's close signal -- both modes commit incrementally (time
