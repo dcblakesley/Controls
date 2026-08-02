@@ -80,14 +80,8 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// bound property's <c>[FileConstraints(MaxFileSizeBytes = …)]</c> value (0 there means unset, since
     /// attributes can't hold a nullable long), else the built-in 10 MB default.
     /// </summary>
-    long EffectiveMaxFileSizeBytes
-    {
-        get
-        {
-            var attrValue = _attributes.FileConstraints()?.MaxFileSizeBytes ?? 0;
-            return MaxFileSizeBytes ?? (attrValue > 0 ? attrValue : 10L * 1024 * 1024);
-        }
-    }
+    long EffectiveMaxFileSizeBytes =>
+        MaxFileSizeBytes ?? AttributesHelper.NonZero(_attributes.FileConstraints()?.MaxFileSizeBytes) ?? 10L * 1024 * 1024;
 
     /// <summary>
     /// Maximum number of files that may be selected. 0 = unlimited. Falls back to the bound property's
@@ -99,14 +93,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// The file-count cap actually enforced: the <see cref="MaxFiles"/> parameter, else the bound
     /// property's <c>[FileConstraints(MaxFiles = …)]</c> value (0 there means unset), else 0 (unlimited).
     /// </summary>
-    int EffectiveMaxFiles
-    {
-        get
-        {
-            var attrValue = _attributes.FileConstraints()?.MaxFiles ?? 0;
-            return MaxFiles ?? (attrValue > 0 ? attrValue : 0);
-        }
-    }
+    int EffectiveMaxFiles => MaxFiles ?? AttributesHelper.NonZero(_attributes.FileConstraints()?.MaxFiles) ?? 0;
 
     /// <summary>
     /// Maximum total bytes across all selected files (existing plus newly picked). 0 = unlimited.
@@ -122,14 +109,8 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// bound property's <c>[FileConstraints(MaxTotalBytes = …)]</c> value (0 there means unset), else
     /// the built-in 100 MB default.
     /// </summary>
-    long EffectiveMaxTotalBytes
-    {
-        get
-        {
-            var attrValue = _attributes.FileConstraints()?.MaxTotalBytes ?? 0;
-            return MaxTotalBytes ?? (attrValue > 0 ? attrValue : 100L * 1024 * 1024);
-        }
-    }
+    long EffectiveMaxTotalBytes =>
+        MaxTotalBytes ?? AttributesHelper.NonZero(_attributes.FileConstraints()?.MaxTotalBytes) ?? 100L * 1024 * 1024;
 
     // Localizable upload-error messages (string.Format under CurrentCulture, defaults keep today's
     // exact English output — same pattern as the Pagination/Select label parameters). The {n}
@@ -238,6 +219,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
         >= 1024 => $"{bytes / 1024.0:0.#} KB",
         _ => $"{bytes} B",
     };
+
+    // BoundValueDisplay's debug text -- the one place this control's "no files selected" wording
+    // lives, rather than an inline ternary at the markup call site.
+    string BoundValueText => Value?.Count == 0 ? "(none)" : string.Join(", ", (Value ?? []).Select(f => f.Name));
 
     // Name + size + last-modified is the same identity a user would judge by eye and is cheap to
     // compare (no content hashing) — good enough to catch the common case of re-dropping the same

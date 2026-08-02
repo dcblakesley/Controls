@@ -268,6 +268,18 @@ public static class AttributesHelper
         return null;
     }
 
+    /// <summary>
+    /// Converts an attribute's "0 means unset" numeric sentinel back to null. Several attributes
+    /// (<see cref="RowsAttribute"/>'s Rows/MinRows/MaxRows, <see cref="FileConstraintsAttribute"/>'s
+    /// MaxFileSizeBytes/MaxFiles/MaxTotalBytes) use 0 for their unset numeric properties because an
+    /// attribute can't hold a nullable int/long -- every fallback through one of them must convert 0
+    /// back to null before treating it as a real bound, rather than rendering a meaningless zero cap.
+    /// </summary>
+    public static int? NonZero(int? value) => value is null or 0 ? null : value;
+
+    /// <inheritdoc cref="NonZero(int?)"/>
+    public static long? NonZero(long? value) => value is null or 0 ? null : value;
+
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
         FieldIdentifier fieldIdentifier) =>
         GetId(id, formGroupOptions, idPrefix, fieldIdentifier.FieldName);

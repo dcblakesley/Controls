@@ -62,7 +62,7 @@ public partial class EditTextArea : EditTextInputBase
     /// default). Feeds <see cref="EffectiveRows"/> (the actually-rendered initial height) and
     /// <see cref="AutoSizeAsync"/>'s floor.
     /// </summary>
-    int ResolvedRows => Rows ?? NonZero(_attributes.Rows()?.Rows) ?? 2;
+    int ResolvedRows => Rows ?? AttributesHelper.NonZero(_attributes.Rows()?.Rows) ?? 2;
 
     /// <summary>
     /// The <see cref="MinRows"/> parameter resolved against the model's <c>[Rows]</c> attribute: the
@@ -70,13 +70,13 @@ public partial class EditTextArea : EditTextInputBase
     /// <see cref="EffectiveRows"/> and <see cref="AutoSizeAsync"/> supply the further fallback to
     /// <see cref="ResolvedRows"/>.
     /// </summary>
-    int? ResolvedMinRows => MinRows ?? NonZero(_attributes.Rows()?.MinRows);
+    int? ResolvedMinRows => MinRows ?? AttributesHelper.NonZero(_attributes.Rows()?.MinRows);
 
     /// <summary>
     /// The <see cref="MaxRows"/> parameter resolved against the model's <c>[Rows]</c> attribute: the
     /// parameter, else the attribute's <c>MaxRows</c> value (0 treated as unset), else null (unbounded).
     /// </summary>
-    int? ResolvedMaxRows => MaxRows ?? NonZero(_attributes.Rows()?.MaxRows);
+    int? ResolvedMaxRows => MaxRows ?? AttributesHelper.NonZero(_attributes.Rows()?.MaxRows);
 
     /// <summary>
     /// The <see cref="AutoSize"/> parameter resolved against the model's <c>[Rows]</c> attribute: the
@@ -85,10 +85,6 @@ public partial class EditTextArea : EditTextInputBase
     /// an explicit <c>AutoSize="false"</c> parameter still overrides a true from the attribute.
     /// </summary>
     bool ResolvedAutoSize => AutoSize ?? _attributes.Rows()?.AutoSize ?? false;
-
-    // RowsAttribute uses 0 (not null) as its "unset" sentinel for the numeric properties -- an
-    // attribute can't hold a nullable int -- so every fallback through it must convert 0 back to null.
-    static int? NonZero(int? value) => value is null or 0 ? null : value;
 
     [Inject] IJSRuntime JS { get; set; } = default!;
 
@@ -102,17 +98,21 @@ public partial class EditTextArea : EditTextInputBase
     bool UseAffixLayout => EditInputShell.UsesAffixLayout(null, null, AllowClear, CountText, false);
 
     /// <summary>
-    /// The textarea's <c>class</c> attribute. Legacy mode (no affix params, no AutoSize) reproduces
-    /// today's exact string, so a no-new-params render stays byte-identical; affix mode adds
-    /// <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and <see cref="ResolvedAutoSize"/>
-    /// adds <c>edit-textarea-autosize</c> (disables the native resize handle).
+    /// The textarea's <c>class</c> attribute. Legacy mode (no affix params, no AutoSize) carries
+    /// <c>edit-input-legacy-padding</c> (the trailing-edge space InvalidIcon needs, formerly an inline
+    /// style set directly on this element -- see <see cref="EditInputShell.UsesAffixLayout"/>'s remarks
+    /// -- which also fixes this element carrying an inline style at all when its <c>style</c> is
+    /// otherwise JS-owned, see <see cref="AutoSizeAsync"/>) otherwise reproducing today's exact string;
+    /// affix mode adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract instead, and
+    /// <see cref="ResolvedAutoSize"/> adds <c>edit-textarea-autosize</c> (disables the native resize
+    /// handle) regardless of mode.
     /// </summary>
     string InputClass
     {
         get
         {
             var classes = "edit-input edit-textarea-input";
-            if (UseAffixLayout) classes += " edit-affix-input";
+            classes += UseAffixLayout ? " edit-affix-input" : " edit-input-legacy-padding";
             if (ResolvedAutoSize) classes += " edit-textarea-autosize";
             return EditInputShell.BuildInputClass(classes, Size, CssClass);
         }

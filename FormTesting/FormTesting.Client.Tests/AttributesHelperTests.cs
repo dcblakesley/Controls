@@ -469,4 +469,19 @@ public class AttributesHelperTests
     {
         Assert.Null(new List<Attribute>().MinDate());
     }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(0, null)]
+    [InlineData(5, 5)]
+    [InlineData(-1, -1)] // not itself a meaningful cap, but only 0 is the documented sentinel
+    public void NonZero_int_converts_the_zero_sentinel_to_null(int? value, int? expected) =>
+        Assert.Equal(expected, AttributesHelper.NonZero(value));
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(0L, null)]
+    [InlineData(1024L, 1024L)]
+    public void NonZero_long_converts_the_zero_sentinel_to_null(long? value, long? expected) =>
+        Assert.Equal(expected, AttributesHelper.NonZero(value));
 }

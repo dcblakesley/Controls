@@ -21,7 +21,6 @@
                             Prefix=@Prefix
                             Suffix=@Suffix>
                 <input type="number"
-                       style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                        disabled=@IsDisabled
                        id=@_id
                        data-test-id=@_id
@@ -44,9 +43,6 @@
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
-        @if (FormOptions != null && FormOptions.ShowBoundValues)
-        {
-            <div class="bound-value">@CurrentValueAsString</div>
-        }
+        <BoundValueDisplay Text=@CurrentValueAsString />
     </div>
 }

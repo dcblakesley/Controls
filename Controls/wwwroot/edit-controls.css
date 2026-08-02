@@ -1384,3 +1384,13 @@
     min-height: var(--edit-control-height-lg);
     font-size: var(--edit-font-size-lg);
 }
+
+/* EditString/EditTextArea/EditNumber's legacy-mode (non-affix) editor reserves this same 2rem at its
+   trailing edge for InvalidIcon inside .edit-input-with-icon above -- previously an inline
+   `style="padding-inline-end: 2rem"` hand-duplicated on all three. An inline style always wins over
+   any class-based rule regardless of specificity, so this class reproduces that: the base chrome rule
+   and its `-sm` variant just above both set the `padding` shorthand at specificity (0,4,0) -- tied
+   here and declared after both, so this still wins under an opt-in `.edit-theme` scope. */
+.edit-input.edit-input-legacy-padding:not(.edit-affix-input):not([type="checkbox"]) {
+    padding-inline-end: 2rem;
+}
