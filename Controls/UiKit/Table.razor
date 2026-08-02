@@ -31,11 +31,7 @@
 }
 @if (ShowTopPager)
 {
-    <div class="wss-table-pagination wss-table-pagination-top wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_filtered.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
-                    ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
-                    AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")" />
-    </div>
+    @PagerFragment("top", PagerPosition == PagerPosition.Both ? "Pagination (top)" : "Pagination")
 }
 <div class="wss-table-wrapper @(ScrollY is not null ? "wss-table-wrapper-scroll-y" : null)"
      style="@(ScrollY is not null ? $"max-height:{ScrollY};" : null)">
@@ -61,20 +57,11 @@
                             @* The label matches the actual scope: ToggleAll only affects the current page. *@
                             @if (EffectiveUseStyledCheckbox)
                             {
-                                <span class="wss-table-checkbox-wrap">
-                                    <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled"
-                                           aria-label="@SelectAllLabel"
-                                           checked="@_allSelected" disabled="@_headerSelectAllDisabled"
-                                           @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
-                                    <span class="wss-table-checkbox-box" aria-hidden="true"></span>
-                                </span>
+                                @StyledCheckboxWrap(SelectAllCheckbox(true))
                             }
                             else
                             {
-                                <input type="checkbox" class="wss-table-checkbox"
-                                       aria-label="@SelectAllLabel"
-                                       checked="@_allSelected" disabled="@_headerSelectAllDisabled"
-                                       @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />
+                                @SelectAllCheckbox(false)
                             }
                         }
                     </th>
@@ -96,27 +83,13 @@
                                 @if (col.CanFilter)
                                 {
                                     <div class="wss-table-header-inner">
-                                        <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
-                                            <span class="wss-table-sort-label">@col.HeaderFor()</span>
-                                            <span class="wss-table-sorter" aria-hidden="true">
-                                                <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
-                                                <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
-                                            </span>
-                                        </button>
-                                        <TableColumnFilter TItem="TItem" Column="col" Table="this"
-                                                            FilterButtonLabelFormat="@FilterButtonLabelFormat"
-                                                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />
+                                        @SortTrigger(col, iconOnly: false)
+                                        @ColumnFilter(col)
                                     </div>
                                 }
                                 else
                                 {
-                                    <button type="button" class="wss-table-sort-trigger" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
-                                        <span class="wss-table-sort-label">@col.HeaderFor()</span>
-                                        <span class="wss-table-sorter" aria-hidden="true">
-                                            <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
-                                            <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
-                                        </span>
-                                    </button>
+                                    @SortTrigger(col, iconOnly: false)
                                 }
                             }
                             else
@@ -131,17 +104,10 @@
                                    no CanFilter fork needed in this branch. *@
                                 <div class="wss-table-sort-header">
                                     <div class="wss-table-sort-content" @onclick="@(() => ToggleSort(col))">@col.HeaderFor()</div>
-                                    <button type="button" class="wss-table-sort-trigger wss-table-sort-trigger-icon" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
-                                        <span class="wss-table-sorter" aria-hidden="true">
-                                            <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
-                                            <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
-                                        </span>
-                                    </button>
+                                    @SortTrigger(col, iconOnly: true)
                                     @if (col.CanFilter)
                                     {
-                                        <TableColumnFilter TItem="TItem" Column="col" Table="this"
-                                                            FilterButtonLabelFormat="@FilterButtonLabelFormat"
-                                                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />
+                                        @ColumnFilter(col)
                                     }
                                 </div>
                             }
@@ -154,9 +120,7 @@
                             <th scope="col" @key="col" class="wss-table-cell @(col.FilterOpen ? "wss-table-cell-filter-open" : null)">
                                 <div class="wss-table-header-inner">
                                     <span class="wss-table-header-text">@col.HeaderFor()</span>
-                                    <TableColumnFilter TItem="TItem" Column="col" Table="this"
-                                                        FilterButtonLabelFormat="@FilterButtonLabelFormat"
-                                                        ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />
+                                    @ColumnFilter(col)
                                 </div>
                             </th>
                         }
@@ -207,18 +171,11 @@
                                 {
                                     @if (EffectiveUseStyledCheckbox)
                                     {
-                                        <span class="wss-table-checkbox-wrap">
-                                            <input type="checkbox" class="wss-table-checkbox wss-table-checkbox-input-styled" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
-                                                   disabled="@(!IsRowSelectableFor(item))"
-                                                   @onchange="@(e => ToggleRow(item, e.Value is true))" />
-                                            <span class="wss-table-checkbox-box" aria-hidden="true"></span>
-                                        </span>
+                                        @StyledCheckboxWrap(RowCheckbox(item, true))
                                     }
                                     else
                                     {
-                                        <input type="checkbox" class="wss-table-checkbox" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
-                                               disabled="@(!IsRowSelectableFor(item))"
-                                               @onchange="@(e => ToggleRow(item, e.Value is true))" />
+                                        @RowCheckbox(item, false)
                                     }
                                 }
                                 else
@@ -261,15 +218,71 @@
 
 @if (ShowBottomPager)
 {
-    <div class="wss-table-pagination wss-table-pagination-bottom wss-table-pagination-@PagerAlignName">
-        <Pagination Total="_filtered.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
-                    ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
-                    AriaLabel="@(PagerPosition == PagerPosition.Both ? "Pagination (bottom)" : "Pagination")" />
-    </div>
+    @PagerFragment("bottom", PagerPosition == PagerPosition.Both ? "Pagination (bottom)" : "Pagination")
 }
 </div>
 
 @code {
+    // ----- Local render fragments -------------------------------------------
+    // Markup the table renders from more than one place, factored out so the copies can't drift
+    // (the same technique as Tabs' NavFragment / EditBool's CheckboxInput). Blazor wraps every
+    // RenderFragment it renders in its own region, so the shared sequence numbers inside these can't
+    // collide with the surrounding markup's.
+
+    // Top and bottom pagers: seven forwarded parameters each, identical but for the position
+    // modifier class and the aria-label.
+    RenderFragment PagerFragment(string position, string ariaLabel) =>
+        @<div class="wss-table-pagination wss-table-pagination-@position wss-table-pagination-@PagerAlignName">
+            <Pagination Total="_filtered.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
+                        ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
+                        AriaLabel="@ariaLabel" />
+        </div>;
+
+    // The sort button + its caret stack, rendered on every sortable header. iconOnly is the
+    // TitleContent case: the template renders in its own clickable area beside the button (see the
+    // th markup), so the button has no visible content of its own and only carries the carets.
+    RenderFragment SortTrigger(Column<TItem> col, bool iconOnly) =>
+        @<button type="button" class="@(iconOnly ? "wss-table-sort-trigger wss-table-sort-trigger-icon" : "wss-table-sort-trigger")" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
+            @if (!iconOnly)
+            {
+                <span class="wss-table-sort-label">@col.HeaderFor()</span>
+            }
+            <span class="wss-table-sorter" aria-hidden="true">
+                <span class="wss-table-sorter-up @(IsActive(col, SortDirection.Ascending) ? "wss-table-sorter-active" : null)"></span>
+                <span class="wss-table-sorter-down @(IsActive(col, SortDirection.Descending) ? "wss-table-sorter-active" : null)"></span>
+            </span>
+        </button>;
+
+    // The filter control, with the three forwarded label parameters, on each of the three header shapes.
+    RenderFragment ColumnFilter(Column<TItem> col) =>
+        @<TableColumnFilter TItem="TItem" Column="col" Table="this"
+                            FilterButtonLabelFormat="@FilterButtonLabelFormat"
+                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" />;
+
+    // Selection checkboxes: the styled variant is the same <input> plus a wrapper and one extra
+    // class, so the box markup lives here once for both the header and the rows. The header's own
+    // @ref capture is why the two inputs stay separate fragments -- a reference capture can't be
+    // applied conditionally.
+    RenderFragment StyledCheckboxWrap(RenderFragment input) =>
+        @<span class="wss-table-checkbox-wrap">
+            @input
+            <span class="wss-table-checkbox-box" aria-hidden="true"></span>
+        </span>;
+
+    RenderFragment SelectAllCheckbox(bool styled) =>
+        @<input type="checkbox" class="@CheckboxClass(styled)"
+                aria-label="@SelectAllLabel"
+                checked="@_allSelected" disabled="@_headerSelectAllDisabled"
+                @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />;
+
+    RenderFragment RowCheckbox(TItem item, bool styled) =>
+        @<input type="checkbox" class="@CheckboxClass(styled)" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
+                disabled="@(!IsRowSelectableFor(item))"
+                @onchange="@(e => ToggleRow(item, e.Value is true))" />;
+
+    static string CheckboxClass(bool styled) =>
+        styled ? "wss-table-checkbox wss-table-checkbox-input-styled" : "wss-table-checkbox";
+
     /// <summary>The rows to render. Treated as an immutable parameter: reassign a new collection to refresh — the Table only re-reads on a reference change, so mutating in place is not seen.</summary>
     [Parameter] public IEnumerable<TItem>? DataSource { get; set; }
     /// <summary>The column definitions: <see cref="Column{TItem}"/> / <c>PropertyColumn</c> / <c>ActionColumn</c> children (declarative metadata — they emit no markup of their own and may be conditionally rendered).</summary>
@@ -530,8 +543,8 @@
 
     // Loading overlay spinner: EditIcons.LoadingSpinner ships with no animation baked in (a static
     // glyph, by design) -- wss-icon-spin (wss-controls.css, the shared wss-msg-spin keyframe) is what
-    // actually rotates it, same technique as SearchInput.Loading.
-    static readonly MarkupString LoadingIcon = new($"<span class=\"wss-icon-spin\">{EditIcons.LoadingSpinner}</span>");
+    // actually rotates it. The wrapped form lives beside the glyph, shared with SearchInput.Loading.
+    static readonly MarkupString LoadingIcon = EditIcons.SpinningLoadingSpinner;
 
     bool HasRowDetail => RowDetail is not null;
     readonly HashSet<object> _expanded = new(); // row key -> expanded

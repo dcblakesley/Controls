@@ -2062,6 +2062,83 @@ public class UiKitTableTests : BunitContext
         Assert.Equal(3, cut.FindAll("tbody .wss-table-row").Count);
     }
 
+    // ----- Shared local render fragments (one copy per repeated block) -----
+
+    // bUnit renders Blazor's event wiring as blazor:onclick="<handler id>"; the ids are per-render
+    // counters, so they differ between two components (and between two blocks of one component)
+    // without the markup differing at all.
+    static string WithoutHandlerIds(string markup) =>
+        System.Text.RegularExpressions.Regex.Replace(markup, "blazor:[a-zA-Z]+=\"[^\"]*\"", "");
+
+    [Fact]
+    public void The_sort_trigger_renders_identically_with_and_without_a_column_filter()
+    {
+        // The filterable and non-filterable sortable headers carried byte-identical copies of the
+        // button + caret stack (a third, icon-only copy sits in the TitleContent branch). They share
+        // one fragment now; this pins that they can't drift apart again.
+        string Trigger(bool filterable)
+        {
+            var cut = Render<Table<Person>>(p =>
+            {
+                p.Add(t => t.DataSource, Sample());
+                p.AddChildContent<PropertyColumn<Person, string>>(cp =>
+                {
+                    cp.Add(c => c.Title, "Name").Add(c => c.Property, x => x.Name).Add(c => c.Sortable, true);
+                    if (filterable)
+                    {
+                        cp.Add(c => c.FilterOptions, NameOptions())
+                          .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v));
+                    }
+                });
+            });
+            return WithoutHandlerIds(cut.Find("button.wss-table-sort-trigger").OuterHtml);
+        }
+
+        Assert.Equal(Trigger(false), Trigger(true));
+    }
+
+    [Fact]
+    public void Top_and_bottom_pagers_render_the_same_block_apart_from_position_and_label()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.PageSize, 2)
+            .Add(t => t.PagerPosition, PagerPosition.Both)
+            .Add(t => t.PageSizeOptions, new[] { 2, 5 })
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var top = WithoutHandlerIds(cut.Find(".wss-table-pagination-top").OuterHtml)
+            .Replace("wss-table-pagination-top", "wss-table-pagination-bottom")
+            .Replace("Pagination (top)", "Pagination (bottom)");
+        var bottom = WithoutHandlerIds(cut.Find(".wss-table-pagination-bottom").OuterHtml);
+
+        Assert.Equal(top, bottom);
+    }
+
+    [Fact]
+    public void Header_and_row_styled_checkboxes_share_the_same_box_wrapper()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .Add(t => t.UseStyledCheckbox, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        // Same wrapper + same drawn box either side; only the input's own label/state differ.
+        var header = cut.Find("thead .wss-table-checkbox-wrap");
+        var row = cut.Find("tbody .wss-table-checkbox-wrap");
+        Assert.Equal(header.QuerySelector(".wss-table-checkbox-box")!.OuterHtml,
+                     row.QuerySelector(".wss-table-checkbox-box")!.OuterHtml);
+        Assert.Equal("wss-table-checkbox wss-table-checkbox-input-styled",
+                     header.QuerySelector("input")!.GetAttribute("class"));
+        Assert.Equal("wss-table-checkbox wss-table-checkbox-input-styled",
+                     row.QuerySelector("input")!.GetAttribute("class"));
+    }
+
     // ----- Runtime parameter changes on an already-registered column -----
 
     [Fact]

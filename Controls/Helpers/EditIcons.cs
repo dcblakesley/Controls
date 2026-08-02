@@ -44,4 +44,14 @@ internal static class EditIcons
     /// <c>wss-msg-icon-loading</c> span instead.</summary>
     public static readonly MarkupString LoadingSpinner = new(
         "<svg viewBox=\"0 0 1024 1024\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M988 548c-19.9 0-36-16.1-36-36 0-59.4-11.6-117-34.6-171.3a440.45 440.45 0 00-94.3-139.9 437.71 437.71 0 00-139.9-94.3C629 83.6 571.4 72 512 72c-19.9 0-36-16.1-36-36s16.1-36 36-36c69.1 0 136.2 13.5 199.3 40.3C772.3 66 827 103 874 150c47 47 83.9 101.8 109.7 162.7 26.7 63.1 40.2 130.2 40.2 199.3.1 19.9-16 36-35.9 36z\"></path></svg>");
+
+    /// <summary><see cref="LoadingSpinner"/> already wrapped in the <c>wss-icon-spin</c> span that
+    /// rotates it (wss-controls.css, reusing the existing <c>wss-msg-spin</c> keyframe) — the form
+    /// <see cref="Controls.Table{TItem}"/>'s loading mask and <see cref="Controls.SearchInput"/>'s
+    /// loading button both render, built once here instead of transcribed identically into each.
+    /// (Components that already have an element to hang the class on — <c>Select</c>'s arrow slot,
+    /// <c>Popconfirm</c>'s OK button, <c>MessageListView</c>'s icon span — keep using the bare
+    /// <see cref="LoadingSpinner"/> inside their own markup.)</summary>
+    public static readonly MarkupString SpinningLoadingSpinner = new(
+        $"<span class=\"wss-icon-spin\">{LoadingSpinner}</span>");
 }
