@@ -835,6 +835,56 @@ public class DatePickerTests : BunitContext
     }
 
     [Fact]
+    public void Datetime_mode_day_click_is_rejected_when_disabledtime_disables_the_carried_hour()
+    {
+        // DisabledTime is evaluated per DATE: Feb 20 disables 13:00, Feb 14 does not. The clicked
+        // day's own button is enabled (Min/Max/DisabledDate say nothing about it) -- only the
+        // time-of-day the click would CARRY onto it is disabled, which the typed path and the time
+        // selects both already reject. The click must reject it too, leaving the value untouched.
+        DateTime? value = new DateTime(2026, 2, 14, 13, 45, 30);
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, value)
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(date =>
+                date?.Day == 20 ? new DisabledTimeParts(Hours: [13]) : null))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+
+        Assert.False(Day(cut, 20).HasAttribute("disabled")); // the DAY itself is selectable
+
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2026, 2, 14, 13, 45, 30), value); // rejected -- unchanged
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+
+        // A day whose own DisabledTime allows 13:00 still commits, so the guard is targeted, not a
+        // blanket block on day clicks once DisabledTime is supplied at all.
+        Day(cut, 18).Click();
+        Assert.Equal(new DateTime(2026, 2, 18, 13, 45, 30), value);
+    }
+
+    [Fact]
+    public void Datetime_mode_day_click_is_unaffected_by_a_disabledtime_that_misses_the_carried_time()
+    {
+        // Regression guard for the guard itself: DisabledTime that lists an hour the value doesn't
+        // carry must not block the pick (nor may Mode.Date ever consult DisabledTime at all).
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 9, 0, 0))
+            .Add(c => c.DisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13])))
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        Day(cut, 20).Click();
+
+        Assert.Equal(new DateTime(2026, 2, 20, 9, 0, 0), value);
+    }
+
+    [Fact]
     public void Datetime_mode_ok_button_closes_the_panel()
     {
         var cut = Render<DatePicker>(p => p

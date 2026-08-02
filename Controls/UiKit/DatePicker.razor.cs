@@ -91,7 +91,9 @@ public partial class DatePicker : PickerBase
     /// <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/> time row. Invoked with
     /// the current date part — <see cref="Value"/>'s date, or null when <see cref="Value"/> is null —
     /// once per render of the time row (not once per option) and once per commit guard (a time select
-    /// change via <c>ApplyTimePartAsync</c>, or a typed-text commit in either mode). A disabled hour/
+    /// change via <c>ApplyTimePartAsync</c>, a typed-text commit in either mode, or — in
+    /// <see cref="DatePickerMode.DateTime"/> — a day click, which carries the current time-of-day onto
+    /// a date that may disable it). A disabled hour/
     /// minute/second renders its <c>&lt;option&gt;</c> with the <c>disabled</c> attribute (or is
     /// omitted entirely — see <see cref="HideDisabledTimeOptions"/>) and rejects a commit that would
     /// land on it (the select — or the typed text — reverts, same as a <see cref="Min"/>/<see cref="Max"/>
@@ -1028,13 +1030,22 @@ public partial class DatePicker : PickerBase
         // enabled. Guard it here explicitly, mirroring the typed-text path's IsDisabledForCommit
         // check, so a click can't slip past DisabledDate the way SetValueAsync itself never checks.
         if (Mode == DatePickerMode.Week && IsWeekDisabledForCommit(WeekStart(day))) return;
-        // A calendar pick supersedes any half-typed input text.
-        _edit = null;
         // Mode.DateTime keeps whatever time-of-day is already committed (or midnight) instead of
         // zeroing it out -- the day calendar only ever supplies the date part there, the time row
         // below it owns the rest. Mode.Date is unaffected: adding TimeSpan.Zero is a no-op.
         var time = Mode == DatePickerMode.DateTime ? Value?.TimeOfDay ?? TimeSpan.Zero : TimeSpan.Zero;
-        await SetValueAsync(day + time);
+        var composed = day + time;
+        // The day BUTTON's own `disabled` attribute already covers IsDayDisabled, but nothing covers
+        // the carried time-of-day: DisabledTime is evaluated per DATE, so the clicked day can disable
+        // the very hour/minute/second the current value carries onto it. Both other commit paths
+        // reject exactly that (the typed path via IsDisabledForCommit, the time selects via
+        // ApplyTimePartAsync), so guard it here too -- a no-op rejection, same as theirs, leaving the
+        // bound value (and the panel) exactly as they were. Same shape as the Week guard above: a
+        // rejected click never reaches the _edit clear below either.
+        if (Mode == DatePickerMode.DateTime && IsTimeDisabledForCommit(composed)) return;
+        // A calendar pick supersedes any half-typed input text.
+        _edit = null;
+        await SetValueAsync(composed);
         // Mode.DateTime leaves the panel open -- the user may still want to adjust the time, and OK
         // is that mode's close signal. Mode.Date completes the pick immediately, as before.
         if (Mode == DatePickerMode.DateTime) return;
