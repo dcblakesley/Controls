@@ -30,25 +30,31 @@ public partial class Tabs
     /// by an accessibility audit. Put it in a tab's pane content (<see cref="Tab.ChildContent"/>),
     /// in <see cref="TabBarExtraContent"/> for the right-aligned slot beside the strip, or beside
     /// the <c>&lt;Tabs&gt;</c> element. Conditional (<c>@if</c>) and looped <see cref="Tab"/>
-    /// declarations are fine — it is only non-tab content that has nowhere legal to go.
+    /// declarations are fine — it is only non-tab content that has nowhere legal to go. A stray
+    /// component declared here is also the one thing the re-collection below can cost you: it is
+    /// re-created, and loses its own state, on a pass that inserts a tab whose place the pass did
+    /// not report.
     /// </para>
     /// <para>
-    /// <b>Limitation — keyboard order after an unanchored change.</b> Two behaviors read a tab
-    /// <i>list</i> this component maintains rather than the rendered strip: which tab the arrow keys
-    /// move to, and which tab a null <see cref="ActiveKey"/> falls back to. Blazor skips
+    /// <b>How the declared order is kept exact.</b> Two behaviors read a tab <i>list</i> this
+    /// component maintains rather than the rendered strip: which tab the arrow keys move to, and
+    /// which tab a null <see cref="ActiveKey"/> falls back to. Blazor skips
     /// <c>SetParametersAsync</c> for a child whose own parameters are all unchanged immutable values,
-    /// so on a pass where every sibling was skipped — the bare filter strip, where every parameter
-    /// is a constant string — nothing reports a position: a newly revealed tab cannot be placed and
-    /// is appended, and a pure reorder (a <c>@key</c>ed loop whose items change places) is not seen
-    /// at all.
+    /// so a pass in which a tab appears among siblings that all skipped reports no position for it —
+    /// the bare filter strip, where every parameter is a constant string, is exactly that shape.
+    /// When a pass leaves a newcomer's place genuinely unknown, this fragment is re-created once
+    /// (a generation key on the cascade it renders under), which makes every <see cref="Tab"/>
+    /// construct and register in document order and the list exact again, within the same render
+    /// batch. Ordinary re-renders, removals, label/count changes and insertions the pass could place
+    /// from what it saw re-create nothing.
     /// </para>
     /// <para>
-    /// The strip renders correctly regardless. What can differ until some later pass makes a
-    /// neighbour re-register is that the arrows may reach a tab out of its rendered position, and an
-    /// unbound <see cref="ActiveKey"/> may highlight the tab that was first <i>before</i> the change.
-    /// It does not arise when any sibling re-registers on the same pass — a tab carrying pane content
-    /// re-registers on every pass, because a <c>RenderFragment</c> is a fresh delegate each time —
-    /// nor on a removal, nor on the first render.
+    /// <b>Limitation — a pure reorder among skipped siblings.</b> A <c>@key</c>ed loop whose items
+    /// merely change places changes no tab's parameters at all, so nothing registers and there is no
+    /// signal that anything moved — not even the newcomer-registers-late one the re-collection hangs
+    /// off. The buttons do move (<c>@key</c> moves the component instances, and each carries its own
+    /// button), but the arrow-key order and the null-<see cref="ActiveKey"/> fallback keep the
+    /// previous order until some later pass makes a tab re-register.
     /// </para>
     /// </remarks>
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -93,6 +99,13 @@ public partial class Tabs
     List<Tab> _orderBeforePass = new();    // _tabs as it stood when the current render pass began
     List<Tab> _passOrder = new();          // tabs that (re-)registered during this pass, in order
 
+    // The @key the ChildContent cascade carries. Bumping it makes the diff drop that subtree and
+    // build it again, which is the only way to get every Tab -- including the ones Blazor would
+    // otherwise skip -- to register in document order. See ResolveOrder and BeginPass.
+    int _generation;
+    bool _guessedPlacement;  // the last collection had to guess a newcomer's place
+    bool _rebuilding;        // this pass IS the re-collection (its own registrations must not re-arm it)
+
     // The last selection made through this component (uncontrolled fallback while the consumer
     // doesn't bind ActiveKey).
     string? _selectedKey;
@@ -104,6 +117,14 @@ public partial class Tabs
 
     string? _generatedId;
     internal string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-tabs-{Guid.NewGuid():N}");
+
+    // Arrow-key navigation moves DOM focus onto a nav button, and the consumer's ActiveKeyChanged
+    // handler is free to insert a tab in response -- which is the one situation where a re-collection
+    // destroys the very button the strip just focused. True for the whole keyboard operation, so a
+    // re-collection landing anywhere inside it is recognized; false at every other moment, so one
+    // triggered by unrelated consumer state can never pull focus out of wherever the user actually is.
+    bool _keyboardNav;
+    bool _restoreFocus;  // a re-collection tore down the button _keyboardNav had focused
 
     // Resolution: the bound ActiveKey wins, then the last local selection, then the first enabled tab.
     internal Tab? ActiveTab =>
@@ -130,6 +151,20 @@ public partial class Tabs
     // Called from the top of the markup, i.e. once per render of this component.
     void BeginPass()
     {
+        // Repair a pass that had to guess a newcomer's place, once. A fresh generation key makes the
+        // diff drop the ChildContent subtree and build it again, so every Tab is constructed and
+        // registers in document order and the list below is exact -- still inside this render batch,
+        // so the guessed order is never painted. _rebuilding covers this pass' own registrations:
+        // every tab in it is a newcomer and the outgoing instances are stragglers until the renderer
+        // disposes them, which is the guess shape all over again and would otherwise re-arm forever.
+        _rebuilding = _guessedPlacement;
+        if (_guessedPlacement)
+        {
+            _generation++;
+            _guessedPlacement = false;
+            _restoreFocus = _keyboardNav;
+        }
+
         _orderBeforePass = _tabs;
         _passOrder = new List<Tab>();
 
@@ -174,7 +209,8 @@ public partial class Tabs
     }
 
     /// <summary>
-    /// Rebuilds <c>_tabs</c> from the tabs that registered this pass plus the ones that did not.
+    /// Rebuilds <c>_tabs</c> from the tabs that registered this pass plus the ones that did not, and
+    /// records whether any newcomer had to be <i>guessed</i> into place.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -182,33 +218,29 @@ public partial class Tabs
     /// unchanged immutable values, so a pass sees only a <i>subsequence</i> of the declared order:
     /// content-less tabs (the bare filter strip) never re-register unless their own text changes.
     /// The tabs that did register give the exact relative order of everything in that subsequence;
-    /// the ones that did not keep their previous relative order and are slotted back around it.
-    /// A brand-new tab is the one thing neither list places, so it is held until the next tab that
-    /// did re-register pins it — "as late as its neighbours allow". With no such neighbour at all
-    /// (every sibling skipped, the classic conditional leading/trailing tab) the position is simply
-    /// not in the data, and it is appended.
+    /// the ones that did not — the stragglers — keep their previous relative order and are slotted
+    /// back around it. A brand-new tab is the one thing neither list places: it is held until the
+    /// next tab that did re-register pins it, and it lands exactly as long as no straggler had to be
+    /// placed in the span it lands in. When one did, which side of that straggler the newcomer
+    /// belongs on is simply not in the pass — that, and nothing else, is a guess.
     /// </para>
     /// <para>
-    /// That append is a <b>guess, and it can be wrong in a way the user can observe</b> — see the
-    /// limitation on <see cref="ChildContent"/>. It is not "at worst a rotation": no placement rule
-    /// can promise that, because for a middle insertion neither appending nor prepending produces
-    /// one (declared <c>[a, b, mid, c]</c> has rotations <c>[a,b,mid,c] [b,mid,c,a] [mid,c,a,b]
-    /// [c,a,b,mid]</c>, and the two candidates are <c>[a,b,c,mid]</c> and <c>[mid,a,b,c]</c>).
-    /// Arrow navigation is cyclic, so a rotation would indeed be unobservable there, and a leading
-    /// or trailing insertion does happen to produce one; a middle insertion does not, and the arrows
-    /// then reach the newcomer out of its rendered position. The "first enabled tab" fallback for an
-    /// unbound <see cref="ActiveKey"/> can differ in every one of these shapes. Both self-correct on
-    /// the first later pass in which a neighbour re-registers, which may never come.
+    /// Guesses are recorded rather than lived with: <see cref="BeginPass"/> re-creates the whole
+    /// <see cref="ChildContent"/> subtree once under a fresh generation key, which makes every
+    /// <see cref="Tab"/> construct and register in document order, so the guessed list is replaced by
+    /// the real one inside the same render batch. Everything that places from data alone re-creates
+    /// nothing: the first collection, a removal, a label/count/disabled change, and an insertion
+    /// whose span held no straggler (a strip of tabs that all carry pane content re-registers in
+    /// full every pass, because a <c>RenderFragment</c> is a fresh delegate each time).
     /// </para>
     /// <para>
-    /// Removing the guess needs an exact re-collection in declaration order, which no bookkeeping
-    /// here can produce: the information is not in the pass. Dropping <c>IsFixed</c> from the
+    /// The re-creation is the only exact mechanism available. Dropping <c>IsFixed</c> from the
     /// cascade does make every live tab report on every pass, but in cascade-subscription order
-    /// (construction order, newcomers last), which is the same wrong answer for the price of an
-    /// extra render per tab per pass — pinned by
-    /// <c>Blazor_offers_no_document_ordered_re_registration_of_parameter_skipped_children</c>. The
-    /// mechanisms that <i>are</i> exact re-create the children (a generation <c>@key</c> rebuild,
-    /// which tears down everything declared inside <c>&lt;Tabs&gt;</c>) or read the rendered DOM.
+    /// (construction order, newcomers last), which is a wrong answer for the price of an extra render
+    /// per tab per pass — pinned by
+    /// <c>Blazor_offers_no_document_ordered_re_registration_of_parameter_skipped_children</c>. What
+    /// nothing here can see is a pure reorder among skipped siblings: no tab's parameters change, so
+    /// nothing registers, and there is no newcomer to notice either.
     /// </para>
     /// </remarks>
     void ResolveOrder()
@@ -216,6 +248,7 @@ public partial class Tabs
         var order = new List<Tab>(_liveTabs.Count);
         List<Tab>? pending = null;  // newcomers waiting for the anchor that pins them
         var next = 0;               // read position in the previous order
+        var guessed = false;        // a newcomer had to be placed on one side of a straggler, unseen
 
         foreach (var registered in _passOrder)
         {
@@ -225,14 +258,24 @@ public partial class Tabs
                 (pending ??= new List<Tab>()).Add(registered);
                 continue;
             }
+            var beforeStragglers = order.Count;
             while (next < was) TakeStraggler(_orderBeforePass[next++]);
+            guessed |= pending is not null && order.Count > beforeStragglers;
             TakePending();
             if (!order.Contains(registered)) order.Add(registered);
             next = Math.Max(next, was + 1);
         }
 
+        var beforeTail = order.Count;
         while (next < _orderBeforePass.Count) TakeStraggler(_orderBeforePass[next++]);
+        guessed |= pending is not null && order.Count > beforeTail;
         TakePending();
+
+        // Assigned, never accumulated: this runs again after every registration in the pass, over the
+        // whole of _passOrder, so the last call is the pass' verdict -- a newcomer that looks
+        // unplaceable when it registers is placed exactly once the anchor after it reports.
+        if (!_rebuilding) _guessedPlacement = guessed;
+
         // Defensive: every live tab is in one of the two lists, but a tab that somehow reached
         // neither still belongs in the set rather than vanishing from keyboard navigation.
         foreach (var tab in _liveTabs)
@@ -276,7 +319,23 @@ public partial class Tabs
     internal void NotifyTabChanged() => StateHasChanged();
 
     /// <inheritdoc/>
-    protected override void OnAfterRender(bool firstRender) => SyncFallbackKey();
+    protected override void OnAfterRender(bool firstRender)
+    {
+        SyncFallbackKey();
+
+        // A re-collection destroyed and re-created every nav button, DOM focus with them. Blazor
+        // moves focus to nothing when the focused element goes away -- the browser drops it on
+        // <body>, which leaves the roving tabindex pointing at a button the user is no longer on and
+        // sends the next Tab press to the top of the page. Only ever restored for a re-collection
+        // that happened during arrow-key navigation, i.e. when the strip is the thing that put focus
+        // on a button in the first place. Fire-and-forget for the same reason as the notification
+        // above: OnAfterRender is synchronous, and the call cannot throw.
+        if (_restoreFocus)
+        {
+            _restoreFocus = false;
+            if (ActiveTab is { } active) _ = TryFocusAsync(active);
+        }
+    }
 
     // ActiveTab silently falls back to the first enabled tab when the requested key names a tab that
     // was removed or disabled, so the strip renders one tab active while a bound ActiveKey still holds
@@ -350,20 +409,39 @@ public partial class Tabs
         };
         if (target is null || ReferenceEquals(target, from)) return;
 
-        await SelectAsync(target);
+        // Raised for the whole operation, not just around the focus call: SelectAsync dispatches
+        // ActiveKeyChanged, the consumer's handler may reveal a tab, and the re-collection that
+        // follows can land before or after the focus below. Either way this cycle is meant to end
+        // with DOM focus on a nav button, which is what OnAfterRender needs to know.
+        _keyboardNav = true;
         try
         {
-            await target.ButtonRef.FocusAsync();
+            await SelectAsync(target);
+            await TryFocusAsync(target);
+        }
+        finally
+        {
+            _keyboardNav = false;
+        }
+    }
+
+    static async Task TryFocusAsync(Tab tab)
+    {
+        try
+        {
+            await tab.ButtonRef.FocusAsync();
         }
         catch (Exception ex) when (ex is InvalidOperationException or JSException or JSDisconnectedException)
         {
             // Exactly three tolerated failures, none of which the strip can do anything about:
             //   InvalidOperationException  - no JS runtime at all (static SSR / prerender), or the
-            //                                ElementReference was never captured. The capture now
-            //                                lives in the same render tree as the button it captures
-            //                                (see Tab.razor), so the second case is limited to a tab
-            //                                whose button has not rendered yet.
-            //   JSException                - the browser rejected the focus call (element detached).
+            //                                ElementReference was never captured. The capture lives
+            //                                in the same render tree as the button it captures (see
+            //                                Tab.razor), so the second case is limited to a tab whose
+            //                                button has not rendered yet.
+            //   JSException                - the browser rejected the focus call (element detached --
+            //                                e.g. a re-collection replaced this tab mid-operation, in
+            //                                which case OnAfterRender focuses the replacement).
             //   JSDisconnectedException    - the Blazor Server circuit went away mid-call.
             // The selection has already moved either way; only DOM focus is lost. Anything else is a
             // real defect and must not be swallowed.
