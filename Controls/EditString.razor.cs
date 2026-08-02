@@ -88,10 +88,10 @@ public partial class EditString : EditTextInputBase
 
     /// <summary>
     /// The href to render in read-only link mode: the <see cref="Url"/>, preprocessed the same way a
-    /// browser preprocesses an href before parsing it, when the result is relative or uses an
-    /// allow-listed scheme (http/https/mailto); otherwise null, so a <c>javascript:</c> / <c>data:</c>
-    /// URL (e.g. bound from model data) can't render a script-executing link. When null the control
-    /// falls back to plain read-only text.
+    /// browser preprocesses an href before parsing it, when the result is a same-origin-relative URL
+    /// or uses an allow-listed scheme (http/https/mailto); otherwise null, so a <c>javascript:</c> /
+    /// <c>data:</c> URL (e.g. bound from model data) can't render a script-executing link. When null
+    /// the control falls back to plain read-only text.
     /// </summary>
     /// <remarks>
     /// The WHATWG URL basic parser applies two preprocessing steps, in order, before it ever looks at
@@ -108,6 +108,21 @@ public partial class EditString : EditTextInputBase
     /// first, in the browser's order, before the scheme check, makes the allow-list see exactly what
     /// the browser will see -- and returning the fully-preprocessed value (never <see cref="Url"/>
     /// itself) means the rendered <c>href</c> can never contain the bypass characters either.
+    /// <para>
+    /// Two further shapes reach the "unparseable, so it must be a safe relative URL" fall-through and
+    /// are rejected before it. (1) Preprocessing can consume the entire string -- a <see cref="Url"/>
+    /// that is nothing but a C0 control (<c>U+0001</c>, say) survives the
+    /// <see cref="string.IsNullOrWhiteSpace"/> guard above, because a C0 control is not .NET
+    /// whitespace, and then trims away to nothing; an empty <c>href</c> resolves to the current
+    /// document, so the "link" silently reloads the page on click. (2) A
+    /// protocol-relative URL (<c>//evil.example/x</c>) has no scheme to parse, so it looks relative to
+    /// <see cref="Uri.TryCreate(string?, UriKind, out Uri?)"/> while a browser resolves it
+    /// cross-origin against the page's own scheme -- and because browsers normalize backslashes to
+    /// forward slashes for special schemes, <c>/\evil.example/x</c>, <c>\\evil.example/x</c> and
+    /// <c>\/evil.example/x</c> all resolve the same way. Any two leading slash-or-backslash characters
+    /// are therefore rejected: the fall-through's promise is a <em>same-origin</em> relative link, and
+    /// none of those are one.
+    /// </para>
     /// </remarks>
     string? SafeUrl
     {
@@ -116,12 +131,17 @@ public partial class EditString : EditTextInputBase
             if (string.IsNullOrWhiteSpace(Url)) return null;
             var trimmed = TrimLeadingAndTrailingC0OrSpace(Url);
             var stripped = StripAsciiTabAndNewlines(trimmed);
+            if (stripped.Length == 0) return null;
+            if (stripped.Length >= 2 && IsSlashOrBackslash(stripped[0]) && IsSlashOrBackslash(stripped[1])) return null;
             // Absolute URLs must use an allow-listed scheme; relative URLs (no scheme) are fine.
             if (Uri.TryCreate(stripped, UriKind.Absolute, out var uri))
                 return uri.Scheme is "http" or "https" or "mailto" ? stripped : null;
             return stripped;
         }
     }
+
+    /// <summary> True for the two characters a browser treats interchangeably as a URL path separator (it normalizes <c>\</c> to <c>/</c> for special schemes). </summary>
+    static bool IsSlashOrBackslash(char c) => c is '/' or '\\';
 
     /// <summary>
     /// Step 1 of the WHATWG href preprocessing: trims any leading/trailing codepoint <c>&lt;= U+0020</c>
@@ -144,8 +164,29 @@ public partial class EditString : EditTextInputBase
     static string StripAsciiTabAndNewlines(string url) =>
         url.IndexOfAny(['\t', '\r', '\n']) < 0 ? url : url.Replace("\t", "").Replace("\r", "").Replace("\n", "");
 
-    /// <summary> rel for the read-only link; hardens <c>target="_blank"</c> against reverse tabnabbing. </summary>
-    string? UrlRel => string.Equals(UrlTarget, "_blank", StringComparison.OrdinalIgnoreCase) ? "noopener noreferrer" : null;
+    /// <summary>
+    /// rel for the read-only link: <c>"noopener noreferrer"</c> for any <see cref="UrlTarget"/> that
+    /// can hand another browsing context a <c>window.opener</c> handle on this page, null for the
+    /// keywords that can't.
+    /// </summary>
+    /// <remarks>
+    /// A <em>named</em> target (<c>UrlTarget="vendor"</c>) is the case that most needs this: it opens
+    /// or reuses a separate browsing context whose <c>window.opener</c> points back here, so that
+    /// document can navigate this page out from under the user -- reverse tabnabbing. <c>_blank</c>
+    /// gets the same treatment for defence in depth, though every current browser already implies
+    /// <c>noopener</c> for it. Only the same-context keywords are exempt: <c>_self</c>,
+    /// <c>_parent</c>, <c>_top</c> (and no target at all) reuse a context that is already ours, so
+    /// there is no opener to sever -- and <c>noreferrer</c> would needlessly drop the referrer on a
+    /// navigation within our own frame tree. Unrecognized keyword-looking values are treated as named
+    /// targets, which is what the HTML spec says a browser does with them too.
+    /// </remarks>
+    string? UrlRel =>
+        string.IsNullOrEmpty(UrlTarget)
+        || string.Equals(UrlTarget, "_self", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(UrlTarget, "_parent", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(UrlTarget, "_top", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : "noopener noreferrer";
 
     /// <summary> Toggles the password reveal state driving the shell's show/hide button.</summary>
     void TogglePasswordVisibility() => _passwordRevealed = !_passwordRevealed;

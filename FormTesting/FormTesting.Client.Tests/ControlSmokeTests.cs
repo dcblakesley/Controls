@@ -268,6 +268,99 @@ public class ControlSmokeTests : BunitContext
         Assert.Equal("noopener noreferrer", a.GetAttribute("rel"));
     }
 
+    [Theory]
+    // A protocol-relative URL has no scheme, so Uri.TryCreate(..., Absolute) fails and the old code
+    // fell through to "unparseable means safe relative URL" -- but a browser resolves "//host/path"
+    // against the *page's* scheme and navigates cross-origin. Browsers also normalize backslashes to
+    // forward slashes for special schemes, so every slash/backslash combination is the same attack.
+    [InlineData("//evil.example/x")]
+    [InlineData("/\\evil.example/x")]
+    [InlineData("\\/evil.example/x")]
+    [InlineData("\\\\evil.example/x")]
+    // ...and the two preprocessing steps run first, so neither can be used to smuggle one past.
+    [InlineData(" //evil.example/x")]      // leading space trimmed, still protocol-relative
+    [InlineData("\u0001//evil.example/x")] // leading C0 control trimmed, still protocol-relative
+    [InlineData("/\t/evil.example/x")]     // interior tab stripped, still protocol-relative
+    public void EditString_read_only_link_blocks_protocol_relative_urls(string url)
+    {
+        var model = new PersonModel { Name = "Click" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", url);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("a"));   // no cross-origin link is rendered
+        Assert.Contains("Click", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Theory]
+    // A URL that preprocessing empties out used to render href="" -- which resolves to the current
+    // document, so clicking the "link" silently reloaded the page. Note a C0 control is NOT .NET
+    // whitespace, so these get past the IsNullOrWhiteSpace guard and only vanish during the trim.
+    [InlineData("\u0001")]
+    [InlineData("\u0001\u0002\u0003")]
+    [InlineData("\u0001\t\u0002")]
+    // Ordinary whitespace-only URLs never got that far, but pin them alongside: same plain-text result.
+    [InlineData(" ")]
+    [InlineData("   ")]
+    [InlineData("\t\r\n")]
+    public void EditString_read_only_link_renders_plain_text_when_the_url_preprocesses_to_nothing(string url)
+    {
+        var model = new PersonModel { Name = "Click" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", url);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("a"));   // no self-reloading empty href
+        Assert.Contains("Click", cut.Find(".edit-readonly-value").TextContent);
+    }
+
+    [Theory]
+    // rel is about whether the target can hand another browsing context a window.opener handle on this
+    // page. A NAMED target is the case that genuinely leaks it (browsers already imply noopener for
+    // _blank); only the same-context keywords are exempt.
+    [InlineData(null, null)]
+    [InlineData("_self", null)]
+    [InlineData("_SELF", null)]
+    [InlineData("_parent", null)]
+    [InlineData("_top", null)]
+    [InlineData("_blank", "noopener noreferrer")]
+    [InlineData("_BLANK", "noopener noreferrer")]   // keyword matching is case-insensitive
+    [InlineData("vendor", "noopener noreferrer")]   // named target: reverse-tabnabbing surface
+    [InlineData("_unknownkeyword", "noopener noreferrer")] // not a real keyword -- it names a context
+    public void EditString_read_only_link_rel_is_set_for_every_target_that_can_leak_an_opener(string? target, string? expectedRel)
+    {
+        var model = new PersonModel { Name = "Home" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", "https://example.com");
+            b.AddAttribute(6, "UrlTarget", target);
+            b.CloseComponent();
+        }));
+
+        var a = cut.Find("a.edit-string-link");
+        Assert.Equal(target, a.GetAttribute("target"));   // the target itself is always passed through
+        Assert.Equal(expectedRel, a.GetAttribute("rel"));
+    }
+
     [Fact]
     public void EditString_renders_required_star_when_attribute_present()
     {
