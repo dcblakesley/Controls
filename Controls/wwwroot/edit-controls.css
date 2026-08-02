@@ -127,10 +127,20 @@
 
 /* Keyboard-focus indicator for the editable elements. The library can't rely on the browser default
    outline — consumers commonly reset it — so a visible :focus-visible ring is shipped as a baseline
-   a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. */
+   a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. Grouped with the
+   icon-button family (EditString's mask toggles, EditInputShell's affix clear/password-toggle
+   buttons, further down this file) -- they share this exact 3-property ring; mirrors how
+   wss-controls.css's own Accessibility section groups its focus rings. (The LabelTooltip trigger's
+   own :focus-visible ring stays local to the Tooltip section -- it sits between a plain :focus
+   reset and an @supports override at equal specificity, so merging it in here would flip which one
+   wins.) */
 .edit-input:focus-visible,
 .edit-radio-input:focus-visible,
-.edit-checkedList-checkbox:focus-visible {
+.edit-checkedList-checkbox:focus-visible,
+.edit-icon-eye:focus-visible,
+.edit-icon-eye-invisible:focus-visible,
+.edit-input-clear:focus-visible,
+.edit-input-password-toggle:focus-visible {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
@@ -270,7 +280,14 @@
     mask: none;
 }
 
-.edit-checkbox-input-styled:focus-visible + .edit-checkbox-box {
+/* Same ring recipe as the file's other focus-visible rings (General section, near the top) but
+   without border-radius: 2px -- each of these three elements already carries its own border-radius
+   on the box the outline wraps (this checkbox's own box further up, the file drop zone, the file
+   select button, both further down this file), so restating a generic corner radius here would
+   fight it. Grouped since all three share this exact 2-property body. */
+.edit-checkbox-input-styled:focus-visible + .edit-checkbox-box,
+.edit-file-drop-zone:focus-within,
+.edit-file-select-btn:focus-within {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
 }
@@ -292,14 +309,18 @@
 
 /************************************************ EditCheckedList(String and Enum) ***********************/
 .edit-checkedList-fieldset { }
-.edit-checkedList-checkboxes-container-vertical {
+/* Byte-identical to .edit-radio-buttons-container-vertical/-horizontal (EditRadio section, below) --
+   grouped here since both container families share the exact same layout. */
+.edit-checkedList-checkboxes-container-vertical,
+.edit-radio-buttons-container-vertical {
     /* default/vertical display */
     display: flex;
     flex-direction: column;
     gap: 8px;
     cursor: pointer;
 }
-.edit-checkedList-checkboxes-container-horizontal {
+.edit-checkedList-checkboxes-container-horizontal,
+.edit-radio-buttons-container-horizontal {
     /* IsHorizontal = true */
     display: flex;
     flex-direction: row;
@@ -329,22 +350,8 @@
     padding: 0;
     min-width: 0;
 }
-.edit-radio-buttons-container-vertical {
-    /* default/vertical display */
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    cursor: pointer;
-}
-
-.edit-radio-buttons-container-horizontal {
-    /* IsHorizontal = true */
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-    cursor: pointer;
-}
+/* Layout is grouped with .edit-checkedList-checkboxes-container-vertical/-horizontal
+   (EditCheckedList section, above) -- byte-identical, see there for the shared rule. */
 
 .edit-radio-label {
     /* edit-label is also applied to these labels, so if you want it to look the same you don't have to change this */
@@ -621,14 +628,8 @@
 .edit-input-clear:hover {
     color: var(--color-text, #262626);
 }
-.edit-icon-eye:focus-visible,
-.edit-icon-eye-invisible:focus-visible,
-.edit-input-clear:focus-visible,
-.edit-input-password-toggle:focus-visible {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-    border-radius: 2px;
-}
+/* :focus-visible ring is grouped with .edit-input's own (General section, near the top of this
+   file) -- see there for the shared rule. */
 
 /************************************************ EditTextArea *******************************************/
 .edit-textarea-input { }
@@ -684,14 +685,11 @@
     outline: none;
 }
 
-/* Show outline only for keyboard navigation */
-.edit-tooltip-container:focus-visible {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-    border-radius: 2px;
-}
-
-/* Fallback for browsers that don't support :focus-visible */
+/* Show outline only for keyboard navigation, with a same-bodied fallback for browsers that don't
+   support :focus-visible (grouped -- this pair must stay right here, between the plain :focus reset
+   above and the @supports override below, since both sit at equal specificity and rely on this
+   source order). */
+.edit-tooltip-container:focus-visible,
 .edit-tooltip-container:focus:not(:hover) {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
@@ -1013,10 +1011,8 @@
     cursor: pointer;
 }
 
-.edit-file-drop-zone:focus-within {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-}
+/* :focus-within ring is grouped with .edit-checkbox-input-styled's own (EditBool section, near the
+   top of this file) -- see there for the shared rule. */
 
 .edit-file-drop-zone.hover {
     border-color: var(--edit-color-primary);
@@ -1156,10 +1152,8 @@
     border-color: var(--edit-color-primary);
 }
 
-.edit-file-select-btn:focus-within {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-}
+/* :focus-within ring is grouped with .edit-checkbox-input-styled's own (EditBool section, near the
+   top of this file) -- see there for the shared rule. */
 
 .edit-file-select-btn.error {
     border-color: var(--edit-color-danger);
