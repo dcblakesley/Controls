@@ -86,9 +86,10 @@ public partial class Tabs
     // ----- Render pass bookkeeping -------------------------------------------
     //
     // Nothing here places a button: each Tab renders its own, so the rendered strip is whatever the
-    // render-tree diff makes of the ChildContent. What the strip still needs to know is the tab SET
-    // (to render the active pane below the nav) and its declaration ORDER, which only two behaviors
-    // read: the "first enabled tab" fallback when no key resolves, and the arrow-key neighbor order.
+    // render-tree diff makes of the ChildContent. What the strip still needs is the tab SET -- to
+    // render the active tab's pane below the nav -- and its declaration ORDER, which exactly two
+    // behaviors read: the "first enabled tab" fallback when no key resolves, and the arrow-key
+    // neighbor order.
 
     // Strip-level state the tabs' own buttons are built from, as last pushed to them. See BeginPass.
     Tab? _pushedActive;
@@ -181,8 +182,8 @@ public partial class Tabs
 
         while (next < _orderBeforePass.Count) TakeStraggler(_orderBeforePass[next++]);
         TakePending();
-        // Defensive: a live tab that is in neither list (it would have to have registered under a
-        // previous pass that never promoted) still belongs in the set.
+        // Defensive: every live tab is in one of the two lists, but a tab that somehow reached
+        // neither still belongs in the set rather than vanishing from keyboard navigation.
         foreach (var tab in _liveTabs)
         {
             if (!order.Contains(tab)) order.Add(tab);
