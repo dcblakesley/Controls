@@ -23,7 +23,6 @@
                 <input @bind-value="CurrentValue"
                        @bind-value:event="@UpdateEventName"
                        @ref="_editorRef"
-                       style=@(UseAffixLayout ? null : "padding-inline-end: 2rem")
                        disabled=@IsDisabled
                        id=@_id
                        data-test-id=@_id

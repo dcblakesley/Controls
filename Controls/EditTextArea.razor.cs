@@ -98,17 +98,21 @@ public partial class EditTextArea : EditTextInputBase
     bool UseAffixLayout => EditInputShell.UsesAffixLayout(null, null, AllowClear, CountText, false);
 
     /// <summary>
-    /// The textarea's <c>class</c> attribute. Legacy mode (no affix params, no AutoSize) reproduces
-    /// today's exact string, so a no-new-params render stays byte-identical; affix mode adds
-    /// <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and <see cref="ResolvedAutoSize"/>
-    /// adds <c>edit-textarea-autosize</c> (disables the native resize handle).
+    /// The textarea's <c>class</c> attribute. Legacy mode (no affix params, no AutoSize) carries
+    /// <c>edit-input-legacy-padding</c> (the trailing-edge space InvalidIcon needs, formerly an inline
+    /// style set directly on this element -- see <see cref="EditInputShell.UsesAffixLayout"/>'s remarks
+    /// -- which also fixes this element carrying an inline style at all when its <c>style</c> is
+    /// otherwise JS-owned, see <see cref="AutoSizeAsync"/>) otherwise reproducing today's exact string;
+    /// affix mode adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract instead, and
+    /// <see cref="ResolvedAutoSize"/> adds <c>edit-textarea-autosize</c> (disables the native resize
+    /// handle) regardless of mode.
     /// </summary>
     string InputClass
     {
         get
         {
             var classes = "edit-input edit-textarea-input";
-            if (UseAffixLayout) classes += " edit-affix-input";
+            classes += UseAffixLayout ? " edit-affix-input" : " edit-input-legacy-padding";
             if (ResolvedAutoSize) classes += " edit-textarea-autosize";
             return EditInputShell.BuildInputClass(classes, Size, CssClass);
         }

@@ -155,13 +155,15 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     bool UseAffixLayout => EditInputShell.UsesAffixLayout(Prefix, Suffix, false, null, false);
 
     /// <summary>
-    /// The input's <c>class</c> attribute. Legacy mode with <see cref="EditTextControlBase{TValue}.Size"/>
-    /// at its default reproduces today's exact string (so a no-new-params render stays byte-identical);
-    /// affix mode adds <c>edit-affix-input</c> per <see cref="EditInputShell"/>'s contract, and a
-    /// non-default Size appends its <see cref="EditInputShell.SizeClass"/> token.
+    /// The input's <c>class</c> attribute. Legacy mode carries <c>edit-input-legacy-padding</c> (the
+    /// trailing-edge space InvalidIcon needs, formerly an inline style -- see
+    /// <see cref="EditInputShell.UsesAffixLayout"/>'s remarks) with <see cref="EditTextControlBase{TValue}.Size"/>
+    /// at its default otherwise reproducing today's exact string; affix mode adds <c>edit-affix-input</c>
+    /// per <see cref="EditInputShell"/>'s contract instead, and a non-default Size appends its
+    /// <see cref="EditInputShell.SizeClass"/> token.
     /// </summary>
     string InputClass => EditInputShell.BuildInputClass(
-        UseAffixLayout ? "edit-input edit-number-input edit-affix-input" : "edit-input edit-number-input",
+        UseAffixLayout ? "edit-input edit-number-input edit-affix-input" : "edit-input edit-number-input edit-input-legacy-padding",
         Size, CssClass);
 
     // Ported from Microsoft.AspNetCore.Components.Forms.InputNumber<T>, and identical to

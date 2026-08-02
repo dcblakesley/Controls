@@ -61,7 +61,10 @@ public class EditInputShellTests : BunitContext
         Assert.Single(wrapper.Children); // just the editor -- no InvalidIcon while valid
         var editor = wrapper.Children[0];
         Assert.Equal("input", editor.TagName, ignoreCase: true);
-        Assert.Equal("padding-inline-end: 2rem", editor.GetAttribute("style"));
+        // padding-inline-end: 2rem is now class-carried (edit-input-legacy-padding), not an inline
+        // style -- see edit-controls.css.
+        Assert.False(editor.HasAttribute("style"));
+        Assert.Contains("edit-input-legacy-padding", editor.ClassList);
         Assert.Empty(cut.FindAll(".edit-icon-invalid"));
     }
 
@@ -107,7 +110,10 @@ public class EditInputShellTests : BunitContext
         var editor = wrapper.Children[0];
         Assert.Equal("input", editor.TagName, ignoreCase: true);
         Assert.Equal("number", editor.GetAttribute("type"));
-        Assert.Equal("padding-inline-end: 2rem", editor.GetAttribute("style"));
+        // padding-inline-end: 2rem is now class-carried (edit-input-legacy-padding), not an inline
+        // style -- see edit-controls.css.
+        Assert.False(editor.HasAttribute("style"));
+        Assert.Contains("edit-input-legacy-padding", editor.ClassList);
         Assert.Empty(cut.FindAll(".edit-icon-invalid"));
     }
 
@@ -150,7 +156,10 @@ public class EditInputShellTests : BunitContext
         Assert.Single(wrapper.Children);
         var editor = wrapper.Children[0];
         Assert.Equal("textarea", editor.TagName, ignoreCase: true);
-        Assert.Equal("padding-inline-end: 2rem", editor.GetAttribute("style"));
+        // padding-inline-end: 2rem is now class-carried (edit-input-legacy-padding), not an inline
+        // style -- this element's style is otherwise JS-owned (AutoSize height/overflow-y).
+        Assert.False(editor.HasAttribute("style"));
+        Assert.Contains("edit-input-legacy-padding", editor.ClassList);
         Assert.Empty(cut.FindAll(".edit-icon-invalid"));
     }
 

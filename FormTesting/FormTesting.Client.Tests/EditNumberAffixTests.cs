@@ -34,7 +34,10 @@ public class EditNumberAffixTests : BunitContext
         Assert.False(input.HasAttribute("max"));
         Assert.False(input.HasAttribute("placeholder"));
         Assert.DoesNotContain("edit-affix-input", input.ClassList);
-        Assert.Equal("padding-inline-end: 2rem", input.GetAttribute("style"));
+        // padding-inline-end: 2rem is now class-carried (edit-input-legacy-padding), not an inline
+        // style -- see edit-controls.css.
+        Assert.False(input.HasAttribute("style"));
+        Assert.Contains("edit-input-legacy-padding", input.ClassList);
         Assert.Empty(cut.FindAll(".edit-input-affix-wrapper"));
         Assert.NotEmpty(cut.FindAll(".edit-input-with-icon"));
     }

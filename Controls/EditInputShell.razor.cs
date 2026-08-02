@@ -90,9 +90,11 @@ public partial class EditInputShell
     /// <summary>
     /// True when any affix feature is in use — the single computation site both the shell and its
     /// hosts must agree on. Hosts call this with their own parameter values (before setting any of
-    /// them, so today's controls always get <c>false</c>) to decide whether to drop the inline
-    /// <c>padding-inline-end: 2rem</c> and add the <c>edit-affix-input</c> class to the editor,
-    /// keeping that decision in lockstep with the shell's own layout choice.
+    /// them, so today's controls always get <c>false</c>) to decide whether to drop the
+    /// <c>edit-input-legacy-padding</c> class (<c>padding-inline-end: 2rem</c>, reserving room for
+    /// InvalidIcon inside <c>.edit-input-with-icon</c> -- see edit-controls.css) and add
+    /// <c>edit-affix-input</c> to the editor instead, keeping that decision in lockstep with the
+    /// shell's own layout choice.
     /// </summary>
     public static bool UsesAffixLayout(RenderFragment? prefix, RenderFragment? suffix, bool allowClear, string? countText, bool showPasswordToggle) =>
         prefix is not null || suffix is not null || allowClear || countText is not null || showPasswordToggle;
