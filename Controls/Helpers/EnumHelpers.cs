@@ -141,8 +141,11 @@ public static class EnumHelpers
     /// </summary>
     /// <param name="options">The options being rendered, in render order.</param>
     /// <param name="reserved">
-    /// An id segment the caller emits itself and must keep verbatim (<c>EditRadioString</c> passes
-    /// <c>"other"</c> for its built-in Other radio); an option that would collide with it yields instead.
+    /// Id segments the caller emits itself and must keep verbatim (<c>EditRadioString</c> passes
+    /// <c>"other"</c> for its built-in Other radio; <c>SelectOptionList</c> passes <c>"none"</c> and
+    /// <c>"placeholder"</c> for its two synthetic options); an option that would collide with one
+    /// yields instead. <c>null</c> entries are ignored, so a caller can pass a conditional segment
+    /// without branching.
     /// </param>
     /// <remarks>
     /// <para>
@@ -161,12 +164,14 @@ public static class EnumHelpers
     /// longer than the last.
     /// </para>
     /// </remarks>
-    public static string[] ToUniqueIds<T>(IReadOnlyList<T> options, string? reserved = null)
+    public static string[] ToUniqueIds<T>(IReadOnlyList<T> options, params string?[] reserved)
     {
         var ids = new string[options.Count];
         var used = new HashSet<string>(options.Count, StringComparer.Ordinal);
-        if (!string.IsNullOrEmpty(reserved))
-            used.Add(reserved);
+        foreach (var r in reserved ?? [])
+        {
+            if (!string.IsNullOrEmpty(r)) used.Add(r);
+        }
 
         for (var i = 0; i < options.Count; i++)
         {
