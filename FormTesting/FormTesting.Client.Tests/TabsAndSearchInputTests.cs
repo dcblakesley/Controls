@@ -840,8 +840,8 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.NotEmpty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
     }
 
-    // A consumer component declared alongside the tabs, counting its own construction/disposal and
-    // holding instance state that only survives if the instance itself does.
+    // A consumer component in a tab's pane, counting its own construction/disposal and holding
+    // instance state that only survives if the instance itself does.
     sealed class StatefulSibling : ComponentBase, IDisposable
     {
         internal static int Constructed;
@@ -862,6 +862,10 @@ public class TabsAndSearchInputTests : BunitContext
         public void Dispose() => Disposed++;
     }
 
+    // [new?, a (content-less, so parameter-skipped), pane (carries the consumer's component)]. The
+    // content-less tab is what makes the insertion the ambiguous shape; the pane tab is where the
+    // consumer's component lives, because Tabs.ChildContent renders inside role="tablist" and only
+    // <Tab> may be declared there.
     static RenderFragment TabsWithStatefulSibling(bool showFirst) => builder =>
     {
         if (showFirst)
@@ -877,26 +881,43 @@ public class TabsAndSearchInputTests : BunitContext
         builder.AddAttribute(5, "Title", "A");
         builder.CloseComponent();
 
-        builder.OpenComponent<StatefulSibling>(6);
+        builder.OpenComponent<Tab>(6);
+        builder.AddAttribute(7, "Key", "pane");
+        builder.AddAttribute(8, "Title", "Pane");
+        builder.AddAttribute(9, "ChildContent", (RenderFragment)(b =>
+        {
+            b.OpenComponent<StatefulSibling>(0);
+            b.CloseComponent();
+        }));
         builder.CloseComponent();
     };
 
     [Fact]
-    public void A_component_declared_inside_Tabs_keeps_its_state_across_a_structural_insertion()
+    public void A_structural_insertion_reconstructs_nothing_that_was_already_live()
     {
         // The previous design recovered the declared order by bumping a generation @key on the
-        // ChildContent CascadingValue, which tore down and reconstructed the WHOLE fragment -- so a
-        // non-Tab component a consumer had declared inside <Tabs> lost its instance state (cached
-        // lookups, element references, subscriptions, timers) on every structural insertion. That
-        // was a documented limitation of Tabs.ChildContent; nothing rebuilds the fragment any more,
-        // so this pins that the limitation is gone -- and that the bounds it used to carry (ordinary
-        // re-renders and removals never disturb the subtree) still hold.
+        // ChildContent CascadingValue, which tore down and reconstructed that whole subtree on every
+        // structural insertion -- every Tab instance with it. Nothing rebuilds anything now, so this
+        // pins that the retired limitation stays retired: the live Tab instances are the SAME
+        // objects across an insertion and a removal, and a consumer component in a pane is never
+        // reconstructed either.
+        //
+        // (This used to declare the consumer's component as a direct child of <Tabs>, which is where
+        // the old rebuild really hurt. That is no longer a legal place to put one: ChildContent now
+        // renders inside the role="tablist" element, so a non-Tab child there is an
+        // aria-required-children violation. Moved into a pane, which is what the parameter's own
+        // docs direct consumers to do.)
         StatefulSibling.Constructed = 0;
         StatefulSibling.Disposed = 0;
 
-        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
+        // ActiveKey names the pane tab throughout: only the active tab's pane is rendered, and the
+        // point here is what happens to a live instance.
+        var cut = Render<Tabs>(p => p
+            .Add(t => t.ChildContent, TabsWithStatefulSibling(false))
+            .Add(t => t.ActiveKey, "pane"));
         Assert.Equal(1, StatefulSibling.Constructed);
         Assert.Equal("1", cut.Find(".stateful-sibling").TextContent);
+        var before = RenderedTabs(cut.Instance).ToDictionary(t => t.Key);
 
         // Ordinary re-render with the same structure.
         cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
@@ -904,20 +925,47 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Equal(0, StatefulSibling.Disposed);
 
         // Insertion before a parameter-skipped sibling -- the case that used to force the rebuild.
-        // The newcomer still lands in its declared position, and the consumer's component is the
-        // same live instance it was before (same instance number, never disposed).
         cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(true)));
-        Assert.Equal(["New", "A"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["New", "A", "Pane"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        // Same Tab objects, not fresh ones standing in for them.
+        Assert.All(before, kvp => Assert.Same(kvp.Value, RenderedTabs(cut.Instance).Single(t => t.Key == kvp.Key)));
         Assert.Equal(1, StatefulSibling.Constructed);
         Assert.Equal(0, StatefulSibling.Disposed);
         Assert.Equal("1", cut.Find(".stateful-sibling").TextContent);
 
         // Removal: likewise untouched.
         cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
-        Assert.Equal(["A"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["A", "Pane"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.All(before, kvp => Assert.Same(kvp.Value, RenderedTabs(cut.Instance).Single(t => t.Key == kvp.Key)));
         Assert.Equal(1, StatefulSibling.Constructed);
         Assert.Equal(0, StatefulSibling.Disposed);
         Assert.Equal("1", cut.Find(".stateful-sibling").TextContent);
+    }
+
+    [Fact]
+    public void The_tablist_owns_nothing_but_tab_buttons()
+    {
+        // aria-required-children: a role="tablist" must own role="tab" elements and nothing else.
+        // Everything the strip renders of its own accord has to stay on the right side of that --
+        // the extra-content slot beside the strip, and the pane below it. (Consumer markup declared
+        // directly inside <Tabs> does land in the tablist and would violate this; that is a
+        // documented constraint on the ChildContent parameter, not something the strip can police.)
+        var cut = Render<Tabs>(p =>
+        {
+            p.Add(t => t.TabBarExtraContent, b => b.AddContent(0, "Extra action"));
+            p.AddChildContent<Tab>(tp => tp
+                .Add(c => c.Key, "a").Add(c => c.Title, "A").Add(c => c.Count, 3)
+                .Add(c => c.ChildContent, b => b.AddContent(0, "Pane A")));
+            p.AddChildContent<Tab>(tp => tp
+                .Add(c => c.Key, "b").Add(c => c.Title, "B").Add(c => c.Disabled, true));
+        });
+
+        var tablist = cut.Find("[role=tablist]");
+        Assert.NotEmpty(tablist.Children);
+        Assert.All(tablist.Children, child => Assert.Equal("tab", child.GetAttribute("role")));
+        // ...and the two things that must NOT be in there really are outside it.
+        Assert.Empty(cut.FindAll("[role=tablist] .wss-tabs-nav-extra"));
+        Assert.Empty(cut.FindAll("[role=tablist] [role=tabpanel]"));
     }
 
     // A pane whose content counts how many times it is instantiated: the strip renders ChildContent

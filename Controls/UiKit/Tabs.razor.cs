@@ -23,6 +23,16 @@ public partial class Tabs
     /// render-tree diff places those buttons and nothing this component tracks can move one.</summary>
     /// <remarks>
     /// <para>
+    /// <b>Declare only <see cref="Tab"/> here.</b> This fragment renders inside the strip's
+    /// <c>role="tablist"</c> element, so anything else declared directly inside
+    /// <c>&lt;Tabs&gt;</c> — a stray <c>&lt;div&gt;</c>, a component of your own — becomes a child
+    /// of the tablist, which is an ARIA <c>aria-required-children</c> violation and will be reported
+    /// by an accessibility audit. Put it in a tab's pane content (<see cref="Tab.ChildContent"/>),
+    /// in <see cref="TabBarExtraContent"/> for the right-aligned slot beside the strip, or beside
+    /// the <c>&lt;Tabs&gt;</c> element. Conditional (<c>@if</c>) and looped <see cref="Tab"/>
+    /// declarations are fine — it is only non-tab content that has nowhere legal to go.
+    /// </para>
+    /// <para>
     /// <b>Limitation — keyboard order after an unanchored insertion.</b> Two behaviors read a tab
     /// <i>list</i> this component maintains rather than the rendered strip: which tab the arrow keys
     /// move to, and which tab a null <see cref="ActiveKey"/> falls back to. Blazor skips
