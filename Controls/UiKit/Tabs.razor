@@ -40,13 +40,19 @@
             @* ChildContent renders HERE, and each Tab emits its own nav button (see Tab.razor), so
                the strip's button order IS the ChildContent's document order -- placed by the
                render-tree diff, which is the only thing that knows where a conditionally rendered
-               tab was declared. Nothing this component tracks can move a BUTTON, so no @key rebuild
-               or teardown of the consumer's subtree is involved. The tab LIST behind the arrow keys
-               and the first-enabled fallback is a separate thing and still needs a placement
-               heuristic (see Tabs.ResolveOrder and the ChildContent limitation).
+               tab was declared. Nothing this component tracks can move a BUTTON.
+
+               The tab LIST behind the arrow keys and the first-enabled fallback is a separate thing,
+               rebuilt from child registrations, and a parameter-skipped Tab never registers. @key is
+               how that list is made exact: on the rare pass whose registrations could not place a
+               newcomer, BeginPass bumps _generation, the diff drops this subtree and builds it again,
+               and every Tab constructs and registers in document order. Only Tab instances are inside
+               it (the pane below the nav renders ActiveTab.ChildContent from the strip's OWN tree, so
+               a consumer's pane component is never re-created) -- see Tabs.ResolveOrder.
+
                IsFixed: a Tab's owning strip never changes, so no subscription bookkeeping -- and
                dropping it would not recover declaration order anyway, only subscription order. *@
-            <CascadingValue Value="this" IsFixed="true">
+            <CascadingValue Value="this" IsFixed="true" @key="_generation">
                 @ChildContent
             </CascadingValue>
         </div>;

@@ -491,19 +491,19 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Equal(["A", "B"], Titles());
     }
 
-    // The four tests below pin the EXACT keyboard order the strip ends up with when a tab is
-    // inserted among siblings that all skipped their parameters. Three of them pin behavior that is
-    // wrong -- deliberately, and named so. They replace a guard that asserted the order was "at
-    // worst a rotation of the declared order", which cyclic arrow navigation cannot observe. That
-    // invariant is false and unachievable: with no anchor the newcomer's position is simply not in
-    // the data, and no placement rule can make every case a rotation. Declared [a, b, mid, c] with
-    // mid the newcomer has rotations [a,b,mid,c], [b,mid,c,a], [mid,c,a,b] and [c,a,b,mid]; append
-    // yields [a,b,c,mid] and prepend yields [mid,a,b,c], and neither is in that set.
+    // The tests below pin the EXACT keyboard order the strip ends up with when a tab is inserted
+    // among siblings that all skipped their parameters. Three of them used to pin behavior that was
+    // wrong -- deliberately, and named so -- because with no anchor the newcomer's position is
+    // simply not in the pass, and no placement rule can recover it. (It is not even "at worst a
+    // rotation", which cyclic arrow navigation could not observe: declared [a, b, mid, c] with mid
+    // the newcomer has rotations [a,b,mid,c], [b,mid,c,a], [mid,c,a,b] and [c,a,b,mid]; append
+    // yields [a,b,c,mid] and prepend yields [mid,a,b,c], and neither is in that set.)
     //
-    // Fixing them needs an exact re-collection in document order, which Blazor does not offer for
-    // a parameter-skipped child (see Blazor_offers_no_document_ordered_re_registration_of_
-    // parameter_skipped_children below). Until one of the mechanisms that CAN be exact is adopted,
-    // these record what actually happens so a change to it is deliberate rather than accidental.
+    // The strip no longer guesses. A pass whose registrations cannot place a newcomer bumps the
+    // generation @key on the ChildContent cascade, the diff drops that subtree and builds it again,
+    // and every Tab -- including the ones Blazor would skip -- constructs and registers in document
+    // order, inside the same render batch. So these now pin the declared order exactly, and the
+    // tests further down pin that nothing else ever pays for it.
 
     static string[] StripOrder(IRenderedComponent<Tabs> cut) =>
         RenderedTabs(cut.Instance).Select(t => t.Key).ToArray();
@@ -527,20 +527,18 @@ public class TabsAndSearchInputTests : BunitContext
     [Fact]
     public void Arrow_navigation_after_a_LEADING_insertion_into_an_all_skipped_strip_still_walks_rendered_order()
     {
-        // The one shape that survives the ambiguity. Declared [new, a, b]; the newcomer is appended,
-        // giving [a, b, new] -- which happens to be a rotation of the declared order, and arrow
-        // navigation is cyclic, so it visits the same neighbours in the same direction anyway.
+        // Declared [new, a, b] with a and b parameter-skipped: nothing in the pass says where the
+        // newcomer goes, so the strip re-collects and gets the declared order outright. It used to
+        // append, giving [a, b, new] -- a rotation, which cyclic arrow navigation cannot see, but
+        // which the unbound-ActiveKey fallback below very much can.
         var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
         cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, false)));
 
         Assert.Equal(["New", "A", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
-        Assert.Equal(["a", "b", "new"], StripOrder(cut));
+        Assert.Equal(["new", "a", "b"], StripOrder(cut));
 
-        // The walk starts on rendered index 1, not 0: the highlighted tab after an unanchored
-        // leading insertion is the one that used to be first (see the unbound-strip test below).
-        // From wherever it starts, though, each arrow steps to the adjacent RENDERED button.
-        Assert.Equal([1, 2, 0, 1], ArrowWalk(cut, "ArrowRight", 3));
-        Assert.Equal([1, 0, 2, 1], ArrowWalk(cut, "ArrowLeft", 3));
+        Assert.Equal([0, 1, 2, 0], ArrowWalk(cut, "ArrowRight", 3));
+        Assert.Equal([0, 2, 1, 0], ArrowWalk(cut, "ArrowLeft", 3));
     }
 
     // A content-less strip whose conditional tab is declared in the MIDDLE. Every parameter is a
@@ -572,22 +570,21 @@ public class TabsAndSearchInputTests : BunitContext
     };
 
     [Fact]
-    public void Arrow_navigation_after_a_MIDDLE_insertion_into_an_all_skipped_strip_skips_the_newcomer()
+    public void Arrow_navigation_after_a_MIDDLE_insertion_into_an_all_skipped_strip_walks_rendered_order()
     {
-        // A middle insertion is not a rotation, so this one is observable and it is an ARIA defect:
-        // the ARIA tabs pattern says an arrow moves to the ADJACENT tab. Declared [a, b, mid, c]
-        // renders correctly, but the newcomer is appended to the keyboard order, so ArrowRight from
-        // the first button visits rendered indices 0, 1, 3, 2 -- skipping Mid and then moving
-        // backwards onto it. SHOULD be [0, 1, 2, 3, 0] / [0, 3, 2, 1, 0].
+        // The shape no placement rule can fake: a middle insertion is not even a rotation of the
+        // declared order, so appending the newcomer was observable and was an ARIA defect -- the
+        // tabs pattern says an arrow moves to the ADJACENT tab, and ArrowRight from the first button
+        // used to visit rendered indices 0, 1, 3, 2, skipping Mid and then stepping backwards onto
+        // it. The re-collection makes the keyboard order the rendered order.
         var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(false)));
         cut.Render(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(true)));
 
-        // The RENDERED strip is right -- each tab emits its own button, so the diff places it.
         Assert.Equal(["A", "B", "Mid", "C"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
-        Assert.Equal(["a", "b", "c", "mid"], StripOrder(cut));
+        Assert.Equal(["a", "b", "mid", "c"], StripOrder(cut));
 
-        Assert.Equal([0, 1, 3, 2, 0], ArrowWalk(cut, "ArrowRight", 4));
-        Assert.Equal([0, 2, 3, 1, 0], ArrowWalk(cut, "ArrowLeft", 4));
+        Assert.Equal([0, 1, 2, 3, 0], ArrowWalk(cut, "ArrowRight", 4));
+        Assert.Equal([0, 3, 2, 1, 0], ArrowWalk(cut, "ArrowLeft", 4));
     }
 
     // Two conditional tabs revealed on the same pass, interleaved with skipped siblings.
@@ -621,15 +618,17 @@ public class TabsAndSearchInputTests : BunitContext
     };
 
     [Fact]
-    public void Two_newcomers_on_one_pass_into_an_all_skipped_strip_both_land_at_the_end()
+    public void Two_newcomers_on_one_pass_into_an_all_skipped_strip_both_land_where_they_were_declared()
     {
-        // Declared [p1, a, p2, b]. Both newcomers are unanchored, so both are appended and even
-        // their relation to each other's neighbours is lost. SHOULD be [p1, a, p2, b].
+        // Declared [p1, a, p2, b]. Neither newcomer is placeable from the pass, and appending them
+        // lost their relation to each other's neighbours as well ([a, b, p1, p2]). One re-collection
+        // covers both -- it is per PASS, not per newcomer.
         var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, TwoConditionalTabs(false)));
         cut.Render(p => p.Add(t => t.ChildContent, TwoConditionalTabs(true)));
 
         Assert.Equal(["P1", "A", "P2", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
-        Assert.Equal(["a", "b", "p1", "p2"], StripOrder(cut));
+        Assert.Equal(["p1", "a", "p2", "b"], StripOrder(cut));
+        Assert.Equal(1, GenerationOf(cut.Instance));
     }
 
     // The same tabs every pass, only reordered -- a @keyed loop over a list the consumer sorted.
@@ -649,10 +648,12 @@ public class TabsAndSearchInputTests : BunitContext
     [Fact]
     public void A_keyed_reorder_moves_the_buttons_but_not_the_keyboard_order()
     {
+        // The one shape the re-collection cannot help with, and it stays documented on ChildContent.
         // A reorder changes no tab's parameters at all, so not even the newcomer-registers-late
-        // signal exists: nothing reports and the strip's list keeps the original order outright.
-        // The buttons DO move, because @key moves the component instances and each one carries its
-        // own button. SHOULD be ["c", "a", "b"] both times.
+        // signal exists: nothing reports, there is no unplaceable newcomer to notice, and the
+        // strip's list keeps the original order outright. The buttons DO move, because @key moves the
+        // component instances and each one carries its own button. SHOULD be ["c", "a", "b"] both
+        // times; a rebuild triggered on spec rather than on evidence would be a rebuild every pass.
         var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, KeyedTabs(["a", "b", "c"])));
         Assert.Equal(["A", "B", "C"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
         Assert.Equal(["a", "b", "c"], StripOrder(cut));
@@ -664,13 +665,13 @@ public class TabsAndSearchInputTests : BunitContext
     }
 
     [Fact]
-    public void An_unbound_strip_after_a_leading_insertion_highlights_the_second_rendered_button()
+    public void An_unbound_strip_after_a_leading_insertion_highlights_the_newly_first_button()
     {
         // ActiveKey's documented contract is that null "activates the first enabled tab" -- the
         // first one the consumer declared, which is the first one rendered. With no bound key and no
-        // prior click, resolution falls through to _tabs[0], and after an unanchored leading
-        // insertion that is the tab that USED to be first. So the strip renders [New, A, B] and
-        // highlights A. SHOULD highlight New.
+        // prior click, resolution falls through to _tabs[0]; an appended newcomer left that pointing
+        // at the tab that USED to be first, so the strip rendered [New, A, B] and highlighted A.
+        // This is the shape a rotation does NOT save, which is why the order has to be exact.
         var cut = Render<Tabs>(p => p
             .Add(t => t.ChildContent, ConditionalLeadingTabs(false, false))
             .Add(t => t.Id, "s"));
@@ -681,8 +682,10 @@ public class TabsAndSearchInputTests : BunitContext
             .Add(t => t.Id, "s"));
 
         Assert.Equal(["New", "A", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
-        Assert.Equal("s-tab-a", cut.Find(".wss-tabs-tab-active").GetAttribute("id"));
-        // Exactly one Tab stop and one selected tab, at least -- the ARIA invariant holds either way.
+        Assert.Equal("s-tab-new", cut.Find(".wss-tabs-tab-active").GetAttribute("id"));
+        // Exactly one Tab stop and one selected tab: the re-collection replaces every Tab instance
+        // while IsActive is reference equality against one of them, so the push that re-renders the
+        // buttons has to land on the NEW instances or the strip would show none active (or two).
         var buttons = cut.FindAll("[role=tab]");
         Assert.Equal(1, buttons.Count(e => e.GetAttribute("tabindex") == "0"));
         Assert.Equal(1, buttons.Count(e => e.GetAttribute("aria-selected") == "true"));
@@ -825,6 +828,8 @@ public class TabsAndSearchInputTests : BunitContext
 
         Assert.Equal(["New", "A", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
         Assert.Equal(["new", "a", "b"], RenderedTabs(cut.Instance).Select(t => t.Key));
+        // Placed from what the pass reported, so nothing was re-created to find it out.
+        Assert.Equal(0, GenerationOf(cut.Instance));
     }
 
     // Tabs.ButtonRef is internal (no InternalsVisibleTo), and the rendered tab set is private -- both
@@ -835,6 +840,12 @@ public class TabsAndSearchInputTests : BunitContext
 
     static ElementReference ButtonRefOf(Tab tab) =>
         (ElementReference)typeof(Tab).GetField("ButtonRef", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tab)!;
+
+    // How many times the strip has re-collected its children. Read directly because a re-collection
+    // is deliberately invisible: it produces the same markup it would have produced anyway, so the
+    // only way to pin that it happens exactly when it must is to count it.
+    static int GenerationOf(Tabs tabs) =>
+        (int)typeof(Tabs).GetField("_generation", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(tabs)!;
 
     [Fact]
     public void Every_tab_still_has_a_captured_button_reference_after_an_insertion()
@@ -924,20 +935,19 @@ public class TabsAndSearchInputTests : BunitContext
     };
 
     [Fact]
-    public void A_structural_insertion_reconstructs_nothing_that_was_already_live()
+    public void An_unplaceable_insertion_re_collects_the_Tabs_but_never_a_pane_component()
     {
-        // The previous design recovered the declared order by bumping a generation @key on the
-        // ChildContent CascadingValue, which tore down and reconstructed that whole subtree on every
-        // structural insertion -- every Tab instance with it. Nothing rebuilds anything now, so this
-        // pins that the retired limitation stays retired: the live Tab instances are the SAME
-        // objects across an insertion and a removal, and a consumer component in a pane is never
-        // reconstructed either.
+        // What a re-collection costs, exactly. The subtree it drops is the ChildContent one, which
+        // by contract holds nothing but <Tab> -- so the casualties are the Tab instances themselves,
+        // and those carry no consumer state. A consumer's component in a PANE is not in that subtree
+        // at all: the strip renders ActiveTab.ChildContent into the tabpanel from its OWN render
+        // tree, so the diff retains it exactly as it would on any other re-render.
         //
         // (This used to declare the consumer's component as a direct child of <Tabs>, which is where
-        // the old rebuild really hurt. That is no longer a legal place to put one: ChildContent now
-        // renders inside the role="tablist" element, so a non-Tab child there is an
-        // aria-required-children violation. Moved into a pane, which is what the parameter's own
-        // docs direct consumers to do.)
+        // the pre-redesign rebuild really hurt -- it tore down the strip's whole nav subtree. That is
+        // no longer a legal place to put one: ChildContent renders inside the role="tablist"
+        // element, so a non-Tab child there is an aria-required-children violation, and as the
+        // parameter's own docs now say, it is the one thing a re-collection can cost you.)
         StatefulSibling.Constructed = 0;
         StatefulSibling.Disposed = 0;
 
@@ -948,29 +958,257 @@ public class TabsAndSearchInputTests : BunitContext
             .Add(t => t.ActiveKey, "pane"));
         Assert.Equal(1, StatefulSibling.Constructed);
         Assert.Equal("1", cut.Find(".stateful-sibling").TextContent);
+        Assert.Equal(0, GenerationOf(cut.Instance)); // the first collection is already exact
         var before = RenderedTabs(cut.Instance).ToDictionary(t => t.Key);
 
-        // Ordinary re-render with the same structure.
+        // Ordinary re-render with the same structure: nothing is unplaceable, nothing moves.
         cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
+        Assert.Equal(0, GenerationOf(cut.Instance));
+        Assert.All(before, kvp => Assert.Same(kvp.Value, RenderedTabs(cut.Instance).Single(t => t.Key == kvp.Key)));
         Assert.Equal(1, StatefulSibling.Constructed);
         Assert.Equal(0, StatefulSibling.Disposed);
 
-        // Insertion before a parameter-skipped sibling -- the case that used to force the rebuild.
+        // The insertion. Declared [new, a, pane]: the pane tab re-registers (its RenderFragment is a
+        // fresh delegate every pass) and reports its own position, but that still leaves the skipped
+        // "a" on an unknown side of the newcomer -- a guess, so the strip re-collects instead of
+        // shipping [a, new, pane] to the arrow keys.
         cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(true)));
         Assert.Equal(["New", "A", "Pane"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
-        // Same Tab objects, not fresh ones standing in for them.
-        Assert.All(before, kvp => Assert.Same(kvp.Value, RenderedTabs(cut.Instance).Single(t => t.Key == kvp.Key)));
+        Assert.Equal(["new", "a", "pane"], StripOrder(cut));
+        Assert.Equal(1, GenerationOf(cut.Instance));
+        // Fresh Tab instances...
+        Assert.All(before, kvp => Assert.DoesNotContain(kvp.Value, RenderedTabs(cut.Instance)));
+        // ...and the very same pane component, with its instance state intact.
         Assert.Equal(1, StatefulSibling.Constructed);
         Assert.Equal(0, StatefulSibling.Disposed);
         Assert.Equal("1", cut.Find(".stateful-sibling").TextContent);
 
-        // Removal: likewise untouched.
+        // Removal: a pass that removes a tab places everything from data, so nothing is re-collected
+        // and the surviving Tab instances are the same objects.
+        var live = RenderedTabs(cut.Instance).ToDictionary(t => t.Key);
         cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
         Assert.Equal(["A", "Pane"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
-        Assert.All(before, kvp => Assert.Same(kvp.Value, RenderedTabs(cut.Instance).Single(t => t.Key == kvp.Key)));
+        Assert.Equal(1, GenerationOf(cut.Instance));
+        Assert.All(["a", "pane"], k => Assert.Same(live[k], RenderedTabs(cut.Instance).Single(t => t.Key == k)));
         Assert.Equal(1, StatefulSibling.Constructed);
         Assert.Equal(0, StatefulSibling.Disposed);
         Assert.Equal("1", cut.Find(".stateful-sibling").TextContent);
+    }
+
+    [Fact]
+    public void One_unplaceable_insertion_costs_exactly_one_re_collection_and_then_settles()
+    {
+        // The bound. A re-collection re-registers every child, which is the same shape that arms one
+        // (all newcomers, the outgoing instances stragglers until the renderer disposes them), so an
+        // unguarded flag would rebuild the strip forever -- invisibly, at a SignalR round trip per
+        // pass on Blazor Server, exactly the treadmill A_static_strip_settles_... guards against for
+        // the corrective render.
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(false)));
+        Assert.Equal(0, GenerationOf(cut.Instance));
+
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(true)));
+        Assert.Equal(1, GenerationOf(cut.Instance));
+        Assert.Equal(["a", "b", "mid", "c"], StripOrder(cut));
+
+        // Identical passes afterwards: no further re-collection, and a constant, small render cost.
+        var deltas = new List<int>();
+        for (var i = 0; i < 4; i++)
+        {
+            var before = cut.RenderCount;
+            cut.Render(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(true)));
+            deltas.Add(cut.RenderCount - before);
+        }
+        var trace = string.Join(",", deltas);
+        Assert.Equal(1, GenerationOf(cut.Instance));
+        Assert.All(deltas, d => Assert.True(d <= 2, $"per-pass render delta {d} (deltas: {trace})"));
+        Assert.True(deltas.Distinct().Count() == 1, $"render cost is not constant at rest (deltas: {trace})");
+
+        // A SECOND unplaceable insertion is a second repair -- the bound is one per ambiguous pass,
+        // not one per strip.
+        var twice = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(false, false)));
+        twice.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, false)));
+        Assert.Equal(1, GenerationOf(twice.Instance));
+        Assert.Equal(["new", "a", "b"], StripOrder(twice));
+
+        twice.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingTabs(true, true)));
+        Assert.Equal(2, GenerationOf(twice.Instance));
+        Assert.Equal(["new", "mid", "a", "b"], StripOrder(twice));
+    }
+
+    [Fact]
+    public void A_pass_that_places_everything_from_data_never_re_collects_the_children()
+    {
+        // Everything the repair must stay out of. Each of these either reports enough to place every
+        // tab or reports nothing at all; none of them may re-create a child.
+        var count = 12;
+        var disabled = false;
+        RenderFragment Children() => builder =>
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "a");
+            builder.AddAttribute(2, "Title", "A");
+            builder.AddAttribute(3, "Count", count);
+            builder.CloseComponent();
+
+            builder.OpenComponent<Tab>(4);
+            builder.AddAttribute(5, "Key", "b");
+            builder.AddAttribute(6, "Title", "B");
+            builder.AddAttribute(7, "Disabled", disabled);
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, Children()));
+        Assert.Equal(0, GenerationOf(cut.Instance)); // the first collection is registration order, i.e. exact
+
+        cut.Render(p => p.Add(t => t.ChildContent, Children()));           // identical re-render
+        count = 34;
+        cut.Render(p => p.Add(t => t.ChildContent, Children()));           // a count change
+        disabled = true;
+        cut.Render(p => p.Add(t => t.ChildContent, Children()));           // a disabled flip
+        Assert.Equal("34", cut.Find(".wss-tabs-count").TextContent);
+        Assert.Equal(0, GenerationOf(cut.Instance));
+
+        // A removal, through the fragment that really drops the child.
+        var removal = Render<Tabs>(p => p.Add(t => t.ChildContent, TwoTabs()));
+        removal.Render(p => p.Add(t => t.ChildContent, TwoTabs(showSecond: false)));
+        Assert.Equal(["all"], StripOrder(removal));
+        Assert.Equal(0, GenerationOf(removal.Instance));
+
+        // ...and a pure @keyed reorder, which reports nothing at all: there is no newcomer to fail
+        // to place, so there is nothing to react to (see A_keyed_reorder_moves_the_buttons_...).
+        var reordered = Render<Tabs>(p => p.Add(t => t.ChildContent, KeyedTabs(["a", "b", "c"])));
+        reordered.Render(p => p.Add(t => t.ChildContent, KeyedTabs(["c", "a", "b"])));
+        Assert.Equal(0, GenerationOf(reordered.Instance));
+    }
+
+    [Fact]
+    public void A_re_collection_renders_the_markup_the_strip_would_have_rendered_anyway()
+    {
+        // The repair re-creates components, not markup. A strip that reached [A, B, Mid, C] by
+        // re-collecting has to be indistinguishable in the DOM from one declared that way outright --
+        // same buttons in the same order, same ids, same ARIA, same active state -- or consumers'
+        // stylesheets and the visual baselines would move with it.
+        var rebuilt = Render<Tabs>(p => p
+            .Add(t => t.ChildContent, ConditionalMiddleTab(false))
+            .Add(t => t.Id, "s"));
+        rebuilt.Render(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(true)));
+        Assert.Equal(1, GenerationOf(rebuilt.Instance));
+
+        var direct = Render<Tabs>(p => p
+            .Add(t => t.ChildContent, ConditionalMiddleTab(true))
+            .Add(t => t.Id, "s"));
+        Assert.Equal(0, GenerationOf(direct.Instance));
+
+        rebuilt.MarkupMatches(direct.Markup);
+    }
+
+    [Fact]
+    public void A_re_collection_keeps_the_selection_and_reports_no_fallback()
+    {
+        // What has to survive the children being replaced. The selection of an unbound strip lives
+        // in the strip's own _selectedKey -- nothing else records that the user picked C -- and the
+        // once-only fallback bookkeeping lives there too. Both are on Tabs, not on a Tab, so both
+        // must come through; and the key still names a live enabled tab afterwards, so ActiveKeyChanged
+        // must NOT fire a fallback just because the instance holding it is a different object.
+        var keys = new List<string?>();
+        var cut = Render<Tabs>(p => p
+            .Add(t => t.ChildContent, ConditionalMiddleTab(false))
+            .Add(t => t.Id, "s")
+            .Add(t => t.ActiveKeyChanged, EventCallback.Factory.Create<string?>(this, k => keys.Add(k))));
+
+        cut.FindAll("[role=tab]")[2].Click();
+        Assert.Equal(["c"], keys);
+        Assert.Equal("s-tab-c", cut.Find(".wss-tabs-tab-active").GetAttribute("id"));
+
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(true)));
+
+        Assert.Equal(1, GenerationOf(cut.Instance));
+        Assert.Equal(["A", "B", "Mid", "C"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal("s-tab-c", cut.Find(".wss-tabs-tab-active").GetAttribute("id"));
+        Assert.Equal(["c"], keys);
+    }
+
+    // A consumer that reveals a tab from its own ActiveKeyChanged handler: the one interaction where
+    // a re-collection destroys the nav button the strip has just moved DOM focus to.
+    sealed class InsertOnSelectHost : ComponentBase
+    {
+        string? _activeKey;
+        bool _revealed;
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.OpenComponent<Tabs>(0);
+            builder.AddAttribute(1, "Id", "h");
+            builder.AddAttribute(2, "ActiveKey", _activeKey);
+            builder.AddAttribute(3, "ActiveKeyChanged", EventCallback.Factory.Create<string?>(this, k =>
+            {
+                _activeKey = k;
+                _revealed = true;
+            }));
+            builder.AddAttribute(4, "ChildContent", (RenderFragment)(b =>
+            {
+                b.OpenComponent<Tab>(0);
+                b.AddAttribute(1, "Key", "a");
+                b.AddAttribute(2, "Title", "A");
+                b.CloseComponent();
+
+                if (_revealed)
+                {
+                    b.OpenComponent<Tab>(3);
+                    b.AddAttribute(4, "Key", "mid");
+                    b.AddAttribute(5, "Title", "Mid");
+                    b.CloseComponent();
+                }
+
+                b.OpenComponent<Tab>(6);
+                b.AddAttribute(7, "Key", "b");
+                b.AddAttribute(8, "Title", "B");
+                b.CloseComponent();
+            }));
+            builder.CloseComponent();
+        }
+    }
+
+    [Fact]
+    public void Arrow_navigation_that_triggers_a_re_collection_still_lands_focus_on_a_live_button()
+    {
+        // Arrow keys move DOM focus onto the tab they select. If the consumer's ActiveKeyChanged
+        // handler reveals a tab, the re-collection that follows destroys that very button, and the
+        // browser drops focus on <body>: the roving tabindex then points at a button the user is not
+        // on, the next arrow key fires from nowhere, and Tab leaves for the top of the page. The
+        // strip re-focuses the active tab's NEW button instead. (bUnit has no real focus, so this
+        // reads the interop call -- the point is that one is issued against a reference that only
+        // came into existence during the re-collection.)
+        var host = Render<InsertOnSelectHost>();
+        var strip = host.FindComponent<Tabs>();
+        Assert.Equal(["A", "B"], host.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+
+        host.FindAll("[role=tab]")[0].KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        Assert.Equal(1, GenerationOf(strip.Instance));
+        Assert.Equal(["A", "Mid", "B"], host.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["a", "mid", "b"], StripOrder(strip));
+        Assert.Equal("h-tab-b", host.Find(".wss-tabs-tab-active").GetAttribute("id"));
+
+        var live = RenderedTabs(strip.Instance).Single(t => t.Key == "b");
+        var focused = JSInterop.Invocations["Blazor._internal.domWrapper.focus"]
+            .Select(i => ((ElementReference)i.Arguments[0]!).Id)
+            .ToArray();
+        Assert.Contains(ButtonRefOf(live).Id, focused);
+    }
+
+    [Fact]
+    public void An_unplaceable_insertion_the_user_did_not_navigate_into_leaves_focus_alone()
+    {
+        // The other half of that: a re-collection driven by consumer state the user never touched --
+        // a poll, a sibling component, a timer -- must not yank focus into the strip from wherever
+        // the user actually is. Only arrow-key navigation, which is what put focus on a button in
+        // the first place, gets it back.
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(false)));
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalMiddleTab(true)));
+
+        Assert.Equal(1, GenerationOf(cut.Instance));
+        Assert.Empty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
     }
 
     [Fact]
