@@ -229,8 +229,8 @@ public class UpdateTriggerCascadeTests : BunitContext
     [Fact]
     public void EditTextArea_AutoSize_with_a_cascaded_Change_trigger_still_measures_via_the_extra_oninput_handler()
     {
-        // AutoSize + Change is the one combination where AutoSizeInputAttribute splats an extra
-        // measure-only oninput handler onto the textarea (see EditTextArea.razor.cs) -- otherwise the
+        // AutoSize + Change is one of the two combinations where EditorInputAttributes splats an extra
+        // oninput handler onto the textarea (see EditTextArea.razor.cs) -- otherwise the
         // box would stop growing mid-typing, since @bind-value:after only fires on the bound event
         // (onchange here), i.e. blur/Enter.
         var model = new PersonModel { Name = "hello" };
@@ -260,7 +260,7 @@ public class UpdateTriggerCascadeTests : BunitContext
     public void EditTextArea_AutoSize_with_the_default_Input_trigger_has_no_stray_duplicate_handler()
     {
         // Default resolution (no FormDefaults, no instance UpdateOn) is Input for EditTextArea, so
-        // AutoSizeInputAttribute must be null and splat no attribute at all -- @bind-value:after alone
+        // EditorInputAttributes must be null and splat no attribute at all -- @bind-value:after alone
         // drives the resize. Proves both halves: the bound value still commits per keystroke (a
         // reintroduced splat here would win the last-attribute-wins race and silently replace the
         // bind's own oninput handler), and the JS resize fires exactly once per keystroke, not twice.

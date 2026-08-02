@@ -58,7 +58,7 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     /// </summary>
     protected int? EffectiveMaxLength => MaxLength ?? _attributes.MaxTextLength();
 
-    /// <summary> Shows a clear button (via <see cref="EditInputShell"/>) while the value is non-empty and the control is enabled. Clicking it sets the value to null and refocuses the editor.</summary>
+    /// <summary> Shows a clear button (via <see cref="EditInputShell"/>) while the editor's text is non-empty and the control is enabled. Clicking it empties the value (see <see cref="Clear"/>) and refocuses the editor.</summary>
     [Parameter] public bool AllowClear { get; set; }
 
     /// <summary>
@@ -82,17 +82,104 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
 
     /// <summary>
     /// Whether the shell's clear button should render right now: <see cref="AllowClear"/> is set,
-    /// the control isn't disabled, and the current value is non-empty.
+    /// the control isn't disabled, and the editor's text (see <see cref="EditorText"/>) is non-empty.
     /// </summary>
-    protected bool IsClearable => AllowClear && !IsDisabled && !string.IsNullOrEmpty(CurrentValue);
+    protected bool IsClearable => AllowClear && !IsDisabled && !string.IsNullOrEmpty(EditorText);
 
     /// <summary>
     /// The shell's character-count text when <see cref="ShowCount"/> is set, else null (no count
     /// renders). AntD format: <c>"{length}"</c> alone, or <c>"{length} / {EffectiveMaxLength}"</c>
-    /// once <see cref="EffectiveMaxLength"/> is set. Length counts <see cref="InputBase{TValue}.CurrentValue"/>,
+    /// once <see cref="EffectiveMaxLength"/> is set. Length counts <see cref="EditorText"/>,
     /// treating null as zero.
     /// </summary>
-    protected string? CountText => EditInputShell.BuildCountText(ShowCount, CurrentValue?.Length ?? 0, EffectiveMaxLength);
+    protected string? CountText => EditInputShell.BuildCountText(ShowCount, EditorText?.Length ?? 0, EffectiveMaxLength);
+
+    // ───────────────────── live editor text under a commit-on-blur binding ─────────────────────
+
+    /// <summary>
+    /// Whether the affix chrome needs the editor's live text — i.e. one of the two features that
+    /// reflect what is currently typed (<see cref="ShowCount"/>, <see cref="AllowClear"/>) is on AND
+    /// the bound commit event has resolved away from <c>oninput</c>, so
+    /// <see cref="InputBase{TValue}.CurrentValue"/> only moves on blur.
+    /// </summary>
+    /// <remarks>
+    /// Both halves matter. Without the feature check the extra handler would attach to every
+    /// commit-on-blur editor, and the affix-free legacy DOM must stay byte-identical for controls
+    /// that use none of this. Without the event check it would collide with the bound
+    /// <c>oninput</c> the default <see cref="UpdateTrigger.Input"/> binding already renders.
+    /// </remarks>
+    protected bool TracksLiveText => (ShowCount || AllowClear) && UpdateEventName != "oninput";
+
+    // The editor's text as of the last oninput, captured only while TracksLiveText is on. Null means
+    // "nothing fresher than CurrentValue" -- an empty string is a real captured value (the user
+    // deleted everything), which is exactly the case the clear button has to react to, so this can't
+    // collapse into a plain null check.
+    string? _liveText;
+
+    /// <summary>
+    /// The text the affix chrome (count, clear button) reflects: the live editor text when one has
+    /// been captured since the last commit, else <see cref="InputBase{TValue}.CurrentValue"/>.
+    /// </summary>
+    /// <remarks>
+    /// Under the default per-keystroke binding the two are always the same and this is just
+    /// <see cref="InputBase{TValue}.CurrentValue"/>. Under <see cref="UpdateTrigger.Change"/> —
+    /// per-control or cascaded from <see cref="FormDefaults"/> — <see cref="InputBase{TValue}.CurrentValue"/>
+    /// doesn't move until blur, which used to freeze the counter at its pre-typing value for the whole
+    /// time the user was typing and make the clear button appear a gesture late. The bound value's own
+    /// commit timing is untouched: this only feeds what the chrome displays.
+    /// </remarks>
+    protected string? EditorText => _liveText ?? CurrentValue;
+
+    /// <summary>
+    /// The extra <c>oninput</c> handler, splatted onto the editor element by
+    /// <see cref="EditorInputAttributes"/>. Records the live text for <see cref="EditorText"/>;
+    /// the component re-renders afterwards the way it does for any component event handler, which is
+    /// what actually moves the count/clear chrome mid-typing. Overridden by <see cref="EditTextArea"/>,
+    /// which shares this one handler for its AutoSize re-measure.
+    /// </summary>
+    protected virtual Task OnEditorInputAsync(ChangeEventArgs e)
+    {
+        if (TracksLiveText) _liveText = e.Value as string ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Runs after every bound-value commit (<c>@bind-value:after</c>): drops any captured live text,
+    /// which the commit has just made redundant — <see cref="InputBase{TValue}.CurrentValue"/> now
+    /// holds exactly what the editor shows.
+    /// </summary>
+    /// <remarks>
+    /// The commit is the one live-text staleness case <see cref="OnParametersSet"/> can't catch: under
+    /// <see cref="UpdateTrigger.Change"/> the blur that commits doesn't necessarily re-parameterize the
+    /// control (nothing forces the parent to re-render), so without this the chrome would keep
+    /// describing the pre-blur keystrokes. Wired unconditionally on both editors: <c>:after</c> never
+    /// renders as a DOM attribute of its own, so attaching it leaves the markup byte-identical.
+    /// Overridden by <see cref="EditTextArea"/>, which re-measures its AutoSize height here.
+    /// </remarks>
+    protected virtual Task OnValueCommittedAsync()
+    {
+        _liveText = null;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Whether the editor needs the extra <c>oninput</c> handler at all. <see cref="EditTextArea"/>
+    /// widens this: its AutoSize re-measure needs the same handler under the same commit-on-blur
+    /// condition, and one element can only carry one <c>oninput</c>.
+    /// </summary>
+    protected virtual bool NeedsEditorInputHandler => TracksLiveText;
+
+    /// <summary>
+    /// The extra <c>oninput</c> attribute, splatted onto the editor element (<c>@attributes</c>) —
+    /// null in every case that doesn't need it, and a null splat renders no attribute at all, so the
+    /// legacy affix-free DOM stays byte-identical. Never collides with the bound commit event by
+    /// construction: <see cref="NeedsEditorInputHandler"/> is only true where
+    /// <see cref="EditTextControlBase{TValue}.UpdateEventName"/> has resolved to <c>"onchange"</c>.
+    /// </summary>
+    protected IReadOnlyDictionary<string, object>? EditorInputAttributes =>
+        NeedsEditorInputHandler
+            ? new Dictionary<string, object>(1) { ["oninput"] = EventCallback.Factory.Create<ChangeEventArgs>(this, OnEditorInputAsync) }
+            : null;
 
     /// <inheritdoc/>
     /// <remarks>
@@ -105,14 +192,26 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     protected override UpdateTrigger DefaultUpdateTrigger => UpdateTrigger.Input;
 
     /// <summary>
-    /// The shell's clear button action: sets the value to null (via <see cref="InputBase{TValue}.CurrentValue"/>,
+    /// The shell's clear button action: empties the value (via <see cref="InputBase{TValue}.CurrentValue"/>,
     /// which raises <c>ValueChanged</c>/<c>NotifyFieldChanged</c> itself), refocuses the editor, then
     /// runs the derived control's <see cref="OnClearedAsync"/> hook. Focus is best-effort -- see
     /// <see cref="_editorRef"/>'s remarks.
     /// </summary>
+    /// <remarks>
+    /// The empty string, not null, and for two reasons. It is the same model value the user's own
+    /// deletion path produces (a text editor emptied by hand reports <c>""</c>, never null), so the
+    /// two gestures that mean "there is no text here" can't disagree about what lands in the model --
+    /// and it matches AntD's <c>allowClear</c>. It also keeps the control on screen: under
+    /// <see cref="HidingMode.WhenNull"/> the null answer made <see cref="EditControlBase{TValue}.ShouldShowComponent"/>
+    /// unmount the whole control the instant its clear button was clicked, with no editor left to type
+    /// a new value into. Consumers that need to distinguish "cleared" from "empty" should read the
+    /// empty string, or use <see cref="HidingMode.WhenNullOrDefault"/> if the intent was to hide
+    /// empties too.
+    /// </remarks>
     protected async Task Clear()
     {
-        CurrentValue = null;
+        CurrentValue = string.Empty;
+        _liveText = null;
         try { await _editorRef.FocusAsync(); }
         catch { /* not focusable yet (prerender/tests) */ }
         await OnClearedAsync();
@@ -147,11 +246,19 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     protected bool ValueChangedSinceLastParameters { get; private set; }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Also resyncs <see cref="EditorText"/> to the bound value: a programmatic assignment (or the
+    /// blur that finally commits what was typed) makes any captured live text stale, and so does
+    /// turning <see cref="TracksLiveText"/> off at runtime, which detaches the handler that would
+    /// otherwise refresh it.
+    /// </remarks>
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
         ValueChangedSinceLastParameters = !string.Equals(CurrentValue, _lastParameterValue, StringComparison.Ordinal);
         _lastParameterValue = CurrentValue;
+
+        if (ValueChangedSinceLastParameters || !TracksLiveText) _liveText = null;
     }
 
     // Trivial parser — same as Microsoft's InputText/InputTextArea: pass the string through.

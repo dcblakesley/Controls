@@ -17,8 +17,8 @@
                             CountBelow="true">
                 <textarea @bind-value=@CurrentValue
                           @bind-value:event="@UpdateEventName"
-                          @bind-value:after="OnValueChangedAsync"
-                          @attributes="AutoSizeInputAttribute"
+                          @bind-value:after="OnValueCommittedAsync"
+                          @attributes="EditorInputAttributes"
                           @ref="_editorRef"
                           disabled=@IsDisabled
                           id=@_id

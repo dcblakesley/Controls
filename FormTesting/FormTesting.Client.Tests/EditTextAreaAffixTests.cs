@@ -90,7 +90,8 @@ public class EditTextAreaAffixTests : BunitContext
 
         cut.Find(".edit-input-clear").Click();
 
-        Assert.Null(captured);
+        // The empty string, not null -- the same value deleting the text by hand produces.
+        Assert.Equal(string.Empty, captured);
         Assert.Empty(cut.FindAll(".edit-input-clear")); // value is now empty -- button withdraws
     }
 

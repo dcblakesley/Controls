@@ -34,7 +34,7 @@ public partial class EditTextArea : EditTextInputBase
     /// browser's manual resize handle (<c>edit-textarea-autosize</c>), matching AntD's own TextArea
     /// autoSize behavior. Keeps growing on every keystroke even when
     /// <see cref="EditTextControlBase{TValue}.UpdateOn"/> resolves to
-    /// <see cref="UpdateTrigger.Change"/> (commit-on-blur) -- see <see cref="AutoSizeInputAttribute"/>.
+    /// <see cref="UpdateTrigger.Change"/> (commit-on-blur) -- see <see cref="NeedsAutoSizeOnInput"/>.
     /// Falls back to the bound property's <c>[Rows]</c> (its <c>AutoSize</c> value) when unset, then to
     /// false -- see <see cref="ResolvedAutoSize"/>.
     /// </summary>
@@ -127,43 +127,54 @@ public partial class EditTextArea : EditTextInputBase
 
     /// <inheritdoc/>
     /// <remarks>
-    /// Clearing bypasses the bound input event entirely, so <see cref="OnValueChangedAsync"/> never
+    /// Clearing bypasses the bound input event entirely, so <see cref="OnValueCommittedAsync"/> never
     /// fires for it -- re-measure explicitly here when <see cref="ResolvedAutoSize"/> is on.
     /// </remarks>
     protected override Task OnClearedAsync() => ResolvedAutoSize ? AutoSizeAsync() : Task.CompletedTask;
 
-    /// <summary>
-    /// Runs after every bound-value update (<c>@bind-value:after</c>) -- re-measures and resizes when
-    /// <see cref="ResolvedAutoSize"/> is on, a no-op otherwise. Wired unconditionally (rather than only
-    /// while AutoSize is true): unlike an explicit <c>@oninput</c> handler, <c>:after</c> never renders
-    /// as a DOM attribute of its own, so attaching it doesn't touch the non-AutoSize markup at all (the
-    /// S1 DOM-stability tests still pass unchanged). It fires once per *bound* event, which is
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Adds the AutoSize re-measure to the base's live-text reset -- both hang off the one
+    /// <c>@bind-value:after</c> the markup wires. It fires once per *bound* event, which is
     /// <c>oninput</c> by default but becomes <c>onchange</c> (blur/Enter only) when
     /// <see cref="EditTextControlBase{TValue}.UpdateEventName"/> resolves to Change -- so under
     /// AutoSize + Change this alone would stop the textarea growing mid-typing; see
-    /// <see cref="AutoSizeInputAttribute"/> for the patch.
-    /// </summary>
-    Task OnValueChangedAsync() => ResolvedAutoSize ? AutoSizeAsync() : Task.CompletedTask;
+    /// <see cref="NeedsAutoSizeOnInput"/> for the patch.
+    /// </remarks>
+    protected override async Task OnValueCommittedAsync()
+    {
+        await base.OnValueCommittedAsync();
+        if (ResolvedAutoSize) await AutoSizeAsync();
+    }
 
     /// <summary>
-    /// Measure-only <c>oninput</c> handler, splatted onto the textarea ONLY when
-    /// <see cref="ResolvedAutoSize"/> is on and <see cref="EditTextControlBase{TValue}.UpdateEventName"/>
-    /// has resolved away from <c>"oninput"</c> (i.e. the bound commit event is <c>onchange</c>).
-    /// <see cref="OnValueChangedAsync"/> re-measures via <c>@bind-value:after</c>, which only fires once
-    /// per bound event -- under <see cref="UpdateTrigger.Change"/> that's blur, so without this extra
-    /// handler an AutoSize textarea would stop growing as the user types. Null in every other
-    /// combination (including the default oninput binding), so the splat renders no attribute at all and
-    /// the S1 DOM-stability tests' byte-identical markup holds. No key collision by construction: this
-    /// dictionary only ever adds "oninput" in the branch where the bound event is "onchange".
+    /// True when a re-measure needs the shared extra <c>oninput</c> handler: <see cref="ResolvedAutoSize"/>
+    /// is on and <see cref="EditTextControlBase{TValue}.UpdateEventName"/> has resolved away from
+    /// <c>"oninput"</c> (i.e. the bound commit event is <c>onchange</c>).
+    /// <see cref="OnValueCommittedAsync"/> re-measures via <c>@bind-value:after</c>, which only fires once
+    /// per bound event -- under <see cref="UpdateTrigger.Change"/> that's blur, so without the extra
+    /// handler an AutoSize textarea would stop growing as the user types.
     /// </summary>
-    IReadOnlyDictionary<string, object>? AutoSizeInputAttribute =>
-        ResolvedAutoSize && UpdateEventName != "oninput"
-            ? new Dictionary<string, object>(1) { ["oninput"] = EventCallback.Factory.Create(this, AutoSizeAsync) }
-            : null;
+    bool NeedsAutoSizeOnInput => ResolvedAutoSize && UpdateEventName != "oninput";
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// One element, one <c>oninput</c>: the base attaches the handler for its live count/clear text
+    /// and this adds AutoSize's re-measure to the same one, rather than each trying to splat its own
+    /// (the second would silently replace the first).
+    /// </remarks>
+    protected override bool NeedsEditorInputHandler => base.NeedsEditorInputHandler || NeedsAutoSizeOnInput;
+
+    /// <inheritdoc/>
+    protected override async Task OnEditorInputAsync(ChangeEventArgs e)
+    {
+        await base.OnEditorInputAsync(e);
+        if (NeedsAutoSizeOnInput) await AutoSizeAsync();
+    }
 
     // Mirrors -- compared each render so a value/AutoSize change that did NOT come from the user typing
     // (see OnAfterRenderAsync below) still triggers a re-measure. _lastMeasuredValue is kept in sync by
-    // AutoSizeAsync itself, so every path that already measures (OnClearedAsync, OnValueChangedAsync,
+    // AutoSizeAsync itself, so every path that already measures (OnClearedAsync, OnValueCommittedAsync,
     // first render) leaves it up to date and the user-typing path below never measures twice for the
     // same keystroke.
     string? _lastMeasuredValue;
@@ -173,10 +184,10 @@ public partial class EditTextArea : EditTextInputBase
     /// Re-measures on first render (when <see cref="ResolvedAutoSize"/> is on), and on every later
     /// render where something OTHER than the user typing changed the height requirement: the bound
     /// value was set from outside the control (a parent assigning the model property directly bypasses
-    /// <see cref="OnValueChangedAsync"/>/<see cref="OnClearedAsync"/> entirely, so nothing else would
+    /// <see cref="OnValueCommittedAsync"/>/<see cref="OnClearedAsync"/> entirely, so nothing else would
     /// re-measure), or <see cref="ResolvedAutoSize"/> just flipped false-to-true at runtime (the class
     /// toggles on with no measurement of its own). Skips the user-typing path deliberately: that path
-    /// already measures via <c>@bind-value:after</c>/<see cref="AutoSizeInputAttribute"/>, which updates
+    /// already measures via <c>@bind-value:after</c>/<see cref="OnEditorInputAsync"/>, which updates
     /// <see cref="_lastMeasuredValue"/> before this render even starts, so
     /// <see cref="InputBase{TValue}.CurrentValue"/> already equals the mirror here and the comparison
     /// below is a no-op -- no double measurement per keystroke.

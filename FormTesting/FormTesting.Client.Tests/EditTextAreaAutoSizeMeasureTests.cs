@@ -6,7 +6,7 @@ namespace FormTesting.Client.Tests;
 /// <summary>
 /// Covers finding 60: <c>EditTextArea</c>'s <see cref="EditTextArea.AutoSize"/> re-measure gating in
 /// <c>OnAfterRenderAsync</c> (see <c>EditTextArea.razor.cs</c>) for the two paths that don't go through
-/// <c>@bind-value:after</c>/<see cref="EditTextArea.AutoSizeInputAttribute"/> at all: a parent setting
+/// <c>@bind-value:after</c>/the extra <c>oninput</c> handler at all: a parent setting
 /// the bound value directly (not the user typing), and <see cref="EditTextArea.AutoSize"/> flipping
 /// false-to-true at runtime. bUnit can't observe the actual DOM height (JSInterop runs in Loose mode --
 /// no real browser, no real <c>autoSizeTextArea</c> JS), so this only proves the C# gating invokes (or
@@ -37,7 +37,7 @@ public class EditTextAreaAutoSizeMeasureTests : BunitContext
         var baseline = AutoSizeCalls();
 
         // Simulates a parent assigning the model property directly -- e.g. loading a record -- which
-        // bypasses OnValueChangedAsync/AutoSizeInputAttribute (those only fire from the textarea's own
+        // bypasses OnValueCommittedAsync/OnEditorInputAsync (those only fire from the textarea's own
         // bound DOM event) entirely.
         cut.Render(ps => ps.Add(c => c.Value, "line one\nline two\nline three\nline four"));
 
