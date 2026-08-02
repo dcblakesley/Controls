@@ -15,7 +15,7 @@
                 @* ValueExpression forwarded so the inner group notifies/styles the real model field;
                    `disabled` would be a no-op here (InputRadioGroup renders no element) — each
                    InputRadio below carries it individually. *@
-                <InputRadioGroup Value=@CurrentValue ValueChanged=@((TEnum? v) => CurrentValue = v) ValueExpression=@ValueExpression>
+                <InputRadioGroup Value=@CurrentValue ValueChanged=@((TEnum? v) => OnSelectionChangedAsync(v)) ValueExpression=@ValueExpression>
 
                     @if (OptionType == RadioOptionType.Button)
                     {
@@ -36,7 +36,7 @@
                             var lastOption = buttonOptions[^1];
                             <div class="edit-radio-other-option-container">
                                 <RadioOtherInput Id=@($"other-{_id}")
-                                                 Value=@OtherValue
+                                                 Value=@DisplayedOtherValue
                                                  IsDisabled=@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, lastOption) || IsOptionDisabledFor(lastOption))
                                                  Placeholder=@OtherPlaceholder
                                                  CommitAttributes=@OtherInputAttribute />
@@ -65,7 +65,7 @@
                                         @if (showOtherInput)
                                         {
                                             <RadioOtherInput Id=@($"other-{_id}")
-                                                             Value=@OtherValue
+                                                             Value=@DisplayedOtherValue
                                                              IsDisabled=@(!EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option) || IsOptionDisabledFor(option))
                                                              Placeholder=@OtherPlaceholder
                                                              CommitAttributes=@OtherInputAttribute />
@@ -79,9 +79,11 @@
             }
             else
             {
+                @* The "Other: text" form needs BOTH conditions -- gating on the enum value alone
+                   rendered a dangling "Other: " whenever the free-text box was left empty. *@
                 <ReadOnlyValue Id=@_id
                                CssClass=@CssClass
-                               Text=@(IsOtherSelected ? $"{Value?.GetName()}: {OtherValue}" : Value?.GetName()) />
+                               Text=@(IsOtherSelected && !string.IsNullOrEmpty(OtherValue) ? $"{Value?.GetName()}: {OtherValue}" : Value?.GetName()) />
                 }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

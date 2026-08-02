@@ -44,20 +44,6 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// <summary> Event callback that fires when the OtherValue changes.</summary>
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
-    /// <summary>
-    /// Splats <see cref="OnOtherValueChanged"/> onto whichever event name
-    /// <see cref="RadioGroupControlBase{TValue}.UpdateEventName"/> resolves to. The "Other" text box
-    /// uses a raw event handler rather than a <c>@bind</c>, so <c>@bind:event</c> doesn't apply here --
-    /// this dictionary is the mechanism that makes the wired-up event name dynamic instead of a fixed
-    /// <c>@oninput</c>. It is handed to the shared <see cref="RadioOtherInput"/> (which
-    /// <see cref="EditRadioString"/> also renders) as its <c>CommitAttributes</c>, which is why the
-    /// wiring travels as a dictionary rather than a callback.
-    /// </summary>
-    IReadOnlyDictionary<string, object> OtherInputAttribute => new Dictionary<string, object>(1)
-    {
-        [UpdateEventName] = EventCallback.Factory.Create<ChangeEventArgs>(this, OnOtherValueChanged)
-    };
-
     // No local _isNullable mirror (unlike EditSelectEnum, whose markup reads one for the leading
     // empty option): nothing in this control's markup needs it, and TryParseValueFromString below
     // reads the cache's own IsNullable.
@@ -86,6 +72,56 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         _cache.Refresh(Sort, HasOtherOption);
         // Runs after Refresh so the ids track a reordered/resized option list. Cheap: ToId memoizes.
         _optionIds = EnumHelpers.ToUniqueIds(_cache.Options);
+        // Remember whatever text the model currently carries, so switching away from Other can take it
+        // off the model while still showing it (see OnSelectionChangedAsync). An empty OtherValue
+        // while Other is STILL the selected option is a real clear by the parent (form reset, reload),
+        // so the preserved copy goes too -- unlike the empty it holds right after a switch away, which
+        // this control wrote itself and must not read as an instruction to forget the text.
+        if (!string.IsNullOrEmpty(OtherValue))
+            _otherTextCache = OtherValue;
+        else if (IsOtherSelected)
+            _otherTextCache = null;
+    }
+
+    // The last "Other" text this control saw -- typed into the box or supplied on the model. Kept
+    // through a switch away from the Other option so the box can go on displaying it (and re-commit it
+    // if the user comes back), while the MODEL is cleared: see OnSelectionChangedAsync.
+    string? _otherTextCache;
+
+    /// <summary>
+    /// The text the "Other" box renders. While Other is selected that is simply
+    /// <see cref="OtherValue"/> (the live model value); while it is not, the box is disabled and shows
+    /// the preserved text, which the model no longer carries.
+    /// </summary>
+    string? DisplayedOtherValue => IsOtherSelected ? OtherValue : (_otherTextCache ?? OtherValue);
+
+    /// <summary>
+    /// The radio group's commit path. Beyond writing the selected enum value it keeps the separate
+    /// <see cref="OtherValue"/> model property honest: an Other text must never be submitted attached
+    /// to a non-Other choice (this control used to leave it there forever), but it also must not be
+    /// destroyed by a mis-click (<see cref="EditRadioString"/> used to wipe its equivalent) -- so the
+    /// text is preserved in <c>_otherTextCache</c>, cleared from the model on the way out, and
+    /// re-committed if the user selects Other again.
+    /// </summary>
+    async Task OnSelectionChangedAsync(TEnum? value)
+    {
+        var wasOther = IsOtherSelected;
+        CurrentValue = value;
+        if (!HasOtherOption)
+            return;
+
+        var isOther = IsOtherSelected;
+        if (wasOther && !isOther)
+        {
+            if (!string.IsNullOrEmpty(OtherValue))
+                _otherTextCache = OtherValue;
+            if (!string.IsNullOrEmpty(_otherTextCache))
+                await OtherValueChanged.InvokeAsync(null);
+        }
+        else if (!wasOther && isOther && string.IsNullOrEmpty(OtherValue) && !string.IsNullOrEmpty(_otherTextCache))
+        {
+            await OtherValueChanged.InvokeAsync(_otherTextCache);
+        }
     }
 
     // Read-only "Other" detection; an empty enum (no options) can't have an Other selection —
@@ -109,9 +145,11 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     protected override bool TryParseValueFromString(string? value, out TEnum? result, out string validationErrorMessage) =>
         SelectParsing.TryParseEnum(value, _cache.UnderlyingType, _cache.IsNullable, FieldIdentifier.FieldName, out result, out validationErrorMessage);
 
-    async Task OnOtherValueChanged(ChangeEventArgs e)
+    /// <inheritdoc/>
+    protected override async Task OnOtherTextCommitted(ChangeEventArgs e)
     {
         var value = e.Value?.ToString();
+        _otherTextCache = value;
         if (OtherValue != value)
             await OtherValueChanged.InvokeAsync(value);
     }

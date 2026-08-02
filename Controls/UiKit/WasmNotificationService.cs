@@ -15,8 +15,10 @@ public static class WasmNotificationService
 {
     private static readonly NotificationService Instance = new();
 
+    /// <inheritdoc cref="INotificationService.Items"/>
     public static IReadOnlyList<NotificationItem> Items => Instance.Items;
 
+    /// <inheritdoc cref="INotificationService.OnChange"/>
     public static event Action? OnChange
     {
         add => Instance.OnChange += value;
@@ -25,13 +27,14 @@ public static class WasmNotificationService
 
     /// <inheritdoc cref="INotificationService.Success"/>
     public static Guid Success(string message, string? description = null, double? duration = null) => Instance.Success(message, description, duration);
-    /// <inheritdoc cref="INotificationService.Success"/>
+    /// <inheritdoc cref="INotificationService.Info"/>
     public static Guid Info(string message, string? description = null, double? duration = null) => Instance.Info(message, description, duration);
-    /// <inheritdoc cref="INotificationService.Success"/>
+    /// <inheritdoc cref="INotificationService.Warning"/>
     public static Guid Warning(string message, string? description = null, double? duration = null) => Instance.Warning(message, description, duration);
-    /// <inheritdoc cref="INotificationService.Success"/>
+    /// <inheritdoc cref="INotificationService.Error"/>
     public static Guid Error(string message, string? description = null, double? duration = null) => Instance.Error(message, description, duration);
 
+    /// <summary>Dismisses one notification by the id its factory method returned.</summary>
     public static void Remove(Guid id) => Instance.Remove(id);
 
     /// <summary>Removes all notifications (primarily for tests).</summary>

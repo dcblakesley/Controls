@@ -54,6 +54,41 @@ public class EnumHelpersTests
         Assert.Equal("Pale Yellow", Color.PaleYellow.GetName());
     }
 
+    // Public so it can be an [InlineData] parameter type on a public test method.
+    [Flags]
+    public enum Access
+    {
+        None = 0,
+        Read = 1,
+        Write = 2,
+        FullControl = 4
+    }
+
+    [Theory]
+    [InlineData(Access.Read | Access.Write, "Read, Write")]
+    [InlineData(Access.Read | Access.Write | Access.FullControl, "Read, Write, Full Control")]
+    public void GetName_of_a_combined_Flags_value_keeps_one_space_after_each_comma(Access value, string expected)
+    {
+        // A combined value's ToString() is already "Read, Write" -- the camel-case split used to insert
+        // a space before EVERY upper-case letter, including the one that already followed the
+        // separator's space, yielding "Read,  Write". Single-flag names still split normally
+        // (FullControl -> "Full Control").
+        Assert.Equal(expected, value.GetName());
+    }
+
+    [Fact]
+    public void GetName_of_a_combined_Flags_value_is_stable_across_the_memoized_second_call()
+    {
+        // GetName caches per (enum type, member name), so the malformed spacing was cached for the
+        // process lifetime once any one render produced it -- the second call must come back identical.
+        var value = Access.Read | Access.FullControl;
+        var first = value.GetName();
+        var second = value.GetName();
+
+        Assert.Equal("Read, Full Control", first);
+        Assert.Equal(first, second);
+    }
+
     [Fact]
     public void GetName_prefers_EnumDisplayName_attribute()
     {

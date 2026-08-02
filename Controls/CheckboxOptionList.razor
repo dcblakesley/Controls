@@ -8,7 +8,13 @@
             var option = Options[i];
             var optionId = $"cbx-{Id}-{OptionIds[i]}";
             var isOptionDisabled = IsDisabled || IsOptionDisabled?.Invoke(option) == true;
-            <label @key="option" class=@($"edit-checkbox-label{(UseStyledCheckbox ? " edit-checkbox-label-styled" : "")} {LabelClass}") for=@optionId>
+            @* Keyed on the rendered element id, not the option value: OptionIds comes from
+               EnumHelpers.ToUniqueIds, so it is distinct by construction, while the option value is
+               not -- alias enum members (Active = 1, Enabled = 1) and a duplicate entry in a
+               consumer's string Options list both yield equal values, and Blazor throws on duplicate
+               @key siblings at the first re-render (the first render succeeds, the first click
+               crashes). The radio/select option lists carry no @key and survived the same input. *@
+            <label @key="optionId" class=@($"edit-checkbox-label{(UseStyledCheckbox ? " edit-checkbox-label-styled" : "")} {LabelClass}") for=@optionId>
                 @if (UseStyledCheckbox)
                 {
                     <span class="edit-checkbox-wrap">

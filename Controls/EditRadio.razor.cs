@@ -93,13 +93,16 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
 
     protected override void OnInitialized()
     {
-        var accessor = ValueExpression ?? throw new InvalidOperationException(
-            $"{nameof(EditRadio<TValue>)} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)}).");
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(accessor, Id, FormGroupOptions, IdPrefix);
-        // Register with FormOptions here (rather than relying on FieldValidationDisplay) so the
-        // field survives HidingMode and links from the validation summary always work. Paired with
-        // the Dispose override below — see EditControlInit.RegisterField's remarks.
-        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
+        // Chained for the same reason the control bases document it (and the same reason this control's
+        // OnParametersSet already chains): InputRadioGroup owns the group-name/context setup, so an
+        // unchained override here is exactly the "silently skipped base init" the library warns about.
+        base.OnInitialized();
+        var accessor = EditControlInit.RequireBinding(ValueExpression, this);
+        // Resolve + register in one call, shared with the two control bases: registering here (rather
+        // than relying on FieldValidationDisplay) is what makes the field survive HidingMode so links
+        // from the validation summary always work. Paired with the Dispose override below — see
+        // EditControlInit.RegisterField's remarks.
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(accessor, this, FormOptions, FormGroupOptions);
         RefreshAriaState();
     }
 
@@ -117,8 +120,8 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     void RefreshAriaState()
     {
         if (_attributes is null) return;
-        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
-            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
+        (_isRequired, _errorMsgId, _describedBy) =
+            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier);
     }
 
     /// <summary>

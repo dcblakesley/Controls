@@ -75,6 +75,49 @@ public abstract class RadioGroupControlBase<TValue> : EditControlBase<TValue>
     /// <summary> The resolved DOM event name ("oninput" or "onchange") for the "Other" text box, per <see cref="UpdateOn"/>'s resolution order.</summary>
     protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, UpdateTrigger.Input);
 
+    // Rebuilt only when UpdateEventName changes -- the dictionary and its EventCallback were
+    // reallocated on every render at both call sites before this moved here.
+    IReadOnlyDictionary<string, object>? _otherInputAttribute;
+    string? _otherInputEventName;
+
+    /// <summary>
+    /// Splats <see cref="OnOtherTextCommitted"/> onto whichever event name
+    /// <see cref="UpdateEventName"/> resolves to. The "Other" free-text box uses a raw event handler
+    /// rather than a <c>@bind</c>, so <c>@bind:event</c> doesn't apply to it -- this dictionary is the
+    /// mechanism that makes the wired-up event name dynamic instead of a fixed <c>@oninput</c>. It is
+    /// handed to the shared <see cref="RadioOtherInput"/> as its <c>CommitAttributes</c>, which is why
+    /// the wiring travels as a dictionary rather than a callback.
+    /// </summary>
+    /// <remarks>
+    /// Both radio controls rendered a byte-identical single-entry dictionary of their own; the only
+    /// thing that ever differed is where the committed text lands, which is
+    /// <see cref="OnOtherTextCommitted"/>'s job.
+    /// </remarks>
+    protected IReadOnlyDictionary<string, object> OtherInputAttribute
+    {
+        get
+        {
+            var eventName = UpdateEventName;
+            if (_otherInputAttribute is null || !string.Equals(_otherInputEventName, eventName, StringComparison.Ordinal))
+            {
+                _otherInputEventName = eventName;
+                _otherInputAttribute = new Dictionary<string, object>(1)
+                {
+                    [eventName] = EventCallback.Factory.Create<ChangeEventArgs>(this, OnOtherTextCommitted)
+                };
+            }
+            return _otherInputAttribute;
+        }
+    }
+
+    /// <summary>
+    /// Where a commit from the "Other" free-text box lands. <see cref="EditRadioEnum{TEnum}"/> raises
+    /// its separate <c>OtherValueChanged</c> callback; <see cref="EditRadioString"/> writes straight to
+    /// <c>CurrentValue</c> (the typed text IS its bound value). Virtual rather than abstract so a
+    /// radio-group control with no "Other" option of its own needs no stub.
+    /// </summary>
+    protected virtual Task OnOtherTextCommitted(ChangeEventArgs e) => Task.CompletedTask;
+
     /// <summary>
     /// The <see cref="RadioOptionType.Button"/> wrapper's root class list. Both radio controls render
     /// this one computation, so the base class + solid modifier + size class assembly can't drift

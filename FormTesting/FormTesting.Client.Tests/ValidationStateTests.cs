@@ -224,4 +224,52 @@ public class ValidationStateTests : BunitContext
         Assert.Equal("#foo-Name", link.GetAttribute("href"));
         Assert.Single(cut.FindAll("#foo-Name")); // ...and the control really renders that id
     }
+
+    [Fact]
+    public void ValidationView_re_points_its_validation_subscription_at_a_swapped_EditContext()
+    {
+        // ValidationView hand-rolled this sequence; it now runs the shared ValidationStateSubscription
+        // (the same one EditControlParametersBase drives). The contract to keep: after a context swap,
+        // a validation-state change on the NEW context re-renders the summary all by itself — nothing
+        // else re-renders it between the swap and the assertion.
+        var model = new PersonModel();
+        var formOptions = new FormOptions();
+        Expression<Func<string>> field = () => model.Name;
+        var fieldIdentifier = FieldIdentifier.Create(field);
+        formOptions.RegisterField(fieldIdentifier, "Name");
+
+        RenderFragment content = b =>
+        {
+            b.OpenComponent<CascadingValue<FormOptions>>(0);
+            b.AddAttribute(1, "Value", formOptions);
+            b.AddAttribute(2, "ChildContent", (RenderFragment)(inner =>
+            {
+                inner.OpenComponent<ValidationView>(0);
+                inner.CloseComponent();
+            }));
+            b.CloseComponent();
+        };
+
+        var first = new EditContext(model);
+        var cut = Render<CascadingValue<EditContext>>(ps => ps
+            .Add(c => c.Value, first)
+            .Add(c => c.ChildContent, content));
+        Assert.Empty(cut.FindAll("a.validation-summary-message"));
+
+        var second = new EditContext(model);
+        cut.Render(ps => ps
+            .Add(c => c.Value, second)
+            .Add(c => c.ChildContent, content));
+
+        var store = new ValidationMessageStore(second);
+        cut.InvokeAsync(() =>
+        {
+            store.Add(fieldIdentifier, "Boom");
+            second.NotifyValidationStateChanged();
+        });
+
+        var links = cut.FindAll("a.validation-summary-message");
+        Assert.Single(links);
+        Assert.Equal("Boom", links[0].TextContent);
+    }
 }

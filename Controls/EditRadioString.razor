@@ -50,16 +50,20 @@
                                        ? "edit-radio-buttons-container-horizontal"
                                        : "edit-radio-buttons-container-vertical")>
 
+                            @* .edit-radio-option is the per-option flex row edit-controls.css documents
+                               as universal and EditRadioEnum puts around every option; this control
+                               used to emit it only on its Other row, so its plain options rendered
+                               without the shared wrapper. *@
                             @for (var i = 0; i < Options.Count; i++)
                             {
                                 var option = Options[i];
-                                <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option />
+                                <div class="edit-radio-option">
+                                    <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option />
+                                </div>
                             }
 
-                            @* Other. .edit-radio-option is the flex row EditRadioEnum puts around every
-                               option -- without it the radio and its free-text box didn't line up like
-                               the sibling control's. .edit-radio-other-option-container stays as this
-                               control's long-standing consumer hook for the Other block (and is what
+                            @* Other. Same wrapper, plus .edit-radio-other-option-container -- this
+                               control's long-standing consumer hook for the Other block (and what
                                button mode above uses in both controls). *@
                             @if (HasOther)
                             {

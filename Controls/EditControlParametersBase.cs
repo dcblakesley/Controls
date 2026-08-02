@@ -52,11 +52,19 @@ public abstract class EditControlParametersBase : ComponentBase, IEditControl
     // from. Per-field derived state (ids, attribute lists, the FieldIdentifiers themselves) deliberately
     // stays on each subclass: the markup binds those directly, and the two shapes genuinely differ.
 
-    // Protected (not private) so a subclass that owns extra per-EditContext state of its own --
-    // EditDateRange's _parseErrorMessages store -- can read the OLD value in its own OnParametersSet
-    // BEFORE calling SyncValidationSubscription below overwrites it, in order to clean that state up
-    // against the context it actually belongs to rather than the one that just started cascading.
-    protected EditContext? _subscribedEditContext;
+    // The subscription mechanics themselves live in ValidationStateSubscription, shared with
+    // ValidationView (which has no business inheriting this class's parameter surface). Created
+    // lazily because its handler is an instance method group, which a field initializer can't take.
+    ValidationStateSubscription? _validationSubscription;
+
+    /// <summary>
+    /// The <see cref="EditContext"/> this control is currently subscribed to. Exposed so a subclass
+    /// that owns extra per-EditContext state of its own — <see cref="EditDateRange"/>'s parse-error
+    /// store — can read the OLD value in its own <c>OnParametersSet</c> BEFORE
+    /// <see cref="SyncValidationSubscription"/> replaces it, in order to clean that state up against
+    /// the context it actually belongs to rather than the one that just started cascading.
+    /// </summary>
+    protected EditContext? SubscribedEditContext => _validationSubscription?.Context;
 
     /// <summary>
     /// Points this control's validation-state handler at the CURRENT cascading
@@ -76,13 +84,8 @@ public abstract class EditControlParametersBase : ComponentBase, IEditControl
     /// </remarks>
     protected bool SyncValidationSubscription()
     {
-        if (ReferenceEquals(EditContext, _subscribedEditContext)) return false;
-        if (_subscribedEditContext is not null)
-            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
-        if (EditContext is not null)
-            EditContext.OnValidationStateChanged += OnValidationStateChanged;
-        _subscribedEditContext = EditContext;
-        return true;
+        _validationSubscription ??= new ValidationStateSubscription(StateHasChanged);
+        return _validationSubscription.SyncTo(EditContext);
     }
 
     /// <summary>
@@ -91,14 +94,7 @@ public abstract class EditControlParametersBase : ComponentBase, IEditControl
     /// behind a conditional <c>@if</c> would otherwise keep being called back (and keep re-rendering a
     /// detached component) for the life of the form.
     /// </summary>
-    protected void DetachValidationSubscription()
-    {
-        if (_subscribedEditContext is not null)
-        {
-            _subscribedEditContext.OnValidationStateChanged -= OnValidationStateChanged;
-            _subscribedEditContext = null;
-        }
-    }
+    protected void DetachValidationSubscription() => _validationSubscription?.Detach();
 
     /// <summary>
     /// Moves this control's <see cref="FormOptions"/> registration onto a freshly-derived
@@ -124,6 +120,4 @@ public abstract class EditControlParametersBase : ComponentBase, IEditControl
         field = factory();
         EditControlInit.RegisterField(FormOptions, field, id, this);
     }
-
-    void OnValidationStateChanged(object? sender, ValidationStateChangedEventArgs e) => StateHasChanged();
 }

@@ -63,6 +63,9 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
 
+    // False until InitState has run to completion — see Dispose.
+    bool _stateInitialized;
+
     /// <summary>
     /// The control's fully-resolved required-ness (IsRequired parameter → [Required] attribute →
     /// FormOptions.RequiredResolver), recomputed alongside <c>_isRequired</c> each parameter cycle.
@@ -121,8 +124,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{ControlName} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
+        InitState(EditControlInit.RequireBinding(ValueExpression, this));
     }
 
     /// <summary>
@@ -136,10 +138,11 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// </summary>
     protected void InitState(Expression<Func<List<TItem>>> field)
     {
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
+        // Resolve + register in one call, shared with the scalar base and EditRadio — the registration
+        // is paired with Dispose below (see EditControlInit.RegisterField's remarks).
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions);
         _fieldIdentifierFactory = () => FieldIdentifier.Create(field);
-        // Paired with Dispose below — see EditControlInit.RegisterField's remarks.
-        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
+        _stateInitialized = true;
         RefreshAriaState();
     }
 
@@ -149,8 +152,8 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     void RefreshAriaState()
     {
         if (_attributes is null) return;
-        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
-            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
+        (_isRequired, _errorMsgId, _describedBy) =
+            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier);
     }
 
     /// <summary>
@@ -206,25 +209,34 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// </summary>
     protected override void OnParametersSet()
     {
-        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
-        // label-hidden toggle).
-        RefreshAriaState();
-
         // A false return means the same EditContext is still cascading, so the cached FieldIdentifier
-        // is still live and there's nothing to re-register.
-        if (!SyncValidationSubscription()) return;
+        // is still live and there's nothing to re-register. A true one means the context changed,
+        // which is how a parent swapping the model instance (form reset, reload) surfaces — re-derive
+        // the FieldIdentifier against the current model and move the registration onto it. See
+        // SyncFieldRegistration for why the unregister has to come first.
+        if (SyncValidationSubscription())
+            SyncFieldRegistration(ref _fieldIdentifier, _fieldIdentifierFactory, _id);
 
-        // The context changed, which is how a parent swapping the model instance (form reset, reload)
-        // surfaces — re-derive the FieldIdentifier against the current model and move the registration
-        // onto it. See SyncFieldRegistration for why the unregister has to come first.
-        SyncFieldRegistration(ref _fieldIdentifier, _fieldIdentifierFactory, _id);
+        // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
+        // label-hidden toggle) — and deliberately AFTER the re-registration above: aria-required
+        // resolves through FormOptions.RequiredResolver against _fieldIdentifier, so refreshing
+        // first left the star and aria-required answering for the swapped-away model until some
+        // later parameter cycle happened to run. Same ordering in EditDateRange.OnParametersSet.
+        RefreshAriaState();
     }
 
     /// <summary> Detaches the validation-state listener and drops the field registration so a removed
     /// control (e.g. behind a conditional <c>@if</c>) doesn't leave stale state in the validation summary. </summary>
+    /// <remarks>
+    /// The unregister is gated on <c>_stateInitialized</c> for the same reason as
+    /// <see cref="EditControlBase{TValue}.Dispose"/>: after a failed init (missing <c>@bind-Value</c>)
+    /// the FieldIdentifier is still <c>default</c>, and unregistering it hashes a null
+    /// <c>FieldName</c> — masking the diagnostic that says what to fix.
+    /// </remarks>
     public void Dispose()
     {
         DetachValidationSubscription();
-        EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
+        if (_stateInitialized)
+            EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
     }
 }

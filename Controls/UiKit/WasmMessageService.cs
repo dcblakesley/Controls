@@ -15,21 +15,28 @@ public static class WasmMessageService
 {
     private static readonly MessageService Instance = new();
 
+    /// <inheritdoc cref="IMessageService.Items"/>
     public static IReadOnlyList<MessageItem> Items => Instance.Items;
 
-    /// <summary>Raised whenever the message list changes so the container can re-render.</summary>
+    /// <inheritdoc cref="IMessageService.OnChange"/>
     public static event Action? OnChange
     {
         add => Instance.OnChange += value;
         remove => Instance.OnChange -= value;
     }
 
+    /// <inheritdoc cref="IMessageService.Success"/>
     public static Guid Success(string content, double? duration = null) => Instance.Success(content, duration);
+    /// <inheritdoc cref="IMessageService.Info"/>
     public static Guid Info(string content, double? duration = null) => Instance.Info(content, duration);
+    /// <inheritdoc cref="IMessageService.Warning"/>
     public static Guid Warning(string content, double? duration = null) => Instance.Warning(content, duration);
+    /// <inheritdoc cref="IMessageService.Error"/>
     public static Guid Error(string content, double? duration = null) => Instance.Error(content, duration);
+    /// <inheritdoc cref="IMessageService.Loading"/>
     public static Guid Loading(string content, double? duration = null) => Instance.Loading(content, duration);
 
+    /// <summary>Dismisses one message by the id its factory method returned.</summary>
     public static void Remove(Guid id) => Instance.Remove(id);
 
     /// <summary>Removes all messages (primarily for tests).</summary>

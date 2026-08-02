@@ -35,6 +35,43 @@ public static class EditControlInit
     }
 
     /// <summary>
+    /// <see cref="Init"/> plus the paired <see cref="RegisterField"/>, in the one call every control
+    /// base makes from its own <c>InitState</c>. Reads the id/prefix straight off
+    /// <paramref name="control"/>, which is also the registration's owner.
+    /// </summary>
+    /// <remarks>
+    /// The two halves belong together: a control that resolves its state but forgets to register is a
+    /// field the validation summary can't link to, and the pairing was previously re-typed in
+    /// <see cref="EditControlBase{TValue}"/>, <see cref="EditControlListBase{TItem}"/> and
+    /// <c>EditRadio</c> (whose base class, <c>InputRadioGroup</c>, keeps it out of the other two's
+    /// inheritance chain — the standing reason this helper class exists at all).
+    /// </remarks>
+    public static (string Id, List<Attribute> Attributes, FieldIdentifier FieldIdentifier) InitAndRegister<T>(
+        Expression<Func<T>> field, IEditControl control, FormOptions? formOptions, FormGroupOptions? formGroupOptions)
+    {
+        var state = Init(field, control.Id, formGroupOptions, control.IdPrefix);
+        RegisterField(formOptions, state.FieldIdentifier, state.Id, control);
+        return state;
+    }
+
+    /// <summary>
+    /// Returns <paramref name="expression"/>, or throws the standard "this control needs a two-way
+    /// binding" diagnostic naming <paramref name="control"/>. The compiler-supplied
+    /// <c>ValueExpression</c> (or <c>StartExpression</c>/<c>EndExpression</c>) is what all of a
+    /// control's derived state comes from, so its absence has to fail loudly rather than render a
+    /// control with no id, no model attributes and no field registration.
+    /// </summary>
+    /// <param name="expression">The compiler-populated accessor, or null when the consumer bound one-way.</param>
+    /// <param name="control">The control being initialized — supplies the name in the message.</param>
+    /// <param name="bindAttribute">The markup attribute that supplies it, e.g. <c>@bind-Value</c>.</param>
+    /// <param name="expressionParameterName">The parameter that attribute populates, e.g. <c>ValueExpression</c>.</param>
+    public static Expression<Func<T>> RequireBinding<T>(
+        Expression<Func<T>>? expression, object control,
+        string bindAttribute = "@bind-Value", string expressionParameterName = "ValueExpression") =>
+        expression ?? throw new InvalidOperationException(
+            $"{ControlName(control)} requires a two-way {bindAttribute} binding (which supplies {expressionParameterName}).");
+
+    /// <summary>
     /// A control's simple type name for diagnostics — <c>EditNumber</c>, not the CLR's
     /// <c>EditNumber`1</c>. Reproduces exactly what the per-control <c>nameof(EditNumber&lt;T&gt;)</c>
     /// in each control's own "requires a two-way @bind-Value binding" message produced, so hoisting
@@ -201,6 +238,24 @@ public static class EditControlInit
         var (errorMsgId, describedBy) = ResolveAriaRefs(id, shouldHideLabel, description, tooltip, attributes);
         return (ariaRequired, errorMsgId, describedBy);
     }
+
+    /// <summary>
+    /// <see cref="ResolveAriaState(string, bool, string?, string?, List{Attribute}?, bool?, FormOptions?, FieldIdentifier)"/>
+    /// for a control's own single bound field: everything the overload above needs except the id, the
+    /// attribute list and the FieldIdentifier comes off <paramref name="control"/> itself (including
+    /// the <see cref="ShouldHideLabel"/> resolution, which each caller previously repeated).
+    /// </summary>
+    /// <remarks>
+    /// This is the form <see cref="EditControlBase{TValue}"/>, <see cref="EditControlListBase{TItem}"/>
+    /// and <c>EditRadio</c> all call from their <c>RefreshAriaState</c>. The granular overload stays
+    /// for the callers that don't map onto "the control's own field" —
+    /// <see cref="EditDateRange"/>'s second (End) field passes a different id, attribute list and
+    /// label-hidden answer than its host control's.
+    /// </remarks>
+    public static (string? AriaRequired, string ErrorMsgId, string DescribedBy) ResolveAriaState(
+        IEditControl control, FormOptions? formOptions, string id, List<Attribute>? attributes, FieldIdentifier fieldIdentifier) =>
+        ResolveAriaState(id, ShouldHideLabel(control.IsLabelHidden, formOptions), control.Description, control.Tooltip,
+            attributes, control.IsRequired, formOptions, fieldIdentifier);
 
     /// <summary>
     /// The shared <c>InputBase&lt;TValue&gt;.TryParseValueFromString</c> body for the controls that hand

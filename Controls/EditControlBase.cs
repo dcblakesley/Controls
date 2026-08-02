@@ -69,6 +69,9 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
 
+    // False until InitState has run to completion — see Dispose.
+    bool _stateInitialized;
+
     /// <summary>
     /// The control's fully-resolved required-ness (IsRequired parameter → [Required] attribute →
     /// FormOptions.RequiredResolver), recomputed alongside <c>_isRequired</c> each parameter cycle.
@@ -109,8 +112,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         // Chains to InputBase even though it doesn't override this today — every control's own
         // OnInitialized did, and hoisting them here must not quietly drop the call.
         base.OnInitialized();
-        InitState(ValueExpression ?? throw new InvalidOperationException(
-            $"{ControlName} requires a two-way @bind-Value binding (which supplies {nameof(ValueExpression)})."));
+        InitState(EditControlInit.RequireBinding(ValueExpression, this));
     }
 
     /// <summary>
@@ -129,9 +131,10 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// </remarks>
     protected void InitState(Expression<Func<TValue>> field)
     {
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
-        // Paired with the Dispose override below — see EditControlInit.RegisterField's remarks.
-        EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
+        // Resolve + register in one call, shared with the list base and EditRadio — the registration
+        // is paired with the Dispose override below (see EditControlInit.RegisterField's remarks).
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions);
+        _stateInitialized = true;
         RefreshAriaState();
     }
 
@@ -152,8 +155,8 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     void RefreshAriaState()
     {
         if (_attributes is null) return;
-        (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
-            _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _fieldIdentifier);
+        (_isRequired, _errorMsgId, _describedBy) =
+            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier);
     }
 
     /// <summary>
@@ -163,9 +166,16 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// registration also grows <see cref="FormOptions.FieldIdentifiers"/> on every mount/unmount cycle.
     /// Mirrors <see cref="EditControlListBase{TItem}.Dispose"/>; derived overrides must chain to base.
     /// </summary>
+    /// <remarks>
+    /// Gated on <c>_stateInitialized</c> so a control whose init never completed disposes cleanly:
+    /// a missing <c>@bind-Value</c> makes <see cref="OnInitialized"/> throw its helpful diagnostic
+    /// BEFORE <see cref="InitState"/> runs, leaving <c>_fieldIdentifier</c> at <c>default</c> — and
+    /// unregistering that hashes a null <c>FieldName</c>, so an <see cref="ArgumentNullException"/>
+    /// out of disposal replaced the message that says what to fix.
+    /// </remarks>
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && _stateInitialized)
             EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
         base.Dispose(disposing);
     }
