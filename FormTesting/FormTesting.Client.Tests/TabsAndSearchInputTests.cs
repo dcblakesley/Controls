@@ -406,6 +406,76 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.NotEmpty(JSInterop.Invocations["Blazor._internal.domWrapper.focus"]);
     }
 
+    // A consumer component declared alongside the tabs, counting its own construction/disposal.
+    sealed class StatefulSibling : ComponentBase, IDisposable
+    {
+        internal static int Constructed;
+        internal static int Disposed;
+
+        public StatefulSibling() => Constructed++;
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "stateful-sibling");
+            builder.CloseElement();
+        }
+
+        public void Dispose() => Disposed++;
+    }
+
+    static RenderFragment TabsWithStatefulSibling(bool showFirst) => builder =>
+    {
+        if (showFirst)
+        {
+            builder.OpenComponent<Tab>(0);
+            builder.AddAttribute(1, "Key", "new");
+            builder.AddAttribute(2, "Title", "New");
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<Tab>(3);
+        builder.AddAttribute(4, "Key", "a");
+        builder.AddAttribute(5, "Title", "A");
+        builder.CloseComponent();
+
+        builder.OpenComponent<StatefulSibling>(6);
+        builder.CloseComponent();
+    };
+
+    [Fact]
+    public void The_generation_rebuild_is_confined_to_structural_tab_insertions()
+    {
+        // Pins the documented ChildContent limitation and, more importantly, its BOUNDS: the rebuild
+        // replaces the whole ChildContent subtree (so a consumer component declared inside <Tabs>
+        // loses its instance state), but it must fire ONLY on a structural insertion the diff hid --
+        // never on an ordinary re-render and never on a removal. Widening it would silently start
+        // destroying consumer state on every pass.
+        StatefulSibling.Constructed = 0;
+        StatefulSibling.Disposed = 0;
+
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
+        Assert.Equal(1, StatefulSibling.Constructed);
+
+        // Ordinary re-render with the same structure: nothing is rebuilt.
+        cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
+        Assert.Equal(1, StatefulSibling.Constructed);
+        Assert.Equal(0, StatefulSibling.Disposed);
+
+        // Insertion before a parameter-skipped sibling: the strip has no other way to learn the
+        // declared order, so it rebuilds -- and the sibling goes with it. Documented, not silent.
+        cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(true)));
+        Assert.Equal(["New", "A"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(2, StatefulSibling.Constructed);
+        Assert.Equal(1, StatefulSibling.Disposed);
+
+        // Removal is handled by the straggler merge alone -- no rebuild, so no further teardown.
+        cut.Render(p => p.Add(t => t.ChildContent, TabsWithStatefulSibling(false)));
+        Assert.Equal(["A"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(2, StatefulSibling.Constructed);
+        Assert.Equal(1, StatefulSibling.Disposed);
+    }
+
     [Fact]
     public void TabBarExtraContent_renders_beside_the_strip_only_when_set()
     {
