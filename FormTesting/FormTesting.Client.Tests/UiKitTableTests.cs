@@ -1,6 +1,7 @@
 using System.Reflection;
 using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace FormTesting.Client.Tests;
 
@@ -523,6 +524,514 @@ public class UiKitTableTests : BunitContext
         showMiddle = true;
         cut.Render(p => p.Add(t => t.ChildContent, Columns()));
         Assert.Equal(["Name", "Age", "City"], Headers());
+    }
+
+    // ----- Declaration order across parameter-skipped siblings (AUDIT-2026-07-30 finding 6, Table analog) -----
+    //
+    // Modeled on TabsAndSearchInputTests.A_tab_shown_before_parameter_skipped_siblings_lands_in_its_declared_position
+    // (the Tabs repro for the same defect class, fixed in c5cab30 before Tabs was later redesigned so each Tab
+    // renders its own nav button). Columns here carry only a Title string, so once a column has rendered once
+    // with the same Title, Blazor's diff skips SetParametersAsync on it entirely on a later render where nothing
+    // about it changed -- it never re-registers into Table's per-pass collection buffer, and
+    // StartCollectingColumns' straggler merge re-inserts it at its OLD _columns index instead of leaving recovery
+    // to a fresh document-order pass.
+    static RenderFragment ConditionalLeadingColumns(bool showNew, bool showMid) => builder =>
+    {
+        if (showNew)
+        {
+            builder.OpenComponent<Column<Person>>(0);
+            builder.AddAttribute(1, "Title", "New");
+            builder.CloseComponent();
+        }
+
+        if (showMid)
+        {
+            builder.OpenComponent<Column<Person>>(2);
+            builder.AddAttribute(3, "Title", "Mid");
+            builder.CloseComponent();
+        }
+
+        builder.OpenComponent<Column<Person>>(4);
+        builder.AddAttribute(5, "Title", "A");
+        builder.CloseComponent();
+
+        builder.OpenComponent<Column<Person>>(6);
+        builder.AddAttribute(7, "Title", "B");
+        builder.CloseComponent();
+
+        builder.OpenComponent<Column<Person>>(8);
+        builder.AddAttribute(9, "Title", "C");
+        builder.CloseComponent();
+    };
+
+    static string[] Headers(IRenderedComponent<Table<Person>> cut) =>
+        cut.FindAll("thead th").Select(th => th.TextContent.Trim()).ToArray();
+
+    // A filterable/sortable header wraps its title next to trigger buttons (and, while open, a whole
+    // filter dropdown), so read the title element rather than the cell's whole text.
+    static string[] HeaderTitles(IRenderedComponent<Table<Person>> cut) =>
+        cut.FindAll("thead th")
+            .Select(th =>
+            {
+                var title = th.QuerySelector(".wss-table-header-text")
+                            ?? th.QuerySelector(".wss-table-sort-trigger")
+                            ?? th;
+                return string.Join(" ", title.TextContent.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            })
+            .ToArray();
+
+    [Fact]
+    public void Table_column_shown_before_parameter_skipped_siblings_lands_in_its_declared_position()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, ConditionalLeadingColumns(false, false)));
+
+        Assert.Equal(["A", "B", "C"], Headers(cut));
+
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingColumns(true, false)));
+
+        // Declared [New, A, B, C]. If StartCollectingColumns has no recovery beyond the straggler
+        // merge, A/B/C (unchanged) never re-register and get re-inserted at their old _columns
+        // index ahead of New, landing New LAST instead of first.
+        Assert.Equal(["New", "A", "B", "C"], Headers(cut));
+
+        // A second insertion, between the newcomer and the still-skipped siblings.
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingColumns(true, true)));
+        Assert.Equal(["New", "Mid", "A", "B", "C"], Headers(cut));
+    }
+
+    [Fact]
+    public void Table_column_removed_then_reshown_returns_to_its_declared_position()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, ConditionalLeadingColumns(true, false)));
+
+        Assert.Equal(["New", "A", "B", "C"], Headers(cut));
+
+        // Remove it -- the merge always handled removal correctly (a gone column just drops out).
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingColumns(false, false)));
+        Assert.Equal(["A", "B", "C"], Headers(cut));
+
+        // Re-show it: does it come back to its declared (first) position, or does the previous
+        // wrong _columns order (if any survived) resurface?
+        cut.Render(p => p.Add(t => t.ChildContent, ConditionalLeadingColumns(true, false)));
+        Assert.Equal(["New", "A", "B", "C"], Headers(cut));
+    }
+
+    [Fact]
+    public void Table_column_shown_after_skipped_siblings_lands_in_its_declared_position()
+    {
+        // Mirror of the leading-insertion case: a new column declared AFTER the unchanged siblings.
+        // A trailing insertion never needs to move earlier stragglers out of the way, so this is
+        // the "should always have worked" control case.
+        RenderFragment TrailingColumn(bool showTrailing) => builder =>
+        {
+            builder.OpenComponent<Column<Person>>(0);
+            builder.AddAttribute(1, "Title", "A");
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(2);
+            builder.AddAttribute(3, "Title", "B");
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(4);
+            builder.AddAttribute(5, "Title", "C");
+            builder.CloseComponent();
+
+            if (showTrailing)
+            {
+                builder.OpenComponent<Column<Person>>(6);
+                builder.AddAttribute(7, "Title", "New");
+                builder.CloseComponent();
+            }
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, TrailingColumn(false)));
+
+        Assert.Equal(["A", "B", "C"], Headers(cut));
+
+        cut.Render(p => p.Add(t => t.ChildContent, TrailingColumn(true)));
+        Assert.Equal(["A", "B", "C", "New"], Headers(cut));
+    }
+
+    [Fact]
+    public void Table_column_order_survives_an_unrelated_sort_click()
+    {
+        // Same repro as the leading-insertion test, but this time one sibling is Sortable, so a
+        // completely unrelated user action (clicking its sort trigger) forces further Table
+        // re-renders after the insertion has landed. The old straggler merge re-spliced the
+        // parameter-skipped column at a stale index on EVERY pass, so an interaction that touched
+        // nothing about the column declarations could reorder the table on its own.
+        //
+        // Note which columns are which here: Age carries a Property delegate, so Blazor can never
+        // prove it unchanged and it re-registers in document order every pass -- it is the "anchor"
+        // that pins straggler B's position. B is Title-only and never re-registers again.
+        RenderFragment Columns(bool showNew) => builder =>
+        {
+            if (showNew)
+            {
+                builder.OpenComponent<Column<Person>>(0);
+                builder.AddAttribute(1, "Title", "New");
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<PropertyColumn<Person, int>>(2);
+            builder.AddAttribute(3, "Title", "Age");
+            builder.AddAttribute(4, "Property", (Func<Person, int>)(x => x.Age));
+            builder.AddAttribute(5, "Sortable", true);
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(6);
+            builder.AddAttribute(7, "Title", "B");
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns(false)));
+
+        Assert.Equal(["Age", "B"], Headers(cut));
+
+        cut.Render(p => p.Add(t => t.ChildContent, Columns(true)));
+        Assert.Equal(["New", "Age", "B"], Headers(cut));
+
+        // Click the sort trigger on Age -- an unrelated re-render with the exact same ChildContent.
+        cut.Find("button.wss-table-sort-trigger").Click();
+        Assert.Equal(["New", "Age", "B"], Headers(cut));
+
+        // ... and again, in the other direction. Order must not drift on repeated passes either.
+        cut.Find("button.wss-table-sort-trigger").Click();
+        Assert.Equal(["New", "Age", "B"], Headers(cut));
+    }
+
+    [Fact]
+    public void Table_column_order_is_stable_across_filter_and_page_interactions()
+    {
+        // The straggler placement runs on every render, so anything that re-renders the table is a
+        // chance to reorder it. Exercise the interactive paths a user actually drives -- open a
+        // filter dropdown, apply it, page forward, reset -- around a Title-only straggler.
+        var people = Enumerable.Range(0, 12).Select(i => new Person($"P{i}", 20 + i)).ToList();
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)
+                [new TableFilterOption("P1", "P1"), new TableFilterOption("P2", "P2")]);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(5);
+            builder.AddAttribute(6, "Title", "Spacer");
+            builder.CloseComponent();
+
+            builder.OpenComponent<PropertyColumn<Person, int>>(7);
+            builder.AddAttribute(8, "Title", "Age");
+            builder.AddAttribute(9, "Property", (Func<Person, int>)(x => x.Age));
+            builder.AddAttribute(10, "Sortable", true);
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.PageSize, 5)
+            .Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal(["Name", "Spacer", "Age"], HeaderTitles(cut));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        Assert.Equal(["Name", "Spacer", "Age"], HeaderTitles(cut));
+
+        CheckOption(cut, "P1");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Name", "Spacer", "Age"], HeaderTitles(cut));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-reset").Click();
+        Assert.Equal(["Name", "Spacer", "Age"], HeaderTitles(cut));
+
+        cut.FindAll(".wss-pagination-item").First(li => li.TextContent.Trim() == "2").Click();
+        Assert.Equal(["Name", "Spacer", "Age"], HeaderTitles(cut));
+
+        cut.Find("button.wss-table-sort-trigger").Click();
+        Assert.Equal(["Name", "Spacer", "Age"], HeaderTitles(cut));
+    }
+
+    [Fact]
+    public void Table_inserting_a_column_keeps_a_sibling_columns_applied_filter_and_sort()
+    {
+        // Blast-radius bound on the document-order rebuild (Table.MergeCollectedColumns): the
+        // rebuild only fires when NO already-rendered column re-registered, and a column holding
+        // any state necessarily re-registers (FilterOptions/OnFilter/SortBy/Property are all
+        // parameters Blazor can never prove unchanged). So a table with real columns must keep its
+        // applied filter, its active sort and its filterable column's identity across an insertion.
+        var showNew = false;
+        RenderFragment Columns() => builder =>
+        {
+            if (showNew)
+            {
+                builder.OpenComponent<Column<Person>>(0);
+                builder.AddAttribute(1, "Title", "New");
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<PropertyColumn<Person, string>>(2);
+            builder.AddAttribute(3, "Title", "Name");
+            builder.AddAttribute(4, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(5, "FilterOptions", (IReadOnlyList<TableFilterOption>)
+                [new TableFilterOption("Alice", "Alice"), new TableFilterOption("Bob", "Bob")]);
+            builder.AddAttribute(6, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+
+            builder.OpenComponent<PropertyColumn<Person, int>>(7);
+            builder.AddAttribute(8, "Title", "Age");
+            builder.AddAttribute(9, "Property", (Func<Person, int>)(x => x.Age));
+            builder.AddAttribute(10, "Sortable", true);
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(11);
+            builder.AddAttribute(12, "Title", "Spacer");
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+
+        // Apply a filter and a sort, so there is state that a teardown would destroy.
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+        cut.Find("button.wss-table-sort-trigger").Click();
+
+        Assert.Single(cut.FindAll("tbody .wss-table-row"));
+        Assert.Contains("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+        Assert.Equal("ascending", cut.FindAll("thead th")[1].GetAttribute("aria-sort"));
+
+        showNew = true;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal(["New", "Name", "Age", "Spacer"], HeaderTitles(cut));
+        // Nothing was rebuilt: the filter is still applied and the sort still active.
+        Assert.Single(cut.FindAll("tbody .wss-table-row"));
+        Assert.Contains("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+        Assert.Equal("ascending", cut.FindAll("thead th")[2].GetAttribute("aria-sort"));
+    }
+
+    /// <summary>Non-column content declared inside &lt;Table&gt;; counts its own instantiations so a
+    /// test can tell whether the ChildContent subtree was rebuilt.</summary>
+    public class RebuildProbe : ComponentBase
+    {
+        public static int Instantiations;
+        public RebuildProbe() => Instantiations++;
+        protected override void BuildRenderTree(RenderTreeBuilder builder) { }
+    }
+
+    [Fact]
+    public void Table_does_not_rebuild_ChildContent_when_a_column_can_anchor_the_order()
+    {
+        // Upper bound on the one teardown in Table (the _columnGeneration @key). Any column carrying
+        // a template/Property/SortBy/OnFilter/FilterOptions re-registers on every pass in document
+        // order, which is enough to place the parameter-skipped ones -- so no rebuild, and nothing
+        // in the ChildContent subtree is torn down. That is also what makes the rebuild safe when it
+        // DOES fire: a column that can hold state is exactly a column that anchors, so it is never
+        // the one being rebuilt.
+        var showNew = false;
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<RebuildProbe>(0);
+            builder.CloseComponent();
+
+            if (showNew)
+            {
+                builder.OpenComponent<Column<Person>>(1);
+                builder.AddAttribute(2, "Title", "New");
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<PropertyColumn<Person, string>>(3);
+            builder.AddAttribute(4, "Title", "Name");
+            builder.AddAttribute(5, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(6);
+            builder.AddAttribute(7, "Title", "Spacer");
+            builder.CloseComponent();
+        };
+
+        RebuildProbe.Instantiations = 0;
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Name", "Spacer"], Headers(cut));
+        Assert.Equal(1, RebuildProbe.Instantiations);
+
+        // An ordinary re-render never rebuilds and never reorders.
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Name", "Spacer"], Headers(cut));
+        Assert.Equal(1, RebuildProbe.Instantiations);
+
+        // An insertion ahead of the anchor is placed exactly, with no rebuild.
+        showNew = true;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["New", "Name", "Spacer"], Headers(cut));
+        Assert.Equal(1, RebuildProbe.Instantiations);
+
+        // As is the removal, and the re-insertion after it.
+        showNew = false;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Name", "Spacer"], Headers(cut));
+        showNew = true;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["New", "Name", "Spacer"], Headers(cut));
+        Assert.Equal(1, RebuildProbe.Instantiations);
+    }
+
+    [Fact]
+    public void Table_rebuilds_ChildContent_once_when_declaration_order_is_unknowable()
+    {
+        // The lower bound: a table of Title-only columns has no anchor, so an insertion is
+        // indistinguishable from an append and the order can only be recovered by re-collecting
+        // from scratch. Pins that the rebuild fires, that it fires ONCE (no render loop), that a
+        // removal does not trigger it, and that the documented casualty -- non-column content
+        // declared inside <Table> -- is what pays for it.
+        var showNew = false;
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<RebuildProbe>(0);
+            builder.CloseComponent();
+
+            if (showNew)
+            {
+                builder.OpenComponent<Column<Person>>(1);
+                builder.AddAttribute(2, "Title", "New");
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<Column<Person>>(3);
+            builder.AddAttribute(4, "Title", "A");
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(5);
+            builder.AddAttribute(6, "Title", "B");
+            builder.CloseComponent();
+        };
+
+        RebuildProbe.Instantiations = 0;
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["A", "B"], Headers(cut));
+        Assert.Equal(1, RebuildProbe.Instantiations);
+
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(1, RebuildProbe.Instantiations);
+
+        showNew = true;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["New", "A", "B"], Headers(cut));
+        Assert.Equal(2, RebuildProbe.Instantiations);
+
+        // Settles: further renders neither rebuild again nor drift.
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["New", "A", "B"], Headers(cut));
+        Assert.Equal(2, RebuildProbe.Instantiations);
+
+        // A removal is never ambiguous -- the survivors keep their relative order.
+        showNew = false;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["A", "B"], Headers(cut));
+        Assert.Equal(2, RebuildProbe.Instantiations);
+    }
+
+    [Fact]
+    public void Table_column_collection_costs_no_extra_render_passes()
+    {
+        // The ordering work is pure bookkeeping over the registrations Blazor already delivers: the
+        // cascade stays IsFixed, so no column is re-parameterized or re-rendered on its account, and
+        // an ordinary re-render queues nothing extra. (Making the cascade non-fixed -- the shape that
+        // looks like it should fix the ordering, see RendererChildOrderingContractTests -- would add
+        // one SetParametersAsync + render per column per pass and still get the order wrong.)
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+
+            builder.OpenComponent<Column<Person>>(3);
+            builder.AddAttribute(4, "Title", "Spacer");
+            builder.CloseComponent();
+
+            builder.OpenComponent<PropertyColumn<Person, int>>(5);
+            builder.AddAttribute(6, "Title", "Age");
+            builder.AddAttribute(7, "Property", (Func<Person, int>)(x => x.Age));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+
+        var before = cut.RenderCount;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        // Three parent renders in, three renders out: the straggler never costs a corrective pass.
+        Assert.Equal(3, cut.RenderCount - before);
+        Assert.Equal(["Name", "Spacer", "Age"], Headers(cut));
+    }
+
+    [Fact]
+    public void Table_column_inserted_between_two_skipped_columns_lands_after_them_known_limitation()
+    {
+        // The one residual, pinned so it cannot drift silently. When a newcomer and one or more
+        // parameter-skipped columns share the same gap between anchors, the registrations are
+        // identical for "declared before them" and "declared after them", so the merge has to pick
+        // one: it keeps the skipped columns where they were and puts the newcomer after them (the
+        // reading that is right for the far more common trailing insertion). The rebuild does not
+        // step in here because an anchor exists, and rebuilding would tear down a column that CAN
+        // hold filter/sort state -- a worse trade than a misplaced spacer column.
+        var showNew = false;
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<Column<Person>>(0);
+            builder.AddAttribute(1, "Title", "Spacer");
+            builder.CloseComponent();
+
+            if (showNew)
+            {
+                builder.OpenComponent<Column<Person>>(2);
+                builder.AddAttribute(3, "Title", "New");
+                builder.CloseComponent();
+            }
+
+            builder.OpenComponent<PropertyColumn<Person, string>>(4);
+            builder.AddAttribute(5, "Title", "Name");
+            builder.AddAttribute(6, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Spacer", "Name"], Headers(cut));
+
+        showNew = true;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        // Declared [Spacer, New, Name]; both this and [New, Spacer, Name] are consistent with what
+        // the renderer reported, and this is the one the merge commits to. It is at least stable:
+        Assert.Equal(["Spacer", "New", "Name"], Headers(cut));
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+        Assert.Equal(["Spacer", "New", "Name"], Headers(cut));
     }
 
     [Fact]
