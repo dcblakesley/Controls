@@ -1,33 +1,20 @@
-﻿namespace Controls;
+namespace Controls;
 
-/// <summary> 
+/// <summary>
 /// Read-only display component for displaying text with styling and format being consistent with all other "Edit" controls
 /// Useful in situations such as displaying combined values such "15.3 Ounces per can" double "volume" + enum "measurement type"
 /// </summary>
-public partial class EditDisplay 
+/// <remarks>
+/// Derives from <see cref="EditControlParametersBase"/> like <see cref="EditControlListBase{TItem}"/>/
+/// <see cref="EditDateRange"/> rather than re-declaring its own copy of the shared parameter set --
+/// the redeclaration used to drift from the base (see <see cref="ShouldHideLabel"/>'s remarks for the
+/// bug that caused). <see cref="IEditControl.IsEditMode"/>/<see cref="IEditControl.IsDisabled"/>/
+/// <see cref="IEditControl.Hiding"/> come along inert: this control has no field/editor of its own, so
+/// none of the three has anything to affect.
+/// </remarks>
+public partial class EditDisplay : EditControlParametersBase
 {
-    [CascadingParameter] public FormOptions? FormOptions { get; set; }
-    [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
-
-    /// <inheritdoc cref="IEditControl.Id"/>
-    [Parameter] public string? Id { get; set; }
-
-    /// <inheritdoc cref="IEditControl.Label"/>
-    [Parameter] public string Label { get; set; } = "";
-
-    /// <inheritdoc cref="IEditControl.Description"/>
-    [Parameter] public string? Description { get; set; }
-
-    /// <inheritdoc cref="IEditControl.Tooltip"/>
-    [Parameter] public string? Tooltip { get; set; }
-
-    /// <inheritdoc cref="IEditControl.ContainerClass"/>
-    [Parameter] public string? ContainerClass { get; set; }
-
-    /// <inheritdoc cref="IEditControl.IsRequired"/>
-    [Parameter] public bool? IsRequired { get; set; }
-
-    /// <summary>Extra CSS class(es) appended to the displayed value element (alongside <c>edit-readonly-value</c>); use <see cref="ContainerClass"/> to style the wrapper instead.</summary>
+    /// <summary>Extra CSS class(es) appended to the displayed value element (alongside <c>edit-readonly-value</c>); use <see cref="EditControlParametersBase.ContainerClass"/> to style the wrapper instead.</summary>
     [Parameter] public string? Class { get; set; }
 
     /// <summary>
@@ -40,18 +27,12 @@ public partial class EditDisplay
     /// <summary>The read-only text to display, styled like the other Edit controls' read-only values.</summary>
     [Parameter] public string Text { get; set; } = "";
 
-    /// <inheritdoc cref="IEditControl.IsHidden"/>
-    [Parameter] public bool IsHidden { get; set; }
-
-    /// <inheritdoc cref="IEditControl.IsLabelHidden"/>
-    [Parameter] public bool IsLabelHidden { get; set; }
-
-    /// <inheritdoc cref="IEditControl.IdPrefix"/>
-    [Parameter] public string? IdPrefix { get; set; }
-
     // Same resolution as every other control (EditControlInit.ShouldHideLabel): the per-control
-    // parameter or the cascaded form-wide setting — previously the cascaded FormOptions was
-    // declared but ignored here.
+    // parameter or the cascaded form-wide setting. Not on EditControlParametersBase itself -- every
+    // deriving control (EditControlListBase, EditDateRange) redeclares this one-liner rather than
+    // sharing it, since the base has no notion of "the label" on its own. Previously the cascaded
+    // FormOptions was declared but ignored here -- fixed before this control derived from the base at
+    // all, and now trivially correct since FormOptions is the inherited cascading parameter.
     internal bool ShouldHideLabel => EditControlInit.ShouldHideLabel(IsLabelHidden, FormOptions);
 
     // Resolved id used by the markup: explicit Id wins, then a Label-derived id, else a unique
