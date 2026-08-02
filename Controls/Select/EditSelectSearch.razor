@@ -4,7 +4,13 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks), which for this control is also the only safe home for it: the
+       engine's own wrapper carries a JS-owned inline z-index while its dropdown is open. Everything
+       else is forwarded to the engine's AdditionalAttributes and splatted onto that wrapper -- the
+       element that actually represents this field. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
@@ -40,7 +46,8 @@
                     AriaRequired="@_isRequired"
                     AriaInvalid="@IsInvalid"
                     AriaDescribedBy="@_describedBy"
-                    AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)" />
+                    AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)"
+                    AdditionalAttributes="@AttributeSplat.Rest(AdditionalAttributes)" />
         }
         else
         {

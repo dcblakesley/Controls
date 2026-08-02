@@ -3,14 +3,18 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the radiogroup fieldset. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         @* The id/data-test-id/role/aria-* block is shared with EditRadioEnum/EditRadioString via
-           RadioAria (splatted first so the explicit class below wins). CssClass (InputBase: consumer
-           class + field-state classes) goes on the fieldset — unlike those two this control doesn't
-           render its own radio inputs (they come from ChildContent), so the group root is the only
-           element it owns to carry the class. Edit mode only: the read-only branch already forwards
-           CssClass to its ReadOnlyValue. *@
-        <fieldset @attributes="RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId)"
+           RadioAria (splatted first so the explicit class below wins), merged with the consumer's own
+           unmatched attributes -- RadioAria's keys win, and one element can carry only one
+           @attributes. CssClass (InputBase: consumer class + field-state classes) goes on the fieldset
+           — unlike those two this control doesn't render its own radio inputs (they come from
+           ChildContent), so the group root is the only element it owns to carry the class. Edit mode
+           only: the read-only branch already forwards CssClass to its ReadOnlyValue. *@
+        <fieldset @attributes="AttributeSplat.RestWith(AdditionalAttributes, RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId))"
                   class="edit-radio-fieldset @(ShowEditor ? CssClass : null)">
        <FormLabel Id=@_id
                   FieldIdentifier=@_fieldIdentifier 

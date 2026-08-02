@@ -10,7 +10,10 @@
     <div class="wss-select-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
 }
 
-<div class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation aria-busy="@(Loading ? "true" : null)">
+@* AdditionalAttributes splatted first so every attribute written below wins. class/style are withheld
+   by AttributeSplat.Rest and stay this component's own -- see the parameter's remarks for why the
+   inline style in particular can't take a consumer's declarations. *@
+<div @attributes="AttributeSplat.Rest(AdditionalAttributes)" class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation aria-busy="@(Loading ? "true" : null)">
 
     <div class="wss-select-selector">
 

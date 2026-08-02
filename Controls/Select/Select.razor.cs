@@ -212,6 +212,25 @@ public partial class Select<TValue> : IAsyncDisposable
     /// attribute. Pair with <see cref="AriaInvalid"/>.</summary>
     [Parameter] public string? AriaErrorMessage { get; set; }
 
+    /// <summary>
+    /// Unmatched attributes (<c>data-*</c>, <c>title</c>, extra <c>aria-*</c>, …), splatted onto the
+    /// engine's outer wrapper. <see cref="EditSelectSearch{TValue}"/> forwards its own captured
+    /// attributes here, which is what gives that control the same pass-through every other form
+    /// control has; a standalone <c>&lt;Select&gt;</c> gets it too (previously an unmatched attribute
+    /// on this component threw at render time).
+    /// </summary>
+    /// <remarks>
+    /// <c>class</c> and <c>style</c> are deliberately NOT applied here. <see cref="CssClass"/> is the
+    /// wrapper's single class channel (the wrappers already feed it their <c>CssClass</c>/
+    /// <c>FieldCssClass</c>, which folds in a consumer's own <c>class</c>), and the wrapper's inline
+    /// style is JS-owned while the dropdown is open — <c>placeDropdown</c> writes the open-order
+    /// z-index straight onto the element, which C# only mirrors back through <c>WidthStyle</c>. A form
+    /// wrapper puts the consumer's <c>style</c> on its own <c>.edit-control-wrapper</c> instead, the
+    /// same element every other control uses for it.
+    /// </remarks>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
     bool IsMultiple => Mode != SelectMode.Single;
 
     // ----- Inline icons (no icon-font / Ant dependency) ---------------------

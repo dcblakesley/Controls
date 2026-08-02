@@ -646,6 +646,123 @@ public class OptionIdUniquenessAndSplatTests : BunitContext
         Assert.Equal("max-width:12rem", cut.Find(".edit-control-wrapper").GetAttribute("style"));
     }
 
+    // ----- radio groups: splat lands on the radiogroup fieldset, merged with RadioAria's block ----
+
+    [Fact]
+    public void EditRadioEnum_forwards_data_attributes_to_its_fieldset_without_displacing_RadioAria()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "class", "my-class");
+            b.AddAttribute(4, "style", "padding:2px");
+            b.AddAttribute(5, "data-foo", "bar");
+            b.AddAttribute(6, "aria-keyshortcuts", "Alt+P");
+            // A collision with RadioAria's own block: the control's answer has to win.
+            b.AddAttribute(7, "role", "presentation");
+            b.CloseComponent();
+        }));
+
+        var fieldset = cut.Find("fieldset.edit-radio-fieldset");
+        Assert.Equal("bar", fieldset.GetAttribute("data-foo"));
+        Assert.Equal("Alt+P", fieldset.GetAttribute("aria-keyshortcuts"));
+        Assert.Equal("radiogroup", fieldset.GetAttribute("role"));
+        Assert.Equal("Priority", fieldset.Id);
+        Assert.False(fieldset.HasAttribute("style"));
+        // class keeps its single channel (CssClass -> each radio input), style the wrapper.
+        Assert.DoesNotContain("my-class", fieldset.ClassList);
+        Assert.All(cut.FindAll("input[type=radio]"), r => Assert.Contains("my-class", r.ClassList));
+        Assert.Equal("padding:2px", cut.Find(".edit-control-wrapper").GetAttribute("style"));
+    }
+
+    [Fact]
+    public void EditRadioEnum_renders_no_splat_or_style_when_the_consumer_supplies_no_extra_attributes()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        Assert.False(cut.Find(".edit-control-wrapper").HasAttribute("style"));
+        Assert.Equal(
+            "id|data-test-id|role|aria-labelledby|aria-required|aria-describedby|class",
+            string.Join("|", cut.Find("fieldset.edit-radio-fieldset").Attributes.Select(a => a.Name)));
+    }
+
+    [Fact]
+    public void EditBoolNullRadio_forwards_data_attributes_to_its_fieldset()
+    {
+        var model = new PersonModel { IsSubscribed = true };
+        Expression<Func<bool?>> field = () => model.IsSubscribed;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditBoolNullRadio>(0);
+            b.AddAttribute(1, "Value", model.IsSubscribed);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "style", "padding:2px");
+            b.AddAttribute(4, "data-foo", "bar");
+            b.CloseComponent();
+        }));
+
+        var fieldset = cut.Find("fieldset.edit-radio-fieldset");
+        Assert.Equal("bar", fieldset.GetAttribute("data-foo"));
+        Assert.Equal("radiogroup", fieldset.GetAttribute("role"));
+        Assert.Equal("padding:2px", cut.Find(".edit-control-wrapper").GetAttribute("style"));
+    }
+
+    // ----- EditSelectSearch: forwarded through to the Select engine's wrapper ---------------------
+
+    [Fact]
+    public void EditSelectSearch_forwards_data_attributes_through_to_the_select_engine_wrapper()
+    {
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectSearch<string>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<SelectOption<string>> { new("a", "A"), new("b", "B") });
+            b.AddAttribute(4, "class", "my-class");
+            b.AddAttribute(5, "style", "width:14rem");
+            b.AddAttribute(6, "data-foo", "bar");
+            b.CloseComponent();
+        }));
+
+        // The engine has no AdditionalAttributes of its own before this change, so an unmatched
+        // attribute on EditSelectSearch had nowhere to go at all.
+        var engine = cut.Find(".wss-select");
+        Assert.Equal("bar", engine.GetAttribute("data-foo"));
+        // class still arrives through CssClass (which the wrapper folds into WrapperClass); style
+        // stays on the form wrapper, since the engine's inline style is JS-owned when open.
+        Assert.Contains("my-class", engine.ClassList);
+        Assert.False(engine.HasAttribute("style"));
+        Assert.Equal("width:14rem", cut.Find(".edit-control-wrapper").GetAttribute("style"));
+    }
+
+    [Fact]
+    public void A_standalone_Select_no_longer_throws_on_an_unmatched_attribute()
+    {
+        var cut = Render(b =>
+        {
+            b.OpenComponent<Select<string>>(0);
+            b.AddAttribute(1, "Options", new List<SelectOption<string>> { new("a", "A") });
+            b.AddAttribute(2, "data-foo", "bar");
+            b.CloseComponent();
+        });
+
+        Assert.Equal("bar", cut.Find(".wss-select").GetAttribute("data-foo"));
+    }
+
     // ----- EditFile read-only label association ---------------------------------------------------
 
     [Fact]

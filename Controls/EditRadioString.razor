@@ -2,11 +2,15 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the radiogroup fieldset. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
 
         @* id/data-test-id/role/aria-* come from RadioAria, shared with EditRadio/EditRadioEnum;
-           splatted first so the explicit class below wins. *@
-        <fieldset @attributes="RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId)"
+           splatted first so the explicit class below wins, and merged with the consumer's own
+           unmatched attributes (RadioAria's keys win; one element, one @attributes). *@
+        <fieldset @attributes="AttributeSplat.RestWith(AdditionalAttributes, RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId))"
                   class="edit-radio-fieldset">
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend=true IsLabelHidden=@ShouldHideLabel />
 

@@ -2,8 +2,14 @@
 
 @if (ShouldShowComponent())
 {
-    <div class="edit-control-wrapper @ContainerClass">
-        <fieldset class="edit-radio-fieldset"
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the radiogroup fieldset,
+       matching the other three radio-group controls. Splatted first, so every attribute written below
+       wins; `class` travels CssClass onto each radio input, so AttributeSplat.Rest withholds it. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
+        <fieldset @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+                  class="edit-radio-fieldset"
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
                   role=@(ShowEditor ? "radiogroup" : null)
