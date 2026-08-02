@@ -70,6 +70,107 @@ internal static class PickerMath
         (max is { } mx && weekStart > mx.Date) || (min is { } mn && WeekEnd(weekStart) < mn.Date) ||
         (disabledDate?.Invoke(weekStart) ?? false);
 
+    // ----- Min/Max/DisabledDate predicates, one per grid granularity -----------------------------
+    // The four siblings of IsWeekDisabledForCommit above, hoisted here for the same reason it was:
+    // both pickers had them character-identical. `disabledDate` is folded into every one of them (it
+    // is never invoked separately anywhere else) so that every consumer -- the cell `disabled`
+    // attributes, the FirstEnabled*/DefaultFocus* skip logic below, and each picker's own typed-text/
+    // preset commit guards -- picks it up automatically and none of them can disagree about what
+    // counts as disabled. Each takes its unit ALREADY at that granularity (the 1st of the month at
+    // midnight, January 1st, the 1st of the quarter), matching what the corresponding grid renders
+    // and what DisabledDate's own documented contract promises the consumer's predicate will see.
+
+    /// <summary>Whether <paramref name="day"/> falls outside [<paramref name="min"/>,
+    /// <paramref name="max"/>] at DAY granularity (both bounds are date-only, so the comparison is
+    /// against their <c>.Date</c>), or <paramref name="disabledDate"/> rejects it.</summary>
+    public static bool IsDayDisabled(DateTime day, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate) =>
+        (min is { } mn && day < mn.Date) || (max is { } mx && day > mx.Date) ||
+        (disabledDate?.Invoke(day) ?? false);
+
+    /// <summary>The month-granularity equivalent of <see cref="IsDayDisabled"/>: a whole month is
+    /// disabled once it falls entirely outside [<paramref name="min"/>, <paramref name="max"/>]'s own
+    /// months. <paramref name="month"/> is already <see cref="FirstOfMonth"/>-shaped.</summary>
+    public static bool IsMonthDisabled(DateTime month, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate) =>
+        (min is { } mn && month < FirstOfMonth(mn)) || (max is { } mx && month > FirstOfMonth(mx)) ||
+        (disabledDate?.Invoke(month) ?? false);
+
+    /// <summary>The year-granularity equivalent, one grain up from <see cref="IsMonthDisabled"/>.
+    /// <paramref name="year"/> is already <see cref="FirstOfYear"/>-shaped.</summary>
+    public static bool IsYearDisabled(DateTime year, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate) =>
+        (min is { } mn && year < FirstOfYear(mn)) || (max is { } mx && year > FirstOfYear(mx)) ||
+        (disabledDate?.Invoke(year) ?? false);
+
+    /// <summary>The quarter-granularity equivalent. <paramref name="quarterStart"/> is already
+    /// <see cref="QuarterStart(DateTime)"/>-shaped.</summary>
+    public static bool IsQuarterDisabled(DateTime quarterStart, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate) =>
+        (min is { } mn && quarterStart < QuarterStart(mn)) || (max is { } mx && quarterStart > QuarterStart(mx)) ||
+        (disabledDate?.Invoke(quarterStart) ?? false);
+
+    // ----- First-enabled scanners, one per grid granularity ---------------------------------------
+    // Each picker's DefaultFocus* chain ends in one of these: when neither natural candidate (the
+    // bound value / today) is usable, the roving tabindex must still land on an ENABLED cell, or the
+    // grid is left keyboard-unreachable (Tab skips a tabindex="0" that is also disabled). Null means
+    // the whole panel is disabled, at which point the caller falls back to any deterministic unit --
+    // there is nothing actionable in it either way.
+
+    /// <summary>The first enabled IN-MONTH day of <paramref name="month"/>'s 42-cell grid (the
+    /// leading/trailing adjacent-month cells are skipped), or null when every in-month day is
+    /// disabled.</summary>
+    public static DateTime? FirstEnabledDay(DateTime month, DayOfWeek firstDayOfWeek, DateTime? min,
+        DateTime? max, Func<DateTime, bool>? disabledDate)
+    {
+        foreach (var day in GridDays(month, firstDayOfWeek))
+        {
+            if (day.Month == month.Month && day.Year == month.Year && !IsDayDisabled(day, min, max, disabledDate))
+            {
+                return day;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>The first enabled month of <paramref name="year"/>, or null when all 12 are disabled.</summary>
+    public static DateTime? FirstEnabledMonth(int year, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate)
+    {
+        for (var m = 1; m <= 12; m++)
+        {
+            var month = new DateTime(year, m, 1);
+            if (!IsMonthDisabled(month, min, max, disabledDate)) return month;
+        }
+        return null;
+    }
+
+    /// <summary>The first enabled quarter of <paramref name="year"/>, or null when all 4 are disabled.</summary>
+    public static DateTime? FirstEnabledQuarter(int year, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate)
+    {
+        for (var q = 1; q <= 4; q++)
+        {
+            var quarterStart = QuarterStart(year, q);
+            if (!IsQuarterDisabled(quarterStart, min, max, disabledDate)) return quarterStart;
+        }
+        return null;
+    }
+
+    /// <summary>The first enabled year of <paramref name="decadeStart"/>'s own 10 years — never one
+    /// of the year grid's two dimmed adjacent-decade cells, which belong to a decade the panel isn't
+    /// showing — or null when all 10 are disabled.</summary>
+    public static DateTime? FirstEnabledYear(int decadeStart, DateTime? min, DateTime? max,
+        Func<DateTime, bool>? disabledDate)
+    {
+        for (var y = decadeStart; y <= decadeStart + 9; y++)
+        {
+            var year = new DateTime(y, 1, 1);
+            if (!IsYearDisabled(year, min, max, disabledDate)) return year;
+        }
+        return null;
+    }
+
     // The ISO-ish week number of the calendar week starting on `weekStart`, per `culture`'s week
     // rule -- shared by DatePicker's own WeekNumberOf display and FormatWeekDisplay/
     // TryParseWeekShorthand below. DateTimeFormat.Calendar, not the culture's own default Calendar:

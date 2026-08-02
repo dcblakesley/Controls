@@ -442,41 +442,27 @@ public partial class DatePicker : PickerBase
             ? Value is { } v && WeekStart(v.Date) == WeekStart(day)
             : day == Value?.Date;
 
-    // DisabledDate is folded into every granularity's Is*Disabled helper below (not called
-    // separately anywhere else) so every consumer of them -- the cell disabled attributes, the
-    // DefaultFocus*/FirstEnabled* skip logic, and IsDisabledForCommit's typed-text guard -- picks it
-    // up automatically and can never disagree about what counts as disabled.
-    bool IsDayDisabled(DateTime day) =>
-        (Min is { } min && day < min.Date) || (Max is { } max && day > max.Date) ||
-        (DisabledDate?.Invoke(day) ?? false);
+    // The five Min/Max/DisabledDate predicates, each binding this instance's own parameters to the
+    // matching PickerMath helper -- see those for the per-granularity contracts (DisabledDate is
+    // folded into every one of them, so the cell `disabled` attributes, the DefaultFocus*/
+    // FirstEnabled* skip logic and IsDisabledForCommit's typed-text guard can never disagree about
+    // what counts as disabled). They were character-identical to DateRangePicker's own.
+    // IsMonthDisabled uses the same month granularity PrevMonthDisabled/NextMonthDisabled use for the
+    // day grid's header nav, so the two panels never disagree about where Min/Max stop navigation.
+    bool IsDayDisabled(DateTime day) => PickerMath.IsDayDisabled(day, Min, Max, DisabledDate);
 
-    // Week-mode equivalent of IsDayDisabled/IsMonthDisabled, at week granularity -- see
-    // PickerMath.IsWeekDisabledForCommit for the full contract (including the overflow-safe week end,
-    // which a typed commit in year 9999's last week needs), shared verbatim with DateRangePicker's own
-    // Week-mode guard. `weekStart` is already WeekStart-shaped.
+    bool IsMonthDisabled(DateTime month) => PickerMath.IsMonthDisabled(month, Min, Max, DisabledDate);
+
+    bool IsYearDisabled(DateTime year) => PickerMath.IsYearDisabled(year, Min, Max, DisabledDate);
+
+    bool IsQuarterDisabled(DateTime quarterStart) =>
+        PickerMath.IsQuarterDisabled(quarterStart, Min, Max, DisabledDate);
+
+    // Week granularity -- the one predicate whose bounds check isn't a plain comparison (see
+    // PickerMath.IsWeekDisabledForCommit for the overflow-safe week end a typed commit in year 9999's
+    // last week needs). `weekStart` is already WeekStart-shaped.
     bool IsWeekDisabledForCommit(DateTime weekStart) =>
         PickerMath.IsWeekDisabledForCommit(weekStart, Min, Max, DisabledDate);
-
-    // Month-mode equivalent of IsDayDisabled: a whole month is disabled once it falls entirely
-    // outside [Min, Max] at month granularity — same granularity PrevMonthDisabled/NextMonthDisabled
-    // use for the day-grid's own header nav, so the two panels never disagree about where Min/Max
-    // stop navigation.
-    bool IsMonthDisabled(DateTime month) =>
-        (Min is { } min && month < FirstOfMonth(min)) || (Max is { } max && month > FirstOfMonth(max)) ||
-        (DisabledDate?.Invoke(month) ?? false);
-
-    // Year-mode equivalent of IsMonthDisabled, one granularity up: a whole year is disabled once it
-    // falls entirely outside [Min, Max] at year granularity. `year` is already FirstOfYear-shaped.
-    bool IsYearDisabled(DateTime year) =>
-        (Min is { } min && year < FirstOfYear(min)) || (Max is { } max && year > FirstOfYear(max)) ||
-        (DisabledDate?.Invoke(year) ?? false);
-
-    // Quarter-mode equivalent of IsMonthDisabled, at quarter granularity: a whole quarter is
-    // disabled once it falls entirely outside [Min, Max]'s own quarter. `quarterStart` is already
-    // QuarterStart-shaped.
-    bool IsQuarterDisabled(DateTime quarterStart) =>
-        (Min is { } min && quarterStart < QuarterStart(min)) || (Max is { } max && quarterStart > QuarterStart(max)) ||
-        (DisabledDate?.Invoke(quarterStart) ?? false);
 
     // Whether `value`'s time-of-day hits a DisabledTime-disabled hour/minute/second, evaluated
     // against `value`'s own date part -- the same argument contract the time row uses at render time
@@ -625,15 +611,11 @@ public partial class DatePicker : PickerBase
         return FirstEnabledDay(_viewMonth) ?? _viewMonth;
     }
 
-    // The first enabled, in-month day in `month`'s grid, or null if every in-month day is disabled.
-    DateTime? FirstEnabledDay(DateTime month)
-    {
-        foreach (var day in GridDays(month))
-        {
-            if (day.Month == month.Month && day.Year == month.Year && !IsDayDisabled(day)) return day;
-        }
-        return null;
-    }
+    // The first enabled, in-month day in `month`'s grid, or null if every in-month day is disabled --
+    // see PickerMath.FirstEnabledDay (shared verbatim with DateRangePicker, which scans both panels'
+    // months through it in turn).
+    DateTime? FirstEnabledDay(DateTime month) =>
+        PickerMath.FirstEnabledDay(month, EffectiveFirstDayOfWeek, Min, Max, DisabledDate);
 
     // _focusDay once a keyboard move has set it, but only while it's still on-screen — a month/year
     // select change (or a nav button) clears _focusDay explicitly, but this guard also covers any
@@ -720,15 +702,7 @@ public partial class DatePicker : PickerBase
     }
 
     // The first enabled month of `year`, or null if every month that year is disabled.
-    DateTime? FirstEnabledMonth(int year)
-    {
-        for (var m = 1; m <= 12; m++)
-        {
-            var month = new DateTime(year, m, 1);
-            if (!IsMonthDisabled(month)) return month;
-        }
-        return null;
-    }
+    DateTime? FirstEnabledMonth(int year) => PickerMath.FirstEnabledMonth(year, Min, Max, DisabledDate);
 
     DateTime EffectiveFocusMonth => _focusDay is { } f && IsVisibleMonth(f) ? f : DefaultFocusMonth();
 
@@ -814,15 +788,7 @@ public partial class DatePicker : PickerBase
 
     // The first enabled year of the decade's own 10 years (never one of the dimmed adjacent-decade
     // cells), or null if every year in the decade is disabled.
-    DateTime? FirstEnabledYear()
-    {
-        for (var y = DecadeStart; y <= DecadeStart + 9; y++)
-        {
-            var year = new DateTime(y, 1, 1);
-            if (!IsYearDisabled(year)) return year;
-        }
-        return null;
-    }
+    DateTime? FirstEnabledYear() => PickerMath.FirstEnabledYear(DecadeStart, Min, Max, DisabledDate);
 
     DateTime EffectiveFocusYear => _focusDay is { } f && IsYearInDecade(f.Year) ? f : DefaultFocusYear();
 
@@ -903,15 +869,7 @@ public partial class DatePicker : PickerBase
     }
 
     // The first enabled quarter of `year`, or null if every quarter that year is disabled.
-    DateTime? FirstEnabledQuarter(int year)
-    {
-        for (var q = 1; q <= 4; q++)
-        {
-            var quarterStart = QuarterStart(year, q);
-            if (!IsQuarterDisabled(quarterStart)) return quarterStart;
-        }
-        return null;
-    }
+    DateTime? FirstEnabledQuarter(int year) => PickerMath.FirstEnabledQuarter(year, Min, Max, DisabledDate);
 
     DateTime EffectiveFocusQuarter => _focusDay is { } f && IsVisibleQuarterYear(f.Year) ? f : DefaultFocusQuarter();
 
