@@ -69,6 +69,9 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
 
+    // False until InitState has run to completion — see Dispose.
+    bool _stateInitialized;
+
     /// <summary>
     /// The control's fully-resolved required-ness (IsRequired parameter → [Required] attribute →
     /// FormOptions.RequiredResolver), recomputed alongside <c>_isRequired</c> each parameter cycle.
@@ -132,6 +135,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         (_id, _attributes, _fieldIdentifier) = EditControlInit.Init(field, Id, FormGroupOptions, IdPrefix);
         // Paired with the Dispose override below — see EditControlInit.RegisterField's remarks.
         EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
+        _stateInitialized = true;
         RefreshAriaState();
     }
 
@@ -163,9 +167,16 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// registration also grows <see cref="FormOptions.FieldIdentifiers"/> on every mount/unmount cycle.
     /// Mirrors <see cref="EditControlListBase{TItem}.Dispose"/>; derived overrides must chain to base.
     /// </summary>
+    /// <remarks>
+    /// Gated on <c>_stateInitialized</c> so a control whose init never completed disposes cleanly:
+    /// a missing <c>@bind-Value</c> makes <see cref="OnInitialized"/> throw its helpful diagnostic
+    /// BEFORE <see cref="InitState"/> runs, leaving <c>_fieldIdentifier</c> at <c>default</c> — and
+    /// unregistering that hashes a null <c>FieldName</c>, so an <see cref="ArgumentNullException"/>
+    /// out of disposal replaced the message that says what to fix.
+    /// </remarks>
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && _stateInitialized)
             EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
         base.Dispose(disposing);
     }

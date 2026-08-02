@@ -63,6 +63,9 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
 
+    // False until InitState has run to completion — see Dispose.
+    bool _stateInitialized;
+
     /// <summary>
     /// The control's fully-resolved required-ness (IsRequired parameter → [Required] attribute →
     /// FormOptions.RequiredResolver), recomputed alongside <c>_isRequired</c> each parameter cycle.
@@ -140,6 +143,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         _fieldIdentifierFactory = () => FieldIdentifier.Create(field);
         // Paired with Dispose below — see EditControlInit.RegisterField's remarks.
         EditControlInit.RegisterField(FormOptions, _fieldIdentifier, _id, this);
+        _stateInitialized = true;
         RefreshAriaState();
     }
 
@@ -224,9 +228,16 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
 
     /// <summary> Detaches the validation-state listener and drops the field registration so a removed
     /// control (e.g. behind a conditional <c>@if</c>) doesn't leave stale state in the validation summary. </summary>
+    /// <remarks>
+    /// The unregister is gated on <c>_stateInitialized</c> for the same reason as
+    /// <see cref="EditControlBase{TValue}.Dispose"/>: after a failed init (missing <c>@bind-Value</c>)
+    /// the FieldIdentifier is still <c>default</c>, and unregistering it hashes a null
+    /// <c>FieldName</c> — masking the diagnostic that says what to fix.
+    /// </remarks>
     public void Dispose()
     {
         DetachValidationSubscription();
-        EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
+        if (_stateInitialized)
+            EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
     }
 }
