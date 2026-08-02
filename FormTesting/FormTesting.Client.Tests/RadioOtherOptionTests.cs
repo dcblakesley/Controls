@@ -70,6 +70,29 @@ public class RadioOtherOptionTests : BunitContext
         Assert.Single(cut.FindAll(".edit-radio-option.edit-radio-other-option-container"));
     }
 
+    [Fact]
+    public void EditRadioString_re_derives_the_other_text_when_the_bound_value_changes_externally()
+    {
+        // EditRadioString's own preserved free text (_otherText) rides on the bound value itself, so
+        // its record-swap reset comes free from the implied-value re-derive -- as long as the new
+        // record's value actually differs. Pinned because that re-derive is what stands in for
+        // EditRadioEnum's explicit external-change check, and it has the same same-value blind spot.
+        var model = new PersonModel { Name = "bespoke" }; // not in Options -> the Other slot
+        Expression<Func<string?>> field = () => model.Name;
+
+        var cut = Render<EditRadioString>(ps => ps
+            .Add(c => c.Value, model.Name)
+            .Add(c => c.ValueExpression, field)
+            .Add(c => c.Options, ["a", "b"])
+            .Add(c => c.HasOther, true));
+
+        Assert.Equal("bespoke", cut.Find("#txt-Name-custom-value").GetAttribute("value"));
+
+        cut.Render(ps => ps.Add(c => c.Value, "a")); // a different record, on a real option
+
+        Assert.True(string.IsNullOrEmpty(cut.Find("#txt-Name-custom-value").GetAttribute("value")));
+    }
+
     static IRenderedComponent<ContainerFragment> RenderRadioEnum(
         BunitContext ctx, PersonModel model, Action<Priority?> onValue, Action<string?> onOther, bool isEditMode = true, string? otherValue = "")
     {
@@ -146,6 +169,64 @@ public class RadioOtherOptionTests : BunitContext
         cut.Find("#rb-Priority-Critical").Change("Critical");
         Assert.Equal("unset", capturedOther); // ...and nothing stale to put back
         Assert.True(string.IsNullOrEmpty(cut.Find("input.edit-radio-other-input").GetAttribute("value")));
+    }
+
+    [Fact]
+    public void EditRadioEnum_does_not_show_a_swapped_records_predecessor_other_text()
+    {
+        // The preserved copy belongs to the record it was typed on. Swapping the bound record used to
+        // leave it on screen in the new record's disabled Other box: neither reset branch fired
+        // (OtherValue is empty, and Other isn't the selection), so record A's free text was presented
+        // as if it were record B's.
+        var model = new PersonModel { Priority = Priority.Critical }; // Critical == the Other slot
+        Expression<Func<Priority?>> field = () => model.Priority;
+
+        var cut = Render<EditRadioEnum<Priority?>>(ps => ps
+            .Add(c => c.Value, model.Priority)
+            .Add(c => c.ValueExpression, field)
+            .Add(c => c.HasOtherOption, true)
+            .Add(c => c.OtherValue, "details"));
+
+        Assert.Equal("details", cut.Find("input.edit-radio-other-input").GetAttribute("value"));
+
+        // Record B: a different choice, and no other-text of its own.
+        cut.Render(ps => ps
+            .Add(c => c.Value, Priority.Low)
+            .Add(c => c.OtherValue, (string?)null));
+
+        Assert.True(string.IsNullOrEmpty(cut.Find("input.edit-radio-other-input").GetAttribute("value")));
+    }
+
+    [Fact]
+    public void EditRadioEnum_keeps_the_preserved_other_text_across_the_parents_echo_of_its_own_writes()
+    {
+        // The other half of the record-swap reset: a switch away from Other writes BOTH bound values
+        // itself (the new enum, and null onto OtherValue), and the parent re-rendering with exactly
+        // those must not read as an external change -- that would destroy the very text the
+        // preserve-but-don't-submit behavior exists to keep recoverable.
+        var model = new PersonModel { Priority = Priority.Critical };
+        string? other = "details";
+        Expression<Func<Priority?>> field = () => model.Priority;
+
+        var cut = Render<EditRadioEnum<Priority?>>(ps => ps
+            .Add(c => c.Value, model.Priority)
+            .Add(c => c.ValueExpression, field)
+            .Add(c => c.HasOtherOption, true)
+            .Add(c => c.OtherValue, other)
+            .Add(c => c.OtherValueChanged, EventCallback.Factory.Create<string?>(this, (string? v) => other = v))
+            .Add(c => c.ValueChanged, EventCallback.Factory.Create<Priority?>(this, (Priority? v) => model.Priority = v)));
+
+        cut.Find("#rb-Priority-Low").Change("Low"); // the mis-click
+        // The parent re-renders carrying exactly what the control just wrote.
+        cut.Render(ps => ps
+            .Add(c => c.Value, model.Priority)
+            .Add(c => c.OtherValue, other));
+
+        Assert.Equal(Priority.Low, model.Priority);
+        Assert.Null(other); // off the model...
+        var box = cut.Find("input.edit-radio-other-input");
+        Assert.Equal("details", box.GetAttribute("value")); // ...but still on screen, still recoverable
+        Assert.True(box.HasAttribute("disabled"));
     }
 
     [Fact]

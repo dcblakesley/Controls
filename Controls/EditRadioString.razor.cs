@@ -88,6 +88,13 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
         // Re-sync the radio selection with an externally-changed value (form reset, async-loaded
         // model, programmatic set). Skip when the current selection already implies CurrentValue,
         // so this never clobbers in-progress "Other" typing (where CurrentValue == _otherText).
+        //
+        // Known blind spot, and not fixable from here: a record swap whose NEW value equals the old
+        // one is indistinguishable from "nothing happened", so the preserved _otherText from a
+        // switch-away on the previous record survives into the new one's disabled Other box. Any
+        // other swap re-derives below and clears it. (EditRadioEnum's own preserved copy has exactly
+        // this residual for exactly this reason -- see its OnParametersSet -- after the wider case,
+        // where the value DID change, was fixed there.)
         var implied = _selectedOption == _otherName ? _otherText : _selectedOption;
         if (CurrentValue != implied)
         {

@@ -72,14 +72,32 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         _cache.Refresh(Sort, HasOtherOption);
         // Runs after Refresh so the ids track a reordered/resized option list. Cheap: ToId memoizes.
         _optionIds = EnumHelpers.ToUniqueIds(_cache.Options);
+
+        // Did the bound pair move behind this control's back? Every self-write records what it wrote
+        // (see _observedValue), so anything still differing here came from OUTSIDE -- a parent
+        // swapping the bound record, a form reset, an async model load, a programmatic set.
+        var externalChange =
+            !EqualityComparer<TEnum?>.Default.Equals(Value, _observedValue) ||
+            !string.Equals(OtherValue, _observedOtherValue, StringComparison.Ordinal);
+        _observedValue = Value;
+        _observedOtherValue = OtherValue;
+
         // Remember whatever text the model currently carries, so switching away from Other can take it
-        // off the model while still showing it (see OnSelectionChangedAsync). An empty OtherValue
-        // while Other is STILL the selected option is a real clear by the parent (form reset, reload),
-        // so the preserved copy goes too -- unlike the empty it holds right after a switch away, which
-        // this control wrote itself and must not read as an instruction to forget the text.
+        // off the model while still showing it (see OnSelectionChangedAsync). It is dropped in the two
+        // cases where keeping it would be a lie:
+        //   * an empty OtherValue while Other is STILL the selected option -- a real clear by the
+        //     parent (form reset, reload), unlike the empty it holds right after a switch away, which
+        //     this control wrote itself and must not read as an instruction to forget the text;
+        //   * an EXTERNAL change that leaves Other unselected with no text -- i.e. a different record
+        //     entirely. The preserved copy belongs to the record it was typed on, and without this the
+        //     new record's disabled Other box displayed the previous record's free text (neither of the
+        //     other branches fires for it: OtherValue is empty and Other isn't selected).
+        // Residual, and not detectable from here: two records carrying the SAME enum value and the
+        // same empty OtherValue are indistinguishable from a switch-away, so the cache survives that
+        // swap. EditRadioString has the identical blind spot for the identical reason.
         if (!string.IsNullOrEmpty(OtherValue))
             _otherTextCache = OtherValue;
-        else if (IsOtherSelected)
+        else if (IsOtherSelected || externalChange)
             _otherTextCache = null;
     }
 
@@ -87,6 +105,12 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     // through a switch away from the Other option so the box can go on displaying it (and re-commit it
     // if the user comes back), while the MODEL is cleared: see OnSelectionChangedAsync.
     string? _otherTextCache;
+
+    // The bound pair (Value + OtherValue) as this control last observed it OR itself wrote it -- the
+    // baseline OnParametersSet's external-change test compares against. Both self-write sites update
+    // these at the point of writing, so the two can only differ here when something else moved them.
+    TEnum? _observedValue;
+    string? _observedOtherValue;
 
     /// <summary>
     /// The text the "Other" box renders. While Other is selected that is simply
@@ -107,6 +131,9 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     {
         var wasOther = IsOtherSelected;
         CurrentValue = value;
+        // Record what we just wrote, so the parent's echo of it isn't mistaken for an external change
+        // in OnParametersSet (which would drop the very text the branches below are preserving).
+        _observedValue = value;
         if (!HasOtherOption)
             return;
 
@@ -116,10 +143,14 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
             if (!string.IsNullOrEmpty(OtherValue))
                 _otherTextCache = OtherValue;
             if (!string.IsNullOrEmpty(_otherTextCache))
+            {
+                _observedOtherValue = null;
                 await OtherValueChanged.InvokeAsync(null);
+            }
         }
         else if (!wasOther && isOther && string.IsNullOrEmpty(OtherValue) && !string.IsNullOrEmpty(_otherTextCache))
         {
+            _observedOtherValue = _otherTextCache;
             await OtherValueChanged.InvokeAsync(_otherTextCache);
         }
     }
@@ -151,6 +182,11 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
         var value = e.Value?.ToString();
         _otherTextCache = value;
         if (OtherValue != value)
+        {
+            // Same self-write bookkeeping as OnSelectionChangedAsync: the parent echoing this text
+            // back is not an external change.
+            _observedOtherValue = value;
             await OtherValueChanged.InvokeAsync(value);
+        }
     }
 }
