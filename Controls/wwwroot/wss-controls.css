@@ -3750,7 +3750,11 @@
 
 /* Keyboard focus ring for every interactive UI-kit control. :focus-visible means a
    mouse click does not paint it, only keyboard focus (and programmatic focus on
-   buttons), matching native expectations. */
+   buttons), matching native expectations. Also covers the row-selection/column-filter native
+   checkbox/radio inputs and the filter dropdown's footer buttons -- .wss-table-checkbox-input-styled
+   (the UseStyledCheckbox opt-in) already has its own :focus-visible ring on its drawn box (Table
+   section, near the checkbox styling); these are the plain, unstyled <input> variants, which
+   otherwise fall back to the (frequently reset) UA outline. */
 .wss-dialog-btn:focus-visible,
 .wss-pagination-item:focus-visible,
 .wss-pagination-prev:focus-visible,
@@ -3764,6 +3768,12 @@
 .wss-popover-trigger:focus-visible,
 .wss-popconfirm-trigger:focus-visible,
 .wss-table-expand-btn:focus-visible,
+.wss-table-checkbox:focus-visible,
+.wss-table-radio:focus-visible,
+.wss-table-filter-checkbox:focus-visible,
+.wss-table-filter-radio:focus-visible,
+.wss-table-filter-reset:focus-visible,
+.wss-table-filter-ok:focus-visible,
 .wss-tabs-tab:focus-visible,
 .wss-search-btn:focus-visible,
 .wss-search-clear:focus-visible,

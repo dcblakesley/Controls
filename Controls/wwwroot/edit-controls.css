@@ -134,17 +134,22 @@
    a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. Grouped with the
    icon-button family (EditString's mask toggles, EditInputShell's affix clear/password-toggle
    buttons, further down this file) -- they share this exact 3-property ring; mirrors how
-   wss-controls.css's own Accessibility section groups its focus rings. (The LabelTooltip trigger's
-   own :focus-visible ring stays local to the Tooltip section -- it sits between a plain :focus
-   reset and an @supports override at equal specificity, so merging it in here would flip which one
-   wins.) */
+   wss-controls.css's own Accessibility section groups its focus rings. Also grouped here:
+   .edit-string-link (the read-only URL view -- an <a>, so it has no other focus indicator once a
+   consumer resets the UA default) and .edit-file-delete-btn (its own :focus-visible{opacity:1} rule,
+   further down in the EditFile section, only reveals the button -- it still needs this ring once
+   visible). (The LabelTooltip trigger's own :focus-visible ring stays local to the Tooltip section --
+   it sits between a plain :focus reset and an @supports override at equal specificity, so merging it
+   in here would flip which one wins.) */
 .edit-input:focus-visible,
 .edit-radio-input:focus-visible,
 .edit-checkedList-checkbox:focus-visible,
 .edit-icon-eye:focus-visible,
 .edit-icon-eye-invisible:focus-visible,
 .edit-input-clear:focus-visible,
-.edit-input-password-toggle:focus-visible {
+.edit-input-password-toggle:focus-visible,
+.edit-string-link:focus-visible,
+.edit-file-delete-btn:focus-visible {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
