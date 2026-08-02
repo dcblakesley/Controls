@@ -84,18 +84,8 @@
                                     @onclick="@(() => OnMonthClickAsync(month))">@MonthName(m)</button>
                         }
                     </div>
-                    @if (ExtraFooter is not null)
-                    {
-                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
-                    }
-                    @if (ShowTodayLink)
-                    {
-                        <div class="wss-picker-footer wss-picker-footer-split">
-                            <button type="button" class="wss-picker-today-btn"
-                                    disabled="@IsDisabledForCommit(TodayForCommit)"
-                                    @onclick="OnTodayClickAsync">@TodayText</button>
-                        </div>
-                    }
+                    @ExtraFooterFragment
+                    @TodayFooterFragment
                 </div>
             }
             else if (Mode == DatePickerMode.Year)
@@ -125,18 +115,8 @@
                                     @onclick="@(() => OnYearClickAsync(year))">@year.ToString(PickerCulture)</button>
                         }
                     </div>
-                    @if (ExtraFooter is not null)
-                    {
-                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
-                    }
-                    @if (ShowTodayLink)
-                    {
-                        <div class="wss-picker-footer wss-picker-footer-split">
-                            <button type="button" class="wss-picker-today-btn"
-                                    disabled="@IsDisabledForCommit(TodayForCommit)"
-                                    @onclick="OnTodayClickAsync">@TodayText</button>
-                        </div>
-                    }
+                    @ExtraFooterFragment
+                    @TodayFooterFragment
                 </div>
             }
             else if (Mode == DatePickerMode.Quarter)
@@ -158,37 +138,16 @@
                                     @onclick="@(() => OnQuarterClickAsync(_viewMonth.Year, quarter))">Q@(quarter.ToString(PickerCulture))</button>
                         }
                     </div>
-                    @if (ExtraFooter is not null)
-                    {
-                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
-                    }
-                    @if (ShowTodayLink)
-                    {
-                        <div class="wss-picker-footer wss-picker-footer-split">
-                            <button type="button" class="wss-picker-today-btn"
-                                    disabled="@IsDisabledForCommit(TodayForCommit)"
-                                    @onclick="OnTodayClickAsync">@TodayText</button>
-                        </div>
-                    }
+                    @ExtraFooterFragment
+                    @TodayFooterFragment
                 </div>
             }
             else if (Mode == DatePickerMode.Time)
             {
                 <div class="wss-picker-month">
-                    @TimeRowFragment
-                    @if (ExtraFooter is not null)
-                    {
-                        <div class="wss-picker-extra-footer">@ExtraFooter</div>
-                    }
-                    <div class="@TimeFooterClass">
-                        @if (ShowNowLink)
-                        {
-                            <button type="button" class="wss-picker-today-btn"
-                                    disabled="@IsDisabledForCommit(NowForCommit)"
-                                    @onclick="OnNowClickAsync">@NowText</button>
-                        }
-                        <button type="button" class="wss-picker-ok" @onclick="OnPickerOkAsync">@OkText</button>
-                    </div>
+                    <PickerTimeRowSlot Picker="this" />
+                    @ExtraFooterFragment
+                    @TimeFooterFragment
                 </div>
             }
             else
@@ -233,35 +192,14 @@
                        row -- ShowToday doesn't apply to DateTime (see ShowTodayLink), only ShowNow. *@
                     @if (Mode == DatePickerMode.DateTime)
                     {
-                        @TimeRowFragment
-                        @if (ExtraFooter is not null)
-                        {
-                            <div class="wss-picker-extra-footer">@ExtraFooter</div>
-                        }
-                        <div class="@TimeFooterClass">
-                            @if (ShowNowLink)
-                            {
-                                <button type="button" class="wss-picker-today-btn"
-                                        disabled="@IsDisabledForCommit(NowForCommit)"
-                                        @onclick="OnNowClickAsync">@NowText</button>
-                            }
-                            <button type="button" class="wss-picker-ok" @onclick="OnPickerOkAsync">@OkText</button>
-                        </div>
+                        <PickerTimeRowSlot Picker="this" />
+                        @ExtraFooterFragment
+                        @TimeFooterFragment
                     }
                     else
                     {
-                        @if (ExtraFooter is not null)
-                        {
-                            <div class="wss-picker-extra-footer">@ExtraFooter</div>
-                        }
-                        @if (ShowTodayLink)
-                        {
-                            <div class="wss-picker-footer wss-picker-footer-split">
-                                <button type="button" class="wss-picker-today-btn"
-                                        disabled="@IsDisabledForCommit(TodayForCommit)"
-                                        @onclick="OnTodayClickAsync">@TodayText</button>
-                            </div>
-                        }
+                        @ExtraFooterFragment
+                        @TodayFooterFragment
                     }
                 </div>
             }
@@ -274,7 +212,7 @@
     // the week-number rows) -- ten interdependent bits of per-day state (class, disabled, the roving
     // tabindex, the data-date JS focus hook, the full-date accessible name, aria-pressed, aria-current,
     // the click, the zero-padded text) that must never diverge between them. Kept as a fragment for
-    // the same reason TimeRowFragment below is one.
+    // the same reason the footer fragments below are.
     RenderFragment<DateTime> DayButtonFragment => d => @<button type="button" class="@DayClass(d)"
                                                                disabled="@IsDayDisabled(d)"
                                                                tabindex="@(IsFocusStop(d) ? "0" : "-1")"
@@ -308,32 +246,38 @@
                 disabled="@NextYearDisabled" @onclick="NextYear">@PickerIcons.NextIcon</button>
     </div>;
 
-    // The shared hour/minute/[second]/[period] select row, rendered by Mode.Time (as the whole panel)
-    // and Mode.DateTime (appended below the day calendar) -- see PickerTimeRow for the markup and the
-    // three render-time invariants it owns (DisabledTime evaluated once per row, step-then-hide filter
-    // order, never-jump). Kept as a fragment rather than repeating the element at both call sites.
-    // Each select's own change commits immediately via PickerBase's shared handlers ->
-    // ApplyTimePartAsync (this class's override) -- see DatePicker.razor.cs's "Time/DateTime mode"
-    // section. DisabledTime is invoked exactly once here, for the whole row, against the bound value's
-    // own date part.
-    RenderFragment TimeRowFragment => @<PickerTimeRow Hour="@TimeRowHour"
-                                                      Minute="@TimeRowMinute"
-                                                      Second="@TimeRowSecond"
-                                                      IsPM="@TimeRowIsPM"
-                                                      HourOptions="@(TimeRowHourOptions(HourStep, Use12Hours))"
-                                                      MinuteOptions="@(TimeRowMinuteOptions(MinuteStep))"
-                                                      SecondOptions="@(TimeRowSecondOptions(SecondStep))"
-                                                      DisabledParts="@(DisabledTime?.Invoke(Value?.Date))"
-                                                      ShowSeconds="@ShowSeconds"
-                                                      Use12Hours="@Use12Hours"
-                                                      HideDisabledTimeOptions="@HideDisabledTimeOptions"
-                                                      HourSelectLabel="@HourSelectLabel"
-                                                      MinuteSelectLabel="@MinuteSelectLabel"
-                                                      SecondSelectLabel="@SecondSelectLabel"
-                                                      PeriodSelectLabel="@PeriodSelectLabel"
-                                                      Culture="@PickerCulture"
-                                                      HourChanged="OnHourSelectChangedAsync"
-                                                      MinuteChanged="OnMinuteSelectChangedAsync"
-                                                      SecondChanged="OnSecondSelectChangedAsync"
-                                                      PeriodChanged="OnPeriodSelectChangedAsync" />;
+    // AntD's renderExtraFooter strip, which every one of the six panel shapes below the grid renders
+    // identically (and always in the same place: below the grid/time row, above whatever footer the
+    // mode has of its own). The null check lives INSIDE the fragment so no call site can forget it.
+    RenderFragment ExtraFooterFragment => @<text>@if (ExtraFooter is not null)
+        {
+            <div class="wss-picker-extra-footer">@ExtraFooter</div>
+        }</text>;
+
+    // ShowToday's footer, rendered by Date/Month/Quarter/Year/Week -- every mode that isn't
+    // Time/DateTime (see ShowTodayLink, which is what makes this a no-op in those two). The button
+    // renders DISABLED, not hidden, when the normalized today is rejected -- the same convention
+    // every other disabled cell in this control follows.
+    RenderFragment TodayFooterFragment => @<text>@if (ShowTodayLink)
+        {
+            <div class="wss-picker-footer wss-picker-footer-split">
+                <button type="button" class="wss-picker-today-btn"
+                        disabled="@IsDisabledForCommit(TodayForCommit)"
+                        @onclick="OnTodayClickAsync">@TodayText</button>
+            </div>
+        }</text>;
+
+    // Time/DateTime's own footer: the optional ShowNow link (left) plus OK (right, always) -- those
+    // two modes commit incrementally, so OK is their close signal rather than a commit. Unlike the
+    // Today footer above, the row itself always renders; TimeFooterClass switches it to
+    // space-between only when the Now link actually renders alongside OK.
+    RenderFragment TimeFooterFragment => @<div class="@TimeFooterClass">
+        @if (ShowNowLink)
+        {
+            <button type="button" class="wss-picker-today-btn"
+                    disabled="@IsDisabledForCommit(NowForCommit)"
+                    @onclick="OnNowClickAsync">@NowText</button>
+        }
+        <button type="button" class="wss-picker-ok" @onclick="OnPickerOkAsync">@OkText</button>
+    </div>;
 }

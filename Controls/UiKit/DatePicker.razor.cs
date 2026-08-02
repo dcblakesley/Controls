@@ -516,6 +516,21 @@ public partial class DatePicker : PickerBase
     // (DateRangePicker's own override resolves the ACTIVE endpoint's pending session value instead.)
     internal override DateTime? TimeRowValue => Value;
 
+    // The rest of the time row's inputs, forwarded from this control's own parameters -- see
+    // PickerBase's own declarations for what each feeds. DisabledTime is invoked exactly once here,
+    // for the whole row, against the bound value's own date part.
+    internal override DisabledTimeParts? TimeRowDisabledParts => DisabledTime?.Invoke(Value?.Date);
+    internal override bool TimeRowShowSeconds => ShowSeconds;
+    internal override bool TimeRowUse12Hours => Use12Hours;
+    internal override bool TimeRowHideDisabledOptions => HideDisabledTimeOptions;
+    internal override int TimeRowHourStep => HourStep;
+    internal override int TimeRowMinuteStep => MinuteStep;
+    internal override int TimeRowSecondStep => SecondStep;
+    internal override string? TimeRowHourLabel => HourSelectLabel;
+    internal override string? TimeRowMinuteLabel => MinuteSelectLabel;
+    internal override string? TimeRowSecondLabel => SecondSelectLabel;
+    internal override string? TimeRowPeriodLabel => PeriodSelectLabel;
+
     // The years offered by the year select: Min/Max years when set, otherwise ±10 around the
     // displayed year — see PickerMath.YearRange for the full contract (including the [1, 9999]
     // clamp -- OnYearSelectChanged applies the matching clamp to the value actually selected).

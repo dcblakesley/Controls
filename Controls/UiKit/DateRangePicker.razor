@@ -135,33 +135,13 @@
                         }
                     }
                     @* The Time/DateTime pick session's time row -- the same PickerTimeRow DatePicker's own
-                       Time/DateTime panel renders (see that component for the markup and the three
+                       Time/DateTime panel renders, through the one shared PickerTimeRowSlot invocation
+                       (see that component, and PickerTimeRow itself for the markup and the three
                        render-time invariants it owns). Each select's change writes to the ACTIVE
                        endpoint's pending session value via PickerBase's shared handlers ->
                        ApplyTimePartAsync (this class's override) instead of committing immediately -- OK
-                       is this session's commit signal, not the select change itself. ActiveDisabledTime
-                       is invoked exactly once here, for the whole row, against the active endpoint's own
-                       resolved date part. *@
-                    <PickerTimeRow Hour="@TimeRowHour"
-                                   Minute="@TimeRowMinute"
-                                   Second="@TimeRowSecond"
-                                   IsPM="@TimeRowIsPM"
-                                   HourOptions="@(TimeRowHourOptions(HourStep, Use12Hours))"
-                                   MinuteOptions="@(TimeRowMinuteOptions(MinuteStep))"
-                                   SecondOptions="@(TimeRowSecondOptions(SecondStep))"
-                                   DisabledParts="@(ActiveDisabledTime?.Invoke(ActiveSessionValue?.Date))"
-                                   ShowSeconds="@ShowSeconds"
-                                   Use12Hours="@Use12Hours"
-                                   HideDisabledTimeOptions="@HideDisabledTimeOptions"
-                                   HourSelectLabel="@HourSelectLabel"
-                                   MinuteSelectLabel="@MinuteSelectLabel"
-                                   SecondSelectLabel="@SecondSelectLabel"
-                                   PeriodSelectLabel="@PeriodSelectLabel"
-                                   Culture="@PickerCulture"
-                                   HourChanged="OnHourSelectChangedAsync"
-                                   MinuteChanged="OnMinuteSelectChangedAsync"
-                                   SecondChanged="OnSecondSelectChangedAsync"
-                                   PeriodChanged="OnPeriodSelectChangedAsync" />
+                       is this session's commit signal, not the select change itself. *@
+                    <PickerTimeRowSlot Picker="this" />
                     @if (ExtraFooter is not null)
                     {
                         <div class="wss-picker-extra-footer">@ExtraFooter</div>

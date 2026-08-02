@@ -896,6 +896,25 @@ public class DatePickerTests : BunitContext
     }
 
     [Fact]
+    public void Time_select_change_rerenders_the_picker_with_no_bound_callback()
+    {
+        // The time row is rendered through a shared slot component, but its four change callbacks
+        // are bound with the PICKER as their EventCallback receiver -- the receiver is what the
+        // renderer calls StateHasChanged on once the handler has run. Nothing is bound here, so the
+        // picker's own re-render is the only thing that can update the field and the select: if the
+        // slot were the receiver, both would still show 10:00:00.
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Time)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 10, 0, 0)));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("15"); // hour
+
+        Assert.Equal("15:00:00", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+        Assert.Equal("15", TimeSelects(cut)[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
     public void Datetime_mode_ok_button_closes_the_panel()
     {
         var cut = Render<DatePicker>(p => p

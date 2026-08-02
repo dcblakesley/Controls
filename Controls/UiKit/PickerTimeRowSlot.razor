@@ -1,0 +1,42 @@
+@namespace Controls
+
+@* The one place <PickerTimeRow> is invoked. Both pickers render exactly this row -- DatePicker's
+   Mode.Time (as the whole panel) and Mode.DateTime (appended below the day calendar), and
+   DateRangePicker's Time/DateTime pick session -- and every one of the row's twenty arguments comes
+   off the picker itself (see PickerBase's "Shared time-row layer" section for the value-derived
+   members and the subclass hooks behind the rest). The two pickers' genuinely different behavior
+   lives behind ApplyTimePartAsync, not in this invocation, so transcribing it per call site only
+   created three chances to forget an argument.
+
+   `Picker="this"` at each call site is the whole configuration surface. *@
+<PickerTimeRow Hour="@Picker.TimeRowHour"
+               Minute="@Picker.TimeRowMinute"
+               Second="@Picker.TimeRowSecond"
+               IsPM="@Picker.TimeRowIsPM"
+               HourOptions="@Picker.TimeRowHourOptions"
+               MinuteOptions="@Picker.TimeRowMinuteOptions"
+               SecondOptions="@Picker.TimeRowSecondOptions"
+               DisabledParts="@Picker.TimeRowDisabledParts"
+               ShowSeconds="@Picker.TimeRowShowSeconds"
+               Use12Hours="@Picker.TimeRowUse12Hours"
+               HideDisabledTimeOptions="@Picker.TimeRowHideDisabledOptions"
+               HourSelectLabel="@Picker.TimeRowHourLabel"
+               MinuteSelectLabel="@Picker.TimeRowMinuteLabel"
+               SecondSelectLabel="@Picker.TimeRowSecondLabel"
+               PeriodSelectLabel="@Picker.TimeRowPeriodLabel"
+               Culture="@Picker.PickerCulture"
+               HourChanged="@Picker.TimeRowHourChanged"
+               MinuteChanged="@Picker.TimeRowMinuteChanged"
+               SecondChanged="@Picker.TimeRowSecondChanged"
+               PeriodChanged="@Picker.TimeRowPeriodChanged" />
+
+@code {
+    // Not a supported standalone control: this is DatePicker/DateRangePicker's own time-row wiring,
+    // factored out so the invocation exists once. It is public only because Razor always compiles a
+    // .razor component to a public class -- treat it as internal to the pickers.
+
+    /// <summary>The picker whose time-row state this row reflects and edits. The four change
+    /// callbacks come off it pre-bound (with the picker as their receiver), so the picker — not this
+    /// slot — is what re-renders after a select change.</summary>
+    [Parameter, EditorRequired] public PickerBase Picker { get; set; } = default!;
+}

@@ -1537,6 +1537,21 @@ public partial class DateRangePicker : PickerBase
     // side's own (see the class remarks: "the active side's callback drives the visible time row").
     Func<DateTime?, DisabledTimeParts?>? ActiveDisabledTime => _activeInput == 0 ? StartDisabledTime : EndDisabledTime;
 
+    // The rest of the time row's inputs, forwarded from this control's own parameters -- see
+    // PickerBase's own declarations for what each feeds. The ACTIVE endpoint's DisabledTime is
+    // invoked exactly once here, for the whole row, against that endpoint's own resolved date part.
+    internal override DisabledTimeParts? TimeRowDisabledParts => ActiveDisabledTime?.Invoke(ActiveSessionValue?.Date);
+    internal override bool TimeRowShowSeconds => ShowSeconds;
+    internal override bool TimeRowUse12Hours => Use12Hours;
+    internal override bool TimeRowHideDisabledOptions => HideDisabledTimeOptions;
+    internal override int TimeRowHourStep => HourStep;
+    internal override int TimeRowMinuteStep => MinuteStep;
+    internal override int TimeRowSecondStep => SecondStep;
+    internal override string? TimeRowHourLabel => HourSelectLabel;
+    internal override string? TimeRowMinuteLabel => MinuteSelectLabel;
+    internal override string? TimeRowSecondLabel => SecondSelectLabel;
+    internal override string? TimeRowPeriodLabel => PeriodSelectLabel;
+
     // PickerBase's ApplyTimePartAsync hook, for the pick session: composes a new PENDING value for the
     // active endpoint from its current date part (its own session/committed value's date, or today when
     // neither exists) and its current time-of-day (ditto) with one H/m/s part replaced -- the identical

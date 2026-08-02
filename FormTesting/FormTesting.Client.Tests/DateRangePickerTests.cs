@@ -1153,6 +1153,26 @@ public class DateRangePickerTests : BunitContext
     }
 
     [Fact]
+    public void Session_time_select_change_rerenders_the_picker_with_no_bound_callback()
+    {
+        // Mirror of DatePickerTests' own receiver guard: the shared time-row slot binds its change
+        // callbacks with the PICKER as receiver, so the pending session value's preview updates in
+        // the field even though nothing is bound to StartChanged/EndChanged (a session commits on
+        // OK, never on a select change).
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 10, 0, 0)));
+
+        Open(cut);
+        TimeSelects(cut)[0].Change("15"); // hour
+
+        Assert.Equal("01/15/2025 15:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+        Assert.Equal("15", TimeSelects(cut)[0].QuerySelector("option[selected]")!.GetAttribute("value"));
+    }
+
+    [Fact]
     public void Hidedisabledtimeoptions_omits_other_disabled_hours_but_keeps_the_current_value_visible()
     {
         var cut = Render<DateRangePicker>(p => p
