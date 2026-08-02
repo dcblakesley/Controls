@@ -46,7 +46,12 @@
             }
             @if (ShowPasswordToggle)
             {
+                @* disabled, not hidden: the button keeps its place so the field's chrome doesn't
+                   reflow when a form disables it, but a disabled field's secret must not be
+                   revealable -- and native `disabled` also drops the button out of the tab order,
+                   so AT no longer offers a control inside a field it announces as unavailable. *@
                 <button type="button" class="edit-input-password-toggle"
+                        disabled="@IsDisabled"
                         aria-label="@(IsPasswordRevealed ? "Hide value" : "Show value")"
                         aria-pressed="@(IsPasswordRevealed ? "true" : "false")"
                         @onclick="OnTogglePassword">

@@ -68,6 +68,31 @@ public partial class EditString : EditTextInputBase
     bool _passwordRevealed;
 
     /// <summary>
+    /// Drops both reveal states the moment the thing they reveal is no longer the thing the user
+    /// asked to see. Neither is a parameter, so nothing else would ever clear them: an instance that
+    /// leaves and re-enters edit mode, has <see cref="IsPassword"/> flipped, or (in read-only mode)
+    /// is handed a different record's value keeps rendering revealed, re-exposing a secret the user
+    /// never asked for a second time. Reuse without a <c>@key</c> is the sharp case — the component
+    /// instance survives, so revealing record A's masked value would show record B's in the clear.
+    /// </summary>
+    /// <remarks>
+    /// The two states reset on deliberately different triggers. <see cref="_passwordRevealed"/>
+    /// resets when the editor stops being a revealable password box at all (read-only mode, or
+    /// password-ness switched off) but NOT on a value change: in edit mode every keystroke changes
+    /// the value, so that rule would un-reveal the box mid-typing. <see cref="_showMaskedValue"/> is
+    /// the read-only counterpart and gets both triggers — it is meaningless in edit mode, and a
+    /// read-only value only changes when the control is handed different data, which is exactly the
+    /// record-swap case.
+    /// </remarks>
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (!ShowEditor || !EffectiveIsPassword) _passwordRevealed = false;
+        if (ShowEditor || ValueChangedSinceLastParameters) _showMaskedValue = false;
+    }
+
+    /// <summary>
     /// True once any affix parameter is in use -- the single computation site
     /// <see cref="EditInputShell.UsesAffixLayout"/> defines, so this control and the shell always
     /// agree on which layout renders.
@@ -188,8 +213,18 @@ public partial class EditString : EditTextInputBase
             ? null
             : "noopener noreferrer";
 
-    /// <summary> Toggles the password reveal state driving the shell's show/hide button.</summary>
-    void TogglePasswordVisibility() => _passwordRevealed = !_passwordRevealed;
+    /// <summary>
+    /// Toggles the password reveal state driving the shell's show/hide button. Inert while the
+    /// control is disabled: the shell renders that button with native <c>disabled</c>, so a browser
+    /// won't fire the click at all, but the value of a disabled field must not be revealable through
+    /// any path that can still reach this handler (a programmatic <c>.click()</c>, a test harness
+    /// that dispatches to disabled elements) — the guard, not the attribute, is what makes that true.
+    /// </summary>
+    void TogglePasswordVisibility()
+    {
+        if (IsDisabled) return;
+        _passwordRevealed = !_passwordRevealed;
+    }
 
     /// <summary>
     /// The masked read-only text: <see cref="MaskText"/> followed by whatever tail of the value it

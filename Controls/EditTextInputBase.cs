@@ -126,6 +126,34 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     /// </summary>
     protected virtual Task OnClearedAsync() => Task.CompletedTask;
 
+    // The bound value as it stood at the previous parameter set -- the baseline
+    // ValueChangedSinceLastParameters compares against.
+    string? _lastParameterValue;
+
+    /// <summary>
+    /// Whether <see cref="InputBase{TValue}.CurrentValue"/> differs from what it was at the previous
+    /// parameter set. Recomputed by <see cref="OnParametersSet"/> before any derived override's own
+    /// work runs (they chain to base first), so a derived control can hang per-value state resets off
+    /// it. True on the first parameter set for a non-null initial value — there is no earlier value
+    /// to have matched.
+    /// </summary>
+    /// <remarks>
+    /// This says the value changed, not who changed it: in edit mode the user's own typing moves
+    /// <see cref="InputBase{TValue}.CurrentValue"/> too (per keystroke under
+    /// <see cref="UpdateTrigger.Input"/>). Only key state off this where that is either the intent or
+    /// harmless — see <see cref="EditString"/>'s read-only reveal reset, which additionally requires
+    /// read-only mode, where a value change can only mean the control was handed different data.
+    /// </remarks>
+    protected bool ValueChangedSinceLastParameters { get; private set; }
+
+    /// <inheritdoc/>
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        ValueChangedSinceLastParameters = !string.Equals(CurrentValue, _lastParameterValue, StringComparison.Ordinal);
+        _lastParameterValue = CurrentValue;
+    }
+
     // Trivial parser — same as Microsoft's InputText/InputTextArea: pass the string through.
     // `out string` (not `string?`) because InputBase<T>'s abstract signature declares it non-nullable.
     protected override bool TryParseValueFromString(string? value, out string? result, out string validationErrorMessage)

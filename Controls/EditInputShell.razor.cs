@@ -71,13 +71,21 @@ public partial class EditInputShell
 
     /// <summary>
     /// Whether the host control is currently disabled — added as <c>edit-input-affix-disabled</c> to
-    /// the affix wrapper. There's no <c>:disabled</c> pseudo-class for a wrapper <c>div</c>, so the
+    /// the affix wrapper, and set as native <c>disabled</c> on the password toggle button. There's no
+    /// <c>:disabled</c> pseudo-class for a wrapper <c>div</c>, so the
     /// four hosts (EditString/EditNumber/EditTextArea/EditDateNative) pass their own <c>IsDisabled</c>
     /// through unconditionally and the <c>.edit-theme</c> opt-in theme keys off this class instead —
     /// the same C#-owned-class approach <c>Select</c>'s <c>wss-select-disabled</c> uses. No effect in
     /// legacy mode (the wrapper doesn't render there; the editor's own native <c>:disabled</c> covers
     /// unthemed and themed styling).
     /// </summary>
+    /// <remarks>
+    /// The toggle stays rendered rather than being dropped: the field's trailing chrome keeps its
+    /// width when a form disables it. Native <c>disabled</c> is what actually matters — a disabled
+    /// field's value must not be revealable, and the attribute also removes the button from the tab
+    /// order (the clear button needs no equivalent: hosts compute <see cref="IsClearable"/> as
+    /// false while disabled, so it isn't rendered at all).
+    /// </remarks>
     [Parameter] public bool IsDisabled { get; set; }
 
     /// <summary>
