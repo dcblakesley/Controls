@@ -361,6 +361,32 @@ public class ControlSmokeTests : BunitContext
         Assert.Equal(expectedRel, a.GetAttribute("rel"));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void EditString_read_only_link_falls_back_to_plain_text_when_the_value_is_empty(string? value)
+    {
+        // An <a> with no text is invisible but still clickable -- a zero-size navigation target sitting
+        // in the layout, and a link with no accessible name for a screen reader to announce. With
+        // nothing to label it, fall through to the plain read-only value instead.
+        var model = new PersonModel { Name = value! };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "IsEditMode", false);
+            b.AddAttribute(5, "Url", "https://example.com");
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll("a"));
+        var readOnly = cut.Find("div.edit-readonly-value");
+        Assert.Equal("Name", readOnly.GetAttribute("id"));
+        Assert.Equal("No Value", readOnly.QuerySelector("span[aria-hidden=\"true\"]")!.TextContent);
+    }
+
     [Fact]
     public void EditString_renders_required_star_when_attribute_present()
     {

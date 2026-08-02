@@ -40,10 +40,17 @@
         else
         {
             <!-- Read-Only Views -->
-            @* IsNullOrEmpty, not IsNullOrWhiteSpace: an all-whitespace MaskText is still a mask the
-               consumer asked for. Skipping the masked branch for one printed the raw value instead --
-               a silent disclosure -- and disagreed with GetMaskValue's own IsNullOrEmpty guard. *@
-            @if (!string.IsNullOrEmpty(MaskText))
+            @* Both special read-only views need a value to put in them. With none, the masked view is
+               an empty span next to an eye toggle that reveals nothing, and the link is an invisible
+               but still-clickable <a>. An empty value therefore falls through to the plain read-only
+               value, which has its own reserved-space placeholder.
+
+               IsNullOrEmpty, not IsNullOrWhiteSpace, on the mask: an all-whitespace MaskText is still
+               a mask the consumer asked for. Skipping the masked branch for one printed the raw value
+               instead -- a silent disclosure -- and disagreed with GetMaskValue's own guard. Note the
+               link branch below needs no MaskText check: it is only reachable when the branch above
+               was declined, and with a non-empty value that can only mean an empty mask. *@
+            @if (!string.IsNullOrEmpty(MaskText) && !string.IsNullOrEmpty(Value))
             {
                 <!-- Masks with eye icons to show/hide masked text in EditMode  -->
                 @if (!_showMaskedValue)
@@ -55,26 +62,22 @@
                     @MaskedValueRow(Value, "Hide value", "edit-icon-eye", EditIcons.Eye)
                 }
             }
+            else if (SafeUrl != null && !string.IsNullOrEmpty(Value))
+            {
+                <a class="edit-string-link @CssClass"
+                   id=@_id
+                   data-test-id=@_id
+                   aria-describedby=@_describedBy
+                   aria-labelledby="lbl-@_id"
+                   href=@SafeUrl
+                   target=@UrlTarget
+                   rel=@UrlRel>
+                    @Value
+                </a>
+            }
             else
             {
-                @if (SafeUrl != null)
-                {
-                    <a class="edit-string-link @CssClass"
-                       id=@_id
-                       data-test-id=@_id
-                       aria-describedby=@_describedBy
-                       aria-labelledby="lbl-@_id"
-                       href=@SafeUrl
-                       target=@UrlTarget
-                       rel=@UrlRel>
-                        @Value
-                    </a>
-                }
-                else
-                {
-
-                    <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@Value />
-                }
+                <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@Value />
             }
         }
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
@@ -85,9 +88,11 @@
 
 @code {
     // Shared by both masked-value read-only rows above -- identical markup, differing only in which
-    // text shows and the eye-toggle button's label/class/icon (revealed vs. hidden).
+    // text shows and the eye-toggle button's label/class/icon (revealed vs. hidden). CssClass rides
+    // on the wrapper for the same reason the link branch and ReadOnlyValue carry it: this div is the
+    // read-only field element, and a consumer's `class` is documented to land on it in every mode.
     RenderFragment MaskedValueRow(string? text, string toggleAriaLabel, string iconClass, MarkupString icon) =>
-        @<div class="edit-masked-value" id=@_id data-test-id=@_id aria-labelledby="lbl-@_id">
+        @<div class="edit-masked-value @CssClass" id=@_id data-test-id=@_id aria-labelledby="lbl-@_id">
             <span class="edit-readonly-value">@text</span>
             <button type="button" aria-label="@toggleAriaLabel" class="@iconClass" @onclick=@(() => _showMaskedValue = !_showMaskedValue)>
                 @icon

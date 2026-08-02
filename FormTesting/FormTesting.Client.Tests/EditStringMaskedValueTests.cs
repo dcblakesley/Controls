@@ -146,6 +146,54 @@ public class EditStringMaskedValueTests : BunitContext
         Assert.Equal("**", MaskedText(RenderMasked(combining, () => combining.Name, "*")));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void Masked_mode_with_no_value_renders_the_plain_read_only_value(string? value)
+    {
+        // There is nothing to mask and nothing for the eye toggle to reveal: the masked row was just
+        // an empty span next to a button that did nothing visible. Fall through to ReadOnlyValue,
+        // which has its own reserved-space placeholder for the empty case.
+        var model = new PersonModel { Name = value! };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = RenderMasked(model, field);
+
+        Assert.Empty(cut.FindAll(".edit-masked-value"));
+        Assert.Empty(cut.FindAll("button"));
+
+        var readOnly = cut.Find("div.edit-readonly-value");
+        Assert.Equal("Name", readOnly.GetAttribute("id"));
+        // ReadOnlyValue's own empty case: a hidden placeholder holding the line's height open.
+        Assert.Equal("No Value", readOnly.QuerySelector("span[aria-hidden=\"true\"]")!.TextContent);
+    }
+
+    [Fact]
+    public void The_masked_wrapper_carries_the_consumer_class()
+    {
+        // The masked wrapper is the read-only field element in mask mode, and `class` is documented to
+        // land on the field element in every mode -- the link branch and ReadOnlyValue both already
+        // carried it, so mask mode was the one hole.
+        var model = new PersonModel { Name = "abcdefgh" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "MaskText", "****-");
+            b.AddAttribute(5, "IsEditMode", false);
+            b.AddAttribute(6, "class", "w-narrow");
+            b.CloseComponent();
+        }));
+
+        var wrapper = cut.Find(".edit-masked-value");
+        Assert.Contains("w-narrow", wrapper.ClassList);
+        Assert.Contains("edit-masked-value", wrapper.ClassList);
+        // Revealing keeps it -- both rows come from the same fragment.
+        cut.Find(".edit-masked-value button").Click();
+        Assert.Contains("w-narrow", cut.Find(".edit-masked-value").ClassList);
+    }
+
     [Fact]
     public void MaskText_wins_over_Url_when_both_are_set()
     {
