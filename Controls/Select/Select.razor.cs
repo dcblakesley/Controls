@@ -110,7 +110,7 @@ public partial class Select<TValue> : IAsyncDisposable
     [Parameter] public EventCallback<IEnumerable<TValue>> ValuesChanged { get; set; }
 
     /// <summary>Text shown while nothing is selected. Defaults to "Please select".</summary>
-    [Parameter] public string Placeholder { get; set; } = "Please select";
+    [Parameter] public string Placeholder { get; set; } = SelectDefaults.Placeholder;
     /// <summary>Disables all interaction (the dropdown cannot open and tags cannot be removed).</summary>
     [Parameter] public bool Disabled { get; set; }
     /// <summary>Shows a clear button while a value is selected. Defaults to true.</summary>
@@ -139,7 +139,7 @@ public partial class Select<TValue> : IAsyncDisposable
     /// <summary>Multiple/tags modes: maximum number of selected tags to display; the remainder collapses into a "+ n ..." summary tag. Null (default) shows all.</summary>
     [Parameter] public int? MaxTagCount { get; set; }
     /// <summary>Text shown in the dropdown when no options match. Defaults to "No data".</summary>
-    [Parameter] public string EmptyText { get; set; } = "No data";
+    [Parameter] public string EmptyText { get; set; } = SelectDefaults.EmptyText;
     /// <summary>Richer alternative to <see cref="EmptyText"/> for the no-match state — wins over
     /// <see cref="EmptyText"/> when set.</summary>
     [Parameter] public RenderFragment? EmptyContent { get; set; }
