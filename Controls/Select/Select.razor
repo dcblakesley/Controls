@@ -71,10 +71,18 @@
         else
         {
             <span class="wss-select-selection-wrap">
-                @* Multiple / Tags: render each selected value as a removable tag. *@
+                @* Multiple / Tags: render each selected value as a removable tag.
+                   @key="option.Value": without it, adding/removing a tag changes this foreach's
+                   emitted frame count, which shifts every subsequent sibling's sequence number --
+                   including the shared searchInput fragment's <input @ref> below. Blazor then tears
+                   that <input> down and recreates it instead of patching it in place, so it drops
+                   real DOM focus to <body> with nothing to restore it (FocusInputAsync's _inputRef
+                   is the fresh element and its own .focus() call already ran by then). _selectedSet
+                   is a HashSet, so option.Value is always unique among visible tags -- same fix
+                   shape as the nav button @key in Tabs.razor. *@
                 @foreach (var (option, index) in VisibleTags())
                 {
-                    <span class="wss-select-selection-item">
+                    <span class="wss-select-selection-item" @key="option.Value">
                         <span class="wss-select-selection-item-content">@option.Label</span>
                         @* No remove button when disabled — RemoveAsync no-ops anyway, so rendering it
                            leaves a focusable, active-looking control that does nothing (the clear
