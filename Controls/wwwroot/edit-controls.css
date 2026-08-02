@@ -651,7 +651,9 @@
     position: relative;
     display: inline-block; /* Or block, depending on layout */
     background: transparent;
-    margin-left: 4px;
+    /* Logical (not physical margin-left): the last non-centering physical offset in this file --
+       under dir="rtl" a physical left margin puts the gap on the wrong side of the trigger icon. */
+    margin-inline-start: 4px;
     margin-top: -8px;
     width: auto;
     vertical-align: middle;
@@ -860,9 +862,16 @@
 
 /* Honor the OS "reduce motion" setting (WCAG 2.3.3), mirroring wss-controls.css: the bubble just
    appears/disappears — no slide, no fade. (The 0.35s hover-intent delay rides the reveal
-   transition, so it goes too; intent-filtering is a nicety, not motion.) */
+   transition, so it goes too; intent-filtering is a nicety, not motion.) Also covers the .edit-theme
+   input-chrome border/shadow transition and the button-mode radio/EditFile-button color transitions
+   -- the byte-equivalent wss-select-selector recipe in wss-controls.css is already suppressed there;
+   this closes the same gap in this file. */
 @media (prefers-reduced-motion: reduce) {
-    .edit-tooltip-content {
+    .edit-tooltip-content,
+    .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]),
+    .edit-theme .edit-input-affix-wrapper,
+    .edit-radio-button,
+    .edit-file-select-btn {
         transition: none;
     }
 }
