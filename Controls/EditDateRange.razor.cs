@@ -391,10 +391,19 @@ public partial class EditDateRange : IDisposable
     // inputs, so there's no "leak onto the other field" concern to avoid -- the opposite problem
     // applies instead. The natural annotation is [MinValue] on Start and [MaxValue] on End (the
     // property each bound most obviously constrains), but a single [Range(typeof(DateTime), ...)] on
-    // just one property also supplies both bounds at once, so the shared calendar bound is the TRUE
-    // union of what either field's own validation would accept (min-of-mins, max-of-maxes) -- see
-    // UnionMin/UnionMax below -- so the shared calendar can never be tighter than both fields' own
-    // annotations and block a value either field's own validation would allow.
+    // just one property also supplies both bounds at once, so each shared bound is the LOOSER of the
+    // two fields' own (min-of-mins, max-of-maxes) -- see UnionMin/UnionMax below. That's what keeps
+    // the calendar from being tighter than either field's own annotation and blocking a value that
+    // field's own validation would allow.
+    //
+    // Deliberate limitation: the result is the convex HULL of the two fields' accepted sets, NOT their
+    // union. With [Range(2024-03-01 .. 2024-03-31)] on Start and [Range(2024-09-01 .. 2024-09-30)] on
+    // End the calendar offers 2024-06-15, which NEITHER field accepts. A single calendar has exactly
+    // one min and one max, so disjoint per-field windows can't be expressed there at all; the
+    // annotations still reject the pick at validation time, which is the safe direction to err (an
+    // over-tight calendar would instead make a legal value unreachable, with no message explaining
+    // why). Not a regression -- the first-non-null chain this replaced had the same gap, plus the
+    // tighter-of-two bug.
     DateTime? EffectiveMin => Min ?? UnionMin(_attributes.MinDate(), _endAttributes.MinDate());
     DateTime? EffectiveMax => Max ?? UnionMax(_attributes.MaxDate(), _endAttributes.MaxDate());
 

@@ -11,12 +11,15 @@ namespace FormTesting.Client.Tests;
 /// (falling back to <see cref="RangeAttribute"/>) reaching <see cref="EditDateRange"/>'s shared
 /// <see cref="DateRangePicker"/> calendar via <c>EffectiveMin</c>/<c>EffectiveMax</c>. Unlike
 /// <c>ModelPlaceholderDateTests</c>' Start/EndPlaceholder (which resolve independently per input),
-/// Min/Max bound the ONE calendar both fields share, so each effective value is a TRUE union of what
-/// either field's own validation would accept: whichever ONE field declares when only one does (the
-/// "natural" pairing -- Start for Min, End for Max -- still reaches the picker with nothing to
-/// compare against), else the earlier Min / later Max of the two when BOTH declare one (see
-/// <c>UnionMin</c>/<c>UnionMax</c>) -- never a blind preference for one field that could pick the
-/// TIGHTER of two conflicting bounds (see the <c>Conflicting*</c> models/tests below). Assertions
+/// Min/Max bound the ONE calendar both fields share, so each effective value is the LOOSER of the two
+/// fields' own bounds: whichever ONE field declares when only one does (the "natural" pairing --
+/// Start for Min, End for Max -- still reaches the picker with nothing to compare against), else the
+/// earlier Min / later Max of the two when BOTH declare one (see <c>UnionMin</c>/<c>UnionMax</c>) --
+/// never a blind preference for one field that could pick the TIGHTER of two conflicting bounds (see
+/// the <c>Conflicting*</c> models/tests below). That makes the shared calendar the convex HULL of the
+/// two fields' accepted sets, not their union: disjoint per-field windows leave the gap between them
+/// selectable (see <c>Disjoint_per_field_Ranges…</c>), which each field's own validation still
+/// rejects -- deliberate, since one calendar has exactly one min and one max. Assertions
 /// read the resolved bounds straight off the rendered <see cref="DateRangePicker"/> instance rather
 /// than the DOM, since Min/Max only affect which days render disabled/selectable, not any inspectable
 /// attribute.
@@ -64,6 +67,17 @@ public class ModelMinMaxDateRangeTests : BunitContext
     class NoAttributesModel
     {
         public DateTime? Start { get; set; }
+        public DateTime? End { get; set; }
+    }
+
+    // Two non-overlapping per-field windows -- the case that makes the shared bounds a convex HULL
+    // rather than a union of what either field would accept.
+    class DisjointRangesModel
+    {
+        [Range(typeof(DateTime), "2024-03-01", "2024-03-31")]
+        public DateTime? Start { get; set; }
+
+        [Range(typeof(DateTime), "2024-09-01", "2024-09-30")]
         public DateTime? End { get; set; }
     }
 
@@ -231,6 +245,36 @@ public class ModelMinMaxDateRangeTests : BunitContext
         }));
 
         Assert.Equal(new DateTime(2025, 3, 1), Picker(cut).Max);
+    }
+
+    [Fact]
+    public void Disjoint_per_field_Ranges_yield_the_convex_hull_not_the_union()
+    {
+        // Pins the documented limitation of the min-of-mins / max-of-maxes resolution: Start accepts
+        // only March, End only September, and the shared calendar spans 03-01 .. 09-30 -- so 06-15 is
+        // offered even though NEITHER field's own validation accepts it. One calendar carries exactly
+        // one min and one max, so a genuine union of two disjoint windows can't be expressed there;
+        // erring loose keeps every legal value reachable and leaves the rejection to the annotations,
+        // where the user gets a message. Also guards the resolution from reverting to the old
+        // first-non-null chain, which would report 03-01/09-30's opposites here.
+        var model = new DisjointRangesModel();
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.CloseComponent();
+        }));
+
+        var picker = Picker(cut);
+        Assert.Equal(new DateTime(2024, 3, 1), picker.Min);
+        Assert.Equal(new DateTime(2024, 9, 30), picker.Max);
+        var gapDay = new DateTime(2024, 6, 15);
+        Assert.True(gapDay > picker.Min && gapDay < picker.Max);
     }
 
     [Fact]
