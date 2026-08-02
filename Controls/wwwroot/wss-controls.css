@@ -992,6 +992,12 @@
 
 .wss-popover {
     position: absolute;
+    /* Deliberately above the Modal/Drawer static no-JS baseline (1000, see .wss-modal-wrap/
+       .wss-drawer-root) -- matches AntD's own default popover-over-dialog layering, so a popover
+       triggered from inside a modal still paints over its own mask. This is only the no-JS/pre-
+       hydration fallback rank: once wss-overlay.js runs, Popover/Popconfirm/Modal/Drawer all get an
+       inline z-index from the shared open-order counter (nextZ(), see activateModal/place in
+       wss-overlay.js), so whichever actually opened LAST wins regardless of these static values. */
     z-index: 1030;
     min-width: 177px;
     max-width: 320px;
@@ -1836,6 +1842,7 @@
 
 .wss-popconfirm {
     position: absolute;
+    /* Deliberately above the Modal/Drawer static baseline -- see .wss-popover's own comment above. */
     z-index: 1030;
     min-width: 150px;
     max-width: 280px;
