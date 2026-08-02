@@ -6,8 +6,9 @@ namespace Controls;
 /// If you want to use a list of strings to back the select, use <see cref="EditSelectString{TValue}"/> instead.
 /// </summary>
 // TValue is annotated 'All' because parsing goes through SelectParsing.TryParseStringOrConvert →
-// BindConverter.TryConvertTo<TValue> (mirrors the framework's InputSelect<TValue>).
-public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : EditControlBase<TValue>
+// BindConverter.TryConvertTo<TValue> (mirrors the framework's InputSelect<TValue>). The parse/format/
+// IsValueDefault trio it needs lives on the shared EditSelectBase, together with EditSelectString's.
+public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : EditSelectBase<TValue>
 {
     // Component-specific parameters
 
@@ -29,23 +30,4 @@ public partial class EditSelect<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// read-only mode would show "1"; pass "One" here (typically resolved from the bound value).
     /// </summary>
     [Parameter] public string? ReadOnlyText { get; set; }
-
-    // Strings pass through; enums and other value types round-trip via BindConverter.
-    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
-        SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);
-
-    // Format invariantly to match the parse side — the default (value?.ToString()) is culture-sensitive,
-    // so a de-DE double 1.5 rendered "1,5" and matched no <option value="1.5">.
-    protected override string? FormatValueAsString(TValue? value) => SelectParsing.FormatInvariant(value);
-
-    // The base's EqualityComparer<TValue>.Default.Equals(value, default) alone is NOT enough for
-    // TValue = string: default(string) is null, not "", so EditSelect<string> bound to the empty
-    // string stayed visible under WhenNullOrDefault/WhenReadOnlyAndNullOrDefault while every sibling
-    // (EditSelectString, EditString, EditTextArea, EditRadioString) hid it — contradicting HidingMode's
-    // documented "null or its type's default (e.g. empty string, 0, ...)". Unioned with the base check
-    // rather than replacing it (EditSelectString's copy is a bare string.IsNullOrEmpty) so every other
-    // TValue keeps its own default: EditSelect<int> at 0 and EditSelect<bool> at false still count as
-    // default, which stringifying them ("0"/"False") would have silently broken.
-    protected override bool IsValueDefault() =>
-        base.IsValueDefault() || CurrentValue is string { Length: 0 };
 }

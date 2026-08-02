@@ -2,8 +2,9 @@ namespace Controls;
 
 /// <summary> Select a string from Options (List of strings)</summary>
 // TValue is annotated 'All' because parsing goes through SelectParsing.TryParseStringOrConvert →
-// BindConverter.TryConvertTo<TValue> (mirrors the framework's InputSelect<TValue>).
-public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : EditControlBase<TValue>
+// BindConverter.TryConvertTo<TValue> (mirrors the framework's InputSelect<TValue>). The parse/format/
+// IsValueDefault trio it needs lives on the shared EditSelectBase, together with EditSelect's.
+public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : EditSelectBase<TValue>
 {
     // Component-specific parameters
 
@@ -51,17 +52,4 @@ public partial class EditSelectString<[DynamicallyAccessedMembers(DynamicallyAcc
     /// <summary> Whether the leading blank option renders: suppressed when <see cref="NullOptionText"/>
     /// is null (explicit opt-out) or <typeparamref name="TValue"/> is a non-nullable value type. </summary>
     bool ShowNullOption => NullOptionText is not null && CanBeNull;
-
-    // Strings pass through; anything else round-trips via BindConverter (shared with EditSelect).
-    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage) =>
-        SelectParsing.TryParseStringOrConvert(value, FieldIdentifier.FieldName, out result, out validationErrorMessage);
-
-    // Format invariantly to match the parse side (see EditSelect) — culture-sensitive default formatting
-    // desynced the option-value match under cultures with different numeric separators/signs.
-    protected override string? FormatValueAsString(TValue? value) => SelectParsing.FormatInvariant(value);
-
-    // Union of the base default check and the empty-string case, matching EditSelect: the base
-    // covers null and value-type defaults (0, false — HidingMode.cs documents both as "default"),
-    // which the previous CurrentValue?.ToString() != "" check missed for non-string TValue.
-    protected override bool IsValueDefault() => base.IsValueDefault() || CurrentValue is string { Length: 0 };
 }
