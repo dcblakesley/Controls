@@ -3752,6 +3752,13 @@
     cursor: not-allowed;
 }
 
+/* The addon (SearchInput's leading label chip) keeps its own explicit color -- .wss-search-addon's
+   own rule further up -- which otherwise stays full-strength while the input/clear button beside it
+   dim. */
+.wss-search-disabled .wss-search-addon {
+    color: var(--wss-color-text-disabled);
+}
+
 /* ============================================================================
  * Accessibility
  * ============================================================================ */

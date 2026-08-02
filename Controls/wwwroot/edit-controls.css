@@ -1371,6 +1371,17 @@
     cursor: not-allowed;
 }
 
+/* The count/password-toggle/textarea-count children each set their own explicit color (the
+   icon/count-text split rules further down this section) -- `color` doesn't cascade past an
+   explicit declaration, so the wrapper's own disabled dim above never reaches them without this.
+   (No unthemed equivalent: outside .edit-theme, edit-input-affix-disabled carries no dimming rule at
+   all for the wrapper itself, so there's nothing for these three to defeat there.) */
+.edit-theme .edit-input-affix-wrapper.edit-input-affix-disabled .edit-input-count,
+.edit-theme .edit-input-affix-wrapper.edit-input-affix-disabled .edit-input-password-toggle,
+.edit-theme .edit-input-affix-wrapper.edit-input-affix-disabled .edit-textarea-count {
+    color: var(--edit-color-text-disabled);
+}
+
 .edit-theme .edit-input::placeholder {
     color: var(--edit-color-placeholder);
 }
