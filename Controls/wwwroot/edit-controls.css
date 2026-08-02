@@ -646,14 +646,29 @@
        inline-flex (not the reset block's concern) centers the 1em svg glyph inside the button box.
        flex-shrink: 0 keeps all four at their intrinsic size when a sibling (e.g. a long unbroken
        .edit-readonly-value token in .edit-masked-value) is squeezed in a clipped/scrolling container
-       -- without it a flex row with no free space could shrink the button/icon itself instead. */
+       -- without it a flex row with no free space could shrink the button/icon itself instead.
+       position: relative anchors the invisible hit-area extension (WCAG 2.5.8) declared below. */
     display: inline-flex;
     align-items: center;
+    position: relative;
     flex-shrink: 0;
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
+}
+/* WCAG 2.5.8: these four render as ~14px targets (a bare 1em SVG glyph, no padding) -- extend the
+   pointer target to 24px without moving layout, same invisible-::before technique
+   .edit-tooltip-container (Tooltip section) and .edit-file-delete-btn (EditFile section) already use.
+   -5px on a 14px target lands on 24px (14 + 5 + 5), matching .edit-file-delete-btn's own
+   -3px-on-18px math. */
+.edit-icon-eye::before,
+.edit-icon-eye-invisible::before,
+.edit-input-clear::before,
+.edit-input-password-toggle::before {
+    content: "";
+    position: absolute;
+    inset: -5px;
 }
 /* Clear button only: a slightly darker hover state (AntD's own recipe) so it reads as interactive.
    The password toggle has no hover-only color change -- its two icons (eye / eye-invisible) already
@@ -1470,6 +1485,21 @@
 
 .edit-theme .edit-input-legacy-padding.edit-input-lg:not(.edit-affix-input):not([type="checkbox"]) {
     padding-inline-end: 2.25rem;
+}
+
+/* Print: purely-interactive chrome (clear/password-toggle/mask-eye/delete buttons) has no meaning on
+   paper -- hide it so printed output doesn't carry dead controls. !important is justified here: print
+   is the one context that's meant to beat an arbitrary consumer override. Placed BEFORE the
+   reduced-motion block below per that block's own ordering note (it must stay the file's LAST rule),
+   not because this one has any specificity tie to protect. */
+@media print {
+    .edit-input-clear,
+    .edit-input-password-toggle,
+    .edit-icon-eye,
+    .edit-icon-eye-invisible,
+    .edit-file-delete-btn {
+        display: none !important;
+    }
 }
 
 /* Honor the OS "reduce motion" setting (WCAG 2.3.3), mirroring wss-controls.css: the bubble just

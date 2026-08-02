@@ -145,7 +145,13 @@
  *     wss-overlay.js's repositionFixedBelow, which right-aligns the panel
  *     under the funnel icon via the trigger's physical
  *     getBoundingClientRect().right regardless of text direction -- the CSS
- *     fallback has to agree with that JS-computed position.
+ *     fallback has to agree with that JS-computed position;
+ *   - Popover/Popconfirm's `-left`/`-right` placement modifiers (.wss-popover-left/-right,
+ *     .wss-popconfirm-left/-right) and the hover tooltip's `wss-tooltip-left`/`-right`
+ *     ([data-tooltip].wss-tooltip-left/-right, and edit-controls.css's
+ *     .edit-tooltip-container.wss-tooltip-left/-right) are an explicit physical side the caller (or
+ *     wss-tooltip.js's auto-placement) chose relative to the trigger's on-screen position, same
+ *     reasoning as DrawerPlacement above -- not text-direction-relative.
  */
 
 /* ============================================================================
@@ -1970,7 +1976,7 @@
 .wss-table-thead .wss-table-cell:not(:last-child):not(.wss-table-selection-cell):not(.wss-table-expand-cell)::before {
     position: absolute;
     top: 50%;
-    right: 0;
+    inset-inline-end: 0;
     width: 1px;
     height: 1.6em;
     background-color: var(--wss-color-thead-split);
@@ -2945,7 +2951,10 @@
 .wss-picker-dropdown {
     position: absolute;
     top: calc(100% + 4px);
-    left: 0;
+    /* Logical, unlike .wss-select-dropdown's own left: 0 (that one spans a min-width: 100% anchor,
+       so either edge is the same width -- see the RTL note above). This panel is width: max-content,
+       so which edge it hangs from genuinely differs under dir="rtl". */
+    inset-inline-start: 0;
     z-index: 1050;
     display: flex;
     align-items: stretch;
@@ -3810,6 +3819,28 @@
 .wss-picker-today-btn:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 1px;
+}
+
+/* Print: purely-interactive chrome (close/clear/remove buttons, the filter trigger, pagination,
+   tab nav) has no meaning on paper -- hide it so printed output doesn't carry dead controls. Mirrors
+   edit-controls.css's own print block, including its !important and placement-before-reduced-motion
+   rationale (that block's own ordering note, mirrored here, requires reduced-motion stay the file's
+   last rule). */
+@media print {
+    .wss-modal-close,
+    .wss-drawer-close,
+    .wss-alert-close,
+    .wss-notification-close,
+    .wss-select-clear,
+    .wss-select-selection-item-remove,
+    .wss-search-clear,
+    .wss-search-btn,
+    .wss-picker-clear,
+    .wss-table-filter-trigger,
+    .wss-pagination,
+    .wss-tabs-nav {
+        display: none !important;
+    }
 }
 
 /* Honor the OS "reduce motion" setting (WCAG 2.3.3): drop the slide-ins, the skeleton
