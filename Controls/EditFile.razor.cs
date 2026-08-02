@@ -161,7 +161,16 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     // can't fire a second change event while a batch is mid-flight.
     bool _isLoadingFiles;
 
-    bool _hasError => _uploadErrors.Count > 0 || IsInvalid;
+    /// <summary>
+    /// True when this control should render its error styling: an upload-time rejection this control
+    /// raised itself (bad extension, over a cap — <c>_uploadErrors</c>) OR an EditContext validation
+    /// error on the bound field. Takes <paramref name="isInvalid"/> as an argument rather than reading
+    /// <see cref="EditControlListBase{TItem}.IsInvalid"/> itself so the markup, which needs the answer
+    /// five times in one render, can evaluate the EditContext's message walk once and pass it in — the
+    /// answer can change outside the parameter lifecycle (a validation-state notification), so caching
+    /// it in a field would go stale.
+    /// </summary>
+    bool HasError(bool isInvalid) => _uploadErrors.Count > 0 || isInvalid;
 
     // The <InputFile> (and its drop zone) unmounts once the MaxFiles cap is reached — anything that
     // targets the input (the FormLabel's `for`, focus restoration) must gate on this same condition

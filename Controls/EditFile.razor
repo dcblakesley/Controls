@@ -2,6 +2,12 @@
 
 @if (ShouldShowComponent())
 {
+    @* IsInvalid walks the EditContext's message list on every read, and this markup needs the answer
+       five times (once directly, four more through HasError). Captured into locals rather than a
+       field: validation state changes outside the parameter lifecycle, so a field would go stale. *@
+    var isInvalid = IsInvalid;
+    var hasError = HasError(isInvalid);
+
     @* Splat first so the explicit class/style below win; the consumer's own class stays on the single
        FieldCssClass channel (the drop zone / select button / read-only list), so only style and the
        remaining attributes land here. Never on the drop zone itself — its class list is state-driven. *@
@@ -18,12 +24,12 @@
             {
                 // Byte-identical between both variants -- the input is the real, focusable,
                 // click-catching element in both; only the surrounding visual chrome differs.
-                // aria-errormessage keys off IsInvalid (EditContext validation), not _hasError:
+                // aria-errormessage keys off isInvalid (EditContext validation), not hasError:
                 // error-msg-{id} (FieldValidationDisplay, rendered unconditionally below) only ever
                 // contains EditContext.GetValidationMessages content. A pure upload-time rejection
-                // (_uploadErrors, e.g. bad extension) sets _hasError -- and so aria-invalid -- without
+                // (_uploadErrors, e.g. bad extension) sets hasError -- and so aria-invalid -- without
                 // any EditContext message, and is announced instead through its own role="alert" block
-                // further down. Gating aria-errormessage on _hasError would point it at that
+                // further down. Gating aria-errormessage on hasError would point it at that
                 // EditContext-only element while it's empty, i.e. a real error state with a dangling-
                 // in-effect (present but blank) errormessage target.
                 RenderFragment inputFile = @<InputFile OnChange="LoadFiles"
@@ -32,8 +38,8 @@
                            multiple
                            disabled=@(IsDisabled || _isLoadingFiles)
                            aria-describedby=@_describedBy
-                           aria-invalid=@(_hasError ? "true" : null)
-                           aria-errormessage=@(IsInvalid ? _errorMsgId : null)
+                           aria-invalid=@(hasError ? "true" : null)
+                           aria-errormessage=@(isInvalid ? _errorMsgId : null)
                            aria-required=@_isRequired />;
 
                 @if (Variant == EditFileVariant.Button)
@@ -41,7 +47,7 @@
                     @* Same invisible-InputFile-overlay technique as the dropzone below (the input is the
                        real, focusable, click-catching element; the button look is purely visual) -- so
                        keyboard/focus/click behavior match even though there's no dashed card or drag-drop. *@
-                    <span class="edit-file-select-btn @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass">
+                    <span class="edit-file-select-btn @(hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass">
                         <i class="edit-icon-upload-btn" aria-hidden="true"></i>
                         <span>@ButtonText</span>
                         @inputFile
@@ -49,11 +55,11 @@
                 }
                 else
                 {
-                    <div class="edit-file-drop-zone @_hoverClass @(_hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass"
+                    <div class="edit-file-drop-zone @_hoverClass @(hasError ? "error" : "") @(IsDisabled ? "disabled" : "") @FieldCssClass"
                          @ondragenter="OnDragEnter"
                          @ondragleave="OnDragLeave"
                          @ondragover:preventDefault="true">
-                        <i class="edit-icon-upload@(_hasError ? "-error" : "")" aria-hidden="true"></i>
+                        <i class="edit-icon-upload@(hasError ? "-error" : "")" aria-hidden="true"></i>
                         <div class="edit-file-drop-text">
                             <div>Click or drag files to this area to upload</div>
                             @if (EffectiveAllowedExtensions.Length > 0)

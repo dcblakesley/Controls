@@ -3,6 +3,14 @@
 
 @if (ShouldShowComponent())
 {
+    @* Each of these walks the EditContext's message list, and the markup below needs the pair five
+       times between them (twice each for the picker's aria-* arguments, plus IsEndInvalid again
+       inside FieldCssClass). Captured into locals rather than fields: validation state changes
+       outside the parameter lifecycle, so a field would go stale. *@
+    var startInvalid = IsStartInvalid;
+    var endInvalid = IsEndInvalid;
+    var fieldCssClass = FieldCssClass(endInvalid);
+
     <div class="edit-control-wrapper @ContainerClass">
         <FormLabel Id=@_id FieldIdentifier=@_startFieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
@@ -59,18 +67,18 @@
                              SecondSelectLabel="@SecondSelectLabel"
                              PeriodSelectLabel="@PeriodSelectLabel"
                              StartAriaRequired="@_isRequired"
-                             StartAriaInvalid="@IsStartInvalid"
+                             StartAriaInvalid="@startInvalid"
                              StartAriaDescribedBy="@_describedBy"
-                             StartAriaErrorMessage="@(IsStartInvalid ? _errorMsgId : null)"
+                             StartAriaErrorMessage="@(startInvalid ? _errorMsgId : null)"
                              EndAriaRequired="@_endIsRequired"
-                             EndAriaInvalid="@IsEndInvalid"
+                             EndAriaInvalid="@endInvalid"
                              EndAriaDescribedBy="@_endDescribedBy"
-                             EndAriaErrorMessage="@(IsEndInvalid ? _endErrorMsgId : null)"
-                             @attributes="PickerAttributes" />
+                             EndAriaErrorMessage="@(endInvalid ? _endErrorMsgId : null)"
+                             @attributes="PickerAttributes(fieldCssClass)" />
         }
         else
         {
-            <ReadOnlyValue Id=@_id CssClass=@FieldCssClass Text=@GetDisplayValue() />
+            <ReadOnlyValue Id=@_id CssClass=@fieldCssClass Text=@GetDisplayValue() />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_startFieldIdentifier Attributes=_attributes Label=@Label />

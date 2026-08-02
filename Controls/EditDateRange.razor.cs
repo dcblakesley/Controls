@@ -291,20 +291,23 @@ public partial class EditDateRange : IDisposable
     /// <c>CssClass</c> so the edit/read-only class-forwarding contract every other control provides
     /// (EditMultiSelect, EditFile, EditChecked*) holds here too.
     /// </summary>
-    protected string? FieldCssClass
+    /// <param name="isEndInvalid">
+    /// <see cref="IsEndInvalid"/>, supplied by the caller rather than read here: the markup needs it
+    /// several times per render and each read walks the EditContext's message list, so it evaluates
+    /// the pair once at the top and threads the answers through. Not cached in a field — validation
+    /// state changes outside the parameter lifecycle, so a field would go stale.
+    /// </param>
+    protected string? FieldCssClass(bool isEndInvalid)
     {
-        get
+        var fieldClass = EditContext is null ? string.Empty : EditContext.FieldCssClass(_startFieldIdentifier);
+        fieldClass = MergeEndInvalidState(fieldClass, isEndInvalid);
+        if (AdditionalAttributes is not null &&
+            AdditionalAttributes.TryGetValue("class", out var classObj) &&
+            Convert.ToString(classObj, CultureInfo.InvariantCulture) is { Length: > 0 } consumerClass)
         {
-            var fieldClass = EditContext is null ? string.Empty : EditContext.FieldCssClass(_startFieldIdentifier);
-            fieldClass = MergeEndInvalidState(fieldClass, IsEndInvalid);
-            if (AdditionalAttributes is not null &&
-                AdditionalAttributes.TryGetValue("class", out var classObj) &&
-                Convert.ToString(classObj, CultureInfo.InvariantCulture) is { Length: > 0 } consumerClass)
-            {
-                return fieldClass.Length > 0 ? $"{consumerClass} {fieldClass}" : consumerClass;
-            }
-            return fieldClass.Length > 0 ? fieldClass : null;
+            return fieldClass.Length > 0 ? $"{consumerClass} {fieldClass}" : consumerClass;
         }
+        return fieldClass.Length > 0 ? fieldClass : null;
     }
 
     /// <summary>
@@ -619,9 +622,11 @@ public partial class EditDateRange : IDisposable
     // field's) validation-state styling hooks -- see FieldCssClass's remarks. Shared builder: see
     // BuildPickerAttributes's own remarks for why this and EditDate's twin differ only in that class
     // source. FieldCssClass never returns "" (only null or a non-empty string), so the builder's
-    // IsNullOrEmpty guard is exactly the null check this used to make inline.
-    IReadOnlyDictionary<string, object> PickerAttributes =>
-        EditControlInit.BuildPickerAttributes(AdditionalAttributes, FieldCssClass);
+    // IsNullOrEmpty guard is exactly the null check this used to make inline. Takes the already-built
+    // class string rather than reading FieldCssClass itself, so the markup's one evaluation of the
+    // Start/End validity pair serves both this and the read-only view.
+    IReadOnlyDictionary<string, object> PickerAttributes(string? fieldCssClass) =>
+        EditControlInit.BuildPickerAttributes(AdditionalAttributes, fieldCssClass);
 
     // Mirrors EditDate.EffectiveDateFormat one-for-one (the same shared PickerMath.ModeDisplayFormat
     // over the same dash-separated bases), keyed off this control's own Mode -- there's no separate
