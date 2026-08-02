@@ -39,7 +39,11 @@
 
         if (!field) return;
 
-        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Respect the user's reduced-motion preference (both stylesheets in this package honor it
+        // elsewhere) -- 'auto' jumps instantly instead of animating the scroll.
+        const reduceMotion = typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        field.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
         if (typeof field.focus === 'function') field.focus();
         if (field.tagName === 'INPUT' || field.tagName === 'TEXTAREA') {
             try { field.select(); } catch { /* type="number" etc. doesn't support select */ }
@@ -115,10 +119,13 @@
 
     // Back-compat shims: expose the old global names so existing apps that call
     // `IJSRuntime.InvokeVoidAsync("focusFirstInvalidField")` keep working. Remove in a
-    // future major if you want to fully retire the global namespace.
-    window.focusFirstInvalidField = ns.focusFirstInvalidField;
-    window.log = ns.log;
-    window.logError = ns.logError;
-    window.logWarn = ns.logWarn;
-    window.logInfo = ns.logInfo;
+    // future major if you want to fully retire the global namespace. `??=` rather than `=`: this file
+    // also loads as a side-effect ES module import for cross-origin MFEs, whose host page may already
+    // define its own `window.log`/etc. (e.g. a telemetry wrapper) -- an unconditional assignment would
+    // silently clobber it for the whole session.
+    window.focusFirstInvalidField ??= ns.focusFirstInvalidField;
+    window.log ??= ns.log;
+    window.logError ??= ns.logError;
+    window.logWarn ??= ns.logWarn;
+    window.logInfo ??= ns.logInfo;
 })();
