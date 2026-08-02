@@ -165,6 +165,51 @@
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
     </section>
+
+    <section class="demo-section">
+        <h3>Read-Only Views</h3>
+        <p>
+            Read-only mode picks one of three views, in this order: the <strong>masked row</strong> (a
+            <code>MaskText</code>, or the bullet mask a password field supplies on its own), then the
+            <strong>link</strong> (when <code>Url</code> passes the safety gate), else <strong>plain
+            text</strong>. A masked field therefore never renders as a link, and a password field never
+            prints its secret just because the form went read-only. <code>UrlTarget</code> adds
+            <code>rel="noopener noreferrer"</code> for every target that can hand the opened document a
+            <code>window.opener</code> handle back to this page -- <code>_blank</code> and named targets
+            alike -- and a <code>javascript:</code> URL is rejected outright and falls back to plain text.
+            Each control below sets an explicit <code>Id</code> so the demo's duplicate bindings still get
+            distinct element ids.
+        </p>
+
+        <EditString Id="ro-masked" Description="MaskText = *** -- multi-char masks prefix the tail"
+                    @bind-Value="_model.MaskedText" IsEditMode="false" MaskText="***"/>
+
+        <EditString Id="ro-password" Description="[DataType(Password)] -- bullets, revealable"
+                    @bind-Value="_model.ReadOnlySecret" IsEditMode="false"/>
+
+        <EditString Id="ro-mask-over-url" Description="MaskText wins over Url"
+                    @bind-Value="_model.MaskedText" IsEditMode="false" MaskText="*"
+                    Url="https://example.com"/>
+
+        <EditString Id="ro-url-blank" Description="UrlTarget = _blank -- rel hardened"
+                    @bind-Value="_model.UrlField" IsEditMode="false"
+                    Url="https://example.com/vendors/42" UrlTarget="_blank"/>
+
+        <EditString Id="ro-url-named" Description="UrlTarget = vendor -- named targets hardened too"
+                    @bind-Value="_model.UrlField" IsEditMode="false"
+                    Url="https://example.com/vendors/42" UrlTarget="vendor"/>
+
+        <EditString Id="ro-url-self" Description="UrlTarget = _self -- same context, no rel"
+                    @bind-Value="_model.UrlField" IsEditMode="false"
+                    Url="https://example.com/vendors/42" UrlTarget="_self"/>
+
+        <EditString Id="ro-url-unsafe" Description="javascript: URL -- rejected, renders as text"
+                    @bind-Value="_model.UrlField" IsEditMode="false"
+                    Url="javascript:alert(1)"/>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_readOnlyViewsExample</code></pre>
+    </section>
 </EditForm>
 
 @code {
@@ -190,6 +235,10 @@
         public string MaskedText { get; set; } = "123-45-6789";
         public string UrlField { get; set; } = "Friendly name for a website";
         public string CustomStyling { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [DisplayName("Read Only Secret")]
+        public string ReadOnlySecret { get; set; } = "correct-horse-battery";
 
         [Required] public string Required { get; set; } = "";
 
@@ -303,4 +352,19 @@ public string WithDisplayPrompt { get; set; } = """";
 
 [Placeholder(""This is overridden by the Placeholder parameter"")]
 public string WithPlaceholderOverride { get; set; } = """";";
+
+    readonly string _readOnlyViewsExample = @"@* Masked row -- wins over Url, and a password field masks itself *@
+<EditString @bind-Value=""_model.MaskedText"" IsEditMode=""false"" MaskText=""***""/>
+
+[DataType(DataType.Password)]
+public string ReadOnlySecret { get; set; } = ""..."";
+<EditString @bind-Value=""_model.ReadOnlySecret"" IsEditMode=""false""/>
+
+@* Link -- rel=""noopener noreferrer"" for _blank AND named targets; none for _self/_parent/_top *@
+<EditString @bind-Value=""_model.UrlField"" IsEditMode=""false""
+           Url=""https://example.com/vendors/42"" UrlTarget=""_blank""/>
+
+@* Rejected by the URL safety gate -- renders as plain read-only text, not a link *@
+<EditString @bind-Value=""_model.UrlField"" IsEditMode=""false""
+           Url=""javascript:alert(1)""/>";
 }

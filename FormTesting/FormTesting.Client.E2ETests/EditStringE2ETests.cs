@@ -148,4 +148,202 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : DemoPa
         Assert.True(inputBox.Width >= containerBox.Width - 25,
             $"input width {inputBox.Width}px should fill the container ({containerBox.Width}px wide) — percentage width collapsed");
     }
+
+    // ───────────────────────── affix chrome (edit mode) ─────────────────────────
+    //
+    // The control emits data-test-id=@_id, which is the bound property's name unless the demo sets
+    // an explicit Id -- so `input[data-test-id='Clearable']` addresses exactly one editor. The affix
+    // chrome has no test ids of its own (it is class-addressed), so each button/counter is scoped by
+    // the general-sibling combinator off its own input: in affix layout the suffix <span> is always a
+    // following sibling of the editor inside one .edit-input-affix-wrapper.
+
+    [Fact]
+    public async Task AllowClear_empties_the_value_and_returns_focus_to_the_input()
+    {
+        await NavigateAsync();
+        var input = Page.Locator("input[data-test-id='Clearable']");
+        var clear = Page.Locator("input[data-test-id='Clearable'] ~ .edit-input-suffix .edit-input-clear");
+
+        await input.FillAsync("something to clear");
+        await Expect(clear).ToBeVisibleAsync();
+
+        await clear.ClickAsync();
+
+        // Clear() assigns the empty string, not null -- the same value the user's own deletion
+        // produces, and the value that keeps the control mounted under HidingMode.WhenNull.
+        await Expect(input).ToHaveValueAsync("");
+        // The reason this test exists: Clear() refocuses the editor through
+        // ElementReference.FocusAsync, which is JS interop -- bUnit cannot execute it, so nothing
+        // below the e2e layer can prove the focus actually comes back rather than falling to <body>.
+        await Expect(input).ToBeFocusedAsync();
+        // The button withdraws once there is nothing left to clear (IsClearable).
+        await Expect(clear).Not.ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Password_toggle_flips_the_input_type_and_keeps_the_typed_value()
+    {
+        await NavigateAsync();
+        var input = Page.Locator("input[data-test-id='Password']");
+        var toggle = Page.Locator("input[data-test-id='Password'] ~ .edit-input-suffix .edit-input-password-toggle");
+
+        await input.FillAsync("s3cret-value");
+        await Expect(input).ToHaveAttributeAsync("type", "password");
+        await Expect(toggle).ToHaveAttributeAsync("aria-pressed", "false");
+
+        await toggle.ClickAsync();
+
+        await Expect(input).ToHaveAttributeAsync("type", "text");
+        await Expect(toggle).ToHaveAttributeAsync("aria-pressed", "true");
+        // Revealing must not disturb what was typed -- the type flip is an attribute patch on the
+        // same element, not a swap for a second input.
+        await Expect(input).ToHaveValueAsync("s3cret-value");
+
+        await toggle.ClickAsync();
+
+        await Expect(input).ToHaveAttributeAsync("type", "password");
+        await Expect(toggle).ToHaveAttributeAsync("aria-pressed", "false");
+        await Expect(input).ToHaveValueAsync("s3cret-value");
+    }
+
+    [Fact]
+    public async Task Password_toggle_keeps_one_stable_accessible_name_across_both_states()
+    {
+        await NavigateAsync();
+        var toggle = Page.Locator("input[data-test-id='Password'] ~ .edit-input-suffix .edit-input-password-toggle");
+
+        // The label names the ACTION and never changes; aria-pressed alone carries the state. A
+        // toggle whose name AND pressed state both flip is ambiguous ("Hide password, pressed").
+        await Expect(toggle).ToHaveAttributeAsync("aria-label", "Show password");
+        await toggle.ClickAsync();
+        await Expect(toggle).ToHaveAttributeAsync("aria-pressed", "true");
+        await Expect(toggle).ToHaveAttributeAsync("aria-label", "Show password");
+    }
+
+    [Fact]
+    public async Task ShowCount_counter_tracks_typing_live()
+    {
+        await NavigateAsync();
+        var input = Page.Locator("input[data-test-id='Counted']");
+        var count = Page.Locator("input[data-test-id='Counted'] ~ .edit-input-suffix .edit-input-count");
+        // The visible counter is aria-hidden ("5 / 20" reads as "five slash twenty"); AT gets this
+        // visually-hidden sibling instead, which the input's aria-describedby points at.
+        var spoken = Page.Locator("#count-Counted");
+
+        await Expect(count).ToHaveTextAsync("0 / 20");
+
+        await input.PressSequentiallyAsync("abcde");
+
+        // Per keystroke: the string editors default to UpdateTrigger.Input, so CurrentValue moves
+        // with each oninput and the chrome follows without waiting for a blur.
+        await Expect(count).ToHaveTextAsync("5 / 20");
+        await Expect(spoken).ToHaveTextAsync("5 of 20 characters");
+
+        await input.FillAsync("");
+        await Expect(count).ToHaveTextAsync("0 / 20");
+        await Expect(spoken).ToHaveTextAsync("0 of 20 characters");
+    }
+
+    // ───────────────────────── read-only views ─────────────────────────
+    //
+    // Against the "Read-Only Views" demo section, whose controls each set an explicit Id so their
+    // data-test-ids are unique (the older sections bind the same property two or three times).
+
+    [Fact]
+    public async Task Read_only_mask_eye_reveals_the_value_and_keeps_its_own_focus()
+    {
+        await NavigateAsync();
+        var row = Page.Locator("[data-test-id='ro-masked']");
+        var text = row.Locator(".edit-readonly-value");
+        var eye = row.Locator("button");
+
+        // A multi-character mask is a prefix: it covers the head of the value and the uncovered
+        // tail still shows. ("123-45-6789" under mask "***" -> "***-45-6789".)
+        await Expect(text).ToHaveTextAsync("***-45-6789");
+        await Expect(eye).ToHaveAttributeAsync("aria-pressed", "false");
+        await Expect(eye).ToHaveAttributeAsync("aria-label", "Show value");
+
+        await eye.ClickAsync();
+
+        await Expect(text).ToHaveTextAsync("123-45-6789");
+        await Expect(eye).ToHaveAttributeAsync("aria-pressed", "true");
+        // Element identity: the masked row renders from ONE site with ternaries on the attributes and
+        // text, so Blazor's diff patches this button in place and the user keeps standing on it. The
+        // two-sibling-@if shape it replaced destroyed and rebuilt the button, dropping focus to
+        // <body> mid-gesture. bUnit can pin the handler id; only a real browser can pin the focus.
+        await Expect(eye).ToBeFocusedAsync();
+
+        // Toggling back is the same patch in reverse, and the name still doesn't move.
+        await eye.ClickAsync();
+        await Expect(text).ToHaveTextAsync("***-45-6789");
+        await Expect(eye).ToHaveAttributeAsync("aria-pressed", "false");
+        await Expect(eye).ToHaveAttributeAsync("aria-label", "Show value");
+        await Expect(eye).ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task Read_only_password_field_masks_with_bullets_instead_of_printing_the_secret()
+    {
+        await NavigateAsync();
+        var row = Page.Locator("[data-test-id='ro-password']");
+        var text = row.Locator(".edit-readonly-value");
+
+        // [DataType(DataType.Password)] alone, no MaskText: read-only is not a reason to print a
+        // secret in the clear, so the field supplies its own single-bullet mask.
+        var masked = await text.TextContentAsync();
+        Assert.False(string.IsNullOrEmpty(masked));
+        Assert.All(masked, c => Assert.Equal('•', c));
+
+        await row.Locator("button").ClickAsync();
+        await Expect(text).ToHaveTextAsync("correct-horse-battery");
+    }
+
+    [Fact]
+    public async Task Read_only_Url_hardens_its_rel_and_rejects_a_javascript_scheme()
+    {
+        await NavigateAsync();
+
+        var blank = Page.Locator("a[data-test-id='ro-url-blank']");
+        await Expect(blank).ToHaveAttributeAsync("href", "https://example.com/vendors/42");
+        await Expect(blank).ToHaveAttributeAsync("target", "_blank");
+        await Expect(blank).ToHaveAttributeAsync("rel", "noopener noreferrer");
+        // _blank always creates a context, so the link can honestly say so -- visually hidden, and
+        // inside the <a> so the self-referencing aria-labelledby folds it into the accessible name.
+        await Expect(blank.Locator(".edit-sr-only")).ToHaveTextAsync("(opens in new tab)");
+
+        // A NAMED target is the case that most needs the rel: its window.opener points back here.
+        var named = Page.Locator("a[data-test-id='ro-url-named']");
+        await Expect(named).ToHaveAttributeAsync("target", "vendor");
+        await Expect(named).ToHaveAttributeAsync("rel", "noopener noreferrer");
+        // ...but it must not claim a new tab -- a named target reuses a context already by that name.
+        await Expect(named.Locator(".edit-sr-only")).ToHaveCountAsync(0);
+
+        // _self reuses our own context: no opener to sever, and noreferrer would needlessly drop the
+        // referrer on a navigation inside our own frame tree.
+        var self = Page.Locator("a[data-test-id='ro-url-self']");
+        await Expect(self).ToHaveAttributeAsync("target", "_self");
+        Assert.Null(await self.GetAttributeAsync("rel"));
+
+        // javascript: never becomes an <a> at all. The SafeUrl allow-list (http/https/mailto, plus
+        // same-origin relative) declines it and the control falls through to plain read-only text --
+        // so there is no script-executing link to click even if the URL came from model data.
+        await Expect(Page.Locator("a[data-test-id='ro-url-unsafe']")).ToHaveCountAsync(0);
+        var rejected = Page.Locator("div[data-test-id='ro-url-unsafe']");
+        await Expect(rejected).ToHaveClassAsync(new Regex(@"\bedit-readonly-value\b"));
+        await Expect(rejected).ToHaveTextAsync("Friendly name for a website");
+    }
+
+    [Fact]
+    public async Task Read_only_MaskText_beats_Url_so_a_masked_value_never_becomes_a_link()
+    {
+        await NavigateAsync();
+
+        // Same control, both MaskText and Url set. The mask branch is checked first, so no <a>
+        // renders -- a value the page was asked to hide must not be published as link text.
+        await Expect(Page.Locator("a[data-test-id='ro-mask-over-url']")).ToHaveCountAsync(0);
+        var row = Page.Locator("div[data-test-id='ro-mask-over-url']");
+        await Expect(row).ToHaveClassAsync(new Regex(@"\bedit-masked-value\b"));
+        // MaskText="*" -- a single-character mask repeats to cover the whole value.
+        await Expect(row.Locator(".edit-readonly-value")).ToHaveTextAsync(new string('*', "123-45-6789".Length));
+    }
 }
