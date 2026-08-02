@@ -269,6 +269,42 @@ public class EditDateRangeTests : BunitContext
     }
 
     [Fact]
+    public void PickerAttributes_class_merge_is_byte_identical_after_the_shared_builder_extraction()
+    {
+        // Pins the exact wrapper class string (not just Contains) across the
+        // EditControlInit.BuildPickerAttributes extraction (finding 35) -- FieldCssClass must still
+        // overwrite the raw consumer "class", landing in the same "wss-picker consumerClass
+        // fieldClass" composition DateRangePicker's own markup produces.
+        var model = new RangeModel(); // Start empty -> [Required] fails; End carries no annotation
+        var editContext = new EditContext(model);
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+
+        var cut = Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                content.OpenComponent<EditDateRange>(1);
+                content.AddAttribute(2, "Start", model.Start);
+                content.AddAttribute(3, "StartExpression", startField);
+                content.AddAttribute(4, "End", model.End);
+                content.AddAttribute(5, "EndExpression", endField);
+                content.AddAttribute(6, "class", "consumer-class");
+                content.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        Assert.Equal("wss-picker consumer-class invalid", cut.Find(".wss-picker").GetAttribute("class"));
+    }
+
+    [Fact]
     public void End_only_invalid_field_marks_the_shared_wrapper_invalid_and_not_valid()
     {
         // Start is set and passes (no annotation of its own), End is left null against its own
@@ -813,5 +849,73 @@ public class EditDateRangeTests : BunitContext
 
         Assert.Equal(string.Empty, MessageFor(cut, StartInput));
         Assert.Equal(string.Empty, MessageFor(cut, EndInput));
+    }
+
+    // ----- EditContext swap (_parseErrorMessages must follow it, not the first context forever) ---
+
+    // A mutable holder so the model reference can be swapped out from under the same expression
+    // trees (mirrors ListBaseEditContextSwapTests' pattern) -- the expressions read `holder.Model`
+    // fresh each time FieldIdentifier.Create re-evaluates them, rather than closing over a
+    // reassigned local directly.
+    class Holder
+    {
+        public RangeModel Model = new();
+    }
+
+    [Fact]
+    public void Parse_error_after_an_EditContext_swap_renders_on_the_new_context()
+    {
+        // Regression test for the parse-error store binding to the FIRST EditContext forever (see
+        // _parseErrorMessages' own remarks). A parent swapping the bound model (form reset, reload)
+        // gives EditForm a new EditContext; a subsequently-typed unparseable entry must still surface
+        // a message and aria-invalid against the CURRENT context, not silently vanish into a store
+        // still bound to the dead one.
+        var holder = new Holder { Model = new RangeModel { Start = Jan15, End = Feb3 } };
+        Expression<Func<DateTime?>> startField = () => holder.Model.Start;
+        Expression<Func<DateTime?>> endField = () => holder.Model.End;
+
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, holder.Model)
+            .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
+            {
+                b.OpenComponent<EditDateRange>(0);
+                b.AddAttribute(1, "Start", holder.Model.Start);
+                b.AddAttribute(2, "StartExpression", startField);
+                b.AddAttribute(3, "StartChanged", EventCallback.Factory.Create<DateTime?>(this, v => holder.Model.Start = v));
+                b.AddAttribute(4, "End", holder.Model.End);
+                b.AddAttribute(5, "EndExpression", endField);
+                b.AddAttribute(6, "EndChanged", EventCallback.Factory.Create<DateTime?>(this, v => holder.Model.End = v));
+                b.AddAttribute(7, "Format", "MM/dd/yyyy");
+                b.CloseComponent();
+            })));
+
+        // Rendered via Render<EditForm> (not the ContainerFragment-returning RenderRange/WithForm
+        // helpers this file's other tests use) so the model can be swapped on the SAME EditForm
+        // instance below -- Open/Commit/MessageFor are typed to IRenderedComponent<ContainerFragment>,
+        // so the equivalent steps are inlined here instead.
+        static void Commit(IRenderedComponent<EditForm> c, string inputClass, string text)
+        {
+            c.Find(inputClass).Input(text);
+            c.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        }
+
+        static string MessageFor(IRenderedComponent<EditForm> c, string inputClass) =>
+            c.Find($"#error-msg-{c.Find(inputClass).GetAttribute("id")}").TextContent;
+
+        // Confirm the parse-error path works pre-swap, same as the other tests in this file.
+        cut.Find(".wss-picker-input").Click(); // open
+        Commit(cut, StartInput, "not a date");
+        Assert.Contains("Start must be a date.", MessageFor(cut, StartInput));
+
+        // Swap in a fresh model -- EditForm creates a new EditContext for it. The old context's own
+        // parse-error entry (still bound to the old FieldIdentifier) is cleaned up as a side effect;
+        // what matters here is that the NEXT parse error is visible at all.
+        holder.Model = new RangeModel { Start = Jan15, End = Feb3 };
+        cut.Render(ps => ps.Add(f => f.Model, holder.Model));
+
+        Commit(cut, StartInput, "still not a date");
+
+        Assert.Contains("Start must be a date.", MessageFor(cut, StartInput));
+        Assert.Equal("true", cut.Find(StartInput).GetAttribute("aria-invalid"));
     }
 }

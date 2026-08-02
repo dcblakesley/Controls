@@ -100,6 +100,58 @@ public class PickerSizeAndParsingTests : BunitContext
         Assert.Contains("wss-picker-sm", cut.Find(".wss-picker").ClassList);
     }
 
+    // ----- EditDateRange: Size forwarding --------------------------------------------------------
+    // EditDateRange previously had no Size parameter of its own -- a consumer's Size="Small" fell into
+    // AdditionalAttributes and splatted straight onto DateRangePicker's own SelectSize-typed Size
+    // parameter, a footgun the two tests below close: Size is now a real, correctly-typed parameter.
+
+    class RangeSizeModel
+    {
+        public DateTime? Start { get; set; }
+        public DateTime? End { get; set; }
+    }
+
+    [Fact]
+    public void EditDateRange_Size_Default_adds_no_class()
+    {
+        var model = new RangeSizeModel();
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.CloseComponent();
+        }));
+
+        var wrapper = cut.Find(".wss-picker");
+        Assert.DoesNotContain("wss-picker-sm", wrapper.ClassList);
+        Assert.DoesNotContain("wss-picker-lg", wrapper.ClassList);
+    }
+
+    [Fact]
+    public void EditDateRange_forwards_Size_to_the_inner_picker()
+    {
+        var model = new RangeSizeModel();
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.AddAttribute(5, "Size", SelectSize.Small);
+            b.CloseComponent();
+        }));
+
+        Assert.Contains("wss-picker-sm", cut.Find(".wss-picker").ClassList);
+    }
+
     // ----- DatePicker: OnParseError --------------------------------------------------------------
 
     [Fact]

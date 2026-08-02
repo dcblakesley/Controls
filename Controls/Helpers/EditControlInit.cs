@@ -243,4 +243,44 @@ public static class EditControlInit
         validationErrorMessage = string.Format(CultureInfo.InvariantCulture, parsingErrorMessage, fieldName);
         return false;
     }
+
+    /// <summary>
+    /// The "is this bound date value semantically default/empty" check shared by
+    /// <see cref="EditDate{T}"/>, <see cref="EditDateNative{T}"/>, and <see cref="EditDateRange"/>'s
+    /// per-field variant -- all three bridge a value that might be any of <c>DateTime</c>,
+    /// <c>DateTimeOffset</c>, <c>DateOnly</c>, <c>TimeOnly</c> (or their nullable forms) and need
+    /// <c>default(DateTime)</c>/etc. (not just null) to count as empty for the <c>HidingMode</c>
+    /// NullOrDefault contract -- a plain <see cref="EqualityComparer{T}.Default"/> comparison against
+    /// <c>null</c> misses a boxed non-null default struct (see each control's own former copy of this
+    /// switch for the same remark). Lives here rather than a shared base for this class's usual reason
+    /// -- the three controls inherit from bases (or, for EditDateRange, none at all) that share no
+    /// common ancestor to hang this on.
+    /// </summary>
+    public static bool IsDateValueDefault<T>(T value) => value switch
+    {
+        DateTime dt => dt == default,
+        DateTimeOffset dto => dto == default,
+        DateOnly d => d == default,
+        TimeOnly t => t == default,
+        _ => EqualityComparer<T>.Default.Equals(value, default!)
+    };
+
+    /// <summary>
+    /// Builds the splat dictionary <see cref="EditDate{T}"/> and <see cref="EditDateRange"/> forward
+    /// onto their inner <c>DatePicker</c>/<c>DateRangePicker</c>'s own <c>AdditionalAttributes</c>: the
+    /// consumer's own unmatched attributes, then <paramref name="cssClass"/> overwriting any raw
+    /// consumer <c>"class"</c> so the picker's outer wrapper picks up the EditContext validation-state
+    /// styling hooks. The two controls differ only in where <paramref name="cssClass"/> comes from
+    /// (<c>EditDate</c>'s own <c>CssClass</c> vs. <c>EditDateRange</c>'s <c>FieldCssClass</c>, which
+    /// folds in the End field's state too) -- everything else about the splat is identical.
+    /// </summary>
+    public static IReadOnlyDictionary<string, object> BuildPickerAttributes(
+        IReadOnlyDictionary<string, object>? additionalAttributes, string? cssClass)
+    {
+        var attrs = new Dictionary<string, object>();
+        if (additionalAttributes is not null)
+            foreach (var kv in additionalAttributes) attrs[kv.Key] = kv.Value;
+        if (!string.IsNullOrEmpty(cssClass)) attrs["class"] = cssClass;
+        return attrs;
+    }
 }
