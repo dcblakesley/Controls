@@ -1035,6 +1035,112 @@ public class DateRangePickerTests : BunitContext
     }
 
     [Fact]
+    public void Session_day_click_is_rejected_when_the_active_endpoints_disabledtime_disables_the_carried_hour()
+    {
+        // StartDisabledTime is evaluated per DATE: Jan 20 disables 13:00, Jan 15 does not. The day
+        // button itself is enabled (nothing about the DATE is disabled) -- only the time-of-day the
+        // click would carry onto it. The time selects and the typed route both reject exactly that,
+        // so the click must too, leaving the pending preview on the endpoint's own committed value.
+        DateTime? start = null;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 0, 0))
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(date =>
+                date?.Day == 20 ? new DisabledTimeParts(Hours: [13]) : null))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v));
+
+        Open(cut); // active = start
+
+        Assert.False(SessionDay(cut, 20).HasAttribute("disabled")); // the DAY itself is selectable
+
+        SessionDay(cut, 20).Click();
+
+        Assert.Null(start); // a session pick never commits anyway...
+        // ...but the pending preview must not have moved either.
+        Assert.Equal("01/15/2025 13:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+
+        // A day whose own DisabledTime allows 13:00 still picks -- the guard is targeted.
+        SessionDay(cut, 18).Click();
+        Assert.Equal("01/18/2025 13:00:00", cut.Find(".wss-picker-input-start").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void Session_ok_does_not_commit_an_endpoint_value_its_own_disabledtime_rejects()
+    {
+        // Both endpoints resolve from already-committed values a consumer bound directly (neither
+        // was produced by one of this session's guarded paths), and EndDisabledTime rejects End's
+        // own hour. OK is the only route that could push that pair into StartChanged/EndChanged, so
+        // it re-checks both before committing -- the same rejection the typed route gives.
+        DateTime? start = null, end = null;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 10, 9, 0, 0))
+            .Add(c => c.End, new DateTime(2025, 1, 20, 17, 0, 0))
+            .Add(c => c.EndDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [17])))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut); // active = start; both sides already resolve, so OK would commit immediately
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Null(start);
+        Assert.Null(end);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // rejected -- nothing committed, stays open
+    }
+
+    [Fact]
+    public void Session_ok_does_not_advance_to_the_other_endpoint_on_a_rejected_active_value()
+    {
+        // The active side's own value is disabled and the OTHER side is unset, so OK would otherwise
+        // confirm it and move the active underline -- advancing the session on a value that can
+        // never commit. The guard runs before the switch for exactly that reason.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 15, 13, 0, 0)) // End left unset
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [13]))));
+
+        Open(cut);
+        cut.Find(".wss-picker-ok").Click();
+
+        Assert.Contains("wss-picker-slot-active", cut.FindAll(".wss-picker-input-slot")[0].ClassList); // still the start side
+    }
+
+    [Fact]
+    public void Session_ok_still_commits_a_pair_neither_disabledtime_rejects()
+    {
+        // Regression guard for the two guards above: an ordinary session must be entirely unaffected
+        // by DisabledTime callbacks that list hours neither endpoint carries.
+        DateTime? start = null, end = null;
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.DateTime)
+            .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.StartDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [23])))
+            .Add(c => c.EndDisabledTime, (Func<DateTime?, DisabledTimeParts?>)(_ => new DisabledTimeParts(Hours: [23])))
+            .Add(c => c.StartChanged, (DateTime? v) => start = v)
+            .Add(c => c.EndChanged, (DateTime? v) => end = v));
+
+        Open(cut);
+        SessionDay(cut, 10).Click();
+        TimeSelects(cut)[0].Change("9"); // hour, start side
+        cut.Find(".wss-picker-ok").Click(); // End unset -- advances
+        SessionDay(cut, 20).Click();
+        TimeSelects(cut)[0].Change("14"); // hour, end side
+        cut.Find(".wss-picker-ok").Click(); // both resolved -- commits and closes
+
+        Assert.Equal(new DateTime(2025, 1, 10, 9, 0, 0), start);
+        Assert.Equal(new DateTime(2025, 1, 20, 14, 0, 0), end);
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
     public void Hidedisabledtimeoptions_omits_other_disabled_hours_but_keeps_the_current_value_visible()
     {
         var cut = Render<DateRangePicker>(p => p

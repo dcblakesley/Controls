@@ -276,7 +276,9 @@ public partial class DateRangePicker : PickerBase
     /// (the row shown while it's the active endpoint) -- see <see cref="DatePicker.DisabledTime"/>
     /// for the full per-option contract (invoked with the active endpoint's own date part, disabled
     /// options render disabled or are omitted per <see cref="HideDisabledTimeOptions"/>, and a
-    /// pending/typed commit landing on a disabled part is rejected).</summary>
+    /// pending/typed commit landing on a disabled part is rejected). Every route into this endpoint's
+    /// value is guarded: a time select, a typed commit, a preset, a session day click (which carries
+    /// the endpoint's own time-of-day onto a date that may disable it) and the session's own OK.</summary>
     [Parameter] public Func<DateTime?, DisabledTimeParts?>? StartDisabledTime { get; set; }
     /// <summary>Same contract as <see cref="StartDisabledTime"/>, for the END endpoint.</summary>
     [Parameter] public Func<DateTime?, DisabledTimeParts?>? EndDisabledTime { get; set; }
@@ -1593,14 +1595,21 @@ public partial class DateRangePicker : PickerBase
 
     // DateTime mode's day click: sets the active endpoint's PENDING date, preserving its own
     // pending/committed time-of-day (null time -- no session value and no committed value yet --
-    // becomes midnight, the same default DatePicker's own DateTime day-click uses). No disabled
-    // guard here -- same convention as every other grid click handler in this file: a disabled
-    // button's `disabled` attribute already prevents the browser from ever dispatching this click.
+    // becomes midnight, the same default DatePicker's own DateTime day-click uses). The DAY itself
+    // needs no guard here -- same convention as every other grid click handler in this file: a
+    // disabled button's `disabled` attribute already prevents the browser from ever dispatching this
+    // click. The carried TIME-OF-DAY does: the active endpoint's DisabledTime is evaluated per DATE,
+    // so the clicked day can disable the very hour/minute/second this click would move onto it --
+    // exactly what ApplyTimePartAsync above and the typed route (IsCommitDisabled) already reject.
+    // A rejected click no-ops (nothing pending changes, the panel stays put), same as theirs; the
+    // never-jump rule keeps the time row showing the endpoint's own unchanged value. Mirrors
+    // DatePicker.OnDayClickAsync's identical DateTime-mode guard.
     Task OnSessionDayClickAsync(DateTime day)
     {
-        _startEdit = _endEdit = null;
         var time = ActiveSessionValue?.TimeOfDay ?? TimeSpan.Zero;
         var composed = day.Date + time;
+        if (IsEndpointTimeDisabled(_activeInput, composed)) return Task.CompletedTask;
+        _startEdit = _endEdit = null;
         if (_activeInput == 0) _pendingSessionStart = composed; else _pendingSessionEnd = composed;
         _focusDay = day;
         return Task.CompletedTask;
@@ -1655,10 +1664,21 @@ public partial class DateRangePicker : PickerBase
     // backwards pair, same as every other mode) and close. Guarded by ActiveSessionValue being
     // non-null -- mirrors the OK button's own `disabled` attribute (see the .razor markup) so a
     // caller that invokes this directly can never commit nothing.
+    //
+    // Both endpoint values are ALSO re-checked against IsCommitDisabled here, mirroring the typed
+    // routes (CommitStartTextAsync/CommitEndTextAsync) and OnPresetClickAsync's own guard: neither
+    // resolved value is necessarily one this session's own guarded paths produced -- either side can
+    // fall back to a committed Start/End a consumer bound directly, and Start/EndDisabledTime are
+    // ordinary parameters that can change between a pick and the OK that confirms it. Without the
+    // re-check OK is the one route that can fire StartChanged/EndChanged with a value every other
+    // route rejects.
     async Task OnSessionOkAsync()
     {
         var activeValue = ActiveSessionValue;
         if (activeValue is null) return;
+        // The active side first, so a value that can never commit doesn't silently advance the
+        // session to the other endpoint either.
+        if (IsCommitDisabled(_activeInput, activeValue.Value)) return;
 
         if (_activeInput == 0) _pendingSessionStart = activeValue; else _pendingSessionEnd = activeValue;
 
@@ -1677,6 +1697,13 @@ public partial class DateRangePicker : PickerBase
 
         var start = _activeInput == 0 ? activeValue.Value : otherValue.Value;
         var end = _activeInput == 0 ? otherValue.Value : activeValue.Value;
+        // Guard the endpoints SetRangeAsync will actually produce -- normalized and swapped exactly
+        // as it does, so the start guard always sees the value that lands in Start (the same
+        // normalize-then-swap-then-guard order OnPresetClickAsync uses for the identical reason).
+        var normalizedStart = NormalizeForMode(start);
+        var normalizedEnd = NormalizeForMode(end);
+        if (normalizedEnd < normalizedStart) (normalizedStart, normalizedEnd) = (normalizedEnd, normalizedStart);
+        if (IsCommitDisabled(0, normalizedStart) || IsCommitDisabled(1, normalizedEnd)) return;
         await SetRangeAsync(start, end);
         _pendingInputFocus = true; // the OK button is about to unmount
         await CloseAsync();
