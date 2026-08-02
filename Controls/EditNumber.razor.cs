@@ -176,22 +176,8 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     // Ported from InputNumber<T>, extended to every numeric primitive the parse side accepts —
     // the unsigned/byte types must format invariantly too, or a culture with a non-ASCII negative
     // sign (e.g. sv-SE's U+2212 for sbyte) renders a value the number input can't round-trip.
-    protected override string? FormatValueAsString(T? value) => value switch
-    {
-        null => null,
-        int @int => BindConverter.FormatValue(@int, CultureInfo.InvariantCulture),
-        long @long => BindConverter.FormatValue(@long, CultureInfo.InvariantCulture),
-        short @short => BindConverter.FormatValue(@short, CultureInfo.InvariantCulture),
-        float @float => BindConverter.FormatValue(@float, CultureInfo.InvariantCulture),
-        double @double => BindConverter.FormatValue(@double, CultureInfo.InvariantCulture),
-        decimal @decimal => BindConverter.FormatValue(@decimal, CultureInfo.InvariantCulture),
-        byte @byte => @byte.ToString(CultureInfo.InvariantCulture),
-        sbyte @sbyte => @sbyte.ToString(CultureInfo.InvariantCulture),
-        ushort @ushort => @ushort.ToString(CultureInfo.InvariantCulture),
-        uint @uint => @uint.ToString(CultureInfo.InvariantCulture),
-        ulong @ulong => @ulong.ToString(CultureInfo.InvariantCulture),
-        _ => value.ToString()
-    };
+    protected override string? FormatValueAsString(T? value) =>
+        value is null ? null : FormatNumber(value, null, CultureInfo.InvariantCulture);
 
     // Numeric zero (any T) counts as "default" for the NullOrDefault hiding modes.
     // CurrentValue is guaranteed non-null here — the base method handles the null branch.
@@ -202,23 +188,7 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
         try
         {
             if (Value != null)
-            {
-                return Value switch
-                {
-                    decimal d => d.ToString(EffectiveFormat),
-                    float f => f.ToString(EffectiveFormat),
-                    double d => d.ToString(EffectiveFormat),
-                    int i => i.ToString(EffectiveFormat),
-                    long l => l.ToString(EffectiveFormat),
-                    short s => s.ToString(EffectiveFormat),
-                    byte b => b.ToString(EffectiveFormat),
-                    sbyte sb => sb.ToString(EffectiveFormat),
-                    uint ui => ui.ToString(EffectiveFormat),
-                    ulong ul => ul.ToString(EffectiveFormat),
-                    ushort us => us.ToString(EffectiveFormat),
-                    _ => Value.ToString()
-                };
-            }
+                return FormatNumber(Value, EffectiveFormat, CultureInfo.CurrentCulture);
         }
         catch (FormatException)
         {
@@ -227,4 +197,31 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
 
         return string.Empty;
     }
+
+    /// <summary>
+    /// The one numeric-type switch backing both <see cref="FormatValueAsString"/> (edit-mode,
+    /// <paramref name="format"/> null, <paramref name="provider"/> always <see cref="CultureInfo.InvariantCulture"/>
+    /// so the native number input round-trips regardless of the current culture) and
+    /// <see cref="GetFormattedNumber"/> (read-only, <paramref name="format"/> the optional
+    /// <see cref="EffectiveFormat"/>, <paramref name="provider"/> <see cref="CultureInfo.CurrentCulture"/>).
+    /// Previously two hand-synced 11-case switches over the same types -- a type added to one and not
+    /// the other silently degraded to the naked <c>value.ToString()</c> fallback for whichever path was
+    /// missed. <paramref name="value"/> is boxed (<typeparamref name="T"/> isn't itself constrained to
+    /// a numeric interface), so the switch still dispatches on the CLR type actually bound.
+    /// </summary>
+    static string? FormatNumber(object value, string? format, IFormatProvider provider) => value switch
+    {
+        int i => i.ToString(format, provider),
+        long l => l.ToString(format, provider),
+        short s => s.ToString(format, provider),
+        float f => f.ToString(format, provider),
+        double d => d.ToString(format, provider),
+        decimal m => m.ToString(format, provider),
+        byte b => b.ToString(format, provider),
+        sbyte sb => sb.ToString(format, provider),
+        ushort us => us.ToString(format, provider),
+        uint ui => ui.ToString(format, provider),
+        ulong ul => ul.ToString(format, provider),
+        _ => value.ToString()
+    };
 }
