@@ -26,8 +26,17 @@ internal static class PickerMath
     // The 1st of the quarter containing `value`.
     public static DateTime QuarterStart(DateTime value) => QuarterStart(value.Year, QuarterOf(value));
 
-    // The first day of the calendar week containing `day`, per `firstDayOfWeek`. Shared by GridDays
-    // (the 42-cell layout) and Home/End keyboard navigation so they can never disagree.
+    // The first day of the calendar week containing `day`, AT MIDNIGHT, per `firstDayOfWeek`. Shared
+    // by GridDays (the 42-cell layout) and Home/End keyboard navigation so they can never disagree.
+    //
+    // The `.Date` truncation is load-bearing, not cosmetic: this is also Week mode's own
+    // normalization (see NormalizeForMode), and every rendered week start -- a grid row's first cell,
+    // a day click's committed unit -- is a midnight date. A time-carrying input (a consumer binding
+    // `Start = 2026-03-04T09:00`, or a `DateTime.Now`-shaped preset/typed commit) previously produced
+    // a 09:00 week start that equalled no rendered week start at all, so the selected week never
+    // painted and no cell was a keyboard focus stop -- the exact failure the normalization exists to
+    // prevent. Truncating here rather than at each caller keeps the one week-start concept single-
+    // shaped for the display, the commit and the Min/Max guard alike.
     public static DateTime WeekStart(DateTime day, DayOfWeek firstDayOfWeek)
     {
         var lead = ((int)day.DayOfWeek - (int)firstDayOfWeek + 7) % 7;
@@ -35,9 +44,10 @@ internal static class PickerMath
         // underflows DateTime.MinValue and throws -- reachable from a plain Mode="Week" picker bound
         // to default(DateTime), which walks six of these building the grid. Clamping to the days
         // actually available yields that partial first week's own start (0001-01-01), which is what
-        // every caller wants there anyway.
+        // every caller wants there anyway. The clamp counts from day.Date (the same value subtracted
+        // from below), so the result can never land before DateTime.MinValue.
         lead = Math.Min(lead, (day.Date - DateTime.MinValue).Days);
-        return day.AddDays(-lead);
+        return day.Date.AddDays(-lead);
     }
 
     /// <summary>The last day of the calendar week starting on <paramref name="weekStart"/> —
@@ -359,6 +369,8 @@ internal static class PickerMath
         DatePickerMode.Time => DateTime.Today + new TimeSpan(value.Hour, value.Minute, showSeconds ? value.Second : 0),
         DatePickerMode.Year => new DateTime(value.Year, 1, 1),
         DatePickerMode.Quarter => QuarterStart(value),
+        // Midnight like every other arm -- WeekStart itself truncates (see its own comment), so a
+        // time-carrying value normalizes to a week start that actually equals the rendered one.
         DatePickerMode.Week => WeekStart(value, firstDayOfWeek),
         _ => value.Date,
     };

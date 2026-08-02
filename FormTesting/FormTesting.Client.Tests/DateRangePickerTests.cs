@@ -1909,6 +1909,32 @@ public class DateRangePickerTests : BunitContext
     }
 
     [Fact]
+    public void Week_mode_paints_and_keeps_a_focus_stop_for_time_carrying_bound_endpoints()
+    {
+        // Start/End are ordinary bindable parameters, so a consumer can hand this control model data
+        // that carries a time-of-day. DisplayRange normalizes both through Week mode's own week-start
+        // normalization before comparing them against the grid's (always-midnight) week starts -- if
+        // that normalization kept 09:00 the endpoints would equal no rendered row at all: the range
+        // would never paint AND no day button would be a focus stop, leaving both grids
+        // keyboard-unreachable (no tabindex="0" anywhere).
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Start, new DateTime(2025, 1, 5, 9, 0, 0))    // Jan's row 1, 09:00
+            .Add(c => c.End, new DateTime(2025, 2, 16, 23, 59, 59))); // Feb's row 3, 23:59:59
+
+        Open(cut);
+
+        var leftRows = cut.FindAll(".wss-picker-month")[0].QuerySelectorAll(".wss-picker-week-row");
+        var rightRows = cut.FindAll(".wss-picker-month")[1].QuerySelectorAll(".wss-picker-week-row");
+        Assert.Contains("wss-picker-week-row-start", leftRows[1].ClassList);
+        Assert.Contains("wss-picker-week-row-end", rightRows[3].ClassList);
+        Assert.Contains("wss-picker-week-row-in-range", leftRows[2].ClassList);
+        // Exactly one roving-tabindex stop across both grids -- the keyboard entry point.
+        Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
+    }
+
+    [Fact]
     public void Week_mode_keeps_day_buttons_enabled_in_a_partially_in_range_week()
     {
         // Min falls mid-week (Jan 7, within the Jan5-11 row): Jan 5-6 are disabled at day

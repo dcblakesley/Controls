@@ -1559,6 +1559,67 @@ public class DatePickerTests : BunitContext
     }
 
     [Fact]
+    public void Typed_week_mode_text_carrying_a_time_still_commits_the_week_start_at_midnight()
+    {
+        // Week mode's null-Format exact parse is a bland "yyyy" (see EffectiveFormat), so text like
+        // this falls through to the general culture parse and arrives carrying 13:45 -- the one
+        // commit path that can hand PickerMath.NormalizeForMode a time-of-day. Every rendered week
+        // start is a midnight date, so the normalization has to truncate: without it the committed
+        // value equals no week start the grid ever paints.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("02/14/2026 13:45");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(FeblyWeekStart, value);
+        Assert.Equal(TimeSpan.Zero, value!.Value.TimeOfDay);
+    }
+
+    [Fact]
+    public void Max_on_a_week_start_day_accepts_a_typed_commit_carrying_a_time()
+    {
+        // The week-granularity guard compares the normalized week start against Max.Date. A week
+        // start that kept 13:45 compares GREATER than Max's own midnight, so the typed commit was
+        // rejected for a week whose day buttons a click accepts -- the two guards disagreeing about
+        // the same week purely because of a time-of-day the mode has no concept of.
+        DateTime? value = null;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Max, FeblyWeekStart) // exactly the target week's own start
+            .Add(c => c.ValueChanged, (DateTime? v) => value = v));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-date").Input("02/14/2026 13:45");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(FeblyWeekStart, value);
+    }
+
+    [Fact]
+    public void Week_mode_bound_to_a_time_carrying_value_still_paints_and_keeps_a_focus_stop()
+    {
+        // A consumer can bind Value straight from model data that carries a time-of-day. The row
+        // paint and the roving tabindex both compare against midnight week starts, so nothing here
+        // may depend on Value having been normalized by one of the control's own commit paths.
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
+            .Add(c => c.Value, new DateTime(2026, 2, 14, 9, 0, 0)));
+
+        Open(cut);
+
+        var rows = cut.FindAll(".wss-picker-week-row");
+        Assert.Contains("wss-picker-week-row-selected", rows[1].ClassList); // Feb 8-14
+        Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
+    }
+
+    [Fact]
     public void Explicit_format_in_week_mode_is_used_verbatim()
     {
         var cut = Render<DatePicker>(p => p
