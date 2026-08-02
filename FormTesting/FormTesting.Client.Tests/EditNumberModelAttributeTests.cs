@@ -27,6 +27,8 @@ public class EditNumberModelAttributeTests : BunitContext
 
         public double? StepNoAttr { get; set; }
 
+        public int? IntNoAttr { get; set; }
+
         [DisplayFormat(DataFormatString = "{0:N2}")]
         public decimal? FormatAttr { get; set; }
 
@@ -85,8 +87,12 @@ public class EditNumberModelAttributeTests : BunitContext
     }
 
     [Fact]
-    public void Default_step_of_1_is_used_when_neither_parameter_nor_model_attribute_is_set()
+    public void Non_integral_T_renders_step_any_when_neither_parameter_nor_model_attribute_is_set()
     {
+        // Finding 63: the old unconditional 1.0m default made every fractional value natively invalid
+        // on arrival (step="1.0" rejects 12.34), silently blocking a native form submit since EditForm
+        // emits no novalidate. step="any" (the framework InputNumber<T> convention for a fractional
+        // type) removes the native step-mismatch entirely.
         var model = new StepFormatModel();
         Expression<Func<double?>> field = () => model.StepNoAttr;
         var cut = Render(WithForm(model, b =>
@@ -97,9 +103,42 @@ public class EditNumberModelAttributeTests : BunitContext
             b.CloseComponent();
         }));
 
-        // "1.0", not "1" — the default has always been the literal 1.0m, and decimal.ToString
-        // preserves trailing scale, so this pins the pre-existing rendering exactly.
-        Assert.Equal("1.0", cut.Find("input.edit-number-input").GetAttribute("step"));
+        Assert.Equal("any", cut.Find("input.edit-number-input").GetAttribute("step"));
+    }
+
+    [Fact]
+    public void Integral_T_omits_the_step_attribute_when_neither_parameter_nor_model_attribute_is_set()
+    {
+        // Whole-number types are already correct under the native default step (1) -- no attribute
+        // needs to be rendered at all, matching the framework's own InputNumber<T>.
+        var model = new StepFormatModel();
+        Expression<Func<int?>> field = () => model.IntNoAttr;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<int?>>(0);
+            b.AddAttribute(1, "Value", model.IntNoAttr);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        Assert.False(cut.Find("input.edit-number-input").HasAttribute("step"));
+    }
+
+    [Fact]
+    public void Explicit_Step_parameter_still_wins_for_an_integral_T()
+    {
+        var model = new StepFormatModel();
+        Expression<Func<int?>> field = () => model.IntNoAttr;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<int?>>(0);
+            b.AddAttribute(1, "Value", model.IntNoAttr);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(4, "Step", 2m);
+            b.CloseComponent();
+        }));
+
+        Assert.Equal("2", cut.Find("input.edit-number-input").GetAttribute("step"));
     }
 
     // Format (read-only display)

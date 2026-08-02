@@ -26,12 +26,41 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     [Parameter] public decimal? Step { get; set; }
 
     /// <summary>
-    /// The step actually rendered: the <see cref="Step"/> parameter, else the model property's
-    /// <c>[Step]</c>, else <c>1.0m</c> -- the same default the parameter used to carry directly.
-    /// <see cref="AttributesHelper.Step"/> already degrades a non-positive or unconvertible attribute
-    /// value to null, so this is the only place that old hardcoded default needs to live now.
+    /// The <c>step</c> attribute value actually rendered, already formatted (or null to omit the
+    /// attribute entirely): the <see cref="Step"/> parameter or the model property's <c>[Step]</c>
+    /// (InvariantCulture) when either is explicitly set; otherwise <c>"any"</c> for a non-integral
+    /// <typeparamref name="T"/> (float/double/decimal and their nullable forms), so a fractional value
+    /// isn't natively invalid; otherwise null for an integral <typeparamref name="T"/>, omitting the
+    /// attribute so the native default (step 1, already correct for a whole number) applies -- matching
+    /// the framework's own <c>InputNumber&lt;T&gt;</c>, which never renders a <c>step</c> attribute at
+    /// all. The old unconditional <c>1.0m</c> default made every fractional value natively invalid on
+    /// arrival (<c>step="1.0"</c> rejects <c>12.34</c>), which blocks a native form submit before
+    /// <c>OnValidSubmit</c>/<c>OnSubmit</c> even fire, since <c>EditForm</c> emits no <c>novalidate</c>.
     /// </summary>
-    decimal EffectiveStep => Step ?? _attributes.Step() ?? 1.0m;
+    string? EffectiveStep
+    {
+        get
+        {
+            var explicitStep = Step ?? _attributes.Step();
+            if (explicitStep is not null) return explicitStep.Value.ToString(CultureInfo.InvariantCulture);
+            return IsIntegralType ? null : "any";
+        }
+    }
+
+    // The numeric type actually bound, with Nullable<T> unwrapped -- both shapes render the same step.
+    static readonly Type UnderlyingNumericType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+    // Whole-number types, for which the native default step (1) is already correct and no attribute
+    // needs to be rendered at all. Anything else (float/double/decimal, or an unrecognized T) falls
+    // through to "any" -- safer than assuming a whole-number step for a type this list doesn't know.
+    static readonly bool IsIntegralType = UnderlyingNumericType == typeof(int)
+        || UnderlyingNumericType == typeof(long)
+        || UnderlyingNumericType == typeof(short)
+        || UnderlyingNumericType == typeof(byte)
+        || UnderlyingNumericType == typeof(sbyte)
+        || UnderlyingNumericType == typeof(uint)
+        || UnderlyingNumericType == typeof(ulong)
+        || UnderlyingNumericType == typeof(ushort);
 
     /// <summary>
     /// The minimum allowed value, rendered as the input's <c>min</c> attribute (InvariantCulture, same
