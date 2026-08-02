@@ -39,6 +39,20 @@ public class PropertyColumn<TItem, TProp> : Column<TItem>
     public override bool CanSort =>
         SortBy is not null || (Sortable && Property is not null && TPropIsComparable);
 
+    // Format is the one extra scalar the Table renders from this column (through CellFor), so it
+    // joins the base snapshot that decides whether a same-set parameter change needs a corrective
+    // Table render -- see Column<TItem>.OnParametersSet. Sortable/Property need no entry of their
+    // own: the base already tracks CanSort, which they feed.
+    string? _lastFormat;
+
+    private protected override bool DisplayStateChanged() => base.DisplayStateChanged() || _lastFormat != Format;
+
+    private protected override void CaptureDisplayState()
+    {
+        base.CaptureDisplayState();
+        _lastFormat = Format;
+    }
+
     public override int Compare(TItem a, TItem b) =>
         SortBy is not null
             ? SortBy(a, b)

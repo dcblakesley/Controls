@@ -1,3 +1,4 @@
+using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
 
 namespace FormTesting.Client.Tests;
@@ -160,6 +161,72 @@ public class UiKitTableTests : BunitContext
         Assert.Equal("Select all rows", cut.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
         Assert.All(cut.FindAll("tbody input.wss-table-checkbox"),
             cb => Assert.Equal("Select row", cb.GetAttribute("aria-label")));
+    }
+
+    [Fact]
+    public void Paged_select_all_label_says_it_only_covers_the_page_and_both_are_overridable()
+    {
+        // Every other user-facing string on Table/Pagination has an override; the selection labels
+        // were the last hardcoded English left, so a localized table announced its own checkboxes in
+        // the wrong language.
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        var paged = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.PageSize, 2)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+        Assert.Equal("Select all rows on this page",
+            paged.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+
+        var localized = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectRowLabel, "Zeile auswählen")
+            .Add(t => t.SelectAllRowsLabel, "Alle Zeilen auswählen")
+            .Add(t => t.SelectAllRowsOnPageLabel, "Alle Zeilen dieser Seite auswählen")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Equal("Alle Zeilen auswählen",
+            localized.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+        Assert.All(localized.FindAll("tbody input.wss-table-checkbox"),
+            cb => Assert.Equal("Zeile auswählen", cb.GetAttribute("aria-label")));
+    }
+
+    [Fact]
+    public void Selection_label_overrides_reach_the_styled_checkbox_and_the_single_mode_radio()
+    {
+        var data = Sample();
+        var styled = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.UseStyledCheckbox, true)
+            .Add(t => t.SelectRowLabel, "Zeile auswählen")
+            .Add(t => t.SelectAllRowsLabel, "Alle Zeilen auswählen")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.Equal("Alle Zeilen auswählen",
+            styled.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+        Assert.All(styled.FindAll("tbody input.wss-table-checkbox"),
+            cb => Assert.Equal("Zeile auswählen", cb.GetAttribute("aria-label")));
+
+        var single = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .Add(t => t.SelectRowLabel, "Zeile auswählen")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.All(single.FindAll("tbody input.wss-table-radio"),
+            r => Assert.Equal("Zeile auswählen", r.GetAttribute("aria-label")));
     }
 
     [Fact]
@@ -1183,6 +1250,41 @@ public class UiKitTableTests : BunitContext
     }
 
     [Fact]
+    public void Clicking_an_ActionColumn_cells_padding_does_not_toggle_ExpandRowByClick()
+    {
+        // The guard used to sit on the inner .wss-table-actions div, which is inline-flex -- it only
+        // covers the buttons. .wss-table-cell has 16px of padding around them, and a click there
+        // bubbled straight into the row handler, expanding the row the consumer was trying to act on.
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandRowByClick, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name))
+            .AddChildContent<ActionColumn<Person>>(cp => cp
+                .Add(c => c.ChildContent, (RenderFragment<Person>)(_ => b => b.AddMarkupContent(0, "<button type=\"button\">Edit</button>")))));
+
+        // Cells of the first row: [0] the expand chevron's own cell, [1] Name, [2] the actions.
+        IElement Cell(int index) =>
+            cut.FindAll("tbody .wss-table-row")[0].QuerySelectorAll("td.wss-table-cell")[index];
+
+        // A click on an ordinary cell does toggle the row (the behavior being protected from here).
+        Cell(1).Click();
+        Assert.Single(cut.FindAll(".wss-table-expanded-row"));
+        Cell(1).Click();
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+
+        // The action column's <td> -- the padding around the buttons -- is severed instead: bUnit
+        // models stopPropagation by cutting the bubble path, so the click reaches no handler at all
+        // and throws. That exception IS the assertion that the row's toggle can't be reached.
+        var actionCell = Cell(2);
+        Assert.Throws<Bunit.MissingEventHandlerException>(() => actionCell.Click());
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+    }
+
+    [Fact]
     public void Rows_are_not_clickable_looking_when_neither_OnRowClick_nor_ExpandRowByClick_is_set()
     {
         var cut = Render<Table<Person>>(p => p
@@ -1958,6 +2060,230 @@ public class UiKitTableTests : BunitContext
         Assert.Empty(raised!.Value.Values);
         // The row set stops being narrowed by the now-gone column's filter too.
         Assert.Equal(3, cut.FindAll("tbody .wss-table-row").Count);
+    }
+
+    // ----- Shared local render fragments (one copy per repeated block) -----
+
+    // bUnit renders Blazor's event wiring as blazor:onclick="<handler id>"; the ids are per-render
+    // counters, so they differ between two components (and between two blocks of one component)
+    // without the markup differing at all.
+    static string WithoutHandlerIds(string markup) =>
+        System.Text.RegularExpressions.Regex.Replace(markup, "blazor:[a-zA-Z]+=\"[^\"]*\"", "");
+
+    [Fact]
+    public void The_sort_trigger_renders_identically_with_and_without_a_column_filter()
+    {
+        // The filterable and non-filterable sortable headers carried byte-identical copies of the
+        // button + caret stack (a third, icon-only copy sits in the TitleContent branch). They share
+        // one fragment now; this pins that they can't drift apart again.
+        string Trigger(bool filterable)
+        {
+            var cut = Render<Table<Person>>(p =>
+            {
+                p.Add(t => t.DataSource, Sample());
+                p.AddChildContent<PropertyColumn<Person, string>>(cp =>
+                {
+                    cp.Add(c => c.Title, "Name").Add(c => c.Property, x => x.Name).Add(c => c.Sortable, true);
+                    if (filterable)
+                    {
+                        cp.Add(c => c.FilterOptions, NameOptions())
+                          .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v));
+                    }
+                });
+            });
+            return WithoutHandlerIds(cut.Find("button.wss-table-sort-trigger").OuterHtml);
+        }
+
+        Assert.Equal(Trigger(false), Trigger(true));
+    }
+
+    [Fact]
+    public void Top_and_bottom_pagers_render_the_same_block_apart_from_position_and_label()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.PageSize, 2)
+            .Add(t => t.PagerPosition, PagerPosition.Both)
+            .Add(t => t.PageSizeOptions, new[] { 2, 5 })
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        var top = WithoutHandlerIds(cut.Find(".wss-table-pagination-top").OuterHtml)
+            .Replace("wss-table-pagination-top", "wss-table-pagination-bottom")
+            .Replace("Pagination (top)", "Pagination (bottom)");
+        var bottom = WithoutHandlerIds(cut.Find(".wss-table-pagination-bottom").OuterHtml);
+
+        Assert.Equal(top, bottom);
+    }
+
+    [Fact]
+    public void Header_and_row_styled_checkboxes_share_the_same_box_wrapper()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.Selectable, true)
+            .Add(t => t.UseStyledCheckbox, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        // Same wrapper + same drawn box either side; only the input's own label/state differ.
+        var header = cut.Find("thead .wss-table-checkbox-wrap");
+        var row = cut.Find("tbody .wss-table-checkbox-wrap");
+        Assert.Equal(header.QuerySelector(".wss-table-checkbox-box")!.OuterHtml,
+                     row.QuerySelector(".wss-table-checkbox-box")!.OuterHtml);
+        Assert.Equal("wss-table-checkbox wss-table-checkbox-input-styled",
+                     header.QuerySelector("input")!.GetAttribute("class"));
+        Assert.Equal("wss-table-checkbox wss-table-checkbox-input-styled",
+                     row.QuerySelector("input")!.GetAttribute("class"));
+    }
+
+    // ----- Runtime parameter changes on an already-registered column -----
+
+    [Fact]
+    public void Changing_a_bound_column_Title_updates_the_header_on_the_same_render_cycle()
+    {
+        // Register only queued a re-render for columns that were NEW to the rendered set, so a
+        // same-set parameter change queued nothing: the Table's header is built from the column
+        // instances BEFORE the diff reaches Column.SetParametersAsync, leaving
+        // <Column Title="@($"Results ({count})")"> showing the previous value indefinitely -- until
+        // some unrelated event happened to re-render the table.
+        var title = "Results (2)";
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", title);
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+        Assert.Equal("Results (2)", cut.Find("thead th").TextContent.Trim());
+
+        var rendersBefore = cut.RenderCount;
+        title = "Results (7)";
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal("Results (7)", cut.Find("thead th").TextContent.Trim());
+        // Bounded corrective re-render, not a runaway loop -- notifying on every pass would recurse
+        // forever, since each Table render hands the column a fresh Property/ChildContent delegate.
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+    }
+
+    [Fact]
+    public void Repeated_renders_with_an_inline_FilterOptions_list_do_not_loop()
+    {
+        // FilterOptions built inline in markup is a brand-new list instance every pass; comparing it
+        // by reference would report "changed" forever, and with the corrective render above that is
+        // an infinite render loop rather than a stale header.
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)NameOptions());
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.ChildContent, Columns()));
+
+        var rendersBefore = cut.RenderCount;
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.True(cut.RenderCount - rendersBefore <= 4);
+        Assert.Single(cut.FindAll(".wss-table-filter-trigger"));
+    }
+
+    [Fact]
+    public void Swapping_FilterOptions_prunes_applied_values_that_no_longer_exist()
+    {
+        // Data-derived options swap with the data. PassesFilter reads FilterApplied raw, so a value
+        // that left the options kept excluding every row: an empty table, a dropdown with nothing
+        // ticked to explain it (OK a no-op, only Reset recovering), and a consumer summary reporting
+        // no filter, because AppliedFilterValues already intersects with the current options.
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        var options = NameOptions(); // Alice, Bob, Carol
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice"], RenderedNames(cut));
+        Assert.NotNull(raised);
+
+        // Alice leaves the options.
+        raised = null;
+        options = [new("Bob", "Bob"), new("Carol", "Carol")];
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        // The orphaned value is dropped, so the column stops narrowing anything...
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.DoesNotContain("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+        // ...silently: OnFilterChanged reports user intent (OK/Reset/a filtered column leaving the
+        // table), not the consumer's own parameter change echoed back at it mid-render.
+        Assert.Null(raised);
+
+        // The dropdown re-opens on the new options with nothing ticked.
+        cut.Find(".wss-table-filter-trigger").Click();
+        var boxes = cut.FindAll(".wss-table-filter-checkbox");
+        Assert.Equal(2, boxes.Count);
+        Assert.All(boxes, b => Assert.False(b.HasAttribute("checked")));
+    }
+
+    [Fact]
+    public void Swapping_FilterOptions_keeps_applied_values_that_survive()
+    {
+        // The other half of the prune: only the orphans go, and a still-offered value keeps filtering
+        // (no silent full reset of the user's selection on every options refresh).
+        var options = NameOptions();
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        CheckOption(cut, "Bob");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice", "Bob"], RenderedNames(cut));
+
+        options = [new("Bob", "Bob"), new("Carol", "Carol")]; // Alice gone, Bob stays
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal(["Bob"], RenderedNames(cut));
+        Assert.Contains("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
     }
 
     // ----- ScrollY sticky header + Loading mask stacking (Fix 1) -----

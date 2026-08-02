@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Components.Web;
-
 namespace Controls;
 
 /// <summary>
@@ -9,17 +7,20 @@ namespace Controls;
 /// </summary>
 public class ActionColumn<TItem> : Column<TItem>
 {
+    // Table.OnRowClick / ExpandRowByClick must not fire from anywhere in an action cell (rather than
+    // requiring every consumer button to stop propagation itself). The guard belongs on the <td>,
+    // exactly like the selection and expand cells: .wss-table-actions is inline-flex, so it only
+    // covers the buttons themselves, leaving the cell's own 16px padding around them bubbling
+    // straight into the row handler -- a click a hair off an action button toggled the row.
+    internal override bool StopsRowClickPropagation => true;
+
     public override RenderFragment CellFor(TItem item) => builder =>
     {
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "wss-table-actions");
-        // Table.OnRowClick / ExpandRowByClick must not fire from an action button click -- stopping
-        // propagation here (rather than requiring every consumer button to do it) covers the whole
-        // cell, matching the same guard already on the selection/expand cells.
-        builder.AddEventStopPropagationAttribute(2, "onclick", true);
         if (ChildContent != null)
         {
-            builder.AddContent(3, ChildContent(item));
+            builder.AddContent(2, ChildContent(item));
         }
         builder.CloseElement();
     };

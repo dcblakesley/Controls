@@ -7,6 +7,28 @@
 @code {
     protected override void OnInitialized() => WasmMessageService.OnChange += HandleChange;
 
+    /// <summary>
+    /// Fails fast when this WASM-only container is hosted anywhere else. <see cref="WasmMessageService"/>
+    /// keeps its state in process-wide statics, so on Blazor Server one process serves every circuit
+    /// and user A's toasts render on user B's screen -- a silent cross-user leak that only shows up
+    /// under real multi-user load, never in single-user dev. Asserted here rather than in
+    /// <c>OnInitialized</c>: a WASM app's own server-side prerender pass runs with
+    /// <c>IsBrowser() == false</c> and would false-positive, while <c>OnAfterRender</c> only runs once
+    /// the component is live on the render host it will actually stay on.
+    /// </summary>
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && !OperatingSystem.IsBrowser())
+        {
+            throw new InvalidOperationException(
+                "WasmMessageContainer (and WasmMessageService) are WebAssembly-only: their state is " +
+                "process-static, which on Blazor Server is shared by every circuit, so one user's " +
+                "messages would render for all of them. Register the scoped services with " +
+                "builder.Services.AddWssControlsToasts(), inject IMessageService, and use " +
+                "<MessageContainer /> instead.");
+        }
+    }
+
     void HandleChange() => InvokeAsync(StateHasChanged);
 
     public void Dispose() => WasmMessageService.OnChange -= HandleChange;

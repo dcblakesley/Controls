@@ -208,4 +208,35 @@ public class ScopedToastTests : BunitContext
         await Task.Delay(250);
         Assert.Empty(svc.Items);
     }
+
+    [Fact]
+    public void Concurrent_Clear_calls_never_cancel_an_already_disposed_timer()
+    {
+        // CancelAllTimers used to walk a _timers.Values snapshot and Cancel()+Dispose() every source
+        // without claiming it, so two callers reaching the same CancellationTokenSource both disposed
+        // it and the loser threw ObjectDisposedException out of the user's own Clear() (a circuit
+        // error on Blazor Server). The real-world pair is a threadpool auto-dismiss expiry racing a
+        // Clear(); two racing Clear()s exercise the identical unclaimed-entry window deterministically,
+        // with no dependence on timer wall-clock. With the TryRemove claim, exactly one caller ever
+        // owns an entry, so this can only pass.
+        var queue = new ToastQueue<MessageItem>();
+        for (var i = 0; i < 500; i++)
+            queue.Add(new MessageItem { Content = $"m{i}", Duration = 60 }); // long enough not to expire mid-test
+
+        Exception? failure = null;
+        using var start = new ManualResetEventSlim();
+        var threads = Enumerable.Range(0, 2).Select(_ => new Thread(() =>
+        {
+            start.Wait();
+            try { queue.Clear(); }
+            catch (Exception ex) { Interlocked.CompareExchange(ref failure, ex, null); }
+        })).ToList();
+
+        foreach (var t in threads) t.Start();
+        start.Set();
+        foreach (var t in threads) t.Join();
+
+        Assert.Null(failure);
+        Assert.Empty(queue.Items);
+    }
 }

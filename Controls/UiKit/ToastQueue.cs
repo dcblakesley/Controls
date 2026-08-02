@@ -100,14 +100,21 @@ public sealed class ToastQueue<TItem> : IDisposable where TItem : IToastItem
         }
     }
 
+    // Claims each entry the same exclusive way CancelTimer does (TryRemove is the ownership handshake)
+    // instead of walking a Values snapshot: a toast expiring on a threadpool thread runs
+    // Remove -> CancelTimer concurrently with a user's Clear()/Dispose(), and a snapshot hands BOTH
+    // sides the same CancellationTokenSource -- whichever loses the race then Cancel()s a source the
+    // winner already disposed, throwing ObjectDisposedException out of Clear() (a circuit error on
+    // Blazor Server) or into the fire-and-forget timer task. Enumerating the dictionary itself is
+    // lock-free and tolerates concurrent mutation, and TryRemove guarantees exactly one canceller per
+    // entry. No trailing Clear(): every key seen here is removed by the claim, and blanket-clearing
+    // would silently drop (uncancelled) any entry a concurrent Add slipped in mid-enumeration.
     private void CancelAllTimers()
     {
-        foreach (var cts in _timers.Values)
+        foreach (var entry in _timers)
         {
-            cts.Cancel();
-            cts.Dispose();
+            CancelTimer(entry.Key);
         }
-        _timers.Clear();
     }
 
     /// <summary>Cancels any pending auto-dismiss timers (called when the owning service is disposed).</summary>
