@@ -296,7 +296,14 @@
     /// already-rendered column has any template, <c>Property</c>, <c>SortBy</c>, <c>OnFilter</c> or
     /// <c>FilterOptions</c> parameter. That is the only case where declaration order cannot be
     /// recovered without rebuilding this content (columns themselves hold no state in it — see
-    /// <c>Table.MergeCollectedColumns</c>). It never happens on an ordinary re-render.</para></summary>
+    /// <c>Table.MergeCollectedColumns</c>). It never happens on an ordinary re-render.</para>
+    /// <para>Limitation: when a newly-appearing column and a column Blazor skipped (one whose own
+    /// parameters are all unchanged, so it does not re-register) fall in the same gap between two
+    /// columns that did re-register, the skipped column keeps its earlier position and the newcomer
+    /// lands after it — so a column declared <em>before</em> a skipped one renders after it until some
+    /// later pass changes a parameter. Nothing in that pass distinguishes the two orders, and the
+    /// alternative (rebuilding this content to find out) would tear down columns that can hold sort
+    /// and filter state.</para></summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
     /// <summary>Draws borders around every cell (AntD "bordered" look) instead of row separators only.</summary>
     [Parameter] public bool Bordered { get; set; }

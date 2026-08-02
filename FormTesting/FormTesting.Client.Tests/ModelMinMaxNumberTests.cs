@@ -65,6 +65,22 @@ public class ModelMinMaxNumberTests : BunitContext
         // message-producing failure -- what the end-to-end test below actually exercises.
         [Range(typeof(long), "-2147483648", "2147483647", ParseLimitsInInvariantCulture = true)]
         public long? WithIntExtremesOnLongViaStringCtor { get; set; }
+
+        // The mirror image of WithIntExtremesOnLong: the SAME int extremes on types that cannot reach
+        // them. [Range(0, int.MaxValue)] is the "non-negative integer" idiom, and on a short/byte the
+        // ceiling is unreachable -- a max attribute of 2147483647 on a short input is a limit the
+        // control can never enforce and the user can never approach, so only the floor renders.
+        // (Regression: short/byte carry no extreme row of their own, so an exact-row-only type gate
+        // stopped recognizing the idiom and rendered both bounds.)
+        [Range(0, int.MaxValue)]
+        public short? NonNegativeShort { get; set; }
+
+        [Range(0, int.MaxValue)]
+        public byte? NonNegativeByte { get; set; }
+
+        // Same on the min side: no short is below int.MinValue, so only the cap is real.
+        [Range(int.MinValue, 100)]
+        public short? CappedShort { get; set; }
     }
 
     [Fact]
@@ -179,6 +195,89 @@ public class ModelMinMaxNumberTests : BunitContext
         var input = cut.Find("input.edit-number-input");
         Assert.Equal(int.MinValue.ToString(CultureInfo.InvariantCulture), input.GetAttribute("min"));
         Assert.Equal(int.MaxValue.ToString(CultureInfo.InvariantCulture), input.GetAttribute("max"));
+    }
+
+    [Fact]
+    public void Int_extreme_Range_max_renders_as_min_only_on_a_short_property()
+    {
+        // The other direction from the test above, and the regression the exact-row type gate caused:
+        // int.MaxValue is not short's OWN extreme, but it is outside everything a short can hold, so
+        // it is the vacuous half of [Range(0, int.MaxValue)] -- min="0" and no max at all.
+        var model = new MinMaxModel();
+        Expression<Func<short?>> field = () => model.NonNegativeShort;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<short?>>(0);
+            b.AddAttribute(1, "Value", model.NonNegativeShort);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input.edit-number-input");
+        Assert.Equal("0", input.GetAttribute("min"));
+        Assert.False(input.HasAttribute("max"));
+    }
+
+    [Fact]
+    public void Int_extreme_Range_max_renders_as_min_only_on_a_byte_property()
+    {
+        // byte has no extreme row either, and unlike the short above its own ceiling (255) is a
+        // magnitude real bounds use -- which is exactly why "is this SOME type's extreme" has to stay
+        // part of the rule: [Range(0, 255)] on a byte still renders max="255" (ValidationHelperTests'
+        // Range_spanning_a_byte_type_in_full_names_both_bounds), only the unreachable one is dropped.
+        var model = new MinMaxModel();
+        Expression<Func<byte?>> field = () => model.NonNegativeByte;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<byte?>>(0);
+            b.AddAttribute(1, "Value", model.NonNegativeByte);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input.edit-number-input");
+        Assert.Equal("0", input.GetAttribute("min"));
+        Assert.False(input.HasAttribute("max"));
+    }
+
+    [Fact]
+    public void Int_extreme_Range_min_renders_as_max_only_on_a_short_property()
+    {
+        var model = new MinMaxModel();
+        Expression<Func<short?>> field = () => model.CappedShort;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditNumber<short?>>(0);
+            b.AddAttribute(1, "Value", model.CappedShort);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        var input = cut.Find("input.edit-number-input");
+        Assert.False(input.HasAttribute("min"));
+        Assert.Equal("100", input.GetAttribute("max"));
+    }
+
+    [Fact]
+    public void Unreachable_Range_bound_on_a_short_property_renders_the_one_sided_message()
+    {
+        // The message layer through the REAL reflection path (valueType "System.Nullable`1[System.Int16]"),
+        // proving it reaches the same verdict as the rendered min/max above: a form that shows no max
+        // must not then tell the user their entry has to be "between 0 and 2147483647".
+        var model = new MinMaxModel { NonNegativeShort = -1 };
+        var editContext = new EditContext(model);
+        Expression<Func<short?>> field = () => model.NonNegativeShort;
+        var cut = Render(RenderValidatedForm(editContext, new FormOptions { ShowFieldNameInValidation = false }, content =>
+        {
+            content.OpenComponent<EditNumber<short?>>(0);
+            content.AddAttribute(1, "Value", model.NonNegativeShort);
+            content.AddAttribute(2, "ValueExpression", field);
+            content.CloseComponent();
+        }));
+
+        cut.InvokeAsync(() => editContext.Validate());
+
+        Assert.Equal("Must be at least 0", cut.Find(".edit-validation-message:not(.edit-sr-only) > div").TextContent);
     }
 
     [Fact]

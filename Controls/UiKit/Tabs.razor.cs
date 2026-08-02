@@ -125,6 +125,20 @@ public partial class Tabs
     // every other moment, so one driven by consumer state the user never touched (a poll, a timer, a
     // sibling component) can never pull focus out of wherever the user actually is.
     bool _keyboardNav;
+
+    // How many arrow-key operations are still running. The latch cannot just be cleared by the FIRST
+    // OnAfterRender after the keypress: an ASYNC ActiveKeyChanged handler is still awaiting at that
+    // point -- dispatching an EventCallback re-renders the consumer around the await, so the pending
+    // render is flushed while the handler is suspended -- and the insertion that triggers the
+    // re-collection happens only when the handler RESUMES, one render later. Clearing on that first
+    // render disarmed the latch before the very re-collection it exists for, the rebuild ran with
+    // _restoreFocus false, and focus fell to <body>. Nor can OnKeyDownAsync clear the latch in its own
+    // finally: in the synchronous case no render has been PROCESSED by then (a render requested from
+    // an event handler runs after the handler returns), so BeginPass would never see it. Counting the
+    // operations keeps both -- the latch survives every render taken while one is in flight, and the
+    // finally's StateHasChanged guarantees a clearing cycle exists once the last one ends.
+    int _keyboardNavInFlight;
+
     bool _restoreFocus;  // a re-collection tore down the button _keyboardNav had focused
 
     // Resolution: the bound ActiveKey wins, then the last local selection, then the first enabled tab.
@@ -336,7 +350,9 @@ public partial class Tabs
             _restoreFocus = false;
             if (ActiveTab is { } active) _ = TryFocusAsync(active);
         }
-        _keyboardNav = false;
+        // Only once every arrow-key operation has finished -- see _keyboardNavInFlight. A render taken
+        // mid-operation (the one an awaited ActiveKeyChanged handler forces) must leave the latch armed.
+        if (_keyboardNavInFlight == 0) _keyboardNav = false;
     }
 
     // ActiveTab silently falls back to the first enabled tab when the requested key names a tab that
@@ -415,14 +431,28 @@ public partial class Tabs
         // ActiveKeyChanged, the consumer's handler may reveal a tab, and the re-collection that
         // repairs the order then destroys the very button focused below. None of that runs inside
         // this method -- a render requested from an event handler is processed after the handler
-        // returns -- so the flag cannot be cleared here; OnAfterRender clears it when the cycle this
-        // starts has finished. StateHasChanged guarantees there is such a cycle even in the corner
-        // where SelectAsync finds nothing to do.
+        // returns -- so the flag cannot be cleared here; OnAfterRender clears it once no operation is
+        // in flight. StateHasChanged guarantees there is such a cycle even in the corner where
+        // SelectAsync finds nothing to do.
         _keyboardNav = true;
+        _keyboardNavInFlight++;
         StateHasChanged();
 
-        await SelectAsync(target);
-        await TryFocusAsync(target);
+        try
+        {
+            await SelectAsync(target);
+            await TryFocusAsync(target);
+        }
+        finally
+        {
+            // The count has to come down even if the consumer's handler throws, or the strip would
+            // pull focus back into itself on every later re-collection. The paired StateHasChanged
+            // guarantees a render cycle after the last operation ends: an async handler's renders were
+            // all taken while the count was non-zero, so without this there may be no further cycle to
+            // clear the latch in.
+            _keyboardNavInFlight--;
+            StateHasChanged();
+        }
     }
 
     static async Task TryFocusAsync(Tab tab)

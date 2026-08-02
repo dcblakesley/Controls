@@ -329,8 +329,13 @@ public class ValidationHelperTests
     // ----- The narrow-integer extremes are REAL bounds, not sentinels ---------------------------
     // The message layer used to treat short/sbyte/byte/ushort/uint/ulong extremes as "no bound",
     // which the DOM-attribute layer never did — so the rendered min/max and the message disagreed on
-    // 8 of the 12 numeric extremes. The predicate only ever sees the bound's TEXT, never the bound
-    // property's CLR type, and at those magnitudes a real bound is far more likely than a vacuous one.
+    // 8 of the 12 numeric extremes. The predicate does see the bound property's CLR type, but these
+    // magnitudes carry no row in the sentinel table under ANY property type: at 127/255/32767 a real
+    // bound is far more likely than a vacuous one, so no bound of that magnitude is ever suppressed —
+    // not even on the type it belongs to (the byte/255 case below). What the property type decides is
+    // the other direction: one of the table's OWN extremes (int/long/decimal/float/double) is vacuous
+    // for any property that cannot reach it — int.MaxValue on a short. See the narrow-type section
+    // further down.
 
     [Fact]
     public void Range_with_a_byte_MaxValue_ceiling_names_both_bounds()
@@ -365,6 +370,79 @@ public class ValidationHelperTests
             "The field Level must be between 0 and 255.",
             "Level", "Level", valueType: "System.Byte");
         Assert.Equal("Must be between 0 and 255", msg);
+    }
+
+    // ----- A bound the property type cannot REACH is vacuous, whoever's extreme it is ------------
+    // The other half of type-gating, and the half an exact-row-only gate loses: short/sbyte/byte/
+    // ushort/uint/ulong have no extreme row of their own, so demanding an exact row match made every
+    // sentinel invisible to them and [Range(0, int.MaxValue)] on a short? started saying "Must be
+    // between 0 and 2147483647" (and rendering max="2147483647") -- a ceiling the type cannot even
+    // represent, so the message named a limit no entry could ever be measured against. A row therefore
+    // also counts when its extreme sits at or outside what the bound property can hold. Both halves
+    // stay necessary: only the five table extremes can be suppressed this way (so 255 on a byte is
+    // still named, above), and int's extremes on a LONG are strictly inside long's range, so they
+    // remain the real "must fit in an int" constraint they are.
+
+    [Theory]
+    [InlineData("System.Int16")]
+    [InlineData("System.Byte")]
+    [InlineData("System.Nullable`1[System.Int16]")]
+    public void Range_max_a_narrow_type_cannot_reach_renders_as_min_only(string valueType)
+    {
+        // [Range(0, int.MaxValue)] -- the "non-negative integer" idiom -- written on a short/byte.
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between 0 and {int.MaxValue}.",
+            "Quantity", "Quantity", valueType: valueType);
+        Assert.Equal("Must be at least 0", msg);
+    }
+
+    [Fact]
+    public void Range_min_a_narrow_type_cannot_reach_renders_as_max_only()
+    {
+        // [Range(int.MinValue, 100)] on a short: no short is below int.MinValue, so the floor is the
+        // "[Range] demands BOTH bounds" spelling and only the cap is a real constraint.
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Offset must be between {int.MinValue.ToString()} and 100.",
+            "Offset", "Offset", valueType: "System.Int16");
+        Assert.Equal("Cannot exceed 100", msg);
+    }
+
+    [Fact]
+    public void Range_max_a_wide_type_can_reach_stays_a_real_bound()
+    {
+        // The same annotation on a long?, which CAN hold values above int.MaxValue: the ceiling is a
+        // genuine "must fit in an int" bound and the unreachability rule above must not swallow it.
+        // (Nullable spelling on purpose -- the reflected property type is what the rule gates on.)
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between 0 and {int.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Nullable`1[System.Int64]");
+        Assert.Equal($"Must be between 0 and {int.MaxValue}", msg);
+    }
+
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("de-DE")]
+    public void A_bound_a_narrow_type_cannot_reach_is_detected_under_the_validation_time_culture(string cultureName)
+    {
+        // Same culture hazard as every other sentinel theory here: the candidate text is produced under
+        // the culture active at validation time (de-DE spells int.MinValue's sign differently), and the
+        // unreachability verdict must not depend on which culture spelled the bound.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(cultureName);
+            var minText = int.MinValue.ToString();
+
+            var msg = ValidationHelper.GetValidationMessage(
+                $"The field Offset must be between {minText} and 100.",
+                "Offset", "Offset", valueType: "System.Int16");
+
+            Assert.Equal("Cannot exceed 100", msg);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     // Every numeric type extreme, each paired with a concrete bound on the other side (a
