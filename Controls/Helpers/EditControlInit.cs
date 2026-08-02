@@ -228,7 +228,12 @@ public static class EditControlInit
         bool hasCount = false)
     {
         var errorMsgId = $"error-msg-{id}";
-        var hasDescription = !shouldHideLabel && !string.IsNullOrEmpty(description ?? attributes.Description());
+        // Not gated on shouldHideLabel: FormLabel renders the desc- element either way (visually
+        // hidden alongside the hidden label). Hiding the label is a layout decision, and dropping the
+        // field's format instructions with it took them from sighted users too.
+        var hasDescription = !string.IsNullOrEmpty(description ?? attributes.Description());
+        // The tooltip IS gated: it is an interactive hover/focus widget, and FormLabel renders no
+        // trigger for it in the hidden-label branch -- so tooltip-{id} would dangle.
         var hasTooltip = !shouldHideLabel && !string.IsNullOrEmpty(tooltip ?? attributes.Tooltip());
         return (errorMsgId, BuildDescribedBy(id, hasDescription, hasTooltip, hasCount));
     }

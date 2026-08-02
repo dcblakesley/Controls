@@ -98,10 +98,11 @@ public class EditControlInitTests
             EditControlInit.ResolveAriaState("Name", false, "a description", "a tooltip", attrs, null, formOptions, fid),
             EditControlInit.ResolveAriaState(control, formOptions, "Name", attrs, fid));
 
-        // ...including the form-wide label-hidden setting, which drops the desc-/tooltip- references.
+        // ...including the form-wide label-hidden setting, which drops the tooltip- reference (no
+        // trigger renders for it) while keeping desc- (FormLabel renders it visually hidden).
         formOptions.IsLabelHidden = true;
         var hidden = EditControlInit.ResolveAriaState(control, formOptions, "Name", attrs, fid);
-        Assert.Equal("error-msg-Name", hidden.DescribedBy);
+        Assert.Equal("error-msg-Name desc-Name", hidden.DescribedBy);
     }
 
     // --- Required-ness resolution (IsRequired param → [Required] attribute → RequiredResolver) ---
@@ -190,14 +191,17 @@ public class EditControlInitTests
     }
 
     [Fact]
-    public void ResolveAriaState_hidden_label_drops_the_description_reference()
+    public void ResolveAriaState_hidden_label_keeps_the_description_but_drops_the_tooltip()
     {
-        // A hidden label renders no desc- element, so aria-describedby must not point at one.
+        // The two references part ways under a hidden label. FormLabel still renders desc- (visually
+        // hidden alongside the hidden label) because hiding the label is a layout decision that must
+        // not also delete the field's format instructions -- but it renders no tooltip TRIGGER, and
+        // a tooltip is an interactive hover/focus widget, so tooltip- would dangle.
         var (attrs, fid) = InitFor(() => _model.Name);
         var state = EditControlInit.ResolveAriaState("Name", true, "a description", "a tooltip", attrs, false, null, fid);
 
         Assert.Null(state.AriaRequired); // IsRequired="false" forces optional even with [Required]
-        Assert.Equal("error-msg-Name", state.DescribedBy);
+        Assert.Equal("error-msg-Name desc-Name", state.DescribedBy);
     }
 
     [Theory]

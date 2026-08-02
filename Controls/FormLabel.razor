@@ -14,6 +14,19 @@
            for every caller that doesn't supply it. *@
         @NestedInput
     }
+
+    @* The description survives a hidden label, visually hidden alongside it. Hiding the label is a
+       layout decision — the field sits under a column header, or its purpose is obvious in context —
+       and it used to silently take the field's format instructions with it, for every user, sighted
+       or not (3.3.2). The tooltip is deliberately NOT resurrected here: it is an interactive hover/
+       focus widget with no visual trigger to reach in this mode, so EditControlInit keeps excluding
+       tooltip- from aria-describedby while it keeps desc-. *@
+    @if (DisplayDescription() != null)
+    {
+        <p class="edit-sr-only" id="desc-@Id">
+            @DisplayDescription()
+        </p>
+    }
 }
 else
 {

@@ -447,19 +447,22 @@ public partial class EditDateRange : IDisposable
         RefreshAriaState();
     }
 
-    // Both bound fields' ARIA state through the one shared helper, once per field (see
+    // Both bound fields' ARIA state through the shared helpers, once per field (see
     // EditControlBase.RefreshAriaState). The End field's state is independent of Start's:
     // Description/Tooltip belong to the whole control (rendered by the start-anchored FormLabel), so
-    // the end input's describedby references only its own validation message — hence shouldHideLabel
-    // true with no description/tooltip on the second call. No-op until OnInitialized has run —
-    // _attributes is null before then.
+    // the end input has no desc-/tooltip- element of its own and its describedby is just its own
+    // validation message. That is why the second call passes a NULL attribute list for the aria refs
+    // while the required-ness resolution still reads _endAttributes: ResolveAriaRefs derives its
+    // description from `description ?? attributes.Description()`, so handing it _endAttributes would
+    // emit desc-{endId} the moment the End property carried its own [Description] — pointing at an
+    // element only Start renders. No-op until OnInitialized has run — _attributes is null before then.
     void RefreshAriaState()
     {
         if (_attributes is null) return;
         (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
             _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _startFieldIdentifier);
-        (_endIsRequired, _endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaState(
-            _endId, true, null, null, _endAttributes, null, FormOptions, _endFieldIdentifier);
+        _endIsRequired = EditControlInit.AriaRequired(_endAttributes, null, FormOptions, _endFieldIdentifier);
+        (_endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaRefs(_endId, true, null, null, null);
     }
 
     protected override void OnParametersSet()

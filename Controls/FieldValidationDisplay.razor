@@ -20,7 +20,11 @@
 </div>
 
 <!-- non-screen readers -->
-<div class="edit-validation-message">
+@* aria-hidden because the sr-only region above already carries every one of these messages, in a
+   fuller (field-named) form. Without it a screen reader in browse mode walked straight through both
+   copies and read every validation error twice. Safe to hide: this container holds text only -- no
+   focusable content, which is the one thing aria-hidden must never swallow. *@
+<div class="edit-validation-message" aria-hidden="true">
     @foreach (var x in messages)
     {
         <div>@GetValidationMessage(x)</div>

@@ -60,6 +60,102 @@ public class FormA11yTests : BunitContext
     }
 
     [Fact]
+    public void Hidden_label_keeps_the_description_visually_hidden_rather_than_dropping_it()
+    {
+        var model = new PersonModel { Name = "x" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithValidatedForm(model, false, b => AddEditString(b, model, field,
+            ("IsLabelHidden", true), ("Description", "Format: first last"), ("Tooltip", "Some hint"))));
+
+        // The hidden-label branch used to render the label alone, silently deleting the field's
+        // format instructions for EVERY user -- hiding a label is a layout decision (the field sits
+        // under a column header, say), not a decision to drop its instructions.
+        var description = cut.Find("#desc-Name");
+        Assert.Contains("edit-sr-only", description.ClassList);
+        Assert.Equal("Format: first last", description.TextContent.Trim());
+
+        var describedBy = (cut.Find("input.edit-string-input").GetAttribute("aria-describedby") ?? "")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Contains("desc-Name", describedBy);
+        // The tooltip is the deliberate exception: it is an interactive hover/focus widget and the
+        // hidden-label branch renders no trigger for it, so the reference would dangle.
+        Assert.DoesNotContain("tooltip-Name", describedBy);
+        Assert.Empty(cut.FindAll("#tooltip-Name"));
+        // Nothing in the token list may point at a missing element, in either state.
+        foreach (var token in describedBy) Assert.NotNull(cut.Find("#" + token));
+    }
+
+    [Fact]
+    public void A_visible_label_still_renders_exactly_one_description_element()
+    {
+        // The hidden branch gained a desc- element; the visible branch must not have grown a second.
+        var model = new PersonModel { Name = "x" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithValidatedForm(model, false,
+            b => AddEditString(b, model, field, ("Description", "Format: first last"))));
+
+        Assert.Single(cut.FindAll("#desc-Name"));
+        Assert.Contains("edit-label-description", cut.Find("#desc-Name").ClassList);
+        Assert.Contains("desc-Name", cut.Find("input.edit-string-input").GetAttribute("aria-describedby")!);
+    }
+
+    // Both halves of an EditDateRange carrying their own [Description] -- only the Start-anchored
+    // FormLabel renders one, so only Start may reference it.
+    class DescribedRangeModel
+    {
+        [System.ComponentModel.Description("When the window opens")] public DateTime? Start { get; set; }
+        [System.ComponentModel.Description("When the window closes")] public DateTime? End { get; set; }
+    }
+
+    [Fact]
+    public void EditDateRange_end_input_never_references_a_description_only_Start_renders()
+    {
+        var model = new DescribedRangeModel { Start = new DateTime(2024, 1, 1), End = new DateTime(2024, 1, 5) };
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = Render(WithValidatedForm(model, false, b =>
+        {
+            b.OpenComponent<EditDateRange>(0);
+            b.AddAttribute(1, "Start", model.Start);
+            b.AddAttribute(2, "StartExpression", startField);
+            b.AddAttribute(3, "End", model.End);
+            b.AddAttribute(4, "EndExpression", endField);
+            b.CloseComponent();
+        }));
+
+        // Description/Tooltip belong to the control as a whole and are rendered by the Start-anchored
+        // FormLabel, so the End input's describedby is just its own validation message. The End half
+        // used to be kept honest by the label-hidden gate it passes; with desc- no longer gated on
+        // that, its attribute list has to stay out of the aria-ref resolution entirely.
+        Assert.Equal("error-msg-Start desc-Start", cut.Find("input.wss-picker-input-start").GetAttribute("aria-describedby"));
+        // The End half's id is derived from Start's ("{id}-end"), so its would-be description element
+        // is #desc-Start-end -- which nothing renders.
+        Assert.Equal("error-msg-Start-end", cut.Find("input.wss-picker-input-end").GetAttribute("aria-describedby"));
+        Assert.Empty(cut.FindAll("#desc-Start-end"));
+        Assert.NotNull(cut.Find("#desc-Start"));
+    }
+
+    [Fact]
+    public void The_visible_validation_copy_is_hidden_from_AT_so_errors_are_not_read_twice()
+    {
+        var model = new PersonModel { Name = "" };  // [Required]
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithValidatedForm(model, true, b => AddEditString(b, model, field)));
+        cut.Find("form").Submit();
+
+        // Both copies carry the same message; only the sr-only one is meant to be read. Without
+        // aria-hidden on the visible copy, browse mode walked through both and read every error
+        // twice. It holds text only -- no focusable content, the one thing aria-hidden must not
+        // swallow.
+        var srOnly = cut.Find(".edit-validation-message.edit-sr-only");
+        var visible = cut.Find(".edit-validation-message:not(.edit-sr-only)");
+        Assert.False(srOnly.HasAttribute("aria-hidden"));
+        Assert.Equal("true", visible.GetAttribute("aria-hidden"));
+        Assert.NotEmpty(visible.QuerySelectorAll("div"));   // ...and it really is a second copy
+        Assert.NotEmpty(srOnly.QuerySelectorAll("div"));
+    }
+
+    [Fact]
     public void Read_only_label_drops_the_for_attribute()
     {
         var model = new PersonModel { Name = "x" };
