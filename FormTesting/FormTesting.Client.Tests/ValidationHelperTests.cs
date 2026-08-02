@@ -1,3 +1,6 @@
+using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+
 namespace FormTesting.Client.Tests;
 
 public class ValidationHelperTests
@@ -145,6 +148,104 @@ public class ValidationHelperTests
             $"The field Reading must be between -100 and {maxText}.",
             "Reading", "Reading", valueType: "System.Single");
         Assert.Equal("Must be at least -100", msg);
+    }
+
+    // ----- The narrow-integer extremes are REAL bounds, not sentinels ---------------------------
+    // The message layer used to treat short/sbyte/byte/ushort/uint/ulong extremes as "no bound",
+    // which the DOM-attribute layer never did — so the rendered min/max and the message disagreed on
+    // 8 of the 12 numeric extremes. The predicate only ever sees the bound's TEXT, never the bound
+    // property's CLR type, and at those magnitudes a real bound is far more likely than a vacuous one.
+
+    [Fact]
+    public void Range_with_a_byte_MaxValue_ceiling_names_both_bounds()
+    {
+        // [Range(1, 255)] on an int Quantity renders min="1" max="255"; the message used to say only
+        // "Must be at least 1" — vacuous for an entry of 300 and silent about the ceiling just
+        // violated.
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Quantity must be between 1 and 255.",
+            "Quantity", "Quantity", valueType: "System.Int32");
+        Assert.Equal("Must be between 1 and 255", msg);
+    }
+
+    [Fact]
+    public void Range_with_a_short_MinValue_floor_names_both_bounds()
+    {
+        // [Range(-32768, 100)] renders min="-32768"; the message used to claim there was no floor.
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Offset must be between -32768 and 100.",
+            "Offset", "Offset", valueType: "System.Int32");
+        Assert.Equal("Must be between -32768 and 100", msg);
+    }
+
+    [Fact]
+    public void Range_spanning_a_byte_type_in_full_names_both_bounds()
+    {
+        // [Range(0, 255)] on a byte IS vacuous — but the predicate can't know that (it sees "255",
+        // not the property type), and naming both bounds is merely redundant where suppressing a real
+        // 255 ceiling is wrong. The DOM layer already renders both here, so this is what agreement
+        // costs.
+        var msg = ValidationHelper.GetValidationMessage(
+            "The field Level must be between 0 and 255.",
+            "Level", "Level", valueType: "System.Byte");
+        Assert.Equal("Must be between 0 and 255", msg);
+    }
+
+    // Every numeric type extreme, each paired with a concrete bound on the other side (a
+    // both-sentinel [Range] is a fully-unbounded annotation with nothing to rewrite). The message
+    // layer and the DOM-attribute layer must reach the SAME verdict on each: a bound the message
+    // presents as absent can't show up in the DOM as min="-32768", and vice versa.
+    public static TheoryData<string, string> TypeExtremeRangeBounds()
+    {
+        var inv = CultureInfo.InvariantCulture;
+        var data = new TheoryData<string, string>();
+        foreach (var min in new[]
+        {
+            sbyte.MinValue.ToString(inv), short.MinValue.ToString(inv), int.MinValue.ToString(inv),
+            long.MinValue.ToString(inv), decimal.MinValue.ToString(inv), double.MinValue.ToString(inv),
+            float.MinValue.ToString(inv), ((double)float.MinValue).ToString(inv),
+        })
+            data.Add(min, "100");
+
+        foreach (var max in new[]
+        {
+            sbyte.MaxValue.ToString(inv), byte.MaxValue.ToString(inv), short.MaxValue.ToString(inv),
+            ushort.MaxValue.ToString(inv), int.MaxValue.ToString(inv), uint.MaxValue.ToString(inv),
+            long.MaxValue.ToString(inv), ulong.MaxValue.ToString(inv), decimal.MaxValue.ToString(inv),
+            double.MaxValue.ToString(inv), float.MaxValue.ToString(inv), ((double)float.MaxValue).ToString(inv),
+        })
+            data.Add("1", max);
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(TypeExtremeRangeBounds))]
+    public void Rendered_bounds_and_message_bounds_agree_on_every_numeric_type_extreme(string minText, string maxText)
+    {
+        // Invariant culture throughout so the [Range] limit text, the framework message text and the
+        // sentinel candidates (produced under CurrentCulture) are all the same spelling.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
+            var attrs = new List<Attribute>
+            {
+                new RangeAttribute(typeof(decimal), minText, maxText) { ParseLimitsInInvariantCulture = true },
+            };
+
+            var msg = ValidationHelper.GetValidationMessage(
+                $"The field Value must be between {minText} and {maxText}.",
+                "Value", "Value", valueType: "System.Decimal");
+
+            Assert.Equal(attrs.MinNumber() is not null, msg.Contains(minText, StringComparison.Ordinal));
+            Assert.Equal(attrs.MaxNumber() is not null, msg.Contains(maxText, StringComparison.Ordinal));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     [Theory]

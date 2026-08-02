@@ -62,8 +62,8 @@ public static class AttributesHelper
     /// instead of blowing up or emitting scientific notation the browser can't use as a bound. The
     /// integer-typed spellings of that same idiom (<c>[Range(int.MinValue, 100)]</c>, and long/decimal's
     /// extremes via the string ctor) are equally unbounded on the [Range] fallback path -- see
-    /// <see cref="IsRangeSentinel"/>, which keeps rendering consistent with ValidationHelper's
-    /// one-sided message rewrite of those very same sentinels.
+    /// <see cref="RangeSentinels"/>, the one predicate this and ValidationHelper's one-sided message
+    /// rewrite share so the rendered bound and the message can never disagree.
     /// </summary>
     public static decimal? MinNumber(this List<Attribute>? attrs) => NumberBound(attrs, isMin: true);
 
@@ -94,25 +94,19 @@ public static class AttributesHelper
         // here means the rendered bound and RangeAttribute's enforced bound can never disagree.
         var culture = range.ParseLimitsInInvariantCulture ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture;
         var operand = isMin ? range.Minimum : range.Maximum;
-        return MinMaxValueComparer.TryConvertBoundToDecimal(operand, culture, out var rangeBound)
-            && !IsRangeSentinel(rangeBound)
-            ? rangeBound
-            : null;
+        // RangeAttribute requires BOTH bounds, so "no minimum" is conventionally spelled int.MinValue
+        // (or long/decimal's). Rendering has to agree with the one-sided message ValidationHelper
+        // rewrites those very bounds into ("Cannot exceed 100") -- a bound the message layer presents
+        // as absent can't show up in the DOM as min="-2147483648" -- so both layers share the ONE
+        // predicate in RangeSentinels rather than each keeping a list. double/float extremes never
+        // reach the check at all (unrepresentable as decimal -> already null above). Applies only to
+        // the [Range] fallback: [MinValue]/[MaxValue] are one-sided by design, so a bound written
+        // there is always intentional and renders verbatim.
+        if (!MinMaxValueComparer.TryConvertBoundToDecimal(operand, culture, out var rangeBound))
+            return null;
+        var isSentinel = isMin ? RangeSentinels.IsMin(rangeBound) : RangeSentinels.IsMax(rangeBound);
+        return isSentinel ? null : rangeBound;
     }
-
-    // RangeAttribute requires BOTH bounds, so "no minimum" is conventionally spelled int.MinValue
-    // (or long/decimal's) -- the same one-sided idiom ValidationHelper.IsTypeMin/MaxSentinel already
-    // rewrites into one-sided messages ("Cannot exceed 100"). Rendering must agree with that rewrite:
-    // a bound the message layer presents as absent can't show up in the DOM as min="-2147483648".
-    // double/float extremes never reach here (unrepresentable as decimal -> already null), and the
-    // unsigned/byte/ushort minimums (0) are deliberately NOT sentinels even though ValidationHelper
-    // treats "0" as one -- min="0" is a real browser-side floor that [Range(0, 100)] must keep.
-    // Applies only to the [Range] fallback: [MinValue]/[MaxValue] are one-sided by design, so a bound
-    // written there is always intentional and renders verbatim.
-    static bool IsRangeSentinel(decimal bound) =>
-        bound == int.MinValue || bound == int.MaxValue
-        || bound == long.MinValue || bound == long.MaxValue
-        || bound == decimal.MinValue || bound == decimal.MaxValue;
 
     /// <summary>
     /// The model-declared minimum bound for a date/time field: <see cref="MinValueAttribute"/>'s string

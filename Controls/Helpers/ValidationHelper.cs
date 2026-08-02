@@ -99,8 +99,8 @@ public static class ValidationHelper
             {
                 var minValue = match.Groups["min"].Value;
                 var maxValue = match.Groups["max"].Value;
-                var isMinSentinel = IsTypeMinSentinel(minValue);
-                var isMaxSentinel = IsTypeMaxSentinel(maxValue);
+                var isMinSentinel = RangeSentinels.IsMin(minValue);
+                var isMaxSentinel = RangeSentinels.IsMax(maxValue);
 
                 if (isMinSentinel && !isMaxSentinel)
                     return includeLabel ? MaxValueString(maxValue, label) : MaxValueString(maxValue);
@@ -162,41 +162,8 @@ public static class ValidationHelper
         return null;
     }
 
-    // Sentinel checks — every numeric primitive's MinValue/MaxValue as text. RangeAttribute formats
-    // its message under the culture active at validation time, so the candidates must be produced
-    // under that same culture: a set frozen at first static touch (the original design) stopped
-    // matching the moment the culture diverged (de-DE writes "-1,79…E+308", sv-SE uses U+2212 for
-    // the minus), silently degrading the one-sided "Cannot exceed…" rewrite. Deliberately NOT
-    // cached at all: a per-culture-NAME cache still returns wrong-culture hits for same-name
-    // cultures with customized number formats (CultureInfo clones, Windows user-override vs
-    // GetCultureInfo instances). This path only runs while a Range message containing
-    // " must be between " is being rewritten, where ~a dozen short ToString calls are noise.
-    // The ((double)float.MinValue)/((double)float.MaxValue) candidates are the textual forms
-    // Microsoft emits for float.MinValue/float.MaxValue once RangeAttribute has widened them to
-    // double (its ctor only takes double bounds), which differ from
-    // float.MinValue.ToString()/float.MaxValue.ToString() -- computed at call time like every
-    // neighboring candidate, for the same culture reason (a frozen invariant-format literal matched
-    // nothing outside a '.'-decimal culture, so de-DE saw the raw scientific notation this rewrite
-    // exists to suppress).
-    //
-    // byte/uint/ulong/ushort.MinValue are ALL "0" — deliberately excluded here (unlike every other
-    // signed/floating type's MinValue) so [Range(0, 100)] renders both bounds instead of losing its
-    // real floor to a false-positive sentinel match; only [Range(0, TYPE.MaxValue)] still collapses
-    // to the one-sided "at least 0" message, via the max side alone. Matches
-    // AttributesHelper.IsRangeSentinel, which excludes 0 from DOM-rendered bounds for the same
-    // reason — the message layer and the rendered min/max attribute must agree on what "no real
-    // floor" looks like.
-    static bool IsTypeMinSentinel(string value) =>
-        value == int.MinValue.ToString() || value == long.MinValue.ToString()
-        || value == short.MinValue.ToString() || value == sbyte.MinValue.ToString()
-        || value == double.MinValue.ToString() || value == float.MinValue.ToString()
-        || value == decimal.MinValue.ToString() || value == ((double)float.MinValue).ToString();
-
-    static bool IsTypeMaxSentinel(string value) =>
-        value == int.MaxValue.ToString() || value == long.MaxValue.ToString()
-        || value == short.MaxValue.ToString() || value == sbyte.MaxValue.ToString()
-        || value == byte.MaxValue.ToString() || value == uint.MaxValue.ToString()
-        || value == ulong.MaxValue.ToString() || value == ushort.MaxValue.ToString()
-        || value == double.MaxValue.ToString() || value == float.MaxValue.ToString()
-        || value == decimal.MaxValue.ToString() || value == ((double)float.MaxValue).ToString();
+    // The sentinel candidates themselves live in RangeSentinels, shared verbatim with
+    // AttributesHelper's DOM min/max rendering -- see that type for which extremes count and why. Two
+    // private lists here and there is exactly how the two layers drifted apart on 8 of the 12 numeric
+    // extremes; there is only the one set now.
 }
