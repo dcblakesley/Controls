@@ -203,6 +203,52 @@ public class SelectHighlightAndFocusTests : BunitContext
         Assert.Empty(captured[^1]);
     }
 
+    // ----- No selectable row at all: the highlight goes nowhere, not onto a disabled option -----
+    // Both highlight-settling paths used to fall back to raw index 0 when nothing was selectable,
+    // which on an all-disabled list is a disabled option: aria-activedescendant pointed at a row
+    // carrying aria-disabled="true", the active-highlight class landed on it, a screen reader
+    // announced it as current, and Enter silently did nothing while the arrows couldn't move off it.
+    // (Header-only and empty lists were already fine -- index 0 there yields no ActiveOption.)
+
+    [Fact]
+    public void DefaultOpen_on_an_all_disabled_list_leaves_no_active_descendant()
+    {
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, new List<SelectOption<string>> { Opt("A", disabled: true), Opt("B", disabled: true) })
+            .Add(s => s.DefaultOpen, true));
+
+        Assert.Null(cut.Find(InputSelector).GetAttribute("aria-activedescendant"));
+        Assert.DoesNotContain(cut.FindAll(".wss-select-item-option"),
+            o => o.ClassList.Contains("wss-select-item-option-active"));
+    }
+
+    [Fact]
+    public void Reassigning_Options_to_an_all_disabled_list_drops_the_highlight()
+    {
+        // The other settling path: RebuildFiltered's clamp, reached when Options are swapped while
+        // the dropdown is already open (SetInitialActive never runs again).
+        string? selected = null;
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, new List<SelectOption<string>> { Opt("A"), Opt("B") })
+            .Add(s => s.DefaultOpen, true)
+            .Add(s => s.ValueChanged, (string v) => selected = v));
+
+        cut.Render(p => p.Add(s => s.Options, new List<SelectOption<string>>
+        {
+            Opt("X", disabled: true),
+            Opt("Y", disabled: true),
+        }));
+
+        Assert.Null(cut.Find(InputSelector).GetAttribute("aria-activedescendant"));
+        Assert.DoesNotContain(cut.FindAll(".wss-select-item-option"),
+            o => o.ClassList.Contains("wss-select-item-option-active"));
+
+        // Enter was already inert on a disabled active row -- it must stay inert, not start
+        // committing the row the highlight no longer sits on.
+        cut.Find(InputSelector).KeyDown(Key("Enter"));
+        Assert.Null(selected);
+    }
+
     // ----- finding 4: tag-remove x / clear restore focus ----------------------------------------
 
     [Fact]

@@ -526,20 +526,28 @@ public partial class Select<TValue> : IAsyncDisposable
     // Nearest selectable row to where the highlight already was: forward first (matching every other
     // "settle the highlight" path in this component -- SetInitialActive, ApplySearchAsync and Home all
     // scan forward), then backward for the case where the rebuild truncated the list below it. A list
-    // with no selectable row at all (every option disabled, or only headers left) falls back to index
-    // 0, exactly as SetInitialActive does when MoveActiveTo finds nothing.
+    // with no selectable row at all (every option disabled, or only headers left) drops the highlight
+    // entirely -- -1, not index 0. Index 0 there is a row the user CANNOT act on, which is the
+    // opposite of this method's contract: on an all-disabled list it put aria-activedescendant and
+    // the active-highlight class on a row carrying aria-disabled="true", so a screen reader announced
+    // a disabled option as current while Enter did nothing and the arrows couldn't move off it.
+    // Everything downstream already treats -1 as "no active row": ActiveOption returns null (so the
+    // aria-activedescendant attribute and the row id/class don't render at all),
+    // ScrollActiveIntoViewAsync and the OnAfterRender scroll both return early, the Enter branch's
+    // `_activeIndex >= 0` guard falls through to the Tags-mode commit, and MoveActive still scans the
+    // whole list from either direction.
     void ClampActiveToSelectableRow()
     {
         if (_filtered.Count == 0)
         {
-            _activeIndex = 0;
+            _activeIndex = -1;
             return;
         }
 
         var start = Math.Clamp(_activeIndex, 0, _filtered.Count - 1);
         var found = FindSelectableFrom(start, 1);
         if (found < 0) found = FindSelectableFrom(start, -1);
-        _activeIndex = found >= 0 ? found : 0;
+        _activeIndex = found;
     }
 
     // Index of the first non-header, non-disabled row at/after `start`, stepping by `direction`;
@@ -618,10 +626,13 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // Highlight the current selection when the dropdown opens (falling back to the first enabled
     // option, never a disabled one) — so a long list opens at the user's value instead of the top,
-    // and Enter always has a selectable target. Never lands on a header row.
+    // and Enter always has a selectable target. Never lands on a header row, and never on a disabled
+    // one: the seed is -1, not 0, so a list with nothing selectable in it (every option disabled)
+    // leaves MoveActiveTo nothing to find and the highlight simply doesn't exist — same verdict, and
+    // for the same reason, as ClampActiveToSelectableRow's.
     void SetInitialActive()
     {
-        _activeIndex = 0;
+        _activeIndex = -1;
         var selectedIdx = FindSelectedRow();
         if (selectedIdx >= 0)
         {
