@@ -29,6 +29,15 @@ public class EditFileModelAttributeTests : BunitContext
         public List<IBrowserFile> Files { get; set; } = [];
     }
 
+    // Regression coverage (audit finding 70 / cc691f4): a negative [FileConstraints] value is a
+    // plausible consumer mistake -- "-1 means unlimited" is a widespread convention -- and must fall
+    // back to the built-in default exactly like 0/unset does, not be taken literally as a real bound.
+    class NegativeFileConstraintsModel
+    {
+        [FileConstraints(MaxFileSizeBytes = -1, MaxFiles = -1, MaxTotalBytes = -1)]
+        public List<IBrowserFile> Files { get; set; } = [];
+    }
+
     [Fact]
     public void AllowedExtensions_attribute_drives_the_rendered_accept_attribute_when_the_parameter_is_unset()
     {
@@ -230,5 +239,54 @@ public class EditFileModelAttributeTests : BunitContext
         Assert.Equal(0, (int)EffectiveOf("EffectiveMaxFiles")!);
         Assert.Equal(100L * 1024 * 1024, (long)EffectiveOf("EffectiveMaxTotalBytes")!);
         Assert.Empty((string[])EffectiveOf("EffectiveAllowedExtensions")!);
+    }
+
+    [Fact]
+    public void Effective_values_fall_back_to_defaults_when_the_attribute_bound_is_negative()
+    {
+        // A negative [FileConstraints] value (a plausible "-1 means unlimited" typo) must resolve
+        // exactly like 0/unset -- the built-in default -- not be taken literally as a real bound.
+        var model = new NegativeFileConstraintsModel();
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        var editFile = cut.FindComponent<EditFile>().Instance;
+        var type = typeof(EditFile);
+        object? EffectiveOf(string name) =>
+            type.GetProperty(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(editFile);
+
+        Assert.Equal(10L * 1024 * 1024, (long)EffectiveOf("EffectiveMaxFileSizeBytes")!);
+        Assert.Equal(0, (int)EffectiveOf("EffectiveMaxFiles")!);
+        Assert.Equal(100L * 1024 * 1024, (long)EffectiveOf("EffectiveMaxTotalBytes")!);
+    }
+
+    [Fact]
+    public void A_negative_MaxFileSizeBytes_attribute_does_not_reject_every_upload()
+    {
+        // Before the fix, EffectiveMaxFileSizeBytes resolved to -1, and `file.Size > -1` is true for
+        // any file (size >= 0), so every upload was silently rejected as "too large".
+        var model = new NegativeFileConstraintsModel();
+        List<IBrowserFile>? changed = null;
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "ValueChanged", EventCallback.Factory.Create<List<IBrowserFile>>(this, v => changed = v));
+            b.CloseComponent();
+        }));
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("small file", "a.pdf"));
+
+        Assert.NotNull(changed);
+        Assert.Single(changed);
+        Assert.Empty(cut.FindAll("div.edit-validation-message[role='alert']"));
     }
 }

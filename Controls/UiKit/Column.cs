@@ -103,6 +103,11 @@ public class Column<TItem> : ComponentBase, IDisposable
     bool _lastCanSort;
     bool _lastCanFilter;
     bool _lastFilterMultiple;
+    // A COPY of the options as they were last seen, never the consumer's own list instance. Holding
+    // the reference made OptionsEqual's ReferenceEquals fast path compare the list to itself, so a
+    // consumer keeping one List<TableFilterOption> field and refilling it in place (Clear()+AddRange,
+    // RemoveAll -- the ordinary pattern for data-derived options) always compared "equal" and the
+    // prune below never ran, which is the exact failure the by-value comparison was written for.
     IReadOnlyList<TableFilterOption>? _lastFilterOptions;
 
     // Re-register on every render so the Table re-collects its columns in document order each pass.
@@ -120,10 +125,15 @@ public class Column<TItem> : ComponentBase, IDisposable
     // ChildContent/Property delegate and lands right back here.
     protected override void OnParametersSet()
     {
-        var displayChanged = _initialized && DisplayStateChanged();
-        // Applied filter values that the new FilterOptions no longer offers are pruned silently --
-        // see PruneAppliedFilter.
-        var filterPruned = _initialized && !OptionsEqual(_lastFilterOptions, FilterOptions) && PruneAppliedFilter();
+        // One comparison per pass, shared by all three consumers below. The snapshot copy is taken
+        // only when the options actually changed, so the steady state costs one walk of a short list
+        // and no allocation -- the same order of work the old reference-then-value compare did for
+        // the inline-list case, which is the common one.
+        var optionsChanged = !OptionsEqual(_lastFilterOptions, FilterOptions);
+        var displayChanged = _initialized && (optionsChanged || DisplayStateChanged());
+        // Applied filter values that the new FilterOptions no longer offers are pruned -- see
+        // PruneAppliedFilter.
+        var filterPruned = _initialized && optionsChanged && PruneAppliedFilter();
 
         // A column that stops offering a filter takes its funnel button AND its dropdown out of the
         // header with it, so an open dropdown must not stay "open" in state. Two things read this
@@ -136,6 +146,7 @@ public class Column<TItem> : ComponentBase, IDisposable
         // nothing is exactly the case that left it stuck).
         if (!CanFilter) FilterOpen = false;
 
+        if (optionsChanged) _lastFilterOptions = FilterOptions?.ToArray();
         CaptureDisplayState();
         _initialized = true;
 
@@ -155,8 +166,9 @@ public class Column<TItem> : ComponentBase, IDisposable
         || _lastEllipsis != Ellipsis
         || _lastCanSort != CanSort
         || _lastCanFilter != CanFilter
-        || _lastFilterMultiple != FilterMultiple
-        || !OptionsEqual(_lastFilterOptions, FilterOptions);
+        || _lastFilterMultiple != FilterMultiple;
+    // FilterOptions is deliberately NOT compared here: OnParametersSet already runs that comparison
+    // once (it needs the result for the prune too) and ORs it in.
 
     private protected virtual void CaptureDisplayState()
     {
@@ -166,12 +178,15 @@ public class Column<TItem> : ComponentBase, IDisposable
         _lastCanSort = CanSort;
         _lastCanFilter = CanFilter;
         _lastFilterMultiple = FilterMultiple;
-        _lastFilterOptions = FilterOptions;
+        // _lastFilterOptions is captured in OnParametersSet instead, as a defensive copy and only
+        // when it changed -- see the field.
     }
 
     // By value, not by reference: FilterOptions is routinely built inline in markup (a fresh list per
     // render of an otherwise unchanged column), and a reference comparison would report a change every
-    // single pass -- which, with the corrective render above, is an infinite render loop.
+    // single pass -- which, with the corrective render above, is an infinite render loop. `a` is always
+    // this column's own private snapshot, so the ReferenceEquals below now only short-circuits the
+    // both-null case; it can never make a mutated-in-place list compare equal to itself.
     static bool OptionsEqual(IReadOnlyList<TableFilterOption>? a, IReadOnlyList<TableFilterOption>? b)
     {
         if (ReferenceEquals(a, b)) return true;

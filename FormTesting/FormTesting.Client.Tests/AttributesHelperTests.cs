@@ -484,4 +484,22 @@ public class AttributesHelperTests
     [InlineData(1024L, 1024L)]
     public void NonZero_long_converts_the_zero_sentinel_to_null(long? value, long? expected) =>
         Assert.Equal(expected, AttributesHelper.NonZero(value));
+
+    // Positive -- contrast with NonZero: negative is ALSO a sentinel, not a real bound.
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(0, null)]
+    [InlineData(-1, null)] // unlike NonZero, a negative value is unset too
+    [InlineData(5, 5)]
+    public void Positive_int_converts_zero_and_negative_to_null(int? value, int? expected) =>
+        Assert.Equal(expected, AttributesHelper.Positive(value));
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData(0L, null)]
+    [InlineData(-1L, null)] // unlike NonZero, a negative value is unset too
+    [InlineData(1024L, 1024L)]
+    public void Positive_long_converts_zero_and_negative_to_null(long? value, long? expected) =>
+        Assert.Equal(expected, AttributesHelper.Positive(value));
 }

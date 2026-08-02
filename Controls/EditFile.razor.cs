@@ -77,11 +77,13 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     /// <summary>
     /// The per-file size cap actually enforced: the <see cref="MaxFileSizeBytes"/> parameter, else the
-    /// bound property's <c>[FileConstraints(MaxFileSizeBytes = …)]</c> value (0 there means unset, since
-    /// attributes can't hold a nullable long), else the built-in 10 MB default.
+    /// bound property's <c>[FileConstraints(MaxFileSizeBytes = …)]</c> value (0 OR negative there means
+    /// unset -- see <see cref="AttributesHelper.Positive(long?)"/> -- since attributes can't hold a
+    /// nullable long and "-1 means unlimited" is a plausible consumer convention that must not be taken
+    /// as a literal, everything-rejecting cap), else the built-in 10 MB default.
     /// </summary>
     long EffectiveMaxFileSizeBytes =>
-        MaxFileSizeBytes ?? AttributesHelper.NonZero(_attributes.FileConstraints()?.MaxFileSizeBytes) ?? 10L * 1024 * 1024;
+        MaxFileSizeBytes ?? AttributesHelper.Positive(_attributes.FileConstraints()?.MaxFileSizeBytes) ?? 10L * 1024 * 1024;
 
     /// <summary>
     /// Maximum number of files that may be selected. 0 = unlimited. Falls back to the bound property's
@@ -91,9 +93,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     /// <summary>
     /// The file-count cap actually enforced: the <see cref="MaxFiles"/> parameter, else the bound
-    /// property's <c>[FileConstraints(MaxFiles = …)]</c> value (0 there means unset), else 0 (unlimited).
+    /// property's <c>[FileConstraints(MaxFiles = …)]</c> value (0 OR negative there means unset -- see
+    /// <see cref="AttributesHelper.Positive(int?)"/>), else 0 (unlimited).
     /// </summary>
-    int EffectiveMaxFiles => MaxFiles ?? AttributesHelper.NonZero(_attributes.FileConstraints()?.MaxFiles) ?? 0;
+    int EffectiveMaxFiles => MaxFiles ?? AttributesHelper.Positive(_attributes.FileConstraints()?.MaxFiles) ?? 0;
 
     /// <summary>
     /// Maximum total bytes across all selected files (existing plus newly picked). 0 = unlimited.
@@ -106,11 +109,11 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     /// <summary>
     /// The aggregate size cap actually enforced: the <see cref="MaxTotalBytes"/> parameter, else the
-    /// bound property's <c>[FileConstraints(MaxTotalBytes = …)]</c> value (0 there means unset), else
-    /// the built-in 100 MB default.
+    /// bound property's <c>[FileConstraints(MaxTotalBytes = …)]</c> value (0 OR negative there means
+    /// unset -- see <see cref="AttributesHelper.Positive(long?)"/>), else the built-in 100 MB default.
     /// </summary>
     long EffectiveMaxTotalBytes =>
-        MaxTotalBytes ?? AttributesHelper.NonZero(_attributes.FileConstraints()?.MaxTotalBytes) ?? 100L * 1024 * 1024;
+        MaxTotalBytes ?? AttributesHelper.Positive(_attributes.FileConstraints()?.MaxTotalBytes) ?? 100L * 1024 * 1024;
 
     // Localizable upload-error messages (string.Format under CurrentCulture, defaults keep today's
     // exact English output — same pattern as the Pagination/Select label parameters). The {n}

@@ -268,11 +268,31 @@ public static class AttributesHelper
     /// MaxFileSizeBytes/MaxFiles/MaxTotalBytes) use 0 for their unset numeric properties because an
     /// attribute can't hold a nullable int/long -- every fallback through one of them must convert 0
     /// back to null before treating it as a real bound, rather than rendering a meaningless zero cap.
+    /// ONLY 0 is treated as the sentinel here -- a negative value passes through unchanged as a real
+    /// (if unusual) bound. Use <see cref="Positive(int?)"/> instead when the attribute's own convention
+    /// already treats a negative value as unset too (e.g. a caller that would otherwise mistake a
+    /// stray/typo'd negative "unlimited" for a literal, everything-rejecting cap of that size).
     /// </summary>
     public static int? NonZero(int? value) => value is null or 0 ? null : value;
 
     /// <inheritdoc cref="NonZero(int?)"/>
     public static long? NonZero(long? value) => value is null or 0 ? null : value;
+
+    /// <summary>
+    /// Converts an attribute's "non-positive means unset" numeric sentinel back to null: null, 0, AND
+    /// any negative value all mean "no bound configured". Use this instead of <see cref="NonZero(int?)"/>
+    /// when negative must ALSO fall back to the default -- e.g. EditFile's MaxFileSizeBytes/MaxFiles/
+    /// MaxTotalBytes, whose original (pre-<c>NonZero</c>) resolution was <c>attrValue &gt; 0 ? attrValue
+    /// : default</c>: a consumer writing the widespread "-1 means unlimited" convention into
+    /// <c>[FileConstraints(MaxFileSizeBytes = -1)]</c> must get the 10&#160;MB default, not a literal
+    /// cap of -1 that rejects every file (<c>size &gt;= 0</c> is never <c>&lt;= -1</c>). Prefer
+    /// <see cref="NonZero(int?)"/> when 0 is the ONLY sentinel and a negative value is meant to be taken
+    /// as a real (if unusual) bound.
+    /// </summary>
+    public static int? Positive(int? value) => value is null || value <= 0 ? null : value;
+
+    /// <inheritdoc cref="Positive(int?)"/>
+    public static long? Positive(long? value) => value is null || value <= 0 ? null : value;
 
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
         FieldIdentifier fieldIdentifier) =>

@@ -2360,6 +2360,44 @@ public class UiKitTableTests : BunitContext
         Assert.Empty(cut.FindAll(".wss-table-filter-backdrop"));
     }
 
+    [Fact]
+    public void Mutating_the_same_FilterOptions_list_in_place_still_prunes_orphaned_values()
+    {
+        // The ordinary consumer shape for data-derived options is ONE List<TableFilterOption> field
+        // refilled in place (RemoveAll, or Clear() + AddRange). That hands the column back the same
+        // object with different contents, and the previous snapshot stored that very reference -- so
+        // OptionsEqual's ReferenceEquals fast path compared the list to itself, reported "unchanged",
+        // and the prune never ran. Alice kept excluding every other row with nothing ticked to
+        // explain it.
+        var options = new List<TableFilterOption> { new("Alice", "Alice"), new("Bob", "Bob"), new("Carol", "Carol") };
+        var data = new List<Person> { new("Alice", 30), new("Bob", 25), new("Carol", 40) };
+
+        RenderFragment Columns() => builder =>
+        {
+            builder.OpenComponent<PropertyColumn<Person, string>>(0);
+            builder.AddAttribute(1, "Title", "Name");
+            builder.AddAttribute(2, "Property", (Func<Person, string>)(x => x.Name));
+            builder.AddAttribute(3, "FilterOptions", (IReadOnlyList<TableFilterOption>)options);
+            builder.AddAttribute(4, "OnFilter", (Func<Person, string, bool>)((x, v) => x.Name == v));
+            builder.CloseComponent();
+        };
+
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, data)
+            .Add(t => t.ChildContent, Columns()));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice"], RenderedNames(cut));
+
+        options.RemoveAll(o => o.Value == "Alice"); // same instance, new contents
+        cut.Render(p => p.Add(t => t.ChildContent, Columns()));
+
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.DoesNotContain("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+    }
+
     // ----- ScrollY sticky header + Loading mask stacking (Fix 1) -----
 
     [Fact]
