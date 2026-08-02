@@ -62,7 +62,7 @@ public partial class EditTextArea : EditTextInputBase
     /// default). Feeds <see cref="EffectiveRows"/> (the actually-rendered initial height) and
     /// <see cref="AutoSizeAsync"/>'s floor.
     /// </summary>
-    int ResolvedRows => Rows ?? NonZero(_attributes.Rows()?.Rows) ?? 2;
+    int ResolvedRows => Rows ?? AttributesHelper.NonZero(_attributes.Rows()?.Rows) ?? 2;
 
     /// <summary>
     /// The <see cref="MinRows"/> parameter resolved against the model's <c>[Rows]</c> attribute: the
@@ -70,13 +70,13 @@ public partial class EditTextArea : EditTextInputBase
     /// <see cref="EffectiveRows"/> and <see cref="AutoSizeAsync"/> supply the further fallback to
     /// <see cref="ResolvedRows"/>.
     /// </summary>
-    int? ResolvedMinRows => MinRows ?? NonZero(_attributes.Rows()?.MinRows);
+    int? ResolvedMinRows => MinRows ?? AttributesHelper.NonZero(_attributes.Rows()?.MinRows);
 
     /// <summary>
     /// The <see cref="MaxRows"/> parameter resolved against the model's <c>[Rows]</c> attribute: the
     /// parameter, else the attribute's <c>MaxRows</c> value (0 treated as unset), else null (unbounded).
     /// </summary>
-    int? ResolvedMaxRows => MaxRows ?? NonZero(_attributes.Rows()?.MaxRows);
+    int? ResolvedMaxRows => MaxRows ?? AttributesHelper.NonZero(_attributes.Rows()?.MaxRows);
 
     /// <summary>
     /// The <see cref="AutoSize"/> parameter resolved against the model's <c>[Rows]</c> attribute: the
@@ -85,10 +85,6 @@ public partial class EditTextArea : EditTextInputBase
     /// an explicit <c>AutoSize="false"</c> parameter still overrides a true from the attribute.
     /// </summary>
     bool ResolvedAutoSize => AutoSize ?? _attributes.Rows()?.AutoSize ?? false;
-
-    // RowsAttribute uses 0 (not null) as its "unset" sentinel for the numeric properties -- an
-    // attribute can't hold a nullable int -- so every fallback through it must convert 0 back to null.
-    static int? NonZero(int? value) => value is null or 0 ? null : value;
 
     [Inject] IJSRuntime JS { get; set; } = default!;
 
