@@ -25,4 +25,35 @@ public partial class SelectOptionList<TItem>
     [Parameter] public string? PlaceholderText { get; set; }
     [Parameter, EditorRequired] public Func<TItem, string?> DisplayText { get; set; } = null!;
     [Parameter, EditorRequired] public Func<TItem, string?> ValueString { get; set; } = null!;
+
+    /// <summary>
+    /// <see cref="Options"/> materialized once per parameter cycle so the markup can index it in step
+    /// with <see cref="OptionIds"/>. A <see cref="IReadOnlyList{T}"/> source (both hosts pass a
+    /// <c>List&lt;T&gt;</c>) is used as-is; anything else is copied.
+    /// </summary>
+    IReadOnlyList<TItem> OptionList { get; set; } = [];
+
+    /// <summary>
+    /// One distinct id segment per option, positionally aligned with <see cref="OptionList"/> — the
+    /// <c>{Id}-option-{segment}</c> trailing part of each <c>&lt;option&gt;</c>'s <c>id</c>/<c>data-test-id</c>.
+    /// The same de-duplication <c>CheckboxOptionList</c> and the radio hosts already apply: <c>ToId</c>
+    /// strips everything outside <c>[A-Za-z0-9-_]</c>, so an all-CJK option list sanitized every entry to
+    /// the same empty segment and a duplicate string option repeated its own — several elements sharing
+    /// one DOM id either way.
+    /// </summary>
+    /// <remarks>
+    /// The two synthetic segments this component emits itself (<c>none</c> for the leading blank option,
+    /// <c>placeholder</c> for the unmatched-value option) are reserved unconditionally, not only while
+    /// their option renders: <c>ShowPlaceholder</c> is derived from the CURRENT value, so a conditional
+    /// reservation would change a literal option's id as the user picks values. An ordinary option list
+    /// contains neither segment and renders exactly the ids it always did.
+    /// </remarks>
+    string[] OptionIds { get; set; } = [];
+
+    /// <inheritdoc/>
+    protected override void OnParametersSet()
+    {
+        OptionList = Options as IReadOnlyList<TItem> ?? Options.ToList();
+        OptionIds = EnumHelpers.ToUniqueIds(OptionList, "none", "placeholder");
+    }
 }

@@ -301,6 +301,114 @@ public class OptionIdUniquenessAndSplatTests : BunitContext
         public CjkColor? Pick { get; set; }
     }
 
+    // ----- native <select> option ids (SelectOptionList) ------------------------------------------
+
+    IRenderedComponent<ContainerFragment> RenderStringSelect(PersonModel model, List<string> options,
+        string? nullOptionText = "")
+    {
+        Expression<Func<string>> field = () => model.Name;
+        return Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<string>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", options);
+            b.AddAttribute(4, "NullOptionText", nullOptionText);
+            b.CloseComponent();
+        }));
+    }
+
+    [Fact]
+    public void EditSelectString_keeps_the_established_option_id_shape_for_an_ascii_list()
+    {
+        var cut = RenderStringSelect(new PersonModel(), ["a", "b", "Hello World"]);
+
+        Assert.NotNull(cut.Find("#Name-option-a"));
+        Assert.NotNull(cut.Find("#Name-option-b"));
+        Assert.NotNull(cut.Find("#Name-option-Hello-World"));
+        Assert.NotNull(cut.Find("#Name-option-none")); // the synthetic leading blank option is untouched
+    }
+
+    [Fact]
+    public void EditSelectString_gives_options_that_sanitize_alike_distinct_ids()
+    {
+        // "a!" and "a?" both sanitize to "a", so both <option>s carried the same DOM id.
+        var cut = RenderStringSelect(new PersonModel(), ["a!", "a?"]);
+
+        AssertOptionIdsAreDistinct(cut);
+        Assert.NotNull(cut.Find("#Name-option-a"));
+        Assert.NotNull(cut.Find("#Name-option-1-a"));
+    }
+
+    [Fact]
+    public void EditSelectString_gives_an_all_non_ascii_option_list_distinct_ids()
+    {
+        var cut = RenderStringSelect(new PersonModel(), ["赤", "青", "緑"]);
+
+        AssertOptionIdsAreDistinct(cut);
+        Assert.NotNull(cut.Find("#Name-option-0"));
+        Assert.NotNull(cut.Find("#Name-option-1"));
+        Assert.NotNull(cut.Find("#Name-option-2"));
+    }
+
+    [Fact]
+    public void EditSelectString_literal_none_option_yields_to_the_synthetic_leading_option()
+    {
+        // The library's own {Id}-option-none is the fixed point; a literal "none" option takes the
+        // index-qualified form rather than shadowing it.
+        var cut = RenderStringSelect(new PersonModel(), ["none", "b"]);
+
+        AssertOptionIdsAreDistinct(cut);
+        Assert.Equal("", cut.Find("#Name-option-none").GetAttribute("value")); // still the blank option
+        Assert.Equal("none", cut.Find("#Name-option-0-none").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void EditSelectString_literal_placeholder_option_yields_to_the_synthetic_unmatched_option()
+    {
+        // Bound to a value that is in neither list position, so the hidden unmatched-value option
+        // (#Name-option-placeholder) renders alongside the literal "placeholder" option.
+        var cut = RenderStringSelect(new PersonModel { Name = "unmatched" }, ["placeholder", "b"],
+            nullOptionText: null);
+
+        AssertOptionIdsAreDistinct(cut);
+        Assert.True(cut.Find("#Name-option-placeholder").HasAttribute("hidden")); // the synthetic one
+        Assert.Equal("placeholder", cut.Find("#Name-option-0-placeholder").GetAttribute("value"));
+    }
+
+    [Fact]
+    public void EditSelectString_gives_duplicate_string_options_distinct_ids()
+    {
+        var cut = RenderStringSelect(new PersonModel(), ["a", "a"]);
+
+        AssertOptionIdsAreDistinct(cut);
+    }
+
+    [Fact]
+    public void EditSelectEnum_keeps_the_established_option_id_shape_for_an_ascii_enum()
+    {
+        var model = new PersonModel { Priority = Priority.Low };
+        Expression<Func<Priority?>> field = () => model.Priority;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        }));
+
+        Assert.NotNull(cut.Find("#Priority-option-Low"));
+        Assert.NotNull(cut.Find("#Priority-option-Critical"));
+        AssertOptionIdsAreDistinct(cut);
+    }
+
+    static void AssertOptionIdsAreDistinct(IRenderedComponent<ContainerFragment> cut)
+    {
+        var ids = cut.FindAll("option").Select(o => o.Id!).ToList();
+        Assert.NotEmpty(ids);
+        Assert.Equal(ids.Count, ids.Distinct().Count());
+    }
+
     // ----- unmatched attribute forwarding ---------------------------------------------------------
 
     [Fact]

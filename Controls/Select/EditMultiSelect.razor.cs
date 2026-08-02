@@ -6,6 +6,11 @@ namespace Controls;
 /// <see cref="FormOptions"/> support on top of the AntDesign-style dropdown. Use
 /// <see cref="SelectMode.Tags"/> to let users add values that are not in <see cref="Options"/>.
 /// </summary>
+/// <remarks>
+/// The engine pass-through parameters below are declared again on <see cref="EditSelectSearch{TValue}"/>
+/// and can't be hoisted to a shared base — see <see cref="SelectDefaults"/>, which holds everything
+/// about them that CAN be shared (each one's default value, and the placeholder resolution chain).
+/// </remarks>
 public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
 {
     /// <summary>
@@ -32,8 +37,8 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <inheritdoc cref="EditSelectSearch{TValue}.Placeholder"/>
     [Parameter] public string? Placeholder { get; set; }
 
-    /// <inheritdoc cref="EditSelectSearch{TValue}.EffectivePlaceholder"/>
-    string EffectivePlaceholder => Placeholder ?? _attributes.Placeholder() ?? "Please select";
+    /// <inheritdoc cref="SelectDefaults.ResolvePlaceholder"/>
+    string EffectivePlaceholder => SelectDefaults.ResolvePlaceholder(Placeholder, _attributes);
 
     /// <inheritdoc cref="Select{TValue}.AllowClear"/>
     [Parameter] public bool AllowClear { get; set; } = true;
@@ -60,7 +65,7 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     [Parameter] public string? Width { get; set; }
 
     /// <inheritdoc cref="Select{TValue}.EmptyText"/>
-    [Parameter] public string EmptyText { get; set; } = "No data";
+    [Parameter] public string EmptyText { get; set; } = SelectDefaults.EmptyText;
 
     /// <inheritdoc cref="Select{TValue}.EmptyContent"/>
     [Parameter] public RenderFragment? EmptyContent { get; set; }
@@ -87,13 +92,13 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
     /// <inheritdoc cref="Select{TValue}.RemoveItemLabelFormat"/>
-    [Parameter] public string RemoveItemLabelFormat { get; set; } = "Remove {0}";
+    [Parameter] public string RemoveItemLabelFormat { get; set; } = SelectDefaults.RemoveItemLabelFormat;
 
     /// <inheritdoc cref="Select{TValue}.ClearSelectionsLabel"/>
-    [Parameter] public string ClearSelectionsLabel { get; set; } = "Clear all selections";
+    [Parameter] public string ClearSelectionsLabel { get; set; } = SelectDefaults.ClearSelectionsLabel;
 
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
-    [Parameter] public string ListboxLabel { get; set; } = "Options";
+    [Parameter] public string ListboxLabel { get; set; } = SelectDefaults.ListboxLabel;
 
     // Read-only view: comma-joined option labels (or the value's ToString when unmatched), resolved by
     // the same shared SelectLabelCache EditSelectSearch uses -- it caches both the value -> option

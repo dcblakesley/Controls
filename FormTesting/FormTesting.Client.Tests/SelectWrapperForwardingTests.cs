@@ -251,4 +251,80 @@ public class SelectWrapperForwardingTests : BunitContext
         Assert.DoesNotContain("my-custom-class", wrapper.ClassList);
         Assert.Contains("my-custom-class", cut.Find(".wss-select").ClassList);
     }
+
+    // ----- shared defaults (SelectDefaults) -----------------------------------------------------
+
+    [Fact]
+    public void All_three_selects_agree_on_the_unset_placeholder_text()
+    {
+        // "Please select" used to be written out in three places (the engine's parameter initializer and
+        // each wrapper's EffectivePlaceholder fallback). One home now; this pins that they still agree.
+        var model = new PersonModel { Priority = null, FavoriteColors = [] };
+        Expression<Func<Priority?>> single = () => model.Priority;
+        Expression<Func<List<Color>>> multi = () => model.FavoriteColors;
+
+        var engine = Render<Select<Priority?>>(p => p.Add(x => x.Options, PriorityOptions()));
+        var search = Render<EditSelectSearch<Priority?>>(p => p
+            .Add(x => x.Value, model.Priority)
+            .Add(x => x.ValueExpression, single)
+            .Add(x => x.Options, PriorityOptions()));
+        var multiSelect = Render<EditMultiSelect<Color>>(p => p
+            .Add(x => x.Value, model.FavoriteColors)
+            .Add(x => x.ValueExpression, multi)
+            .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red")]));
+
+        var expected = engine.Find(".wss-select-selection-placeholder").TextContent;
+        Assert.Equal("Please select", expected);
+        Assert.Equal(expected, search.Find(".wss-select-selection-placeholder").TextContent);
+        Assert.Equal(expected, multiSelect.Find(".wss-select-selection-placeholder").TextContent);
+    }
+
+    [Fact]
+    public void All_three_selects_agree_on_the_unset_empty_text_and_listbox_label()
+    {
+        var model = new PersonModel { Priority = null, FavoriteColors = [] };
+        Expression<Func<Priority?>> single = () => model.Priority;
+        Expression<Func<List<Color>>> multi = () => model.FavoriteColors;
+
+        var engine = Render<Select<Priority?>>(p => p
+            .Add(x => x.Options, new List<SelectOption<Priority?>>())
+            .Add(x => x.DefaultOpen, true));
+        var search = Render<EditSelectSearch<Priority?>>(p => p
+            .Add(x => x.Value, model.Priority)
+            .Add(x => x.ValueExpression, single)
+            .Add(x => x.Options, new List<SelectOption<Priority?>>())
+            .Add(x => x.DefaultOpen, true));
+        var multiSelect = Render<EditMultiSelect<Color>>(p => p
+            .Add(x => x.Value, model.FavoriteColors)
+            .Add(x => x.ValueExpression, multi)
+            .Add(x => x.Options, new List<SelectOption<Color>>())
+            .Add(x => x.DefaultOpen, true));
+
+        foreach (var cut in new[] { engine.Find(".wss-select-item-empty"), search.Find(".wss-select-item-empty"), multiSelect.Find(".wss-select-item-empty") })
+            Assert.Equal("No data", cut.TextContent.Trim());
+
+        foreach (var cut in new[] { engine.Find("[role=listbox]"), search.Find("[role=listbox]"), multiSelect.Find("[role=listbox]") })
+            Assert.Equal("Options", cut.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Both_wrappers_agree_with_the_engine_on_the_clear_and_remove_accessible_names()
+    {
+        var model = new PersonModel { Priority = Priority.Low, FavoriteColors = [Color.Red] };
+        Expression<Func<Priority?>> single = () => model.Priority;
+        Expression<Func<List<Color>>> multi = () => model.FavoriteColors;
+
+        var search = Render<EditSelectSearch<Priority?>>(p => p
+            .Add(x => x.Value, model.Priority)
+            .Add(x => x.ValueExpression, single)
+            .Add(x => x.Options, PriorityOptions()));
+        var multiSelect = Render<EditMultiSelect<Color>>(p => p
+            .Add(x => x.Value, model.FavoriteColors)
+            .Add(x => x.ValueExpression, multi)
+            .Add(x => x.Options, [new SelectOption<Color>(Color.Red, "Red")]));
+
+        Assert.Equal("Clear selection", search.Find("button.wss-select-clear").GetAttribute("aria-label"));
+        Assert.Equal("Clear all selections", multiSelect.Find("button.wss-select-clear").GetAttribute("aria-label"));
+        Assert.Equal("Remove Red", multiSelect.Find("button.wss-select-selection-item-remove").GetAttribute("aria-label"));
+    }
 }

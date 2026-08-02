@@ -177,6 +177,23 @@ public class EnumHelpersTests
     }
 
     [Fact]
+    public void ToUniqueIds_leaves_every_reserved_segment_to_the_caller()
+    {
+        // SelectOptionList reserves both of its synthetic option ids at once ({Id}-option-none for the
+        // leading blank option, {Id}-option-placeholder for the hidden unmatched-value one).
+        Assert.Equal(
+            new[] { "0-none", "1-placeholder", "b" },
+            EnumHelpers.ToUniqueIds(new[] { "none", "placeholder", "b" }, "none", "placeholder"));
+    }
+
+    [Fact]
+    public void ToUniqueIds_ignores_a_null_reserved_segment()
+    {
+        // EditRadioString passes `HasOther ? "other" : null` -- the null form must reserve nothing.
+        Assert.Equal(new[] { "other", "b" }, EnumHelpers.ToUniqueIds(new[] { "other", "b" }, (string?)null));
+    }
+
+    [Fact]
     public void ToUniqueIds_re_prefixes_when_the_index_qualified_form_is_itself_taken()
     {
         // Pathological: index 2's "a" collides, and its "2-a" fallback is a literal option at index 0,

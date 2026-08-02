@@ -6,6 +6,11 @@ namespace Controls;
 /// on top of the AntDesign-style dropdown (type-to-search, clear, keyboard nav, virtualized list).
 /// For a plain native <c>&lt;select&gt;</c> use <see cref="EditSelect{TValue}"/> instead.
 /// </summary>
+/// <remarks>
+/// The engine pass-through parameters below are declared again on <see cref="EditMultiSelect{TValue}"/>
+/// and can't be hoisted to a shared base — see <see cref="SelectDefaults"/>, which holds everything
+/// about them that CAN be shared (each one's default value, and the placeholder resolution chain).
+/// </remarks>
 public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
 {
     /// <summary>
@@ -22,21 +27,15 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
 
     /// <summary>
     /// Placeholder text shown when nothing is selected. Left <c>null</c> (no initializer — deliberately,
-    /// so "unset" is distinguishable from an explicit empty string) so <see cref="EffectivePlaceholder"/>
-    /// can fall through to the model's <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute; null means
-    /// "resolve from the model, else 'Please select'".
+    /// so "unset" is distinguishable from an explicit empty string) so
+    /// <see cref="SelectDefaults.ResolvePlaceholder"/> can fall through to the model's
+    /// <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute; null means "resolve from the model, else
+    /// 'Please select'".
     /// </summary>
     [Parameter] public string? Placeholder { get; set; }
 
-    /// <summary>
-    /// Resolved placeholder actually forwarded to the inner <see cref="Select{TValue}"/>: the
-    /// <see cref="Placeholder"/> parameter (consumer set it explicitly) → the model property's
-    /// <c>[Placeholder]</c>/<c>[Display(Prompt)]</c> attribute → the literal "Please select" fallback.
-    /// The literal default lives here rather than on the parameter itself, because a defaulted
-    /// non-null parameter can't be told apart from a consumer-set value — see <see cref="Placeholder"/>.
-    /// <see cref="Select{TValue}.Placeholder"/> is non-nullable, so this must never be null.
-    /// </summary>
-    string EffectivePlaceholder => Placeholder ?? _attributes.Placeholder() ?? "Please select";
+    /// <inheritdoc cref="SelectDefaults.ResolvePlaceholder"/>
+    string EffectivePlaceholder => SelectDefaults.ResolvePlaceholder(Placeholder, _attributes);
 
     /// <inheritdoc cref="Select{TValue}.AllowClear"/>
     [Parameter] public bool AllowClear { get; set; } = true;
@@ -63,7 +62,7 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     [Parameter] public string? Width { get; set; }
 
     /// <inheritdoc cref="Select{TValue}.EmptyText"/>
-    [Parameter] public string EmptyText { get; set; } = "No data";
+    [Parameter] public string EmptyText { get; set; } = SelectDefaults.EmptyText;
 
     /// <inheritdoc cref="Select{TValue}.EmptyContent"/>
     [Parameter] public RenderFragment? EmptyContent { get; set; }
@@ -90,10 +89,10 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
     /// <inheritdoc cref="Select{TValue}.ClearSelectionLabel"/>
-    [Parameter] public string ClearSelectionLabel { get; set; } = "Clear selection";
+    [Parameter] public string ClearSelectionLabel { get; set; } = SelectDefaults.ClearSelectionLabel;
 
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
-    [Parameter] public string ListboxLabel { get; set; } = "Options";
+    [Parameter] public string ListboxLabel { get; set; } = SelectDefaults.ListboxLabel;
 
     // Label for the read-only view: the matching option's label, else the value's own ToString --
     // resolved (and cached at both levels: the value -> option lookup and the resolved text) by the
@@ -109,12 +108,16 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
         _labels.Refresh(Options);
     }
 
-    // Union of the base default check and the empty-string case, matching EditSelect/EditSelectString:
-    // default(string) is null, not "", so a string-bound EditSelectSearch at the empty string stayed
-    // visible under WhenNullOrDefault/WhenReadOnlyAndNullOrDefault while every sibling string control hid
-    // it — contradicting HidingMode's documented "null or its type's default (e.g. empty string, 0, ...)".
+    // Union of the base default check and the empty-string case, matching EditSelectBase (which
+    // EditSelect/EditSelectString share): default(string) is null, not "", so a string-bound
+    // EditSelectSearch at the empty string stayed visible under
+    // WhenNullOrDefault/WhenReadOnlyAndNullOrDefault while every sibling string control hid it —
+    // contradicting HidingMode's documented "null or its type's default (e.g. empty string, 0, ...)".
     // Unioned rather than replacing the base check, so every other TValue keeps its own default (a
     // nullable enum at null, an int at 0), which stringifying would have silently broken.
+    // Restated here rather than inherited: EditSelectBase's other two overrides don't apply (this
+    // control binds through a value callback, not string parsing) and its TValue carries a
+    // [DynamicallyAccessedMembers] annotation this control's public TValue deliberately does not.
     protected override bool IsValueDefault() => base.IsValueDefault() || CurrentValue is string { Length: 0 };
 
     // Setting CurrentValue runs the InputBase machinery: NotifyFieldChanged + validation + ValueChanged.

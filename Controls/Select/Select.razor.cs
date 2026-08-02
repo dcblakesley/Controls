@@ -110,7 +110,7 @@ public partial class Select<TValue> : IAsyncDisposable
     [Parameter] public EventCallback<IEnumerable<TValue>> ValuesChanged { get; set; }
 
     /// <summary>Text shown while nothing is selected. Defaults to "Please select".</summary>
-    [Parameter] public string Placeholder { get; set; } = "Please select";
+    [Parameter] public string Placeholder { get; set; } = SelectDefaults.Placeholder;
     /// <summary>Disables all interaction (the dropdown cannot open and tags cannot be removed).</summary>
     [Parameter] public bool Disabled { get; set; }
     /// <summary>Shows a clear button while a value is selected. Defaults to true.</summary>
@@ -139,7 +139,7 @@ public partial class Select<TValue> : IAsyncDisposable
     /// <summary>Multiple/tags modes: maximum number of selected tags to display; the remainder collapses into a "+ n ..." summary tag. Null (default) shows all.</summary>
     [Parameter] public int? MaxTagCount { get; set; }
     /// <summary>Text shown in the dropdown when no options match. Defaults to "No data".</summary>
-    [Parameter] public string EmptyText { get; set; } = "No data";
+    [Parameter] public string EmptyText { get; set; } = SelectDefaults.EmptyText;
     /// <summary>Richer alternative to <see cref="EmptyText"/> for the no-match state — wins over
     /// <see cref="EmptyText"/> when set.</summary>
     [Parameter] public RenderFragment? EmptyContent { get; set; }
@@ -232,7 +232,16 @@ public partial class Select<TValue> : IAsyncDisposable
     protected override void OnInitialized()
     {
         _open = DefaultOpen;
+        // DefaultOpen renders the dropdown open on the very first cycle WITHOUT going through
+        // OpenAsync, so nothing ran the initial-highlight pass: the highlight sat at raw index 0 (a
+        // group header or a disabled option, in general) and ignored the bound Value — the exact
+        // behavior the user-driven-open tests pin. Flag it for OnParametersSet instead of running it
+        // here, because _filtered (and, in multiple mode, the selection mirror) don't exist yet.
+        _pendingInitialActive = _open;
     }
+
+    // Set by OnInitialized for the DefaultOpen path only; consumed once by OnParametersSet.
+    bool _pendingInitialActive;
 
     IEnumerable<TValue>? _lastValues;
     int? _lastMaxTagCount;
@@ -278,6 +287,15 @@ public partial class Select<TValue> : IAsyncDisposable
             RebuildVisibleTags();
         }
         _lastMaxTagCount = MaxTagCount;
+
+        // The DefaultOpen first-open path (see OnInitialized): run the same selection-aware initial
+        // highlight a user-driven OpenAsync runs, now that _filtered and the selection mirror exist.
+        // Last in the method so both are already up to date for this cycle.
+        if (_pendingInitialActive)
+        {
+            _pendingInitialActive = false;
+            SetInitialActive();
+        }
     }
 
     // The last Open value this component has observed OR itself raised via RaiseOpenChangedAsync.
@@ -492,8 +510,51 @@ public partial class Select<TValue> : IAsyncDisposable
         FlushPendingGroup();
 
         _filtered = rows;
-        if (_activeIndex >= _filtered.Count) _activeIndex = _filtered.Count - 1;
-        if (_activeIndex < 0) _activeIndex = 0;
+        ClampActiveToSelectableRow();
+    }
+
+    // Keeps the highlight on a row the user can actually act on after every rebuild of _filtered.
+    //
+    // This used to clamp to the list BOUNDS only, which is correct for the two rebuild paths that
+    // re-derive the index themselves afterwards (OpenAsync -> SetInitialActive, ApplySearchAsync) but
+    // not for the ones that don't: Options reassigned while the dropdown is open, and the multi-mode
+    // select / clear / tag-commit paths that clear the search text. Those could leave _activeIndex on
+    // a group header or a disabled option -- the highlight and aria-activedescendant vanish (see
+    // ActiveOption, whose comment asserts this "is never supposed to happen") and Enter goes dead, or
+    // in Tags mode commits a spurious tag instead of selecting.
+    //
+    // Nearest selectable row to where the highlight already was: forward first (matching every other
+    // "settle the highlight" path in this component -- SetInitialActive, ApplySearchAsync and Home all
+    // scan forward), then backward for the case where the rebuild truncated the list below it. A list
+    // with no selectable row at all (every option disabled, or only headers left) falls back to index
+    // 0, exactly as SetInitialActive does when MoveActiveTo finds nothing.
+    void ClampActiveToSelectableRow()
+    {
+        if (_filtered.Count == 0)
+        {
+            _activeIndex = 0;
+            return;
+        }
+
+        var start = Math.Clamp(_activeIndex, 0, _filtered.Count - 1);
+        var found = FindSelectableFrom(start, 1);
+        if (found < 0) found = FindSelectableFrom(start, -1);
+        _activeIndex = found >= 0 ? found : 0;
+    }
+
+    // Index of the first non-header, non-disabled row at/after `start`, stepping by `direction`;
+    // -1 when there is none in that direction. The single "nearest selectable row" scan every
+    // highlight-settling path in this component shares (MoveActiveTo, ClampActiveToSelectableRow).
+    int FindSelectableFrom(int start, int direction)
+    {
+        var i = start;
+        while (i >= 0 && i < _filtered.Count)
+        {
+            var row = _filtered[i];
+            if (!row.IsHeader && !row.Option!.Disabled) return i;
+            i += direction;
+        }
+        return -1;
     }
 
     // ----- Selection bookkeeping (keeps _selected list and _selectedSet in sync) ----
@@ -561,9 +622,7 @@ public partial class Select<TValue> : IAsyncDisposable
     void SetInitialActive()
     {
         _activeIndex = 0;
-        var selectedIdx = IsMultiple
-            ? (_selected.Count > 0 ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _selectedSet.Contains(r.Option.Value)) : -1)
-            : (HasSingleValue ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _comparer.Equals(r.Option.Value, Value)) : -1);
+        var selectedIdx = FindSelectedRow();
         if (selectedIdx >= 0)
         {
             _activeIndex = selectedIdx;
@@ -572,23 +631,43 @@ public partial class Select<TValue> : IAsyncDisposable
         MoveActiveTo(0, 1);
     }
 
+    // Index of the first selectable row carrying a currently-selected value; -1 when nothing is
+    // selected or the selection isn't in the (filtered) list.
+    int FindSelectedRow() => IsMultiple
+        ? (_selected.Count > 0 ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _selectedSet.Contains(r.Option.Value)) : -1)
+        : (HasSingleValue ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _comparer.Equals(r.Option.Value, Value)) : -1);
+
     Task CloseAsync()
     {
         _open = false;
         _focused = false;
-        _searchText = string.Empty;
         // Give up the C#-owned open z-index: this is the sole logical close path, so clearing it here
         // makes the very next (close) render drop the z from the bound style (the OnAfterRender close
         // branch also nulls it + runs clearZ as the DOM-side teardown). A reopen re-takes a fresh z.
         _openZIndex = null;
-        // Drop any in-flight debounced search so it can't re-fire against the now-closed dropdown.
-        _debounceCts?.Cancel();
-        _searchPending = false;
-        RebuildFiltered();
+        ResetSearch();
         // No StateHasChanged: every caller (wrapper/option/backdrop click, Escape keydown) is an
         // event handler, after which Blazor re-renders automatically.
         return RaiseOpenChangedAsync();
     }
+
+    // The "the text in the search box is no longer meaningful" teardown, shared by every path that
+    // clears it: close, a multiple-mode selection, clear, and a committed tag. All four used to spell
+    // out `_searchText = ""; RebuildFiltered();` and only close ALSO dropped the in-flight debounce —
+    // so a selection or a clear made during a pending debounce let the stale timer land afterwards and
+    // fire a spurious OnSearch("") (an extra server query, an options reset, a highlight jump). One
+    // helper makes that side-effect drift structurally impossible.
+    void ResetSearch()
+    {
+        _searchText = string.Empty;
+        _debounceCts?.Cancel();
+        _searchPending = false;
+        RebuildFiltered();
+    }
+
+    // The multiple/tags value hand-off: always a fresh copy of the mirror, never _selected itself —
+    // the consumer's bound collection must not alias the working list the engine keeps mutating.
+    Task RaiseValuesChangedAsync() => ValuesChanged.InvokeAsync(_selected.ToList());
 
     // Notifies OpenChanged of the _open value OpenAsync/CloseAsync just applied, and records it as
     // the last-observed Open value (see OnParametersSetAsync) so a parameter echo of this same value
@@ -643,9 +722,11 @@ public partial class Select<TValue> : IAsyncDisposable
     async Task ApplySearchAsync()
     {
         _searchPending = false;
+        // Restart from the top, then let RebuildFiltered's own clamp settle the highlight on the first
+        // enabled match at/after index 0 — never a disabled option or a group header. (That clamp is
+        // what the explicit MoveActiveTo(0, 1) that used to follow this call did.)
         _activeIndex = 0;
         RebuildFiltered();
-        MoveActiveTo(0, 1); // first enabled match, never a disabled one
         if (OnSearch.HasDelegate) await OnSearch.InvokeAsync(_searchText);
     }
 
@@ -678,9 +759,8 @@ public partial class Select<TValue> : IAsyncDisposable
                 AddSelected(option.Value);
             }
 
-            _searchText = string.Empty;
-            RebuildFiltered();
-            await ValuesChanged.InvokeAsync(_selected.ToList());
+            ResetSearch();
+            await RaiseValuesChangedAsync();
             await FocusInputAsync();
         }
         else
@@ -696,7 +776,14 @@ public partial class Select<TValue> : IAsyncDisposable
         if (Disabled) return;
         RemoveSelected(value);
         PruneTagOption(value);
-        await ValuesChanged.InvokeAsync(_selected.ToList());
+        await RaiseValuesChangedAsync();
+        // The × the user just activated is removed from the DOM by this render, and removal fires no
+        // focusout — so keyboard focus fell to <body>: Tab restarted at the top of the page and an open
+        // dropdown stayed open with focus outside it (the focus-out dismiss never ran). Put focus back
+        // on the search input, exactly as the multiple-mode SelectAsync and CommitTagAsync paths do.
+        // Safe here specifically because this control has no focus-driven open path (no @onfocus on the
+        // input or the wrapper) — refocusing can't reopen anything on its own.
+        await FocusInputAsync();
     }
 
     // A user-created tag that is no longer selected leaves the option list too (matching AntD) —
@@ -731,7 +818,7 @@ public partial class Select<TValue> : IAsyncDisposable
                 // instead of removing each cleared tag's key — Options may still supply that value.
                 RebuildLookup();
             }
-            await ValuesChanged.InvokeAsync(_selected.ToList());
+            await RaiseValuesChangedAsync();
         }
         else
         {
@@ -739,8 +826,10 @@ public partial class Select<TValue> : IAsyncDisposable
             await ValueChanged.InvokeAsync(Value);
         }
 
-        _searchText = string.Empty;
-        RebuildFiltered();
+        ResetSearch();
+        // Same reason as RemoveAsync: ShowClear goes false the moment the value is gone, so the button
+        // the user just activated leaves the DOM and takes keyboard focus to <body> with it.
+        await FocusInputAsync();
     }
 
     async Task CommitTagAsync()
@@ -778,11 +867,10 @@ public partial class Select<TValue> : IAsyncDisposable
         if (!_selectedSet.Contains(value))
         {
             AddSelected(value);
-            await ValuesChanged.InvokeAsync(_selected.ToList());
+            await RaiseValuesChangedAsync();
         }
 
-        _searchText = string.Empty;
-        RebuildFiltered();
+        ResetSearch();
         await FocusInputAsync();
     }
 
@@ -889,17 +977,12 @@ public partial class Select<TValue> : IAsyncDisposable
     }
 
     // Move the highlight to the first non-header, non-disabled option at/after `start`, stepping by
-    // `direction`.
+    // `direction`. Leaves the highlight where it was when there is no such row.
     void MoveActiveTo(int start, int direction)
     {
         if (_filtered.Count == 0) return;
-        var i = Math.Clamp(start, 0, _filtered.Count - 1);
-        while (i >= 0 && i < _filtered.Count)
-        {
-            var row = _filtered[i];
-            if (!row.IsHeader && !row.Option!.Disabled) { _activeIndex = i; return; }
-            i += direction;
-        }
+        var i = FindSelectableFrom(Math.Clamp(start, 0, _filtered.Count - 1), direction);
+        if (i >= 0) _activeIndex = i;
     }
 
     void TypeAhead(string ch)

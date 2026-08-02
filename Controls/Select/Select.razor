@@ -213,14 +213,14 @@
     /// button accessible name; <c>{0}</c> is the option label. Override to localize (formatted
     /// with <see cref="CultureInfo.CurrentCulture"/>).
     /// </summary>
-    [Parameter] public string RemoveItemLabelFormat { get; set; } = "Remove {0}";
+    [Parameter] public string RemoveItemLabelFormat { get; set; } = SelectDefaults.RemoveItemLabelFormat;
 
     /// <summary>Accessible name of the clear button in single mode. Override to localize.</summary>
-    [Parameter] public string ClearSelectionLabel { get; set; } = "Clear selection";
+    [Parameter] public string ClearSelectionLabel { get; set; } = SelectDefaults.ClearSelectionLabel;
 
     /// <summary>Accessible name of the clear button in multiple/tags modes. Override to localize.</summary>
-    [Parameter] public string ClearSelectionsLabel { get; set; } = "Clear all selections";
+    [Parameter] public string ClearSelectionsLabel { get; set; } = SelectDefaults.ClearSelectionsLabel;
 
     /// <summary>Accessible name of the dropdown listbox. Override to localize.</summary>
-    [Parameter] public string ListboxLabel { get; set; } = "Options";
+    [Parameter] public string ListboxLabel { get; set; } = SelectDefaults.ListboxLabel;
 }

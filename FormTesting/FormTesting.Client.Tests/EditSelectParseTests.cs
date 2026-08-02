@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -440,5 +441,24 @@ public class EditSelectParseTests : BunitContext
         // The placeholder is only for the suppressed-blank (value-type) case and must not appear here.
         Assert.Empty(cut.FindAll("option[hidden]"));
         Assert.True(cut.Find("option[value='']").HasAttribute("selected"));
+    }
+
+    [Fact]
+    public void Both_string_parsing_selects_inherit_the_one_shared_parse_format_default_implementation()
+    {
+        // The TryParseValueFromString / FormatValueAsString / IsValueDefault trio used to be three
+        // byte-identical copies per control kept in sync by a comment. Now the compiler enforces it:
+        // both controls derive from EditSelectBase and neither re-declares any of the three.
+        Assert.True(typeof(EditSelectBase<string>).IsAssignableFrom(typeof(EditSelect<string>)));
+        Assert.True(typeof(EditSelectBase<string>).IsAssignableFrom(typeof(EditSelectString<string>)));
+
+        const BindingFlags Declared =
+            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.DeclaredOnly;
+        foreach (var control in new[] { typeof(EditSelect<string>), typeof(EditSelectString<string>) })
+        {
+            Assert.Null(control.GetMethod("TryParseValueFromString", Declared));
+            Assert.Null(control.GetMethod("FormatValueAsString", Declared));
+            Assert.Null(control.GetMethod("IsValueDefault", Declared));
+        }
     }
 }

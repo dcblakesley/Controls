@@ -3,7 +3,7 @@
 // dropdown above the control when there's no room below, and tames the search input's native
 // key defaults (which C# handlers can't do — Blazor has no per-key preventDefault).
 // No third-party or Ant Design dependency.
-import { applyVerticalFlip, clampAxis, stackWithBackdrop, clearZ, wireDismissOnFocusOut } from './wss-overlay.js';
+import { placeAnchoredPanel, clearZ, wireDismissOnFocusOut } from './wss-overlay.js';
 export { clearZ };
 
 export function scrollActiveIntoView(container, index, itemSize) {
@@ -22,60 +22,27 @@ export function scrollActiveIntoView(container, index, itemSize) {
     }
 }
 
-// Opens the dropdown upward when there isn't room below (and there's more room above), so a Select
-// near the bottom of the viewport doesn't push its list off-screen. The wrapper is the trigger box
-// (the dropdown is absolutely positioned, so it doesn't inflate the wrapper's rect). Also stacks the
-// backdrop + wrapper above any open overlay via the shared open-order counter, and RETURNS the
-// wrapper's z-index so C# can mirror it into the Blazor-bound wrapper `style`: the value is written
-// twice — here to the DOM immediately (no flicker) and by Blazor on its next diff — and both agree,
-// so a bound-style re-render (e.g. a changed Width while open) can no longer clobber this inline write
-// and drop the wrapper below its own backdrop. Degrades to the default downward CSS placement when JS
-// is unavailable (the invoke throws, C# leaves its mirrored z null, and the CSS fallback applies).
+// Opens the dropdown upward when there isn't room below, stacks the backdrop + wrapper above any open
+// overlay in open order, clamps the dropdown horizontally into the viewport, and returns the wrapper's
+// z-index for C# to mirror into the Blazor-bound `style` — the whole sequence lives in
+// wss-overlay.js's placeAnchoredPanel, which this and placePanel both drive (they were the same ~15
+// lines apart from the three knobs supplied below). clearZ (imported/re-exported above) removes the
+// inline z on close: the wrapper persists in the page, and a stale high z would poke through later
+// overlay masks.
+//
+// The two select-specific knobs:
+//  - Edge margin drops to 0 for a dropdown too wide to inset. min-width: 100% ties the dropdown to its
+//    trigger, so a full-bleed select on a phone legitimately produces one as wide as the screen, and
+//    insetting that one would clip options off its right edge where it previously sat aligned and
+//    fully visible.
+//  - `right: auto` neutralizes the stale right anchor left over from when this right-anchored the
+//    dropdown instead of clamping it (right-anchoring kept overflowing whenever the wrapper's own
+//    right edge was at/past the viewport's, and for a dropdown wider than the remaining room it pushed
+//    the dropdown's LEFT edge off-screen — unreachable content, strictly worse than the right-side
+//    clipping it was avoiding, which clampAxis prefers instead).
 export function placeDropdown(wrapper, dropdown, gap) {
-    if (!wrapper || !dropdown) {
-        return 0;
-    }
-    gap = gap || 4;
-
-    // Stack in open order via the counter shared with wss-overlay.js (a window global under it —
-    // separate modules can't share module state): backdrop below, the selector box + dropdown above
-    // it, so a select opened inside a modal paints above that modal and clicking the select's own
-    // input/tags/clear button doesn't hit the backdrop. clearZ (imported/re-exported above) removes
-    // the inline value on close (the wrapper persists in the page, and a stale high z would poke
-    // through later overlay masks).
-    const z = stackWithBackdrop(wrapper, 'wss-select-backdrop');
-    const w = wrapper.getBoundingClientRect();
-    const dropdownHeight = dropdown.offsetHeight;
-    const dropdownWidth = dropdown.offsetWidth;
-    applyVerticalFlip(dropdown, w, dropdownHeight, gap);
-
-    // Horizontal clamp: the dropdown normally hangs from the wrapper's left edge (CSS `left: 0`).
-    // A dropdown wider than its trigger (long option labels, or the pill variant's content-driven
-    // width up to its 320px max) can run off the right edge of the viewport near it — shift it left
-    // by exactly enough to sit inside, expressed as a `left` offset from the wrapper (the same
-    // mechanism wss-overlay.js's placePanel uses, and one the CSS supports as-is: the dropdown is
-    // absolute inside the position: relative wrapper, which has no border or padding, so `left: 0`
-    // and the wrapper's own client rect start at the same x).
-    //
-    // Via the shared two-sided clampAxis rather than anchoring to the wrapper's RIGHT edge, which is
-    // what this used to do: right-anchoring keeps overflowing whenever the wrapper's own right edge
-    // is at/past the viewport's, and for a dropdown wider than the remaining room (the pill variant
-    // on a narrow viewport) it pushes the dropdown's LEFT edge off-screen — unreachable content,
-    // strictly worse than the right-side clipping it was avoiding, which clampAxis prefers instead
-    // (see its own comment). Still no movement at all whenever there's room, so the plain CSS default
-    // describes the common case. `right: auto` neutralizes any stale right anchor.
-    //
-    // The edge margin drops to 0 for a dropdown too wide to inset: min-width: 100% ties the dropdown
-    // to its trigger, so a full-bleed select on a phone legitimately produces one as wide as the
-    // screen, and insetting that one would clip options off its right edge where it previously sat
-    // aligned and fully visible.
-    const margin = dropdownWidth <= window.innerWidth - 16 ? 8 : 0;
-    const left = clampAxis(w.left, dropdownWidth, window.innerWidth, margin);
-    dropdown.style.right = 'auto';
-    dropdown.style.left = `${Math.round(left - w.left)}px`;
-
-    // Hand the wrapper's z-index back so C# can re-assert it on every bound-style re-render.
-    return z;
+    return placeAnchoredPanel(wrapper, dropdown, 'wss-select-backdrop', gap,
+        (dropdownWidth, viewportWidth) => (dropdownWidth <= viewportWidth - 16 ? 8 : 0), true);
 }
 
 // Suppresses the browser defaults that fight the combobox keyboard model. Blazor's @onkeydown
