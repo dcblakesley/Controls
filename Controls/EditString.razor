@@ -59,15 +59,45 @@
                password field never renders as a link either). *@
             @if (!string.IsNullOrEmpty(EffectiveMaskText) && !string.IsNullOrEmpty(Value))
             {
-                <!-- Masks with eye icons to show/hide masked text in EditMode  -->
-                @if (!_showMaskedValue)
-                {
-                    @MaskedValueRow(GetMaskValue(), "Show value", "edit-icon-eye-invisible", EditIcons.EyeInvisible)
-                }
-                else
-                {
-                    @MaskedValueRow(Value, "Hide value", "edit-icon-eye", EditIcons.Eye)
-                }
+                @* Masked read-only row, with the eye toggle that reveals the real value.
+
+                   ONE render site, with the hidden/revealed difference expressed as ternaries on the
+                   attributes and text -- never two sibling @if/@else blocks calling a shared
+                   RenderFragment. Each `@Fragment(...)` call site is its own render REGION, so the
+                   two-block shape made toggling a remove-and-reinsert: the focused <button> was
+                   destroyed and rebuilt, focus fell to <body> mid-gesture, and a screen reader's
+                   virtual buffer reset. With a single site the diff patches this element's
+                   attributes/text in place and the button the user is standing on survives.
+
+                   role="group": a bare <div> is role-generic, where ARIA prohibits naming -- the
+                   aria-labelledby below was inert. The row genuinely groups a value with the control
+                   that reveals it, so `group` is both accurate and nameable, and it can carry the
+                   field's aria-describedby the same way the link branch does.
+
+                   The toggle's aria-label is CONSTANT ("Show value") with aria-pressed carrying the
+                   state. A toggle whose name AND pressed state both flip is ambiguous -- "Hide
+                   value, pressed" reads as "hiding is already in effect" to some users and "press to
+                   hide" to others. Name the action, let aria-pressed carry the state.
+
+                   The live region announces only WHICH state the row is in, never the value itself:
+                   a masked value is by definition something the page was asked not to show, and an
+                   aria-live region holding it would have it read aloud on every toggle. *@
+                <div class="edit-masked-value @CssClass"
+                     id=@_id
+                     data-test-id=@_id
+                     role="group"
+                     aria-labelledby="lbl-@_id"
+                     aria-describedby=@_describedBy>
+                    <span class="edit-readonly-value">@(_showMaskedValue ? Value : GetMaskValue())</span>
+                    <button type="button"
+                            aria-label="Show value"
+                            aria-pressed=@(_showMaskedValue ? "true" : "false")
+                            class=@(_showMaskedValue ? "edit-icon-eye" : "edit-icon-eye-invisible")
+                            @onclick="ToggleMaskedValue">
+                        @(_showMaskedValue ? EditIcons.Eye : EditIcons.EyeInvisible)
+                    </button>
+                    <span class="edit-sr-only" role="status">@(_showMaskedValue ? "Value shown" : "Value hidden")</span>
+                </div>
             }
             else if (SafeUrl != null && !string.IsNullOrEmpty(Value))
             {
@@ -91,18 +121,4 @@
 
         <BoundValueDisplay Text=@BoundValueText />
     </div>
-}
-
-@code {
-    // Shared by both masked-value read-only rows above -- identical markup, differing only in which
-    // text shows and the eye-toggle button's label/class/icon (revealed vs. hidden). CssClass rides
-    // on the wrapper for the same reason the link branch and ReadOnlyValue carry it: this div is the
-    // read-only field element, and a consumer's `class` is documented to land on it in every mode.
-    RenderFragment MaskedValueRow(string? text, string toggleAriaLabel, string iconClass, MarkupString icon) =>
-        @<div class="edit-masked-value @CssClass" id=@_id data-test-id=@_id aria-labelledby="lbl-@_id">
-            <span class="edit-readonly-value">@text</span>
-            <button type="button" aria-label="@toggleAriaLabel" class="@iconClass" @onclick=@(() => _showMaskedValue = !_showMaskedValue)>
-                @icon
-            </button>
-        </div>;
 }

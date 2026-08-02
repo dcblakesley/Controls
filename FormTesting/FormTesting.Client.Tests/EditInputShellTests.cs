@@ -308,10 +308,10 @@ public class EditInputShellTests : BunitContext
     }
 
     [Theory]
-    [InlineData(false, "Show value", "false", "eye-invisible")]
-    [InlineData(true, "Hide value", "true", "eye")]
+    [InlineData(false, "false", "eye-invisible")]
+    [InlineData(true, "true", "eye")]
     public void EditInputShell_password_toggle_aria_and_icon_reflect_IsPasswordRevealed(
-        bool revealed, string expectedLabel, string expectedPressed, string expectedIcon)
+        bool revealed, string expectedPressed, string expectedIcon)
     {
         var cut = Render<EditInputShell>(p => p
             .Add(s => s.ShowPasswordToggle, true)
@@ -319,7 +319,9 @@ public class EditInputShellTests : BunitContext
             .AddChildContent("<input />"));
 
         var button = cut.Find(".edit-input-password-toggle");
-        Assert.Equal(expectedLabel, button.GetAttribute("aria-label"));
+        // The name is constant and names the action; only aria-pressed moves. A toggle whose name
+        // and pressed state both flip ("Hide value, pressed") is ambiguous about which one won.
+        Assert.Equal("Show password", button.GetAttribute("aria-label"));
         Assert.Equal(expectedPressed, button.GetAttribute("aria-pressed"));
         Assert.Equal(expectedIcon, cut.Find(".edit-input-password-toggle svg").GetAttribute("data-icon"));
     }

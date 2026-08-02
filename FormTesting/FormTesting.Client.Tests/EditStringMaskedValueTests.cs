@@ -6,11 +6,10 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// Coverage for EditString's read-only <c>MaskText</c> view. The first two tests are the
-/// byte-identical-markup pins from finding 68 of the 2026-07-30 audit (the two masked/revealed
-/// branches used to be copy-pasted 8-line blocks, collapsed into a local <c>MaskedValueRow</c>
-/// RenderFragment): they hold the exact markup shape (id/aria wiring, button label/class, icon glyph)
-/// that existed before the collapse, plus the toggle interaction. The rest pin the masking semantics
+/// Coverage for EditString's read-only <c>MaskText</c> view. The first three tests hold the markup
+/// shape of the two states (id/aria wiring, group semantics, the toggle's stable name + pressed
+/// state, icon glyph, the state-only live region) and the fact that toggling between them patches one
+/// row in place rather than swapping two render regions. The rest pin the masking semantics
 /// themselves -- which mask lengths produce which text, and what happens at a UTF-16 boundary.
 /// </summary>
 public class EditStringMaskedValueTests : BunitContext
@@ -43,18 +42,30 @@ public class EditStringMaskedValueTests : BunitContext
         Assert.Equal("Name", wrapper.GetAttribute("id"));
         Assert.Equal("Name", wrapper.GetAttribute("data-test-id"));
         Assert.Equal("lbl-Name", wrapper.GetAttribute("aria-labelledby"));
+        // A bare div is role-generic, where ARIA prohibits naming -- the aria-labelledby above was
+        // inert. role="group" is both accurate (a value plus the control that reveals it) and
+        // nameable, and it can carry the field's describedby the way the link branch already does.
+        Assert.Equal("group", wrapper.GetAttribute("role"));
+        Assert.Equal("error-msg-Name", wrapper.GetAttribute("aria-describedby"));
 
         var span = cut.Find(".edit-masked-value .edit-readonly-value");
         Assert.Equal("****-fgh", span.TextContent);
 
         var button = cut.Find(".edit-masked-value button");
         Assert.Equal("Show value", button.GetAttribute("aria-label"));
+        Assert.Equal("false", button.GetAttribute("aria-pressed"));
         Assert.Contains("edit-icon-eye-invisible", button.ClassList);
         Assert.Equal("eye-invisible", cut.Find(".edit-masked-value svg").GetAttribute("data-icon"));
+
+        // The state is announced, but never the value: a masked value is by definition something the
+        // page was asked not to show, so it must not be piped through a live region.
+        var status = cut.Find(".edit-masked-value span[role=\"status\"]");
+        Assert.Contains("edit-sr-only", status.ClassList);
+        Assert.Equal("Value hidden", status.TextContent);
     }
 
     [Fact]
-    public void Clicking_the_toggle_reveals_the_full_value_with_the_hide_button()
+    public void Clicking_the_toggle_reveals_the_full_value_and_flips_only_the_pressed_state()
     {
         var model = new PersonModel { Name = "abcdefgh" };
         Expression<Func<string>> field = () => model.Name;
@@ -69,16 +80,97 @@ public class EditStringMaskedValueTests : BunitContext
         var span = cut.Find(".edit-masked-value .edit-readonly-value");
         Assert.Equal("abcdefgh", span.TextContent);
 
+        // The accessible NAME is stable and names the action; only aria-pressed moves. A toggle whose
+        // name and pressed state both flip ("Hide value, pressed") is ambiguous about whether the
+        // press already happened.
         var button = cut.Find(".edit-masked-value button");
-        Assert.Equal("Hide value", button.GetAttribute("aria-label"));
+        Assert.Equal("Show value", button.GetAttribute("aria-label"));
+        Assert.Equal("true", button.GetAttribute("aria-pressed"));
         Assert.Contains("edit-icon-eye", button.ClassList);
         Assert.DoesNotContain("edit-icon-eye-invisible", button.ClassList);
         Assert.Equal("eye", cut.Find(".edit-masked-value svg").GetAttribute("data-icon"));
+        Assert.Equal("Value shown", cut.Find(".edit-masked-value span[role=\"status\"]").TextContent);
 
-        // Toggling again returns to the masked state -- the shared fragment's closure still targets
-        // the correct instance field after the collapse.
+        // Toggling again returns to the masked state.
         cut.Find(".edit-masked-value button").Click();
-        Assert.Equal("Show value", cut.Find(".edit-masked-value button").GetAttribute("aria-label"));
+        Assert.Equal("false", cut.Find(".edit-masked-value button").GetAttribute("aria-pressed"));
+        Assert.Equal("Value hidden", cut.Find(".edit-masked-value span[role=\"status\"]").TextContent);
+    }
+
+    [Fact]
+    public void Toggling_patches_the_masked_row_in_place_instead_of_rebuilding_it()
+    {
+        // The regression: the two states used to render from two sibling @if/@else call sites of a
+        // shared RenderFragment. Each call site is its own render REGION, so toggling removed one
+        // region's elements and inserted the other's -- the focused <button> was destroyed and
+        // rebuilt under the user's finger (focus falls to <body>, NVDA's virtual buffer resets).
+        //
+        // Blazor retains an element's event-handler id when it patches that element in place, and
+        // assigns a fresh one when the element is recreated -- so the id bUnit records in
+        // `blazor:onclick` (what .Click() dispatches through) is an observable proxy for element
+        // identity. It only works because the handler is a method group: two EventCallbacks over the
+        // same method compare equal, where a fresh lambda per render would not (see
+        // EditString.ToggleMaskedValue's remarks).
+        var model = new PersonModel { Name = "abcdefgh" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = RenderMasked(model, field);
+
+        var before = cut.Find(".edit-masked-value button").GetAttribute("blazor:onclick");
+        Assert.False(string.IsNullOrEmpty(before)); // guards the proxy itself: no id, no signal
+
+        cut.Find(".edit-masked-value button").Click();
+
+        Assert.Equal(before, cut.Find(".edit-masked-value button").GetAttribute("blazor:onclick"));
+
+        // ...and the row's element skeleton is identical in both states, which is the DOM-level
+        // precondition for that in-place patch: attributes and text change, elements do not.
+        Assert.Equal(MaskedRowShape(RenderMasked(model, field)), MaskedRowShape(cut));
+
+        cut.Find(".edit-masked-value button").Click();
+        Assert.Equal(before, cut.Find(".edit-masked-value button").GetAttribute("blazor:onclick"));
+    }
+
+    [Fact]
+    public void The_handler_id_element_identity_proxy_does_move_when_the_row_is_genuinely_rebuilt()
+    {
+        // Negative control for the test above: without this, "the id didn't change" could just mean
+        // the id never changes. Leaving read-only mode destroys the masked row outright, and coming
+        // back builds a new one -- so the same proxy must report a different element.
+        var isEditMode = false;
+        var model = new PersonModel { Name = "abcdefgh" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render<EditForm>(ps => ps
+            .Add(f => f.Model, model)
+            .Add(f => f.ChildContent, (RenderFragment<EditContext>)(_ => b =>
+            {
+                b.OpenComponent<EditString>(0);
+                b.AddAttribute(1, "Value", model.Name);
+                b.AddAttribute(2, "ValueExpression", field);
+                b.AddAttribute(4, "MaskText", "****-");
+                b.AddAttribute(5, "IsEditMode", isEditMode);
+                b.CloseComponent();
+            })));
+
+        var before = cut.Find(".edit-masked-value button").GetAttribute("blazor:onclick");
+
+        isEditMode = true;
+        cut.Render();
+        isEditMode = false;
+        cut.Render();
+
+        Assert.NotEqual(before, cut.Find(".edit-masked-value button").GetAttribute("blazor:onclick"));
+    }
+
+    /// <summary>
+    /// The masked row's element skeleton — tag names plus attribute names (values excluded, and so is
+    /// the icon's <c>&lt;svg&gt;</c> subtree, which is markup content the diff replaces wholesale
+    /// without touching the button that holds the focus).
+    /// </summary>
+    static string MaskedRowShape(IRenderedComponent<ContainerFragment> cut)
+    {
+        var row = cut.Find(".edit-masked-value");
+        return string.Join(" | ", new[] { row }.Concat(row.Children)
+            .Select(e => $"{e.LocalName}[{string.Join(',', e.Attributes.Select(a => a.Name).Order(StringComparer.Ordinal))}]"));
     }
 
     [Theory]

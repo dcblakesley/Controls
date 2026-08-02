@@ -272,6 +272,20 @@ public partial class EditString : EditTextInputBase
     }
 
     /// <summary>
+    /// Toggles the read-only masked row between the mask and the real value.
+    /// </summary>
+    /// <remarks>
+    /// A named method rather than the inline lambda it replaced, and that matters beyond style: two
+    /// <c>EventCallback</c>s built from the same method group compare equal, so Blazor's diff retains
+    /// the button's event-handler id when it patches the element in place — and assigns a fresh one
+    /// only when the element is actually recreated. That makes the id an observable proxy for "the
+    /// button survived the toggle", which is what the single-render-site shape (see EditString.razor)
+    /// exists to guarantee and what <c>EditStringMaskedValueTests</c> pins. A fresh lambda per render
+    /// compares unequal every time and would hide the difference.
+    /// </remarks>
+    void ToggleMaskedValue() => _showMaskedValue = !_showMaskedValue;
+
+    /// <summary>
     /// The masked read-only text: <see cref="EffectiveMaskText"/> followed by whatever tail of the
     /// value it doesn't cover (or the mask alone once it's at least as long as the value). A
     /// single-character mask is the special case -- it repeats to cover the whole value rather than

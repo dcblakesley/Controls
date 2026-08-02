@@ -169,14 +169,14 @@ public class EditStringAffixTests : BunitContext
         Assert.Equal("password", cut.Find("input.edit-string-input").GetAttribute("type"));
         var toggle = cut.Find(".edit-input-password-toggle");
         Assert.Equal("false", toggle.GetAttribute("aria-pressed"));
-        Assert.Equal("Show value", toggle.GetAttribute("aria-label"));
+        Assert.Equal("Show password", toggle.GetAttribute("aria-label"));
 
         toggle.Click();
 
         Assert.Equal("text", cut.Find("input.edit-string-input").GetAttribute("type"));
         toggle = cut.Find(".edit-input-password-toggle");
         Assert.Equal("true", toggle.GetAttribute("aria-pressed"));
-        Assert.Equal("Hide value", toggle.GetAttribute("aria-label"));
+        Assert.Equal("Show password", toggle.GetAttribute("aria-label")); // stable name, moving state
 
         toggle.Click();
 

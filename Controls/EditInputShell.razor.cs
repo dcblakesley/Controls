@@ -55,7 +55,8 @@ public partial class EditInputShell
     [Parameter] public bool ShowPasswordToggle { get; set; }
 
     /// <summary>Whether the password value is currently shown as plain text (drives the toggle
-    /// button's icon, <c>aria-label</c>, and <c>aria-pressed</c>).</summary>
+    /// button's icon and <c>aria-pressed</c>; its <c>aria-label</c> deliberately does not move —
+    /// see the markup's remarks).</summary>
     [Parameter] public bool IsPasswordRevealed { get; set; }
 
     /// <summary>Raised when the password toggle button is activated.</summary>

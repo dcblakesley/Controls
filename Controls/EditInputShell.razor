@@ -49,10 +49,15 @@
                 @* disabled, not hidden: the button keeps its place so the field's chrome doesn't
                    reflow when a form disables it, but a disabled field's secret must not be
                    revealable -- and native `disabled` also drops the button out of the tab order,
-                   so AT no longer offers a control inside a field it announces as unavailable. *@
+                   so AT no longer offers a control inside a field it announces as unavailable.
+
+                   The aria-label is CONSTANT and names the action; aria-pressed carries the state.
+                   A toggle whose name and pressed state both flip is ambiguous -- "Hide value,
+                   pressed" reads as "hiding is already in effect" to some users and "press to hide"
+                   to others. Same rule as EditString's masked-row eye toggle. *@
                 <button type="button" class="edit-input-password-toggle"
                         disabled="@IsDisabled"
-                        aria-label="@(IsPasswordRevealed ? "Hide value" : "Show value")"
+                        aria-label="Show password"
                         aria-pressed="@(IsPasswordRevealed ? "true" : "false")"
                         @onclick="OnTogglePassword">
                     @(IsPasswordRevealed ? EditIcons.Eye : EditIcons.EyeInvisible)

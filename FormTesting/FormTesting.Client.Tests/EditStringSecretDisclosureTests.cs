@@ -156,10 +156,13 @@ public class EditStringSecretDisclosureTests : BunitContext
 
         var toggle = cut.Find(".edit-masked-value button");
         Assert.Equal("Show value", toggle.GetAttribute("aria-label"));
+        Assert.Equal("false", toggle.GetAttribute("aria-pressed"));
 
         toggle.Click();
         Assert.Equal("hunter2", cut.Find(".edit-masked-value .edit-readonly-value").TextContent);
-        Assert.Equal("Hide value", cut.Find(".edit-masked-value button").GetAttribute("aria-label"));
+        // Stable name, moving pressed state (see EditStringMaskedValueTests).
+        Assert.Equal("Show value", cut.Find(".edit-masked-value button").GetAttribute("aria-label"));
+        Assert.Equal("true", cut.Find(".edit-masked-value button").GetAttribute("aria-pressed"));
 
         cut.Find(".edit-masked-value button").Click();
         Assert.Equal(Bullets(7), cut.Find(".edit-masked-value .edit-readonly-value").TextContent);

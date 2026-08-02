@@ -200,7 +200,7 @@ public class EditStringRevealStateTests : BunitContext
         cut.Render();
 
         Assert.Equal("****-fgh", cut.Find(".edit-masked-value .edit-readonly-value").TextContent);
-        Assert.Equal("Show value", cut.Find(".edit-masked-value button").GetAttribute("aria-label"));
+        Assert.Equal("false", cut.Find(".edit-masked-value button").GetAttribute("aria-pressed"));
     }
 
     [Fact]
