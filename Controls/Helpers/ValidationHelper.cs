@@ -91,7 +91,10 @@ public static class ValidationHelper
         // Numeric range — e.g. "The field Min must be between -2 and 55."
         // Uses a regex so multi-word field names ("Order Total") and trailing-period variations don't
         // break the parse. When one bound is the type's min/max sentinel we render a one-sided message
-        // ("Cannot exceed 100"); otherwise we render the full range.
+        // ("Cannot exceed 100"); when both are sentinels ([Range(int.MinValue, int.MaxValue)], used
+        // purely to trigger numeric parsing validation) there is no bound left to name at all, so we
+        // fall back to the same "Must be a number" wording the parse-failure path uses; otherwise we
+        // render the full range.
         if (message.Contains(" must be between "))
         {
             var match = _numericRangeRegex.Match(message);
@@ -102,6 +105,8 @@ public static class ValidationHelper
                 var isMinSentinel = RangeSentinels.IsMin(minValue);
                 var isMaxSentinel = RangeSentinels.IsMax(maxValue);
 
+                if (isMinSentinel && isMaxSentinel)
+                    return includeLabel ? MustBeANumberString(label) : MustBeANumberString();
                 if (isMinSentinel && !isMaxSentinel)
                     return includeLabel ? MaxValueString(maxValue, label) : MaxValueString(maxValue);
                 if (!isMinSentinel && isMaxSentinel)

@@ -95,6 +95,96 @@ public class ValidationHelperTests
         Assert.Equal("Must be between 1 and 120", msg);
     }
 
+    // ----- Both bounds sentinel: nothing left to name -------------------------------------------
+    // [Range(int.MinValue, int.MaxValue)] is written purely to trigger numeric parsing validation --
+    // neither bound is a real constraint. Before this fix, no branch matched a both-sentinel pair (the
+    // one-sided branches each require exactly one side to be a sentinel) and `return message` handed
+    // back the raw framework text with both extremes spelled out verbatim -- exactly what the whole
+    // rewrite exists to suppress. The fix falls back to the same "Must be a number" wording the
+    // parse-failure path already uses, since a fully-unbounded [Range] carries no information beyond
+    // "this must parse as a number".
+
+    [Fact]
+    public void Numeric_range_with_int_both_sentinels_falls_back_to_must_be_a_number()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between {int.MinValue} and {int.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Int32");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_long_both_sentinels_falls_back_to_must_be_a_number()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between {long.MinValue} and {long.MaxValue}.",
+            "Quantity", "Quantity", valueType: "System.Int64");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_decimal_both_sentinels_falls_back_to_must_be_a_number()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Balance must be between {decimal.MinValue} and {decimal.MaxValue}.",
+            "Balance", "Balance", valueType: "System.Decimal");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_double_both_sentinels_falls_back_to_must_be_a_number()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Reading must be between {double.MinValue} and {double.MaxValue}.",
+            "Reading", "Reading", valueType: "System.Double");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_float_both_sentinels_falls_back_to_must_be_a_number()
+    {
+        // RangeAttribute's numeric ctor only takes double bounds, so a float literal widens before the
+        // message is formatted -- mirrors the float sentinel candidates' own widened spelling.
+        var minText = ((double)float.MinValue).ToString();
+        var maxText = ((double)float.MaxValue).ToString();
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Reading must be between {minText} and {maxText}.",
+            "Reading", "Reading", valueType: "System.Single");
+        Assert.Equal("Must be a number", msg);
+    }
+
+    [Fact]
+    public void Numeric_range_with_both_sentinels_and_includeLabel_uses_the_labeled_wording()
+    {
+        var msg = ValidationHelper.GetValidationMessage(
+            $"The field Quantity must be between {int.MinValue} and {int.MaxValue}.",
+            "Quantity", "Item Quantity", valueType: "System.Int32", includeLabel: true);
+        Assert.Equal("Item Quantity must be a number.", msg);
+    }
+
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("de-DE")]
+    public void Numeric_range_with_both_sentinels_is_detected_under_the_validation_time_culture(string cultureName)
+    {
+        // Same culture hazard as the one-sided sentinel detection: the candidates must be produced
+        // under the culture active at validation time, not frozen as invariant-format literals.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(cultureName);
+
+            var msg = ValidationHelper.GetValidationMessage(
+                $"The field Reading must be between {double.MinValue} and {double.MaxValue}.",
+                "Reading", "Reading", valueType: "System.Double");
+            Assert.Equal("Must be a number", msg);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
     // ----- Zero-as-a-real-floor (not a sentinel) ------------------------------------------------
     // byte/uint/ulong/ushort.MinValue.ToString() are ALL "0" — IsTypeMinSentinel used to treat "0"
     // itself as a type-min sentinel, so the ubiquitous [Range(0, ...)] "non-negative" idiom lost its
