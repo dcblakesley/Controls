@@ -20,8 +20,10 @@
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
 
-    EditContext? _previousEditContext;
-    EventHandler<ValidationStateChangedEventArgs> _validationStateChangedHandler = default!;
+    // The same subscribe/re-point/detach sequence the edit controls use, through the one shared
+    // implementation (EditControlParametersBase drives it too). Created lazily: its handler is an
+    // instance method group, which a field initializer can't take.
+    ValidationStateSubscription? _validationSubscription;
 
     /// <summary>
     /// Gets or sets a collection of additional attributes that will be applied to the rendered <c>section</c> element.
@@ -30,12 +32,6 @@
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     [CascadingParameter] EditContext CurrentEditContext { get; set; } = default!;
-
-    protected override Task OnInitializedAsync()
-    {
-        _validationStateChangedHandler = (sender, eventArgs) => StateHasChanged();
-        return base.OnInitializedAsync();
-    }
 
     protected override void OnParametersSet()
     {
@@ -46,24 +42,9 @@
                                                 $"an {nameof(EditForm)}.");
         }
 
-        if (CurrentEditContext != _previousEditContext)
-        {
-            DetachValidationStateChangedListener();
-            CurrentEditContext.OnValidationStateChanged += _validationStateChangedHandler;
-            _previousEditContext = CurrentEditContext;
-        }
+        _validationSubscription ??= new ValidationStateSubscription(StateHasChanged);
+        _validationSubscription.SyncTo(CurrentEditContext);
     }
 
-    public void Dispose()
-    {
-        DetachValidationStateChangedListener();
-    }
-
-    void DetachValidationStateChangedListener()
-    {
-        if (_previousEditContext != null)
-        {
-            _previousEditContext.OnValidationStateChanged -= _validationStateChangedHandler;
-        }
-    }
+    public void Dispose() => _validationSubscription?.Detach();
 }

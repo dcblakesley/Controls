@@ -459,7 +459,7 @@ public partial class EditDateRange : IDisposable
         // EditContext, are already bound to their NEW values by the time OnParametersSet runs -- only
         // the base's own tracking field still holds the OLD one at this point), so the cleanup below
         // can still target the OLD EditContext once a genuine swap is confirmed.
-        var previousEditContext = _subscribedEditContext;
+        var previousEditContext = SubscribedEditContext;
 
         // A false return means the same EditContext is still cascading, so both cached
         // FieldIdentifiers are still live and there's nothing to re-register.
