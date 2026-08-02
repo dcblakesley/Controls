@@ -632,6 +632,37 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Equal(["a", "b", "p1", "p2"], StripOrder(cut));
     }
 
+    // The same tabs every pass, only reordered -- a @keyed loop over a list the consumer sorted.
+    static RenderFragment KeyedTabs(string[] keys) => builder =>
+    {
+        var seq = 0;
+        foreach (var k in keys)
+        {
+            builder.OpenComponent<Tab>(seq++);
+            builder.SetKey(k);
+            builder.AddAttribute(seq++, "Key", k);
+            builder.AddAttribute(seq++, "Title", k.ToUpperInvariant());
+            builder.CloseComponent();
+        }
+    };
+
+    [Fact]
+    public void A_keyed_reorder_moves_the_buttons_but_not_the_keyboard_order()
+    {
+        // A reorder changes no tab's parameters at all, so not even the newcomer-registers-late
+        // signal exists: nothing reports and the strip's list keeps the original order outright.
+        // The buttons DO move, because @key moves the component instances and each one carries its
+        // own button. SHOULD be ["c", "a", "b"] both times.
+        var cut = Render<Tabs>(p => p.Add(t => t.ChildContent, KeyedTabs(["a", "b", "c"])));
+        Assert.Equal(["A", "B", "C"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["a", "b", "c"], StripOrder(cut));
+
+        cut.Render(p => p.Add(t => t.ChildContent, KeyedTabs(["c", "a", "b"])));
+
+        Assert.Equal(["C", "A", "B"], cut.FindAll(".wss-tabs-label").Select(e => e.TextContent.Trim()));
+        Assert.Equal(["a", "b", "c"], StripOrder(cut));
+    }
+
     [Fact]
     public void An_unbound_strip_after_a_leading_insertion_highlights_the_second_rendered_button()
     {

@@ -33,21 +33,22 @@ public partial class Tabs
     /// declarations are fine — it is only non-tab content that has nowhere legal to go.
     /// </para>
     /// <para>
-    /// <b>Limitation — keyboard order after an unanchored insertion.</b> Two behaviors read a tab
+    /// <b>Limitation — keyboard order after an unanchored change.</b> Two behaviors read a tab
     /// <i>list</i> this component maintains rather than the rendered strip: which tab the arrow keys
     /// move to, and which tab a null <see cref="ActiveKey"/> falls back to. Blazor skips
     /// <c>SetParametersAsync</c> for a child whose own parameters are all unchanged immutable values,
-    /// so a tab revealed among siblings that were all skipped that pass — the bare filter strip,
-    /// where every parameter is a constant string — cannot be placed in that list from any
-    /// information the pass carries, and it is appended.
+    /// so on a pass where every sibling was skipped — the bare filter strip, where every parameter
+    /// is a constant string — nothing reports a position: a newly revealed tab cannot be placed and
+    /// is appended, and a pure reorder (a <c>@key</c>ed loop whose items change places) is not seen
+    /// at all.
     /// </para>
     /// <para>
     /// The strip renders correctly regardless. What can differ until some later pass makes a
-    /// neighbour re-register is that the arrows may reach the newcomer out of its rendered position,
-    /// and an unbound <see cref="ActiveKey"/> may highlight the tab that was declared first
-    /// <i>before</i> the insertion. It does not arise when any sibling re-registers on the same pass
-    /// — a tab carrying pane content re-registers on every pass, because a <c>RenderFragment</c> is
-    /// a fresh delegate each time — nor on a removal, nor on the first render.
+    /// neighbour re-register is that the arrows may reach a tab out of its rendered position, and an
+    /// unbound <see cref="ActiveKey"/> may highlight the tab that was first <i>before</i> the change.
+    /// It does not arise when any sibling re-registers on the same pass — a tab carrying pane content
+    /// re-registers on every pass, because a <c>RenderFragment</c> is a fresh delegate each time —
+    /// nor on a removal, nor on the first render.
     /// </para>
     /// </remarks>
     [Parameter] public RenderFragment? ChildContent { get; set; }
