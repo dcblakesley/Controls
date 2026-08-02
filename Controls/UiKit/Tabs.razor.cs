@@ -324,13 +324,13 @@ public partial class Tabs
     {
         SyncFallbackKey();
 
-        // A re-collection destroyed and re-created every nav button, DOM focus with them. Blazor
-        // moves focus to nothing when the focused element goes away -- the browser drops it on
-        // <body>, which leaves the roving tabindex pointing at a button the user is no longer on and
-        // sends the next Tab press to the top of the page. Only ever restored for a re-collection
-        // that happened during arrow-key navigation, i.e. when the strip is the thing that put focus
-        // on a button in the first place. Fire-and-forget for the same reason as the notification
-        // above: OnAfterRender is synchronous, and the call cannot throw.
+        // A re-collection destroyed and re-created every nav button, and a browser drops focus on
+        // <body> when the focused element is removed. That leaves the roving tabindex pointing at a
+        // button the user is no longer on, so the next arrow key fires from nowhere and Tab leaves
+        // for the top of the page. Only ever restored for a re-collection that happened during
+        // arrow-key navigation, i.e. when the strip is the thing that put focus on a button in the
+        // first place. Fire-and-forget for the same reason as the notification above: OnAfterRender
+        // is synchronous, and TryFocusAsync cannot throw.
         if (_restoreFocus)
         {
             _restoreFocus = false;
