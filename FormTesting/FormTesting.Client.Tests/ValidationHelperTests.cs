@@ -137,14 +137,48 @@ public class ValidationHelperTests
     {
         // [Range(-100f, float.MaxValue)] — RangeAttribute's ctor only takes double bounds, so the
         // float literal widens to a double whose ToString() is Microsoft's textual form of
-        // float.MaxValue-as-a-double, not float.MaxValue.ToString() itself (mirrors the existing
-        // float.MinValue sentinel literal — see IsTypeMaxSentinel's own remarks). Before the fix,
-        // only the min side of this pair rewrote correctly; the max side showed the raw huge number.
+        // float.MaxValue-as-a-double, not float.MaxValue.ToString() itself (mirrors the float.MinValue
+        // candidate — see the sentinel set's own remarks). Before the fix, only the min side of this
+        // pair rewrote correctly; the max side showed the raw huge number.
         var maxText = ((double)float.MaxValue).ToString();
         var msg = ValidationHelper.GetValidationMessage(
             $"The field Reading must be between -100 and {maxText}.",
             "Reading", "Reading", valueType: "System.Single");
         Assert.Equal("Must be at least -100", msg);
+    }
+
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("de-DE")]
+    public void Float_extreme_sentinels_are_detected_under_the_validation_time_culture(string cultureName)
+    {
+        // The float extremes have to be produced under the culture active at validation time, exactly
+        // like every other candidate: RangeAttribute formats its message then, and de-DE writes
+        // "3,4028234663852886E+38". Freezing the invariant-format literal meant no branch matched
+        // outside a '.'-decimal culture and the raw scientific-notation text -- the very thing the
+        // rewrite exists to suppress -- reached the user. Both the max side ([Range(-100f,
+        // float.MaxValue)]) and its min-side mirror ([Range(float.MinValue, 100f)]) are pinned.
+        var original = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo(cultureName);
+
+            var maxText = ((double)float.MaxValue).ToString();
+            var flooredOnly = ValidationHelper.GetValidationMessage(
+                $"The field Reading must be between -100 and {maxText}.",
+                "Reading", "Reading", valueType: "System.Single");
+            Assert.Equal("Must be at least -100", flooredOnly);
+
+            var minText = ((double)float.MinValue).ToString();
+            var cappedOnly = ValidationHelper.GetValidationMessage(
+                $"The field Reading must be between {minText} and 100.",
+                "Reading", "Reading", valueType: "System.Single");
+            Assert.Equal("Cannot exceed 100", cappedOnly);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = original;
+        }
     }
 
     // ----- MaxLengthList punctuation -------------------------------------------------------------

@@ -171,10 +171,13 @@ public static class ValidationHelper
     // cultures with customized number formats (CultureInfo clones, Windows user-override vs
     // GetCultureInfo instances). This path only runs while a Range message containing
     // " must be between " is being rewritten, where ~a dozen short ToString calls are noise.
-    // The "-3.4028234663852886E+38"/"3.4028234663852886E+38" literals are the textual forms
+    // The ((double)float.MinValue)/((double)float.MaxValue) candidates are the textual forms
     // Microsoft emits for float.MinValue/float.MaxValue once RangeAttribute has widened them to
-    // double (its ctor only takes double bounds), which can differ slightly from
-    // float.MinValue.ToString()/float.MaxValue.ToString() depending on culture / formatter.
+    // double (its ctor only takes double bounds), which differ from
+    // float.MinValue.ToString()/float.MaxValue.ToString() -- computed at call time like every
+    // neighboring candidate, for the same culture reason (a frozen invariant-format literal matched
+    // nothing outside a '.'-decimal culture, so de-DE saw the raw scientific notation this rewrite
+    // exists to suppress).
     //
     // byte/uint/ulong/ushort.MinValue are ALL "0" — deliberately excluded here (unlike every other
     // signed/floating type's MinValue) so [Range(0, 100)] renders both bounds instead of losing its
@@ -187,7 +190,7 @@ public static class ValidationHelper
         value == int.MinValue.ToString() || value == long.MinValue.ToString()
         || value == short.MinValue.ToString() || value == sbyte.MinValue.ToString()
         || value == double.MinValue.ToString() || value == float.MinValue.ToString()
-        || value == decimal.MinValue.ToString() || value == "-3.4028234663852886E+38";
+        || value == decimal.MinValue.ToString() || value == ((double)float.MinValue).ToString();
 
     static bool IsTypeMaxSentinel(string value) =>
         value == int.MaxValue.ToString() || value == long.MaxValue.ToString()
@@ -195,5 +198,5 @@ public static class ValidationHelper
         || value == byte.MaxValue.ToString() || value == uint.MaxValue.ToString()
         || value == ulong.MaxValue.ToString() || value == ushort.MaxValue.ToString()
         || value == double.MaxValue.ToString() || value == float.MaxValue.ToString()
-        || value == decimal.MaxValue.ToString() || value == "3.4028234663852886E+38";
+        || value == decimal.MaxValue.ToString() || value == ((double)float.MaxValue).ToString();
 }
