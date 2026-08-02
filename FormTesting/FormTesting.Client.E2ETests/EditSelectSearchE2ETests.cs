@@ -130,4 +130,42 @@ public class EditSelectSearchE2ETests(AppFixture app, BrowserFixture browser) : 
         Assert.True(box!.X + box.Width <= viewportWidth + 1,
             $"dropdown right edge ({box.X + box.Width}) ran past the viewport width ({viewportWidth})");
     }
+
+    // ----- All-disabled + DefaultOpen (bUnit covers the initial render's DOM state -- see
+    // SelectHighlightAndFocusTests.DefaultOpen_on_an_all_disabled_list_leaves_no_active_descendant --
+    // but not real keyboard events in a live browser) -------------------------------------------------
+
+    [Fact]
+    public async Task All_disabled_default_open_select_has_no_active_descendant_and_ignores_arrow_and_enter()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "All options disabled + DefaultOpen" });
+
+        // The select isn't rendered at all until toggled -- DefaultOpen must be true on the very
+        // first render of a fresh instance, so this can't be simulated by opening an already-rendered
+        // control (see the demo's comment on why it isn't just always on).
+        await section.Locator("[data-test-id=toggle-all-disabled-open-select]").CheckAsync();
+
+        var select = section.Locator(".wss-select");
+        var input = select.Locator("input.wss-select-selection-search-input");
+        await Expect(section.Locator(".wss-select-item-option").First).ToBeVisibleAsync(); // opened by default
+
+        Assert.Null(await input.GetAttributeAsync("aria-activedescendant"));
+
+        await input.PressAsync("ArrowDown");
+        Assert.Null(await input.GetAttributeAsync("aria-activedescendant"));
+
+        await input.PressAsync("ArrowUp");
+        Assert.Null(await input.GetAttributeAsync("aria-activedescendant"));
+
+        await input.PressAsync("Enter");
+        Assert.Null(await input.GetAttributeAsync("aria-activedescendant"));
+
+        // Nothing committed: the trigger still shows the placeholder, not a selection chip, and the
+        // dropdown is still open (Enter had no active row to commit, so it's a true no-op, not a
+        // close-without-selecting).
+        await Expect(select.Locator(".wss-select-selection-item")).ToHaveCountAsync(0);
+        await Expect(select.Locator(".wss-select-selection-placeholder")).ToBeVisibleAsync();
+        await Expect(section.Locator(".wss-select-item-option").First).ToBeVisibleAsync();
+    }
 }

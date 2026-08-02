@@ -142,6 +142,28 @@
         <h3>Model</h3>
         <pre class="code-block code-block-model"><code>@_placeholderAttributeModel</code></pre>
     </section>
+
+    <section class="demo-section">
+        <h3>All options disabled + DefaultOpen</h3>
+        <p>
+            Every option is disabled, so there is no selectable row to highlight -- no
+            <code>aria-activedescendant</code>, and Arrow/Enter must leave the (empty) value alone.
+            Gated behind the toggle so the dropdown isn't open by default on this page (an
+            always-open dropdown here would leak into other tests' page-wide <code>.wss-select-item-option</code>
+            / <code>.wss-select-backdrop</code> assertions above).
+        </p>
+        <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" data-test-id="toggle-all-disabled-open-select" @bind="_showAllDisabledOpen" />
+            Show all-disabled, default-open select
+        </label>
+        @if (_showAllDisabledOpen)
+        {
+            <EditSelectSearch @bind-Value="_model.AllDisabledChoice"
+                              Options="_allDisabledOptions"
+                              DefaultOpen="true"
+                              Width="260px" />
+        }
+    </section>
 </EditForm>
 
 @code {
@@ -149,6 +171,7 @@
     int _submitCount;
     int _footerClicks;
     bool _controlledOpen;
+    bool _showAllDisabledOpen;
 
     readonly List<SelectOption<string?>> _countries =
     [
@@ -186,6 +209,12 @@
         new(2, "Another lengthy option label to keep the dropdown's natural width wide"),
     ];
 
+    readonly List<SelectOption<string?>> _allDisabledOptions =
+    [
+        new("a", "Option A", disabled: true),
+        new("b", "Option B", disabled: true),
+    ];
+
     public class Model
     {
         [Description("Pick your country")]
@@ -220,6 +249,8 @@
 
         [Placeholder("Choose a country...")]
         public string? AttributePlaceholderCountry { get; set; }
+
+        public string? AllDisabledChoice { get; set; }
     }
 
     readonly string _example = @"<EditSelectSearch @bind-Value=""_model.Country""
