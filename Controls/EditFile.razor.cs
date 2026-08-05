@@ -59,6 +59,21 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     [Parameter] public string ButtonText { get; set; } = "Select Files";
 
     /// <summary>
+    /// Wraps the label and the picker/file-list together in a bordered, padded card (<c>edit-file-card</c>)
+    /// -- a field-level container look some consuming design systems use around an upload field,
+    /// distinct from the dashed drop-zone card <see cref="Variant"/> already draws. Default <c>false</c>
+    /// renders the existing unboxed layout, byte-identical to before this parameter existed.
+    /// </summary>
+    [Parameter] public bool Bordered { get; set; }
+
+    /// <summary>
+    /// When true, each selected file's name renders as a clickable link (<c>edit-file-name-link</c>)
+    /// that downloads the buffered bytes back to the user's machine, in both the edit-mode removable
+    /// list and the read-only list. Default <c>false</c> keeps the plain, non-interactive name text.
+    /// </summary>
+    [Parameter] public bool AllowDownload { get; set; }
+
+    /// <summary>
     /// Optional async gate run for each file, after the built-in format/size/count/duplicate checks
     /// and before its bytes are buffered. Return <c>false</c> to reject the file (reported via
     /// <see cref="BeforeAddRejectedMessageFormat"/>) -- e.g. a server-side dedupe check or content
@@ -434,6 +449,21 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     {
         _observedValue = updated;
         return SetValueAsync(updated);
+    }
+
+    /// <summary>
+    /// <see cref="AllowDownload"/>'s click handler: reads the file's already-buffered bytes (every
+    /// item in <c>Value</c> is a <see cref="BufferedBrowserFile"/>, so this never touches the network
+    /// or a since-wiped browser file map) and hands them to the browser to save. Best-effort -- see
+    /// <see cref="JsInteropEc"/>'s class remarks; a missing/torn-down circuit or no-JS render (prerender,
+    /// tests) just means the click does nothing.
+    /// </summary>
+    async Task DownloadFile(IBrowserFile file)
+    {
+        using var stream = file.OpenReadStream(EffectiveMaxFileSizeBytes);
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        await JsInteropEc.DownloadFile(JS, ms.ToArray(), file.Name, file.ContentType, FormDefaults);
     }
 
     async Task RemoveFile(IBrowserFile file)

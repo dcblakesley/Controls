@@ -71,6 +71,24 @@ public static class JsInteropEc
     public static async Task Log(IJSRuntime jsRuntime, string text, FormDefaults? formDefaults = null) =>
         await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.log", text);
 
+    /// <summary>
+    /// Saves in-memory bytes to the user's machine as a download (a <c>Blob</c> + a temporary,
+    /// auto-clicked anchor with a <c>download</c> attribute -- the standard cross-browser idiom, and
+    /// one that isn't subject to the popup-blocker restrictions a <c>window.open</c> preview would hit
+    /// after an async round-trip). Used by <see cref="EditFile"/>'s <c>AllowDownload</c> to let a user
+    /// reopen a file they've already picked. Best-effort -- see the class remarks; a missing/torn-down
+    /// circuit or no-JS render (prerender, tests) just means the click does nothing.
+    /// </summary>
+    /// <param name="jsRuntime">The JS runtime to invoke through.</param>
+    /// <param name="bytes">The file's bytes, already buffered in memory.</param>
+    /// <param name="fileName">The name offered in the browser's save dialog.</param>
+    /// <param name="contentType">The <c>Blob</c>'s MIME type.</param>
+    /// <param name="formDefaults">The cascaded <see cref="Controls.FormDefaults"/> in scope, if any --
+    /// see <see cref="FocusFirstInvalidField"/>.</param>
+    public static async Task DownloadFile(
+        IJSRuntime jsRuntime, byte[] bytes, string fileName, string contentType, FormDefaults? formDefaults = null) =>
+        await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.downloadFile", bytes, fileName, contentType);
+
     // Shared best-effort call: try the global first (the common case once edit-controls.js has loaded
     // via a classic <script> tag). A JSException there usually means window.WssEditControls itself is
     // undefined -- the cross-origin MFE case, where the host page never linked the script -- so import

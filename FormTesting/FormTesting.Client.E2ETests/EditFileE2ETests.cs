@@ -116,4 +116,25 @@ public class EditFileE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         var outline = await selectBtn.EvaluateAsync<string>("el => getComputedStyle(el).outlineStyle");
         Assert.NotEqual("none", outline);
     }
+
+    [Fact]
+    public async Task Bordered_card_wraps_the_label_and_file_link_and_the_link_downloads_the_file()
+    {
+        await NavigateAsync();
+        var section = Page.Locator("section.demo-section", new() { HasTextString = "Bordered card + AllowDownload" });
+
+        await section.Locator("input[type=file]").SetInputFilesAsync(TextFile("terms.txt", "hello terms"));
+
+        var card = section.Locator(".edit-file-card");
+        await Expect(card).ToBeVisibleAsync();
+        // MaxFiles="1" is already reached, so the dropzone must have unmounted inside the same card --
+        // matching the Figma reference this combo is modeled on (label + file link, no dropzone).
+        await Expect(card.Locator(".edit-file-drop-zone")).Not.ToBeVisibleAsync();
+
+        var link = card.Locator("button.edit-file-name-link");
+        await Expect(link).ToHaveTextAsync("terms.txt");
+
+        var download = await Page.RunAndWaitForDownloadAsync(() => link.ClickAsync());
+        Assert.Equal("terms.txt", download.SuggestedFilename);
+    }
 }

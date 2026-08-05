@@ -112,6 +112,23 @@
         el.style.overflowY = clampedAtMax ? 'auto' : 'hidden';
     };
 
+    // Save in-memory bytes as a browser download -- EditFile's AllowDownload, so a user can reopen a
+    // file they've already picked. `bytes` arrives as a Uint8Array (.NET's efficient byte[] marshaling,
+    // not a Base64 string) and is Blob-able directly. A temporary, auto-clicked <a download> is the
+    // standard idiom specifically because it -- unlike window.open -- isn't treated as a popup by
+    // browsers even after the async interop round-trip has left the original click's user-gesture window.
+    ns.downloadFile = function (bytes, fileName, contentType) {
+        const blob = new Blob([bytes], { type: contentType || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName || 'download';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
+
     ns.log = function (text) { console.log(text); };
     ns.logError = function (text) { console.log('%c' + text, 'background: red'); };
     ns.logWarn = function (text) { console.log('%c' + text, 'background: orange'); };

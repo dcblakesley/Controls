@@ -8,12 +8,39 @@
     var isInvalid = IsInvalid;
     var hasError = HasError(isInvalid);
 
+    @* Byte-identical between both variants -- the input is the real, focusable, click-catching element
+       in both; only the surrounding visual chrome differs. aria-errormessage keys off isInvalid
+       (EditContext validation), not hasError: error-msg-{id} (FieldValidationDisplay, rendered
+       unconditionally below) only ever contains EditContext.GetValidationMessages content. A pure
+       upload-time rejection (_uploadErrors, e.g. bad extension) sets hasError -- and so aria-invalid --
+       without any EditContext message, and is announced instead through its own role="alert" block
+       further down. Gating aria-errormessage on hasError would point it at that EditContext-only
+       element while it's empty, i.e. a real error state with a dangling-in-effect (present but blank)
+       errormessage target. Declared here (rather than inside the CanAddMoreFiles branch that actually
+       renders it) because an inline markup block -- @<Tag> -- cannot nest inside another one, and the
+       Bordered fieldContent capture just below is itself one. *@
+    RenderFragment inputFile = @<InputFile OnChange="LoadFiles"
+               id=@_id
+               accept="@string.Join(",", NormalizedExtensions)"
+               multiple
+               disabled=@(IsDisabled || _isLoadingFiles)
+               aria-describedby=@_describedBy
+               aria-invalid=@(hasError ? "true" : null)
+               aria-errormessage=@(isInvalid ? _errorMsgId : null)
+               aria-required=@_isRequired />;
+
     @* Splat first so the explicit class/style below win; the consumer's own class stays on the single
        FieldCssClass channel (the drop zone / select button / read-only list), so only style and the
        remaining attributes land here. Never on the drop zone itself — its class list is state-driven. *@
     <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
          class="edit-control-wrapper @ContainerClass"
          style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
+        @* Captured into a fragment (rather than duplicated) so Bordered below can wrap this exact
+           label+content in one bordered card -- a field-container convention some consuming design
+           systems use around an already-uploaded file link -- without a second, drifting copy of the
+           editor/read-only markup. *@
+        @{
+        RenderFragment fieldContent = @<text>
         @* IsForLabelable gates on CanAddMoreFiles too — at the MaxFiles cap the <InputFile> carrying
            _id unmounts, and a label pointing at a missing id is invalid (and clicks dead). *@
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@(ShowEditor && CanAddMoreFiles) />
@@ -22,26 +49,6 @@
         {
             @if (CanAddMoreFiles)
             {
-                // Byte-identical between both variants -- the input is the real, focusable,
-                // click-catching element in both; only the surrounding visual chrome differs.
-                // aria-errormessage keys off isInvalid (EditContext validation), not hasError:
-                // error-msg-{id} (FieldValidationDisplay, rendered unconditionally below) only ever
-                // contains EditContext.GetValidationMessages content. A pure upload-time rejection
-                // (_uploadErrors, e.g. bad extension) sets hasError -- and so aria-invalid -- without
-                // any EditContext message, and is announced instead through its own role="alert" block
-                // further down. Gating aria-errormessage on hasError would point it at that
-                // EditContext-only element while it's empty, i.e. a real error state with a dangling-
-                // in-effect (present but blank) errormessage target.
-                RenderFragment inputFile = @<InputFile OnChange="LoadFiles"
-                           id=@_id
-                           accept="@string.Join(",", NormalizedExtensions)"
-                           multiple
-                           disabled=@(IsDisabled || _isLoadingFiles)
-                           aria-describedby=@_describedBy
-                           aria-invalid=@(hasError ? "true" : null)
-                           aria-errormessage=@(isInvalid ? _errorMsgId : null)
-                           aria-required=@_isRequired />;
-
                 @if (Variant == EditFileVariant.Button)
                 {
                     @* Same invisible-InputFile-overlay technique as the dropzone below (the input is the
@@ -80,7 +87,22 @@
                         var f = Value[i];
                         <li class="edit-file-item">
                             <i class="edit-icon-paperclip" aria-hidden="true"></i>
-                            <span class="edit-file-name">@f.Name</span>
+                            @if (AllowDownload)
+                            {
+                                @* Ant Design's own already-uploaded-file link look -- clicking re-saves
+                                   this file's already-buffered bytes (see DownloadFile), never a network
+                                   fetch, so it works for a file just picked in this session too. *@
+                                <button type="button"
+                                        class="edit-file-name edit-file-name-link"
+                                        title="Download @f.Name"
+                                        aria-label="Download @f.Name"
+                                        @onclick="() => DownloadFile(f)"
+                                        @onclick:stopPropagation>@f.Name</button>
+                            }
+                            else
+                            {
+                                <span class="edit-file-name">@f.Name</span>
+                            }
                             <span class="edit-file-size">@FormatSize(f.Size)</span>
                             <button type="button"
                                     id=@($"del-{_id}-{i}")
@@ -129,12 +151,36 @@
                     {
                         <li class="edit-file-item">
                             <i class="edit-icon-paperclip" aria-hidden="true"></i>
-                            <span>@file.Name</span>
+                            @if (AllowDownload)
+                            {
+                                <button type="button"
+                                        class="edit-file-name edit-file-name-link"
+                                        title="Download @file.Name"
+                                        aria-label="Download @file.Name"
+                                        @onclick="() => DownloadFile(file)">@file.Name</button>
+                            }
+                            else
+                            {
+                                <span>@file.Name</span>
+                            }
                             <span class="edit-file-size">@FormatSize(file.Size)</span>
                         </li>
                     }
                 </ul>
             }
+        }
+</text>;
+        }
+
+        @if (Bordered)
+        {
+            <div class="edit-file-card">
+                @fieldContent
+            </div>
+        }
+        else
+        {
+            @fieldContent
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

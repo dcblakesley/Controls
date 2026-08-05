@@ -136,11 +136,13 @@
    buttons, further down this file) -- they share this exact 3-property ring; mirrors how
    wss-controls.css's own Accessibility section groups its focus rings. Also grouped here:
    .edit-string-link (the read-only URL view -- an <a>, so it has no other focus indicator once a
-   consumer resets the UA default) and .edit-file-delete-btn (its own :focus-visible{opacity:1} rule,
+   consumer resets the UA default), .edit-file-delete-btn (its own :focus-visible{opacity:1} rule,
    further down in the EditFile section, only reveals the button -- it still needs this ring once
-   visible). (The LabelTooltip trigger's own :focus-visible ring stays local to the Tooltip section --
-   it sits between a plain :focus reset and an @supports override at equal specificity, so merging it
-   in here would flip which one wins.) */
+   visible), and .edit-file-name-link (AllowDownload's filename-as-link button, same reasoning as
+   .edit-string-link -- its own :focus-visible rule further down only adds the underline). (The
+   LabelTooltip trigger's own :focus-visible ring stays local to the Tooltip section -- it sits between
+   a plain :focus reset and an @supports override at equal specificity, so merging it in here would
+   flip which one wins.) */
 .edit-input:focus-visible,
 .edit-radio-input:focus-visible,
 .edit-checkedList-checkbox:focus-visible,
@@ -149,7 +151,8 @@
 .edit-input-clear:focus-visible,
 .edit-input-password-toggle:focus-visible,
 .edit-string-link:focus-visible,
-.edit-file-delete-btn:focus-visible {
+.edit-file-delete-btn:focus-visible,
+.edit-file-name-link:focus-visible {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
     outline-offset: var(--edit-focus-offset);
     border-radius: 2px;
@@ -1171,6 +1174,36 @@
 
 .edit-file-list--readonly .edit-file-item {
     cursor: default;
+}
+
+/* Bordered="true" -- wraps the label and the picker/file-list together in a bordered, padded card, a
+   field-container convention some consuming design systems use around an upload field (distinct from
+   the dashed drop-zone card above, which stays exactly as-is inside this box). Same --border-color
+   bridge .edit-file-drop-zone's own border already uses, so an unthemed consumer's rendering matches
+   the drop zone's border color. */
+.edit-file-card {
+    box-sizing: border-box;
+    border: 1px solid var(--border-color, #b7b7b7);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+/* AllowDownload="true" -- the file name becomes a clickable button styled as a link (re-downloads the
+   already-buffered bytes; see EditFile.DownloadFile). Reused alongside .edit-file-name's flex/ellipsis
+   layout, so this rule only resets button chrome and sets the link color/hover state. */
+.edit-file-name-link {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    color: var(--edit-color-primary);
+}
+
+.edit-file-name-link:hover,
+.edit-file-name-link:focus-visible {
+    text-decoration: underline;
 }
 
 /* Variant="Button" -- a compact plain button (Ant Design's plain Upload, vs. the dashed Dragger

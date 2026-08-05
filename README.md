@@ -183,7 +183,7 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
 - **`EditBool`** - Checkbox for boolean values. `TrueText`/`FalseText` (now `string?`) fall back to the bound property's `[BoolText]` — see [Model-declared field attributes](#model-declared-field-attributes-autocompletestepbooltextrowsfileconstraints)
 - **`EditBoolNullRadio`** - Three-state radio for nullable booleans. `TrueText`/`FalseText`/`NullText` (now `string?`) fall back to the same `[BoolText]` attribute
 - **`EditFile`** — Multi-file upload bound to a `List<IBrowserFile>` (drag-and-drop + click-to-browse, extension filtering, per-file size cap, aggregate size cap, optional max count).
-  - `AllowedExtensions` also accepts MIME types (`"application/pdf"`) and MIME wildcards (`"image/*"`), not just extensions; `BeforeAdd` is an optional async per-file gate before buffering; each listed file shows its formatted size; `Variant="EditFileVariant.Button"` swaps the dashed dropzone for a compact plain button. See [File upload parity features](#file-upload-parity-features-editfile).
+  - `AllowedExtensions` also accepts MIME types (`"application/pdf"`) and MIME wildcards (`"image/*"`), not just extensions; `BeforeAdd` is an optional async per-file gate before buffering; each listed file shows its formatted size; `Variant="EditFileVariant.Button"` swaps the dashed dropzone for a compact plain button; `Bordered` wraps the label and picker/file-list in one card; `AllowDownload` turns each file name into a link that re-saves its already-buffered bytes. See [File upload parity features](#file-upload-parity-features-editfile).
   - `AllowedExtensions`/`MaxFileSizeBytes`/`MaxFiles`/`MaxTotalBytes` (the last three now `long?`/`int?`/`long?`) fall back to the bound property's `[FileConstraints]`. See [Model-declared field attributes](#model-declared-field-attributes-autocompletestepbooltextrowsfileconstraints).
 
 ### Selection Controls
@@ -727,6 +727,12 @@ Resolution per control (first non-null wins): the control's own `UseStyledCheckb
 - **`Variant="EditFileVariant.Button"`** (`EditFileVariant`: `Dropzone` default/`Button`) — swaps the dashed drag-and-drop card for a compact plain button (Ant Design's plain `Upload`, as opposed to `Upload.Dragger`), sized and styled like a normal button rather than a full-width dropzone card. `ButtonText` (`string`, default `"Select Files"`) sets its label.
   - Built on the same invisible-`<InputFile>`-overlay technique as the dropzone, so keyboard/focus/click behavior match — Tab reaches the real file input, Enter/Space opens the file picker, and it unmounts at the `MaxFiles` cap exactly like the dropzone does. Drag-and-drop is intentionally not supported in this variant, matching Ant Design's plain `Upload`.
   - All validation, caps, and messages apply identically to both variants; `Dropzone` (the default, unset `Variant`) renders byte-identical markup to before.
+- **`Bordered`** (`bool`, default `false`) — wraps the label and the picker/file-list together in one bordered, padded card (`edit-file-card`), a field-container look some consuming design systems use around an upload field (distinct from the dashed drop-zone card `Variant` already draws). Default `false` renders the existing unboxed layout, byte-identical to before this parameter existed.
+- **`AllowDownload`** (`bool`, default `false`) — each selected file's name renders as a clickable link (`edit-file-name-link`, colored via `--edit-color-primary`) instead of plain text, in both the edit-mode removable list and the read-only list. Clicking re-saves that file's already-buffered bytes back to the user's machine (a `Blob` + a temporary `<a download>`, not a network fetch) — useful for letting a user reopen a file they just picked, or Ant Design's own already-uploaded-file link look for a file shown in a read-only view.
+  - `Bordered` and `AllowDownload` combine to match Ant Design's `Upload` `defaultFileList` pattern for a file that already exists (`status: 'done'`, a `url`) — one bordered field card with the file name as a link, no dropzone once `MaxFiles` is reached:
+    ```razor
+    <EditFile @bind-Value="model.Terms" Label="Terms & Conditions" MaxFiles="1" Bordered="true" AllowDownload="true" />
+    ```
 
 ### Read-only views (`EditString`)
 

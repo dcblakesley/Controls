@@ -39,7 +39,9 @@ public class EditFileTests : BunitContext
         EditFileVariant? variant = null,
         string? buttonText = null,
         Func<IBrowserFile, Task<bool>>? beforeAdd = null,
-        string? beforeAddRejectedMessageFormat = null)
+        string? beforeAddRejectedMessageFormat = null,
+        bool bordered = false,
+        bool allowDownload = false)
     {
         Expression<Func<List<IBrowserFile>>> field = () => model.Files;
         return Render(WithForm(model, b =>
@@ -67,6 +69,10 @@ public class EditFileTests : BunitContext
                 b.AddAttribute(11, "BeforeAdd", beforeAdd);
             if (beforeAddRejectedMessageFormat is not null)
                 b.AddAttribute(12, "BeforeAddRejectedMessageFormat", beforeAddRejectedMessageFormat);
+            if (bordered)
+                b.AddAttribute(13, "Bordered", true);
+            if (allowDownload)
+                b.AddAttribute(14, "AllowDownload", true);
             b.CloseComponent();
         }));
     }
@@ -1203,5 +1209,129 @@ public class EditFileTests : BunitContext
         var zone = cut.Find(".edit-file-drop-zone");
         Assert.DoesNotContain("hover", zone.ClassList);
         Assert.Contains("disabled", zone.ClassList);
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // Bordered: wraps the label and the picker/file-list together in one card. AllowDownload:
+    // the file name becomes a clickable link that re-saves the already-buffered bytes.
+    // ------------------------------------------------------------------------------------------
+
+    [Fact]
+    public void Bordered_defaults_to_false_and_renders_no_card()
+    {
+        var cut = RenderEditFile(new FileModel { Files = [] });
+
+        Assert.Empty(cut.FindAll(".edit-file-card"));
+    }
+
+    [Fact]
+    public void Bordered_wraps_the_label_and_the_drop_zone_in_one_card()
+    {
+        var model = new FileModel { Files = [] };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Label", "Attachments");
+            b.AddAttribute(4, "Bordered", true);
+            b.CloseComponent();
+        }));
+
+        var card = cut.Find(".edit-file-card");
+        Assert.Contains("Attachments", card.QuerySelector("label.edit-label")!.TextContent);
+        Assert.NotNull(card.QuerySelector(".edit-file-drop-zone"));
+    }
+
+    [Fact]
+    public void Bordered_wraps_the_read_only_file_list_too()
+    {
+        List<IBrowserFile>? uploaded = null;
+        var upload = RenderEditFile(new FileModel { Files = [] }, v => uploaded = v);
+        upload.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "report.pdf"));
+
+        var model = new FileModel { Files = uploaded! };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "IsEditMode", false);
+            b.AddAttribute(4, "Bordered", true);
+            b.CloseComponent();
+        }));
+
+        var card = cut.Find(".edit-file-card");
+        Assert.Contains("report.pdf", card.QuerySelector(".edit-file-list--readonly")!.TextContent);
+    }
+
+    [Fact]
+    public void AllowDownload_defaults_to_false_and_renders_a_plain_name_span()
+    {
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+
+        Assert.NotNull(cut.Find("span.edit-file-name"));
+        Assert.Empty(cut.FindAll(".edit-file-name-link"));
+    }
+
+    [Fact]
+    public void AllowDownload_renders_the_name_as_a_clickable_link_in_edit_mode()
+    {
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v, allowDownload: true);
+
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "a.txt"));
+
+        var link = cut.Find("button.edit-file-name-link");
+        Assert.Equal("a.txt", link.TextContent);
+    }
+
+    [Fact]
+    public void AllowDownload_renders_the_name_as_a_clickable_link_in_read_only_mode()
+    {
+        List<IBrowserFile>? uploaded = null;
+        var upload = RenderEditFile(new FileModel { Files = [] }, v => uploaded = v);
+        upload.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("1", "report.pdf"));
+
+        var model = new FileModel { Files = uploaded! };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "IsEditMode", false);
+            b.AddAttribute(4, "AllowDownload", true);
+            b.CloseComponent();
+        }));
+
+        var link = cut.Find(".edit-file-list--readonly button.edit-file-name-link");
+        Assert.Equal("report.pdf", link.TextContent);
+    }
+
+    [Fact]
+    public async Task Clicking_the_download_link_hands_the_buffered_bytes_to_JS()
+    {
+        // Loose mode + inspecting JSInterop.Invocations, not SetupVoid with exact args: the .NET-side
+        // byte[] this passes isn't something a Setup's arg matcher can be pre-told to expect (it's
+        // built from the buffered file at click time), so the interesting assertions are on what the
+        // interop call actually carried, not on whether a pre-registered exact-args match fired.
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        var model = new FileModel { Files = [] };
+        var cut = RenderEditFile(model, v => model.Files = v, allowDownload: true);
+        cut.FindComponent<InputFile>().UploadFiles(InputFileContent.CreateFromText("hello world", "a.txt"));
+
+        await cut.Find("button.edit-file-name-link").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        var invocation = Assert.Single(JSInterop.Invocations, i => i.Identifier == "WssEditControls.downloadFile");
+        var bytes = Assert.IsType<byte[]>(invocation.Arguments[0]);
+        Assert.Equal("hello world", System.Text.Encoding.UTF8.GetString(bytes));
+        Assert.Equal("a.txt", invocation.Arguments[1]);
+        Assert.Equal("", invocation.Arguments[2]); // InputFileContent.CreateFromText leaves ContentType unset
     }
 }
