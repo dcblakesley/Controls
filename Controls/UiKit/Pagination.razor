@@ -8,8 +8,8 @@
     {
         <span class="wss-pagination-total">@TotalText</span>
     }
-    <button type="button" class="wss-pagination-prev @(Clamped <= 1 ? "wss-pagination-disabled" : null)"
-            disabled="@(Clamped <= 1)" aria-label="@PreviousPageLabel" @onclick="@(() => GoAsync(Clamped - 1))">
+    <button type="button" class="wss-pagination-prev @(Disabled || Clamped <= 1 ? "wss-pagination-disabled" : null)"
+            disabled="@(Disabled || Clamped <= 1)" aria-label="@PreviousPageLabel" @onclick="@(() => GoAsync(Clamped - 1))">
         @PickerIcons.PrevIcon
     </button>
     @foreach (var (p, idx) in PageItems.Select((p, i) => (p, i)))
@@ -20,20 +20,20 @@
         }
         else
         {
-            <button type="button" class="wss-pagination-item @(p == Clamped ? "wss-pagination-item-active" : null)"
+            <button type="button" class="wss-pagination-item @(p == Clamped ? "wss-pagination-item-active" : null) @(Disabled ? "wss-pagination-disabled" : null)"
                     aria-label="@(string.Format(CultureInfo.CurrentCulture, PageLabelFormat, p))" aria-current="@(p == Clamped ? "page" : null)" @key="idx"
-                    @onclick="@(() => GoAsync(p))">@p</button>
+                    disabled="@Disabled" @onclick="@(() => GoAsync(p))">@p</button>
         }
     }
-    <button type="button" class="wss-pagination-next @(Clamped >= PageCount ? "wss-pagination-disabled" : null)"
-            disabled="@(Clamped >= PageCount)" aria-label="@NextPageLabel" @onclick="@(() => GoAsync(Clamped + 1))">
+    <button type="button" class="wss-pagination-next @(Disabled || Clamped >= PageCount ? "wss-pagination-disabled" : null)"
+            disabled="@(Disabled || Clamped >= PageCount)" aria-label="@NextPageLabel" @onclick="@(() => GoAsync(Clamped + 1))">
         @PickerIcons.NextIcon
     </button>
     @if (EffectivePageSizeOptions.Count > 0)
     {
         <span class="wss-pagination-size-changer">
             <select class="wss-pagination-size-select" aria-label="@PageSizeSelectLabel"
-                    @onchange="OnPageSizeSelectChangeAsync">
+                    disabled="@Disabled" @onchange="OnPageSizeSelectChangeAsync">
                 @foreach (var size in EffectivePageSizeOptions)
                 {
                     <option value="@size" selected="@(size == PageSize)">@string.Format(CultureInfo.CurrentCulture, PageSizeLabelFormat, size)</option>
@@ -48,6 +48,7 @@
             <span class="wss-pagination-jumper-label" aria-hidden="true">@QuickJumperLabel</span>
             <input type="text" inputmode="numeric" class="wss-pagination-jumper-input"
                    aria-label="@QuickJumperInputLabel"
+                   disabled="@Disabled"
                    value="@_jumperText"
                    @oninput="@(e => _jumperText = e.Value?.ToString() ?? string.Empty)"
                    @onkeydown="OnJumperKeyDownAsync" />
@@ -117,6 +118,16 @@
     /// <c>wss-pagination-sm</c>). Default false (the existing default size, unchanged).
     /// </summary>
     [Parameter] public bool Small { get; set; }
+
+    /// <summary>
+    /// Makes the whole pager inert: every page/prev/next button, the size-changer
+    /// <c>&lt;select&gt;</c> and the quick-jumper input render natively <c>disabled</c> (plus the
+    /// existing <c>wss-pagination-disabled</c> styling on the buttons), and no
+    /// <see cref="CurrentChanged"/>/<see cref="PageSizeChanged"/> can be raised. Used by
+    /// <see cref="Table{TItem}"/> to give its <c>Loading</c> mask keyboard inertness, not just
+    /// pointer inertness. Default false (unchanged rendering).
+    /// </summary>
+    [Parameter] public bool Disabled { get; set; }
 
     /// <summary>
     /// Accessible name of the nav landmark. Give the two pagers distinct names when a page renders
@@ -231,6 +242,10 @@
 
     async Task GoAsync(int page)
     {
+        // Disabled is re-checked in each of the three handlers rather than only on the markup: a
+        // disabled control can't be operated in a browser, but a programmatic dispatch (tests, a
+        // consumer synthesizing an event) still reaches the handler.
+        if (Disabled) return;
         if (page < 1 || page > PageCount || page == Current) return;
         // Controlled component: the parent owns Current and feeds it back via CurrentChanged.
         await CurrentChanged.InvokeAsync(page);
@@ -238,6 +253,7 @@
 
     async Task OnPageSizeSelectChangeAsync(ChangeEventArgs e)
     {
+        if (Disabled) return;
         if (e.Value is string s && int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var size))
             await ChangePageSizeAsync(size);
     }
@@ -259,6 +275,7 @@
 
     async Task OnJumperKeyDownAsync(KeyboardEventArgs e)
     {
+        if (Disabled) return;
         if (e.Key != "Enter") return;
         if (int.TryParse(_jumperText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var page))
         {

@@ -12,9 +12,13 @@
    panel. *@
 @if (Column.CanFilter)
 {
+    @* aria-haspopup="dialog" matches what this button actually opens (the panel below is a
+       role="dialog"), and matches every other popup trigger in the kit -- DatePicker/DateRangePicker
+       declare it statically, Popover/Popconfirm get it from wss-overlay.js. *@
     <button type="button" @ref="_buttonRef"
             class="wss-table-filter-trigger @(Column.FilterApplied.Count > 0 ? "wss-table-filter-active" : null)"
-            aria-label="@FilterAriaLabel" aria-expanded="@(Column.FilterOpen ? "true" : "false")"
+            aria-label="@FilterAriaLabel" aria-haspopup="dialog" aria-expanded="@(Column.FilterOpen ? "true" : "false")"
+            disabled="@Disabled"
             @onclick="ToggleOpen" @onclick:stopPropagation="true">
         @FilterIcon
     </button>
@@ -63,6 +67,23 @@
     /// text. Forwarded from <see cref="Table{TItem}.FilterButtonLabelFormat"/>.</summary>
     [Parameter] public string FilterButtonLabelFormat { get; set; } = "Filter {0}";
 
+    /// <summary>Accessible-name format used instead of <see cref="FilterButtonLabelFormat"/> while
+    /// this column has a filter applied. Forwarded from
+    /// <see cref="Table{TItem}.FilterAppliedButtonLabelFormat"/>.</summary>
+    [Parameter] public string FilterAppliedButtonLabelFormat { get; set; } = "Filter {0} (filter applied)";
+
+    /// <summary>Accessible name for a headerless column's filter button while a filter is applied.
+    /// Forwarded from <see cref="Table{TItem}.FilterAppliedLabel"/>.</summary>
+    [Parameter] public string FilterAppliedLabel { get; set; } = "Filter (filter applied)";
+
+    /// <summary>
+    /// Renders the funnel button natively <c>disabled</c> (the Table forwards its own
+    /// <see cref="Table{TItem}.Loading"/>), so a masked table is inert to the keyboard as well as to
+    /// the pointer. Scoped to the trigger only: a dropdown that was already open when loading
+    /// started keeps working, since the mask never covered it either.
+    /// </summary>
+    [Parameter] public bool Disabled { get; set; }
+
     /// <summary>Label of the dropdown's clear-this-column button. Forwarded from
     /// <see cref="Table{TItem}.FilterResetLabel"/>.</summary>
     [Parameter] public string ResetLabel { get; set; } = "Reset";
@@ -107,11 +128,25 @@
     // Mirrors Column.SortButtonLabel's title-less fallback -- a headerless column's filter button
     // still needs an accessible name, from FilterLabel (forwarded from Table.FilterLabel) rather
     // than a hardcoded literal, so a localized table doesn't announce this one button in English.
+    //
+    // The applied/unapplied fork is the same pair one level up: an applied filter is otherwise
+    // signalled only by recoloring the funnel glyph, which no screen reader (and no user who can't
+    // distinguish the two blues) can perceive. Both the trigger and the panel below read this, so
+    // the open dialog reports the state it is about to edit.
     string FilterAriaLabel =>
-        string.IsNullOrEmpty(Column.HeaderText) ? FilterLabel : string.Format(FilterButtonLabelFormat, Column.HeaderText);
+        Column.FilterApplied.Count > 0
+            ? (string.IsNullOrEmpty(Column.HeaderText)
+                ? FilterAppliedLabel
+                : string.Format(FilterAppliedButtonLabelFormat, Column.HeaderText))
+            : (string.IsNullOrEmpty(Column.HeaderText)
+                ? FilterLabel
+                : string.Format(FilterButtonLabelFormat, Column.HeaderText));
 
     void ToggleOpen()
     {
+        // A disabled <button> cannot be clicked in a browser; this guards the programmatic paths
+        // (tests, a synthetic dispatch) so "inert while Loading" holds there too.
+        if (Disabled) return;
         if (Column.FilterOpen)
         {
             Close();

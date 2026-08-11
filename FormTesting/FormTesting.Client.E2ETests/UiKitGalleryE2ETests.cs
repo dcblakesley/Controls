@@ -585,7 +585,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     {
         await GotoAsync();
         var section = _page.Locator("section.demo-section", new() { HasTextString = "column filtering" });
-        var filterButton = section.Locator(".wss-table-filter-trigger[aria-label='Filter Name']");
+        var filterButton = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Name']");
         var rows = section.Locator("tbody .wss-table-row");
 
         await Expect(rows).ToHaveCountAsync(10);
@@ -615,7 +615,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
 
         // Name in {Item 2, Item 5, Item 8} AND Price >= $20 (Item 5 = $25, Item 8 = $40 qualify;
         // Item 2 = $10 doesn't) -> AND narrows to Item 5 + Item 8 only.
-        var nameFilter = section.Locator(".wss-table-filter-trigger[aria-label='Filter Name']");
+        var nameFilter = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Name']");
         await nameFilter.ClickAsync();
         var nameDropdown = section.Locator(".wss-table-filter-dropdown");
         await nameDropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Item 2" }).Locator("input").CheckAsync();
@@ -624,7 +624,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await nameDropdown.Locator(".wss-table-filter-ok").ClickAsync();
         await Expect(rows).ToHaveCountAsync(3);
 
-        var priceFilter = section.Locator(".wss-table-filter-trigger[aria-label='Filter Price']");
+        var priceFilter = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Price']");
         await priceFilter.ClickAsync();
         var priceDropdown = section.Locator(".wss-table-filter-dropdown");
         await priceDropdown.Locator(".wss-table-filter-item", new() { HasTextString = "$20 and over" }).Locator("input").CheckAsync();
@@ -654,7 +654,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     {
         await GotoAsync();
         var section = _page.Locator("section.demo-section", new() { HasTextString = "column filtering" });
-        var filterButton = section.Locator(".wss-table-filter-trigger[aria-label='Filter Name']");
+        var filterButton = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Name']");
         var rows = section.Locator("tbody .wss-table-row");
 
         await filterButton.ClickAsync();

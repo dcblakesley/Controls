@@ -143,6 +143,47 @@ public class PaginationTests : BunitContext
     }
 
     [Fact]
+    public void Disabled_makes_every_pager_control_inert()
+    {
+        // Table forwards its Loading here: the loading mask blocks the pointer, and this is what
+        // makes the same area inert to the keyboard (the buttons are real tab stops otherwise).
+        var cut = Render<Pagination>(p => p
+            .Add(c => c.Total, 95)
+            .Add(c => c.PageSize, 10)
+            .Add(c => c.Current, 3)
+            .Add(c => c.PageSizeOptions, new[] { 10, 20 })
+            .Add(c => c.ShowQuickJumper, true)
+            .Add(c => c.Disabled, true));
+
+        Assert.All(cut.FindAll(".wss-pagination-item"), b => Assert.True(b.HasAttribute("disabled")));
+        Assert.True(cut.Find(".wss-pagination-prev").HasAttribute("disabled"));
+        Assert.True(cut.Find(".wss-pagination-next").HasAttribute("disabled"));
+        Assert.True(cut.Find(".wss-pagination-size-select").HasAttribute("disabled"));
+        Assert.True(cut.Find(".wss-pagination-jumper-input").HasAttribute("disabled"));
+        // Plus the existing disabled styling, so a disabled pager doesn't look operable.
+        Assert.All(cut.FindAll(".wss-pagination-item"), b => Assert.Contains("wss-pagination-disabled", b.ClassList));
+    }
+
+    [Fact]
+    public void Disabled_unset_leaves_the_page_buttons_operable()
+    {
+        var cut = Render<Pagination>(p => p
+            .Add(c => c.Total, 95)
+            .Add(c => c.PageSize, 10)
+            .Add(c => c.Current, 3)
+            .Add(c => c.PageSizeOptions, new[] { 10, 20 })
+            .Add(c => c.ShowQuickJumper, true));
+
+        Assert.All(cut.FindAll(".wss-pagination-item"), b => Assert.False(b.HasAttribute("disabled")));
+        Assert.All(cut.FindAll(".wss-pagination-item"), b => Assert.DoesNotContain("wss-pagination-disabled", b.ClassList));
+        Assert.False(cut.Find(".wss-pagination-size-select").HasAttribute("disabled"));
+        Assert.False(cut.Find(".wss-pagination-jumper-input").HasAttribute("disabled"));
+        // prev/next keep their own bounds-driven disabled state (page 3 of 10: both operable).
+        Assert.False(cut.Find(".wss-pagination-prev").HasAttribute("disabled"));
+        Assert.False(cut.Find(".wss-pagination-next").HasAttribute("disabled"));
+    }
+
+    [Fact]
     public void Small_adds_the_compact_modifier_class()
     {
         var cut = Render<Pagination>(p => p

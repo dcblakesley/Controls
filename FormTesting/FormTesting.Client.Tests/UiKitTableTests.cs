@@ -2,6 +2,7 @@ using System.Reflection;
 using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
 
@@ -3431,5 +3432,344 @@ public class UiKitTableTests : BunitContext
         var wrapper = cut.Find(".wss-table-wrapper");
         Assert.Contains("wss-table-wrapper-scroll-y", wrapper.ClassList);
         Assert.Contains("max-height:240px", wrapper.GetAttribute("style"));
+    }
+
+    // ----- Accessibility: keyboard row activation, names, live region, Loading inertness -----
+
+    IRenderedComponent<Table<Person>> RenderNameColumn(Action<ComponentParameterCollectionBuilder<Table<Person>>>? extra = null) =>
+        Render<Table<Person>>(p =>
+        {
+            p.Add(t => t.DataSource, Sample());
+            extra?.Invoke(p);
+            p.AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name));
+        });
+
+    [Fact]
+    public void Enter_activates_a_focusable_row_the_same_way_a_click_does()
+    {
+        // OnRowClick used to be pointer-only: no tab stop, no key handler (WCAG 2.1.1).
+        Person? clicked = null;
+        var cut = RenderNameColumn(p => p
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x)));
+
+        var row = cut.FindAll("tbody .wss-table-row")[1];
+        Assert.Equal("0", row.GetAttribute("tabindex"));
+
+        row.KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("Bob", clicked!.Name);
+    }
+
+    [Fact]
+    public void Enter_on_a_row_also_toggles_ExpandRowByClick_expansion()
+    {
+        Person? clicked = null;
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandRowByClick, true)
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody .wss-table-row")[0].KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("Alice", clicked!.Name);
+        Assert.Single(cut.FindAll(".wss-table-expanded-row"));
+    }
+
+    [Fact]
+    public void Space_does_not_activate_a_row()
+    {
+        // Deliberate: suppressing Space's page scroll needs @onkeydown:preventDefault, which Blazor
+        // applies to EVERY keydown on the element -- it would swallow Tab and trap focus in the row.
+        Person? clicked = null;
+        var cut = RenderNameColumn(p => p
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x)));
+
+        cut.FindAll("tbody .wss-table-row")[0].KeyDown(new KeyboardEventArgs { Key = " " });
+
+        Assert.Null(clicked);
+    }
+
+    [Fact]
+    public void Rows_are_a_tab_stop_only_when_OnRowClick_is_wired()
+    {
+        var plain = RenderNameColumn();
+        Assert.All(plain.FindAll("tbody .wss-table-row"), r => Assert.False(r.HasAttribute("tabindex")));
+
+        // ExpandRowByClick on its own is already keyboard-operable from the chevron button, so it
+        // must not add a second tab stop per row.
+        var expandOnly = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, "detail"))
+            .Add(t => t.ExpandRowByClick, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        Assert.All(expandOnly.FindAll("tbody .wss-table-row"), r => Assert.False(r.HasAttribute("tabindex")));
+    }
+
+    [Fact]
+    public void A_clickable_row_drops_its_tab_stop_while_Loading()
+    {
+        var cut = RenderNameColumn(p => p
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, _ => { }))
+            .Add(t => t.Loading, true));
+
+        Assert.All(cut.FindAll("tbody .wss-table-row"), r => Assert.False(r.HasAttribute("tabindex")));
+
+        cut.Render(p => p.Add(t => t.Loading, false));
+        Assert.All(cut.FindAll("tbody .wss-table-row"), r => Assert.Equal("0", r.GetAttribute("tabindex")));
+    }
+
+    [Fact]
+    public void ScrollY_makes_the_wrapper_a_named_keyboard_reachable_scroll_region()
+    {
+        var cut = RenderNameColumn(p => p.Add(t => t.ScrollY, "160px"));
+
+        var wrapper = cut.Find(".wss-table-wrapper");
+        Assert.Equal("0", wrapper.GetAttribute("tabindex"));
+        Assert.Equal("region", wrapper.GetAttribute("role"));
+        Assert.Equal("Table content", wrapper.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void The_scroll_region_name_prefers_the_caption_then_the_table_aria_label()
+    {
+        var captioned = RenderNameColumn(p => p
+            .Add(t => t.ScrollY, "160px").Add(t => t.Caption, "People").Add(t => t.AriaLabel, "Ignored"));
+        Assert.Equal("People", captioned.Find(".wss-table-wrapper").GetAttribute("aria-label"));
+
+        var labelled = RenderNameColumn(p => p
+            .Add(t => t.ScrollY, "160px").Add(t => t.AriaLabel, "Orders"));
+        Assert.Equal("Orders", labelled.Find(".wss-table-wrapper").GetAttribute("aria-label"));
+
+        var localized = RenderNameColumn(p => p
+            .Add(t => t.ScrollY, "160px").Add(t => t.ScrollRegionLabel, "Tabelleninhalt"));
+        Assert.Equal("Tabelleninhalt", localized.Find(".wss-table-wrapper").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void A_wrapper_without_ScrollY_gets_no_tab_stop_or_region_role()
+    {
+        // Plain overflow-x: auto only scrolls when the content happens to be wider than the wrapper,
+        // so a tab stop here would come and go with the viewport -- documented known limitation.
+        var wrapper = RenderNameColumn().Find(".wss-table-wrapper");
+
+        Assert.False(wrapper.HasAttribute("tabindex"));
+        Assert.False(wrapper.HasAttribute("role"));
+        Assert.False(wrapper.HasAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void AriaLabel_names_the_table_only_when_there_is_no_Caption()
+    {
+        var labelled = RenderNameColumn(p => p.Add(t => t.AriaLabel, "Orders"));
+        Assert.Equal("Orders", labelled.Find("table.wss-table").GetAttribute("aria-label"));
+        Assert.Empty(labelled.FindAll("caption"));
+
+        // A caption is already the accessible name; a second one would override the visible text.
+        var captioned = RenderNameColumn(p => p.Add(t => t.Caption, "People").Add(t => t.AriaLabel, "Orders"));
+        Assert.False(captioned.Find("table.wss-table").HasAttribute("aria-label"));
+        Assert.Equal("People", captioned.Find("caption").TextContent);
+
+        Assert.False(RenderNameColumn().Find("table.wss-table").HasAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void The_filter_trigger_declares_the_dialog_it_opens()
+    {
+        // Matches DatePicker/DateRangePicker's static aria-haspopup="dialog" and what wss-overlay.js
+        // writes onto Popover/Popconfirm triggers.
+        Assert.Equal("dialog", RenderNameFilterable().Find(".wss-table-filter-trigger").GetAttribute("aria-haspopup"));
+    }
+
+    [Fact]
+    public void The_filter_button_name_reports_the_applied_state_and_reverts_on_reset()
+    {
+        // The applied state was signalled only by recoloring the funnel glyph -- invisible to AT.
+        var cut = RenderNameFilterable();
+        Assert.Equal("Filter Name", cut.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Alice");
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.Equal("Filter Name (filter applied)", cut.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-reset").Click();
+
+        Assert.Equal("Filter Name", cut.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void The_applied_state_filter_names_are_overridable_and_cover_a_headerless_column()
+    {
+        var localized = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.FilterAppliedButtonLabelFormat, "{0} filtern (Filter aktiv)")
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
+
+        localized.Find(".wss-table-filter-trigger").Click();
+        CheckOption(localized, "Alice");
+        localized.Find(".wss-table-filter-ok").Click();
+        Assert.Equal("Name filtern (Filter aktiv)", localized.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+
+        // Headerless columns fall back to FilterAppliedLabel, the way they fall back to FilterLabel.
+        var headerless = RenderHeaderlessFilterable();
+        headerless.Find(".wss-table-filter-trigger").Click();
+        CheckOption(headerless, "Alice");
+        headerless.Find(".wss-table-filter-ok").Click();
+        Assert.Equal("Filter (filter applied)", headerless.Find(".wss-table-filter-trigger").GetAttribute("aria-label"));
+    }
+
+    static string StatusText(IRenderedComponent<Table<Person>> cut) =>
+        cut.Find("div.wss-sr-only[role='status']").TextContent.Trim();
+
+    [Fact]
+    public void The_status_region_announces_Loading_and_the_empty_state()
+    {
+        // The region has to exist from the first render: an aria-live region injected together with
+        // its text is not reliably announced.
+        var cut = RenderNameColumn(p => p
+            .Add(t => t.EmptyText, "Nothing here")
+            .Add(t => t.LoadingLabel, "Wird geladen"));
+        Assert.Equal(string.Empty, StatusText(cut));
+
+        cut.Render(p => p.Add(t => t.Loading, true));
+        Assert.Equal("Wird geladen", StatusText(cut));
+
+        // Loading wins while both would apply -- the rows under the mask are stale by definition.
+        cut.Render(p => p.Add(t => t.DataSource, new List<Person>()));
+        Assert.Equal("Wird geladen", StatusText(cut));
+
+        cut.Render(p => p.Add(t => t.Loading, false));
+        Assert.Equal("Nothing here", StatusText(cut));
+        Assert.Single(cut.FindAll(".wss-table-placeholder"));
+    }
+
+    [Fact]
+    public void The_status_region_announces_a_filter_that_narrows_every_row_out()
+    {
+        var cut = RenderNameFilterable(data: new List<Person> { new("Alice", 30), new("Bob", 25) });
+        Assert.Equal(string.Empty, StatusText(cut));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Carol"); // no row matches
+        cut.Find(".wss-table-filter-ok").Click();
+
+        Assert.Equal("No data", StatusText(cut));
+    }
+
+    [Fact]
+    public void SelectRowLabelFor_names_each_rows_checkbox_and_radio_individually()
+    {
+        var multiple = RenderNameColumn(p => p
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectRowLabelFor, (Person x) => $"Select {x.Name}"));
+
+        Assert.Equal(["Select Alice", "Select Bob"],
+            multiple.FindAll("tbody input.wss-table-checkbox").Select(cb => cb.GetAttribute("aria-label")).ToArray());
+        // The header select-all keeps its own (scope-accurate) name.
+        Assert.Equal("Select all rows", multiple.Find("thead input.wss-table-checkbox").GetAttribute("aria-label"));
+
+        var single = RenderNameColumn(p => p
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .Add(t => t.SelectRowLabelFor, (Person x) => $"Select {x.Name}"));
+
+        Assert.Equal(["Select Alice", "Select Bob"],
+            single.FindAll("tbody input.wss-table-radio").Select(r => r.GetAttribute("aria-label")).ToArray());
+
+        // Unset: every row keeps the static label (unchanged from before the labeler existed).
+        var unset = RenderNameColumn(p => p.Add(t => t.Selectable, true));
+        Assert.All(unset.FindAll("tbody input.wss-table-checkbox"),
+            cb => Assert.Equal("Select row", cb.GetAttribute("aria-label")));
+    }
+
+    [Fact]
+    public void Loading_disables_every_control_the_mask_covers()
+    {
+        // The mask blocks the pointer only -- keyboard users could still tab into and operate every
+        // control underneath it. Native disabled is what makes the two match.
+        var people = Enumerable.Range(1, 3).Select(i => new Person($"P{i}", i)).ToList();
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, people)
+            .Add(t => t.Selectable, true)
+            .Add(t => t.PageSize, 2) // forces a pager
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, "detail"))
+            .Add(t => t.Loading, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)
+                .Add(c => c.Sortable, true)
+                .Add(c => c.FilterOptions, NameOptions())
+                .Add(c => c.OnFilter, (Func<Person, string, bool>)((x, v) => x.Name == v))));
+
+        Assert.True(cut.Find(".wss-table-sort-trigger").HasAttribute("disabled"));
+        Assert.True(cut.Find(".wss-table-filter-trigger").HasAttribute("disabled"));
+        Assert.All(cut.FindAll(".wss-table-expand-btn"), b => Assert.True(b.HasAttribute("disabled")));
+        Assert.All(cut.FindAll("input.wss-table-checkbox"), c => Assert.True(c.HasAttribute("disabled")));
+        Assert.All(cut.FindAll(".wss-pagination-item"), b => Assert.True(b.HasAttribute("disabled")));
+        Assert.True(cut.Find(".wss-pagination-next").HasAttribute("disabled"));
+
+        // ...and nothing stays disabled once loading ends.
+        cut.Render(p => p.Add(t => t.Loading, false));
+        Assert.False(cut.Find(".wss-table-sort-trigger").HasAttribute("disabled"));
+        Assert.False(cut.Find(".wss-table-filter-trigger").HasAttribute("disabled"));
+        Assert.All(cut.FindAll(".wss-table-expand-btn"), b => Assert.False(b.HasAttribute("disabled")));
+        Assert.All(cut.FindAll("input.wss-table-checkbox"), c => Assert.False(c.HasAttribute("disabled")));
+        Assert.False(cut.Find(".wss-pagination-next").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void Loading_disables_the_single_mode_radios_without_forgetting_IsRowSelectable()
+    {
+        var cut = RenderNameColumn(p => p
+            .Add(t => t.Selectable, true)
+            .Add(t => t.SelectionMode, SelectionMode.Single)
+            .Add(t => t.IsRowSelectable, (Person x) => x.Name != "Bob")
+            .Add(t => t.Loading, true));
+
+        Assert.All(cut.FindAll("tbody input.wss-table-radio"), r => Assert.True(r.HasAttribute("disabled")));
+
+        cut.Render(p => p.Add(t => t.Loading, false));
+        var radios = cut.FindAll("tbody input.wss-table-radio");
+        Assert.False(radios[0].HasAttribute("disabled")); // Alice is selectable again
+        Assert.True(radios[1].HasAttribute("disabled"));  // Bob still isn't
+    }
+
+    [Fact]
+    public void The_expand_button_points_aria_controls_at_the_detail_row_it_opens()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        // Collapsed: nothing to point at, so no dangling reference.
+        Assert.False(cut.FindAll(".wss-table-expand-btn")[0].HasAttribute("aria-controls"));
+
+        cut.FindAll(".wss-table-expand-btn")[0].Click();
+
+        var detailId = cut.Find(".wss-table-expanded-row").GetAttribute("id");
+        Assert.False(string.IsNullOrEmpty(detailId));
+        Assert.Equal(detailId, cut.FindAll(".wss-table-expand-btn")[0].GetAttribute("aria-controls"));
+        Assert.False(cut.FindAll(".wss-table-expand-btn")[1].HasAttribute("aria-controls")); // still collapsed
     }
 }

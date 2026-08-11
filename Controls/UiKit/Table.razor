@@ -25,6 +25,13 @@
      class="wss-table-root @AttributeSplat.ConsumerClass(AdditionalAttributes)"
      style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
      aria-busy="@(Loading ? "true" : null)">
+@* One persistent live region, rendered from the very first pass with (usually) no content: an
+   aria-live region that is INJECTED together with its text is not reliably announced -- the region
+   has to already be in the accessibility tree when its content changes. aria-busy on the root marks
+   the table as in-flux but announces nothing on its own, and the placeholder row is an ordinary
+   table row, so neither state used to reach a screen reader at all. Visually hidden (.wss-sr-only)
+   and absolutely positioned, so it contributes no layout. *@
+<div class="wss-sr-only" role="status">@StatusAnnouncement</div>
 @if (Loading)
 {
     @* inset:0 against .wss-table-root (not .wss-table-wrapper) so this spans both pagers plus the
@@ -38,9 +45,23 @@
 {
     @PagerFragment("top", PagerPosition == PagerPosition.Both ? TopPaginationLabel : PaginationLabel)
 }
+@* ScrollY only: a scroll container that holds no tab stop of its own is unreachable by keyboard
+   (axe scrollable-region-focusable) -- the rows scroll for a mouse and for nobody else. tabindex="0"
+   makes it a tab stop, and a focusable scroll container needs a role + an accessible name to be
+   anything but an unlabeled stop, hence role="region" named from Caption / AriaLabel /
+   ScrollRegionLabel. Deliberately NOT applied to the default wrapper: that one is only ever
+   scrollable when its content happens to overflow horizontally (overflow-x: auto), which depends on
+   the rendered width -- a tab stop that appears and disappears with the viewport is worse than the
+   gap. Known limitation, documented on ScrollY. *@
 <div class="wss-table-wrapper @(ScrollY is not null ? "wss-table-wrapper-scroll-y" : null)"
-     style="@(ScrollY is not null ? $"max-height:{ScrollY};" : null)">
-    <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName @(AnyColumnEllipsis ? "wss-table-fixed" : null)">
+     style="@(ScrollY is not null ? $"max-height:{ScrollY};" : null)"
+     tabindex="@(ScrollY is not null ? "0" : null)"
+     role="@(ScrollY is not null ? "region" : null)"
+     aria-label="@(ScrollY is not null ? ScrollRegionAriaLabel : null)">
+    @* aria-label only when there is no <caption>: a caption already names the table, and a second
+       name would override the one the sighted user can read. *@
+    <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName @(AnyColumnEllipsis ? "wss-table-fixed" : null)"
+           aria-label="@(string.IsNullOrEmpty(Caption) ? AriaLabel : null)">
         @if (!string.IsNullOrEmpty(Caption))
         {
             <caption class="wss-table-caption">@Caption</caption>
@@ -155,15 +176,31 @@
                 @for (var rowIdx = 0; rowIdx < _pageItems.Count; rowIdx++)
                 {
                     var item = _pageItems[rowIdx];
+                    // Computed once per row so the expand button's aria-controls and the detail row's
+                    // own id cannot drift apart; null (no string built at all) for the overwhelmingly
+                    // common table with no RowDetail.
+                    var detailId = HasRowDetail ? DetailRowId(rowIdx) : null;
+                    // tabindex + onkeydown mirror the row's onclick for keyboard users, and only when
+                    // OnRowClick is actually wired (the ExpandRowByClick half is already operable from
+                    // the chevron button). No role="button": these are rows, and relabeling them would
+                    // cost every row/cell semantic a table exists for -- they are just rows that are
+                    // focusable and Enter-activatable.
                     <tr class="wss-table-row @(IsSelected(item) ? "wss-table-row-selected" : null) @(RowIsClickable ? "wss-table-row-clickable" : null)"
-                        @key="_pageKeys[rowIdx]" @onclick="@(() => OnRowClickedAsync(item))">
+                        @key="_pageKeys[rowIdx]" tabindex="@RowTabIndex"
+                        @onclick="@(() => OnRowClickedAsync(item))" @onkeydown="@RowKeyDownCallback(item)">
                         @if (HasRowDetail)
                         {
-                            <td class="wss-table-cell wss-table-expand-cell" @onclick:stopPropagation="true">
+                            @* stopPropagation on keydown as well as click, everywhere the row click is
+                               already guarded: Enter on a nested control fires keydown on that control
+                               AND (natively) a click, so without the second guard the keyboard path
+                               would leak a row activation the pointer path never produces. *@
+                            <td class="wss-table-cell wss-table-expand-cell" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
                                 <button type="button"
                                         class="wss-table-expand-btn @(IsExpanded(item) ? "wss-table-expand-btn-expanded" : null)"
                                         aria-expanded="@(IsExpanded(item) ? "true" : "false")"
                                         aria-label="@(IsExpanded(item) ? CollapseRowLabel : ExpandRowLabel)"
+                                        aria-controls="@(IsExpanded(item) ? detailId : null)"
+                                        disabled="@Loading"
                                         @onclick="@(() => ToggleExpandAsync(item))">
                                     @ExpandChevron
                                 </button>
@@ -171,7 +208,7 @@
                         }
                         @if (Selectable)
                         {
-                            <td class="wss-table-cell wss-table-selection-cell" @onclick:stopPropagation="true">
+                            <td class="wss-table-cell wss-table-selection-cell" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
                                 @if (SelectionMode == SelectionMode.Multiple)
                                 {
                                     @if (EffectiveUseStyledCheckbox)
@@ -185,8 +222,8 @@
                                 }
                                 else
                                 {
-                                    <input type="radio" class="wss-table-radio" name="@_radioGroupName" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
-                                           disabled="@(!IsRowSelectableFor(item))"
+                                    <input type="radio" class="wss-table-radio" name="@_radioGroupName" aria-label="@RowSelectionLabel(item)" checked="@IsSelected(item)"
+                                           disabled="@(Loading || !IsRowSelectableFor(item))"
                                            @onchange="@(() => SelectSingleAsync(item))" />
                                 }
                             </td>
@@ -198,14 +235,14 @@
                                guard on it leaves the cell's padding bubbling into the row handler. The
                                builder only emits the frame when the value is true, so every other
                                column's cell keeps its exact previous shape. *@
-                            <td @key="col" class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)" @onclick:stopPropagation="col.StopsRowClickPropagation">@col.CellFor(item)</td>
+                            <td @key="col" class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)" @onclick:stopPropagation="col.StopsRowClickPropagation" @onkeydown:stopPropagation="col.StopsRowClickPropagation">@col.CellFor(item)</td>
                         }
                     </tr>
                     @if (HasRowDetail && IsExpanded(item))
                     {
                         @* Keyed alongside its parent row (same identity + a discriminator) so
                            re-orders keep each detail row glued to its row. *@
-                        <tr class="wss-table-expanded-row" @key="@(("wss-detail", _pageKeys[rowIdx]))">
+                        <tr class="wss-table-expanded-row" id="@detailId" @key="@(("wss-detail", _pageKeys[rowIdx]))">
                             <td class="wss-table-cell wss-table-expanded-cell" colspan="@TotalColumnCount">@RowDetail!(item)</td>
                         </tr>
                     }
@@ -240,14 +277,14 @@
         @<div class="wss-table-pagination wss-table-pagination-@position wss-table-pagination-@PagerAlignName">
             <Pagination Total="_filtered.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
                         ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
-                        AriaLabel="@ariaLabel" />
+                        AriaLabel="@ariaLabel" Disabled="Loading" />
         </div>;
 
     // The sort button + its caret stack, rendered on every sortable header. iconOnly is the
     // TitleContent case: the template renders in its own clickable area beside the button (see the
     // th markup), so the button has no visible content of its own and only carries the carets.
     RenderFragment SortTrigger(Column<TItem> col, bool iconOnly) =>
-        @<button type="button" class="@(iconOnly ? "wss-table-sort-trigger wss-table-sort-trigger-icon" : "wss-table-sort-trigger")" aria-label="@SortButtonLabel(col)" @onclick="@(() => ToggleSort(col))">
+        @<button type="button" class="@(iconOnly ? "wss-table-sort-trigger wss-table-sort-trigger-icon" : "wss-table-sort-trigger")" aria-label="@SortButtonLabel(col)" disabled="@Loading" @onclick="@(() => ToggleSort(col))">
             @if (!iconOnly)
             {
                 <span class="wss-table-sort-label">@col.HeaderFor()</span>
@@ -258,11 +295,16 @@
             </span>
         </button>;
 
-    // The filter control, with the four forwarded label parameters, on each of the three header shapes.
+    // The filter control, with the six forwarded label parameters, on each of the three header shapes.
+    // Disabled tracks Loading so the funnel is inert to the keyboard the same way the mask makes it
+    // inert to the pointer (an ALREADY-open dropdown stays fully operable -- see TableColumnFilter.Disabled).
     RenderFragment ColumnFilter(Column<TItem> col) =>
         @<TableColumnFilter TItem="TItem" Column="col" Table="this"
                             FilterButtonLabelFormat="@FilterButtonLabelFormat"
-                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" FilterLabel="@FilterLabel" />;
+                            FilterAppliedButtonLabelFormat="@FilterAppliedButtonLabelFormat"
+                            FilterAppliedLabel="@FilterAppliedLabel"
+                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" FilterLabel="@FilterLabel"
+                            Disabled="Loading" />;
 
     // Selection checkboxes: the styled variant is the same <input> plus a wrapper and one extra
     // class, so the box markup lives here once for both the header and the rows. The header's own
@@ -277,12 +319,12 @@
     RenderFragment SelectAllCheckbox(bool styled) =>
         @<input type="checkbox" class="@CheckboxClass(styled)"
                 aria-label="@SelectAllLabel"
-                checked="@_allSelected" disabled="@_headerSelectAllDisabled"
+                checked="@_allSelected" disabled="@(Loading || _headerSelectAllDisabled)"
                 @ref="_selectAllRef" @onchange="@(e => ToggleAll(e.Value is true))" />;
 
     RenderFragment RowCheckbox(TItem item, bool styled) =>
-        @<input type="checkbox" class="@CheckboxClass(styled)" aria-label="@SelectRowLabel" checked="@IsSelected(item)"
-                disabled="@(!IsRowSelectableFor(item))"
+        @<input type="checkbox" class="@CheckboxClass(styled)" aria-label="@RowSelectionLabel(item)" checked="@IsSelected(item)"
+                disabled="@(Loading || !IsRowSelectableFor(item))"
                 @onchange="@(e => ToggleRow(item, e.Value is true))" />;
 
     static string CheckboxClass(bool styled) =>
@@ -309,7 +351,11 @@
     [Parameter] public bool Bordered { get; set; }
     /// <summary>Row density (cell padding). Defaults to <see cref="TableSize.Default"/>.</summary>
     [Parameter] public TableSize Size { get; set; } = TableSize.Default;
-    /// <summary>Placeholder text shown when there are no rows. Defaults to "No data".</summary>
+    /// <summary>Placeholder text shown when there are no rows. Defaults to "No data". Also what the
+    /// table's live region announces whenever the placeholder row renders (including after a column
+    /// filter narrows every row out) — the announcement always uses this plain string, even when
+    /// <see cref="EmptyContent"/> replaces the visible placeholder, since that template is arbitrary
+    /// markup rather than text this component composed.</summary>
     [Parameter] public string EmptyText { get; set; } = "No data";
 
     /// <summary>
@@ -320,12 +366,21 @@
 
     /// <summary>
     /// Shows a translucent mask + spinner over the whole component -- both pagers plus the table
-    /// body -- while true (AntD's <c>Spin</c>-wrapped table) — rows stay rendered beneath it, the
-    /// pagers become click-inert (the mask sits on top of them too), and <c>aria-busy="true"</c> is
-    /// set on the <c>wss-table-root</c> element. Pure CSS/markup, no JS. Default false (no overlay —
-    /// current DOM unchanged).
+    /// body -- while true (AntD's <c>Spin</c>-wrapped table) — rows stay rendered beneath it, and
+    /// <c>aria-busy="true"</c> is set on the <c>wss-table-root</c> element. Pure CSS/markup, no JS.
+    /// Default false (no overlay — current DOM unchanged).
+    /// <para>Everything the mask covers is inert to the keyboard too, not just to the pointer: the
+    /// sort buttons, filter funnels, expand chevrons and selection checkboxes/radios all render
+    /// natively <c>disabled</c>, the embedded pagers get <see cref="Pagination.Disabled"/>, and a
+    /// clickable row (<see cref="OnRowClick"/>) drops its tab stop. A filter dropdown that was
+    /// ALREADY open when loading started stays operable — the mask never covered it either.</para>
+    /// <para><see cref="LoadingLabel"/> is announced by the table's live region while this is true.</para>
     /// </summary>
     [Parameter] public bool Loading { get; set; }
+
+    /// <summary>Text the table's visually-hidden live region announces while <see cref="Loading"/>
+    /// is true (the mask and its spinner are hidden from assistive tech). Override to localize.</summary>
+    [Parameter] public string LoadingLabel { get; set; } = "Loading";
 
     /// <summary>
     /// Summary/footer row(s), rendered in a <c>&lt;tfoot&gt;</c> after the body — unaffected by
@@ -335,8 +390,18 @@
     /// </summary>
     [Parameter] public RenderFragment? FooterContent { get; set; }
 
-    /// <summary>Optional accessible caption rendered above the table (also names it for screen readers).</summary>
+    /// <summary>Optional accessible caption rendered above the table (also names it for screen
+    /// readers, and wins over <see cref="AriaLabel"/>).</summary>
     [Parameter] public string? Caption { get; set; }
+
+    /// <summary>
+    /// Accessible name for the <c>&lt;table&gt;</c> itself, for the common case where the table has
+    /// no visible caption ("Orders", "Search results", ...) — a table with neither is announced as
+    /// an unnamed table. Rendered as <c>aria-label</c> and only when <see cref="Caption"/> is unset:
+    /// a caption is already the name, and an <c>aria-label</c> would silently override the text the
+    /// sighted user can read. Null (default) renders no <c>aria-label</c>.
+    /// </summary>
+    [Parameter] public string? AriaLabel { get; set; }
 
     /// <summary>
     /// Rows per page; 0 (default) shows all rows without pagination. This is the INITIAL effective
@@ -429,11 +494,28 @@
     /// excludes the selection checkbox/radio, the expand chevron, and <see cref="ActionColumn{TItem}"/>
     /// cells). Always raised regardless of <see cref="ExpandRowByClick"/>; when both are set, a click
     /// also toggles that row's expansion.
+    /// <para>Keyboard: wiring this makes every row a tab stop (<c>tabindex="0"</c>) that raises this
+    /// from <b>Enter</b> — the same handler a click runs, expansion toggle included. Space is
+    /// deliberately not an activation key here: suppressing its page-scroll would need
+    /// <c>@onkeydown:preventDefault</c>, which Blazor applies to every keydown on the element and
+    /// would therefore also swallow Tab, trapping focus in the row. The row stays a row
+    /// (no <c>role="button"</c>), so cell/row semantics are unaffected; give it a visible focus
+    /// style via <c>.wss-table-row-clickable:focus-visible</c> if the kit default is overridden.
+    /// Rows are not focusable while <see cref="Loading"/>, matching the mask's pointer inertness.</para>
     /// </summary>
     [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
 
-    /// <summary>Accessible name of a row's selection checkbox/radio. Override to localize.</summary>
+    /// <summary>Accessible name of a row's selection checkbox/radio. Override to localize; see
+    /// <see cref="SelectRowLabelFor"/> to name each row individually.</summary>
     [Parameter] public string SelectRowLabel { get; set; } = "Select row";
+
+    /// <summary>
+    /// Per-row accessible name for the selection checkbox/radio (e.g. <c>x =&gt; $"Select {x.Name}"</c>),
+    /// so a screen reader running the selection column doesn't hear the same "Select row" on every
+    /// row with nothing to tell them apart. Null (default) keeps the static
+    /// <see cref="SelectRowLabel"/> for every row, which is also the fallback if this returns null.
+    /// </summary>
+    [Parameter] public Func<TItem, string>? SelectRowLabelFor { get; set; }
 
     /// <summary>Accessible name of the header select-all checkbox while the table is paged — it only
     /// toggles the current page, which the default text says. Override to localize.</summary>
@@ -507,8 +589,19 @@
     /// renders the existing unconstrained wrapper with no scroll container of its own. This is
     /// deliberately scoped to the table's own wrapper only — a header that stays fixed while the
     /// whole PAGE scrolls (viewport-level sticky) is out of scope.
+    /// <para>The bounded wrapper is also a keyboard-reachable, named scroll region
+    /// (<c>tabindex="0"</c> + <c>role="region"</c>, named from <see cref="Caption"/> ??
+    /// <see cref="AriaLabel"/> ?? <see cref="ScrollRegionLabel"/>) so the rows can be scrolled
+    /// without a mouse. Known limitation: the default wrapper's horizontal <c>overflow-x: auto</c>
+    /// gets no such tab stop — whether it scrolls at all depends on the rendered width, and a tab
+    /// stop that comes and goes with the viewport is worse than the gap.</para>
     /// </summary>
     [Parameter] public string? ScrollY { get; set; }
+
+    /// <summary>Accessible-name fallback for the <see cref="ScrollY"/> scroll region, used when
+    /// neither <see cref="Caption"/> nor <see cref="AriaLabel"/> names the table. Override to
+    /// localize.</summary>
+    [Parameter] public string ScrollRegionLabel { get; set; } = "Table content";
 
     /// <summary>
     /// Raised with the column and its new selected values (empty when cleared) on any of three
@@ -526,6 +619,17 @@
     /// <summary>Accessible-name format for a column's filter button; <c>{0}</c> is the column's
     /// header text (falls back to <see cref="FilterLabel"/> for a headerless column). Override to localize.</summary>
     [Parameter] public string FilterButtonLabelFormat { get; set; } = "Filter {0}";
+
+    /// <summary>Accessible-name format used instead of <see cref="FilterButtonLabelFormat"/> while
+    /// that column actually has a filter applied — the active funnel is a recolored glyph, which is
+    /// a visual-only state cue (WCAG 1.4.1/4.1.2). <c>{0}</c> is the column's header text. Override
+    /// to localize.</summary>
+    [Parameter] public string FilterAppliedButtonLabelFormat { get; set; } = "Filter {0} (filter applied)";
+
+    /// <summary>The <see cref="FilterAppliedButtonLabelFormat"/> counterpart to
+    /// <see cref="FilterLabel"/>: the filter button's accessible name when the column has no header
+    /// text to name it AND has a filter applied. Override to localize.</summary>
+    [Parameter] public string FilterAppliedLabel { get; set; } = "Filter (filter applied)";
 
     /// <summary>Label of a filter dropdown's clear-this-column button. Override to localize.</summary>
     [Parameter] public string FilterResetLabel { get; set; } = "Reset";
@@ -592,6 +696,17 @@
     readonly HashSet<object> _expanded = new(); // row key -> expanded
     IEnumerable<object>? _lastExpandedRowKeys;
 
+    // Per-instance id prefix for the expanded detail rows, so the expand button can point
+    // aria-controls at the row it opens without colliding with another Table on the page (a nested
+    // RowDetail child table included) -- the same per-instance-Guid technique _radioGroupName uses.
+    readonly string _detailIdPrefix = $"wss-table-detail-{Guid.NewGuid():N}";
+
+    // Keyed by position on the page rather than by the row key itself: _pageKeys holds arbitrary
+    // consumer objects (and composite tuples for duplicate-equal rows), none of which is guaranteed
+    // to render as a unique, valid HTML id. The button and its detail row read this in the same loop
+    // iteration, so they always agree, and both re-render together when the page changes.
+    string DetailRowId(int rowIndex) => $"{_detailIdPrefix}-{rowIndex}";
+
     bool IsExpanded(TItem item) => _expanded.Contains(KeyFor(item));
 
     // Uncontrolled by default (ExpandedRowKeys null): _expanded is mutated directly and stays the
@@ -620,6 +735,22 @@
     // The header select-all's accessible name follows its actual scope: ToggleAll only ever affects
     // the current page, so a paged table says so.
     string SelectAllLabel => IsPaged ? SelectAllRowsOnPageLabel : SelectAllRowsLabel;
+
+    // Per-row selection name, falling back to the static one both when no labeler is supplied and
+    // when one returns null -- an unnamed checkbox is worse than a repeated name.
+    string RowSelectionLabel(TItem item) => SelectRowLabelFor?.Invoke(item) ?? SelectRowLabel;
+
+    // The scroll region's name: the caption if the table has one, else its aria-label, else the
+    // generic fallback -- the same precedence the table's own accessible name follows.
+    string ScrollRegionAriaLabel =>
+        !string.IsNullOrEmpty(Caption) ? Caption
+        : !string.IsNullOrEmpty(AriaLabel) ? AriaLabel
+        : ScrollRegionLabel;
+
+    // What the persistent role="status" region carries (empty the rest of the time -- see its markup
+    // for why the region itself is never conditional). Loading wins: while the mask is up the row
+    // set underneath is stale by definition, so "No data" would be reporting on data being replaced.
+    string? StatusAnnouncement => Loading ? LoadingLabel : _pageItems.Count == 0 ? EmptyText : null;
 
     bool HasPager => IsPaged && _items.Count > 0;
     bool ShowTopPager => HasPager && PagerPosition is PagerPosition.Top or PagerPosition.Both;
@@ -1328,6 +1459,30 @@
     {
         if (ExpandRowByClick && HasRowDetail) await ToggleExpandAsync(item);
         await OnRowClick.InvokeAsync(item);
+    }
+
+    // A row is a tab stop only where there is genuinely something to activate on it: OnRowClick.
+    // ExpandRowByClick alone is deliberately excluded -- its chevron is already a real button, so a
+    // second tab stop per row would just double the tabbing cost for the same action. Null (not 0)
+    // while Loading so the mask's inertness covers the keyboard too.
+    int? RowTabIndex => OnRowClick.HasDelegate && !Loading ? (int?)0 : null;
+
+    // Built per row so an unwired Table renders exactly the DOM it did before: an EventCallback with
+    // no delegate is dropped by the render-tree builder, attribute and all.
+    EventCallback<KeyboardEventArgs> RowKeyDownCallback(TItem item) =>
+        OnRowClick.HasDelegate && !Loading
+            ? EventCallback.Factory.Create<KeyboardEventArgs>(this, e => OnRowKeyDownAsync(e, item))
+            : default;
+
+    // Enter only, no Space. Space would scroll the page unless the keydown's default action is
+    // suppressed, and Blazor's @onkeydown:preventDefault is a compile-time flag applied to EVERY
+    // keydown on the element -- it cannot be decided per key from C#, so switching it on would also
+    // swallow Tab and trap focus in the row. Enter has no conflicting default on a <tr>, so it is
+    // the one key that is safe to claim here; the row remains fully escapable with Tab.
+    async Task OnRowKeyDownAsync(KeyboardEventArgs e, TItem item)
+    {
+        if (Loading || !OnRowClick.HasDelegate || e.Key != "Enter") return;
+        await OnRowClickedAsync(item);
     }
 
     // Any column requesting Ellipsis truncation needs table-layout: fixed for max-width: 0 +
