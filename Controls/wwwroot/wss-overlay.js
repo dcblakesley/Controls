@@ -144,8 +144,11 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
 // role="button" (with keyboard activation) only while the content has nothing focusable, and
 // demoted again the moment a focusable child appears.
 //
-// ARIA: aria-haspopup="dialog" + aria-expanded track the popup on the resolved child; while
-// disabled both drop off and (for an interactive child) aria-disabled="true" is mirrored onto it —
+// ARIA: aria-haspopup="dialog" + aria-expanded track the popup on the resolved child, joined while
+// OPEN by aria-controls pointing at the panel's own id (`panelId`, supplied by C#) — set only while
+// open because the panel is @if-rendered, and an aria-controls IDREF that resolves to nothing is
+// invalid ARIA. While disabled all three drop off and (for an interactive child) aria-disabled="true"
+// is mirrored onto it —
 // but only the aria-disabled we set is ever removed, so a consumer's own aria-disabled is left
 // alone. Keyboard (only the promoted-wrapper and non-button child paths — a <button>'s native
 // Enter/Space click already bubbles): a [tabindex] element toggles on Enter and Space, an anchor
@@ -162,7 +165,7 @@ export function place(trigger, panel, prefix, placement, gap, margin) {
 // no :not([disabled]) filter — and the wrapper must not be promoted around it.
 const WSS_TRIGGER_SELECTOR = 'button, a[href], input, select, textarea, [tabindex]';
 
-export function syncTrigger(el, open, disabled) {
+export function syncTrigger(el, open, disabled, panelId) {
     if (!el) {
         return;
     }
@@ -218,17 +221,17 @@ export function syncTrigger(el, open, disabled) {
         el.addEventListener('focusin', () => {
             const state = el.__wssTriggerState;
             if (state) {
-                applyTrigger(el, state.open, state.disabled);
+                applyTrigger(el, state.open, state.disabled, state.panelId);
             }
         });
     }
-    el.__wssTriggerState = { open, disabled };
-    applyTrigger(el, open, disabled);
+    el.__wssTriggerState = { open, disabled, panelId };
+    applyTrigger(el, open, disabled, panelId);
 }
 
 // Re-resolves the trigger child and (re)applies the wrapper promotion + popup ARIA. Runs on every
 // syncTrigger call and on focusin, so it is idempotent and reversible.
-function applyTrigger(el, open, disabled) {
+function applyTrigger(el, open, disabled, panelId) {
     const child = el.querySelector(WSS_TRIGGER_SELECTOR);
     const target = child || el;
     const fallback = !child;
@@ -242,6 +245,7 @@ function applyTrigger(el, open, disabled) {
     if (prev && prev !== target) {
         prev.removeAttribute('aria-haspopup');
         prev.removeAttribute('aria-expanded');
+        prev.removeAttribute('aria-controls');
         if (prev.__wssAriaDisabledByWss) {
             prev.removeAttribute('aria-disabled');
             prev.__wssAriaDisabledByWss = false;
@@ -269,6 +273,7 @@ function applyTrigger(el, open, disabled) {
     if (disabled) {
         target.removeAttribute('aria-haspopup');
         target.removeAttribute('aria-expanded');
+        target.removeAttribute('aria-controls');
         if (!fallback && !target.hasAttribute('aria-disabled')) {
             // Mark an interactive child inert (the wrapper's own click is guarded in C#). Set — and
             // flag as ours — only when the attribute is absent: if the consumer already manages
@@ -280,6 +285,14 @@ function applyTrigger(el, open, disabled) {
     } else {
         target.setAttribute('aria-haspopup', 'dialog');
         target.setAttribute('aria-expanded', open ? 'true' : 'false');
+        // Only while the panel is actually rendered: a closed popup has no element with this id, and
+        // pointing aria-controls at a missing IDREF is worse than omitting it. (panelId is undefined
+        // for a caller that predates this argument -- treated as "no panel to advertise".)
+        if (open && panelId) {
+            target.setAttribute('aria-controls', panelId);
+        } else {
+            target.removeAttribute('aria-controls');
+        }
         if (target.__wssAriaDisabledByWss) {
             target.removeAttribute('aria-disabled');
             target.__wssAriaDisabledByWss = false;
@@ -524,9 +537,10 @@ export function wireDismissOnFocusOut(wrapper, backdropClass) {
 }
 
 // --- Modal / Drawer focus management ---------------------------------------------------------
-// Moves focus into the panel, traps Tab within it, and locks body scroll. Returns a handle whose
-// dispose() restores body scroll and returns focus to the element that was focused before opening.
-// Degrades to a no-op when JS is unavailable (the component swallows the failure).
+// Moves focus into the panel, traps Tab within it, locks body scroll, and makes the background
+// inert. Returns a handle whose dispose() undoes all three and returns focus to the element that was
+// focused before opening. Degrades to a no-op when JS is unavailable (the component swallows the
+// failure; C# still puts initial focus on the panel itself — see OverlayActivationBase).
 const WSS_FOCUSABLE =
     'a[href],area[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -561,6 +575,117 @@ function wssUnlockScroll() {
     }
 }
 
+// --- Background inert while a Modal/Drawer is open ---------------------------------------------
+// aria-modal + the JS focus trap only constrain FOCUS; a screen reader's virtual cursor (and a
+// touch-explore gesture) can still read — and activate — everything behind the dialog. `inert` is
+// the platform primitive that actually fixes that: it removes a subtree from the a11y tree, the tab
+// order, and hit testing in one attribute.
+//
+// WHICH elements: Modal/Drawer render IN PLACE in the Blazor component tree — nothing here portals
+// them to <body> — so the overlay root (.wss-modal-wrap / .wss-drawer-root) is usually nested many
+// levels deep (page > gallery > section > wrap). Inert-ing <body>'s direct children would therefore
+// inert the dialog itself. This walks from the overlay root up to <body>, inert-ing the SIBLINGS at
+// each level: the standard non-portal inert algorithm, and the only one that leaves the dialog's own
+// ancestor chain interactive.
+//
+// Degrades gracefully: in a browser without `inert` support the assignment is a plain expando write
+// with no attribute reflection and no behavior change — exactly today's behavior.
+
+// Never worth marking (nothing focusable or readable inside).
+const WSS_INERT_IGNORE = 'script, style, link, template, noscript';
+
+// Must stay interactive even though it sits outside the dialog. An ancestor of one of these is
+// descended into rather than inert-ed wholesale, so the rest of that branch still goes inert:
+//   * Blazor's connection UI. A dropped Blazor Server circuit is precisely the case where the
+//     component's dispose() never runs, so inert-ing the reconnect prompt would leave the user
+//     staring at a permanently dead page with no way to recover it.
+//   * The toast layers. They paint above the dialog mask by design (z-index 5000) and are ARIA live
+//     regions — inert would silence announcements raised while a dialog is open and make a
+//     notification's own close button unclickable.
+//   * [data-wss-keep-interactive]: consumer/MFE escape hatch for shell chrome with the same property
+//     (a host header that owns navigation, another framework's portal root).
+const WSS_INERT_KEEP =
+    '#components-reconnect-modal, #blazor-error-ui, .wss-msg-container, .wss-notification-container, [data-wss-keep-interactive]';
+
+// STACKED overlays: a stack of open roots (shared cross-instance via a window global, same reasoning
+// as __wssOverlayScrollLock above), where the TOPMOST one owns the background and every
+// activate/release simply recomputes from scratch. That is stronger than the plain open/close
+// ref-count the scroll lock uses, and the difference is load-bearing here: a ref-count applies the
+// FIRST dialog's marking and then leaves it alone, so a second dialog declared in a branch the first
+// one inert-ed (two Modals in sibling sections, an MFE overlay elsewhere in the page) would render
+// INSIDE an inert subtree — a dead dialog nobody can operate. Recomputing means the newest dialog's
+// own ancestor chain is always live, and the outer dialog goes inert behind it, which is what the APG
+// prescribes for a stacked dialog anyway. When the last one closes, the stack empties and the whole
+// page is restored — the same end state the ref-count contract asks for.
+// Shape contract: { roots: Element[], marked: Element[] }. `roots` is the open-order stack of overlay
+// root elements (any instance may push/splice its own); `marked` holds exactly the elements the
+// CURRENT computation set inert — never one that was already inert when we found it, since that
+// belongs to someone else and must not be cleared on our way out. Any instance may read/write these
+// two properties; never add or depend on anything else here.
+window.__wssOverlayInert = window.__wssOverlayInert || { roots: [], marked: [] };
+
+function wssMarkInert(el, marked) {
+    if (el.matches(WSS_INERT_IGNORE) || el.matches(WSS_INERT_KEEP)) {
+        return;
+    }
+    if (el.querySelector(WSS_INERT_KEEP)) {
+        // Ancestor of something that must stay live — inert around it instead of over it.
+        for (const child of Array.from(el.children)) {
+            wssMarkInert(child, marked);
+        }
+        return;
+    }
+    if (el.inert) {
+        return; // already inert (a consumer's own, or a nested overlay's) — not ours to restore
+    }
+    el.inert = true;
+    marked.push(el);
+}
+
+function wssRestoreInert(state) {
+    for (const el of state.marked) {
+        el.inert = false; // harmless if the element has since left the DOM
+    }
+    state.marked.length = 0;
+}
+
+// The one place inert is (re)computed: drop every mark we hold, then re-derive them from the topmost
+// still-connected root. Called on every open and every close, so it is also the self-heal for a
+// dialog whose dispose() never ran (a Blazor Server circuit torn down mid-dialog leaves a detached
+// root on the stack; it is pruned here rather than shadowing every later dialog forever).
+function wssRecomputeInert() {
+    const state = window.__wssOverlayInert;
+    wssRestoreInert(state);
+    while (state.roots.length > 0 && !state.roots[state.roots.length - 1].isConnected) {
+        state.roots.pop();
+    }
+    const top = state.roots[state.roots.length - 1];
+    if (!top) {
+        return;
+    }
+    for (let node = top; node && node !== document.body && node.parentElement; node = node.parentElement) {
+        for (const sibling of Array.from(node.parentElement.children)) {
+            if (sibling !== node) {
+                wssMarkInert(sibling, state.marked);
+            }
+        }
+    }
+}
+
+function wssApplyInert(root) {
+    window.__wssOverlayInert.roots.push(root);
+    wssRecomputeInert();
+}
+
+function wssReleaseInert(root) {
+    const roots = window.__wssOverlayInert.roots;
+    const i = roots.lastIndexOf(root);
+    if (i >= 0) {
+        roots.splice(i, 1);
+    }
+    wssRecomputeInert();
+}
+
 // Stack of active traps — only the topmost (most recently activated) one acts, so nested
 // overlays behave: the inner dialog owns Tab/focus until it closes, then the outer resumes.
 // Shared across module instances via a window global (same cross-instance reasoning as
@@ -586,6 +711,17 @@ export function activateModal(panel) {
     const root = panel.closest('.wss-modal-wrap, .wss-drawer-root');
     if (root) {
         root.style.zIndex = nextZ();
+        // Take the background out of the a11y tree / tab order / hit testing (see wssMarkInert).
+        // Done BEFORE the initial focus below: inert-ing the branch that holds the trigger blurs it,
+        // and the focus grab immediately after is what fills that gap.
+        //
+        // Gated on a resolved root, deliberately: the root is the overlay's whole footprint (panel +
+        // its mask/backdrop sibling), and it is the subtree that must stay interactive. Computing the
+        // background from a bare panel instead would inert the Drawer's own mask — killing
+        // click-outside-to-close — and would let a foreign caller invoking activateModal on an
+        // arbitrary element take out a page it doesn't own. No root, no inert; the trap, the scroll
+        // lock and Escape all still apply.
+        wssApplyInert(root);
     }
 
     const focusables = () =>
@@ -687,6 +823,10 @@ export function activateModal(panel) {
                 traps.splice(i, 1);
             }
             wssUnlockScroll();
+            // Before the focus restore below, not after: .focus() on an element still inside an
+            // inert branch is silently ignored, which would strand focus on <body>. (Harmless when
+            // this activation never applied inert — the root simply isn't on the stack.)
+            wssReleaseInert(root);
             try { if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus(); } catch { /* gone */ }
         }
     };

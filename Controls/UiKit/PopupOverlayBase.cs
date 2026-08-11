@@ -62,6 +62,13 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
     /// (whose backdrop class is <c>"{prefix}-backdrop"</c>).</summary>
     protected abstract string PanelClassPrefix { get; }
 
+    /// <summary>
+    /// The DOM id the subclass puts on its floating panel. Passed to <c>syncTrigger</c>, which
+    /// mirrors it onto the resolved trigger as <c>aria-controls</c> while the popup is open (and
+    /// strips it again on close, so the IDREF never dangles at a panel that isn't rendered).
+    /// </summary>
+    protected abstract string PanelId { get; }
+
     /// <summary>What to pass as <c>syncTrigger</c>'s third (disabled) argument — Popover has no
     /// <c>Disabled</c> parameter (always false); Popconfirm passes its own.</summary>
     protected abstract bool TriggerDisabled { get; }
@@ -136,7 +143,7 @@ public abstract class PopupOverlayBase : ComponentBase, IAsyncDisposable
                 if (_disposed) return; // disposed while the import was in flight
                 if (module is not null)
                 {
-                    await module.InvokeVoidAsync("syncTrigger", _triggerRef, _open, TriggerDisabled);
+                    await module.InvokeVoidAsync("syncTrigger", _triggerRef, _open, TriggerDisabled, PanelId);
                     _lastSyncedTrigger = pair; // cache only on success, so a no-JS render retries next time
                 }
             }

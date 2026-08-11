@@ -17,8 +17,8 @@
            interactive target chain — without it a backdrop tap never reaches @onclick on touch. *@
         <div class="wss-popconfirm-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
         <div class="wss-popconfirm wss-popconfirm-@(_resolvedPlacement ?? PlacementName) @(_positioned ? null : "wss-measuring")"
-             @ref="_panelRef" role="dialog" aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"
-             aria-label="@(HasTitle ? null : AriaLabel)"
+             @ref="_panelRef" id="@PanelId" role="dialog" aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"
+             aria-label="@(HasTitle ? null : AriaLabel ?? "Confirm")"
              @onkeydown="OnPanelKeyDown"
              @onkeydown:stopPropagation="true"
              @onclick:stopPropagation="true">
@@ -101,7 +101,13 @@
     [Parameter] public bool Visible { get; set; }
     /// <summary>Raised on every open/close (external or internal). Supports <c>@bind-Visible</c>; see <see cref="Visible"/>.</summary>
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
-    /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
+    /// <summary>
+    /// Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.
+    /// Defaults to "Confirm" — a <c>role="dialog"</c> must never be nameless (axe
+    /// <c>aria-dialog-name</c>). Note that <see cref="Title"/> IS the confirmation question here, so
+    /// an untitled Popconfirm shows only the warning icon and the two buttons: prefer supplying a
+    /// title, and treat this as the fallback for the rare icon-only case.
+    /// </summary>
     [Parameter] public string? AriaLabel { get; set; }
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
@@ -114,6 +120,9 @@
     ElementReference _okButtonRef;
     bool _confirmLoading;
     readonly string _id = $"wss-popconfirm-{Guid.NewGuid():N}";
+
+    /// <inheritdoc/>
+    protected override string PanelId => $"{_id}-panel";
 
     protected override string PlacementName => Placement.ToString().ToLowerInvariant();
     protected override string PanelClassPrefix => "wss-popconfirm";

@@ -19,9 +19,9 @@
            interactive target chain — without it a backdrop tap never reaches @onclick on touch. *@
         <div class="wss-popover-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
         <div class="wss-popover wss-popover-@(_resolvedPlacement ?? PlacementName) @(_positioned ? null : "wss-measuring")"
-             @ref="_panelRef" role="dialog" tabindex="-1"
+             @ref="_panelRef" id="@PanelId" role="dialog" tabindex="-1"
              aria-labelledby="@(HasTitle ? $"{_id}-title" : null)"
-             aria-label="@(HasTitle ? null : AriaLabel)"
+             aria-label="@(HasTitle ? null : AriaLabel ?? "Popover")"
              aria-describedby="@($"{_id}-content")"
              @onkeydown="OnPanelKeyDown"
              @onkeydown:stopPropagation="true"
@@ -62,7 +62,12 @@
     [Parameter] public bool Visible { get; set; }
     /// <summary>Raised on every open/close (external or internal). Supports <c>@bind-Visible</c>; see <see cref="Visible"/>.</summary>
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
-    /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
+    /// <summary>
+    /// Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.
+    /// Defaults to "Popover" — a <c>role="dialog"</c> must never be nameless (axe
+    /// <c>aria-dialog-name</c>), so set this whenever an untitled popover needs a meaningful name.
+    /// Ignored when a title is present (the title labels the dialog instead).
+    /// </summary>
     [Parameter] public string? AriaLabel { get; set; }
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
@@ -73,6 +78,9 @@
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     readonly string _id = $"wss-popover-{Guid.NewGuid():N}";
+
+    /// <inheritdoc/>
+    protected override string PanelId => $"{_id}-panel";
 
     protected override string PlacementName => Placement.ToString().ToLowerInvariant();
     protected override string PanelClassPrefix => "wss-popover";

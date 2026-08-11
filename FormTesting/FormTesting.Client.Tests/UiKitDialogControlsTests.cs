@@ -402,15 +402,60 @@ public class UiKitDialogControlsTests : BunitContext
     }
 
     [Fact]
-    public void Popconfirm_without_a_title_omits_aria_labelledby_and_the_title_element()
+    public void Popconfirm_without_a_title_omits_aria_labelledby_and_falls_back_to_a_default_name()
     {
         var cut = Render<Popconfirm>(p => p
-            .AddChildContent("<button>del</button>")); // no Title
+            .AddChildContent("<button>del</button>")); // no Title, no AriaLabel
 
         cut.Find(".wss-popconfirm-trigger").Click();
         var dialog = cut.Find("[role=dialog]");
         Assert.False(dialog.HasAttribute("aria-labelledby")); // no title element to point at
         Assert.Empty(cut.FindAll(".wss-popconfirm-title"));
+        // S3: a role="dialog" must never be nameless (axe aria-dialog-name) — Modal/Drawer have
+        // always shipped this fallback; Popconfirm used to render aria-label="" here.
+        Assert.Equal("Confirm", dialog.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Popover_without_a_title_or_aria_label_falls_back_to_a_default_name()
+    {
+        var cut = Render<Popover>(p => p
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<span>?</span>")); // no Title, no AriaLabel
+
+        cut.Find(".wss-popover-trigger").Click();
+        var dialog = cut.Find("[role=dialog]");
+        Assert.False(dialog.HasAttribute("aria-labelledby"));
+        Assert.Equal("Popover", dialog.GetAttribute("aria-label"));
+        // The unconditional aria-describedby still points at the content, so the name is a fallback
+        // label, not the whole announcement.
+        Assert.Equal(dialog.GetAttribute("aria-describedby"), cut.Find(".wss-popover-content").Id);
+    }
+
+    [Fact]
+    public void Popup_panels_carry_a_stable_id_for_the_trigger_to_reference()
+    {
+        // OVR-7: wss-overlay.js mirrors aria-controls="{panel id}" onto the resolved trigger while
+        // the popup is open (JS, so e2e covers the mirroring itself) — this guards the C# half: the
+        // panel actually renders an id, and it's the same one across re-opens.
+        var popover = Render<Popover>(p => p
+            .Add(pv => pv.Title, "Info")
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<button>?</button>"));
+        popover.Find(".wss-popover-trigger").Click();
+        var popoverId = popover.Find(".wss-popover").Id;
+        Assert.False(string.IsNullOrEmpty(popoverId));
+        popover.Find(".wss-popover-trigger").Click(); // close
+        popover.Find(".wss-popover-trigger").Click(); // reopen
+        Assert.Equal(popoverId, popover.Find(".wss-popover").Id);
+
+        var popconfirm = Render<Popconfirm>(p => p
+            .Add(pc => pc.Title, "Delete?")
+            .AddChildContent("<button>del</button>"));
+        popconfirm.Find(".wss-popconfirm-trigger").Click();
+        var popconfirmId = popconfirm.Find(".wss-popconfirm").Id;
+        Assert.False(string.IsNullOrEmpty(popconfirmId));
+        Assert.NotEqual(popoverId, popconfirmId); // per-instance, so two popups never collide
     }
 
     [Fact]

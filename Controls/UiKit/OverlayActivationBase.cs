@@ -1,13 +1,15 @@
 namespace Controls;
 
 /// <summary>
-/// Shared focus-trap/scroll-lock activation lifecycle for <see cref="Modal"/> and <see cref="Drawer"/>:
-/// imports <c>wss-overlay.js</c> once, calls its <c>activateModal</c> on the transition to visible
-/// (racing the JS call against a close-then-reopen via <see cref="JsHandle"/>'s sequence token, the
-/// same pattern <see cref="PickerBase"/> uses for its own overlay), and releases the returned handle on
-/// the transition to hidden or on dispose. Every JS call degrades gracefully to a no-JS fallback
-/// (prerender, bUnit): the two holders swallow the failure and the overlay stays usable without the
-/// trap.
+/// Shared focus-trap/scroll-lock/inert-background activation lifecycle for <see cref="Modal"/> and
+/// <see cref="Drawer"/>: imports <c>wss-overlay.js</c> once, calls its <c>activateModal</c> on the
+/// transition to visible (racing the JS call against a close-then-reopen via <see cref="JsHandle"/>'s
+/// sequence token, the same pattern <see cref="PickerBase"/> uses for its own overlay), and releases the
+/// returned handle on the transition to hidden or on dispose. Every JS call degrades gracefully to a
+/// no-JS fallback (prerender, bUnit): the two holders swallow the failure and the overlay stays usable
+/// without the trap, the scroll lock or the inert background — of which only initial focus has a C#
+/// equivalent, applied here (<c>_panelRef.FocusAsync()</c>) so the dialog still opens with focus inside
+/// it.
 /// </summary>
 /// <remarks>
 /// Mirrors <see cref="PickerBase"/>'s shape: subclasses plug in only <see cref="IsVisible"/> and the
@@ -43,12 +45,21 @@ public abstract class OverlayActivationBase : ComponentBase, IAsyncDisposable
         if (IsVisible && !_active)
         {
             _active = true;
-            // Null = no JS at all (prerender/tests), or disposed while the import itself was in
-            // flight — in which case the holder already cleaned up its own late-arriving reference
-            // (it would otherwise strand for the circuit's life). Either way there is nothing to
-            // activate.
             var module = await _module.GetAsync(JS, FormDefaults);
-            if (module is null) return;
+            if (module is null)
+            {
+                // Null = no JS at all (prerender/tests), or disposed while the import itself was in
+                // flight — in which case the holder already cleaned up its own late-arriving
+                // reference (it would otherwise strand for the circuit's life). Either way there is
+                // nothing to activate: the trap, the scroll lock and the inert background genuinely
+                // need JS. INITIAL focus doesn't, though, so put it on the panel from C# rather than
+                // leaving a keyboard user parked behind the dialog (both panels carry tabindex="-1"
+                // for exactly this). Mirrors Popover.FocusPanelAsync's own no-JS fallback, catch
+                // included: the element may not be focusable yet (prerender), and a disposed
+                // component's reference throws here — neither has anything further to fall back to.
+                try { await _panelRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+                return;
+            }
             // A close (and possibly a reopen, which starts a *new* activation) while this call is in
             // flight makes it stale, and JsHandle then releases the late-arriving handle instead of
             // storing it. Without that guard the close→reopen race left the first handle orphaned —
