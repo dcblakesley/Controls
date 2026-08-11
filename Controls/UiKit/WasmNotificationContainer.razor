@@ -2,7 +2,7 @@
 @implements IDisposable
 
 @* WASM-only host: reads the static WasmNotificationService. For Blazor Server use NotificationContainer. *@
-<NotificationListView Items="WasmNotificationService.Items" OnRemove="@(id => WasmNotificationService.Remove(id))" Placement="Placement" />
+<NotificationListView Items="WasmNotificationService.Items" OnRemove="@(id => WasmNotificationService.Remove(id))" OnPause="@(id => WasmNotificationService.Pause(id))" OnResume="@(id => WasmNotificationService.Resume(id))" Placement="Placement" />
 
 @code {
     /// <summary>

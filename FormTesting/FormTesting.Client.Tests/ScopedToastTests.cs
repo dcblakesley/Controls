@@ -239,4 +239,298 @@ public class ScopedToastTests : BunitContext
         Assert.Null(failure);
         Assert.Empty(queue.Items);
     }
+
+    // ---- S7: pause auto-dismiss on hover/focus (ToastQueue.Pause/Resume) ----
+
+    [Fact]
+    public async Task Pause_cancels_the_pending_auto_dismiss_timer()
+    {
+        var svc = new MessageService();
+        var id = svc.Success("hover me", duration: 0.05); // 50ms
+
+        svc.Pause(id);
+        await Task.Delay(250); // well past the original duration -- Pause must have cancelled it
+
+        Assert.Single(svc.Items);
+    }
+
+    [Fact]
+    public async Task Resume_restarts_a_fresh_full_duration_timer_rather_than_a_remaining_one()
+    {
+        var svc = new MessageService();
+        var id = svc.Success("hover then leave", duration: 0.2); // 200ms
+
+        svc.Pause(id);
+        await Task.Delay(500); // if Pause hadn't truly cancelled the timer, it would have fired by now
+        Assert.Single(svc.Items);
+
+        svc.Resume(id);
+
+        // Immediately after Resume the fresh 200ms countdown has barely started. If Resume instead
+        // resumed a "time remaining" clock (already fully consumed by the 500ms Pause window above),
+        // the item would already be gone.
+        Assert.Single(svc.Items);
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (svc.Items.Count > 0 && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        Assert.Empty(svc.Items); // the resumed timer eventually fires on its own
+    }
+
+    [Fact]
+    public void Pause_and_Resume_are_no_ops_on_a_sticky_item()
+    {
+        var svc = new MessageService();
+        var id = svc.Loading("working"); // duration 0 -- sticky, no timer to begin with
+
+        svc.Pause(id);  // must not throw, must not remove the item
+        svc.Resume(id); // must not throw, must not start an unwanted timer
+
+        Assert.Single(svc.Items);
+    }
+
+    [Fact]
+    public void Pause_and_Resume_are_no_ops_on_an_unknown_id()
+    {
+        var svc = new MessageService();
+        svc.Pause(Guid.NewGuid());
+        svc.Resume(Guid.NewGuid());
+
+        Assert.Empty(svc.Items);
+    }
+
+    [Fact]
+    public async Task Resume_on_an_item_that_was_never_paused_just_restarts_its_timer()
+    {
+        // Mirrors mouseleave and focusout both firing for the same toast as the pointer and
+        // keyboard focus leave together (see Resume's own doc comment) -- calling Resume without a
+        // prior Pause is not an error.
+        var svc = new MessageService();
+        svc.Success("still ticking", duration: 0.05);
+
+        svc.Resume(svc.Items[0].Id); // no Pause first
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (svc.Items.Count > 0 && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        Assert.Empty(svc.Items);
+    }
+
+    [Fact]
+    public void Concurrent_Pause_and_Resume_calls_on_the_same_id_never_throw()
+    {
+        // Pause and Resume both ultimately touch the same _timers slot the auto-dismiss timer's own
+        // expiry touches -- exercise many racing Pause/Resume pairs on one id and confirm none of
+        // them throw. ObjectDisposedException was the historical failure mode for exactly this kind
+        // of shared-slot race; see CancelAllTimers's own comment in ToastQueue.
+        var queue = new ToastQueue<MessageItem>();
+        var item = new MessageItem { Content = "x", Duration = 60 }; // long enough not to expire mid-test
+        queue.Add(item);
+
+        Exception? failure = null;
+        using var start = new ManualResetEventSlim();
+        var threads = Enumerable.Range(0, 4).Select(i => new Thread(() =>
+        {
+            start.Wait();
+            try
+            {
+                for (var j = 0; j < 100; j++)
+                {
+                    if (i % 2 == 0) queue.Pause(item.Id);
+                    else queue.Resume(item.Id);
+                }
+            }
+            catch (Exception ex) { Interlocked.CompareExchange(ref failure, ex, null); }
+        })).ToList();
+
+        foreach (var t in threads) t.Start();
+        start.Set();
+        foreach (var t in threads) t.Join();
+
+        Assert.Null(failure);
+    }
+
+    // ---- S7: MessageListView/NotificationListView hover+focus wiring ----
+
+    [Fact]
+    public void MessageListView_hover_and_focus_invoke_OnPause_and_OnResume()
+    {
+        var item = new MessageItem { Content = "hover me", Duration = 0 };
+        Guid? paused = null;
+        Guid? resumed = null;
+
+        var cut = Render<MessageListView>(p => p
+            .Add(c => c.Items, new[] { item })
+            .Add(c => c.OnPause, EventCallback.Factory.Create<Guid>(this, id => paused = id))
+            .Add(c => c.OnResume, EventCallback.Factory.Create<Guid>(this, id => resumed = id)));
+
+        var toast = cut.Find(".wss-msg");
+
+        toast.MouseEnter();
+        Assert.Equal(item.Id, paused);
+
+        toast.MouseLeave();
+        Assert.Equal(item.Id, resumed);
+
+        paused = null;
+        toast.FocusIn();
+        Assert.Equal(item.Id, paused);
+
+        resumed = null;
+        toast.FocusOut();
+        Assert.Equal(item.Id, resumed);
+    }
+
+    [Fact]
+    public void NotificationListView_hover_and_focus_invoke_OnPause_and_OnResume()
+    {
+        var item = new NotificationItem { Message = "hover me", Duration = 0 };
+        Guid? paused = null;
+        Guid? resumed = null;
+
+        var cut = Render<NotificationListView>(p => p
+            .Add(c => c.Items, new[] { item })
+            .Add(c => c.OnPause, EventCallback.Factory.Create<Guid>(this, id => paused = id))
+            .Add(c => c.OnResume, EventCallback.Factory.Create<Guid>(this, id => resumed = id)));
+
+        var toast = cut.Find(".wss-notification");
+
+        toast.MouseEnter();
+        Assert.Equal(item.Id, paused);
+
+        toast.MouseLeave();
+        Assert.Equal(item.Id, resumed);
+
+        paused = null;
+        toast.FocusIn();
+        Assert.Equal(item.Id, paused);
+
+        resumed = null;
+        toast.FocusOut();
+        Assert.Equal(item.Id, resumed);
+    }
+
+    [Fact]
+    public async Task MessageContainer_hover_pauses_and_leave_resumes_the_services_timer()
+    {
+        // End-to-end: container -> IMessageService -> ToastQueue, not just the list view's callback.
+        Services.AddWssControlsToasts();
+        var svc = Services.GetRequiredService<IMessageService>();
+        svc.Success("hover me", duration: 0.05); // 50ms
+
+        var cut = Render<MessageContainer>();
+        var toast = cut.Find(".wss-msg");
+
+        toast.MouseEnter();
+        await Task.Delay(250); // well past the original duration -- the hover pause must hold it
+        Assert.Single(svc.Items);
+
+        toast.MouseLeave();
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (svc.Items.Count > 0 && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        Assert.Empty(svc.Items); // the resumed timer eventually removes it
+    }
+
+    [Fact]
+    public async Task NotificationContainer_focus_pauses_and_blur_resumes_the_services_timer()
+    {
+        Services.AddWssControlsToasts();
+        var svc = Services.GetRequiredService<INotificationService>();
+        svc.Info("focus me", duration: 0.05); // 50ms
+
+        var cut = Render<NotificationContainer>();
+        var toast = cut.Find(".wss-notification");
+
+        toast.FocusIn();
+        await Task.Delay(250);
+        Assert.Single(svc.Items);
+
+        toast.FocusOut();
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (svc.Items.Count > 0 && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        Assert.Empty(svc.Items);
+    }
+
+    // ---- M1: message close button ----
+
+    [Fact]
+    public void MessageListView_close_button_has_an_aria_label_and_invokes_OnRemove()
+    {
+        var item = new MessageItem { Content = "dismiss me", Duration = 0 };
+        Guid? removed = null;
+
+        var cut = Render<MessageListView>(p => p
+            .Add(c => c.Items, new[] { item })
+            .Add(c => c.OnRemove, EventCallback.Factory.Create<Guid>(this, id => removed = id)));
+
+        var close = cut.Find(".wss-msg-close");
+        Assert.Equal("Close", close.GetAttribute("aria-label"));
+
+        close.Click();
+        Assert.Equal(item.Id, removed);
+    }
+
+    [Fact]
+    public void MessageContainer_close_button_removes_the_message_via_the_service()
+    {
+        Services.AddWssControlsToasts();
+        var svc = Services.GetRequiredService<IMessageService>();
+        svc.Success("dismiss me", duration: 0);
+
+        var cut = Render<MessageContainer>();
+        cut.Find(".wss-msg-close").Click();
+
+        Assert.Empty(cut.FindAll(".wss-msg"));
+        Assert.Empty(svc.Items);
+    }
+
+    [Fact]
+    public void A_sticky_loading_message_still_gets_a_close_button()
+    {
+        // Previously a Loading message (duration 0, the default for Loading) had no way for the user
+        // to dismiss it themselves -- only the id returned from Loading() could. The close button
+        // now renders unconditionally, same as NotificationListView's.
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<IMessageService>().Loading("Saving...");
+
+        var cut = Render<MessageContainer>();
+        Assert.NotNull(cut.Find(".wss-msg-close"));
+    }
+
+    // ---- M2: severity announced to assistive tech ----
+
+    [Theory]
+    [InlineData(MessageType.Success, "Success: ")]
+    [InlineData(MessageType.Info, "Info: ")]
+    [InlineData(MessageType.Warning, "Warning: ")]
+    [InlineData(MessageType.Error, "Error: ")]
+    [InlineData(MessageType.Loading, "Loading: ")]
+    public void MessageListView_renders_a_sr_only_severity_word_before_the_content(MessageType type, string expectedLabel)
+    {
+        var item = new MessageItem { Type = type, Content = "hi", Duration = 0 };
+        var cut = Render<MessageListView>(p => p.Add(c => c.Items, new[] { item }));
+
+        Assert.Equal(expectedLabel, cut.Find(".wss-msg .wss-sr-only").TextContent);
+    }
+
+    [Theory]
+    [InlineData(NotificationType.Success, "Success: ")]
+    [InlineData(NotificationType.Info, "Info: ")]
+    [InlineData(NotificationType.Warning, "Warning: ")]
+    [InlineData(NotificationType.Error, "Error: ")]
+    public void NotificationListView_renders_a_sr_only_severity_word_before_the_message(NotificationType type, string expectedLabel)
+    {
+        var item = new NotificationItem { Type = type, Message = "hi", Duration = 0 };
+        var cut = Render<NotificationListView>(p => p.Add(c => c.Items, new[] { item }));
+
+        Assert.Equal(expectedLabel, cut.Find(".wss-notification .wss-sr-only").TextContent);
+    }
 }

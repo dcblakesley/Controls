@@ -228,4 +228,107 @@ public class WasmToastTests : BunitContext
             WasmNotificationService.Clear();
         }
     }
+
+    // ---- M1: message close button (WASM static facade) ----
+
+    [Fact]
+    public void Message_service_items_render_and_close_removes_from_the_service()
+    {
+        WasmMessageService.Clear();
+        try
+        {
+            WasmMessageService.Success("Saved!", duration: 0);
+            var cut = Render<MessageListView>(p => p
+                .Add(c => c.Items, WasmMessageService.Items)
+                .Add(c => c.OnRemove, EventCallback.Factory.Create<Guid>(this, WasmMessageService.Remove)));
+
+            Assert.Contains("Saved!", cut.Find(".wss-msg-content").TextContent);
+
+            cut.Find(".wss-msg-close").Click();
+
+            // Same pattern as the notification test above: assert on the service itself, which is
+            // the state the close button actually mutates.
+            Assert.Empty(WasmMessageService.Items);
+        }
+        finally
+        {
+            WasmMessageService.Clear();
+        }
+    }
+
+    [Fact]
+    public void WasmMessageContainer_close_button_removes_the_message()
+    {
+        WasmMessageService.Clear();
+        try
+        {
+            SetRendererInfo(WebView);
+            WasmMessageService.Success("Saved!", duration: 0);
+            var cut = Render<WasmMessageContainer>();
+
+            cut.WaitForAssertion(() => Assert.Contains("Saved!", cut.Find(".wss-msg-content").TextContent));
+
+            cut.Find(".wss-msg-close").Click();
+
+            Assert.Empty(WasmMessageService.Items);
+        }
+        finally
+        {
+            WasmMessageService.Clear();
+        }
+    }
+
+    // ---- S7: static facade Pause/Resume forward to the underlying service ----
+
+    [Fact]
+    public async Task WasmMessageService_Pause_and_Resume_forward_to_the_underlying_service()
+    {
+        WasmMessageService.Clear();
+        try
+        {
+            var id = WasmMessageService.Success("hover me", duration: 0.05); // 50ms
+
+            WasmMessageService.Pause(id);
+            await Task.Delay(250); // well past the original duration
+            Assert.Single(WasmMessageService.Items);
+
+            WasmMessageService.Resume(id);
+
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (WasmMessageService.Items.Count > 0 && DateTime.UtcNow < deadline)
+                await Task.Delay(10);
+
+            Assert.Empty(WasmMessageService.Items);
+        }
+        finally
+        {
+            WasmMessageService.Clear();
+        }
+    }
+
+    [Fact]
+    public async Task WasmNotificationService_Pause_and_Resume_forward_to_the_underlying_service()
+    {
+        WasmNotificationService.Clear();
+        try
+        {
+            var id = WasmNotificationService.Info("hover me", duration: 0.05); // 50ms
+
+            WasmNotificationService.Pause(id);
+            await Task.Delay(250);
+            Assert.Single(WasmNotificationService.Items);
+
+            WasmNotificationService.Resume(id);
+
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (WasmNotificationService.Items.Count > 0 && DateTime.UtcNow < deadline)
+                await Task.Delay(10);
+
+            Assert.Empty(WasmNotificationService.Items);
+        }
+        finally
+        {
+            WasmNotificationService.Clear();
+        }
+    }
 }

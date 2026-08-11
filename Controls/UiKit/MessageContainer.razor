@@ -4,7 +4,7 @@
 
 @* Scoped (Server-safe) host. Requires builder.Services.AddWssControlsToasts() and an injected
    IMessageService. Drop one at the app root; call IMessageService from your components. *@
-<MessageListView Items="Service.Items" />
+<MessageListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" OnPause="@(id => Service.Pause(id))" OnResume="@(id => Service.Resume(id))" />
 
 @code {
     protected override void OnInitialized() => Service.OnChange += HandleChange;

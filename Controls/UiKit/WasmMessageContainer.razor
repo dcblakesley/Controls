@@ -2,7 +2,7 @@
 @implements IDisposable
 
 @* WASM-only host: reads the static WasmMessageService. For Blazor Server use MessageContainer. *@
-<MessageListView Items="WasmMessageService.Items" />
+<MessageListView Items="WasmMessageService.Items" OnRemove="@(id => WasmMessageService.Remove(id))" OnPause="@(id => WasmMessageService.Pause(id))" OnResume="@(id => WasmMessageService.Resume(id))" />
 
 @code {
     protected override void OnInitialized() => WasmMessageService.OnChange += HandleChange;

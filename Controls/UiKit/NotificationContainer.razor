@@ -4,7 +4,7 @@
 
 @* Scoped (Server-safe) host. Requires builder.Services.AddWssControlsToasts() and an injected
    INotificationService. Drop one at the app root; call INotificationService from your components. *@
-<NotificationListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" Placement="Placement" />
+<NotificationListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" OnPause="@(id => Service.Pause(id))" OnResume="@(id => Service.Resume(id))" Placement="Placement" />
 
 @code {
     /// <summary>

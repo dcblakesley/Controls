@@ -33,6 +33,21 @@
     [Parameter] public EventCallback<Guid> OnRemove { get; set; }
 
     /// <summary>
+    /// Invoked with the item id when the pointer enters or keyboard focus lands inside the
+    /// notification, so a container can pause its auto-dismiss countdown (WCAG 2.2.1). See
+    /// <see cref="ToastQueue{TItem}.Pause"/>.
+    /// </summary>
+    [Parameter] public EventCallback<Guid> OnPause { get; set; }
+
+    /// <summary>
+    /// Invoked with the item id when the pointer leaves or keyboard focus moves out of the
+    /// notification, so a container can restart its auto-dismiss countdown. See
+    /// <see cref="ToastQueue{TItem}.Resume"/> -- hover and focus leaving separately (and each firing
+    /// this) is expected and harmless.
+    /// </summary>
+    [Parameter] public EventCallback<Guid> OnResume { get; set; }
+
+    /// <summary>
     /// Which corner of the viewport the stack anchors to. Defaults to <see cref="NotificationPlacement.TopRight"/>
     /// (unchanged markup/behavior from before this parameter existed). Bottom placements need no
     /// reordering of <see cref="Items"/> to stack newest-nearest-the-edge — the container just
@@ -50,9 +65,12 @@
         _ => null,
     };
 
-    RenderFragment Row(NotificationItem n) => @<div class="wss-notification" @key="n.Id">
+    RenderFragment Row(NotificationItem n) => @<div class="wss-notification" @key="n.Id"
+        @onmouseenter="() => OnPause.InvokeAsync(n.Id)" @onmouseleave="() => OnResume.InvokeAsync(n.Id)"
+        @onfocusin="() => OnPause.InvokeAsync(n.Id)" @onfocusout="() => OnResume.InvokeAsync(n.Id)">
         <span class="wss-notification-icon wss-notification-icon-@n.Type.ToString().ToLowerInvariant()">@Icon(n.Type)</span>
         <div class="wss-notification-body">
+            <span class="wss-sr-only">@SeverityLabel(n.Type)</span>
             <div class="wss-notification-message">@n.Message</div>
             @if (!string.IsNullOrEmpty(n.Description))
             {
@@ -70,5 +88,17 @@
         NotificationType.Warning => UiKitIcons.ToastWarning,
         NotificationType.Error => UiKitIcons.ToastError,
         _ => UiKitIcons.ToastInfo,
+    };
+
+    // Sighted users tell severity apart by the icon's shape (never just color -- WCAG 1.4.1); the
+    // icon is aria-hidden, so assistive tech needs the word instead. Hardcoded English, matching the
+    // kit's existing unlocalized "Close" convention -- see the accessibility audit for the i18n
+    // limitation this carries forward.
+    static string SeverityLabel(NotificationType type) => type switch
+    {
+        NotificationType.Success => "Success: ",
+        NotificationType.Warning => "Warning: ",
+        NotificationType.Error => "Error: ",
+        _ => "Info: ",
     };
 }

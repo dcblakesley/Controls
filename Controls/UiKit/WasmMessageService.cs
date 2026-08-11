@@ -41,4 +41,10 @@ public static class WasmMessageService
 
     /// <summary>Removes all messages (primarily for tests).</summary>
     public static void Clear() => Instance.Clear();
+
+    /// <inheritdoc cref="IMessageService.Pause"/>
+    public static void Pause(Guid id) => Instance.Pause(id);
+
+    /// <inheritdoc cref="IMessageService.Resume"/>
+    public static void Resume(Guid id) => Instance.Resume(id);
 }

@@ -50,10 +50,42 @@ public sealed class ToastQueue<TItem> : IDisposable where TItem : IToastItem
 
         if (item.Duration > 0)
         {
-            var cts = new CancellationTokenSource();
-            _timers[item.Id] = cts;
-            _ = RemoveAfterAsync(item, cts.Token);
+            StartTimer(item);
         }
+    }
+
+    /// <summary>
+    /// Pauses <paramref name="id"/>'s auto-dismiss countdown without removing the toast (WCAG 2.2.1):
+    /// cancels its pending timer, leaving the item tracked so <see cref="Resume"/> can restart it.
+    /// A silent no-op in every case that isn't "an item with a live timer": a sticky item (Duration
+    /// &lt;= 0 never had one), an id no longer tracked (already removed/cleared), an id already
+    /// paused, and a call that races the timer's own expiry -- the same TryRemove ownership
+    /// handshake <c>CancelTimer</c> uses elsewhere guarantees exactly one of "Pause" or "the timer
+    /// firing" wins that race, never both.
+    /// </summary>
+    public void Pause(Guid id) => CancelTimer(id);
+
+    /// <summary>
+    /// Resumes <paramref name="id"/>'s auto-dismiss countdown from a fresh full
+    /// <see cref="IToastItem.Duration"/> -- not the time remaining when <see cref="Pause"/> was
+    /// called. Restarting the full duration is the simplest correct behavior: tracking a partial
+    /// remainder would need a wall-clock timestamp threaded through Pause/Resume for a difference a
+    /// user is unlikely to notice at toast-scale (3-4.5s) durations. Calling Resume on an item that
+    /// was never paused -- e.g. a mouseleave and a focusout both firing as the pointer and keyboard
+    /// focus leave the same toast together -- is not an error; it just restarts an already-running
+    /// timer, which is harmless. A no-op for a sticky item (no timer to restart) or an id no longer
+    /// tracked (already removed/cleared).
+    /// </summary>
+    public void Resume(Guid id)
+    {
+        TItem? item;
+        lock (_gate) { item = _items.FirstOrDefault(i => i.Id == id); }
+        if (item is null || item.Duration <= 0)
+        {
+            return;
+        }
+
+        StartTimer(item);
     }
 
     public void Remove(Guid id)
@@ -72,6 +104,24 @@ public sealed class ToastQueue<TItem> : IDisposable where TItem : IToastItem
         CancelAllTimers();
         lock (_gate) { _items.Clear(); }
         OnChange?.Invoke();
+    }
+
+    // Shared by Add (always a fresh id, so the claim below is a no-op there) and Resume (which can
+    // legitimately race a still-running timer for the same id -- e.g. two Resume calls back to
+    // back). Claims any existing entry for item.Id the same TryRemove way CancelTimer does before
+    // installing the new one, so this can never Cancel() a source CancelTimer already disposed, or
+    // vice versa, and two StartTimer calls for the same id can't both think they own the slot.
+    private void StartTimer(TItem item)
+    {
+        if (_timers.TryRemove(item.Id, out var old))
+        {
+            old.Cancel();
+            old.Dispose();
+        }
+
+        var cts = new CancellationTokenSource();
+        _timers[item.Id] = cts;
+        _ = RemoveAfterAsync(item, cts.Token);
     }
 
     private async Task RemoveAfterAsync(TItem item, CancellationToken token)

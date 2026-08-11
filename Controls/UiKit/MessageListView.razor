@@ -32,12 +32,35 @@
 @code {
     [Parameter] public IReadOnlyList<MessageItem> Items { get; set; } = Array.Empty<MessageItem>();
 
+    /// <summary>Invoked with the item id when its close button is clicked.</summary>
+    [Parameter] public EventCallback<Guid> OnRemove { get; set; }
+
+    /// <summary>
+    /// Invoked with the item id when the pointer enters or keyboard focus lands inside the toast, so
+    /// a container can pause its auto-dismiss countdown (WCAG 2.2.1). See
+    /// <see cref="ToastQueue{TItem}.Pause"/>.
+    /// </summary>
+    [Parameter] public EventCallback<Guid> OnPause { get; set; }
+
+    /// <summary>
+    /// Invoked with the item id when the pointer leaves or keyboard focus moves out of the toast, so
+    /// a container can restart its auto-dismiss countdown. See <see cref="ToastQueue{TItem}.Resume"/>
+    /// -- hover and focus leaving separately (and each firing this) is expected and harmless.
+    /// </summary>
+    [Parameter] public EventCallback<Guid> OnResume { get; set; }
+
     // One item template for both regions (mirrors NotificationListView.Row) — the assertive region
     // only ever receives Error items, so the computed severity class is the same "error" it used to
     // hardcode, with no second copy of the markup to drift.
-    RenderFragment Row(MessageItem m) => @<div class="wss-msg" @key="m.Id">
+    RenderFragment Row(MessageItem m) => @<div class="wss-msg" @key="m.Id"
+        @onmouseenter="() => OnPause.InvokeAsync(m.Id)" @onmouseleave="() => OnResume.InvokeAsync(m.Id)"
+        @onfocusin="() => OnPause.InvokeAsync(m.Id)" @onfocusout="() => OnResume.InvokeAsync(m.Id)">
         <span class="wss-msg-icon wss-msg-icon-@m.Type.ToString().ToLowerInvariant()">@Icon(m.Type)</span>
+        <span class="wss-sr-only">@SeverityLabel(m.Type)</span>
         <span class="wss-msg-content">@m.Content</span>
+        <button type="button" class="wss-msg-close" aria-label="Close" @onclick="() => OnRemove.InvokeAsync(m.Id)">
+            @UiKitIcons.CloseCross
+        </button>
     </div>;
 
     // The spin comes from .wss-msg-icon-loading on the surrounding span (wss-controls.css), which is
@@ -49,5 +72,18 @@
         MessageType.Error => UiKitIcons.ToastError,
         MessageType.Loading => EditIcons.LoadingSpinner,
         _ => UiKitIcons.ToastInfo,
+    };
+
+    // Sighted users tell severity apart by the icon's shape (never just color -- WCAG 1.4.1); the
+    // icon is aria-hidden, so assistive tech needs the word instead. Hardcoded English, matching the
+    // kit's existing unlocalized "Close" convention -- see the accessibility audit for the i18n
+    // limitation this carries forward.
+    static string SeverityLabel(MessageType type) => type switch
+    {
+        MessageType.Success => "Success: ",
+        MessageType.Warning => "Warning: ",
+        MessageType.Error => "Error: ",
+        MessageType.Loading => "Loading: ",
+        _ => "Info: ",
     };
 }

@@ -35,6 +35,12 @@ public sealed class NotificationService : INotificationService, IDisposable
     /// <inheritdoc/>
     public void Clear() => _queue.Clear();
 
+    /// <inheritdoc/>
+    public void Pause(Guid id) => _queue.Pause(id);
+
+    /// <inheritdoc/>
+    public void Resume(Guid id) => _queue.Resume(id);
+
     private Guid Add(NotificationType type, string message, string? description, double? duration)
     {
         var item = new NotificationItem

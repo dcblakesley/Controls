@@ -39,4 +39,10 @@ public static class WasmNotificationService
 
     /// <summary>Removes all notifications (primarily for tests).</summary>
     public static void Clear() => Instance.Clear();
+
+    /// <inheritdoc cref="INotificationService.Pause"/>
+    public static void Pause(Guid id) => Instance.Pause(id);
+
+    /// <inheritdoc cref="INotificationService.Resume"/>
+    public static void Resume(Guid id) => Instance.Resume(id);
 }

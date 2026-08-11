@@ -36,6 +36,12 @@ public sealed class MessageService : IMessageService, IDisposable
     /// <inheritdoc/>
     public void Clear() => _queue.Clear();
 
+    /// <inheritdoc/>
+    public void Pause(Guid id) => _queue.Pause(id);
+
+    /// <inheritdoc/>
+    public void Resume(Guid id) => _queue.Resume(id);
+
     private Guid Add(MessageType type, string content, double? duration)
     {
         var item = new MessageItem { Type = type, Content = content, Duration = duration ?? 3 };

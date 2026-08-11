@@ -49,4 +49,22 @@ public interface INotificationService
     Guid Error(string message, string? description = null, double? duration = null);
     void Remove(Guid id);
     void Clear();
+
+    /// <summary>
+    /// Pauses <paramref name="id"/>'s auto-dismiss countdown (WCAG 2.2.1) -- call while the user is
+    /// hovering the pointer over the notification or has kept keyboard focus inside it, and pair
+    /// with <see cref="Resume"/> on the corresponding leave/blur. A no-op for a sticky notification
+    /// (no timer to pause) or an id no longer tracked. <c>NotificationContainer</c>/
+    /// <c>WasmNotificationContainer</c> already wire this from <see cref="NotificationListView"/>'s
+    /// hover/focus events -- most consumers never call it directly.
+    /// </summary>
+    void Pause(Guid id);
+
+    /// <summary>
+    /// Resumes <paramref name="id"/>'s auto-dismiss countdown from a fresh full duration -- not the
+    /// time remaining when <see cref="Pause"/> was called. See <see cref="ToastQueue{TItem}.Resume"/>
+    /// for why that's the simplest correct behavior. A no-op for a sticky notification or an id no
+    /// longer tracked.
+    /// </summary>
+    void Resume(Guid id);
 }
