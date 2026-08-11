@@ -30,6 +30,21 @@
        generic --color-primary-hover bridge (now consulted at the element, so it works scoped too):
        precedence is --wss-color-primary-hover > --color-primary-hover > derived. */
     --wss-color-primary: var(--color-primary, #1890ff);
+    /* TEXT-grade primary (WCAG 1.4.3). --wss-color-primary above is 3.24:1 on white: fine for the
+       chrome it backs (borders, focus rings, tints, active carets — 1.4.11 needs only 3:1), short
+       of the 4.5:1 every text site needs. Two kinds of site take this darker token instead: the
+       primary AS text on white (active pager item, active/hovered tab, the picker's Today link,
+       a hovered dialog button) and the primary as a FILL under white text (primary/danger dialog
+       buttons, the selected day/month cell, the picker + filter OK buttons, the Search enter
+       button). #0958d9 is 6.16:1 against white, so it clears 4.5:1 in both directions.
+       Same bridge shape as the base token, so a consumer with a design system can re-theme the
+       text grade once via --color-primary-strong; a consumer who sets only --color-primary keeps
+       this accessible default rather than silently inheriting a 3.24:1 brand blue on text.
+       --wss-color-primary-strong-hover is a pure override knob (undeclared here, like the other
+       hover knobs above) whose usage-site derivation mixes toward BLACK, not white: lightening a
+       fill that carries white text — or a link sitting on white — is the one hover direction that
+       can drop a compliant resting state back under 4.5:1. */
+    --wss-color-primary-strong: var(--color-primary-strong, #0958d9);
     --wss-color-on-primary: #fff;
 
     /* Text */
@@ -37,6 +52,13 @@
     --wss-color-text-secondary: rgba(0, 0, 0, 0.45);
     --wss-color-text-disabled: rgba(0, 0, 0, 0.25);
     --wss-color-placeholder: #bfbfbf;
+    /* De-emphasized but OPERABLE text — the picker's outside-month days and outside-decade years,
+       which are real buttons a click commits. They used --wss-color-placeholder (1.84:1), a value
+       that is only defensible for text nobody can activate; WCAG 1.4.3 wants 4.5:1 here. #737373
+       is 4.74:1 on white and still 4.58:1 on --wss-color-bg-hover (the cell's own hover fill, the
+       worst background a plain calendar puts behind it), while reading as plainly secondary next
+       to the ~16.5:1 in-month ink. Actual input placeholders keep --wss-color-placeholder. */
+    --wss-color-text-deemphasized: #737373;
 
     /* Surfaces / lines */
     --wss-color-bg: #fff;
@@ -96,23 +118,41 @@
     --wss-picker-radius-lg: 8px;
     --wss-picker-split: #e6e6e6;
 
-    /* Status (alerts / messages / notifications) */
-    --wss-color-success: #52c41a;
+    /* Status (alerts / messages / notifications).
+       The success/warning glyph colors are darkened off AntD 4's palette (toward AntD 5's): the
+       originals were #52c41a (2.27:1 on white, 2.21:1 on the success tint) and #faad14 (1.90:1 /
+       1.83:1), well under WCAG 1.4.11's 3:1 for the status icons they back — and the warning one
+       is Popconfirm's unconditional, unparameterizable glyph, so a consumer could not opt out of
+       it. The -bg/-border tints are deliberately NOT re-tinted: they are backgrounds (no contrast
+       floor of their own) and darkening them would restyle whole components instead of the one
+       glyph that failed. Ratios are recorded per token below. */
+    --wss-color-success: #389e0d; /* 3.46:1 on white, 3.37:1 on --wss-color-success-bg */
     --wss-color-success-bg: #f6ffed;
     --wss-color-success-border: #b7eb8f;
     --wss-color-info: #1890ff;
     --wss-color-info-bg: #e6f7ff;
     --wss-color-info-border: #91d5ff;
-    --wss-color-warning: #faad14;
+    --wss-color-warning: #ad6800; /* 4.41:1 on white, 4.25:1 on --wss-color-warning-bg */
     --wss-color-warning-bg: #fffbe6;
     --wss-color-warning-border: #ffe58f;
-    /* #ff4d4f (3.27:1 on white) is the plain AntD default -- kept as-is here rather than darkened.
-       edit-controls.css's --edit-color-danger deliberately uses a darker #cf1322 (~5.9:1) instead:
-       this token backs chrome/borders/backgrounds (WCAG 1.4.11, needs 3:1), while the edit token
-       backs validation message/summary TEXT (WCAG 1.4.3, needs 4.5:1) -- different requirements
-       legitimately yield different unthemed defaults. Not drift; don't unify these. A consumer's own
-       --color-danger overrides both identically either way. */
+    /* Danger comes in the same base/strong pair as --wss-color-primary/-primary-strong above, and
+       for the same reason. --wss-color-error keeps the plain AntD default #ff4d4f (3.27:1 on
+       white): it backs chrome/borders/backgrounds and the aria-hidden status glyphs, all of which
+       WCAG 1.4.11 clears at 3:1. --wss-color-error-strong backs the TEXT-grade sites — the danger
+       dialog button, whose white label sits ON the fill, and the error Alert's icon on its own
+       #fff2f0 tint (2.99:1 with the base token, fractionally short). #cf1322 is 5.57:1 on white
+       and 5.10:1 on --wss-color-error-bg.
+       An earlier version of this comment justified the base token as chrome-only while
+       .wss-dialog-btn-danger was already using it as a button fill under white text — that
+       white-on-3.27:1 shortfall is exactly what the split fixes. Rule of thumb: anything painting
+       white text on a danger fill, or danger text on a light surface, takes -strong.
+       #cf1322 is also edit-controls.css's --edit-color-danger. That is not drift now but the
+       point: both are the 4.5:1-grade danger, reached independently because both back text. A
+       consumer's --color-danger still re-themes the base; --color-danger-strong the text grade.
+       --wss-color-error-strong-hover: pure override knob, derived toward black at the usage site
+       (see --wss-color-primary-strong-hover above for why hover darkens instead of lightening). */
     --wss-color-error: var(--color-danger, #ff4d4f);
+    --wss-color-error-strong: var(--color-danger-strong, #cf1322);
     --wss-color-error-bg: #fff2f0;
     --wss-color-error-border: #ffccc7;
     /* --wss-error-shadow: pure override knob, derived from --wss-color-error at each usage site
@@ -371,6 +411,8 @@
 }
 
 .wss-select-multiple .wss-select-selection-item-remove {
+    /* position: relative anchors the WCAG 2.5.8 hit-box below — it has no other purpose here. */
+    position: relative;
     display: inline-flex;
     align-items: center;
     appearance: none;
@@ -381,6 +423,19 @@
     font-size: 10px;
     line-height: 1;
     cursor: pointer;
+}
+
+/* WCAG 2.5.8 target size: the glyph is 10x10, and the criterion's spacing exception can't rescue
+   it — the tag sits INSIDE the selector, the kit's own larger click target, so any 24px circle
+   around this button necessarily intersects it. Extend the pointer target with an invisible
+   pseudo-element rather than padding, so nothing about the tag's layout or the visual baselines
+   moves: 10px + 7px on every side = a 24x24 hit box. Same technique (and the same 24px goal) as
+   edit-controls.css's .edit-tooltip-container::before. ::after is free; ::before is not used by
+   this button either, but ::after keeps it uniform with .wss-select-clear/.wss-picker-clear below. */
+.wss-select-multiple .wss-select-selection-item-remove::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
 }
 
 .wss-select-multiple .wss-select-selection-item-remove:hover {
@@ -448,6 +503,18 @@
     opacity: 0;
     pointer-events: auto;
     transition: color 0.3s ease, opacity 0.15s ease;
+}
+
+/* WCAG 2.5.8 target size: 12x12 + 6px on every side = 24x24, as an invisible hit box rather than
+   padding so the clear button's position over the arrow (and every visual baseline) is untouched.
+   Nested inside the selector, so the spacing exception can't apply — see the matching note on
+   .wss-select-selection-item-remove above. opacity: 0 at rest does not remove hit-testing, so the
+   enlarged target behaves the same as the 12px one did before the reveal. It inherits the button's
+   own position: absolute as its containing block; no extra position declaration is needed. */
+.wss-select-clear::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
 }
 
 .wss-select:hover .wss-select-clear,
@@ -826,14 +893,15 @@
     margin-inline-start: 8px;
 }
 
-/* Shared "x" close-button chrome, grouped with Modal/Drawer/Notification's own identical close
-   buttons (.wss-modal-close, .wss-drawer-close, .wss-notification-close, further down this file) --
-   only font-size (icon glyph size) and this component's own extra margin-inline-start differ, kept
-   as small per-selector follow-ups right below. */
+/* Shared "x" close-button chrome, grouped with Modal/Drawer/Notification/Message's own identical
+   close buttons (.wss-modal-close, .wss-drawer-close, .wss-notification-close, .wss-msg-close,
+   further down this file) -- only font-size (icon glyph size) and this component's own extra
+   margin-inline-start differ, kept as small per-selector follow-ups right below. */
 .wss-alert-close,
 .wss-modal-close,
 .wss-drawer-close,
-.wss-notification-close {
+.wss-notification-close,
+.wss-msg-close {
     display: inline-flex;
     align-items: center;
     padding: 0;
@@ -855,21 +923,31 @@
 .wss-alert-close:hover,
 .wss-modal-close:hover,
 .wss-drawer-close:hover,
-.wss-notification-close:hover {
+.wss-notification-close:hover,
+.wss-msg-close:hover {
     color: var(--wss-color-text);
 }
 
 .wss-alert-success { background: var(--wss-color-success-bg); border-color: var(--wss-color-success-border); }
 .wss-alert-success .wss-alert-icon { color: var(--wss-color-success); }
 
+/* The info/error glyphs take the -strong tokens, not the base ones, because an Alert icon is the
+   only place a status color lands on that status's own TINT rather than on white — and the base
+   pair lost just enough there to fail WCAG 1.4.11's 3:1 for a meaningful graphic: #1890ff on
+   #e6f7ff is 2.95:1 and #ff4d4f on #fff2f0 is 2.99:1. The -strong values clear it comfortably
+   (#0958d9 on #e6f7ff = 5.61:1; #cf1322 on #fff2f0 = 5.10:1). Success/warning need no such swap:
+   their base tokens were already darkened at the top of this file and measure 3.37:1 and 4.25:1 on
+   their own tints. Note the info glyph therefore follows --wss-color-primary-strong while
+   --wss-color-info-bg/-border stay literal Ant blues — the same split .wss-color-bg-selected
+   already lives with; a consumer re-theming primary gets a re-themed info glyph. */
 .wss-alert-info { background: var(--wss-color-info-bg); border-color: var(--wss-color-info-border); }
-.wss-alert-info .wss-alert-icon { color: var(--wss-color-info); }
+.wss-alert-info .wss-alert-icon { color: var(--wss-color-primary-strong); }
 
 .wss-alert-warning { background: var(--wss-color-warning-bg); border-color: var(--wss-color-warning-border); }
 .wss-alert-warning .wss-alert-icon { color: var(--wss-color-warning); }
 
 .wss-alert-error { background: var(--wss-color-error-bg); border-color: var(--wss-color-error-border); }
-.wss-alert-error .wss-alert-icon { color: var(--wss-color-error); }
+.wss-alert-error .wss-alert-icon { color: var(--wss-color-error-strong); }
 
 /* Visually hidden but exposed to assistive tech (loading cues, region labels). */
 .wss-sr-only {
@@ -1142,13 +1220,36 @@
     transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete;
 }
 
-/* ── Body (::after) ── */
+/* ── Body (::after) ──
+   WCAG 1.4.13 "hoverable": this one pseudo-element is both the painted bubble AND the invisible
+   bridge across the placement gap, because there is no third pseudo-element to bridge with (::before
+   is the arrow). Each placement rule below gives it a TRANSPARENT border on its trigger-facing side,
+   sized to swallow the gap + the arrow's 5px offset + the 4px slide-in travel, and pulls that side's
+   own offset back by the same 4px -- so the element's HIT box starts 4px inside the trigger and stays
+   continuous with it for the whole reveal transition, while the PAINTED box lands exactly where it
+   always did. A one-pixel dead band anywhere on that path fires mouseleave and dismisses the bubble
+   under the traveling pointer; edit-controls.css's .edit-tooltip-container bridge documents the same
+   hazard (it can afford a separate strip -- it has a spare pseudo-element).
+   Four declarations here exist only to make that work:
+     - border: 0 plus background-clip: padding-box, so the transparent gap border is never painted;
+       the visible 1px ring moves into box-shadow as an inset ring on the padding box instead.
+     - padding absorbs the 1px each removed border used to contribute, so the painted rectangle,
+       interior spacing and centering stay identical to the pre-bridge bubble.
+     - box-sizing: content-box pins max-width to the TEXT box. The gap border is layout scaffolding,
+       not chrome, and must not count against the cap -- under a consumer's global
+       `*, *::after { box-sizing: border-box }` reset it otherwise would, silently narrowing
+       side-placed tooltips by the whole gap.
+   The outer drop shadow needs no compensation: CSS clips an outer box-shadow to OUTSIDE the border
+   box, so the enlarged (transparent) border box keeps the shadow out of the gap rather than smearing
+   it across. */
 [data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
-    padding: 0.35rem 0.6rem;
+    box-sizing: content-box;
+    padding: calc(0.35rem + 1px) calc(0.6rem + 1px);
     border-radius: var(--wss-radius);
     background: var(--wss-color-bg);
+    background-clip: padding-box;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size-sm);
     font-weight: 500;
@@ -1164,8 +1265,8 @@
     opacity: 0;
     display: none;
     z-index: var(--wss-tooltip-z-index);
-    border: 1px solid var(--wss-color-border);
-    box-shadow: var(--wss-shadow);
+    border: 0;
+    box-shadow: inset 0 0 0 1px var(--wss-color-border), var(--wss-shadow);
     line-height: 1.25;
     transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete;
 }
@@ -1179,19 +1280,30 @@
     border-bottom: none;
 }
 
+/* top: 100% - 4px with a (gap + 5px + 4px) transparent top border puts the painted bubble back at
+   exactly `100% + gap + 5px` while the hit box starts 4px INSIDE the trigger -- the 4px covers the
+   slide-in, whose resting transform starts the whole element 4px lower (see the ::after body comment
+   above). --wss-tooltip-gap resolves per placement, so the -tight (3px) placements below inherit the
+   same arithmetic with no second formula. */
 [data-tooltip]::after {
-    top: calc(100% + var(--wss-tooltip-gap) + 5px);
+    top: calc(100% - 4px);
     left: 50%;
+    border-top: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
     transform: translateX(-50%) translateY(4px);
 }
 
-/* ── Show on hover & focus ── */
+/* ── Show on hover & focus ──
+   pointer-events: auto is the other half of WCAG 1.4.13 "hoverable": the resting rules keep
+   pointer-events: none so a hidden tooltip never intercepts anything, but once shown, the bubble
+   (and its bridging border) must accept the pointer, or moving toward the tooltip drops :hover and
+   hides it mid-travel. The arrow joins in for the same reason -- it sits in the same corridor. */
 [data-tooltip]:hover::before,
 [data-tooltip]:hover::after,
 [data-tooltip]:focus-visible::before,
 [data-tooltip]:focus-visible::after {
     opacity: 1;
     display: block;
+    pointer-events: auto;
     transition-delay: 0.35s;
 }
 
@@ -1234,10 +1346,14 @@
     border-bottom: none;
 }
 
+/* Mirror of the default placement's bridge: the gap is below the bubble now, so the transparent
+   border moves to the bottom edge and the default rule's border-top is cleared. */
 [data-tooltip].wss-tooltip-top::after {
     top: auto;
-    bottom: calc(100% + var(--wss-tooltip-gap) + 5px);
+    bottom: calc(100% - 4px);
     left: 50%;
+    border-top: 0;
+    border-bottom: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
     transform: translateX(-50%) translateY(-4px);
 }
 
@@ -1356,10 +1472,14 @@
     transform: translateY(-50%) rotate(135deg) scale(0.8);
 }
 
+/* Same bridge, rotated a quarter turn: the gap sits to the bubble's right, so the transparent
+   border does too. The slide-in is horizontal here (translateX), so the 4px pull-back is on `right`. */
 [data-tooltip].wss-tooltip-side-left::after {
     top: 50%;
     left: auto;
-    right: calc(100% + var(--wss-tooltip-gap) + 5px);
+    right: calc(100% - 4px);
+    border-top: 0;
+    border-right: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
     transform: translateY(-50%) translateX(-4px);
 }
 
@@ -1395,10 +1515,13 @@
     transform: translateY(-50%) rotate(-45deg) scale(0.8);
 }
 
+/* Mirror of side-left: gap (and therefore the transparent bridge border) on the bubble's left. */
 [data-tooltip].wss-tooltip-side-right::after {
     top: 50%;
     right: auto;
-    left: calc(100% + var(--wss-tooltip-gap) + 5px);
+    left: calc(100% - 4px);
+    border-top: 0;
+    border-left: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
     transform: translateY(-50%) translateX(4px);
 }
 
@@ -1431,6 +1554,19 @@
    (0,1,1) selector while hovering/focusing an element with an empty data-tooltip. */
 [data-tooltip=""]::before,
 [data-tooltip=""]::after {
+    display: none !important;
+}
+
+/* ── Suppress after Escape (WCAG 1.4.13 "dismissable") ──
+   wss-tooltip.js adds .wss-tooltip-dismissed on Escape and removes it when hover/focus next leaves,
+   because Escape moves neither the pointer nor focus -- without this rule the :hover/:focus-visible
+   reveal would simply keep the bubble on screen and there would be no dismiss mechanism at all.
+   !important for the same reason the empty-value rule above needs it: the show rule sets
+   display: block from a higher-specificity position, and specificity alone can't undo it.
+   The class is the entire mechanism, so a page that never loads wss-tooltip.js degrades to today's
+   plain CSS tooltip rather than breaking. */
+[data-tooltip].wss-tooltip-dismissed::before,
+[data-tooltip].wss-tooltip-dismissed::after {
     display: none !important;
 }
 
@@ -1507,15 +1643,18 @@
     cursor: not-allowed;
 }
 
+/* Two tokens on purpose (WCAG 1.4.3 vs 1.4.11): the page NUMBER is text on the white button, so it
+   takes the 4.5:1-grade --wss-color-primary-strong (6.16:1), while the button's border is chrome and
+   stays on the base primary (3.24:1, over 1.4.11's 3:1). Same split on the active item below. */
 .wss-pagination-item:hover,
 .wss-pagination-prev:hover,
 .wss-pagination-next:hover {
-    color: var(--wss-color-primary);
+    color: var(--wss-color-primary-strong);
     border-color: var(--wss-color-primary);
 }
 
 .wss-pagination-item-active {
-    color: var(--wss-color-primary);
+    color: var(--wss-color-primary-strong);
     border-color: var(--wss-color-primary);
     font-weight: 500;
 }
@@ -1638,21 +1777,31 @@
     line-height: var(--wss-line-height);
 }
 
+/* Text on the white default button -- 4.5:1 grade (WCAG 1.4.3), so -strong; the border beside it is
+   chrome and keeps the base primary. */
 .wss-dialog-btn:hover {
-    color: var(--wss-color-primary);
+    color: var(--wss-color-primary-strong);
     border-color: var(--wss-color-primary);
 }
 
+/* Fill under a white label: the label is text, so the FILL has to clear 4.5:1, not 3:1 -- the base
+   primary is only 3.24:1 against #fff. -strong is 6.16:1. */
 .wss-dialog-btn-primary {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary);
-    border-color: var(--wss-color-primary);
+    background: var(--wss-color-primary-strong);
+    border-color: var(--wss-color-primary-strong);
 }
 
+/* Derived at the usage site per the theming contract, but mixed toward BLACK rather than the
+   toward-white recipe the chrome-grade hovers use: this fill carries white text, so a lighter hover
+   would walk the resting 6.16:1 back down (82% toward white lands at 4.36:1, i.e. a hover state that
+   fails while the resting state passes). 85% toward black is 7.76:1 -- contrast can only improve on
+   hover. --wss-color-primary-strong-hover / --color-primary-strong-hover stay available as override
+   knobs, mirroring the base token's precedence chain. */
 .wss-dialog-btn-primary:hover {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
-    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+    background: var(--wss-color-primary-strong-hover, var(--color-primary-strong-hover, color-mix(in srgb, var(--wss-color-primary-strong) 85%, #000)));
+    border-color: var(--wss-color-primary-strong-hover, var(--color-primary-strong-hover, color-mix(in srgb, var(--wss-color-primary-strong) 85%, #000)));
 }
 
 .wss-dialog-btn:disabled {
@@ -1660,17 +1809,21 @@
     opacity: 0.65;
 }
 
-/* Popconfirm.OkDanger: red/danger primary, alongside the existing wss-dialog-btn-primary. */
+/* Popconfirm.OkDanger: red/danger primary, alongside the existing wss-dialog-btn-primary. Takes
+   --wss-color-error-strong for the same reason its primary sibling takes -strong: the white label is
+   text on this fill, so 1.4.3's 4.5:1 applies to the fill. The base --wss-color-error is 3.27:1 --
+   this button was the concrete violation that motivated splitting the danger token. */
 .wss-dialog-btn-danger {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-error);
-    border-color: var(--wss-color-error);
+    background: var(--wss-color-error-strong);
+    border-color: var(--wss-color-error-strong);
 }
 
+/* Toward black, not white -- see .wss-dialog-btn-primary:hover for the arithmetic. 7.15:1. */
 .wss-dialog-btn-danger:hover:not(:disabled) {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-error-hover, color-mix(in srgb, var(--wss-color-error) 82%, #fff));
-    border-color: var(--wss-color-error-hover, color-mix(in srgb, var(--wss-color-error) 82%, #fff));
+    background: var(--wss-color-error-strong-hover, color-mix(in srgb, var(--wss-color-error-strong) 85%, #000));
+    border-color: var(--wss-color-error-strong-hover, color-mix(in srgb, var(--wss-color-error-strong) 85%, #000));
 }
 
 .wss-dialog-btn-sm {
@@ -2271,12 +2424,17 @@
     border-right: 4px solid transparent;
 }
 
+/* Resting (unsorted) carets take the SECONDARY text token, not the disabled one they used to share.
+   They are part of a fully operable control -- the header sorts on click -- and WCAG 1.4.11 asks 3:1
+   of a graphic that identifies one: rgba(0,0,0,.45) over the #fafafa header is 3.33:1, where
+   rgba(0,0,0,.25) was 1.83:1. Reusing the disabled token also mis-signalled the state to sighted
+   users, since the kit paints genuinely disabled controls with that exact value. */
 .wss-table-sorter-up {
-    border-bottom: 5px solid var(--wss-color-text-disabled);
+    border-bottom: 5px solid var(--wss-color-text-secondary);
 }
 
 .wss-table-sorter-down {
-    border-top: 5px solid var(--wss-color-text-disabled);
+    border-top: 5px solid var(--wss-color-text-secondary);
 }
 
 .wss-table-sorter-up.wss-table-sorter-active {
@@ -2336,6 +2494,15 @@
     cursor: pointer;
 }
 
+/* The clickable row is a tab stop with Enter/Space activation (Table.razor), so it needs a visible
+   keyboard focus indicator (WCAG 2.4.7). The offset is INSIDE the row: a +2px ring would overlap the
+   rows above and below, and under Table.ScrollY the wrapper's overflow would clip its top and bottom
+   edges at the scroll boundaries. */
+.wss-table-row-clickable:focus-visible {
+    outline: 2px solid var(--wss-color-primary);
+    outline-offset: -2px;
+}
+
 /* Header cell content row -- only present when a header needs to lay out more than one thing
    beside its title (currently: a non-sortable filterable column's text + filter button). Sortable
    filterable headers reuse this same class around [sort button, filter button] instead. */
@@ -2387,7 +2554,10 @@
     height: 24px;
     padding: 0;
     margin-inline-start: 4px;
-    color: var(--wss-color-text-disabled);
+    /* Secondary, not disabled, text: an operable button's icon needs WCAG 1.4.11's 3:1 (3.33:1 on
+       the #fafafa header), and the disabled token it used to share both failed that at 1.83:1 and
+       falsely signalled "disabled". Same change as the resting sort carets above. */
+    color: var(--wss-color-text-secondary);
     font-size: 12px;
     background: none;
     border: none;
@@ -2396,7 +2566,7 @@
 }
 
 .wss-table-filter-trigger:hover {
-    color: var(--wss-color-text-secondary);
+    color: var(--wss-color-text);
     background: var(--wss-color-bg-hover);
 }
 
@@ -2493,10 +2663,13 @@
     color: var(--wss-color-text);
 }
 
+/* 12px white label on a primary fill -- text, so the fill takes the 4.5:1-grade token (6.16:1).
+   The opacity hover needs no companion change: the dropdown behind it is --wss-color-bg (white), so
+   fading to 0.85 leaves the white label white and lightens only the fill, landing at 4.62:1. */
 .wss-table-filter-ok {
     padding: 0 12px;
     color: var(--wss-color-on-primary);
-    background-color: var(--wss-color-primary);
+    background-color: var(--wss-color-primary-strong);
 }
 
 .wss-table-filter-ok:hover {
@@ -2509,6 +2682,15 @@
    itself is set inline (Table.razor) since it's a per-instance CSS length, not a fixed token. */
 .wss-table-wrapper-scroll-y {
     overflow-y: auto;
+}
+
+/* The scrollable wrapper is now a tab stop so keyboard users can scroll the bounded body (axe's
+   scrollable-region-focusable), which means it needs a focus indicator of its own (WCAG 2.4.7).
+   Inside offset for the same reason the clickable row uses one: this element IS the overflow
+   container, so an outside ring would be clipped by its own scrollport on three sides. */
+.wss-table-wrapper-scroll-y:focus-visible {
+    outline: 2px solid var(--wss-color-primary);
+    outline-offset: -2px;
 }
 
 .wss-table-wrapper-scroll-y .wss-table-thead .wss-table-cell {
@@ -2587,6 +2769,13 @@
     font-size: 16px;
 }
 
+/* Everything else about this button (display/padding/color/background/border/cursor, hover, focus
+   ring, print-hide) is shared with the Alert/Modal/Drawer/Notification closes in the Alert section
+   above -- only the glyph size is per-component, and a message toast matches the Alert's 12px. */
+.wss-msg-close {
+    font-size: 12px;
+}
+
 /* Text content beside the message icon. flex: 1 with the default min-width: auto refuses to shrink
    below its content's intrinsic width -- min-width: 0 lets it actually shrink, and overflow-wrap lets
    a long unbroken token wrap instead of growing this fixed-position toast past the viewport (same
@@ -2631,6 +2820,10 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    /* Same pattern as .wss-msg-container/.wss-msg above: the container is a full-height fixed layer
+       whose 16px stack gaps sit over real page content, so it must not hit-test -- only the toasts
+       themselves (pointer-events: auto on .wss-notification) take the pointer back. */
+    pointer-events: none;
 }
 
 /* NotificationListView.Placement: anchor from the requested corner instead of the default
@@ -2679,6 +2872,7 @@
     background: var(--wss-color-bg);
     border-radius: var(--wss-radius);
     box-shadow: var(--wss-shadow);
+    pointer-events: auto; /* re-enables hit-testing inside the pointer-events: none container above */
     animation: wss-notification-in 0.24s ease;
 }
 
@@ -2861,6 +3055,16 @@
     opacity: 0;
     z-index: 1;
     transition: color 0.3s ease, opacity 0.15s ease;
+}
+
+/* WCAG 2.5.8 target size: 14x14 + 5px on every side = 24x24. Invisible hit box rather than padding
+   so the button stays exactly over the suffix icon it swaps in for. Like the Select's clear it sits
+   inside the field -- the larger target that opens the panel -- so the criterion's spacing exception
+   cannot rescue it. Its own position: absolute is the containing block; no extra declaration needed. */
+.wss-picker-clear::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
 }
 
 .wss-picker:hover .wss-picker-clear,
@@ -3151,6 +3355,18 @@
     padding: 4px;
 }
 
+/* ARIA scaffolding, no layout of its own. An ARIA grid requires role="row" wrappers around its
+   gridcells, but the calendar's 7-column track lives on .wss-picker-grid / .wss-picker-month-grid --
+   display: contents removes these wrappers from the box tree so the cells they contain stay the real
+   grid items and every existing position/tint/hover rule keeps working unchanged.
+   .wss-picker-cell-unit is Month/Quarter/Year mode's gridcell (its day-mode counterpart,
+   .wss-picker-cell below, is a real box: it paints the range band). Removing these declarations
+   collapses every calendar into a single column -- they are load-bearing, not cosmetic. */
+.wss-picker-row,
+.wss-picker-cell-unit {
+    display: contents;
+}
+
 .wss-picker-cell {
     position: relative;
     display: flex;
@@ -3218,25 +3434,35 @@
     transition: background 0.2s ease;
 }
 
-.wss-picker-day:not(:disabled):not(.wss-picker-day-selected):hover {
+/* [aria-disabled="true"], not :disabled: an out-of-range day is rendered with aria-disabled so it
+   stays focusable for the roving tabindex (see DayButtonFragment's comment in DatePicker.razor for
+   the keyboard traps native `disabled` caused). Every rule that used to key off :disabled follows it
+   here; the ones that legitimately still use native disabled (.wss-picker-nav,
+   .wss-picker-today-btn, the input slots) are untouched. */
+.wss-picker-day:not([aria-disabled="true"]):not(.wss-picker-day-selected):hover {
     background: var(--wss-color-bg-hover);
 }
 
+/* An outside-month day is dimmed but still clickable (it navigates and commits), so it takes the
+   operable de-emphasis token rather than the placeholder gray it used to share with un-activatable
+   text -- 4.74:1 on the panel and 4.58:1 on the hover fill above, versus 1.84:1 before. */
 .wss-picker-day-outside {
-    color: var(--wss-color-placeholder);
+    color: var(--wss-color-text-deemphasized);
 }
 
 .wss-picker-day-today {
     border-color: var(--wss-color-primary);
 }
 
+/* White numeral on the fill, so the fill is text-grade (WCAG 1.4.3): -strong is 6.16:1 where the
+   base primary was 3.24:1. The border matches the fill so the cell keeps one solid silhouette. */
 .wss-picker-day-selected {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary);
-    border-color: var(--wss-color-primary);
+    background: var(--wss-color-primary-strong);
+    border-color: var(--wss-color-primary-strong);
 }
 
-.wss-picker-day:disabled {
+.wss-picker-day[aria-disabled="true"] {
     color: var(--wss-color-text-disabled);
     background: none;
     cursor: not-allowed;
@@ -3309,11 +3535,18 @@
 /* ------------------------------------------------- Month mode (DatePicker)
  * Mode="Month" replaces the day calendar with a 3x4 grid of month buttons.
  * Distinct classes from the day cells above (DateRangePicker gives
- * wss-picker-day range-specific meaning it must keep). States reuse existing
- * attributes instead of adding more modifier classes: aria-pressed="true" is
- * the selected month, aria-current="date" is the current month, :disabled is
- * an out-of-Min/Max month -- mirrors the day cells' AntD look via the same
- * tokens. */
+ * wss-picker-day range-specific meaning it must keep). State hooks mirror the
+ * day cells' exactly: .wss-picker-month-btn-selected is the selected month,
+ * aria-current="date" is the current month, aria-disabled="true" is an
+ * out-of-Min/Max month -- and the same AntD look via the same tokens.
+ *
+ * Selection is a CLASS, not the aria-pressed it used to be, because selection
+ * now lives as aria-selected on the enclosing role="gridcell" (where ARIA's
+ * grid pattern wants it) and the button no longer carries a toggle state to
+ * style off. Disabled is aria-disabled, not native :disabled, so a rejected
+ * month stays focusable for the roving tabindex -- see the day cells above and
+ * DatePicker.razor's DayButtonFragment comment for the keyboard traps that
+ * motivated both swaps. */
 
 .wss-picker-month-grid {
     display: grid;
@@ -3336,7 +3569,7 @@
     transition: background 0.2s ease;
 }
 
-.wss-picker-month-btn:not(:disabled):not([aria-pressed="true"]):hover {
+.wss-picker-month-btn:not([aria-disabled="true"]):not(.wss-picker-month-btn-selected):hover {
     background: var(--wss-color-bg-hover);
 }
 
@@ -3344,13 +3577,14 @@
     border-color: var(--wss-color-primary);
 }
 
-.wss-picker-month-btn[aria-pressed="true"] {
+/* Text-grade fill, same reasoning as .wss-picker-day-selected above (6.16:1 under white). */
+.wss-picker-month-btn-selected {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary);
-    border-color: var(--wss-color-primary);
+    background: var(--wss-color-primary-strong);
+    border-color: var(--wss-color-primary-strong);
 }
 
-.wss-picker-month-btn:disabled {
+.wss-picker-month-btn[aria-disabled="true"] {
     color: var(--wss-color-text-disabled);
     background: none;
     cursor: not-allowed;
@@ -3363,8 +3597,10 @@
  * month days. Mode="Quarter" reuses Month mode's header and wss-picker-month-
  * btn, but needs its own single-row grid (4 columns, not 3). */
 
+/* Operable, not decorative -- clicking an adjacent-decade year navigates and commits. Same token
+   and same 4.5:1 reasoning as .wss-picker-day-outside above. */
 .wss-picker-month-btn-outside {
-    color: var(--wss-color-placeholder);
+    color: var(--wss-color-text-deemphasized);
 }
 
 .wss-picker-decade-label {
@@ -3387,8 +3623,8 @@
  * verbatim (doubled across two panels) but tint the button's own background directly instead of
  * the day grid's wss-picker-cell::before band -- these grids' own 8px gap between cells means a
  * continuous band wouldn't visually connect anyway, unlike the day grid's edge-to-edge cells. An
- * endpoint needs no new class: aria-pressed="true" already gives it the filled/primary look via
- * the existing wss-picker-month-btn[aria-pressed="true"] rule above. */
+ * endpoint needs no new class of its own: DateRangePicker adds wss-picker-month-btn-selected to it,
+ * which the rule above already paints with the filled/primary look. */
 .wss-picker-month-btn-in-range {
     background: var(--wss-picker-range-bg, color-mix(in srgb, var(--wss-color-primary) 10%, #fff));
 }
@@ -3449,16 +3685,18 @@
     font-size: var(--wss-font-size-sm);
     line-height: var(--wss-line-height);
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary);
-    border: 1px solid var(--wss-color-primary);
+    background: var(--wss-color-primary-strong);
+    border: 1px solid var(--wss-color-primary-strong);
     border-radius: var(--wss-radius);
     cursor: pointer;
     transition: all 0.2s;
 }
 
+/* Toward black, matching .wss-dialog-btn-primary:hover -- a 12px white label on this fill leaves no
+   room to lighten (see that rule's comment for the arithmetic). */
 .wss-picker-ok:hover {
-    background: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
-    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+    background: var(--wss-color-primary-strong-hover, var(--color-primary-strong-hover, color-mix(in srgb, var(--wss-color-primary-strong) 85%, #000)));
+    border-color: var(--wss-color-primary-strong-hover, var(--color-primary-strong-hover, color-mix(in srgb, var(--wss-color-primary-strong) 85%, #000)));
 }
 
 /* ShowToday/ShowNow's link button (AntD's text-link "today"/"now" affordance): plain text in the
@@ -3470,15 +3708,19 @@
     font-family: inherit;
     font-size: var(--wss-font-size-sm);
     line-height: var(--wss-line-height);
-    color: var(--wss-color-primary);
+    /* Text on the white panel at 12px, so it takes the 4.5:1-grade token (6.16:1); the base primary
+       would be 3.24:1. */
+    color: var(--wss-color-primary-strong);
     background: none;
     border: none;
     cursor: pointer;
     transition: color 0.2s;
 }
 
+/* A link on white darkens on hover instead of lightening: the toward-white recipe the chrome hovers
+   use lands this text at 4.36:1, under 1.4.3. Toward black is 7.76:1. */
 .wss-picker-today-btn:hover:not(:disabled) {
-    color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+    color: var(--wss-color-primary-strong-hover, var(--color-primary-strong-hover, color-mix(in srgb, var(--wss-color-primary-strong) 85%, #000)));
 }
 
 .wss-picker-today-btn:disabled {
@@ -3554,12 +3796,15 @@
     transition: color 0.2s ease, border-color 0.2s ease;
 }
 
+/* Tab LABELS are text on white, so they take the 4.5:1-grade token (6.16:1, vs the base primary's
+   3.24:1). The active tab's underline right below is chrome and keeps the base primary -- 1.4.11
+   asks 3:1 of it, and holding the ink bar at the brand blue keeps the strip looking like AntD. */
 .wss-tabs-tab:hover:not(:disabled) {
-    color: var(--wss-color-primary);
+    color: var(--wss-color-primary-strong);
 }
 
 .wss-tabs-tab-active {
-    color: var(--wss-color-primary);
+    color: var(--wss-color-primary-strong);
     font-weight: 600;
     border-bottom-color: var(--wss-color-primary);
 }
@@ -3671,6 +3916,15 @@
     color: var(--wss-color-placeholder);
 }
 
+/* type="search" brings WebKit/Blink's own clear "x", which would sit beside SearchInput.AllowClear's
+   button and clear the field without ever reaching Blazor's binding. Suppress it and let the kit's
+   own affordance be the only one -- exact same treatment (and reason) as
+   .wss-select-selection-search-input::-webkit-search-cancel-button in the Select section above. */
+.wss-search-input::-webkit-search-cancel-button {
+    display: none;
+    -webkit-appearance: none;
+}
+
 /* Raise the focused input above the button's overlapping border so the whole accent edge shows. */
 .wss-search-input:focus {
     position: relative;
@@ -3738,14 +3992,15 @@
     padding: 0 16px;
     font-size: var(--wss-font-size);
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary);
-    border-color: var(--wss-color-primary);
+    /* White label ON the fill -> text-grade token (6.16:1). See .wss-dialog-btn-primary. */
+    background: var(--wss-color-primary-strong);
+    border-color: var(--wss-color-primary-strong);
 }
 
 .wss-search-btn-enter:hover:not(:disabled) {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
-    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+    background: var(--wss-color-primary-strong-hover, var(--color-primary-strong-hover, color-mix(in srgb, var(--wss-color-primary-strong) 85%, #000)));
+    border-color: var(--wss-color-primary-strong-hover, var(--color-primary-strong-hover, color-mix(in srgb, var(--wss-color-primary-strong) 85%, #000)));
 }
 
 .wss-search-disabled .wss-search-input,
@@ -3778,7 +4033,13 @@
    checkbox/radio inputs and the filter dropdown's footer buttons -- .wss-table-checkbox-input-styled
    (the UseStyledCheckbox opt-in) already has its own :focus-visible ring on its drawn box (Table
    section, near the checkbox styling); these are the plain, unstyled <input> variants, which
-   otherwise fall back to the (frequently reset) UA outline. */
+   otherwise fall back to the (frequently reset) UA outline.
+   Two members of the list each override an `outline: none` declared earlier in this file, and win on
+   ordering plus specificity rather than by luck: .wss-tabs-panel is now a tab stop (a text-only panel
+   was otherwise keyboard-unreachable) and its own rule sets outline: none, and .wss-search-input's
+   rule does the same, leaving that input with only a border-color change on :focus -- no indicator at
+   all for a consumer who themes the border. Both base rules are (0,1,0) and appear above this (0,2,0)
+   block, so this ring lands. */
 .wss-dialog-btn:focus-visible,
 .wss-pagination-item:focus-visible,
 .wss-pagination-prev:focus-visible,
@@ -3787,6 +4048,7 @@
 .wss-drawer-close:focus-visible,
 .wss-alert-close:focus-visible,
 .wss-notification-close:focus-visible,
+.wss-msg-close:focus-visible,
 .wss-select-clear:focus-visible,
 .wss-select-selection-item-remove:focus-visible,
 .wss-popover-trigger:focus-visible,
@@ -3799,8 +4061,10 @@
 .wss-table-filter-reset:focus-visible,
 .wss-table-filter-ok:focus-visible,
 .wss-tabs-tab:focus-visible,
+.wss-tabs-panel:focus-visible,
 .wss-search-btn:focus-visible,
 .wss-search-clear:focus-visible,
+.wss-search-input:focus-visible,
 .wss-picker-clear:focus-visible,
 .wss-pagination-size-select:focus-visible,
 .wss-pagination-jumper-input:focus-visible {
@@ -3821,6 +4085,35 @@
     outline-offset: 1px;
 }
 
+/* Windows High Contrast (forced-colors): the OS substitutes its own palette for every author color
+   and drops box-shadow altogether, which silently deletes two cues the kit depends on. Deliberately
+   narrow -- this is not a kit-wide forced-colors theme, only the states that would otherwise have no
+   visual left at all. Everything else in the kit signals with borders/outlines/text, which the mode
+   preserves by itself.
+   (i) Select and Picker mark focused/open with a box-shadow ring over a border-color change; the
+       shadow is dropped and the border color is overridden, so both states become indistinguishable
+       from rest (WCAG 2.4.7 with nothing to see). A real outline in the system Highlight color
+       survives, and outline-offset keeps it clear of the field's own forced border.
+   (ii) SelectVariant.Borderless is transparent border AND background by design -- once the forced
+        page background replaces the hover tint there is no boundary at all, so it gets the system
+        ButtonBorder to stay identifiable as a control (WCAG 1.4.11). */
+@media (forced-colors: active) {
+    .wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
+    .wss-select:not(.wss-select-disabled) .wss-select-selector:focus-within,
+    .wss-picker-open .wss-picker-input,
+    .wss-picker:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+        outline: 2px solid Highlight;
+        outline-offset: 1px;
+    }
+
+    /* .wss-select. prefix only for specificity: the borderless variant re-declares
+       border-color: transparent in its hover/focused/focus-within rule at (0,3,0), so a (0,2,0)
+       selector here would lose that state back to invisible. */
+    .wss-select.wss-select-borderless .wss-select-selector {
+        border: 1px solid ButtonBorder;
+    }
+}
+
 /* Print: purely-interactive chrome (close/clear/remove buttons, the filter trigger, pagination,
    tab nav) has no meaning on paper -- hide it so printed output doesn't carry dead controls. Mirrors
    edit-controls.css's own print block, including its !important and placement-before-reduced-motion
@@ -3831,6 +4124,7 @@
     .wss-drawer-close,
     .wss-alert-close,
     .wss-notification-close,
+    .wss-msg-close,
     .wss-select-clear,
     .wss-select-selection-item-remove,
     .wss-search-clear,
