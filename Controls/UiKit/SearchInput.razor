@@ -6,7 +6,7 @@
 
     @if (AddonContent is not null || !string.IsNullOrEmpty(AddonLabel))
     {
-        <span class="wss-search-addon" id="@(Id is null ? null : $"{Id}-addon")">
+        <span class="wss-search-addon" id="@AddonId">
             @if (AddonContent is not null)
             {
                 @AddonContent
@@ -21,7 +21,7 @@
     <input class="wss-search-input"
            id="@Id"
            data-test-id="@Id"
-           type="text"
+           type="search"
            autocomplete="off"
            placeholder="@Placeholder"
            disabled="@Disabled"
@@ -39,7 +39,7 @@
     }
 
     <button type="button" class="wss-search-btn @(HasEnterButtonText ? "wss-search-btn-enter" : null)"
-            aria-label="@(HasEnterButtonText ? null : SearchButtonLabel)"
+            aria-label="@(HasEnterButtonText && !Loading ? null : SearchButtonLabel)"
             disabled="@(Disabled || Loading)" aria-busy="@(Loading ? "true" : null)"
             @onclick="RaiseSearchAsync">
         @if (Loading)

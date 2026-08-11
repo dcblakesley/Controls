@@ -29,7 +29,9 @@ public partial class SearchInput
     /// <summary>Optional addon template rendered instead of <see cref="AddonLabel"/>.</summary>
     [Parameter] public RenderFragment? AddonContent { get; set; }
 
-    /// <summary>Input placeholder.</summary>
+    /// <summary>Input placeholder. Also the last-resort fallback for the input's accessible name
+    /// (see <see cref="InputAriaLabel"/>) when no label source is set, so the input is never left
+    /// nameless.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>Disables the input and the search button.</summary>
@@ -100,20 +102,33 @@ public partial class SearchInput
     bool HasEnterButtonText => !string.IsNullOrEmpty(EnterButtonText);
 
     /// <summary>
-    /// The input's accessible name via <c>aria-label</c>: <see cref="InputLabel"/> if set, else
-    /// <see cref="AddonLabel"/> when it's non-empty. Null when only an <see cref="AddonContent"/>
-    /// template supplies the addon — <see cref="AddonLabelledBy"/> takes over instead, so the two
-    /// attributes never render at the same time.
+    /// The input's accessible name via <c>aria-label</c>, in precedence order: <see cref="InputLabel"/>,
+    /// then non-empty <see cref="AddonLabel"/>, then (only when there's no <see cref="AddonContent"/>
+    /// template for <see cref="AddonLabelledBy"/> to point at instead) non-empty
+    /// <see cref="Placeholder"/>. Null when an <see cref="AddonContent"/> template is the only naming
+    /// source — <see cref="AddonLabelledBy"/> takes over instead, so the two attributes never render
+    /// at the same time — or when nothing at all names the input.
     /// </summary>
-    string? InputAriaLabel => InputLabel ?? (string.IsNullOrEmpty(AddonLabel) ? null : AddonLabel);
+    string? InputAriaLabel =>
+        InputLabel
+        ?? (string.IsNullOrEmpty(AddonLabel) ? null : AddonLabel)
+        ?? (AddonContent is null && !string.IsNullOrEmpty(Placeholder) ? Placeholder : null);
+
+    string? _generatedAddonId;
+
+    /// <summary>
+    /// Id applied to the addon span so <see cref="AddonLabelledBy"/> can always target it:
+    /// <c>{Id}-addon</c> when <see cref="Id"/> is set (existing convention), else a stable
+    /// per-instance generated id (same pattern as <c>Tabs.BaseId</c>) so the addon is still
+    /// labelable when the consumer never sets <see cref="Id"/>.
+    /// </summary>
+    string AddonId => Id is not null ? $"{Id}-addon" : (_generatedAddonId ??= $"wss-search-addon-{Guid.NewGuid():N}");
 
     /// <summary>
     /// Points the input's <c>aria-labelledby</c> at the addon span's id when <see cref="AddonContent"/>
-    /// is the only naming source (no <see cref="InputAriaLabel"/> and an <see cref="Id"/> to anchor
-    /// the addon's id to). Null otherwise, since the addon span only carries an id when <see cref="Id"/>
-    /// is set.
+    /// is the only naming source (no <see cref="InputAriaLabel"/>). Null otherwise.
     /// </summary>
-    string? AddonLabelledBy => InputAriaLabel is null && AddonContent is not null && Id is not null ? $"{Id}-addon" : null;
+    string? AddonLabelledBy => InputAriaLabel is null && AddonContent is not null ? AddonId : null;
 
     async Task OnInputAsync(ChangeEventArgs e)
     {

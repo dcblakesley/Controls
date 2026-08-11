@@ -5,14 +5,14 @@
 <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
      class="wss-alert wss-alert-@TypeName @(HasDescription ? "wss-alert-with-description" : null) @(Banner ? "wss-alert-banner" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
      style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
-     role="@(EffectiveType == AlertType.Error ? "alert" : "status")"
-     aria-live="@(EffectiveType == AlertType.Error ? "assertive" : "polite")">
+     role="@(Live ? (EffectiveType == AlertType.Error ? "alert" : "status") : "group")"
+     aria-live="@(Live ? (EffectiveType == AlertType.Error ? "assertive" : "polite") : null)">
     @if (ShowIcon)
     {
         <span class="wss-alert-icon">@Icon</span>
     }
     <div class="wss-alert-content">
-        <div class="wss-alert-message">@(MessageContent ?? (RenderFragment)(b => b.AddContent(0, Message)))</div>
+        <div class="wss-alert-message"><span class="wss-sr-only">@SeverityAnnouncement</span>@(MessageContent ?? (RenderFragment)(b => b.AddContent(0, Message)))</div>
         @if (HasDescription)
         {
             <div class="wss-alert-description">@Description</div>
@@ -24,7 +24,7 @@
             <span class="wss-alert-action">@Action</span>
             @if (Closable)
             {
-                <button type="button" class="wss-alert-close" aria-label="Close" @onclick="OnCloseClicked">
+                <button type="button" class="wss-alert-close" aria-label="@CloseButtonLabel" @onclick="OnCloseClicked">
                     @UiKitIcons.CloseCross
                 </button>
             }
@@ -32,7 +32,7 @@
     }
     else if (Closable)
     {
-        <button type="button" class="wss-alert-close" aria-label="Close" @onclick="OnCloseClicked">
+        <button type="button" class="wss-alert-close" aria-label="@CloseButtonLabel" @onclick="OnCloseClicked">
             @UiKitIcons.CloseCross
         </button>
     }
@@ -68,6 +68,22 @@
     [Parameter] public RenderFragment? Action { get; set; }
 
     /// <summary>
+    /// Whether the alert announces itself as a live region on mount: <c>role="status"</c>/
+    /// <c>"alert"</c> (per <see cref="EffectiveType"/>) plus a matching <c>aria-live</c>. Defaults to
+    /// true, matching the toast/notification convention. Set false for an alert that renders once and
+    /// then sits on the page for a long time (a persistent banner, an inline validation summary that
+    /// mounts before the user has done anything) — with <c>Live</c> true, assistive tech re-announces
+    /// the whole thing on every mount (e.g. a route change that re-creates this component), which for
+    /// content the user hasn't just triggered is noise rather than a notification. False renders
+    /// <c>role="group"</c> instead (still its own landmark for the icon/message/description) and omits
+    /// <c>aria-live</c> entirely.
+    /// </summary>
+    [Parameter] public bool Live { get; set; } = true;
+
+    /// <summary>Accessible name of the close button. Override to localize.</summary>
+    [Parameter] public string CloseButtonLabel { get; set; } = "Close";
+
+    /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the component's root element. <c>class</c> and <c>style</c> merge with the
     /// component's own; the rest are splatted verbatim.
@@ -97,6 +113,17 @@
 
     bool HasDescription => !string.IsNullOrEmpty(Description);
     string TypeName => EffectiveType.ToString().ToLowerInvariant();
+
+    // The icon is aria-hidden (see UiKitIcons), and role/aria-live alone only splits error from
+    // everything else -- so this sr-only word is the only signal that distinguishes Success/Info/
+    // Warning from one another for a screen reader (see .wss-sr-only, wss-controls.css).
+    string SeverityAnnouncement => EffectiveType switch
+    {
+        AlertType.Success => "Success: ",
+        AlertType.Warning => "Warning: ",
+        AlertType.Error => "Error: ",
+        _ => "Info: ",
+    };
 
     // Same glyphs (and the same <svg> wrapper) the toast/notification severity icons use — see
     // UiKitIcons.

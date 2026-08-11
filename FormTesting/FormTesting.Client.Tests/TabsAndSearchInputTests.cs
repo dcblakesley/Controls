@@ -1439,6 +1439,16 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Equal(panel.GetAttribute("id"), activeTab.GetAttribute("aria-controls"));
     }
 
+    [Fact]
+    public void Tabpanel_carries_a_tabindex_so_text_only_panes_are_keyboard_reachable()
+    {
+        // CMP-1: a pane with no focusable content of its own (plain text, like the demo panes here)
+        // was otherwise a dead end for keyboard users -- Tab skips straight over role=tabpanel
+        // without a tabindex.
+        var cut = RenderTabs(activeKey: "missing", withPanes: true);
+        Assert.Equal("0", cut.Find("[role=tabpanel]").GetAttribute("tabindex"));
+    }
+
     // ----- SearchInput -------------------------------------------------------
 
     [Fact]
@@ -1485,6 +1495,15 @@ public class TabsAndSearchInputTests : BunitContext
     }
 
     [Fact]
+    public void SearchInput_renders_a_native_search_input_type()
+    {
+        // M10: type="search" (not "text") gets the native search semantics/affordances (e.g. a
+        // Escape-to-clear on some platforms) on top of the kit's own AllowClear button.
+        var cut = Render<SearchInput>();
+        Assert.Equal("search", cut.Find(".wss-search-input").GetAttribute("type"));
+    }
+
+    [Fact]
     public void SearchInput_addon_template_without_labels_wires_aria_labelledby()
     {
         var cut = Render<SearchInput>(p => p
@@ -1494,6 +1513,34 @@ public class TabsAndSearchInputTests : BunitContext
         var input = cut.Find(".wss-search-input");
         Assert.Equal("po-search-addon", input.GetAttribute("aria-labelledby"));
         Assert.Null(input.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void SearchInput_addon_template_generates_a_stable_id_when_Id_is_unset()
+    {
+        // M10: AddonLabelledBy used to require Id to be set at all -- an AddonContent-only consumer
+        // that never set Id got neither aria-label nor a working aria-labelledby, i.e. no accessible
+        // name whatsoever. A generated per-instance id (Tabs.BaseId's pattern) now backs it either way.
+        var cut = Render<SearchInput>(p => p.Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
+
+        var addon = cut.Find(".wss-search-addon");
+        var input = cut.Find(".wss-search-input");
+        var addonId = addon.GetAttribute("id");
+        Assert.False(string.IsNullOrEmpty(addonId));
+        Assert.Equal(addonId, input.GetAttribute("aria-labelledby"));
+        Assert.Null(input.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void SearchInput_generated_addon_id_is_stable_across_rerenders()
+    {
+        var cut = Render<SearchInput>(p => p.Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
+        var firstId = cut.Find(".wss-search-addon").GetAttribute("id");
+
+        cut.Render(p => p.Add(s => s.AddonContent, (RenderFragment)(b => b.AddContent(0, "POs (updated)"))));
+        var secondId = cut.Find(".wss-search-addon").GetAttribute("id");
+
+        Assert.Equal(firstId, secondId);
     }
 
     [Fact]
@@ -1519,6 +1566,32 @@ public class TabsAndSearchInputTests : BunitContext
         var input = cut.Find(".wss-search-input");
         Assert.Equal("POs", input.GetAttribute("aria-label"));
         Assert.Null(input.GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void SearchInput_falls_back_to_Placeholder_for_its_accessible_name_when_nothing_else_names_it()
+    {
+        // M10: a SearchInput with only a Placeholder (no InputLabel/AddonLabel/AddonContent) used to
+        // render with no accessible name at all -- placeholder text is not read as a name by AT.
+        var cut = Render<SearchInput>(p => p.Add(s => s.Placeholder, "Search orders..."));
+
+        var input = cut.Find(".wss-search-input");
+        Assert.Equal("Search orders...", input.GetAttribute("aria-label"));
+        Assert.Null(input.GetAttribute("aria-labelledby"));
+    }
+
+    [Fact]
+    public void SearchInput_Placeholder_fallback_yields_to_AddonContent_labelledby()
+    {
+        // The Placeholder fallback must not fire when an AddonContent template is already going to
+        // name the input via aria-labelledby -- otherwise both attributes would render at once.
+        var cut = Render<SearchInput>(p => p
+            .Add(s => s.Placeholder, "Search orders...")
+            .Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
+
+        var input = cut.Find(".wss-search-input");
+        Assert.Null(input.GetAttribute("aria-label"));
+        Assert.False(string.IsNullOrEmpty(input.GetAttribute("aria-labelledby")));
     }
 
     [Fact]
@@ -1566,6 +1639,45 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Contains("wss-search-btn-enter", btn.ClassList);
         Assert.Contains("Search", btn.TextContent);
         Assert.Null(btn.GetAttribute("aria-label")); // visible text is the accessible name instead
+    }
+
+    // M3: aria-label matrix across EnterButtonText x Loading. While Loading, the button's visible
+    // content (icon or enter-button text) is replaced by an aria-hidden spinner, so a button that
+    // was relying on EnterButtonText for its accessible name would otherwise go nameless -- suppress
+    // aria-label only when the enter-button text is what's actually rendered (HasEnterButtonText &&
+    // !Loading), not whenever EnterButtonText is merely set.
+
+    [Fact]
+    public void SearchInput_enter_button_text_while_loading_keeps_an_aria_label()
+    {
+        var cut = Render<SearchInput>(p => p
+            .Add(s => s.EnterButtonText, "Search")
+            .Add(s => s.Loading, true));
+
+        var btn = cut.Find(".wss-search-btn");
+        Assert.DoesNotContain("Search", btn.TextContent); // spinner replaced the visible text
+        Assert.Equal("Search", btn.GetAttribute("aria-label")); // default SearchButtonLabel
+        Assert.True(btn.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void SearchInput_enter_button_text_without_loading_still_suppresses_the_aria_label()
+    {
+        var cut = Render<SearchInput>(p => p
+            .Add(s => s.EnterButtonText, "Search")
+            .Add(s => s.Loading, false));
+
+        Assert.Null(cut.Find(".wss-search-btn").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void SearchInput_icon_only_button_keeps_its_aria_label_while_loading()
+    {
+        var cut = Render<SearchInput>(p => p.Add(s => s.Loading, true));
+
+        var btn = cut.Find(".wss-search-btn");
+        Assert.Equal("Search", btn.GetAttribute("aria-label"));
+        Assert.True(btn.HasAttribute("disabled"));
     }
 
     [Fact]
