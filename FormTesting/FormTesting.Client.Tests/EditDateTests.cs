@@ -443,9 +443,10 @@ public class EditDateTests : BunitContext
         Assert.Equal("Pick a birthday", cut.Find(".wss-picker-input-date").GetAttribute("placeholder"));
 
         Open(cut);
-        Assert.True(Day(cut, 9).HasAttribute("disabled"));
-        Assert.False(Day(cut, 10).HasAttribute("disabled"));
-        Assert.True(Day(cut, 21).HasAttribute("disabled"));
+        // Rejected days render aria-disabled (still focusable, activation no-ops), not native disabled.
+        Assert.Equal("true", Day(cut, 9).GetAttribute("aria-disabled"));
+        Assert.NotEqual("true", Day(cut, 10).GetAttribute("aria-disabled"));
+        Assert.Equal("true", Day(cut, 21).GetAttribute("aria-disabled"));
     }
 
     // EditDate<T> generalizes beyond the original DateTime?-only binding -- these cover the
@@ -1068,8 +1069,8 @@ public class EditDateTests : BunitContext
 
         Open(cut);
 
-        Assert.True(Day(cut, 7).HasAttribute("disabled")); // Saturday, same week as the 5th
-        Assert.False(Day(cut, 5).HasAttribute("disabled"));
+        Assert.Equal("true", Day(cut, 7).GetAttribute("aria-disabled")); // Saturday, same week as the 5th
+        Assert.NotEqual("true", Day(cut, 5).GetAttribute("aria-disabled"));
     }
 
     [Fact]

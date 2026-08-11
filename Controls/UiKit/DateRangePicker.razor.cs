@@ -306,6 +306,16 @@ public partial class DateRangePicker : PickerBase
     /// pick session. Override to localize.</summary>
     [Parameter] public string OkText { get; set; } = "OK";
 
+    /// <summary>Leading text of the visually-hidden format hint BOTH inputs' <c>aria-describedby</c>
+    /// points at (they share a single <see cref="Format"/>, so there is one hint, not two) — rendered
+    /// as "<c>{FormatHintLabel} {format}</c>", where the format is <see cref="Format"/>'s effective
+    /// value (or <c>yyyy-Qn</c>/<c>yyyy-Www</c> in <see cref="DatePickerMode.Quarter"/>/
+    /// <see cref="DatePickerMode.Week"/>'s own shorthand modes, which is what the fields actually
+    /// display and parse there). Defaults to "Format:"; override to localize, or set to an empty
+    /// string to drop the hint (and its <c>aria-describedby</c> token) entirely. Deliberately separate
+    /// from <see cref="StartPlaceholder"/>/<see cref="EndPlaceholder"/>.</summary>
+    [Parameter] public string FormatHintLabel { get; set; } = "Format:";
+
     // Validation-state ARIA passthrough onto the actual inputs, for form wrappers (EditDateRange).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio, doubled because the two
     // bound fields validate independently — AdditionalAttributes can't do this job because it lands
@@ -348,6 +358,9 @@ public partial class DateRangePicker : PickerBase
     // Index 0 = left panel's grid, 1 = right panel's — see the ant-design-blazor / procurement-hub
     // precedent for @ref into an array element inside a @for loop.
     readonly ElementReference[] _gridRefs = new ElementReference[2];
+    // Lazy fallback for BaseId when the consumer set no Id -- the panel/format-hint ids still have to
+    // be unique per instance and stable across renders (aria-controls/aria-describedby resolve by id).
+    string? _generatedId;
     // 0 = start, 1 = end. Drives the active-side underline while open.
     int _activeInput;
     // A new range pick is in progress: the first unit is chosen, the second click commits. While
@@ -466,6 +479,80 @@ public partial class DateRangePicker : PickerBase
 
     string DefaultPlaceholder => EffectiveFormat.ToUpperInvariant();
 
+    // The id everything else derives from: the START input's consumer Id when set (so a consumer-owned
+    // id keeps driving the derived ones), otherwise a generated per-instance fallback. Same shape as
+    // DatePicker.BaseId / Select.BaseId / Tabs.BaseId. EndId is deliberately NOT involved: the panel
+    // and the format hint belong to the control as a whole, not to one endpoint.
+    string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-picker-range-{Guid.NewGuid():N}");
+
+    // The dropdown panel's own id -- what BOTH inputs' aria-controls point at while open.
+    string PanelId => $"{BaseId}-panel";
+
+    // The single visually-hidden format hint's id, appended to BOTH inputs' aria-describedby.
+    string FormatHintId => $"{BaseId}-format";
+
+    // "Format: MM/dd/yyyy" (or blank, which suppresses both the span and its describedby tokens).
+    string FormatHintText =>
+        string.IsNullOrEmpty(FormatHintLabel) ? string.Empty : $"{FormatHintLabel} {DescribedFormat}";
+
+    // Each endpoint's own consumer-supplied aria-describedby (a form wrapper's error/description ids
+    // -- see EditDateRange) with the shared format hint's id APPENDED, so the wrapper's chain keeps
+    // its order and the hint reads last. Null (no hint, no consumer value) omits the attribute exactly
+    // as before this existed.
+    string? EffectiveStartAriaDescribedBy => WithFormatHint(StartAriaDescribedBy);
+    string? EffectiveEndAriaDescribedBy => WithFormatHint(EndAriaDescribedBy);
+
+    string? WithFormatHint(string? describedBy) => FormatHintText.Length == 0
+        ? describedBy
+        : string.IsNullOrEmpty(describedBy) ? FormatHintId : $"{describedBy} {FormatHintId}";
+
+    // What the panel currently displays, as one string: the text of the panel's aria-live region, so
+    // every navigation (nav buttons, header selects, a keyboard move that crosses the view) announces
+    // where the calendar now is. The dual-panel modes name BOTH panels -- each grid also carries its
+    // own half as its aria-label, and this joins them in reading order. Time mode has no calendar to
+    // navigate, so it contributes nothing.
+    string ViewLabel => Mode switch
+    {
+        DatePickerMode.Time => string.Empty,
+        DatePickerMode.DateTime => SessionViewLabel,
+        _ => EffectiveMode switch
+        {
+            DatePickerMode.Month or DatePickerMode.Quarter =>
+                $"{LeftYear.ToString(PickerCulture)}, {RightYear.ToString(PickerCulture)}",
+            DatePickerMode.Year => $"{DecadeLabelFor(LeftDecadeStart)}, {DecadeLabelFor(RightDecadeStart)}",
+            _ => $"{_viewMonth.ToString("MMMM yyyy", PickerCulture)}, " +
+                 $"{_viewMonth.AddMonths(1).ToString("MMMM yyyy", PickerCulture)}",
+        },
+    };
+
+    // The Time/DateTime pick session's lone calendar panel: its grid's accessible name, and (via
+    // ViewLabel above) its live-region text.
+    string SessionViewLabel => _viewMonth.ToString("MMMM yyyy", PickerCulture);
+
+    // ----- ARIA grid row grouping --------------------------------------------
+    // The day grids get their rows for free (GridWeekRows -- the same 6x7 chunking the week-number
+    // layout already rendered); the unit grids need the same treatment, chunked to match each grid's
+    // own CSS grid-template-columns so a role="row" never spans a visual line break. The wrappers are
+    // display:contents, so the buttons stay the real grid items and the layout is unchanged. Mirrors
+    // DatePicker's own set, parameterized by panel (this control renders each grid twice).
+
+    // .wss-picker-month-grid is repeat(3, 1fr); .wss-picker-quarter-grid is repeat(4, 1fr).
+    const int MonthGridColumns = 3;
+    const int QuarterGridColumns = 4;
+
+    static IEnumerable<DateTime[]> UnitRows(IEnumerable<DateTime> units, int columns) => units.Chunk(columns);
+
+    static IEnumerable<DateTime> MonthUnits(int year) =>
+        Enumerable.Range(1, 12).Select(m => new DateTime(year, m, 1));
+
+    // The panel's decade plus the leading/trailing dimmed adjacent-decade cells (the decade start is
+    // already ClampDecadeStartForRange'd, which keeps both inside DateTime's representable range).
+    static IEnumerable<DateTime> YearUnits(int decadeStart) =>
+        Enumerable.Range(-1, 12).Select(i => new DateTime(decadeStart + i, 1, 1));
+
+    static IEnumerable<DateTime> QuarterUnits(int year) =>
+        Enumerable.Range(1, 4).Select(q => QuarterStart(year, q));
+
     // While a fresh pick is in progress the field previews it -- the date-only two-click flow shows
     // just the pending start (end empties, since a fresh pick fully replaces the old range); the
     // Time/DateTime pick session shows EACH side's own resolved value (pending-this-session, or
@@ -500,6 +587,26 @@ public partial class DateRangePicker : PickerBase
         var (s, e) = DisplayRange;
         return unit == s || unit == e;
     }
+
+    // Strictly between the two endpoints -- the interior of the committed (or in-progress) range, the
+    // same span CellClass paints wss-picker-cell-in-range / UnitBtnClass paints
+    // wss-picker-month-btn-in-range on.
+    bool IsInRange(DateTime unit)
+    {
+        var (s, e) = DisplayRange;
+        return s is { } a && e is { } b && a != b && unit > a && unit < b;
+    }
+
+    // What a day/month/quarter/year gridcell renders aria-selected="true" for. The whole range is
+    // selected, not just its two ends: an interior day used to have a color band and NO ARIA state at
+    // all, so a screen-reader user walking the grid could hear both endpoints but nothing about the 27
+    // days between them. (The audit's PKR-8.) Endpoints keep their filled look via
+    // wss-picker-day-selected / wss-picker-month-btn-selected, which stay class-driven.
+    bool IsUnitAriaSelected(DateTime unit) => IsEndpoint(unit) || IsInRange(unit);
+
+    // Week mode's row-level equivalent: the ROW is the selection unit there, so every one of its 7
+    // cells answers with the row's own state (see IsWeekRowEndpoint / WeekRowClass).
+    bool IsWeekAriaSelected(DateTime weekStart) => IsWeekRowEndpoint(weekStart) || IsInRange(weekStart);
 
     string CellClass(DateTime day)
     {
@@ -547,7 +654,7 @@ public partial class DateRangePicker : PickerBase
     }
 
     // Week mode's row-wide "is this row an endpoint" check -- every day sharing a week with the
-    // start or end endpoint is aria-pressed, not just the single day that happens to equal the week
+    // start or end endpoint is aria-selected, not just the single day that happens to equal the week
     // start itself, mirroring DatePicker.IsDaySelected one level up (day -> row).
     bool IsWeekRowEndpoint(DateTime weekStart)
     {
@@ -588,12 +695,15 @@ public partial class DateRangePicker : PickerBase
     // range/preview semantics as CellClass+DayClass above, but painted directly on the button (no
     // wrapping cell div and no half-inset endpoint split) since the month/quarter/year grid's own
     // 8px gap between cells means a continuous cell-spanning band wouldn't visually connect anyway
-    // -- unlike the day grid's edge-to-edge cells. An endpoint unit needs no modifier class here:
-    // aria-pressed="true" (via IsEndpoint) already gives it the filled/primary look through the
-    // existing .wss-picker-month-btn[aria-pressed="true"] rule.
+    // -- unlike the day grid's edge-to-edge cells. The endpoint's filled/primary look used to come
+    // from the button's own aria-pressed="true"; that state moved to aria-selected on the enclosing
+    // role="gridcell" (aria-selected is not valid on role="button", and an APG grid puts selection on
+    // the cell), so the endpoint now carries an explicit modifier class instead -- mirroring
+    // wss-picker-day-selected, which the day grid has always used for exactly this reason.
     string UnitBtnClass(DateTime unit, bool outside = false)
     {
         var cls = outside ? "wss-picker-month-btn wss-picker-month-btn-outside" : "wss-picker-month-btn";
+        if (IsEndpoint(unit)) cls += " wss-picker-month-btn-selected";
         var (s, e) = DisplayRange;
         if (s is { } a && e is { } b && a != b)
         {
@@ -610,9 +720,10 @@ public partial class DateRangePicker : PickerBase
 
     // The five Min/Max/DisabledDate predicates, each binding this instance's own parameters to the
     // matching PickerMath helper -- see those for the per-granularity contracts (DisabledDate is
-    // folded into every one of them, so the cell `disabled` attributes, the DefaultFocus*/
-    // FirstEnabled* skip logic and IsUnitDisabled's typed-text/preset commit guards can never
-    // disagree about what counts as disabled). They were character-identical to DatePicker's own.
+    // folded into every one of them, so the cell `aria-disabled` attributes, the click guards that
+    // back them, the DefaultFocus*/FirstEnabled* skip logic and IsUnitDisabled's typed-text/preset
+    // commit guards can never disagree about what counts as disabled). They were character-identical
+    // to DatePicker's own.
     bool IsDayDisabled(DateTime day) => PickerMath.IsDayDisabled(day, Min, Max, DisabledDate);
 
     bool IsMonthDisabled(DateTime month) => PickerMath.IsMonthDisabled(month, Min, Max, DisabledDate);
@@ -628,7 +739,8 @@ public partial class DateRangePicker : PickerBase
     bool IsWeekDisabledForCommit(DateTime weekStart) =>
         PickerMath.IsWeekDisabledForCommit(weekStart, Min, Max, DisabledDate);
 
-    // Dispatches to the Mode-appropriate disabled check -- shared by the grid `disabled` attributes,
+    // Dispatches to the Mode-appropriate disabled check -- shared by the grid `aria-disabled`
+    // attributes, the unit-click guard,
     // the DefaultFocus*/FirstEnabled* skip logic, and the typed-text commit guard, so they can never
     // disagree about what counts as disabled. Week's own day CELLS deliberately stay on the default
     // (day-granularity IsDayDisabled) arm below -- only the typed-text commit guard (which receives
@@ -831,10 +943,12 @@ public partial class DateRangePicker : PickerBase
         if (e is { } end && IsVisible(end) && !IsDayDisabled(end)) return end;
         if (IsVisible(DateTime.Today) && !IsDayDisabled(DateTime.Today)) return DateTime.Today;
         // No natural candidate is usable (disabled — e.g. Min in the future with nothing set yet).
-        // Falling through to the left panel's 1st like before would park the roving tabindex on a
-        // disabled button and make both grids keyboard-unreachable. Land on the first enabled day
-        // across either panel instead (left panel checked first); if both panels are entirely
-        // disabled there's nothing actionable in either, so any deterministic in-month day is fine.
+        // Land on the first enabled day across either panel instead (left panel checked first); if
+        // both panels are entirely disabled there's nothing actionable in either, so any deterministic
+        // in-month day is fine. This skip used to be load-bearing for keyboard REACHABILITY (with
+        // natively `disabled` cells a tabindex="0" that was also disabled gave the grids zero tab
+        // stops); disabled cells are now aria-disabled and stay focusable, so this is purely about
+        // where focus LANDS -- opening on something the user can actually pick. Kept for that reason.
         return FirstEnabledDay(_viewMonth) ?? FirstEnabledDay(_viewMonth.AddMonths(1)) ?? _viewMonth;
     }
 
@@ -865,10 +979,14 @@ public partial class DateRangePicker : PickerBase
     // _viewMonth (the left panel — the right is always _viewMonth + 1) only when navigation lands
     // outside BOTH currently visible months (so a move that's already covered by the other panel
     // doesn't needlessly re-anchor the view); see the branch below for which panel absorbs the new
-    // month on a crossing. A day that lands disabled (Min/Max) still becomes the focus target — only
-    // clicking commits, so
-    // parking keyboard focus on a disabled day is harmless and lets Left/Right keep stepping
-    // day-by-day through it. The actual DOM focus move (needed whenever a grid re-renders with new
+    // month on a crossing. A day that lands disabled (Min/Max/DisabledDate) still becomes the focus
+    // target -- the APG grid behavior, and what lets Left/Right keep stepping day-by-day THROUGH a
+    // disabled run instead of jumping it. That is only safe because a rejected day now renders
+    // aria-disabled rather than natively `disabled` (see RangeDayButtonFragment): it stays focusable,
+    // keeps the grids' single tab stop real, and can't blur focus to <body> when a view-crossing
+    // re-render lands the roving stop on it. Activation is blocked by OnGridDayClickAsync's own guard,
+    // not by the browser, so Enter/Space on a focused disabled cell no-ops too.
+    // The actual DOM focus move (needed whenever a grid re-renders with new
     // button instances, i.e. any view change) happens in OnAfterRenderAsync via _pendingFocusDate.
     // wss-picker.js suppresses the browser's native scroll for these keys when JS is available;
     // without it this state still updates, just without the DOM focus follow or scroll suppression.
@@ -1292,11 +1410,17 @@ public partial class DateRangePicker : PickerBase
 
     // The shared two-click range pick, used by the day/month/quarter/year grids alike: the first
     // click sets the pending start (and moves the active underline to the end input); the second
-    // commits (swapping a backwards pick) and closes. No disabled guard here -- same convention as
-    // DatePicker's grid click handlers: a disabled button's `disabled` attribute already prevents
-    // the browser from ever dispatching this click.
+    // commits (swapping a backwards pick) and closes.
+    //
+    // The guard is real work now, not belt-and-braces: cells render aria-disabled rather than natively
+    // `disabled` (they have to stay focusable -- see RangeDayButtonFragment), so the browser DOES
+    // dispatch this click, and an Enter/Space on a keyboard-focused disabled cell synthesizes one too.
+    // IsUnitDisabled is exactly the dispatcher each grid's own attribute renders from (Week's day
+    // buttons excepted -- they're day-granularity, guarded one level up in OnGridDayClickAsync), so
+    // the cell and the commit can never disagree.
     async Task OnUnitClickAsync(DateTime unit)
     {
+        if (IsUnitDisabled(unit)) return;
         // A calendar pick supersedes any half-typed input text — drop it so the field previews
         // the pick instead of the stale keystrokes.
         _startEdit = _endEdit = null;
@@ -1341,8 +1465,16 @@ public partial class DateRangePicker : PickerBase
     // OnUnitClickAsync should actually receive -- the week START in Week mode (see
     // OnWeekDayClickAsync), or the day itself everywhere else (Date mode, including with
     // ShowWeekNumbers's column -- a day click there still commits that day, not its week).
+    //
+    // The DAY-granularity guard belongs here, not in OnUnitClickAsync: the day button renders
+    // aria-disabled from IsDayDisabled (its own granularity) in EVERY mode, but in Week mode the unit
+    // that reaches OnUnitClickAsync is the week START, whose own IsUnitDisabled answer can differ
+    // (a DisabledDate predicate can reject one and not the other). Guarding here keeps the button's
+    // rendered state and the click honest at the granularity the button was actually rendered at,
+    // while OnUnitClickAsync's guard covers the unit that is about to be committed.
     Task OnGridDayClickAsync(DateTime day) =>
-        EffectiveMode == DatePickerMode.Week ? OnWeekDayClickAsync(day) : OnUnitClickAsync(day);
+        IsDayDisabled(day) ? Task.CompletedTask
+            : EffectiveMode == DatePickerMode.Week ? OnWeekDayClickAsync(day) : OnUnitClickAsync(day);
 
     // Hover-range preview: only tracked while a pick is in progress, so hovering the other 83 cells
     // of an idle grid never triggers a render.
@@ -1627,10 +1759,10 @@ public partial class DateRangePicker : PickerBase
 
     // DateTime mode's day click: sets the active endpoint's PENDING date, preserving its own
     // pending/committed time-of-day (null time -- no session value and no committed value yet --
-    // becomes midnight, the same default DatePicker's own DateTime day-click uses). The DAY itself
-    // needs no guard here -- same convention as every other grid click handler in this file: a
-    // disabled button's `disabled` attribute already prevents the browser from ever dispatching this
-    // click. The carried TIME-OF-DAY does: the active endpoint's DisabledTime is evaluated per DATE,
+    // becomes midnight, the same default DatePicker's own DateTime day-click uses). The DAY needs its
+    // own guard, same as every other grid click handler in this file: the cell renders aria-disabled
+    // (it has to stay focusable -- see SessionDayButtonFragment), so the click still reaches here.
+    // The carried TIME-OF-DAY needs a second one: the active endpoint's DisabledTime is per DATE,
     // so the clicked day can disable the very hour/minute/second this click would move onto it --
     // exactly what ApplyTimePartAsync above and the typed route (IsCommitDisabled) already reject.
     // A rejected click no-ops (nothing pending changes, the panel stays put), same as theirs; the
@@ -1644,6 +1776,7 @@ public partial class DateRangePicker : PickerBase
     // exact bug ApplyTimePartAsync's own ComposeTimePart zeroing exists to prevent.
     Task OnSessionDayClickAsync(DateTime day)
     {
+        if (IsDayDisabled(day)) return Task.CompletedTask;
         var time = ActiveSessionValue?.TimeOfDay ?? TimeSpan.Zero;
         var composed = NormalizeForMode(day.Date + time);
         if (IsEndpointTimeDisabled(_activeInput, composed)) return Task.CompletedTask;
@@ -1658,8 +1791,12 @@ public partial class DateRangePicker : PickerBase
     // decision and by the calendar's range-tint/selected-day classing below.
     DateTime? OtherSessionValue => _activeInput == 0 ? (_pendingSessionEnd ?? End) : (_pendingSessionStart ?? Start);
 
-    // Whether `day` is either endpoint's own resolved day (active or other) -- drives
-    // aria-pressed/selected styling on the session's single calendar.
+    // Whether `day` is either endpoint's own resolved day (active or other) -- drives both the
+    // wss-picker-day-selected styling and the gridcell's aria-selected on the session's single
+    // calendar. The band BETWEEN them is deliberately not aria-selected here (unlike the dual-panel
+    // modes' committed range -- see IsUnitAriaSelected): the session's band is a tentative preview of
+    // a pair nothing has committed yet, which is exactly why it reuses the -preview classes rather
+    // than the committed -in-range ones (see SessionCellClass).
     bool IsSessionEndpoint(DateTime day) =>
         day == ActiveSessionValue?.Date || day == OtherSessionValue?.Date;
 

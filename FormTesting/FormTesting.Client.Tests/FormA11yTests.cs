@@ -127,10 +127,12 @@ public class FormA11yTests : BunitContext
         // FormLabel, so the End input's describedby is just its own validation message. The End half
         // used to be kept honest by the label-hidden gate it passes; with desc- no longer gated on
         // that, its attribute list has to stay out of the aria-ref resolution entirely.
-        Assert.Equal("error-msg-Start desc-Start", cut.Find("input.wss-picker-input-start").GetAttribute("aria-describedby"));
+        // Both halves also carry the picker's own visually-hidden format hint ("{Id}-format"), appended
+        // after the wrapper-supplied chain so the error/description ids keep their reading order.
+        Assert.Equal("error-msg-Start desc-Start Start-format", cut.Find("input.wss-picker-input-start").GetAttribute("aria-describedby"));
         // The End half's id is derived from Start's ("{id}-end"), so its would-be description element
         // is #desc-Start-end -- which nothing renders.
-        Assert.Equal("error-msg-Start-end", cut.Find("input.wss-picker-input-end").GetAttribute("aria-describedby"));
+        Assert.Equal("error-msg-Start-end Start-format", cut.Find("input.wss-picker-input-end").GetAttribute("aria-describedby"));
         Assert.Empty(cut.FindAll("#desc-Start-end"));
         Assert.NotNull(cut.Find("#desc-Start"));
     }

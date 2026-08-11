@@ -42,6 +42,22 @@ public class DatePickerTests : BunitContext
     static IElement MonthButton(IRenderedComponent<DatePicker> cut, int monthNumber) =>
         cut.FindAll(".wss-picker-month-btn")[monthNumber - 1];
 
+    // The role="gridcell" wrapper a calendar cell's button sits in -- where the ARIA selection state
+    // lives (aria-selected is not a valid attribute on role="button", and an APG grid puts selection
+    // on the cell). The button keeps the visual state as a class.
+    static IElement CellOf(IElement cellButton) => cellButton.ParentElement!;
+
+    // A rejected calendar cell renders aria-disabled, NOT the native `disabled` attribute: it has to
+    // stay focusable so the roving tabindex, the grid's single tab stop, and the month-crossing DOM
+    // focus follow all keep working (see DatePicker.DayButtonFragment). The panel's nav/footer/OK
+    // buttons and the time-row <option>s are not grid cells and keep the real attribute -- assertions
+    // on those deliberately still use HasAttribute("disabled").
+    static bool IsCellDisabled(IElement cellButton) => cellButton.GetAttribute("aria-disabled") == "true";
+
+    // The grid's own role="row" children (not a descendant query: the week-rows layout nests nothing,
+    // but keeping this direct pins that rows are the grid's immediate children either way).
+    static int RowCount(IElement grid) => grid.Children.Count(c => c.GetAttribute("role") == "row");
+
     // Every rendered attribute (name-ordered) plus the text content, as one comparable string --
     // for asserting that two render paths produce the SAME element. bUnit's own `blazor:*` event
     // bookkeeping attributes are excluded: their handler ids are per-render, so they differ between
@@ -109,8 +125,8 @@ public class DatePickerTests : BunitContext
 
         var selected = Day(cut, 14);
         Assert.Contains("wss-picker-day-selected", selected.ClassList);
-        Assert.Equal("true", selected.GetAttribute("aria-pressed"));
-        Assert.Equal("false", Day(cut, 15).GetAttribute("aria-pressed"));
+        Assert.Equal("true", CellOf(selected).GetAttribute("aria-selected"));
+        Assert.Null(CellOf(Day(cut, 15)).GetAttribute("aria-selected"));
     }
 
     [Fact]
@@ -123,10 +139,10 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.True(Day(cut, 9).HasAttribute("disabled"));
-        Assert.False(Day(cut, 10).HasAttribute("disabled"));
-        Assert.False(Day(cut, 20).HasAttribute("disabled"));
-        Assert.True(Day(cut, 21).HasAttribute("disabled"));
+        Assert.True(IsCellDisabled(Day(cut, 9)));
+        Assert.False(IsCellDisabled(Day(cut, 10)));
+        Assert.False(IsCellDisabled(Day(cut, 20)));
+        Assert.True(IsCellDisabled(Day(cut, 21)));
     }
 
     [Fact]
@@ -366,7 +382,7 @@ public class DatePickerTests : BunitContext
 
         var focusStop = Day(cut, 20);
         Assert.Equal("0", focusStop.GetAttribute("tabindex"));
-        Assert.False(focusStop.HasAttribute("disabled"));
+        Assert.False(IsCellDisabled(focusStop));
         Assert.Equal("-1", Day(cut, 21).GetAttribute("tabindex"));
     }
 
@@ -456,7 +472,7 @@ public class DatePickerTests : BunitContext
         var feb = MonthButton(cut, 2);
         Assert.Equal("2026-02-01", feb.GetAttribute("data-date"));
         Assert.Equal("February 2026", feb.GetAttribute("aria-label"));
-        Assert.Equal("true", feb.GetAttribute("aria-pressed"));
+        Assert.Equal("true", CellOf(feb).GetAttribute("aria-selected"));
 
         Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
     }
@@ -489,12 +505,12 @@ public class DatePickerTests : BunitContext
         Open(cut);
 
         var feb = MonthButton(cut, 2);
-        Assert.Equal("true", feb.GetAttribute("aria-pressed")); // Feb14's month
-        Assert.True(feb.HasAttribute("disabled")); // entirely before Min's month (March)
+        Assert.Equal("true", CellOf(feb).GetAttribute("aria-selected")); // Feb14's month
+        Assert.True(IsCellDisabled(feb)); // entirely before Min's month (March)
 
-        Assert.False(MonthButton(cut, 3).HasAttribute("disabled")); // Min's own month
-        Assert.False(MonthButton(cut, 10).HasAttribute("disabled")); // Max's own month
-        Assert.True(MonthButton(cut, 11).HasAttribute("disabled")); // entirely after Max's month
+        Assert.False(IsCellDisabled(MonthButton(cut, 3))); // Min's own month
+        Assert.False(IsCellDisabled(MonthButton(cut, 10))); // Max's own month
+        Assert.True(IsCellDisabled(MonthButton(cut, 11))); // entirely after Max's month
     }
 
     [Fact]
@@ -839,10 +855,10 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.True(Day(cut, 9).HasAttribute("disabled"));
-        Assert.False(Day(cut, 10).HasAttribute("disabled"));
-        Assert.False(Day(cut, 20).HasAttribute("disabled"));
-        Assert.True(Day(cut, 21).HasAttribute("disabled"));
+        Assert.True(IsCellDisabled(Day(cut, 9)));
+        Assert.False(IsCellDisabled(Day(cut, 10)));
+        Assert.False(IsCellDisabled(Day(cut, 20)));
+        Assert.True(IsCellDisabled(Day(cut, 21)));
     }
 
     [Fact]
@@ -863,7 +879,7 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.False(Day(cut, 20).HasAttribute("disabled")); // the DAY itself is selectable
+        Assert.False(IsCellDisabled(Day(cut, 20))); // the DAY itself is selectable
 
         Day(cut, 20).Click();
 
@@ -912,7 +928,7 @@ public class DatePickerTests : BunitContext
             .Add(c => c.ValueChanged, (DateTime? v) => value = v));
 
         Open(cut);
-        Assert.False(Day(cut, 20).HasAttribute("disabled")); // the button renders enabled...
+        Assert.False(IsCellDisabled(Day(cut, 20))); // the button renders enabled...
         Day(cut, 20).Click();                               // ...so the click must not be rejected
 
         Assert.Equal(new DateTime(2026, 2, 20, 13, 45, 0), value);
@@ -1082,7 +1098,7 @@ public class DatePickerTests : BunitContext
         Assert.Contains("wss-picker-month-btn-outside", buttons[11].ClassList);
 
         Assert.Equal("2020-2029", cut.Find(".wss-picker-decade-label").TextContent);
-        Assert.Equal("true", YearButton(cut, 7).GetAttribute("aria-pressed")); // 2026
+        Assert.Equal("true", CellOf(YearButton(cut, 7)).GetAttribute("aria-selected")); // 2026
         Assert.Equal("2026", YearButton(cut, 7).GetAttribute("aria-label"));
         Assert.Equal("2026-01-01", YearButton(cut, 7).GetAttribute("data-date"));
     }
@@ -1130,10 +1146,10 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.True(YearButton(cut, 2).HasAttribute("disabled"));  // 2021 -- entirely before Min's year
-        Assert.False(YearButton(cut, 3).HasAttribute("disabled")); // 2022 -- Min's own year
-        Assert.False(YearButton(cut, 8).HasAttribute("disabled")); // 2027 -- Max's own year
-        Assert.True(YearButton(cut, 9).HasAttribute("disabled"));  // 2028 -- entirely after Max's year
+        Assert.True(IsCellDisabled(YearButton(cut, 2)));  // 2021 -- entirely before Min's year
+        Assert.False(IsCellDisabled(YearButton(cut, 3))); // 2022 -- Min's own year
+        Assert.False(IsCellDisabled(YearButton(cut, 8))); // 2027 -- Max's own year
+        Assert.True(IsCellDisabled(YearButton(cut, 9)));  // 2028 -- entirely after Max's year
     }
 
     [Fact]
@@ -1295,7 +1311,7 @@ public class DatePickerTests : BunitContext
         var q3 = buttons[2];
         Assert.Equal("2026-07-01", q3.GetAttribute("data-date"));
         Assert.Equal("Q3 2026", q3.GetAttribute("aria-label"));
-        Assert.Equal("true", q3.GetAttribute("aria-pressed"));
+        Assert.Equal("true", CellOf(q3).GetAttribute("aria-selected"));
 
         Assert.Equal("2026", cut.Find(".wss-picker-month-header select").QuerySelector("option[selected]")!.GetAttribute("value"));
     }
@@ -1327,10 +1343,10 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.True(QuarterButton(cut, 1).HasAttribute("disabled"));  // Q1 entirely before Min's quarter
-        Assert.False(QuarterButton(cut, 2).HasAttribute("disabled")); // Q2 -- Min's own quarter
-        Assert.False(QuarterButton(cut, 3).HasAttribute("disabled")); // Q3 -- Max's own quarter
-        Assert.True(QuarterButton(cut, 4).HasAttribute("disabled"));  // Q4 entirely after Max's quarter
+        Assert.True(IsCellDisabled(QuarterButton(cut, 1)));  // Q1 entirely before Min's quarter
+        Assert.False(IsCellDisabled(QuarterButton(cut, 2))); // Q2 -- Min's own quarter
+        Assert.False(IsCellDisabled(QuarterButton(cut, 3))); // Q3 -- Max's own quarter
+        Assert.True(IsCellDisabled(QuarterButton(cut, 4)));  // Q4 entirely after Max's quarter
     }
 
     [Fact]
@@ -1544,17 +1560,17 @@ public class DatePickerTests : BunitContext
         Assert.Contains("wss-picker-week-row-selected", rows[1].ClassList);
         Assert.DoesNotContain("wss-picker-week-row-selected", rows[0].ClassList);
 
-        // Every day in the selected week is pressed -- the row, not the day, is the selection unit.
+        // Every day in the selected week is aria-selected -- the row, not the day, is the selection unit.
         var day8 = Day(cut, 8);
         var day14 = Day(cut, 14);
-        Assert.Equal("true", day8.GetAttribute("aria-pressed"));
-        Assert.Equal("true", day14.GetAttribute("aria-pressed"));
+        Assert.Equal("true", CellOf(day8).GetAttribute("aria-selected"));
+        Assert.Equal("true", CellOf(day14).GetAttribute("aria-selected"));
         // Individual day-selected background is suppressed in Week mode.
         Assert.DoesNotContain("wss-picker-day-selected", day8.ClassList);
         Assert.DoesNotContain("wss-picker-day-selected", day14.ClassList);
 
         // The next row (Feb 15-21) is untouched.
-        Assert.Equal("false", Day(cut, 15).GetAttribute("aria-pressed"));
+        Assert.Null(CellOf(Day(cut, 15)).GetAttribute("aria-selected"));
     }
 
     [Fact]
@@ -1591,8 +1607,8 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.True(Day(cut, 8).HasAttribute("disabled"));
-        Assert.False(Day(cut, 10).HasAttribute("disabled"));
+        Assert.True(IsCellDisabled(Day(cut, 8)));
+        Assert.False(IsCellDisabled(Day(cut, 10)));
 
         Day(cut, 10).Click(); // commits the week start even though part of the week precedes Min
         Assert.Equal(FeblyWeekStart, value);
@@ -1827,7 +1843,7 @@ public class DatePickerTests : BunitContext
         var max = new DateTime(2026, 2, 20);
         var flat = DayButtons(false, Feb14, min, max);
         Assert.Equal(42, flat.Count);
-        Assert.Contains(flat, b => b.Contains("disabled=", StringComparison.Ordinal));
+        Assert.Contains(flat, b => b.Contains("aria-disabled=true", StringComparison.Ordinal));
         Assert.Contains(flat, b => b.Contains("wss-picker-day-selected", StringComparison.Ordinal));
         Assert.Contains(flat, b => b.Contains("tabindex=0", StringComparison.Ordinal));
         Assert.Contains(flat, b => b.Contains("wss-picker-day-outside", StringComparison.Ordinal));
@@ -1891,9 +1907,9 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.True(Day(cut, 14).HasAttribute("disabled"));  // Saturday
-        Assert.True(Day(cut, 15).HasAttribute("disabled"));  // Sunday
-        Assert.False(Day(cut, 16).HasAttribute("disabled")); // Monday
+        Assert.True(IsCellDisabled(Day(cut, 14)));  // Saturday
+        Assert.True(IsCellDisabled(Day(cut, 15)));  // Sunday
+        Assert.False(IsCellDisabled(Day(cut, 16))); // Monday
 
         var input = cut.Find(".wss-picker-input-date");
         input.Input("02/14/2026"); // a disabled Saturday
@@ -1918,8 +1934,8 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.True(MonthButton(cut, 7).HasAttribute("disabled"));
-        Assert.False(MonthButton(cut, 6).HasAttribute("disabled"));
+        Assert.True(IsCellDisabled(MonthButton(cut, 7)));
+        Assert.False(IsCellDisabled(MonthButton(cut, 6)));
         Assert.Contains(new DateTime(2026, 7, 1), seenArgs); // the month START, not just any July date
     }
 
@@ -1941,7 +1957,7 @@ public class DatePickerTests : BunitContext
 
         Open(cut);
 
-        Assert.False(Day(cut, 10).HasAttribute("disabled")); // the clicked day's own button stays enabled
+        Assert.False(IsCellDisabled(Day(cut, 10))); // the clicked day's own button stays enabled
 
         Day(cut, 10).Click();
 
@@ -2732,5 +2748,226 @@ public class DatePickerTests : BunitContext
         cut.Render(p => p.Add(c => c.Width, "300px"));
 
         Assert.Equal("12/3", cut.Find(".wss-picker-input-date").GetAttribute("value"));
+    }
+
+    // ----- Accessibility: the disabled-cell keyboard trap, and the ARIA grid pattern -------------
+
+    [Fact]
+    public void Arrowing_onto_a_disabled_day_leaves_it_focusable_and_keeps_the_grids_tab_stop()
+    {
+        // The keyboard-trap regression. A Min/Max-rejected day is aria-disabled, never natively
+        // `disabled`: the roving tabindex parks on whatever arrow navigation targets, and a natively
+        // disabled button both refuses .focus() (the ring stalls) and drops out of the tab order --
+        // which, on the grid's SOLE tabindex="0", left the whole panel with no tab stop at all.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2026, 2, 10))
+            .Add(c => c.Max, new DateTime(2026, 2, 20)));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowUp" }); // Feb 14 -> Feb 7
+
+        var parked = Day(cut, 7);
+        Assert.True(IsCellDisabled(parked));
+        Assert.False(parked.HasAttribute("disabled")); // ...and NOT natively disabled
+        Assert.Equal("0", parked.GetAttribute("tabindex"));
+        Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']")); // exactly one real tab stop
+    }
+
+    [Fact]
+    public void Activating_a_disabled_day_commits_nothing_and_leaves_the_panel_open()
+    {
+        // The other half of the aria-disabled swap: the browser now DOES dispatch the click (and
+        // Enter/Space on a focused cell synthesizes one), so the commit guard -- not the attribute --
+        // is what rejects it. bUnit's Click() is exactly that synthesized activation.
+        DateTime? value = null;
+        var raised = 0;
+        var cut = RenderPicker(p => p
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2026, 2, 10))
+            .Add(c => c.ValueChanged, (DateTime? v) => { value = v; raised++; }));
+        Open(cut);
+
+        Day(cut, 9).Click(); // before Min
+
+        Assert.Equal(0, raised);
+        Assert.Null(value);
+        Assert.Equal(Feb14, cut.Instance.Value);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown")); // a rejected pick never closes
+    }
+
+    [Theory]
+    [InlineData(DatePickerMode.Month, ".wss-picker-month-grid", 4, 12)]
+    [InlineData(DatePickerMode.Year, ".wss-picker-month-grid", 4, 12)]
+    [InlineData(DatePickerMode.Quarter, ".wss-picker-quarter-grid", 1, 4)]
+    public void Activating_a_disabled_unit_cell_commits_nothing(
+        DatePickerMode mode, string gridSelector, int expectedRows, int expectedCells)
+    {
+        // Same contract one granularity up, for all three unit grids -- and, while each is rendered,
+        // the row/cell counts that pin their ARIA grid shape against the CSS grid-template they have
+        // to match (3 columns for month/year, 4 for quarter).
+        var raised = 0;
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, mode)
+            .Add(c => c.Value, Feb14)
+            .Add(c => c.Min, new DateTime(2027, 1, 1)) // rejects everything the 2026 view shows
+            .Add(c => c.ValueChanged, (DateTime? _) => raised++));
+        Open(cut);
+
+        var grid = cut.Find(gridSelector);
+        Assert.Equal("grid", grid.GetAttribute("role"));
+        Assert.Equal(expectedRows, RowCount(grid));
+        Assert.Equal(expectedCells, grid.QuerySelectorAll("[role='gridcell']").Length);
+
+        var cell = grid.QuerySelectorAll(".wss-picker-month-btn")[0];
+        Assert.True(IsCellDisabled(cell));
+        Assert.False(cell.HasAttribute("disabled"));
+        cell.Click();
+
+        Assert.Equal(0, raised);
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+    }
+
+    [Fact]
+    public void The_day_grid_is_an_aria_grid_of_rows_and_gridcells_named_by_the_displayed_month()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        var grid = cut.Find(".wss-picker-grid");
+        Assert.Equal("grid", grid.GetAttribute("role"));
+        Assert.Equal("February 2026", grid.GetAttribute("aria-label"));
+        Assert.Equal(6, RowCount(grid));
+        Assert.Equal(42, grid.QuerySelectorAll("[role='gridcell']").Length);
+        // Every gridcell holds exactly one day button -- the cell carries the selection state, the
+        // button stays a button.
+        Assert.All(grid.QuerySelectorAll("[role='gridcell']"),
+            c => Assert.Single(c.QuerySelectorAll(".wss-picker-day")));
+
+        // The weekday strip is decorative and stays OUTSIDE the grid of days (a grid whose rows are
+        // days only), so it can't be read as a header row.
+        var header = cut.Find(".wss-picker-week-header");
+        Assert.Equal("true", header.GetAttribute("aria-hidden"));
+        Assert.Empty(grid.QuerySelectorAll(".wss-picker-week-header"));
+    }
+
+    [Fact]
+    public void The_week_rows_layout_is_an_aria_grid_whose_own_rows_carry_the_row_role()
+    {
+        // The week-number layout already renders a real row element per week, so it takes role="row"
+        // directly instead of the flat grid's extra display:contents wrapper.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Mode, DatePickerMode.Week)
+            .Add(c => c.Value, Feb14));
+        Open(cut);
+
+        var grid = cut.Find(".wss-picker-grid-rows");
+        Assert.Equal("grid", grid.GetAttribute("role"));
+        Assert.Equal("February 2026", grid.GetAttribute("aria-label"));
+        Assert.Equal(6, grid.QuerySelectorAll("[role='row']").Length);
+        Assert.All(grid.QuerySelectorAll(".wss-picker-week-row"),
+            r => Assert.Equal("row", r.GetAttribute("role")));
+        Assert.Equal(42, grid.QuerySelectorAll("[role='gridcell']").Length);
+
+        // Week mode's selection unit is the ROW: all 7 of the selected week's cells answer selected.
+        var selectedCells = grid.QuerySelectorAll("[role='gridcell'][aria-selected='true']");
+        Assert.Equal(7, selectedCells.Length);
+    }
+
+    [Fact]
+    public void The_panel_live_region_names_the_displayed_month_and_follows_navigation()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        var live = cut.Find(".wss-picker-dropdown [aria-live]");
+        Assert.Equal("polite", live.GetAttribute("aria-live"));
+        Assert.Contains("wss-sr-only", live.ClassList); // visually hidden, AT-only
+        Assert.Equal("February 2026", live.TextContent);
+
+        cut.FindAll(".wss-picker-nav")[1].Click(); // next month
+        Assert.Equal("March 2026", cut.Find(".wss-picker-dropdown [aria-live]").TextContent);
+
+        // A keyboard move that crosses out of the view re-announces too.
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" });
+        Assert.Equal("April 2026", cut.Find(".wss-picker-dropdown [aria-live]").TextContent);
+    }
+
+    [Fact]
+    public void The_year_panel_live_region_and_grid_name_the_decade()
+    {
+        var cut = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Year)
+            .Add(c => c.Value, Feb14));
+        Open(cut);
+
+        Assert.Equal("2020-2029", cut.Find(".wss-picker-dropdown [aria-live]").TextContent);
+        Assert.Equal("2020-2029", cut.Find(".wss-picker-month-grid").GetAttribute("aria-label"));
+
+        cut.FindAll(".wss-picker-nav")[1].Click(); // next decade
+        Assert.Equal("2030-2039", cut.Find(".wss-picker-dropdown [aria-live]").TextContent);
+    }
+
+    [Fact]
+    public void The_input_points_at_the_panel_only_while_it_is_open()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Id, "birthday"));
+
+        // Closed: no panel exists, so aria-controls must not name one.
+        Assert.Null(cut.Find(".wss-picker-input-date").GetAttribute("aria-controls"));
+
+        Open(cut);
+
+        var panelId = cut.Find(".wss-picker-input-date").GetAttribute("aria-controls");
+        Assert.Equal("birthday-panel", panelId);
+        Assert.Equal(panelId, cut.Find(".wss-picker-dropdown").GetAttribute("id"));
+    }
+
+    [Fact]
+    public void The_format_hint_is_visually_hidden_and_appended_to_the_describedby_chain()
+    {
+        // The consumer's own describedby ids (a form wrapper's error/description -- see EditDate)
+        // keep their order and the hint reads last.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Id, "birthday")
+            .Add(c => c.AriaDescribedBy, "error-msg-Birthday desc-Birthday"));
+
+        var input = cut.Find(".wss-picker-input-date");
+        Assert.Equal("error-msg-Birthday desc-Birthday birthday-format", input.GetAttribute("aria-describedby"));
+
+        var hint = cut.Find("#birthday-format");
+        Assert.Contains("wss-sr-only", hint.ClassList);
+        Assert.Equal("Format: MM/dd/yyyy", hint.TextContent);
+        // The visible placeholder is untouched -- it stays the spec string, not a format.
+        Assert.Equal("Select date", input.GetAttribute("placeholder"));
+    }
+
+    [Fact]
+    public void The_format_hint_describes_the_shorthand_quarter_and_week_fields_actually_parse()
+    {
+        // Those two modes bypass EffectiveFormat entirely for a hand-rolled display/parse, so hinting
+        // its bland "yyyy" fallback would be actively wrong.
+        var quarter = Render<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Quarter).Add(c => c.Id, "q"));
+        Assert.Equal("Format: yyyy-Qn", quarter.Find("#q-format").TextContent);
+
+        var week = Render<DatePicker>(p => p.Add(c => c.Mode, DatePickerMode.Week).Add(c => c.Id, "w"));
+        Assert.Equal("Format: yyyy-Www", week.Find("#w-format").TextContent);
+
+        // An explicit Format is used verbatim by display/parse, so the hint follows it.
+        var explicitFormat = Render<DatePicker>(p => p
+            .Add(c => c.Mode, DatePickerMode.Quarter).Add(c => c.Format, "yyyy-MM-dd").Add(c => c.Id, "e"));
+        Assert.Equal("Format: yyyy-MM-dd", explicitFormat.Find("#e-format").TextContent);
+    }
+
+    [Fact]
+    public void Blanking_the_format_hint_label_drops_the_hint_and_its_describedby_token()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Id, "birthday")
+            .Add(c => c.FormatHintLabel, string.Empty)
+            .Add(c => c.AriaDescribedBy, "error-msg-Birthday"));
+
+        Assert.Empty(cut.FindAll("#birthday-format"));
+        Assert.Equal("error-msg-Birthday", cut.Find(".wss-picker-input-date").GetAttribute("aria-describedby"));
     }
 }

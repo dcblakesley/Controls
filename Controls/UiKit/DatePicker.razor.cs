@@ -213,8 +213,8 @@ public partial class DatePicker : PickerBase
     /// effect in <see cref="DatePickerMode.Time"/>/<see cref="DatePickerMode.DateTime"/>
     /// — see <see cref="ShowNow"/> for their equivalent. The button renders DISABLED, not hidden,
     /// when the normalized today is rejected by <see cref="Min"/>/<see cref="Max"/>/
-    /// <see cref="DisabledDate"/> — the same convention every other disabled cell in this control
-    /// follows.</summary>
+    /// <see cref="DisabledDate"/> — the same show-the-dead-end convention every rejected calendar
+    /// cell follows.</summary>
     [Parameter] public bool ShowToday { get; set; } = true;
     /// <summary>Visible text of the <see cref="ShowToday"/> link button. Override to localize.</summary>
     [Parameter] public string TodayText { get; set; } = "Today";
@@ -298,6 +298,16 @@ public partial class DatePicker : PickerBase
     /// <see cref="DatePickerMode.DateTime"/> panel. Override to localize.</summary>
     [Parameter] public string OkText { get; set; } = "OK";
 
+    /// <summary>Leading text of the visually-hidden format hint the input's <c>aria-describedby</c>
+    /// points at — rendered as "<c>{FormatHintLabel} {format}</c>", where the format is
+    /// <see cref="Format"/>'s effective value (or <c>yyyy-Qn</c>/<c>yyyy-Www</c> in
+    /// <see cref="DatePickerMode.Quarter"/>/<see cref="DatePickerMode.Week"/>'s own shorthand modes,
+    /// which is what the field actually displays and parses there). Defaults to "Format:"; override to
+    /// localize, or set to an empty string to drop the hint (and its <c>aria-describedby</c> token)
+    /// entirely. Deliberately separate from <see cref="Placeholder"/>, which stays the Figma spec's
+    /// visible "Select date".</summary>
+    [Parameter] public string FormatHintLabel { get; set; } = "Format:";
+
     // Validation-state ARIA passthrough onto the actual <input>, for form wrappers (EditDate).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio (which EditSelectSearch
     // forwards) — AdditionalAttributes can't do this job because it lands on the outer wrapper div.
@@ -327,6 +337,9 @@ public partial class DatePicker : PickerBase
 
     ElementReference _inputRef;
     ElementReference _gridRef;
+    // Lazy fallback for BaseId when the consumer set no Id -- the panel/format-hint ids still have to
+    // be unique per instance and stable across renders (aria-controls/aria-describedby resolve by id).
+    string? _generatedId;
     // First-of-month shown in the panel.
     DateTime _viewMonth = FirstOfMonth(DateTime.Today);
     // In-progress typed text (null = show the formatted bound value).
@@ -401,6 +414,65 @@ public partial class DatePicker : PickerBase
         _ => "Select date",
     };
 
+    // The id everything else derives from: the consumer's Id when set (so a consumer-owned id keeps
+    // driving the derived ones), otherwise a generated per-instance fallback. Same shape as
+    // Select.BaseId/Tabs.BaseId.
+    string BaseId => !string.IsNullOrEmpty(Id) ? Id : (_generatedId ??= $"wss-picker-{Guid.NewGuid():N}");
+
+    // The dropdown panel's own id -- what the input's aria-controls points at while open.
+    string PanelId => $"{BaseId}-panel";
+
+    // The visually-hidden format hint's id, appended to the input's aria-describedby.
+    string FormatHintId => $"{BaseId}-format";
+
+    // "Format: MM/dd/yyyy" (or blank, which suppresses both the span and its describedby token).
+    string FormatHintText =>
+        string.IsNullOrEmpty(FormatHintLabel) ? string.Empty : $"{FormatHintLabel} {DescribedFormat}";
+
+    // The consumer's own aria-describedby (a form wrapper's error/description ids -- see EditDate)
+    // with the format hint's id APPENDED, so the wrapper's chain keeps its order and the hint reads
+    // last. Null (no hint, no consumer value) omits the attribute exactly as before this existed.
+    string? EffectiveAriaDescribedBy => FormatHintText.Length == 0
+        ? AriaDescribedBy
+        : string.IsNullOrEmpty(AriaDescribedBy) ? FormatHintId : $"{AriaDescribedBy} {FormatHintId}";
+
+    // The month/year (or year, or decade) the panel currently displays: the day/month/quarter/year
+    // grid's accessible name AND the text of the panel's aria-live region, so the name a screen
+    // reader gives the grid and the string it announces after a navigation can never disagree.
+    // Time mode has no calendar to name or navigate, so it contributes nothing.
+    string ViewLabel => Mode switch
+    {
+        DatePickerMode.Month or DatePickerMode.Quarter => _viewMonth.Year.ToString(PickerCulture),
+        DatePickerMode.Year => DecadeLabel,
+        DatePickerMode.Time => string.Empty,
+        _ => _viewMonth.ToString("MMMM yyyy", PickerCulture),
+    };
+
+    // ----- ARIA grid row grouping --------------------------------------------
+    // The day grids get their rows for free (GridWeekRows -- the same 6x7 chunking the week-number
+    // layout already rendered); the unit grids need the same treatment, chunked to match each grid's
+    // own CSS grid-template-columns so a role="row" never spans a visual line break. The wrappers are
+    // display:contents, so the buttons stay the real grid items and the layout is unchanged.
+
+    // .wss-picker-month-grid is repeat(3, 1fr) -- Month mode's 12 months and Year mode's 12 years
+    // both land as 4 rows of 3.
+    const int MonthGridColumns = 3;
+    // .wss-picker-quarter-grid is repeat(4, 1fr) -- one row of 4.
+    const int QuarterGridColumns = 4;
+
+    static IEnumerable<DateTime[]> UnitRows(IEnumerable<DateTime> units, int columns) => units.Chunk(columns);
+
+    IEnumerable<DateTime> MonthUnits =>
+        Enumerable.Range(1, 12).Select(m => new DateTime(_viewMonth.Year, m, 1));
+
+    // The decade's own 10 years plus the leading/trailing dimmed adjacent-decade cells (ClampDecadeStart
+    // guarantees both stay inside DateTime's representable range).
+    IEnumerable<DateTime> YearUnits =>
+        Enumerable.Range(-1, 12).Select(i => new DateTime(DecadeStart + i, 1, 1));
+
+    IEnumerable<DateTime> QuarterUnits =>
+        Enumerable.Range(1, 4).Select(q => QuarterStart(_viewMonth.Year, q));
+
     // Whether ShowToday's link renders for the CURRENTLY selected Mode -- Date/Month/Quarter/Year/
     // Week only; Time/DateTime have their own ShowNowLink instead (see below). Both booleans exist
     // so a consumer flipping ShowToday/ShowNow has no effect outside their own mode family, matching
@@ -428,8 +500,8 @@ public partial class DatePicker : PickerBase
         if (day.Month != _viewMonth.Month) cls += " wss-picker-day-outside";
         if (IsToday(day)) cls += " wss-picker-day-today";
         // Week mode suppresses the single-day selected look -- the row is the selection unit there
-        // (see IsDaySelected/wss-picker-week-row-selected), and every day in the row still carries
-        // aria-pressed="true" via IsDaySelected below. The Mode guard is what keeps IsDaySelected's
+        // (see IsDaySelected/wss-picker-week-row-selected), and every cell in the row still carries
+        // aria-selected="true" via IsDaySelected below. The Mode guard is what keeps IsDaySelected's
         // whole-row answer from painting all 7 days selected; it is not redundant with it.
         if (Mode != DatePickerMode.Week && IsDaySelected(day)) cls += " wss-picker-day-selected";
         return cls;
@@ -440,7 +512,7 @@ public partial class DatePicker : PickerBase
     // what IsCurrentMonth/IsCurrentQuarter/IsCurrentYear already expose for the coarser grids.
     static bool IsToday(DateTime day) => day == DateTime.Today;
 
-    // Whether `day`'s button should render aria-pressed="true": in every mode but Week, only the
+    // Whether `day`'s gridcell should render aria-selected="true": in every mode but Week, only the
     // exact selected day; in Week mode, every day sharing Value's week (the row is the selection
     // unit -- see DayClass's suppression of the single-day background above).
     bool IsDaySelected(DateTime day) =>
@@ -450,9 +522,10 @@ public partial class DatePicker : PickerBase
 
     // The five Min/Max/DisabledDate predicates, each binding this instance's own parameters to the
     // matching PickerMath helper -- see those for the per-granularity contracts (DisabledDate is
-    // folded into every one of them, so the cell `disabled` attributes, the DefaultFocus*/
-    // FirstEnabled* skip logic and IsDisabledForCommit's typed-text guard can never disagree about
-    // what counts as disabled). They were character-identical to DateRangePicker's own.
+    // folded into every one of them, so the cell `aria-disabled` attributes, the click guards that
+    // back them, the DefaultFocus*/FirstEnabled* skip logic and IsDisabledForCommit's typed-text
+    // guard can never disagree about what counts as disabled). They were character-identical to
+    // DateRangePicker's own.
     // IsMonthDisabled uses the same month granularity PrevMonthDisabled/NextMonthDisabled use for the
     // day grid's header nav, so the two panels never disagree about where Min/Max stop navigation.
     bool IsDayDisabled(DateTime day) => PickerMath.IsDayDisabled(day, Min, Max, DisabledDate);
@@ -624,11 +697,15 @@ public partial class DatePicker : PickerBase
         if (Value is { } v && IsVisible(v.Date) && !IsDayDisabled(v.Date)) return v.Date;
         if (IsVisible(DateTime.Today) && !IsDayDisabled(DateTime.Today)) return DateTime.Today;
         // Neither natural candidate is usable (disabled — e.g. Min in the future with no value set,
-        // so today falls before it). Falling through to the 1st of the month like before would park
-        // the roving tabindex on a disabled button and make the whole grid keyboard-unreachable (Tab
-        // skips straight past a tabindex="0" that's also disabled). Land on the first enabled
-        // in-month day instead; if the whole visible month is disabled there's nothing actionable in
-        // it either way, so any deterministic in-month day (the 1st) is fine.
+        // so today falls before it). Land on the first enabled in-month day instead; if the whole
+        // visible month is disabled there's nothing actionable in it either way, so any deterministic
+        // in-month day (the 1st) is fine.
+        //
+        // This skip used to be load-bearing for keyboard REACHABILITY: with natively `disabled` cells
+        // a tabindex="0" that was also disabled gave the grid zero tab stops. Disabled cells are now
+        // aria-disabled and stay focusable (see DayButtonFragment), so the grid is reachable either
+        // way and this is now purely about where focus LANDS -- the APG/AntD behavior of opening on
+        // something the user can actually pick, rather than on a dead cell. Kept for that reason.
         return FirstEnabledDay(_viewMonth) ?? _viewMonth;
     }
 
@@ -656,12 +733,17 @@ public partial class DatePicker : PickerBase
 
     // Grid keydown: moves the roving-tabindex day, retargeting the displayed month when navigation
     // crosses out of it (clamped exactly like the month/year selects). A day that lands disabled
-    // (Min/Max) still becomes the focus target — only clicking commits, so parking keyboard focus on
-    // a disabled day is harmless and lets Left/Right keep stepping day-by-day through it. The actual
-    // DOM focus move (needed whenever the grid re-renders with new button instances, i.e. any month
-    // change) happens in OnAfterRenderAsync via _pendingFocusDate. wss-picker.js suppresses the
-    // browser's native scroll for these keys when JS is available; without it this state still
-    // updates, just without the DOM focus follow or the scroll suppression.
+    // (Min/Max/DisabledDate) still becomes the focus target -- the APG grid behavior, and what lets
+    // Left/Right keep stepping day-by-day THROUGH a disabled run instead of jumping it. That is only
+    // safe because a rejected day now renders aria-disabled rather than natively `disabled` (see
+    // DayButtonFragment): it stays focusable, keeps the grid's single tab stop real, and can't blur
+    // focus to <body> when a month-crossing re-render lands the roving stop on it. Activation is
+    // blocked by OnDayClickAsync's own guard, not by the browser, so Enter/Space on a focused
+    // disabled cell no-ops too. The actual DOM focus move (needed whenever the grid re-renders with
+    // new button instances, i.e. any month change) happens in OnAfterRenderAsync via
+    // _pendingFocusDate. wss-picker.js suppresses the browser's native scroll for these keys when JS
+    // is available; without it this state still updates, just without the DOM focus follow or the
+    // scroll suppression.
     void OnGridKeyDown(KeyboardEventArgs e)
     {
         var next = NextFocusDay(EffectiveFocusDay, e.Key);
@@ -708,6 +790,14 @@ public partial class DatePicker : PickerBase
     bool IsVisibleMonth(DateTime month) => month.Year == _viewMonth.Year;
 
     bool IsSelectedMonth(DateTime month) => Value is { } v && FirstOfMonth(v) == month;
+
+    // The selected FILL used to key off the button's own aria-pressed attribute. That state moved to
+    // aria-selected on the enclosing role="gridcell" (aria-selected is not a valid attribute on
+    // role="button", and an APG grid puts selection on the cell anyway), so the VISUAL state needs a
+    // class of its own -- mirroring wss-picker-day-selected, which the day grid has always used for
+    // exactly this reason. Shared by Month/Quarter/Year mode (all three render wss-picker-month-btn).
+    string MonthButtonClass(DateTime month) =>
+        IsSelectedMonth(month) ? "wss-picker-month-btn wss-picker-month-btn-selected" : "wss-picker-month-btn";
 
     bool IsCurrentMonth(DateTime month) => month == FirstOfMonth(DateTime.Today);
 
@@ -789,8 +879,13 @@ public partial class DatePicker : PickerBase
     // cells)?
     bool IsYearInDecade(int year) => year >= DecadeStart && year <= DecadeStart + 9;
 
-    string YearButtonClass(int year) =>
-        IsYearInDecade(year) ? "wss-picker-month-btn" : "wss-picker-month-btn wss-picker-month-btn-outside";
+    // Same selected-modifier story as MonthButtonClass above, plus the dimmed adjacent-decade cells.
+    string YearButtonClass(int year)
+    {
+        var cls = IsYearInDecade(year) ? "wss-picker-month-btn" : "wss-picker-month-btn wss-picker-month-btn-outside";
+        if (IsSelectedYear(year)) cls += " wss-picker-month-btn-selected";
+        return cls;
+    }
 
     bool IsSelectedYear(int year) => Value is { } v && v.Year == year;
 
@@ -858,9 +953,12 @@ public partial class DatePicker : PickerBase
 
     async Task OnYearClickAsync(int year)
     {
+        // Same aria-disabled contract as OnDayClickAsync (see there).
+        var yearStart = new DateTime(year, 1, 1);
+        if (IsYearDisabled(yearStart)) return;
         // A grid pick supersedes any half-typed input text.
         _edit = null;
-        await SetValueAsync(new DateTime(year, 1, 1));
+        await SetValueAsync(yearStart);
         _pendingInputFocus = true; // the clicked year button is about to unmount
         await CloseAsync();
     }
@@ -872,6 +970,10 @@ public partial class DatePicker : PickerBase
     // given Mode.
 
     bool IsSelectedQuarter(int year, int quarter) => Value is { } v && v.Year == year && QuarterOf(v) == quarter;
+
+    // Same selected-modifier story as MonthButtonClass (Quarter mode reuses wss-picker-month-btn).
+    string QuarterButtonClass(int year, int quarter) =>
+        IsSelectedQuarter(year, quarter) ? "wss-picker-month-btn wss-picker-month-btn-selected" : "wss-picker-month-btn";
 
     bool IsCurrentQuarter(int year, int quarter) => year == DateTime.Today.Year && quarter == QuarterOf(DateTime.Today);
 
@@ -916,9 +1018,12 @@ public partial class DatePicker : PickerBase
 
     async Task OnQuarterClickAsync(int year, int quarter)
     {
+        // Same aria-disabled contract as OnDayClickAsync (see there).
+        var quarterStart = QuarterStart(year, quarter);
+        if (IsQuarterDisabled(quarterStart)) return;
         // A grid pick supersedes any half-typed input text.
         _edit = null;
-        await SetValueAsync(QuarterStart(year, quarter));
+        await SetValueAsync(quarterStart);
         _pendingInputFocus = true; // the clicked quarter button is about to unmount
         await CloseAsync();
     }
@@ -1032,6 +1137,12 @@ public partial class DatePicker : PickerBase
 
     async Task OnDayClickAsync(DateTime day)
     {
+        // The cell is aria-disabled, not natively `disabled` (it has to stay focusable -- see
+        // DayButtonFragment), so the browser DOES dispatch this click, and an Enter/Space on a
+        // keyboard-focused disabled cell synthesizes one too. This guard is what makes the state
+        // honest: exactly the predicate the attribute rendered from, so the cell and the commit can
+        // never disagree.
+        if (IsDayDisabled(day)) return;
         // Week mode's day BUTTON stays at day granularity (IsDayDisabled(day), same as every other
         // mode's day cell -- see IsDayDisabled's doc comment), but the click's actual commit lands on
         // the week START, not the clicked day. With Min/Max alone those two checks can never disagree
@@ -1046,7 +1157,7 @@ public partial class DatePicker : PickerBase
         // below it owns the rest. Mode.Date is unaffected: adding TimeSpan.Zero is a no-op.
         var time = Mode == DatePickerMode.DateTime ? Value?.TimeOfDay ?? TimeSpan.Zero : TimeSpan.Zero;
         var composed = day + time;
-        // The day BUTTON's own `disabled` attribute already covers IsDayDisabled, but nothing covers
+        // The guard at the top of this method already covers IsDayDisabled, but nothing covers
         // the carried time-of-day: DisabledTime is evaluated per DATE, so the clicked day can disable
         // the very hour/minute/second the current value carries onto it. Both other commit paths
         // reject exactly that (the typed path via IsDisabledForCommit, the time selects via
@@ -1078,6 +1189,9 @@ public partial class DatePicker : PickerBase
 
     async Task OnMonthClickAsync(DateTime month)
     {
+        // Same aria-disabled contract as OnDayClickAsync: the cell stays focusable, so the click
+        // (and Enter/Space on it) reaches here and this guard -- not the browser -- rejects it.
+        if (IsMonthDisabled(month)) return;
         // A grid pick supersedes any half-typed input text.
         _edit = null;
         await SetValueAsync(month);

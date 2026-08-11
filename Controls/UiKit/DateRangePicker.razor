@@ -31,9 +31,10 @@
                    aria-label="@StartInputLabel"
                    aria-haspopup="dialog"
                    aria-expanded="@(_open ? "true" : "false")"
+                   aria-controls="@(_open ? PanelId : null)"
                    aria-required="@StartAriaRequired"
                    aria-invalid="@(StartAriaInvalid ? "true" : null)"
-                   aria-describedby="@StartAriaDescribedBy"
+                   aria-describedby="@EffectiveStartAriaDescribedBy"
                    aria-errormessage="@StartAriaErrorMessage"
                    placeholder="@(StartPlaceholder ?? DefaultPlaceholder)"
                    disabled="@Disabled"
@@ -53,9 +54,10 @@
                    aria-label="@EndInputLabel"
                    aria-haspopup="dialog"
                    aria-expanded="@(_open ? "true" : "false")"
+                   aria-controls="@(_open ? PanelId : null)"
                    aria-required="@EndAriaRequired"
                    aria-invalid="@(EndAriaInvalid ? "true" : null)"
-                   aria-describedby="@EndAriaDescribedBy"
+                   aria-describedby="@EffectiveEndAriaDescribedBy"
                    aria-errormessage="@EndAriaErrorMessage"
                    placeholder="@(EndPlaceholder ?? DefaultPlaceholder)"
                    disabled="@Disabled"
@@ -72,10 +74,32 @@
         }
     </div>
 
+    @* One visually-hidden format hint for BOTH inputs (they share a single Format), referenced from
+       each one's aria-describedby -- see EffectiveStartAriaDescribedBy. Deliberately not folded into
+       the placeholders, which stay the uppercased-format strings this control already documents.
+       Outside the `@if (_open)` block: aria-describedby has to resolve whether the panel is open or
+       not. *@
+    @if (FormatHintText is { Length: > 0 } formatHint)
+    {
+        <span class="wss-sr-only" id="@FormatHintId">@formatHint</span>
+    }
+
     @if (_open)
     {
+        @* role="dialog" with focus DELIBERATELY left on whichever input is active, rather than moved
+           into the panel on open: both fields are type-ahead first (typing commits an endpoint), so
+           stealing focus would swallow the user's keystrokes. The contract the combobox-like model
+           needs is already honored -- the panel is in the tab order right after the fields, Escape
+           closes it from anywhere inside the wrapper (discarding the in-progress pick), and every
+           panel-originated close hands focus back to the active input (see PickerBase's
+           _pendingInputFocus). See the a11y audit's PKR-5. *@
         <div class="wss-picker-dropdown @(IsSessionMode ? "wss-picker-dropdown-single" : null) @(_positioned ? null : "wss-measuring")" @ref="_panelRef"
-             role="dialog" aria-label="@DialogLabel" tabindex="-1">
+             id="@PanelId" role="dialog" aria-label="@DialogLabel" tabindex="-1">
+            @* What the panel currently shows -- both months/years/decades in the dual-panel modes, the
+               lone session month otherwise -- announced on every navigation (nav buttons, header
+               selects, a keyboard move that crosses out of the view). One per panel, present from
+               first render (an aria-live region injected WITH its content is not reliably announced). *@
+            <div class="wss-sr-only" aria-live="polite" aria-atomic="true">@ViewLabel</div>
             @if (Presets is { Count: > 0 })
             {
                 <ul class="wss-picker-presets" aria-label="@PresetsLabel">
@@ -110,15 +134,15 @@
                         <PickerWeekdayHeader ShowWeekNumberColumn="@ShowWeekRows" Names="@WeekdayHeaders" />
                         @if (ShowWeekRows)
                         {
-                            <div class="wss-picker-grid-rows" @ref="_gridRefs[0]" @onkeydown="OnSessionGridKeyDown">
+                            <div class="wss-picker-grid-rows" role="grid" aria-label="@SessionViewLabel" @ref="_gridRefs[0]" @onkeydown="OnSessionGridKeyDown">
                                 @foreach (var row in GridWeekRows(_viewMonth))
                                 {
                                     var weekStart = row[0];
-                                    <div class="wss-picker-week-row">
+                                    <div class="wss-picker-week-row" role="row">
                                         <div class="wss-picker-week-no" aria-hidden="true">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
                                         @foreach (var day in row)
                                         {
-                                            <div class="@SessionCellClass(day)">@SessionDayButtonFragment(day)</div>
+                                            <div class="@SessionCellClass(day)" role="gridcell" aria-selected="@(IsSessionEndpoint(day) ? "true" : null)">@SessionDayButtonFragment(day)</div>
                                         }
                                     </div>
                                 }
@@ -126,10 +150,15 @@
                         }
                         else
                         {
-                            <div class="wss-picker-grid" @ref="_gridRefs[0]" @onkeydown="OnSessionGridKeyDown">
-                                @foreach (var day in GridDays(_viewMonth))
+                            <div class="wss-picker-grid" role="grid" aria-label="@SessionViewLabel" @ref="_gridRefs[0]" @onkeydown="OnSessionGridKeyDown">
+                                @foreach (var row in GridWeekRows(_viewMonth))
                                 {
-                                    <div class="@SessionCellClass(day)">@SessionDayButtonFragment(day)</div>
+                                    <div class="wss-picker-row" role="row">
+                                        @foreach (var day in row)
+                                        {
+                                            <div class="@SessionCellClass(day)" role="gridcell" aria-selected="@(IsSessionEndpoint(day) ? "true" : null)">@SessionDayButtonFragment(day)</div>
+                                        }
+                                    </div>
                                 }
                             </div>
                         }
@@ -206,42 +235,54 @@
                             </div>
                             @if (EffectiveMode == DatePickerMode.Month)
                             {
-                                <div class="wss-picker-month-grid" @ref="_gridRefs[panel]"
+                                <div class="wss-picker-month-grid" role="grid" aria-label="@year.ToString(PickerCulture)" @ref="_gridRefs[panel]"
                                      @onkeydown="OnMonthGridKeyDown"
                                      @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
-                                    @for (var m = 1; m <= 12; m++)
+                                    @foreach (var unitRow in UnitRows(MonthUnits(year), MonthGridColumns))
                                     {
-                                        var month = new DateTime(year, m, 1);
-                                        <button type="button" class="@UnitBtnClass(month)"
-                                                disabled="@IsMonthDisabled(month)"
-                                                tabindex="@(IsMonthFocusStop(month) ? "0" : "-1")"
-                                                data-date="@month.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                                aria-label="@month.ToString("MMMM yyyy", PickerCulture)"
-                                                aria-pressed="@(IsEndpoint(month) ? "true" : "false")"
-                                                aria-current="@(month == FirstOfMonth(DateTime.Today) ? "date" : null)"
-                                                @onclick="@(() => OnUnitClickAsync(month))"
-                                                @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnUnitPointerEnter(month)) : default)">@MonthName(m)</button>
+                                        <div class="wss-picker-row" role="row">
+                                            @foreach (var month in unitRow)
+                                            {
+                                                <div class="wss-picker-cell-unit" role="gridcell"
+                                                     aria-selected="@(IsUnitAriaSelected(month) ? "true" : null)">
+                                                    <button type="button" class="@UnitBtnClass(month)"
+                                                            aria-disabled="@(IsMonthDisabled(month) ? "true" : null)"
+                                                            tabindex="@(IsMonthFocusStop(month) ? "0" : "-1")"
+                                                            data-date="@month.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                                            aria-label="@month.ToString("MMMM yyyy", PickerCulture)"
+                                                            aria-current="@(month == FirstOfMonth(DateTime.Today) ? "date" : null)"
+                                                            @onclick="@(() => OnUnitClickAsync(month))"
+                                                            @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnUnitPointerEnter(month)) : default)">@MonthName(month.Month)</button>
+                                                </div>
+                                            }
+                                        </div>
                                     }
                                 </div>
                             }
                             else
                             {
-                                <div class="wss-picker-quarter-grid" @ref="_gridRefs[panel]"
+                                <div class="wss-picker-quarter-grid" role="grid" aria-label="@year.ToString(PickerCulture)" @ref="_gridRefs[panel]"
                                      @onkeydown="OnQuarterGridKeyDown"
                                      @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
-                                    @for (var q = 1; q <= 4; q++)
+                                    @foreach (var unitRow in UnitRows(QuarterUnits(year), QuarterGridColumns))
                                     {
-                                        var quarter = q;
-                                        var quarterStart = QuarterStart(year, quarter);
-                                        <button type="button" class="@UnitBtnClass(quarterStart)"
-                                                disabled="@IsQuarterDisabled(quarterStart)"
-                                                tabindex="@(IsQuarterFocusStop(year, quarter) ? "0" : "-1")"
-                                                data-date="@quarterStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                                aria-label="@($"Q{quarter.ToString(PickerCulture)} {year.ToString(PickerCulture)}")"
-                                                aria-pressed="@(IsEndpoint(quarterStart) ? "true" : "false")"
-                                                aria-current="@(year == DateTime.Today.Year && quarter == QuarterOf(DateTime.Today) ? "date" : null)"
-                                                @onclick="@(() => OnUnitClickAsync(quarterStart))"
-                                                @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnUnitPointerEnter(quarterStart)) : default)">Q@(quarter.ToString(PickerCulture))</button>
+                                        <div class="wss-picker-row" role="row">
+                                            @foreach (var quarterStart in unitRow)
+                                            {
+                                                var quarter = QuarterOf(quarterStart);
+                                                <div class="wss-picker-cell-unit" role="gridcell"
+                                                     aria-selected="@(IsUnitAriaSelected(quarterStart) ? "true" : null)">
+                                                    <button type="button" class="@UnitBtnClass(quarterStart)"
+                                                            aria-disabled="@(IsQuarterDisabled(quarterStart) ? "true" : null)"
+                                                            tabindex="@(IsQuarterFocusStop(year, quarter) ? "0" : "-1")"
+                                                            data-date="@quarterStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                                            aria-label="@($"Q{quarter.ToString(PickerCulture)} {year.ToString(PickerCulture)}")"
+                                                            aria-current="@(year == DateTime.Today.Year && quarter == QuarterOf(DateTime.Today) ? "date" : null)"
+                                                            @onclick="@(() => OnUnitClickAsync(quarterStart))"
+                                                            @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnUnitPointerEnter(quarterStart)) : default)">Q@(quarter.ToString(PickerCulture))</button>
+                                                </div>
+                                            }
+                                        </div>
                                     }
                                 </div>
                             }
@@ -274,23 +315,29 @@
                                     <span class="wss-picker-nav wss-picker-nav-placeholder" aria-hidden="true"></span>
                                 }
                             </div>
-                            <div class="wss-picker-month-grid" @ref="_gridRefs[panel]"
+                            <div class="wss-picker-month-grid" role="grid" aria-label="@DecadeLabelFor(decadeStart)" @ref="_gridRefs[panel]"
                                  @onkeydown="OnYearGridKeyDown"
                                  @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
-                                @for (var j = -1; j <= 10; j++)
+                                @foreach (var unitRow in UnitRows(YearUnits(decadeStart), MonthGridColumns))
                                 {
-                                    var yr = decadeStart + j;
-                                    var yearStart = new DateTime(yr, 1, 1);
-                                    var outside = yr < decadeStart || yr > decadeStart + 9;
-                                    <button type="button" class="@UnitBtnClass(yearStart, outside)"
-                                            disabled="@IsYearDisabled(yearStart)"
-                                            tabindex="@(IsYearFocusStop(yr, outside) ? "0" : "-1")"
-                                            data-date="@yearStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                            aria-label="@yr.ToString(PickerCulture)"
-                                            aria-pressed="@(IsEndpoint(yearStart) ? "true" : "false")"
-                                            aria-current="@(yr == DateTime.Today.Year ? "date" : null)"
-                                            @onclick="@(() => OnUnitClickAsync(yearStart))"
-                                            @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnUnitPointerEnter(yearStart)) : default)">@yr.ToString(PickerCulture)</button>
+                                    <div class="wss-picker-row" role="row">
+                                        @foreach (var yearStart in unitRow)
+                                        {
+                                            var yr = yearStart.Year;
+                                            var outside = yr < decadeStart || yr > decadeStart + 9;
+                                            <div class="wss-picker-cell-unit" role="gridcell"
+                                                 aria-selected="@(IsUnitAriaSelected(yearStart) ? "true" : null)">
+                                                <button type="button" class="@UnitBtnClass(yearStart, outside)"
+                                                        aria-disabled="@(IsYearDisabled(yearStart) ? "true" : null)"
+                                                        tabindex="@(IsYearFocusStop(yr, outside) ? "0" : "-1")"
+                                                        data-date="@yearStart.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                                        aria-label="@yr.ToString(PickerCulture)"
+                                                        aria-current="@(yr == DateTime.Today.Year ? "date" : null)"
+                                                        @onclick="@(() => OnUnitClickAsync(yearStart))"
+                                                        @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnUnitPointerEnter(yearStart)) : default)">@yr.ToString(PickerCulture)</button>
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </div>
                         </div>
@@ -364,21 +411,21 @@
                                    conditional DatePicker's own week-rows grid emits. ShowWeekNumbers
                                    in Date mode renders these same rows with no row-level selection,
                                    so it deliberately doesn't get the class. *@
-                                <div class="@(EffectiveMode == DatePickerMode.Week ? "wss-picker-grid-rows wss-picker-grid-week" : "wss-picker-grid-rows")" @ref="_gridRefs[panel]"
+                                <div class="@(EffectiveMode == DatePickerMode.Week ? "wss-picker-grid-rows wss-picker-grid-week" : "wss-picker-grid-rows")" role="grid" aria-label="@month.ToString("MMMM yyyy", PickerCulture)" @ref="_gridRefs[panel]"
                                      @onkeydown="OnGridKeyDown"
                                      @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
                                     @foreach (var row in GridWeekRows(month))
                                     {
                                         var weekStart = row[0];
-                                        <div class="@WeekRowClass(weekStart)">
+                                        <div class="@WeekRowClass(weekStart)" role="row">
                                             <div class="wss-picker-week-no" aria-hidden="true">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
                                             @foreach (var day in row)
                                             {
-                                                @* Week mode's aria-pressed is the ROW's answer, not the day's -- the row is the
+                                                @* Week mode's aria-selected is the ROW's answer, not the day's -- the row is the
                                                    selection unit there (see IsWeekRowEndpoint). Every other mode, and the flat
                                                    grid below (never reached in Week mode), asks per day. *@
-                                                var pressed = EffectiveMode == DatePickerMode.Week ? IsWeekRowEndpoint(weekStart) : IsEndpoint(day);
-                                                <div class="@CellClass(day)">@RangeDayButtonFragment((day, month, pressed))</div>
+                                                var selected = EffectiveMode == DatePickerMode.Week ? IsWeekAriaSelected(weekStart) : IsUnitAriaSelected(day);
+                                                <div class="@CellClass(day)" role="gridcell" aria-selected="@(selected ? "true" : null)">@RangeDayButtonFragment((day, month))</div>
                                             }
                                         </div>
                                     }
@@ -386,12 +433,21 @@
                             }
                             else
                             {
-                                <div class="wss-picker-grid" @ref="_gridRefs[panel]"
+                                @* The flat 42-cell grid still groups its days into 6 role="row" wrappers: an ARIA
+                                   grid's cells must sit inside rows, and .wss-picker-row's `display: contents`
+                                   keeps the day cells the real 7-column grid items. The rows layout above needs no
+                                   such wrapper -- its .wss-picker-week-row IS the row. *@
+                                <div class="wss-picker-grid" role="grid" aria-label="@month.ToString("MMMM yyyy", PickerCulture)" @ref="_gridRefs[panel]"
                                      @onkeydown="OnGridKeyDown"
                                      @onpointerleave="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, OnGridPointerLeave) : default)">
-                                    @foreach (var day in GridDays(month))
+                                    @foreach (var row in GridWeekRows(month))
                                     {
-                                        <div class="@CellClass(day)">@RangeDayButtonFragment((day, month, IsEndpoint(day)))</div>
+                                        <div class="wss-picker-row" role="row">
+                                            @foreach (var day in row)
+                                            {
+                                                <div class="@CellClass(day)" role="gridcell" aria-selected="@(IsUnitAriaSelected(day) ? "true" : null)">@RangeDayButtonFragment((day, month))</div>
+                                            }
+                                        </div>
                                     }
                                 </div>
                             }
@@ -412,30 +468,34 @@
     // One day cell's button for the DUAL-PANEL modes (Date, and its Week/ShowWeekNumbers rows
     // layout), rendered identically by both of those layouts. The context carries the panel's own
     // month (the day grid shows two, and both the outside-month class and the roving-tabindex check
-    // need to know which one is rendering) and the already-resolved aria-pressed answer, because
-    // Week mode asks the ROW while every other mode asks the day -- everything else is derived here
-    // so the two layouts can't drift. Mirrors DatePicker's own DayButtonFragment.
-    RenderFragment<(DateTime Day, DateTime Month, bool Pressed)> RangeDayButtonFragment => ctx => @<button type="button" class="@DayClass(ctx.Day, ctx.Month)"
-                                                                                                          disabled="@IsDayDisabled(ctx.Day)"
-                                                                                                          tabindex="@(IsFocusStop(ctx.Day, ctx.Month) ? "0" : "-1")"
-                                                                                                          data-date="@ctx.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
-                                                                                                          aria-label="@ctx.Day.ToString("D", PickerCulture)"
-                                                                                                          aria-pressed="@(ctx.Pressed ? "true" : "false")"
-                                                                                                          aria-current="@(IsToday(ctx.Day) ? "date" : null)"
-                                                                                                          @onclick="@(() => OnGridDayClickAsync(ctx.Day))"
-                                                                                                          @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnGridDayPointerEnter(ctx.Day)) : default)">@ctx.Day.Day.ToString("00", CultureInfo.CurrentCulture)</button>;
+    // need to know which one is rendering) -- everything else is derived here so the two layouts
+    // can't drift. The selection state is NOT here: it lives as aria-selected on the enclosing
+    // role="gridcell" wrapper (which is where ARIA allows it), and Week mode's own row-vs-day
+    // resolution happens at that call site. Mirrors DatePicker's own DayButtonFragment.
+    //
+    // aria-disabled, NOT the native `disabled` attribute -- see DatePicker.DayButtonFragment for the
+    // full rationale (a rejected day has to stay focusable so the roving tabindex, the grid's single
+    // tab stop, and the month-crossing focus follow all keep working). OnGridDayClickAsync guards the
+    // same predicate, so a click -- or an Enter/Space on a focused disabled cell -- no-ops.
+    RenderFragment<(DateTime Day, DateTime Month)> RangeDayButtonFragment => ctx => @<button type="button" class="@DayClass(ctx.Day, ctx.Month)"
+                                                                                             aria-disabled="@(IsDayDisabled(ctx.Day) ? "true" : null)"
+                                                                                             tabindex="@(IsFocusStop(ctx.Day, ctx.Month) ? "0" : "-1")"
+                                                                                             data-date="@ctx.Day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
+                                                                                             aria-label="@ctx.Day.ToString("D", PickerCulture)"
+                                                                                             aria-current="@(IsToday(ctx.Day) ? "date" : null)"
+                                                                                             @onclick="@(() => OnGridDayClickAsync(ctx.Day))"
+                                                                                             @onpointerenter="@(_selecting ? EventCallback.Factory.Create<PointerEventArgs>(this, () => OnGridDayPointerEnter(ctx.Day)) : default)">@ctx.Day.Day.ToString("00", CultureInfo.CurrentCulture)</button>;
 
     // The Time/DateTime pick session's own day button, rendered identically by that session's two
-    // day-grid layouts. A single panel (so no month context) whose classing/focus/pressed state and
-    // click all route through the session's own members instead of the dual-panel ones, and which
-    // needs no pointer-enter hover preview (the session has no drag-to-select pick -- see
-    // SessionCellClass).
+    // day-grid layouts. A single panel (so no month context) whose classing/focus state and click all
+    // route through the session's own members instead of the dual-panel ones, and which needs no
+    // pointer-enter hover preview (the session has no drag-to-select pick -- see SessionCellClass).
+    // Same aria-disabled contract as the dual-panel fragment above.
     RenderFragment<DateTime> SessionDayButtonFragment => d => @<button type="button" class="@SessionDayClass(d)"
-                                                                      disabled="@IsDayDisabled(d)"
+                                                                      aria-disabled="@(IsDayDisabled(d) ? "true" : null)"
                                                                       tabindex="@(IsSessionFocusStop(d) ? "0" : "-1")"
                                                                       data-date="@d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)"
                                                                       aria-label="@d.ToString("D", PickerCulture)"
-                                                                      aria-pressed="@(IsSessionEndpoint(d) ? "true" : "false")"
                                                                       aria-current="@(IsToday(d) ? "date" : null)"
                                                                       @onclick="@(() => OnSessionDayClickAsync(d))">@d.Day.ToString("00", CultureInfo.CurrentCulture)</button>;
 }

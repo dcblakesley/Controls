@@ -614,8 +614,8 @@ public class EditDateRangeTests : BunitContext
 
         Open(cut);
 
-        Assert.True(Day(cut, 0, 18).HasAttribute("disabled")); // Jan 18, 2025 is a Saturday
-        Assert.False(Day(cut, 0, 15).HasAttribute("disabled"));
+        Assert.Equal("true", Day(cut, 0, 18).GetAttribute("aria-disabled")); // Jan 18, 2025 is a Saturday
+        Assert.NotEqual("true", Day(cut, 0, 15).GetAttribute("aria-disabled"));
     }
 
     [Fact]

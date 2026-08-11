@@ -165,6 +165,20 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     }
 
     /// <summary>
+    /// The format string the visually-hidden format hint describes (see each picker's
+    /// <c>FormatHintLabel</c>): <see cref="EffectiveFormat"/>, except in the two modes where
+    /// <see cref="FormatDate"/>/<see cref="TryParseDate"/> bypass it for a hand-rolled shorthand — a
+    /// null-<see cref="ExplicitFormat"/> Quarter/Week field displays and parses <c>yyyy-Qn</c>/
+    /// <c>yyyy-Www</c>, and hinting its bland <c>yyyy</c> fallback instead would be actively wrong.
+    /// </summary>
+    internal string DescribedFormat => EffectiveMode switch
+    {
+        DatePickerMode.Quarter when ExplicitFormat is null => "yyyy-Qn",
+        DatePickerMode.Week when ExplicitFormat is null => "yyyy-Www",
+        _ => EffectiveFormat,
+    };
+
+    /// <summary>
     /// The exact inverse of <see cref="FormatDate"/> for typed text: Quarter's <c>"yyyy-Qn"</c> and Week's
     /// <c>"yyyy-Www"</c> shorthands first (null-<see cref="ExplicitFormat"/> only, mirroring
     /// <see cref="FormatDate"/>'s own special cases), then <see cref="EffectiveFormat"/> as an exact

@@ -45,9 +45,12 @@ export function dispose(gridEl) {
 // DateRangePicker searches across both grids in one call since either panel could currently show
 // the date). Called from OnAfterRenderAsync once the grid has (possibly) re-rendered with the new
 // month/year, so the target button is guaranteed to exist if the date is visible at all. Silently
-// no-ops when it isn't (e.g. focus request raced a close) or the button can't take focus (a
-// disabled day/month — the browser itself refuses .focus() on a disabled button; C#'s
-// roving-tabindex state still tracks it as the logical target either way).
+// no-ops when it isn't (e.g. focus request raced a close).
+//
+// Any target the roving tabindex can name is focusable: a Min/Max/DisabledDate-rejected cell renders
+// aria-disabled, never the native `disabled` attribute that used to make the browser refuse .focus()
+// here and strand the focus ring mid-run (see DatePicker.DayButtonFragment). The try/catch below is
+// kept for the genuinely racy case -- the element being detached between the query and the call.
 export function focusDay(root, dateStr) {
     if (!root) {
         return;
@@ -77,5 +80,5 @@ export function focusDay(root, dateStr) {
     // differ).
     const el = root.querySelector(`.wss-picker-day[data-date="${dateStr}"][tabindex="0"], .wss-picker-month-btn[data-date="${dateStr}"][tabindex="0"]`)
         || root.querySelector(`.wss-picker-day[data-date="${dateStr}"], .wss-picker-month-btn[data-date="${dateStr}"]`);
-    try { el && el.focus(); } catch { /* not focusable / gone */ }
+    try { el && el.focus(); } catch { /* detached between the query and the call */ }
 }
