@@ -33,9 +33,10 @@ public partial class EditControlsDemo : IDisposable
         {
             _currentView = view;
         }
-        // CommonFeatures' "required-star Demo" section and Comparison's live example both exist to
-        // show the star; every other view keeps it suppressed for a cleaner look.
-        FormOptions.IsRequiredStarHidden = _currentView is not (CurrentView.CommonFeatures or CurrentView.Comparison);
+        // CommonFeatures' "required-star Demo" section, FormLabel's "Required Star" section, and
+        // Comparison's live example all exist to show the star; every other view keeps it
+        // suppressed for a cleaner look.
+        FormOptions.IsRequiredStarHidden = _currentView is not (CurrentView.CommonFeatures or CurrentView.FormLabel or CurrentView.Comparison);
     }
 
     void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -62,6 +63,7 @@ public enum CurrentView
     AllControls,
     UiKit,
     CommonFeatures,
+    FormLabel,
     Comparison,
     Bool,
     BoolNullRadio,

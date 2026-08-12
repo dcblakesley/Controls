@@ -1,0 +1,148 @@
+@using Controls.Helpers
+
+<h1>FormLabel Demo</h1>
+<p>
+    <code>FormLabel</code> is the label / legend / description / tooltip / required-star renderer
+    every <code>Edit*</code> control uses internally. It has no dependency on <code>EditForm</code>
+    or a bound model -- <code>Attributes</code> and <code>FieldIdentifier</code> are optional and only
+    needed to resolve label/description/tooltip text from model attributes. Every example below sets
+    <code>Label</code> directly and uses <code>FormLabel</code> standalone.
+</p>
+
+<div class="gallery">
+
+    <section class="demo-section">
+        <h3>Basic -- Label, Description, Tooltip</h3>
+        <div class="edit-control-wrapper">
+            <FormLabel Id="basic" Label="Standalone Label" Description="A description shown under the label." Tooltip="An info tooltip." />
+        </div>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>Required Star</h3>
+        <div class="edit-control-wrapper">
+            <FormLabel Id="required" Label="Required Field" IsRequired="@_isRequired" />
+        </div>
+        <label><input type="checkbox" @bind="_isRequired" /> Toggle IsRequired</label>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_requiredExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>IsLegend -- fieldset/legend for a group of inputs</h3>
+        <fieldset class="edit-control-wrapper">
+            <FormLabel Id="group" Label="Choose a shipping method" IsLegend="true"
+                       Description="Rendered as a <legend>, for a fieldset of related inputs (radio group, checkbox group)." />
+            <label><input type="radio" name="ship" /> Standard</label>
+            <label><input type="radio" name="ship" /> Express</label>
+        </fieldset>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_legendExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>IsLabelHidden -- visually hidden, still accessible</h3>
+        <p>
+            Useful when a field sits under a column header, or its purpose is obvious in context --
+            the label stays in the accessible tree for assistive tech, just not painted on screen.
+        </p>
+        <div class="edit-control-wrapper">
+            <FormLabel Id="qty" Label="Quantity" IsLabelHidden="true" />
+            <input id="qty" type="number" class="edit-input" />
+        </div>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_hiddenExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>NestedInput -- checkbox-row shape</h3>
+        <p>
+            An input that must live inside its own &lt;label&gt; (the checkbox row shape) goes through
+            <code>NestedInput</code> and <code>LabelClass</code> instead of sitting beside
+            <code>FormLabel</code> like every other control's input does.
+        </p>
+        <div class="edit-control-wrapper">
+            <FormLabel Id="terms" Label="Accept the terms" LabelClass="edit-checkbox-label">
+                <NestedInput>
+                    <input type="checkbox" id="terms" class="edit-input" />
+                </NestedInput>
+            </FormLabel>
+        </div>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_nestedInputExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>IsForLabelable=false -- paired with a non-labelable element</h3>
+        <p>
+            <code>label[for]</code> must reference a labelable element -- a read-only view rendered as
+            a &lt;div&gt; instead names itself with <code>aria-labelledby</code>, and the label omits
+            <code>for</code>.
+        </p>
+        <div class="edit-control-wrapper">
+            <FormLabel Id="status" Label="Status" IsForLabelable="false" />
+            <div aria-labelledby="lbl-status">Active</div>
+        </div>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_notLabelableExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <h3>LabelClass override</h3>
+        <p>Replaces -- not appends to -- the default <code>edit-label</code> class.</p>
+        <style>
+            .my-custom-label { color: darkorange; font-weight: 700; }
+        </style>
+        <div class="edit-control-wrapper">
+            <FormLabel Id="custom" Label="Custom Styled Label" LabelClass="my-custom-label" />
+        </div>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_labelClassExample</code></pre>
+    </section>
+
+</div>
+
+@code {
+    bool _isRequired = true;
+
+    readonly string _basicExample = @"<FormLabel Id=""basic""
+           Label=""Standalone Label""
+           Description=""A description shown under the label.""
+           Tooltip=""An info tooltip.""/>";
+
+    readonly string _requiredExample = @"<FormLabel Id=""required""
+           Label=""Required Field""
+           IsRequired=""@_isRequired""/>";
+
+    readonly string _legendExample = @"<fieldset>
+    <FormLabel Id=""group""
+               Label=""Choose a shipping method""
+               IsLegend=""true""
+               Description=""Rendered as a <legend>, for a fieldset of related inputs.""/>
+    <label><input type=""radio"" name=""ship""/> Standard</label>
+    <label><input type=""radio"" name=""ship""/> Express</label>
+</fieldset>";
+
+    readonly string _hiddenExample = @"<FormLabel Id=""qty"" Label=""Quantity"" IsLabelHidden=""true""/>
+<input id=""qty"" type=""number""/>";
+
+    readonly string _nestedInputExample = @"<FormLabel Id=""terms"" Label=""Accept the terms"" LabelClass=""edit-checkbox-label"">
+    <NestedInput>
+        <input type=""checkbox"" id=""terms""/>
+    </NestedInput>
+</FormLabel>";
+
+    readonly string _notLabelableExample = @"<FormLabel Id=""status"" Label=""Status"" IsForLabelable=""false""/>
+<div aria-labelledby=""lbl-status"">Active</div>";
+
+    readonly string _labelClassExample = @"<FormLabel Id=""custom"" Label=""Custom Styled Label"" LabelClass=""my-custom-label""/>";
+}

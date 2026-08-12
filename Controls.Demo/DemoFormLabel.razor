@@ -58,6 +58,25 @@
 
 
     <div class="demo-section">
+        <h2>Tooltip</h2>
+        <p>An info icon next to the label; hover/focus reveals the text. Settable via the [ToolTip] attribute or the Tooltip parameter (parameter overrides attribute).</p>
+        <EditString @bind-Value="_model.TooltipAttribute" />
+
+        <EditString @bind-Value="_model.TooltipParameter"
+                    Tooltip="This tooltip was set directly via the Tooltip parameter." />
+    </div>
+
+    <div class="demo-section">
+        <h2>Label Visibility (IsLabelHidden)</h2>
+        <p>Visually hides the label (screen-reader only) while keeping the field's accessible name intact — useful when a field sits under a column header or its purpose is obvious in context.</p>
+        <EditBool @bind-Value="IsLabelCurrentlyHidden"
+                  Label="Toggle IsLabelHidden on the following control"
+                  ContainerClass="moveup" />
+        <EditString @bind-Value="_model.LabelVisibilityExample"
+                    IsLabelHidden="@IsLabelCurrentlyHidden" />
+    </div>
+
+    <div class="demo-section">
         <h2>Validation</h2>
         <ul>
             <li>Validation messages are shown below the input when active.</li>
@@ -89,6 +108,7 @@
 @code {
     readonly DemoFormLabelModel _model = new();
     public bool IsCurrentlyRequired { get; set; } = true;
+    public bool IsLabelCurrentlyHidden { get; set; } = false;
 
     public class DemoFormLabelModel
     {
@@ -116,6 +136,14 @@
         [Description("Description set by <strong style='color: orange'> [Description] </strong> attribute.")]
         public string DescriptionAttribute { get; set; } = "";
         public string DescriptionOverride { get; set; } = "";
+
+        // Tooltip
+        [ToolTip("This tooltip was set by the [ToolTip] attribute.")]
+        public string TooltipAttribute { get; set; } = "";
+        public string TooltipParameter { get; set; } = "";
+
+        // Label Visibility
+        public string LabelVisibilityExample { get; set; } = "This field's label can be hidden without hiding the field";
 
         // Validation
         [Required(ErrorMessage = "This field is required for validation example.")]

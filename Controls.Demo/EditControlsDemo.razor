@@ -1,6 +1,7 @@
 ﻿@using Controls
 @using Microsoft.AspNetCore.Components.Forms
 
+<FormDefaults UpdateOn="UpdateTrigger.Input">
 <div class="flex-row">
     <!-- Sidebar -->
     <div class="flex-column" style="gap: 4px">
@@ -17,7 +18,7 @@
         <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="_form">
             <ObjectGraphDataAnnotationsValidator />
 
-            @if (_currentView is not (CurrentView.Comparison or CurrentView.UiKit))
+            @if (_currentView is not (CurrentView.Comparison or CurrentView.UiKit or CurrentView.FormLabel))
             {
                 <!-- Actions -->
                 <fieldset style="padding-bottom: 1rem">
@@ -44,6 +45,9 @@
                     break;
                 case CurrentView.CommonFeatures:
                     <DemoFormLabel />
+                    break;
+                case CurrentView.FormLabel:
+                    <DemoFormLabelStandalone />
                     break;
                 case CurrentView.Comparison:
                     <DemoComparison />
@@ -115,8 +119,9 @@
         </CascadingValue>
     </div>
 </div>
+</FormDefaults>
 
-                
+
 <style>
     .myWidth { width: 80px; }
     .active { background: green; }
