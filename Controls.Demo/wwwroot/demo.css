@@ -1,9 +1,19 @@
 /*
- * WssBlazorControls.Demo styling for the "Markup"/"Model"/CSS code snippets shown
- * throughout the demo pages (the <pre class="code-block">...</pre> blocks).
+ * WssBlazorControls.Demo styling for the demo/gallery pages themselves: the "Markup"/"Model"/CSS
+ * code snippets (the <pre class="code-block">...</pre> blocks), the shared page layout (nav,
+ * section boxes, row/column helpers), and the scoped overrides the demo applies to the real
+ * library classes it hosts.
  *
- * Consumers hosting these demo components link this once:
+ * Consumers hosting these demo components link this once, alongside the main package's own
+ * stylesheets:
  *   <link href="_content/WssBlazorControls.Demo/demo.css" rel="stylesheet" />
+ *
+ * Every class here is prefixed `wss-demo-`/`demo-` (or, for `.code-block`, already unique) so it
+ * can't collide with a host app's own CSS. The one exception is the `.wss-demo-page` scope below:
+ * it exists specifically to contain the demo's overrides of the REAL library classes
+ * (.edit-control-wrapper, .edit-radio-fieldset, .edit-checkedList-fieldset) to elements actually
+ * inside the demo, so hosting these components can never change the look of a consumer's own
+ * Edit* controls elsewhere on the same page.
  */
 
 .code-block {
@@ -34,4 +44,97 @@
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 14px;
     white-space: pre;
+}
+
+/* Layout helpers -- self-contained equivalents of the "flex-row"/"flex-column"/".h2" utility
+   classes this demo used to borrow from FormTesting's own app.css. Those were never shipped with
+   the package, so any other host got inconsistent (or missing) layout. */
+.wss-demo-row {
+    display: flex;
+    flex-direction: row;
+    column-gap: 16px;
+}
+
+/* Opt-in wrap modifier -- kept separate from .wss-demo-row (rather than baked in) because adding
+   flex-wrap to a row that's never actually forced to wrap still changes the flex-shrink math
+   within its single line (a browser layout quirk, not a bug), producing a page-wide sub-pixel
+   reflow. Applied only to the rows that actually need an overflow escape hatch (button/content
+   rows); the two-pane sidebar+content shell in EditControlsDemo intentionally keeps nowrap. */
+.wss-demo-wrap {
+    flex-wrap: wrap;
+}
+
+.wss-demo-col {
+    display: flex;
+    flex-direction: column;
+    row-gap: 16px;
+}
+
+.wss-demo-heading {
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 28px;
+    color: #262626;
+    margin: 0;
+    height: 28px;
+}
+
+/* Sidebar/toggle nav state. Was ".active"/".inactive" -- generic enough to collide with a host
+   app's own nav/tab active-state styling (Bootstrap, AntD, etc.), which is exactly how this
+   demo's green was bleeding into consuming applications. */
+.wss-demo-nav-active {
+    background: green;
+}
+
+.wss-demo-nav-inactive {
+    background: grey;
+}
+
+.demo-section {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem
+}
+
+/* Scoped overrides of the real library classes every Edit* control renders (edit-controls.css).
+   Nested under .wss-demo-page -- applied to EditControlsDemo's own root -- so these only affect
+   controls actually inside the demo, never a consumer's own forms elsewhere on the same page. */
+.wss-demo-page .edit-radio-fieldset {
+    margin-top: 0;
+}
+
+.wss-demo-page .edit-checkedList-fieldset {
+    margin-top: 0;
+}
+
+.wss-demo-page .edit-control-wrapper {
+    gap: 0;
+}
+
+/* UiKitGallery. Was ".gallery" -- common enough a word that a host page could have its own
+   same-named element. */
+.wss-demo-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 760px;
+}
+
+.wss-demo-gallery .demo-section {
+    gap: 0.75rem;
+}
+
+.wss-demo-gallery .demo-section > h3 {
+    margin: 0;
+}
+
+/* Pill-select demo theme (the Clark Connect filter look): one scoped token recolors the whole
+   trigger; the selected-row tint follows the same palette. Was ".pill-filters". */
+.wss-demo-gallery .wss-demo-pill-filters {
+    --wss-select-pill-color: #1c4a3f;
+    --wss-color-bg-selected: #d9e8e2;
 }

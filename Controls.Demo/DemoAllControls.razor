@@ -4,7 +4,7 @@
 <EditForm Model=_model FormName="AllControlsForm" @ref="_form" OnInvalidSubmit=HandleInvalidSubmit OnValidSubmit=HandleValidSubmit>
     <ObjectGraphDataAnnotationsValidator />
 
-    <fieldset class="flex-row flex-wrap">
+    <fieldset class="wss-demo-row wss-demo-wrap">
 
         <div class="demo-section">
             <EditBool @bind-Value=_model.EditBool />
@@ -30,7 +30,7 @@
                 }
             </EditSelect>
             <EditTextArea @bind-Value=_model.EditTextArea />
-            <button class=@(_isHorizontal ? "active" : "inactive") @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Horizontal</button>
+            <button class=@(_isHorizontal ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Horizontal</button>
             <button>Submit</button>
         </div>
         <EditRadioString @bind-Value=_model.EditRadioString

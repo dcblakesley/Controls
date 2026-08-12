@@ -4,7 +4,7 @@
 <p>Dependency-free AntDesign-style controls ported into WssBlazorControls. These are general UI
    widgets (not form Edit* controls). Icon / Button / Checkbox / Tag are intentionally not included.</p>
 
-<div class="gallery">
+<div class="wss-demo-gallery">
 
     <section class="demo-section">
         <h3>Alert</h3>
@@ -330,7 +330,7 @@
             a scoped <code>--wss-select-pill-color</code> / <code>--wss-color-bg-selected</code>
             override — one knob recolors border, label, chevron, and focus ring.
         </p>
-        <div class="pill-filters" style="display:flex; gap:12px; flex-wrap:wrap;">
+        <div class="wss-demo-pill-filters" style="display:flex; gap:12px; flex-wrap:wrap;">
             <Select TValue="string" @bind-Value="_shipmentFilter" Options="_shipmentOptions"
                     Variant="SelectVariant.Pill" ShowSearch="false" AllowClear="false"
                     Id="demo-pill-select">
@@ -841,25 +841,6 @@
     <WasmMessageContainer />
     <WasmNotificationContainer />
 }
-
-<style>
-    .gallery { display: flex; flex-direction: column; gap: 1rem; max-width: 760px; }
-    .gallery .demo-section {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-    .gallery .demo-section > h3 { margin: 0; }
-    /* Pill-select demo theme (the Clark Connect filter look): one scoped token recolors the whole
-       trigger; the selected-row tint follows the same palette. */
-    .gallery .pill-filters {
-        --wss-select-pill-color: #1c4a3f;
-        --wss-color-bg-selected: #d9e8e2;
-    }
-</style>
 
 @code {
     // WasmMessageContainer/WasmNotificationContainer throw on the Blazor Server renderer, where their

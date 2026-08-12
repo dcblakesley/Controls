@@ -2,18 +2,18 @@
 @using Microsoft.AspNetCore.Components.Forms
 
 <FormDefaults UpdateOn="UpdateTrigger.Input">
-<div class="flex-row">
+<div class="wss-demo-page wss-demo-row">
     <!-- Sidebar -->
-    <div class="flex-column" style="gap: 4px">
+    <div class="wss-demo-col" style="gap: 4px">
         @foreach (var view in Enum.GetValues<CurrentView>())
         {
-            <button class=@(_currentView == view ? "active" : "inactive") @onclick=@(()=>GoToView(view))>
+            <button class=@(_currentView == view ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(()=>GoToView(view))>
                 @(view)
             </button>
         }
     </div>
 
-    <div class="flex-column">
+    <div class="wss-demo-col">
 
         <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="_form">
             <ObjectGraphDataAnnotationsValidator />
@@ -22,11 +22,11 @@
             {
                 <!-- Actions -->
                 <fieldset style="padding-bottom: 1rem">
-                    <legend class="h2">Actions and FormOptions</legend>
+                    <legend class="wss-demo-heading">Actions and FormOptions</legend>
 
-                    <div class="flex-row">
-                        <button class=@(FormOptions.ShowBoundValues ? "active" : "inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
-                        <button class=@(FormOptions.IsEditMode ? "active" : "inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
+                    <div class="wss-demo-row wss-demo-wrap">
+                        <button class=@(FormOptions.ShowBoundValues ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
+                        <button class=@(FormOptions.IsEditMode ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
                         <EditSelectEnum @bind-Value=@FormOptions.Hiding />
                     </div>
                 </fieldset>
@@ -120,33 +120,3 @@
     </div>
 </div>
 </FormDefaults>
-
-
-<style>
-    .myWidth { width: 80px; }
-    .active { background: green; }
-    .inactive { background: grey; }
-
-    .demo-section {
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem
-    }
-
-    .edit-radio-fieldset {
-        margin-top: 0;
-    }
-    .edit-checkedList-fieldset { margin-top: 0; }
-
-    .edit-control-wrapper {
-        /* Wraper/group around each edit control (label, description, input and validation messages */
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-    }
-
-</style>

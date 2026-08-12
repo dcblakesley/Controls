@@ -19,7 +19,7 @@
                 role="tab"
                 aria-selected=@(_selectedTab == ComparisonTab.RollYourOwn ? "true" : "false")
                 tabindex=@(_selectedTab == ComparisonTab.RollYourOwn ? null : "-1")
-                class=@(_selectedTab == ComparisonTab.RollYourOwn ? "active" : "inactive")
+                class=@(_selectedTab == ComparisonTab.RollYourOwn ? "wss-demo-nav-active" : "wss-demo-nav-inactive")
                 @onclick=@(() => _selectedTab = ComparisonTab.RollYourOwn)>
             Roll Your Own (Blazor)
         </button>
@@ -29,7 +29,7 @@
                 role="tab"
                 aria-selected=@(_selectedTab == ComparisonTab.ReactTypical ? "true" : "false")
                 tabindex=@(_selectedTab == ComparisonTab.ReactTypical ? null : "-1")
-                class=@(_selectedTab == ComparisonTab.ReactTypical ? "active" : "inactive")
+                class=@(_selectedTab == ComparisonTab.ReactTypical ? "wss-demo-nav-active" : "wss-demo-nav-inactive")
                 @onclick=@(() => _selectedTab = ComparisonTab.ReactTypical)>
             React + Ant Design
         </button>
@@ -39,7 +39,7 @@
                 role="tab"
                 aria-selected=@(_selectedTab == ComparisonTab.ReactFullParity ? "true" : "false")
                 tabindex=@(_selectedTab == ComparisonTab.ReactFullParity ? null : "-1")
-                class=@(_selectedTab == ComparisonTab.ReactFullParity ? "active" : "inactive")
+                class=@(_selectedTab == ComparisonTab.ReactFullParity ? "wss-demo-nav-active" : "wss-demo-nav-inactive")
                 @onclick=@(() => _selectedTab = ComparisonTab.ReactFullParity)>
             React + Ant Design + Accessibility
         </button>
