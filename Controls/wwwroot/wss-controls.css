@@ -55,10 +55,13 @@
     /* De-emphasized but OPERABLE text — the picker's outside-month days and outside-decade years,
        which are real buttons a click commits. They used --wss-color-placeholder (1.84:1), a value
        that is only defensible for text nobody can activate; WCAG 1.4.3 wants 4.5:1 here. #737373
-       is 4.74:1 on white and still 4.58:1 on --wss-color-bg-hover (the cell's own hover fill, the
-       worst background a plain calendar puts behind it), while reading as plainly secondary next
-       to the ~16.5:1 in-month ink. Actual input placeholders keep --wss-color-placeholder. */
-    --wss-color-text-deemphasized: #737373;
+       was 4.74:1 on white but only 4.35:1 on --wss-color-bg-hover (the cell's own hover fill) --
+       under AA on hover, so darkened to #696969: 5.49:1 on white, 5.04:1 on --wss-color-bg-hover,
+       and 5.00:1 on --wss-color-bg-selected's #e6f7ff (checked for completeness -- a selected cell
+       never actually carries this token, since .wss-picker-day-selected switches to on-primary
+       text), all comfortably clear of 4.5:1, while reading as plainly secondary next to the
+       ~16.5:1 in-month ink. Actual input placeholders keep --wss-color-placeholder. */
+    --wss-color-text-deemphasized: #696969;
 
     /* Surfaces / lines */
     --wss-color-bg: #fff;
@@ -334,7 +337,7 @@
 
 .wss-select-single .wss-select-selector {
     width: 100%;
-    height: var(--wss-control-height);
+    min-height: var(--wss-control-height);
     padding: 0 var(--wss-padding-h);
 }
 
@@ -641,7 +644,7 @@
 /* ----------------------------------------------------------- Sizes */
 
 .wss-select-sm.wss-select-single .wss-select-selector {
-    height: var(--wss-control-height-sm);
+    min-height: var(--wss-control-height-sm);
     padding: 0 7px;
 }
 
@@ -659,7 +662,7 @@
 }
 
 .wss-select-lg.wss-select-single .wss-select-selector {
-    height: var(--wss-control-height-lg);
+    min-height: var(--wss-control-height-lg);
     padding: 0 var(--wss-padding-h);
 }
 
@@ -1615,7 +1618,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 32px;
+    min-height: 32px;
     font-size: var(--wss-font-size);
     font-family: inherit; /* <button> elements default to the system font otherwise */
     color: var(--wss-color-text);
@@ -1674,7 +1677,6 @@
     align-items: center;
     justify-content: center;
     min-width: 32px;
-    height: 32px;
     min-height: 32px;
     color: var(--wss-color-text);
     user-select: none;
@@ -1698,7 +1700,6 @@
    and stay in each one's own small rule below. */
 .wss-pagination-size-select,
 .wss-pagination-jumper-input {
-    height: 32px;
     min-height: 32px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
@@ -1751,7 +1752,6 @@
 .wss-pagination-sm .wss-pagination-next,
 .wss-pagination-sm .wss-pagination-ellipsis {
     min-width: 24px;
-    height: 24px;
     min-height: 24px;
     padding: 0 4px;
     font-size: var(--wss-font-size-sm);
@@ -1759,7 +1759,6 @@
 
 .wss-pagination-sm .wss-pagination-size-select,
 .wss-pagination-sm .wss-pagination-jumper-input {
-    height: 24px;
     min-height: 24px;
     font-size: var(--wss-font-size-sm);
 }
@@ -1822,12 +1821,16 @@
 /* Toward black, not white -- see .wss-dialog-btn-primary:hover for the arithmetic. 7.15:1. */
 .wss-dialog-btn-danger:hover:not(:disabled) {
     color: var(--wss-color-on-primary);
-    background: var(--wss-color-error-strong-hover, color-mix(in srgb, var(--wss-color-error-strong) 85%, #000));
-    border-color: var(--wss-color-error-strong-hover, color-mix(in srgb, var(--wss-color-error-strong) 85%, #000));
+    background: var(--wss-color-error-strong-hover, var(--color-danger-strong-hover, color-mix(in srgb, var(--wss-color-error-strong) 85%, #000)));
+    border-color: var(--wss-color-error-strong-hover, var(--color-danger-strong-hover, color-mix(in srgb, var(--wss-color-error-strong) 85%, #000)));
 }
 
 .wss-dialog-btn-sm {
-    height: 24px;
+    /* min-height, not height: the shared rule above now sets min-height: 32px on .wss-dialog-btn --
+       a plain height: 24px here would lose to that larger min-height (min-height always wins over a
+       smaller height). Same specificity as the shared rule, so this later declaration still wins the
+       min-height property itself, landing back at 24px. */
+    min-height: 24px;
     padding: 0 7px;
     font-size: var(--wss-font-size-sm);
 }
@@ -2647,7 +2650,7 @@
 .wss-table-filter-reset,
 .wss-table-filter-ok {
     padding: 0 7px;
-    height: 24px;
+    min-height: 24px;
     font-size: var(--wss-font-size-sm);
     border: none;
     border-radius: var(--wss-radius);
@@ -2948,7 +2951,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    height: var(--wss-control-height);
+    min-height: var(--wss-control-height);
     padding: 0 var(--wss-padding-h);
     background: var(--wss-color-bg);
     border: 1px solid var(--wss-color-border);
@@ -2988,6 +2991,11 @@
 .wss-picker-input-slot input {
     width: 100%;
     min-width: 0;
+    /* height pinned: a host-page global like `input { height: 32px }` would otherwise inflate this
+       inner input past the field's own min-height and grow the whole field (the field used to clamp
+       it with a fixed height; the min-height that replaced it for text scaling cannot). auto keeps
+       the line box in charge, and this selector outweighs any bare `input` global. */
+    height: auto;
     margin: 0;
     padding: 0;
     color: var(--wss-color-text);
@@ -3119,7 +3127,7 @@
    two (start/end) inputs, which share this exact .wss-picker-input/.wss-picker-input-slot markup. */
 
 .wss-picker-sm .wss-picker-input {
-    height: var(--wss-control-height-sm);
+    min-height: var(--wss-control-height-sm);
     padding: 0 7px;
 }
 
@@ -3132,7 +3140,7 @@
 }
 
 .wss-picker-lg .wss-picker-input {
-    height: var(--wss-control-height-lg);
+    min-height: var(--wss-control-height-lg);
     padding: 0 var(--wss-padding-h);
 }
 
@@ -3421,7 +3429,7 @@
     /* position: relative pulls the button above the cell's ::before range band. */
     position: relative;
     min-width: 24px;
-    height: 24px;
+    min-height: 24px;
     padding: 0 3px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
@@ -3445,7 +3453,7 @@
 
 /* An outside-month day is dimmed but still clickable (it navigates and commits), so it takes the
    operable de-emphasis token rather than the placeholder gray it used to share with un-activatable
-   text -- 4.74:1 on the panel and 4.58:1 on the hover fill above, versus 1.84:1 before. */
+   text -- 5.49:1 on the panel and 5.04:1 on the hover fill above, versus 1.84:1 before. */
 .wss-picker-day-outside {
     color: var(--wss-color-text-deemphasized);
 }
@@ -3556,7 +3564,7 @@
 }
 
 .wss-picker-month-btn {
-    height: 24px;
+    min-height: 24px;
     padding: 0 8px;
     color: var(--wss-color-text);
     font-size: var(--wss-font-size);
@@ -3679,7 +3687,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 24px;
+    min-height: 24px;
     padding: 0 7px;
     font-family: inherit;
     font-size: var(--wss-font-size-sm);
@@ -3893,7 +3901,7 @@
 .wss-search-input {
     flex: 1;
     min-width: 0;
-    height: var(--wss-control-height);
+    min-height: var(--wss-control-height);
     margin: 0;
     padding: 0 12px;
     color: var(--wss-color-text);
@@ -3941,9 +3949,8 @@
     justify-content: center;
     margin-inline-start: -1px;
     padding: 0 8px;
-    /* min-height (not just height) so a consumer reset like `button { max-height: fit-content }`
-       can't collapse the button below the input's height (see .wss-pagination-prev). */
-    height: var(--wss-control-height);
+    /* min-height so a consumer reset like `button { max-height: fit-content }` can't collapse the
+       button below the input's height (see .wss-pagination-prev). */
     min-height: var(--wss-control-height);
     color: var(--wss-color-text-secondary);
     font-size: 14px;
@@ -3965,9 +3972,8 @@
     justify-content: center;
     margin-inline-start: -1px; /* collapse the doubled border against the input */
     padding: 0 10px;
-    /* min-height (not just height) so a consumer reset like `button { max-height: fit-content }`
-       can't collapse the button below the input's height (see .wss-pagination-prev). */
-    height: var(--wss-control-height);
+    /* min-height so a consumer reset like `button { max-height: fit-content }` can't collapse the
+       button below the input's height (see .wss-pagination-prev). */
     min-height: var(--wss-control-height);
     color: var(--wss-color-text);
     font-size: 16px;
