@@ -40,10 +40,11 @@ namespace Controls;
 /// <para>
 /// Not a form control (no <c>InputBase</c>/validation wiring) — bind with <c>@bind-Start</c> /
 /// <c>@bind-End</c>. JS interop (viewport flip/clamp, form-submit suppression, focus-out close,
-/// arrow-key page-scroll suppression) degrades gracefully: without JS the dropdown opens below the
-/// field at the CSS default placement, everything remains clickable, and arrow-key grid navigation
-/// still updates the roving-tabindex state (just without the DOM focus follow or the native
-/// page-scroll suppression).
+/// arrow-key page-scroll suppression, and <c>ArrowDown</c> from either field stepping focus into
+/// whichever grid owns the roving tabindex) degrades gracefully: without JS the dropdown opens below
+/// the field at the CSS default placement, everything remains clickable, Tab still reaches the
+/// grids, and arrow-key grid navigation still updates the roving-tabindex state (just without the
+/// DOM focus follow or the native page-scroll suppression).
 /// </para>
 /// </remarks>
 public partial class DateRangePicker : PickerBase

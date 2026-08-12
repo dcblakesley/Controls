@@ -237,14 +237,41 @@ internal static class PickerMath
         return (Math.Clamp(from, 1, 9999), Math.Clamp(to, 1, 9999));
     }
 
+    // ----- Physical -> logical horizontal arrow translation ---------------------------------------
+    // The four navigation maps below are written for a LEFT-TO-RIGHT calendar, where ArrowRight is
+    // "the next unit". Under an RTL UI culture the stylesheet mirrors every grid (the cells flow
+    // right-to-left), so the PHYSICAL Right arrow has to step to the PREVIOUS unit for focus to
+    // follow the key VISUALLY -- the APG rule for physical horizontal arrows in a mirrored layout.
+    // See RtlSupport for why the ambient UI culture is the signal, and for why only this one pair
+    // swaps: ArrowUp/ArrowDown, Home/End and PageUp/PageDown are logical moves (a row, a week, a
+    // month, a year) with no visual handedness at all.
+    //
+    // Applied HERE -- once per map, ahead of the switch -- rather than in each picker's own grid
+    // keydown handler: every grid in both pickers (DatePicker's day/month/quarter/year grids,
+    // DateRangePicker's dual panels and its single-panel pick session) reaches its navigation
+    // through exactly these four methods, so this is the one seam that covers all of them and the
+    // only place the rule has to be stated. It is also the one ambient-culture read in an otherwise
+    // inputs-explicit class -- process/circuit state, not component state, so nothing about sharing
+    // this type between the two pickers changes.
+    static string LogicalKey(string key) => RtlSupport.IsRightToLeft
+        ? key switch
+        {
+            "ArrowLeft" => "ArrowRight",
+            "ArrowRight" => "ArrowLeft",
+            _ => key,
+        }
+        : key;
+
     // Maps a keydown's Key to the day it should move focus to, or null when the key isn't a
-    // navigation key. AddDays/AddMonths throws at the DateTime.MinValue/MaxValue edge — the caller
-    // treats that as the key being a no-op there rather than letting the exception escape.
+    // navigation key. Left/Right below are the LOGICAL directions -- LogicalKey has already swapped
+    // the physical pair under an RTL culture. AddDays/AddMonths throws at the DateTime.MinValue/
+    // MaxValue edge — the caller treats that as the key being a no-op there rather than letting the
+    // exception escape.
     public static DateTime? NextFocusDay(DateTime current, string key, DayOfWeek firstDayOfWeek)
     {
         try
         {
-            return key switch
+            return LogicalKey(key) switch
             {
                 "ArrowLeft" => current.AddDays(-1),
                 "ArrowRight" => current.AddDays(1),
@@ -269,13 +296,14 @@ internal static class PickerMath
     // Maps a keydown's Key to the month it should move focus to, or null when the key isn't a
     // navigation key -- shared by DatePicker's Mode="Month" grid and DateRangePicker's Month range
     // mode. The 3-column grid makes Up/Down a +/-3 (one row) step; Home/End jump to the first/last
-    // month of the focused row. AddMonths/AddYears throws at the DateTime.MinValue/MaxValue edge --
-    // the caller treats that as the key being a no-op there.
+    // month of the focused row. Left/Right are logical (see LogicalKey's RTL swap). AddMonths/
+    // AddYears throws at the DateTime.MinValue/MaxValue edge -- the caller treats that as the key
+    // being a no-op there.
     public static DateTime? NextFocusMonth(DateTime current, string key)
     {
         try
         {
-            return key switch
+            return LogicalKey(key) switch
             {
                 "ArrowLeft" => current.AddMonths(-1),
                 "ArrowRight" => current.AddMonths(1),
@@ -303,14 +331,15 @@ internal static class PickerMath
     // DatePicker's Mode="Quarter" grid and DateRangePicker's Quarter range mode. Left/Right step a
     // quarter (retargeting the view when they cross a year boundary is the caller's job -- see
     // DatePicker.OnQuarterGridKeyDown / DateRangePicker.OnQuarterGridKeyDown); Home/End jump to the
-    // year's first/last quarter; PageUp/PageDown step a year, keeping the same quarter. AddMonths/
-    // the DateTime constructor throw at the DateTime.MinValue/MaxValue edge -- the caller treats
-    // that as the key being a no-op there, same as NextFocusMonth.
+    // year's first/last quarter; PageUp/PageDown step a year, keeping the same quarter. Left/Right
+    // are logical (see LogicalKey's RTL swap). AddMonths/the DateTime constructor throw at the
+    // DateTime.MinValue/MaxValue edge -- the caller treats that as the key being a no-op there, same
+    // as NextFocusMonth.
     public static DateTime? NextFocusQuarter(DateTime current, string key)
     {
         try
         {
-            return key switch
+            return LogicalKey(key) switch
             {
                 "ArrowLeft" => current.AddMonths(-3),
                 "ArrowRight" => current.AddMonths(3),
@@ -331,13 +360,14 @@ internal static class PickerMath
     // navigation key. Shared by DatePicker's Mode="Year" grid and DateRangePicker's Year range
     // mode -- `decadeStart` is the CALLER's currently-displayed decade (DatePicker has one;
     // DateRangePicker picks whichever of its two panels' decades the current focus belongs to),
-    // used only for Home/End's row grouping. Plain int arithmetic (unlike NextFocusMonth/
-    // NextFocusQuarter's DateTime.AddX, this can't throw) -- clamped to DateTime's representable
-    // year range instead so a move at the very edge is a no-op there.
+    // used only for Home/End's row grouping. Left/Right are logical (see LogicalKey's RTL swap).
+    // Plain int arithmetic (unlike NextFocusMonth/NextFocusQuarter's DateTime.AddX, this can't
+    // throw) -- clamped to DateTime's representable year range instead so a move at the very edge is
+    // a no-op there.
     public static DateTime? NextFocusYear(DateTime current, string key, int decadeStart)
     {
         var year = current.Year;
-        int? next = key switch
+        int? next = LogicalKey(key) switch
         {
             "ArrowLeft" => year - 1,
             "ArrowRight" => year + 1,

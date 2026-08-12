@@ -40,6 +40,7 @@
                    value="@Display"
                    @oninput="@(e => _edit = e.Value?.ToString() ?? string.Empty)"
                    @onchange="@(() => CommitTextAsync())"
+                   @onkeydown="OnInputKeyDownAsync"
                    @onfocus="OnInputFocus" />
         </span>
         <span class="wss-picker-suffix">@PickerIcons.CalendarIcon</span>

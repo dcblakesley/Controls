@@ -41,6 +41,7 @@
                    value="@StartDisplay"
                    @oninput="@(e => _startEdit = e.Value?.ToString() ?? string.Empty)"
                    @onchange="CommitStartTextAsync"
+                   @onkeydown="OnInputKeyDownAsync"
                    @onfocus="@(() => OnInputFocus(0))" />
         </span>
         <span class="wss-picker-separator" aria-hidden="true">@PickerIcons.SwapRightIcon</span>
@@ -64,6 +65,7 @@
                    value="@EndDisplay"
                    @oninput="@(e => _endEdit = e.Value?.ToString() ?? string.Empty)"
                    @onchange="CommitEndTextAsync"
+                   @onkeydown="OnInputKeyDownAsync"
                    @onfocus="@(() => OnInputFocus(1))" />
         </span>
         <span class="wss-picker-suffix">@PickerIcons.CalendarIcon</span>

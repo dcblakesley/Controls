@@ -82,3 +82,22 @@ export function focusDay(root, dateStr) {
         || root.querySelector(`.wss-picker-day[data-date="${dateStr}"], .wss-picker-month-btn[data-date="${dateStr}"]`);
     try { el && el.focus(); } catch { /* detached between the query and the call */ }
 }
+
+// Moves real DOM focus onto whichever cell within `root` (the dropdown panel) currently carries the
+// grid's roving tabindex="0" -- the ArrowDown-from-the-input affordance (see PickerBase's
+// OnInputKeyDownAsync). The panel deliberately opens with focus still on the text field (the
+// combobox-like model -- see PKR-5), so this is the keyboard route INTO the calendar that isn't Tab.
+// There is exactly one such cell across every grid the panel renders, C# picks which one, and it is
+// always focusable (a rejected cell is aria-disabled, never natively `disabled`).
+//
+// Deliberately WITHOUT focusDay's "don't steal focus the user has since moved" guard: this call is
+// the direct answer to a keypress the user just made ON the input, so the input holding focus is the
+// expected state here rather than the raced one that guard defends against. Silently no-ops when the
+// panel has no grid at all (Mode="Time" renders selects) or when the call raced a close.
+export function focusTabStop(root) {
+    if (!root) {
+        return;
+    }
+    const el = root.querySelector('.wss-picker-day[tabindex="0"], .wss-picker-month-btn[tabindex="0"]');
+    try { el && el.focus(); } catch { /* detached between the query and the call */ }
+}

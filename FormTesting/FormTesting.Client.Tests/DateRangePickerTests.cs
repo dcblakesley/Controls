@@ -3160,9 +3160,12 @@ public class DateRangePickerTests : BunitContext
     [Fact]
     public void The_session_calendar_is_an_aria_grid_named_by_its_lone_month()
     {
-        var cut = RenderPicker(p => p
+        // Render<> directly rather than RenderPicker: the helper already adds Format, and the
+        // DateTime mode needs its own (same pattern as the other Datetime_mode tests above).
+        var cut = Render<DateRangePicker>(p => p
             .Add(c => c.Mode, DatePickerMode.DateTime)
             .Add(c => c.Format, "MM/dd/yyyy HH:mm:ss")
+            .Add(c => c.FirstDayOfWeek, DayOfWeek.Sunday)
             .Add(c => c.Start, new DateTime(2025, 1, 15, 9, 0, 0)));
         Open(cut);
 
@@ -3172,5 +3175,121 @@ public class DateRangePickerTests : BunitContext
         Assert.Equal(6, grid.Children.Count(c => c.GetAttribute("role") == "row"));
         Assert.Equal(42, grid.QuerySelectorAll("[role='gridcell']").Length);
         Assert.Equal("January 2025", cut.Find(".wss-picker-dropdown [aria-live]").TextContent);
+    }
+
+    // ----- Accessibility: RTL arrow direction ---------------------------------
+    // The range picker's half of the contract DatePickerTests pins for the single-date sibling: under
+    // a right-to-left UI culture the mirrored grids make the PHYSICAL Right arrow a step to the
+    // PREVIOUS unit (see RtlSupport and PickerMath.LogicalKey -- both pickers' grid handlers reach
+    // their navigation through the same four maps, so this is the shared rule seen from the other side).
+
+    // Mirrors DatePickerTests' own copy: the ambient UI culture only, never CurrentCulture (which
+    // drives the picker's formats/first-day-of-week and stays put so the grid reads the same).
+    static void WithUICulture(string name, Action body)
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = new CultureInfo(name);
+            body();
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [Fact]
+    public void Horizontal_arrows_in_the_day_grid_follow_the_visual_direction_under_an_rtl_culture()
+    {
+        WithUICulture("he-IL", () =>
+        {
+            var cut = RenderPicker(p => p
+                .Add(c => c.Start, Jan15)
+                .Add(c => c.End, Feb3));
+            Open(cut);
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("0", Day(cut, 0, 14).GetAttribute("tabindex")); // Jan 15 -> Jan 14
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+            Assert.Equal("0", Day(cut, 0, 15).GetAttribute("tabindex"));
+
+            // Vertical moves are logical and untouched: Jan 15 + one row = Jan 22.
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+            Assert.Equal("0", Day(cut, 0, 22).GetAttribute("tabindex"));
+        });
+
+        WithUICulture("en-US", () =>
+        {
+            var cut = RenderPicker(p => p
+                .Add(c => c.Start, Jan15)
+                .Add(c => c.End, Feb3));
+            Open(cut);
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("0", Day(cut, 0, 16).GetAttribute("tabindex"));
+        });
+    }
+
+    [Fact]
+    public void Horizontal_arrows_in_the_month_grid_follow_the_visual_direction_under_an_rtl_culture()
+    {
+        WithUICulture("he-IL", () =>
+        {
+            var cut = RenderPicker(p => p
+                .Add(c => c.Mode, DatePickerMode.Month)
+                .Add(c => c.Start, Jan15)
+                .Add(c => c.End, Feb3));
+            Open(cut);
+
+            // The left panel shows 2025 with January (the start endpoint) as the roving stop; the
+            // physical Right arrow steps to the month drawn to its right -- December 2024, which
+            // slides the pair of years back one, same as the LTR direction's own crossing.
+            cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("2024-12-01",
+                cut.Find(".wss-picker-month-btn[tabindex='0']").GetAttribute("data-date"));
+        });
+    }
+
+    // ----- ArrowDown: the fields' own way into the grids ----------------------
+
+    int FocusTabStopCalls() => JSInterop.Invocations.Count(i => i.Identifier == "focusTabStop");
+
+    [Fact]
+    public void ArrowDown_in_either_input_hands_dom_focus_to_the_panels_roving_cell()
+    {
+        // Same affordance the single-date sibling gets, from either field: the panel opens with focus
+        // deliberately left on the active input, and ArrowDown is the way into the calendar that
+        // isn't Tab. The roving tabindex is a SINGLE stop across both panels, so wss-picker.js's
+        // panel-wide query finds whichever grid owns it -- there is no per-field target to pick.
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3));
+        Open(cut);
+        Assert.Equal(0, FocusTabStopCalls());
+
+        cut.Find(".wss-picker-input-start").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        cut.WaitForAssertion(() => Assert.Equal(1, FocusTabStopCalls()));
+
+        cut.Find(".wss-picker-input-end").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        cut.WaitForAssertion(() => Assert.Equal(2, FocusTabStopCalls()));
+
+        // It moves FOCUS, not the roving target -- and it never closes the panel.
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+        Assert.Single(cut.FindAll(".wss-picker-day[tabindex='0']"));
+    }
+
+    [Fact]
+    public void ArrowDown_in_an_input_is_inert_while_the_panel_is_closed()
+    {
+        var cut = RenderPicker(p => p
+            .Add(c => c.Start, Jan15)
+            .Add(c => c.End, Feb3));
+
+        cut.Find(".wss-picker-input-start").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        Assert.Equal(0, FocusTabStopCalls());
+        Assert.Empty(cut.FindAll(".wss-picker-dropdown")); // and it doesn't open one either
     }
 }

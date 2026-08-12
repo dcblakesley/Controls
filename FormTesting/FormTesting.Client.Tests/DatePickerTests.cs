@@ -2970,4 +2970,175 @@ public class DatePickerTests : BunitContext
         Assert.Empty(cut.FindAll("#birthday-format"));
         Assert.Equal("error-msg-Birthday", cut.Find(".wss-picker-input-date").GetAttribute("aria-describedby"));
     }
+
+    // ----- Accessibility: RTL arrow direction ---------------------------------
+    // Under a right-to-left UI culture the stylesheet mirrors every grid, so the PHYSICAL Right arrow
+    // has to move focus to the cell drawn to its right -- the PREVIOUS unit (the APG rule for
+    // physical horizontal arrows in a mirrored layout; see RtlSupport and PickerMath.LogicalKey).
+
+    // Runs `body` with the ambient UI culture set to `name`. Deliberately NOT CurrentCulture, which
+    // is what drives the picker's own formats/first-day-of-week/digits -- leaving it alone keeps
+    // every assertion below reading the same grid these tests read everywhere else. CurrentUICulture
+    // flows per async context (so a test class running in parallel is unaffected), and the finally
+    // restore is what keeps the rest of THIS class on the ambient default.
+    static void WithUICulture(string name, Action body)
+    {
+        var original = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = new CultureInfo(name);
+            body();
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+        }
+    }
+
+    [Fact]
+    public void Horizontal_arrows_in_the_day_grid_follow_the_visual_direction_under_an_rtl_culture()
+    {
+        WithUICulture("he-IL", () =>
+        {
+            var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+            Open(cut);
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("0", Day(cut, 13).GetAttribute("tabindex")); // Feb 14 -> Feb 13
+            Assert.Equal("-1", Day(cut, 15).GetAttribute("tabindex"));
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+            Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex")); // ...and back
+        });
+
+        // The other half of the contract, pinned explicitly rather than left to the machine's
+        // ambient culture (Arrow_keys_move_the_roving_tabindex_day covers the default too).
+        WithUICulture("en-US", () =>
+        {
+            var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+            Open(cut);
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("0", Day(cut, 15).GetAttribute("tabindex"));
+        });
+    }
+
+    [Fact]
+    public void Vertical_and_home_end_navigation_are_unchanged_under_an_rtl_culture()
+    {
+        // Only the physical horizontal pair swaps: rows (Up/Down), the focused week's own bounds
+        // (Home/End) and months (PageUp/PageDown) are logical moves with no visual handedness.
+        WithUICulture("he-IL", () =>
+        {
+            var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+            Open(cut);
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+            Assert.Equal("0", Day(cut, 7).GetAttribute("tabindex")); // Feb 14 (Sat) -> Feb 7
+
+            // Sunday-start week: Feb 1 - Feb 7.
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "Home" });
+            Assert.Equal("0", Day(cut, 1).GetAttribute("tabindex"));
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "End" });
+            Assert.Equal("0", Day(cut, 7).GetAttribute("tabindex"));
+
+            cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown" });
+            Assert.Equal("3", cut.FindAll(".wss-picker-month-header select")[0]
+                .QuerySelector("option[selected]")!.GetAttribute("value")); // March
+        });
+    }
+
+    [Fact]
+    public void Horizontal_arrows_in_the_month_grid_follow_the_visual_direction_under_an_rtl_culture()
+    {
+        WithUICulture("he-IL", () =>
+        {
+            var cut = Render<DatePicker>(p => p
+                .Add(c => c.Mode, DatePickerMode.Month)
+                .Add(c => c.Value, Feb14));
+            Open(cut);
+
+            cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("0", MonthButton(cut, 1).GetAttribute("tabindex")); // February -> January
+
+            cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+            Assert.Equal("0", MonthButton(cut, 2).GetAttribute("tabindex"));
+
+            // The 3-column grid's vertical step is untouched: January + one row = April.
+            cut.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+            Assert.Equal("0", MonthButton(cut, 5).GetAttribute("tabindex"));
+        });
+    }
+
+    [Fact]
+    public void Horizontal_arrows_in_the_quarter_and_year_grids_follow_the_visual_direction_under_an_rtl_culture()
+    {
+        WithUICulture("he-IL", () =>
+        {
+            // Quarter: the pinned Feb 2026 value focuses Q1, and the physical Right arrow steps to
+            // the quarter drawn to its right -- the previous one, which crosses back into 2025 and
+            // slides the view with it, exactly as the LTR direction's own crossing does.
+            var quarter = Render<DatePicker>(p => p
+                .Add(c => c.Mode, DatePickerMode.Quarter)
+                .Add(c => c.Value, Feb14));
+            Open(quarter);
+
+            quarter.Find(".wss-picker-quarter-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("2025-10-01",
+                quarter.Find(".wss-picker-month-btn[tabindex='0']").GetAttribute("data-date"));
+
+            // Year: 2026 -> 2025, within the displayed decade.
+            var year = Render<DatePicker>(p => p
+                .Add(c => c.Mode, DatePickerMode.Year)
+                .Add(c => c.Value, Feb14));
+            Open(year);
+
+            year.Find(".wss-picker-month-grid").KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("2025-01-01",
+                year.Find(".wss-picker-month-btn[tabindex='0']").GetAttribute("data-date"));
+        });
+    }
+
+    // ----- ArrowDown: the field's own way into the grid -----------------------
+
+    int FocusTabStopCalls() => JSInterop.Invocations.Count(i => i.Identifier == "focusTabStop");
+
+    [Fact]
+    public void ArrowDown_in_the_input_hands_dom_focus_to_the_grids_roving_cell()
+    {
+        // The panel deliberately opens with focus left on the field (the combobox-like model), which
+        // left Tab as the only way into the calendar. ArrowDown is the APG affordance for that model.
+        // The DOM move itself is wss-picker.js's focusTabStop, so bUnit can only observe the
+        // invocation -- where focus actually lands is the e2e suite's assertion.
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+        Assert.Equal(0, FocusTabStopCalls());
+
+        cut.Find(".wss-picker-input-date").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        cut.WaitForAssertion(() => Assert.Equal(1, FocusTabStopCalls()));
+        // It moves FOCUS, not the roving target -- and it never closes the panel.
+        Assert.NotEmpty(cut.FindAll(".wss-picker-dropdown"));
+        Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void ArrowDown_in_the_input_is_inert_while_closed_and_no_other_key_reaches_the_grid()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+
+        // Closed: there is no grid to move into (the input's own focus event is what opens one).
+        cut.Find(".wss-picker-input-date").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        Assert.Equal(0, FocusTabStopCalls());
+
+        Open(cut);
+        foreach (var key in new[] { "ArrowUp", "ArrowLeft", "ArrowRight", "Escape", "a" })
+        {
+            // Escape closes, so re-open between keys -- each one still has to leave the grid alone.
+            if (cut.FindAll(".wss-picker-dropdown").Count == 0) Open(cut);
+            cut.Find(".wss-picker-input-date").KeyDown(new KeyboardEventArgs { Key = key });
+        }
+
+        Assert.Equal(0, FocusTabStopCalls());
+    }
 }

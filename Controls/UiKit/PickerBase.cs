@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components.Web;
+
 namespace Controls;
 
 /// <summary>
@@ -320,6 +322,49 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
 
     static bool TryParseTimePartValue(ChangeEventArgs e, out int value) =>
         int.TryParse(e.Value?.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+
+    // ----- ArrowDown: the input's own way into the grid -----------------------
+
+    /// <summary>
+    /// The always-rendered input(s)' <c>keydown</c>: <c>ArrowDown</c> while the panel is open moves
+    /// DOM focus into the calendar, onto whichever cell currently carries the roving tabindex (see
+    /// <c>wss-picker.js</c>'s <c>focusTabStop</c>). Every other key is left entirely alone here — the
+    /// wrapper's own handler still owns Escape/Enter, and typing is untouched.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The panel deliberately opens with focus left on the field (the combobox-like model — see each
+    /// picker's <c>role="dialog"</c> comment and the a11y audit's PKR-5), which left Tab as the only
+    /// way in. This is the APG's own affordance for that model, and it changes nothing about where
+    /// focus starts: it is a move the user asks for.
+    /// </para>
+    /// <para>
+    /// No <c>preventDefault</c>: Blazor's is all-or-nothing per element, so suppressing ArrowDown's
+    /// default would mean suppressing every keystroke's — and ArrowDown's default in a single-line
+    /// text input is a caret move to the end, which is harmless once focus has left the field anyway.
+    /// </para>
+    /// <para>
+    /// Degrades like every other JS-dependent behavior here: with no module (prerender, bUnit, a
+    /// failed import) the keypress is simply inert and Tab still reaches the grid. Which grid gets
+    /// focus in <see cref="DateRangePicker"/> needs no decision — the roving tabindex is a single
+    /// stop across BOTH panels, so <c>focusTabStop</c>'s panel-wide query finds whichever one owns it.
+    /// </para>
+    /// </remarks>
+    protected async Task OnInputKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (!_open || e.Key != "ArrowDown") return;
+        var navModule = await _pickerModule.GetAsync(JS, FormDefaults);
+        if (navModule is null) return; // no JS — Tab is still the way in
+        try
+        {
+            await navModule.InvokeVoidAsync("focusTabStop", _panelRef);
+        }
+        catch
+        {
+            // No JS runtime / the panel unmounted under the call — focus simply stays on the input,
+            // exactly as it did before this affordance existed.
+        }
+    }
 
     // ----- Shared render cycle + module lifecycle -----------------------------
     // Both JS modules are held by the JsModule fields declared at the top of the class: every call

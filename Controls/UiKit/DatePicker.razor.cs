@@ -24,10 +24,11 @@ namespace Controls;
 /// The single-date sibling of <see cref="DateRangePicker"/> — it shares the <c>wss-picker-*</c>
 /// calendar internals and the <c>wss-overlay.js</c> lifecycle. Not a form control (no
 /// <c>InputBase</c>/validation wiring) — bind with <c>@bind-Value</c>. JS interop (viewport
-/// flip/clamp, form-submit suppression, focus-out close, arrow-key page-scroll suppression)
-/// degrades gracefully: without JS the dropdown opens below the field at the CSS default placement,
-/// everything remains clickable, and arrow-key grid navigation still updates the roving-tabindex
-/// state (just without the DOM focus follow or the native page-scroll suppression).
+/// flip/clamp, form-submit suppression, focus-out close, arrow-key page-scroll suppression, and
+/// <c>ArrowDown</c> from the field stepping focus into the calendar grid) degrades gracefully:
+/// without JS the dropdown opens below the field at the CSS default placement, everything remains
+/// clickable, Tab still reaches the grid, and arrow-key grid navigation still updates the
+/// roving-tabindex state (just without the DOM focus follow or the native page-scroll suppression).
 /// </remarks>
 public partial class DatePicker : PickerBase
 {
