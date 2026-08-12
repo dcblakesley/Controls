@@ -245,13 +245,33 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Select<T>`** — The dropdown engine behind `EditSelectSearch`/`EditMultiSelect`; usable standalone (single/multiple/tags, search, virtualized).
   - `Prefix` renders leading content (typically an icon) in the trigger; `Variant="SelectVariant.Pill"` restyles the trigger as a rounded filter button, `SelectVariant.Borderless` shows no border/background until hover/focus (see below).
   - `Loading`/`ShowArrow` control the arrow slot; `SelectOption.Group` renders AntD-style `OptGroup` headers; `FilterOption`, `EmptyContent`, `DropdownFooter`, and a controlled `Open`/`OpenChanged` round out the parity with Ant Design's `Select`. See [Select parity features](#select-parity-features-select--editselectsearch--editmultiselect).
-- **`Alert`** - Contextual message banner (success / info / warning / error, closable, description). `Banner` (full-width, borderless AntD banner mode) and `Action` (a trailing slot before the close button) round out AntD 4.x parity. Announces its severity word to assistive tech via a visually-hidden span (the icon alone is `aria-hidden`). `Live` (`bool`, default true) renders `role="status"`/`"alert"` + a matching `aria-live` on mount; set false for a persistently-rendered banner (e.g. one that mounts on every route change) so it doesn't re-announce itself each time — renders `role="group"` instead. `CloseButtonLabel` (default "Close") localizes the close button's accessible name. `SeverityLabel` (`string?`, default null) overrides just that severity word for localization — pass the word alone; the component still appends the trailing `": "` separator.
-- **`Skeleton`** - Loading placeholder with shimmer; announces `role="status"` / `aria-busy` with a visually-hidden `LoadingText` (default `"Loading"`) for screen readers. `Avatar`/`AvatarShape` add an avatar placeholder block; the standalone `SkeletonElement` (`Kind`: `Button`/`Input`) covers AntD's `Skeleton.Button`/`Skeleton.Input` shapes
-- **`Popover`** - Click-triggered popover (4 placements); controlled `Visible`/`VisibleChanged` (`@bind-Visible`) mirrors `Select`'s controlled `Open` design. `AriaLabel` (default **"Popover"**) names the `role="dialog"` panel whenever no `Title`/`TitleContent` is set — a dialog must never be nameless (axe `aria-dialog-name`); ignored once a title is present. While open, the trigger's `aria-controls` mirrors the panel's own id.
-- **`Pagination`** - Controlled pager. `ShowTotal`, a `PageSizeOptions` size-changer (`@bind-PageSize`), `ShowQuickJumper`, and `Small` round out AntD 4.x parity (see [Pagination parity features](#pagination-parity-features-pagination)); `Disabled` makes the whole pager inert (buttons, size-changer, quick-jumper) — `Table.Loading` uses it to give its own masked pagers keyboard, not just pointer, inertness
-- **`Modal`** - Dialog with `@bind-Visible`, footer, mask-close. `Centered` vertically centers it; `Keyboard` (default true) independently governs Escape-to-close (`Closable` only shows/hides the header X). `AriaLabel` (default **"Dialog"**) names the panel when untitled. While open, everything behind the dialog — outside the toast layers, `#components-reconnect-modal`/`#blazor-error-ui`, and anything marked `data-wss-keep-interactive` (an escape hatch for shell chrome you don't own, e.g. an MFE host header) — is made `inert` (out of the a11y tree, tab order, and hit-testing), not just focus-trapped; stacked dialogs let only the topmost own the background, restoring on the last close. The sweep only **recomputes on open/close**, not continuously, so the toast containers and any `data-wss-keep-interactive` element must already be mounted before a dialog opens (the documented app-root placement guarantees this) — one mounted into an already-inert branch while a dialog is open stays inert until the next open/close. Needs JS; without it the focus trap/inert background are absent but initial focus still lands on the panel from C#.
-- **`Drawer`** - Slide-in panel (4 placements). `Extra` renders a header-right slot beside the close button; `Keyboard` (default true) independently governs Escape-to-close, same as `Modal`. `AriaLabel` (default **"Drawer"**) names the panel when untitled; shares `Modal`'s background-`inert` behavior above.
-- **`Popconfirm`** - Inline confirm popover. A genuinely-async `OnConfirm` keeps the popup open with a spinner until it resolves; `OkDanger` styles the OK button as danger; controlled `Visible`/`VisibleChanged` respects `Disabled`. `AriaLabel` (default **"Confirm"**) names the panel when untitled — but note `Title` **is** the confirmation question here, so an untitled `Popconfirm` shows only the warning icon and the OK/Cancel buttons; prefer setting `Title` and treat `AriaLabel` as the fallback for the rare icon-only case. The trigger's `aria-controls` mirrors the open panel's id, same as `Popover`.
+- **`Alert`** — Contextual message banner (success / info / warning / error, closable, description).
+  - `Banner` (full-width, borderless AntD banner mode) and `Action` (a trailing slot before the close button) round out AntD 4.x parity.
+  - Announces its severity word to assistive tech via a visually-hidden span (the icon alone is `aria-hidden`).
+  - `Live` (`bool`, default true) renders `role="status"`/`"alert"` + a matching `aria-live` on mount; set false for a persistently-rendered banner (e.g. one that mounts on every route change) so it doesn't re-announce itself each time — renders `role="group"` instead.
+  - `CloseButtonLabel` (default "Close") localizes the close button's accessible name.
+  - `SeverityLabel` (`string?`, default null) overrides just that severity word for localization — pass the word alone; the component still appends the trailing `": "` separator.
+- **`Skeleton`** — Loading placeholder with shimmer; announces `role="status"` / `aria-busy` with a visually-hidden `LoadingText` (default `"Loading"`) for screen readers.
+  - `Avatar`/`AvatarShape` add an avatar placeholder block; the standalone `SkeletonElement` (`Kind`: `Button`/`Input`) covers AntD's `Skeleton.Button`/`Skeleton.Input` shapes.
+- **`Popover`** — Click-triggered popover (4 placements); controlled `Visible`/`VisibleChanged` (`@bind-Visible`) mirrors `Select`'s controlled `Open` design.
+  - `AriaLabel` (default **"Popover"**) names the `role="dialog"` panel whenever no `Title`/`TitleContent` is set — a dialog must never be nameless (axe `aria-dialog-name`); ignored once a title is present.
+  - While open, the trigger's `aria-controls` mirrors the panel's own id.
+- **`Pagination`** — Controlled pager.
+  - `ShowTotal`, a `PageSizeOptions` size-changer (`@bind-PageSize`), `ShowQuickJumper`, and `Small` round out AntD 4.x parity (see [Pagination parity features](#pagination-parity-features-pagination)).
+  - `Disabled` makes the whole pager inert (buttons, size-changer, quick-jumper) — `Table.Loading` uses it to give its own masked pagers keyboard, not just pointer, inertness.
+- **`Modal`** — Dialog with `@bind-Visible`, footer, mask-close.
+  - `Centered` vertically centers it; `Keyboard` (default true) independently governs Escape-to-close (`Closable` only shows/hides the header X).
+  - `AriaLabel` (default **"Dialog"**) names the panel when untitled.
+  - While open, everything behind the dialog — outside the toast layers, `#components-reconnect-modal`/`#blazor-error-ui`, and anything marked `data-wss-keep-interactive` (an escape hatch for shell chrome you don't own, e.g. an MFE host header) — is made `inert` (out of the a11y tree, tab order, and hit-testing), not just focus-trapped; stacked dialogs let only the topmost own the background, restoring on the last close.
+  - The sweep only **recomputes on open/close**, not continuously, so the toast containers and any `data-wss-keep-interactive` element must already be mounted before a dialog opens (the documented app-root placement guarantees this) — one mounted into an already-inert branch while a dialog is open stays inert until the next open/close.
+  - Needs JS; without it the focus trap/inert background are absent but initial focus still lands on the panel from C#.
+- **`Drawer`** — Slide-in panel (4 placements).
+  - `Extra` renders a header-right slot beside the close button; `Keyboard` (default true) independently governs Escape-to-close, same as `Modal`.
+  - `AriaLabel` (default **"Drawer"**) names the panel when untitled; shares `Modal`'s background-`inert` behavior above.
+- **`Popconfirm`** — Inline confirm popover.
+  - A genuinely-async `OnConfirm` keeps the popup open with a spinner until it resolves; `OkDanger` styles the OK button as danger; controlled `Visible`/`VisibleChanged` respects `Disabled`.
+  - `AriaLabel` (default **"Confirm"**) names the panel when untitled — but note `Title` **is** the confirmation question here, so an untitled `Popconfirm` shows only the warning icon and the OK/Cancel buttons; prefer setting `Title` and treat `AriaLabel` as the fallback for the rare icon-only case.
+  - The trigger's `aria-controls` mirrors the open panel's id, same as `Popover`.
 - **`DatePicker`** — Single-value field with a calendar suffix opening a dropdown panel. Bind with `@bind-Value` (`DateTime?`).
   - `Mode` (`DatePickerMode`) selects the panel and the commit-time normalization:
     - `Date` (default) — a one-month calendar with a month/year quick-select header; keeps the picked date.
@@ -356,8 +376,12 @@ Theming uses the same `--wss-*` tokens as the rest of the kit (`--wss-color-bg`,
 `Variant="SelectVariant.Pill"` turns the Select trigger into a fully-rounded outlined filter button that hugs its content — the "All shipments ⌄" pattern. Pair it with `Prefix` for a leading icon, and usually `ShowSearch="false"` / `AllowClear="false"` so it reads as a button. The dropdown gets softer corners, content-driven width, and conveys the current value by the bold/tinted row alone (no checkmark). Behavior is unchanged: keyboard navigation, type-ahead, outside-click and Escape close.
 
 ```razor
-<Select TValue="string" @bind-Value="_shipmentFilter" Options="_shipmentOptions"
-        Variant="SelectVariant.Pill" ShowSearch="false" AllowClear="false">
+<Select TValue="string"
+        @bind-Value="_shipmentFilter"
+        Options="_shipmentOptions"
+        Variant="SelectVariant.Pill"
+        ShowSearch="false"
+        AllowClear="false">
     <Prefix><svg ... aria-hidden="true">...</svg></Prefix>
 </Select>
 ```
@@ -568,7 +592,7 @@ Build the resolver once from your validator's own rules, so the star, `aria-requ
 
 ```razor
 <EditForm Model="model">
-    <FluentValidationValidator />  @* Blazored.FluentValidation *@
+    <FluentValidationValidator /> @* Blazored.FluentValidation *@
     <CascadingValue Value="_formOptions">
         <EditString @bind-Value="model.Name" />
         ...
@@ -627,9 +651,7 @@ Two caveats for mixed estates:
 ### Radio Button Group
 
 ```razor
-<EditRadioString @bind-Value="model.Department" 
-                 Label="Department"
-                 Options="@departments" />
+<EditRadioString @bind-Value="model.Department" Options="@departments" />
 
 @code {
     private List<string> departments = new() 
@@ -835,11 +857,18 @@ public class ContactModel
 
 Both inputs show their model-declared hint with no `Placeholder` markup attribute at all. Resolution (highest wins): the control's own `Placeholder` parameter → `[Placeholder]` on the bound property → `[Display(Prompt)]` → the control's built-in default (e.g. `EditSelectSearch`'s "Please select"). A markup `Placeholder` still overrides the model whenever one particular instance needs different text.
 
-Honored by `EditString`, `EditTextArea`, `EditNumber<T>` (the rendered `placeholder` attribute); `EditDate<T>` (forwarded to the inner picker, falling through to its own mode-derived default, e.g. "Select date", when nothing resolves); `EditDateRange`'s `StartPlaceholder`/`EndPlaceholder` (each resolves independently against its own bound property's attributes — a `[Placeholder]` on `Start` never leaks onto `End`, and vice versa); and `EditSelectSearch<TValue>`/`EditMultiSelect<TValue>` (shown only while nothing is selected, falling back to the literal "Please select").
+Honored by:
+- `EditString`, `EditTextArea`, `EditNumber<T>` (the rendered `placeholder` attribute).
+- `EditDate<T>` (forwarded to the inner picker, falling through to its own mode-derived default, e.g. "Select date", when nothing resolves).
+- `EditDateRange`'s `StartPlaceholder`/`EndPlaceholder` (each resolves independently against its own bound property's attributes — a `[Placeholder]` on `Start` never leaks onto `End`, and vice versa).
+- `EditSelectSearch<TValue>`/`EditMultiSelect<TValue>` (shown only while nothing is selected, falling back to the literal "Please select").
 
 `EditSelectEnum<TEnum>` and `EditSelectString<TValue>` render a native `<select>`, which has no `placeholder` attribute — the model text instead goes on the leading blank option (when one renders) and on a hidden "unmatched value" option that supplies the closed select's own displayed text. Two caveats: on `EditSelectString`, an explicit `NullOptionText="null"` still suppresses the leading option entirely — a model attribute never resurrects an option the consumer deliberately turned off — and on a **non-nullable enum** whose current value is already a defined member, no blank option renders at all, so there is nothing for the model's placeholder text to display.
 
-Deliberately not wired: `EditDateNative<T>` (browsers ignore `placeholder` on native `date`/`time` inputs); the `EditRadio*` "Other" free-text box (`EditRadioEnum.OtherPlaceholder` describes that sub-input, not the bound property, and `EditRadioString`'s Other box has no placeholder parameter at all); `EditFile`; `EditSelect<TValue>`; the checkbox lists; `EditBool*`; `EditDisplay`; and every UI-kit widget (none are model-bound, so there's no attribute to read).
+Deliberately not wired:
+- `EditDateNative<T>` (browsers ignore `placeholder` on native `date`/`time` inputs).
+- The `EditRadio*` "Other" free-text box (`EditRadioEnum.OtherPlaceholder` describes that sub-input, not the bound property, and `EditRadioString`'s Other box has no placeholder parameter at all).
+- `EditFile`, `EditSelect<TValue>`, the checkbox lists, `EditBool*`, `EditDisplay`, and every UI-kit widget (none are model-bound, so there's no attribute to read).
 
 ### Model-declared Min/Max (`[MinValue]`/`[MaxValue]`)
 
@@ -872,9 +901,16 @@ All three render their bound `min`/`max` attributes with no `Min`/`Max` markup p
 
 Resolution (highest wins), every wired control: the control's own `Min`/`Max` parameter → `[MinValue]`/`[MaxValue]` on the bound property → `[Range]` → none. A markup `Min`/`Max` still overrides the model whenever one particular instance needs different bounds. On the `[Range]` fallback, a bound spelling "no bound" is treated as unbounded rather than clamped, thrown, or rendered: anything unrepresentable as `decimal` (the ubiquitous `[Range(0, double.MaxValue)]` idiom), and the integer-typed spellings of the same idiom (`int`/`long`/`decimal` extremes, e.g. `[Range(int.MinValue, 100)]`) — the very sentinels the library's validation-message rewrite presents as one-sided ("Cannot exceed 100"). One shared predicate decides it for both layers, so the rendered bound and the message can never disagree. The narrower integer extremes (`sbyte`/`byte`/`short`/`ushort`/`uint`/`ulong`) are deliberately **not** sentinels on either layer: `255`, `32767`, `127`, `-128` are overwhelmingly real bounds (`[Range(1, 255)]` on an `int Quantity`) — so `[Range(1, 255)]` renders `max="255"` *and* says "Must be between 1 and 255", at the price of a genuinely vacuous `[Range(0, 255)]` on a `byte` naming both bounds too. The recognized extremes *are* checked against the bound property's own type for reachability, though: `[Range(0, int.MaxValue)]` on a `short` suppresses the ceiling (the type can't reach it), while the same annotation on a `long` keeps it as a real constraint. An explicit `[MinValue]`/`[MaxValue]` is never sentinel-suppressed — those are one-sided by design, so whatever you write there is intentional and renders. An unparseable or otherwise misconfigured bound degrades gracefully — no rendered bound, no validation error, never a render-time exception.
 
-Honored by `EditNumber<T>` (the rendered `min`/`max` attributes); `EditDate<T>` (forwarded to the inner picker, date-granularity, ignored in `Time` mode, same as its own `Min`/`Max` parameters); `EditDateNative<T>` (new `Min`/`Max` parameters as of 10.7.0 — its first bounds support ever — rendering the native input's own `min`/`max` formatted to match its `Type`, also omitted in `Time` mode); and `EditDateRange` (both bounds drive the ONE calendar its two inputs share, so each resolves param → the *looser* of the two fields' own attributes — `Min` takes the earlier minimum, `Max` the later maximum, each falling back to whichever single field declares one. A natural `[MinValue]`-on-`Start` + `[MaxValue]`-on-`End` annotation works as-is, a single `[Range(typeof(DateTime), ...)]` on `Start` alone supplies both ends, and two conflicting bounds never leave the shared calendar tighter than either field's own annotation. The result is the convex **hull**, not the union: with `[Range(2024-03-01 .. 2024-03-31)]` on `Start` and `[Range(2024-09-01 .. 2024-09-30)]` on `End` the calendar offers 2024-06-15, which neither field accepts — one calendar has exactly one min and one max, and the annotations still reject the pick at validation time).
+Honored by:
+- `EditNumber<T>` (the rendered `min`/`max` attributes).
+- `EditDate<T>` (forwarded to the inner picker, date-granularity, ignored in `Time` mode, same as its own `Min`/`Max` parameters).
+- `EditDateNative<T>` (new `Min`/`Max` parameters as of 10.7.0 — its first bounds support ever — rendering the native input's own `min`/`max` formatted to match its `Type`, also omitted in `Time` mode).
+- `EditDateRange` — both bounds drive the ONE calendar its two inputs share, so each resolves param → the *looser* of the two fields' own attributes: `Min` takes the earlier minimum, `Max` the later maximum, each falling back to whichever single field declares one. A natural `[MinValue]`-on-`Start` + `[MaxValue]`-on-`End` annotation works as-is, a single `[Range(typeof(DateTime), ...)]` on `Start` alone supplies both ends, and two conflicting bounds never leave the shared calendar tighter than either field's own annotation. The result is the convex **hull**, not the union: with `[Range(2024-03-01 .. 2024-03-31)]` on `Start` and `[Range(2024-09-01 .. 2024-09-30)]` on `End` the calendar offers 2024-06-15, which neither field accepts — one calendar has exactly one min and one max, and the annotations still reject the pick at validation time.
 
-Deliberately not wired: `EditString`/`EditTextArea` (length limits already come from `[StringLength]`/`[MaxLength]`, a different axis), the select/radio/checkbox-list controls, `EditBool*`, `EditFile`, `EditDisplay`, and every UI-kit widget (none are model-bound, so there's no attribute to read; `DatePicker`/`DateRangePicker` keep their plain `Min`/`Max` parameters with no model to resolve against).
+Deliberately not wired:
+- `EditString`/`EditTextArea` (length limits already come from `[StringLength]`/`[MaxLength]`, a different axis).
+- The select/radio/checkbox-list controls, `EditBool*`, `EditFile`, `EditDisplay`, and every UI-kit widget (none are model-bound, so there's no attribute to read).
+- `DatePicker`/`DateRangePicker` keep their plain `Min`/`Max` parameters with no model to resolve against.
 
 ### Model-declared field attributes (`[Autocomplete]`/`[Step]`/`[BoolText]`/`[Rows]`/`[FileConstraints]`)
 
@@ -956,11 +992,24 @@ The library provides default styling through the included CSS file. You can cust
 
 The AntDesign-style UI-kit controls (Alert, Modal, Table, Select, ...) are themed via `--wss-*` CSS custom properties in `wss-controls.css`. They default to the AntDesign 4.x look and **bridge to your existing `--color-primary` / `--color-danger` / `--border-color`** where those are defined, so they pick up your theme automatically. Override any `--wss-*` variable to re-theme.
 
-`--wss-color-primary` / `--wss-color-error` back **chrome** — borders, focus rings, tints, non-text status glyphs — where WCAG 1.4.11 only requires 3:1 against the surface behind it. Two more tokens, `--wss-color-primary-strong` (bridging your own `--color-primary-strong`) and `--wss-color-error-strong` (bridging `--color-danger-strong`), back **text-grade** sites instead — white text sitting on a primary/danger fill (dialog buttons, the selected day/month cell, the picker/filter OK buttons), and the primary/danger color used as plain text on a light surface — which WCAG 1.4.3 holds to 4.5:1. If you theme only the base `--color-primary`/`--color-danger`, the `-strong` tokens keep their own accessible default rather than silently inheriting a base color that may not clear 4.5:1; set `--color-primary-strong`/`--color-danger-strong` (or the `--wss-*` tokens directly) to also re-theme the text grade. Hover states on `-strong` fills darken toward black (lightening toward white would drop them back under 4.5:1); the derived shades are overridable via `--wss-color-primary-strong-hover`/`--wss-color-error-strong-hover` (bridging `--color-primary-strong-hover`/`--color-danger-strong-hover`) — if you override them, you own the ratio. The unthemed `--wss-color-warning`/`--wss-color-success` defaults are likewise darkened off the plain AntD 4 palette so their status icons clear WCAG 1.4.11 on their own — the `-bg`/`-border` tint tokens beside them are intentionally left alone, since backgrounds carry no contrast floor of their own. A small `--wss-color-text-deemphasized` token backs *operable* de-emphasized text (the pickers' outside-month/decade cells) at 4.5:1+, distinct from `--wss-color-placeholder`, which stays reserved for true input placeholders.
+- `--wss-color-primary` / `--wss-color-error` back **chrome** — borders, focus rings, tints, non-text status glyphs — where WCAG 1.4.11 only requires 3:1 against the surface behind it.
+- `--wss-color-primary-strong` (bridging your own `--color-primary-strong`) and `--wss-color-error-strong` (bridging `--color-danger-strong`) back **text-grade** sites instead — white text sitting on a primary/danger fill (dialog buttons, the selected day/month cell, the picker/filter OK buttons), and the primary/danger color used as plain text on a light surface — which WCAG 1.4.3 holds to 4.5:1.
+  - If you theme only the base `--color-primary`/`--color-danger`, the `-strong` tokens keep their own accessible default rather than silently inheriting a base color that may not clear 4.5:1; set `--color-primary-strong`/`--color-danger-strong` (or the `--wss-*` tokens directly) to also re-theme the text grade.
+  - Hover states on `-strong` fills darken toward black (lightening toward white would drop them back under 4.5:1); the derived shades are overridable via `--wss-color-primary-strong-hover`/`--wss-color-error-strong-hover` (bridging `--color-primary-strong-hover`/`--color-danger-strong-hover`) — if you override them, you own the ratio.
+- The unthemed `--wss-color-warning`/`--wss-color-success` defaults are likewise darkened off the plain AntD 4 palette so their status icons clear WCAG 1.4.11 on their own — the `-bg`/`-border` tint tokens beside them are intentionally left alone, since backgrounds carry no contrast floor of their own.
+- A small `--wss-color-text-deemphasized` token backs *operable* de-emphasized text (the pickers' outside-month/decade cells) at 4.5:1+, distinct from `--wss-color-placeholder`, which stays reserved for true input placeholders.
 
 UI-kit control chrome (`--wss-control-height`/`-sm`/`-lg`, default `32px`/`24px`/`40px`) is sized in fixed pixels: page zoom scales it fine, but OS-level text-only scaling (no zoom) can clip taller text into that fixed height — override the `--wss-control-height*` tokens if you need to support larger text sizes without zoom.
 
-The form controls in `edit-controls.css` read the same generic bridge directly, with the AntD default as each `var()`'s own fallback — so an app that sets these at `:root` re-themes the form controls with no `edit-`-prefixed variable at all: `--color-primary`, `--color-danger`, `--border-color`, `--color-bg` (control backgrounds), `--color-bg-disabled`, `--color-page-background` (the `EditFile` drop zone and its file rows' hover), `--color-text` / `--color-text-secondary` (body and muted text, including a file row's size), `--color-on-primary` (the styled checkbox's check glyph), and `--color-tooltip-bg` / `--color-tooltip-text` (`LabelTooltip`). One `edit-`-prefixed token is declared at `:root` rather than only under `.edit-theme` — `--edit-color-border` (bridges to `--border-color`, default `#d9d9d9`) — so the styled checkbox, the `EditRadio*` "Other" free-text input, and the button-mode radio borders can be retargeted independently of the generic bridge.
+The form controls in `edit-controls.css` read the same generic bridge directly, with the AntD default as each `var()`'s own fallback — so an app that sets these at `:root` re-themes the form controls with no `edit-`-prefixed variable at all:
+- `--color-primary`, `--color-danger`, `--border-color`.
+- `--color-bg` (control backgrounds), `--color-bg-disabled`.
+- `--color-page-background` (the `EditFile` drop zone and its file rows' hover).
+- `--color-text` / `--color-text-secondary` (body and muted text, including a file row's size).
+- `--color-on-primary` (the styled checkbox's check glyph).
+- `--color-tooltip-bg` / `--color-tooltip-text` (`LabelTooltip`).
+
+One `edit-`-prefixed token is declared at `:root` rather than only under `.edit-theme` — `--edit-color-border` (bridges to `--border-color`, default `#d9d9d9`) — so the styled checkbox, the `EditRadio*` "Other" free-text input, and the button-mode radio borders can be retargeted independently of the generic bridge.
 
 ### Opt-in AntD theme for the classic edit inputs (`.edit-theme`)
 
@@ -968,8 +1017,8 @@ The form controls in `edit-controls.css` read the same generic bridge directly, 
 
 ```razor
 <div class="edit-theme">
-    <EditString @bind-Value="model.Name" Label="Name" />
-    <EditNumber @bind-Value="model.Age" Label="Age" />
+    <EditString @bind-Value="model.Name" />
+    <EditNumber @bind-Value="model.Age" />
 </div>
 ```
 
@@ -986,9 +1035,7 @@ The form controls in `edit-controls.css` read the same generic bridge directly, 
 The UI-kit components also accept regular `class` / `style` / `data-*` attributes (applied to the component's root element; `class` and `style` merge with the component's own), so one-off tweaks don't require CSS variables at all.
 
 ```razor
-<EditString @bind-Value="model.Name" 
-            Label="Name" 
-            ContainerClass="my-custom-style" />
+<EditString @bind-Value="model.Name" ContainerClass="my-custom-style" />
 ```
 
 The form `Edit*` controls take arbitrary attributes too, each landing where it belongs:
@@ -1005,9 +1052,11 @@ The form `Edit*` controls take arbitrary attributes too, each landing where it b
 The control's own attributes always win a name collision, and a control that renders no editor (read-only mode) renders no editor-targeted attributes either.
 
 ```razor
-<EditNumber @bind-Value="model.Quantity" Label="Quantity"
-            class="qty-input" style="max-width: 8rem"
-            inputmode="numeric" data-testid="qty" />
+<EditNumber @bind-Value="model.Quantity"
+            class="qty-input"
+            style="max-width: 8rem"
+            inputmode="numeric"
+            data-testid="qty" />
 ```
 
 ## Accessibility
@@ -1738,7 +1787,7 @@ A full accessibility audit of `Controls/UiKit/` (58 findings, adversarially veri
 - `UseStyledCheckbox` app/MFE-wide switch (shipped in this release but missed in the original changelog) — `FormOptions.UseStyledCheckbox` (`bool?`) and the render-tree-scoped `FormDefaults.UseStyledCheckbox` (`bool?`) resolve the same way as `IsRequiredStarHidden`/`ShowFieldNameInValidation`: instance → nearest enclosing `FormDefaults` → the process-wide `FormOptions.DefaultUseStyledCheckbox` static (default `false`).
   - `EditBool.UseStyledCheckbox` (shipped 10.6.0) changed from `bool` to `bool?` so it participates in this chain instead of being per-control only — existing `UseStyledCheckbox="true"`/`"false"` markup is unaffected, only an unset control now inherits the app-wide default instead of always rendering the native checkbox.
   - Two more controls gained the same opt-in: `EditCheckedStringList.UseStyledCheckbox`/`EditCheckedEnumList.UseStyledCheckbox` (`bool?`) apply the custom-drawn box to every option's checkbox, and the UI-kit `Table.UseStyledCheckbox` (`bool?`) applies it to the header/row selection checkboxes, including the indeterminate "mixed" glyph — `Table` has no `FormOptions` of its own, so it resolves through a cascaded `FormDefaults` then the static only. See [`FormDefaults`](#formdefaults) and [Custom-Styled Checkbox](#custom-styled-checkbox-border-radius).
-- Styled checkbox visual restyle (also shipped in this release): the checked glyph is now the exact antd check vector via a themeable CSS mask (was a generic rotated-border "L"), the unchecked border fallback moved from `#ccc` to `#d9d9d9` (antd `colorBorder`), the `Table` variant's box corner radius moved from 2px to 4px to match `EditBool`'s, and the indeterminate "mixed" state is now an unfilled box with a centered primary-colored square (was a filled box with a white dash).
+- Styled checkbox visual restyle (also shipped in this release): the checked glyph is now the exact AntD check vector via a themeable CSS mask (was a generic rotated-border "L"), the unchecked border fallback moved from `#ccc` to `#d9d9d9` (AntD `colorBorder`), the `Table` variant's box corner radius moved from 2px to 4px to match `EditBool`'s, and the indeterminate "mixed" state is now an unfilled box with a centered primary-colored square (was a filled box with a white dash).
   - Also fixing a CSS comment bug (`/* ... edit-*/ ...`) that had been closing the `Table` box-wrapper rule early and letting the box escape its cell. The label row for `EditBool` and each `EditChecked*` option is now a flex row (`align-items: center`, 8px gap) instead of relying on inline whitespace.
   - These restyles apply automatically to every consumer already using `UseStyledCheckbox="true"` since 10.6.0 — there is no separate opt-in for the new look.
 
