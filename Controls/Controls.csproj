@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.7.1</AssemblyVersion>
+	  <AssemblyVersion>10.8.0</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -52,30 +52,24 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
     <PackageReleaseNotes>
-BREAKING
-- The AntD-style calendar-dropdown date control (formerly EditDatePicker&lt;T&gt;) is renamed EditDate&lt;T&gt; and is now the default; the old native-input EditDate&lt;T&gt; is renamed EditDateNative&lt;T&gt;. A compile-time-obsolete EditDatePicker&lt;T&gt; stub catches stale &lt;EditDatePicker&gt; markup, but a bare existing &lt;EditDate&gt; reference silently switches to the dropdown -- audit every usage before upgrading. The new EditDate also needs wss-controls.css + wss-picker.js, not just edit-controls.css.
-- Narrower breaks: INotificationService.Success/Info/Warning/Error return Guid, not void; ReadOnlyValue.IsLabelHidden -&gt; HasLabelElement; FormLabel/FieldValidationDisplay.IdPrefix removed (were inert); WasmMessageContainer/WasmNotificationContainer now throw on Blazor Server; EditDateRange.FieldCssClass is now a protected method; the password/mask reveal toggles keep a constant accessible name with aria-pressed carrying state (test-selector break only).
+10.8.0 -- a full accessibility audit of the UI Kit (58 findings, adversarially verified) plus an EditFile addition.
 
-SECURITY
-- EditString's read-only link mode closes two javascript: URL bypasses and a protocol-relative-URL cross-origin leak; rel="noopener noreferrer" now covers every UrlTarget except _self/_parent/_top.
-- Read-only password/masked fields no longer disclose their value across a disabled toggle, a read-only round trip, an IsPassword flip, or a swapped bound record.
+BREAKING
+- IMessageService/INotificationService gain Pause(Guid)/Resume(Guid) (WCAG 2.2.1 toast auto-dismiss control). Source break only for a hand-written implementation of either interface -- the built-in MessageService/NotificationService and static Wasm facades already implement both, wired automatically from hover/focus.
 
 NEW
-- EditDate&lt;T&gt; gains Size and ParsingErrorMessage; EditDateRange/DateRangePicker gain matching parse-error surfacing.
-- New UpdateOn (UpdateTrigger) on EditString/EditTextArea/EditNumber/EditDateNative/the Radio "Other" box, choosing commit-on-keystroke vs. commit-on-blur.
-- Six new model attributes -- [Placeholder], [MinValue]/[MaxValue], [Autocomplete], [Step], [BoolText], [Rows], [FileConstraints] -- let field-semantic markup live on the model instead of every call site (precedence: markup -&gt; attribute -&gt; DataAnnotations -&gt; control default).
-- Select/DatePicker/DateRangePicker gain Size; Select gains AriaErrorMessage and AdditionalAttributes; Table gains 8 localizable label parameters for its remaining hardcoded strings.
+- EditFile gains Bordered (wraps the field in a bordered card) and AllowDownload (file names become re-save links) -- matches Ant Design's already-uploaded-file card pattern.
+- Table gains AriaLabel/ScrollRegionLabel/LoadingLabel/SelectRowLabelFor/FilterAppliedButtonLabelFormat/FilterAppliedLabel and keyboard row activation (Enter, WCAG 2.1.1); Pagination gains Disabled/AnnounceTotal.
+- DatePicker/DateRangePicker: calendars are now real ARIA grids, FormatHintLabel, RTL-aware arrow keys, ArrowDown moves focus into the grid. Tabs also gain RTL-aware arrows.
+- Alert/toasts gain SeverityLabel/CloseButtonLabel/Live localization; Popover/Popconfirm get aria-label fallbacks; Modal/Drawer inert their background while open (data-wss-keep-interactive escape hatch); tooltips gain full AT exposure + Escape-dismiss (WCAG 1.4.13).
+- New --wss-color-primary-strong/--wss-color-error-strong tokens for AA text-on-fill contrast.
 
 CHANGED
-- Default checkbox/radio label spacing now matches AntD's 8px gap for every checkbox/radio control, not just UseStyledCheckbox -- a visible change for every consumer.
-- Unmatched attributes (inputmode, readonly, data-*, aria-*, etc.) on any scalar control now render instead of being silently dropped.
-- Several parameters touched by the new model-attribute pattern change from non-nullable to nullable (source-level only; markup usage is unaffected) -- see the README changelog for the full list.
+- --wss-color-text-deemphasized darkened to pass AA on hover; fixed control heights become min-height floors (WCAG 1.4.4) so a host page's own resets can't clamp them.
 
 FIXED
-- A large internal audit landed dozens of accessibility, correctness, and DRY fixes: Tabs keeps its declared tab order and keyboard focus across conditional insertion/removal; Table column order no longer drifts on sort/filter/paging; both date pickers enforce Disabled while open and no longer crash near DateTime's range limits; EditFile's upload-rejection state no longer outlives its upload; several WCAG 1.4.3/1.4.11/2.5.8 contrast and hit-target fixes; RTL and reduced-motion coverage extended across both stylesheets.
-
-INTERNAL
-- Extensive DRY/refactoring passes (shared control bases, JS module and overlay-positioning consolidation, CSS token consolidation) and dependency bumps (ASP.NET Core Components, bUnit 2.x, Playwright) -- no consumer-facing change beyond what's listed above.
+- Table: Enter on interactive content in a plain Column no longer double-fires OnRowClick; a synthesized click during Loading no longer bypasses the same guard the keyboard path already had.
+- Pickers: disabled calendar cells use aria-disabled instead of native disabled, so a run of disabled days can no longer trap or strand keyboard focus.
 
 Full changelog: https://github.com/dcblakesley/Controls#changelog
     </PackageReleaseNotes>

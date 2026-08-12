@@ -1061,6 +1061,41 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.0
+
+A full accessibility audit of `Controls/UiKit/` (58 findings, adversarially verified — see `UIKIT-A11Y-AUDIT-2026-08-11.md` at the repo root for the complete report and remediation status) drove most of this release, alongside an unrelated `EditFile` addition.
+
+**Breaking**
+- **`IMessageService`/`INotificationService` gain `Pause(Guid id)`/`Resume(Guid id)`.** `Pause` cancels a toast's auto-dismiss countdown without removing it; `Resume` restarts it from a fresh full duration, not the time remaining when paused (WCAG 2.2.1 — a user hovering or focused inside a toast shouldn't have it vanish underneath them). A source break only for a hand-written `IMessageService`/`INotificationService` implementation — `MessageService`/`NotificationService` and the static `WasmMessageService`/`WasmNotificationService` already implement both, and `MessageContainer`/`NotificationContainer` (scoped and Wasm) already wire them from hover/focus automatically, so no markup changes are needed. See [UI Kit (non-form) controls](#ui-kit-non-form-controls).
+
+**New** (Edit Controls)
+- `EditFile` gains **`Bordered`** (`bool`, default `false`) — wraps the label and picker/file-list together in one bordered card (`edit-file-card`) — and **`AllowDownload`** (`bool`, default `false`) — renders each selected file's name as a link that re-saves its already-buffered bytes via a `Blob` + temporary `<a download>` (no network fetch), in both edit and read-only modes. Combined, they match Ant Design's already-uploaded-file card pattern (bordered field, file name as a link, no dropzone once `MaxFiles` is reached). Both default to `false` and leave existing markup byte-identical. See [File upload parity features](#file-upload-parity-features-editfile).
+
+**New** (UI Kit)
+- **Table** gains `AriaLabel`, `ScrollRegionLabel` (names the `ScrollY` wrapper as a focusable region), `LoadingLabel` (a persistent sr-only status region announcing loading/empty), `SelectRowLabelFor` (per-row selection accessible names), and `FilterAppliedButtonLabelFormat`/`FilterAppliedLabel` (the filter trigger's name reflects whether a filter is applied). `OnRowClick` rows are now keyboard tab stops activated with Enter (WCAG 2.1.1, same propagation guards as click, no `role="button"`); `Loading` now disables the controls its mask covers so keyboard matches pointer inertness; filter triggers gain `aria-haspopup="dialog"` and expand buttons gain `aria-controls` to their detail row.
+- **Pagination** gains `Disabled` and `AnnounceTotal` — with `AnnounceTotal`, the `ShowTotal` text ("1-10 of 200 items") becomes a `role="status"` region (WCAG 4.1.3) so it's announced without a focus move; `Table` silences the top pager's copy under `PagerPosition.Both` so it isn't announced twice.
+- **`DatePicker`/`DateRangePicker`** gain `FormatHintLabel` (a visually-hidden format hint appended to the inputs' `aria-describedby` chain). Every calendar is now a real ARIA grid (`role="grid"/"row"/"gridcell"`; selection moved from `aria-pressed` on buttons to `aria-selected` on cells, including in-range days on `DateRangePicker`), each panel gets an id (`aria-controls` on the inputs) and a polite live region announcing the displayed month/year. Under a right-to-left UI culture the Left/Right arrow keys now follow the visual direction in every grid shape (vertical arrows, Home/End, PageUp/PageDown stay logical); `ArrowDown` from either text field while the panel is open moves focus onto the calendar's roving-tabindex cell.
+- **Tabs**: arrow keys follow the visual direction under an RTL UI culture, same rule as the pickers; the tabpanel is now a tab stop so a text-only panel is keyboard-reachable.
+- **Alert** gains `SeverityLabel` (localizes the sr-only severity word announced before the content) and `Live` (opts a persistent banner out of live-region semantics); `CloseButtonLabel` on `Alert` and on all four toast containers (scoped + Wasm `Message`/`Notification`) localizes their close buttons, and each toast's close button now carries `aria-describedby` to its own item's content so a stack of toasts no longer reads as indistinguishable "Close" buttons.
+- **`SearchInput`** renders `type="search"`, keeps the enter button's `aria-label` while `Loading` (previously nameless), and its accessible-name chain now has a guaranteed floor: with no `InputLabel`/`AddonLabel`/`AddonContent`/`Placeholder` it falls back to `SearchButtonLabel`.
+- **Popover/Popconfirm** fall back to `aria-label` `"Popover"`/`"Confirm"` when untitled (matching `Modal`/`Drawer`), and their panels get ids mirrored as `aria-controls` on the trigger.
+- **Modal/Drawer** inert the background while open (the topmost of a stack owns it; toast containers, reconnect UI, and a new `data-wss-keep-interactive` escape hatch are exempt), with initial focus falling back to a plain `FocusAsync` when JS isn't available.
+- `data-tooltip` bubbles gain full accessibility exposure: a shared `role="tooltip"` description node wired via `aria-describedby` (this is what makes the description reachable on touch, where the visual bubble is suppressed), Escape-dismiss (`wss-tooltip-dismissed`, WCAG 1.4.13), and the bubble itself is now hoverable so pointer users can reach it without it disappearing.
+- New `--wss-color-primary-strong`/`--wss-color-error-strong` tokens (+ `-hover` knobs, `--color-*-strong` generic bridges) back white-on-fill button text and primary-as-text sites at ≥4.5:1 while the base tokens stay at chrome contrast (3:1). See [Styling and Customization](#styling-and-customization).
+
+**Changed**
+- `--wss-color-text-deemphasized` darkens `#737373` → `#696969` — the old value was 4.35:1 against `--wss-color-bg-hover` (a source-comment arithmetic error claimed 4.58:1), so outside-month/decade picker day numbers dropped under AA while hovered; the new value is 5.49:1 on white / 5.04:1 on the hover tint. `--wss-color-warning`/`--wss-color-success` defaults also darken to a clear 3:1 as icon colors.
+- Fixed control heights become `min-height` floors (WCAG 1.4.4 text scaling) on selects, picker fields, search, dialog/pagination buttons, the filter footer, and picker cells — a host page's own `input`/`button` height resets can no longer clamp a control below its intended size. Four visual baselines were regenerated: the old PNGs encoded the FormTesting host's `app.css` resets clamping kit buttons/inputs below their intended size.
+- `.wss-dialog-btn-danger:hover` gains the generic `--color-danger-strong-hover` bridge, matching the primary hover chain (theming contract).
+
+**Fixed**
+- **Table:** Enter on interactive content inside a plain `Column` no longer double-fires `OnRowClick` — the keydown stop-propagation guard is now unconditional at every `<td>` instead of gated to `ActionColumn`/selection/expand cells (pointer behavior, which was already correct, is unchanged). `OnRowClickedAsync` now respects `Loading` the same way the keyboard path already did, so a synthesized or programmatic click can no longer fire `OnRowClick`/`ExpandRowByClick` mid-refresh.
+- **Pickers:** rejected day/month/quarter/year cells now render `aria-disabled="true"` with commit guards instead of native `disabled`, so the roving tabindex can always take DOM focus — arrowing across a disabled run no longer stalls the focus ring, strands the grid with zero tab stops, or blurs focus to `<body>` on a month-crossing move (WCAG 2.1.1/2.4.3/2.4.7).
+
+**Internal**
+- New `PickerA11yE2ETests` assert via Playwright ARIA snapshots that the `display: contents` grid rows still expose `grid > row > gridcell` in the browser's accessibility tree, plus real-focus coverage for the `ArrowDown` hand-off.
+- New `WasmStaticToastCollection` serializes the test classes that share the process-static Wasm toast services — they previously ran in parallel xUnit collections, and one class's `Clear()` could wipe another's in-flight toast (a schedule-dependent flake surfaced by the new container tests).
+
 ### 10.7.1.1 (`WssBlazorControls.Demo` only — `WssBlazorControls` stays on 10.7.1)
 
 **New**
