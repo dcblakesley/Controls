@@ -15,6 +15,13 @@ Line numbers reflect the working tree as of 2026-08-11 (commit `cb66459` + local
   - PKR-5 — resolved as documented-intentional (combobox-like focus model; comment in source).
   - PKR-9 / PKR-10 — resolved as documentation.
   - CSS-12 — resolved as a doc note.
+  - **Correction (second wave, below):** M11's "prefer `min-height`" px-sizing sub-item was **not**
+    actually fixed by this first wave despite the blanket "fixed" above — the height→`min-height`
+    sweep across `wss-controls.css` didn't happen until the second wave, which also lists its
+    exceptions. And M8's "loading mask blocks pointer but not keyboard" clause was only ever fixed
+    for **kit-owned** controls (sort/filter/expand/select-all, the embedded pagers, the clickable
+    row) — a consumer's own `ActionColumn`/`Column` template content is not, and cannot generically
+    be, disabled by the mask; this is now a documented consumer obligation rather than a code fix.
 - **Minor, fixed:** OVR-5, OVR-7, TBL-11, CSS-5, CSS-6 (outside-month/decade days), CSS-7, CMP-10,
   PKR-2, PKR-4a (describedby hint; placeholders unchanged), PKR-8 (committed ranges; session preview
   intentionally unmarked).
@@ -149,3 +156,116 @@ Unverified (first-pass findings with exact citations; spot-check before fixing):
 6. **Batch the remaining moderates** (M7–M11) with bUnit/e2e coverage per the repo convention; JS-dependent behaviors (inert toggling, tooltip Escape) need e2e, not bUnit.
 
 Per CLAUDE.md, any fix that changes a control's public API, parameters, or documented behavior must update the `edit-controls` skill in the same commit — S1 (README example), S3 (`AriaLabel` docs), S4 (OnRowClick guidance), and M8's labeler parameter all qualify.
+
+---
+
+## Post-remediation verification and second wave (2026-08-11, same day)
+
+**Method:** six parallel re-audits by subsystem, each instructed to re-verify the fixes above against
+the current working tree rather than trust the "fixed" label, followed by an adversarial verification
+pass over every finding either group raised — re-reading the cited code, re-tracing keyboard event
+flows, and recomputing contrast ratios from relative luminance, the same discipline the first wave
+used on itself.
+
+**All seven Serious fixes (S1-S7) verified genuinely landed** — none regressed and none was a
+documentation-only patch over unchanged behavior.
+
+**Confirmed issues found this pass, now fixed:**
+
+- **Table: an Enter-key double-fire regression.** The click-propagation guard on a plain `Column`'s
+  cell was never meant to cover keydown, but Enter on a nested control fires a keydown *and* a
+  synthesized click, and only the synthesized click was guarded per-column — so Enter on a
+  button/link inside a plain `Column` raised `OnRowClick`/`ExpandRowByClick` twice per press. Fixed
+  by stopping keydown propagation at **every** `<td>` unconditionally, regardless of column kind; the
+  click guard is deliberately left per-column (`ActionColumn`/selection/expand only) since a click
+  never double-dispatches the way a keyboard Enter does. Consumers now never need
+  `@onkeydown:stopPropagation` in plain-`Column` content — the keydown guard is *stricter* than the
+  click one, not merely equivalent to it (README/skill both previously claimed the two paths shared
+  "the same propagation guards," which was true before this fix and wrong after it — corrected).
+- **Table: `OnRowClickedAsync` now no-ops while `Loading`.** Previously only the row's `tabindex`/
+  Enter-handler wiring dropped while masked (the pointer-inertness path); a synthesized click or a
+  programmatic dispatch (tests, a consumer raising the event directly) could still reach the handler
+  and fire a row activation mid-refresh. The handler itself now re-checks `Loading` and no-ops,
+  closing that gap independent of how the call arrives.
+- **Kit-wide RTL arrow direction.** `DatePicker`/`DateRangePicker`'s calendar grids and `Tabs`'s strip
+  now swap physical `ArrowLeft`/`ArrowRight` to follow the *visual* direction under a right-to-left
+  UI culture (`CultureInfo.CurrentUICulture`), the APG rule for horizontal arrows in a mirrored
+  layout. One shared translation (`PickerMath`'s `LogicalKey`, and `Tabs.OnKeyDownAsync`'s own
+  `RtlSupport.IsRightToLeft` check) covers every grid in both pickers plus the tab strip, so the rule
+  is stated once. Vertical arrows, Home/End, and PageUp/PageDown are untouched — logical moves with
+  no visual handedness. Culture-driven; no parameter.
+- **Deemphasized-token hover contrast.** `--wss-color-text-deemphasized` (the outside-month/decade
+  day/year token) was `#737373` — 4.74:1 on white, but only **4.35:1** on `--wss-color-bg-hover`
+  (the cell's own hover fill), under AA there. The source comment that shipped with the original
+  fix had mis-computed that hover ratio as 4.58:1 (an arithmetic error, not a second measurement) —
+  a false "still passing" reading that would have let the shortfall stand. Recomputed and darkened
+  to `#696969`: 5.49:1 on white, 5.04:1 on the hover fill, comfortably clear of 4.5:1 in both places.
+- **`Pagination.ShowTotal` announces itself; `AnnounceTotal` opts out.** The total-text span now
+  carries `role="status"` (WCAG 4.1.3), announcing "1-10 of 200 items" on page/size/filter changes.
+  New `AnnounceTotal` (`bool`, default true) drops just the role while still rendering the text;
+  `Table` sets it false on the *top* pager under `PagerPosition.Both` so the visually-duplicated
+  total isn't announced twice.
+- **Alert/toast localization parameters.** `Alert.SeverityLabel` (`string?`) and, on all four toast
+  containers (`MessageContainer`/`NotificationContainer`/`WasmMessageContainer`/
+  `WasmNotificationContainer`) plus their shared list views, `CloseButtonLabel` (`string`, default
+  "Close") and `SeverityLabel` (`Func<MessageType/NotificationType, string>?`) — null keeps the
+  built-in English words; a caller returns just the word, the component still appends the trailing
+  `": "` separator. Closes the i18n limitation the first wave's severity-announcement fix (M2)
+  knowingly left open ("hardcoded English... an i18n limitation to be aware of" — that caveat no
+  longer applies and has been removed from the docs).
+- **Toast close button `aria-describedby`.** Each toast's close button now points at that toast's own
+  content/message element, so a screen reader tabbing through a stack of toasts hears which one a
+  bare "Close" belongs to instead of an indistinguishable "Close" repeated for every item.
+- **`SearchInput` accessible-name floor.** The name-resolution chain (`InputLabel` → `AddonLabel` →
+  `Placeholder`) previously had no floor: a bare `<SearchInput />` with none of those set, and no
+  `AddonContent` either, rendered nameless. It now falls back to `SearchButtonLabel` ("Search") as a
+  last resort, mirroring the guaranteed-name pattern the buttons already had.
+- **`--wss-color-error-strong-hover` generic bridge.** Added alongside the existing
+  `--wss-color-primary-strong-hover` bridge so a consumer theming `--color-danger-strong-hover` gets
+  the same override path for the danger button's hover state that primary already had.
+- **height→min-height sweep.** M11's "prefer `min-height`" sub-item (flagged but not actually applied
+  in the first wave — see the corrected Remediation status above) is now applied across
+  `wss-controls.css`'s fixed-height controls, so text-only scaling can grow a control instead of
+  clipping it — content sizing, not just page zoom.
+
+**Deliberate no-changes, with rationale (re-affirmed, not overlooked):**
+
+- **Untitled `Popconfirm` still renders no message text.** `Title` *is* the confirmation message
+  here (there is no separate `Message`/`Description`), so an untitled `Popconfirm` genuinely has
+  nothing to render beyond the warning icon and OK/Cancel — S3's `AriaLabel` fallback ("Confirm")
+  covers the dialog's *name*; there is no message to independently surface. The documented
+  fallback/recommendation ("prefer setting `Title`") stands as the fix.
+- **`Table` still has no default `aria-label`.** A generic "Table" name would be noise on top of the
+  `role="table"` a screen reader already announces natively — `AriaLabel`/`Caption` remain the
+  consumer's call, same as before.
+- **`Tabs`' tabpanel keeps its unconditional `tabindex="0"`.** The trade-off (one extra Tab stop when
+  a pane's first content is itself focusable) is kept deliberately for simplicity and because it's
+  the only way to make a text-only pane reachable at all — APG-sanctioned.
+- **Weekday header cells stay outside the day grid** (decorative, `aria-hidden`) rather than becoming
+  `columnheader`s inside it — compensated by every day button already carrying a full "D"-format
+  accessible name (weekday included), so the information isn't actually missing for AT, just not
+  structurally linked.
+- **Picker panel live-region first-announce-on-open is left as is.** Whether a region present from
+  first render reliably announces its initial content the instant an overlay opens is
+  screen-reader-dependent and was not something this pass could verify further; treated as
+  speculative rather than reworked without a concrete repro.
+- **`ArrowDown`-into-grid (tracked in the first pass as PKR-4) was implemented rather than deferred.**
+  `ArrowDown` from either picker's text field, while the panel is open, now moves focus onto the
+  calendar's roving-tabindex cell (JS-dependent; without JS the key is inert and Tab still reaches
+  the grid). The combobox-like "focus stays on the field on open" model is unchanged — this only
+  affects what a subsequent `ArrowDown` does.
+
+**Known residuals (not addressed this wave):**
+
+- `Select`'s search input still has a fixed pixel `line-height` (`wss-controls.css:358`, paired with
+  `overflow: hidden`/`text-overflow: ellipsis` on the same rule family) that doesn't grow under
+  text-only scaling — pre-existing, and coupled tightly enough to the overflow/ellipsis behavior that
+  it wasn't pulled into this pass's height→`min-height` sweep.
+- Toast auto-dismiss pause (`Pause`/`Resume`, hover/focus-triggered) has no touch equivalent — there
+  is no hover on touch, and the close button is the only focusable element in a toast — so `Duration`
+  remains a touch user's only control over toast timing (WCAG 2.2.1 is satisfied for pointer/keyboard
+  users, not touch).
+- Playwright accessibility-tree assertions in this repo's e2e suite check the **in-page ARIA tree**
+  (roles, names, states as computed from markup), not the platform accessibility-API mapping a real
+  screen reader consumes — a real AT smoke test (NVDA/JAWS/VoiceOver) is still the only way to close
+  that gap, and remains outside this pass's scope.
