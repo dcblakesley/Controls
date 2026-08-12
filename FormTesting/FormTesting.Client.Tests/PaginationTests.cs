@@ -52,6 +52,27 @@ public class PaginationTests : BunitContext
     }
 
     [Fact]
+    public void ShowTotal_announces_the_window_text_as_a_status_message()
+    {
+        // The window text changes on every page/size change with no focus move to carry it (WCAG
+        // 4.1.3). Setting ShowTotal is what renders the span at all, so the region exists from this
+        // pager's first render rather than being injected together with its text.
+        var cut = Render<Pagination>(p => p
+            .Add(c => c.Total, 95)
+            .Add(c => c.PageSize, 10)
+            .Add(c => c.Current, 1)
+            .Add(c => c.ShowTotal, (Func<(int Start, int End, int Total), string>)(w => $"{w.Start}-{w.End} of {w.Total} items")));
+
+        Assert.Equal("status", cut.Find(".wss-pagination-total").GetAttribute("role"));
+
+        // The same element's text is what updates on a page change -- it isn't re-created.
+        cut.Render(p => p.Add(c => c.Current, 4));
+        var total = cut.Find(".wss-pagination-total");
+        Assert.Equal("31-40 of 95 items", total.TextContent);
+        Assert.Equal("status", total.GetAttribute("role"));
+    }
+
+    [Fact]
     public void PageSizeOptions_renders_a_size_changer_with_the_current_size_folded_in()
     {
         var cut = Render<Pagination>(p => p

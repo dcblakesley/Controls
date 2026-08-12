@@ -571,6 +571,38 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Table_Enter_on_a_button_in_a_plain_column_activates_the_row_exactly_once()
+    {
+        await GotoAsync();
+        var section = _page.Locator("section.demo-section", new() { HasTextString = "keyboard/pointer parity" });
+        var button = section.Locator("[data-test-id=parity-cell-button]").First;
+        var rowActivations = section.Locator("[data-test-id=parity-row-activations]");
+        var buttonClicks = section.Locator("[data-test-id=parity-button-clicks]");
+
+        await Expect(rowActivations).ToHaveTextAsync("Row activations: 0");
+
+        // Enter on the focused button fires keydown on it AND makes the browser synthesize a click.
+        // Both used to reach the row, so one keypress activated it twice; only the click does now.
+        // This is the half bUnit cannot cover -- it never synthesizes the click (same single-fire
+        // invariant the Popover child-button test above pins, for the same reason).
+        await button.FocusAsync();
+        await _page.Keyboard.PressAsync("Enter");
+        await Expect(buttonClicks).ToHaveTextAsync("Button clicks: 1");
+        await Expect(rowActivations).ToHaveTextAsync("Row activations: 1");
+
+        // A second press advances each by exactly one again (the pre-fix double-fire read 4 here).
+        await _page.Keyboard.PressAsync("Enter");
+        await Expect(buttonClicks).ToHaveTextAsync("Button clicks: 2");
+        await Expect(rowActivations).ToHaveTextAsync("Row activations: 2");
+
+        // Pointer parity, the behavior the keyboard path has to match: a real mouse click on the same
+        // button runs its own handler and bubbles into the row -- one activation, not zero and not two.
+        await button.ClickAsync();
+        await Expect(buttonClicks).ToHaveTextAsync("Button clicks: 3");
+        await Expect(rowActivations).ToHaveTextAsync("Row activations: 3");
+    }
+
+    [Fact]
     public async Task Table_ellipsis_footer_and_empty_content_section_visual_baseline()
     {
         await GotoAsync();

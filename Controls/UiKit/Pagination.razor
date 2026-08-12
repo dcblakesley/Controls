@@ -6,7 +6,13 @@
      aria-label="@AriaLabel">
     @if (ShowTotal is not null)
     {
-        <span class="wss-pagination-total">@TotalText</span>
+        @* role="status": "1-10 of 95 items" changes on every page/size change (and on anything that
+           moves Total, e.g. a Table column filter) with no focus move to carry it -- the canonical
+           status-message case. Setting ShowTotal is what renders the span at all, so the region is
+           present from this pager's first render rather than injected together with its text.
+           A Table with PagerPosition.Both renders two of these (as AntD does visually); AnnounceTotal
+           keeps the role off the top copy so the identical text isn't announced twice. *@
+        <span class="wss-pagination-total" role="@(AnnounceTotal ? "status" : null)">@TotalText</span>
     }
     <button type="button" class="wss-pagination-prev @(Disabled || Clamped <= 1 ? "wss-pagination-disabled" : null)"
             disabled="@(Disabled || Clamped <= 1)" aria-label="@PreviousPageLabel" @onclick="@(() => GoAsync(Clamped - 1))">
@@ -75,6 +81,15 @@
     /// nothing — the leading <c>wss-pagination-total</c> span only appears when this is set.
     /// </summary>
     [Parameter] public Func<(int Start, int End, int Total), string>? ShowTotal { get; set; }
+
+    /// <summary>
+    /// Whether the <see cref="ShowTotal"/> span is a <c>role="status"</c> live region announcing the
+    /// window text ("1-10 of 200 items") to assistive technology on page/size/total changes (WCAG
+    /// 4.1.3). Defaults to true. <see cref="Table{TItem}"/> sets this false on the top pager under
+    /// <c>PagerPosition.Both</c> so the two visually-duplicated totals don't announce twice; the text
+    /// itself always renders.
+    /// </summary>
+    [Parameter] public bool AnnounceTotal { get; set; } = true;
 
     /// <summary>
     /// Page-size options (e.g. <c>new[] { 10, 20, 50 }</c>). Null/empty (default) renders no

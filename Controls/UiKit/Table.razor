@@ -190,10 +190,11 @@
                         @onclick="@(() => OnRowClickedAsync(item))" @onkeydown="@RowKeyDownCallback(item)">
                         @if (HasRowDetail)
                         {
-                            @* stopPropagation on keydown as well as click, everywhere the row click is
-                               already guarded: Enter on a nested control fires keydown on that control
-                               AND (natively) a click, so without the second guard the keyboard path
-                               would leak a row activation the pointer path never produces. *@
+                            @* stopPropagation on keydown as well as click: Enter on a nested control
+                               fires keydown on that control AND (natively) a click, so without the
+                               second guard the keyboard path would leak a row activation the pointer
+                               path never produces. Here the click is guarded too, so this cell leaks
+                               neither; an ordinary column's cell guards only the keydown (see below). *@
                             <td class="wss-table-cell wss-table-expand-cell" @onclick:stopPropagation="true" @onkeydown:stopPropagation="true">
                                 <button type="button"
                                         class="wss-table-expand-btn @(IsExpanded(item) ? "wss-table-expand-btn-expanded" : null)"
@@ -230,12 +231,22 @@
                         }
                         @foreach (var col in _columns)
                         {
-                            @* stopPropagation on the <td> itself, like the selection/expand cells above:
-                               an ActionColumn's own .wss-table-actions wrapper is inline-flex, so a
-                               guard on it leaves the cell's padding bubbling into the row handler. The
-                               builder only emits the frame when the value is true, so every other
-                               column's cell keeps its exact previous shape. *@
-                            <td @key="col" class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)" @onclick:stopPropagation="col.StopsRowClickPropagation" @onkeydown:stopPropagation="col.StopsRowClickPropagation">@col.CellFor(item)</td>
+                            @* CLICK is per column (only ActionColumn asks for it): stopPropagation on
+                               the <td> itself, like the selection/expand cells above, because an
+                               ActionColumn's own .wss-table-actions wrapper is inline-flex and a guard
+                               on it leaves the cell's padding bubbling into the row handler. The
+                               builder only emits that frame when the value is true, so every other
+                               column's click path keeps its exact previous shape.
+
+                               KEYDOWN is unconditional. A row-originated Enter targets the <tr> and
+                               never passes through a <td>, so row activation is untouched; what this
+                               severs is a CELL-originated keydown. Enter on a consumer's <button>/<a>
+                               inside ANY column fires keydown on that control AND (natively)
+                               synthesizes a click, and both used to reach the row -- two activations
+                               from one keypress, where the pointer path produces exactly one (or none,
+                               on a column the consumer guarded). The synthesized click still bubbles,
+                               so that one activation survives. *@
+                            <td @key="col" class="wss-table-cell @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.Ellipsis ? "wss-table-cell-ellipsis" : null)" @onclick:stopPropagation="col.StopsRowClickPropagation" @onkeydown:stopPropagation="true">@col.CellFor(item)</td>
                         }
                     </tr>
                     @if (HasRowDetail && IsExpanded(item))
@@ -271,12 +282,15 @@
     // RenderFragment it renders in its own region, so the shared sequence numbers inside these can't
     // collide with the surrounding markup's.
 
-    // Top and bottom pagers: seven forwarded parameters each, identical but for the position
-    // modifier class and the aria-label.
+    // Top and bottom pagers: identical forwarded parameters but for the position modifier class,
+    // the aria-label, and AnnounceTotal -- under PagerPosition.Both only the bottom pager keeps the
+    // role="status" total, so the identical window text isn't announced twice (see Pagination's
+    // AnnounceTotal doc).
     RenderFragment PagerFragment(string position, string ariaLabel) =>
         @<div class="wss-table-pagination wss-table-pagination-@position wss-table-pagination-@PagerAlignName">
             <Pagination Total="_filtered.Count" PageSize="_pageSize" Current="_page" CurrentChanged="OnPageChange"
                         ShowTotal="ShowTotal" PageSizeOptions="PageSizeOptions" PageSizeChanged="OnPageSizeChange"
+                        AnnounceTotal="@(!(position == "top" && PagerPosition == PagerPosition.Both))"
                         AriaLabel="@ariaLabel" Disabled="Loading" />
         </div>;
 
@@ -1457,6 +1471,10 @@
 
     async Task OnRowClickedAsync(TItem item)
     {
+        // Loading is re-checked here rather than only on the mask: the mask stops a pointer, but the
+        // click Enter synthesizes on a control inside a cell -- and any programmatic dispatch (tests,
+        // a consumer raising the event) -- still reaches this handler. Same guard as OnRowKeyDownAsync.
+        if (Loading) return;
         if (ExpandRowByClick && HasRowDetail) await ToggleExpandAsync(item);
         await OnRowClick.InvokeAsync(item);
     }

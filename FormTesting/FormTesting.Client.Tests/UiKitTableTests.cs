@@ -3497,6 +3497,36 @@ public class UiKitTableTests : BunitContext
     }
 
     [Fact]
+    public void A_keydown_inside_a_plain_columns_cell_cannot_reach_the_rows_Enter_handler()
+    {
+        // Enter on a control a consumer put in an ORDINARY column (not ActionColumn) fires keydown on
+        // that control AND natively synthesizes a click; both used to bubble to the row, so one
+        // keypress activated it twice where a mouse click on the same control activates it once. The
+        // <td>'s keydown guard is therefore unconditional, not keyed off StopsRowClickPropagation.
+        Person? clicked = null;
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
+            .AddChildContent<Column<Person>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.ChildContent, (RenderFragment<Person>)(x => b => b.AddMarkupContent(0, $"<button type=\"button\">Edit {x.Name}</button>")))));
+
+        // bUnit models stopPropagation by cutting the bubble path entirely: the keydown reaches no
+        // handler at all (neither the button nor the cell has one, only the directive), so it throws
+        // instead of bubbling. That exception IS the assertion that OnRowClick can't be reached from
+        // inside the cell. (The synthesized click that keeps the row activating once is a real-browser
+        // behavior bUnit doesn't produce -- that half is covered in UiKitGalleryE2ETests.)
+        Assert.Throws<Bunit.MissingEventHandlerException>(
+            () => cut.Find("tbody td.wss-table-cell button").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
+        Assert.Null(clicked);
+
+        // ...and the row itself is still Enter-activatable: a row-originated key event targets the
+        // <tr> and never passes through a <td>.
+        cut.FindAll("tbody .wss-table-row")[0].KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Assert.Equal("Alice", clicked!.Name);
+    }
+
+    [Fact]
     public void Rows_are_a_tab_stop_only_when_OnRowClick_is_wired()
     {
         var plain = RenderNameColumn();
@@ -3527,6 +3557,47 @@ public class UiKitTableTests : BunitContext
 
         cut.Render(p => p.Add(t => t.Loading, false));
         Assert.All(cut.FindAll("tbody .wss-table-row"), r => Assert.Equal("0", r.GetAttribute("tabindex")));
+    }
+
+    [Fact]
+    public void A_row_click_does_nothing_while_Loading()
+    {
+        // The row's own onclick is wired unconditionally (unlike its tabindex/keydown, which drop out
+        // while Loading), so the mask is all that stops a pointer -- and a click can still arrive
+        // without one: the browser synthesizes a click from Enter on a control inside a cell, and a
+        // programmatic dispatch bypasses the mask entirely. The handler re-checks Loading itself.
+        Person? clicked = null;
+        var cut = RenderNameColumn(p => p
+            .Add(t => t.OnRowClick, EventCallback.Factory.Create<Person>(this, x => clicked = x))
+            .Add(t => t.Loading, true));
+
+        cut.FindAll("tbody .wss-table-row")[0].Click();
+        Assert.Null(clicked);
+
+        cut.Render(p => p.Add(t => t.Loading, false));
+        cut.FindAll("tbody .wss-table-row")[0].Click();
+        Assert.Equal("Alice", clicked!.Name);
+    }
+
+    [Fact]
+    public void A_row_click_does_not_toggle_ExpandRowByClick_while_Loading()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample())
+            .Add(t => t.RowKey, x => x.Name)
+            .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, $"Detail for {x.Name}"))
+            .Add(t => t.ExpandRowByClick, true)
+            .Add(t => t.Loading, true)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name)));
+
+        cut.FindAll("tbody .wss-table-row")[0].Click();
+        Assert.Empty(cut.FindAll(".wss-table-expanded-row"));
+
+        cut.Render(p => p.Add(t => t.Loading, false));
+        cut.FindAll("tbody .wss-table-row")[0].Click();
+        Assert.Single(cut.FindAll(".wss-table-expanded-row"));
     }
 
     [Fact]

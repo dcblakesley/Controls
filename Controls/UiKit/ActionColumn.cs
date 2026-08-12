@@ -12,8 +12,9 @@ public class ActionColumn<TItem> : Column<TItem>
     // exactly like the selection and expand cells: .wss-table-actions is inline-flex, so it only
     // covers the buttons themselves, leaving the cell's own 16px padding around them bubbling
     // straight into the row handler -- a click a hair off an action button toggled the row.
-    // The Table applies this to keydown as well as click (see its row markup), so Enter on an action
-    // button can't leak into the keyboard-activatable row either.
+    // This flag now gates only the CLICK guard: the Table stops cell-originated keydowns on every
+    // <td> unconditionally (see its row markup), so Enter on an action button can't leak into the
+    // keyboard-activatable row regardless of this override.
     internal override bool StopsRowClickPropagation => true;
 
     public override RenderFragment CellFor(TItem item) => builder =>

@@ -783,6 +783,32 @@
     </section>
 
     <section class="demo-section">
+        <h3>Table — keyboard/pointer parity for a control inside a plain column</h3>
+        <p style="margin:0; color:#666;">
+            A <code>&lt;button&gt;</code> a consumer drops into an ordinary <code>Column</code> (not
+            <code>ActionColumn</code>, which stops row-click propagation for the whole cell) still
+            activates the row when clicked -- that is the pointer behavior, and Enter on the same
+            button has to match it exactly. The browser synthesizes a click from Enter, so the cell's
+            own keydown is stopped at the <code>&lt;td&gt;</code>: both counters below advance by one
+            per activation, whichever input device produced it.
+        </p>
+        <Table TItem="Row" DataSource="_parityRows" RowKey="@(r => r.Id)"
+               OnRowClick="@(_ => _parityRowActivations++)">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+                <Column TItem="Row" Title="Action">
+                    <button type="button" class="wss-dialog-btn wss-dialog-btn-sm"
+                            data-test-id="parity-cell-button" @onclick="@(() => _parityButtonClicks++)">
+                        Edit @context.Name
+                    </button>
+                </Column>
+            </ChildContent>
+        </Table>
+        <p data-test-id="parity-row-activations">Row activations: @_parityRowActivations</p>
+        <p data-test-id="parity-button-clicks">Button clicks: @_parityButtonClicks</p>
+    </section>
+
+    <section class="demo-section">
         <h3>Table — ScrollY (sticky header)</h3>
         <p style="margin:0; color:#666;">
             <code>ScrollY</code> bounds the table body to a fixed height with its own vertical
@@ -1106,6 +1132,15 @@
         new(1, "A rather long item name", 12.5m),
         new(2, "Short", 7.25m),
     ];
+
+    // --- Table: keyboard/pointer parity for a control inside a plain column demo ---
+    readonly List<Row> _parityRows =
+    [
+        new(1, "First", 5m),
+        new(2, "Second", 15m),
+    ];
+    int _parityRowActivations;
+    int _parityButtonClicks;
 
     // --- Table: ScrollY (sticky header) demo ---
     readonly List<Row> _scrollYRows = Enumerable.Range(1, 30).Select(i => new Row(i, $"Item {i}", i * 3m)).ToList();
