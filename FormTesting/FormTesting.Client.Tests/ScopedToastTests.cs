@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FormTesting.Client.Tests;
@@ -352,6 +353,32 @@ public class ScopedToastTests : BunitContext
         Assert.Null(failure);
     }
 
+    [Fact]
+    public async Task Pause_on_one_toast_does_not_cancel_a_second_concurrent_toasts_timer()
+    {
+        // Per-toast isolation: ToastQueue keys _timers by item id, so pausing one toast must never
+        // affect a different toast's own countdown running at the same time.
+        var svc = new MessageService();
+        var pausedId = svc.Success("paused", duration: 0.05);          // 50ms
+        var tickingId = svc.Success("still ticking", duration: 0.05);  // 50ms, its own independent timer
+
+        svc.Pause(pausedId);
+
+        // The ticking toast's timer must still fire on its own schedule, untouched by the other's Pause.
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (svc.Items.Any(m => m.Id == tickingId) && DateTime.UtcNow < deadline)
+            await Task.Delay(10);
+
+        Assert.DoesNotContain(svc.Items, m => m.Id == tickingId);  // removed on its own timer
+        Assert.Contains(svc.Items, m => m.Id == pausedId);         // the paused one is still here
+
+        // Well past its original duration, the paused toast must still be present -- rules out the
+        // other direction too (the ticking toast's expiry cancelling the paused one's already-paused
+        // slot, or a shared-timer mixup resurrecting it).
+        await Task.Delay(250);
+        Assert.Contains(svc.Items, m => m.Id == pausedId);
+    }
+
     // ---- S7: MessageListView/NotificationListView hover+focus wiring ----
 
     [Fact]
@@ -532,5 +559,106 @@ public class ScopedToastTests : BunitContext
         var cut = Render<NotificationListView>(p => p.Add(c => c.Items, new[] { item }));
 
         Assert.Equal(expectedLabel, cut.Find(".wss-notification .wss-sr-only").TextContent);
+    }
+
+    // ---- Localizable CloseButtonLabel / SeverityLabel overrides on the containers ----
+
+    [Fact]
+    public void MessageContainer_forwards_CloseButtonLabel_and_SeverityLabel_overrides_to_the_shared_list_view()
+    {
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<IMessageService>().Warning("x", duration: 0);
+
+        var cut = Render<MessageContainer>(p => p
+            .Add(c => c.CloseButtonLabel, "Dismiss")
+            .Add(c => c.SeverityLabel, (Func<MessageType, string>)(_ => "Attention")));
+
+        Assert.Equal("Dismiss", cut.Find(".wss-msg-close").GetAttribute("aria-label"));
+        Assert.Equal("Attention: ", cut.Find(".wss-msg .wss-sr-only").TextContent);
+    }
+
+    [Fact]
+    public void MessageContainer_defaults_are_unchanged_without_the_new_overrides()
+    {
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<IMessageService>().Info("x", duration: 0);
+
+        var cut = Render<MessageContainer>();
+
+        Assert.Equal("Close", cut.Find(".wss-msg-close").GetAttribute("aria-label"));
+        Assert.Equal("Info: ", cut.Find(".wss-msg .wss-sr-only").TextContent);
+    }
+
+    [Fact]
+    public void NotificationContainer_forwards_CloseButtonLabel_and_SeverityLabel_overrides_to_the_shared_list_view()
+    {
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<INotificationService>().Error("x", duration: 0);
+
+        var cut = Render<NotificationContainer>(p => p
+            .Add(c => c.CloseButtonLabel, "Dismiss")
+            .Add(c => c.SeverityLabel, (Func<NotificationType, string>)(_ => "Urgent")));
+
+        Assert.Equal("Dismiss", cut.Find(".wss-notification-close").GetAttribute("aria-label"));
+        Assert.Equal("Urgent: ", cut.Find(".wss-notification .wss-sr-only").TextContent);
+    }
+
+    [Fact]
+    public void NotificationContainer_defaults_are_unchanged_without_the_new_overrides()
+    {
+        Services.AddWssControlsToasts();
+        Services.GetRequiredService<INotificationService>().Info("x", duration: 0);
+
+        var cut = Render<NotificationContainer>();
+
+        Assert.Equal("Close", cut.Find(".wss-notification-close").GetAttribute("aria-label"));
+        Assert.Equal("Info: ", cut.Find(".wss-notification .wss-sr-only").TextContent);
+    }
+
+    // ---- Per-toast aria-describedby (distinguishes "Close, button" across a stack) ----
+
+    [Fact]
+    public void MessageListView_close_button_aria_describedby_resolves_to_its_own_toasts_content()
+    {
+        var a = new MessageItem { Content = "first toast", Duration = 0 };
+        var b = new MessageItem { Content = "second toast", Duration = 0 };
+
+        var cut = Render<MessageListView>(p => p.Add(c => c.Items, new[] { a, b }));
+
+        var closeButtons = cut.FindAll(".wss-msg-close");
+        var contents = cut.FindAll(".wss-msg-content");
+        Assert.Equal(2, closeButtons.Count);
+
+        // Each close button's aria-describedby has to resolve to ITS OWN toast's content element,
+        // not the other one's -- otherwise a screen reader tabbing through the stack still can't
+        // tell the two "Close" buttons apart.
+        for (var i = 0; i < closeButtons.Count; i++)
+        {
+            var describedBy = closeButtons[i].GetAttribute("aria-describedby");
+            Assert.False(string.IsNullOrEmpty(describedBy));
+            Assert.Equal(describedBy, contents[i].GetAttribute("id"));
+        }
+        Assert.NotEqual(closeButtons[0].GetAttribute("aria-describedby"), closeButtons[1].GetAttribute("aria-describedby"));
+    }
+
+    [Fact]
+    public void NotificationListView_close_button_aria_describedby_resolves_to_its_own_toasts_message()
+    {
+        var a = new NotificationItem { Message = "first notice", Duration = 0 };
+        var b = new NotificationItem { Message = "second notice", Duration = 0 };
+
+        var cut = Render<NotificationListView>(p => p.Add(c => c.Items, new[] { a, b }));
+
+        var closeButtons = cut.FindAll(".wss-notification-close");
+        var messages = cut.FindAll(".wss-notification-message");
+        Assert.Equal(2, closeButtons.Count);
+
+        for (var i = 0; i < closeButtons.Count; i++)
+        {
+            var describedBy = closeButtons[i].GetAttribute("aria-describedby");
+            Assert.False(string.IsNullOrEmpty(describedBy));
+            Assert.Equal(describedBy, messages[i].GetAttribute("id"));
+        }
+        Assert.NotEqual(closeButtons[0].GetAttribute("aria-describedby"), closeButtons[1].GetAttribute("aria-describedby"));
     }
 }

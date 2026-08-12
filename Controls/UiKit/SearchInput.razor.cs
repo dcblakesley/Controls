@@ -105,14 +105,20 @@ public partial class SearchInput
     /// The input's accessible name via <c>aria-label</c>, in precedence order: <see cref="InputLabel"/>,
     /// then non-empty <see cref="AddonLabel"/>, then (only when there's no <see cref="AddonContent"/>
     /// template for <see cref="AddonLabelledBy"/> to point at instead) non-empty
-    /// <see cref="Placeholder"/>. Null when an <see cref="AddonContent"/> template is the only naming
-    /// source — <see cref="AddonLabelledBy"/> takes over instead, so the two attributes never render
-    /// at the same time — or when nothing at all names the input.
+    /// <see cref="Placeholder"/>, then <see cref="SearchButtonLabel"/> as a last resort. Null only
+    /// when an <see cref="AddonContent"/> template is the only naming source — <see cref="AddonLabelledBy"/>
+    /// takes over instead, so the two attributes never render at the same time.
     /// </summary>
     string? InputAriaLabel =>
         InputLabel
         ?? (string.IsNullOrEmpty(AddonLabel) ? null : AddonLabel)
-        ?? (AddonContent is null && !string.IsNullOrEmpty(Placeholder) ? Placeholder : null);
+        ?? (AddonContent is null && !string.IsNullOrEmpty(Placeholder) ? Placeholder : null)
+        // Last-resort floor so a bare <SearchInput /> (no InputLabel/AddonLabel/Placeholder) is
+        // never left nameless -- mirrors the guaranteed-name pattern the buttons already have
+        // (the search button always has SearchButtonLabel or its own visible text; the clear
+        // button always has ClearButtonLabel). Still null when AddonContent alone is naming the
+        // input via AddonLabelledBy above.
+        ?? (AddonContent is null ? SearchButtonLabel : null);
 
     string? _generatedAddonId;
 

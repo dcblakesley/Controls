@@ -57,6 +57,17 @@
     /// </summary>
     [Parameter] public NotificationPlacement Placement { get; set; } = NotificationPlacement.TopRight;
 
+    /// <summary>Accessible name of every notification's close button. Override to localize (mirrors
+    /// <see cref="Alert.CloseButtonLabel"/>).</summary>
+    [Parameter] public string CloseButtonLabel { get; set; } = "Close";
+
+    /// <summary>
+    /// Overrides the sr-only severity word prepended to each notification's message (see
+    /// <see cref="DefaultSeverityWord"/>). Null (default) keeps the built-in English words. Set to
+    /// localize -- return just the word; the component still appends the trailing ": " separator.
+    /// </summary>
+    [Parameter] public Func<NotificationType, string>? SeverityLabel { get; set; }
+
     string? PlacementClass => Placement switch
     {
         NotificationPlacement.TopLeft => "wss-notification-topleft",
@@ -70,17 +81,22 @@
         @onfocusin="() => OnPause.InvokeAsync(n.Id)" @onfocusout="() => OnResume.InvokeAsync(n.Id)">
         <span class="wss-notification-icon wss-notification-icon-@n.Type.ToString().ToLowerInvariant()">@Icon(n.Type)</span>
         <div class="wss-notification-body">
-            <span class="wss-sr-only">@SeverityLabel(n.Type)</span>
-            <div class="wss-notification-message">@n.Message</div>
+            <span class="wss-sr-only">@ResolveSeverityLabel(n.Type)</span>
+            <div class="wss-notification-message" id="@ContentId(n.Id)">@n.Message</div>
             @if (!string.IsNullOrEmpty(n.Description))
             {
                 <div class="wss-notification-description">@n.Description</div>
             }
         </div>
-        <button type="button" class="wss-notification-close" aria-label="Close" @onclick="() => OnRemove.InvokeAsync(n.Id)">
+        <button type="button" class="wss-notification-close" aria-label="@CloseButtonLabel" aria-describedby="@ContentId(n.Id)" @onclick="() => OnRemove.InvokeAsync(n.Id)">
             @UiKitIcons.CloseCross
         </button>
     </div>;
+
+    // Stable per-item id for the close button's aria-describedby -- see MessageListView.ContentId for
+    // the rationale. A distinct prefix from MessageListView's own ids keeps the two collision-free if
+    // both a MessageContainer and a NotificationContainer are on the same page.
+    static string ContentId(Guid id) => $"wss-notification-message-{id:N}";
 
     static MarkupString Icon(NotificationType type) => type switch
     {
@@ -91,14 +107,15 @@
     };
 
     // Sighted users tell severity apart by the icon's shape (never just color -- WCAG 1.4.1); the
-    // icon is aria-hidden, so assistive tech needs the word instead. Hardcoded English, matching the
-    // kit's existing unlocalized "Close" convention -- see the accessibility audit for the i18n
-    // limitation this carries forward.
-    static string SeverityLabel(NotificationType type) => type switch
+    // icon is aria-hidden, so assistive tech needs the word instead. SeverityLabel overrides just the
+    // word (localizable) -- the trailing ": " separator is always this component's own.
+    string ResolveSeverityLabel(NotificationType type) => $"{(SeverityLabel is not null ? SeverityLabel(type) : DefaultSeverityWord(type))}: ";
+
+    static string DefaultSeverityWord(NotificationType type) => type switch
     {
-        NotificationType.Success => "Success: ",
-        NotificationType.Warning => "Warning: ",
-        NotificationType.Error => "Error: ",
-        _ => "Info: ",
+        NotificationType.Success => "Success",
+        NotificationType.Warning => "Warning",
+        NotificationType.Error => "Error",
+        _ => "Info",
     };
 }

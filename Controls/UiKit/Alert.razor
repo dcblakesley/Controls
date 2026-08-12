@@ -84,6 +84,14 @@
     [Parameter] public string CloseButtonLabel { get; set; } = "Close";
 
     /// <summary>
+    /// Overrides the sr-only severity word prepended to the message (see
+    /// <see cref="SeverityAnnouncement"/>). Null (default) keeps the built-in English word for
+    /// <see cref="EffectiveType"/> ("Success", "Info", "Warning", "Error"). Set to localize --
+    /// pass just the word; the component still appends the trailing ": " separator.
+    /// </summary>
+    [Parameter] public string? SeverityLabel { get; set; }
+
+    /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the component's root element. <c>class</c> and <c>style</c> merge with the
     /// component's own; the rest are splatted verbatim.
@@ -117,12 +125,16 @@
     // The icon is aria-hidden (see UiKitIcons), and role/aria-live alone only splits error from
     // everything else -- so this sr-only word is the only signal that distinguishes Success/Info/
     // Warning from one another for a screen reader (see .wss-sr-only, wss-controls.css).
-    string SeverityAnnouncement => EffectiveType switch
+    // SeverityLabel overrides just the word (localizable, like CloseButtonLabel) -- the trailing
+    // ": " separator is always this component's own, not the caller's.
+    string SeverityAnnouncement => $"{SeverityLabel ?? DefaultSeverityWord}: ";
+
+    string DefaultSeverityWord => EffectiveType switch
     {
-        AlertType.Success => "Success: ",
-        AlertType.Warning => "Warning: ",
-        AlertType.Error => "Error: ",
-        _ => "Info: ",
+        AlertType.Success => "Success",
+        AlertType.Warning => "Warning",
+        AlertType.Error => "Error",
+        _ => "Info",
     };
 
     // Same glyphs (and the same <svg> wrapper) the toast/notification severity icons use — see

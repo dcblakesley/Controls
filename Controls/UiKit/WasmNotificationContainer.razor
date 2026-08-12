@@ -2,7 +2,8 @@
 @implements IDisposable
 
 @* WASM-only host: reads the static WasmNotificationService. For Blazor Server use NotificationContainer. *@
-<NotificationListView Items="WasmNotificationService.Items" OnRemove="@(id => WasmNotificationService.Remove(id))" OnPause="@(id => WasmNotificationService.Pause(id))" OnResume="@(id => WasmNotificationService.Resume(id))" Placement="Placement" />
+<NotificationListView Items="WasmNotificationService.Items" OnRemove="@(id => WasmNotificationService.Remove(id))" OnPause="@(id => WasmNotificationService.Pause(id))" OnResume="@(id => WasmNotificationService.Resume(id))" Placement="Placement"
+                      CloseButtonLabel="@CloseButtonLabel" SeverityLabel="SeverityLabel" />
 
 @code {
     /// <summary>
@@ -10,6 +11,16 @@
     /// Set per container instance (render-tree-scoped) — not on the static service.
     /// </summary>
     [Parameter] public NotificationPlacement Placement { get; set; } = NotificationPlacement.TopRight;
+
+    /// <summary>Accessible name of every notification's close button. Override to localize.
+    /// Forwarded to <see cref="NotificationListView.CloseButtonLabel"/> -- set per container
+    /// instance (render-tree-scoped), not on the static service.</summary>
+    [Parameter] public string CloseButtonLabel { get; set; } = "Close";
+
+    /// <summary>Overrides the sr-only severity word each notification announces ahead of its
+    /// message. Null (default) keeps the built-in English words. Forwarded to
+    /// <see cref="NotificationListView.SeverityLabel"/> -- see its doc for the exact contract.</summary>
+    [Parameter] public Func<NotificationType, string>? SeverityLabel { get; set; }
 
     protected override void OnInitialized() => WasmNotificationService.OnChange += HandleChange;
 

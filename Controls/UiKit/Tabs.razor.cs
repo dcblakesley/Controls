@@ -419,10 +419,16 @@ public partial class Tabs
         var idx = enabled.IndexOf(from);
         if (idx < 0) return;
 
+        // ArrowRight/ArrowLeft are physical keys, but the strip is a horizontal flex layout that
+        // mirrors under dir="rtl" -- so under a right-to-left UI culture the physical Right arrow
+        // has to move focus to the tab now on its visual right, which is the PREVIOUS tab in
+        // declaration order. See RtlSupport for why the ambient UI culture is the right signal to
+        // read (no vertical mode exists here to leave alone -- this strip is horizontal only).
+        var rtl = RtlSupport.IsRightToLeft;
         Tab? target = e.Key switch
         {
-            "ArrowRight" => enabled[(idx + 1) % enabled.Count],
-            "ArrowLeft" => enabled[(idx - 1 + enabled.Count) % enabled.Count],
+            "ArrowRight" => enabled[(idx + (rtl ? -1 : 1) + enabled.Count) % enabled.Count],
+            "ArrowLeft" => enabled[(idx + (rtl ? 1 : -1) + enabled.Count) % enabled.Count],
             _ => null,
         };
         if (target is null || ReferenceEquals(target, from)) return;

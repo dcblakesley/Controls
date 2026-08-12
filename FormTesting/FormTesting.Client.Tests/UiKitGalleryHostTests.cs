@@ -8,6 +8,9 @@ namespace FormTesting.Client.Tests;
 /// consumer can drop it onto a page of any render mode. These tests pin that it renders on every one
 /// of them — including Blazor Server, where the static toast containers it embeds refuse to run.
 /// </summary>
+/// <remarks><c>[Collection]</c>: serializes against every other class touching the process-static
+/// Wasm toast services — see the collection's definition for why.</remarks>
+[Collection(WasmStaticToastCollection.Name)]
 public class UiKitGalleryHostTests : BunitContext
 {
     public UiKitGalleryHostTests() => JSInterop.Mode = JSRuntimeMode.Loose;

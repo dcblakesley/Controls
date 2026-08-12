@@ -67,6 +67,24 @@ public class AlertAccessibilityTests : BunitContext
     }
 
     [Fact]
+    public void Alert_SeverityLabel_default_keeps_the_built_in_English_word()
+    {
+        var cut = Render<Alert>(p => p.Add(a => a.Type, AlertType.Warning).Add(a => a.Message, "x"));
+        Assert.Equal("Warning: ", cut.Find(".wss-alert-message .wss-sr-only").TextContent);
+    }
+
+    [Fact]
+    public void Alert_SeverityLabel_overrides_the_word_but_the_component_still_appends_the_separator()
+    {
+        var cut = Render<Alert>(p => p
+            .Add(a => a.Type, AlertType.Warning)
+            .Add(a => a.Message, "x")
+            .Add(a => a.SeverityLabel, "Attention"));
+
+        Assert.Equal("Attention: ", cut.Find(".wss-alert-message .wss-sr-only").TextContent);
+    }
+
+    [Fact]
     public void Alert_close_button_default_label_is_Close()
     {
         var cut = Render<Alert>(p => p.Add(a => a.Message, "x").Add(a => a.Closable, true));

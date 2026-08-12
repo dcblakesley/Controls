@@ -4,7 +4,8 @@
 
 @* Scoped (Server-safe) host. Requires builder.Services.AddWssControlsToasts() and an injected
    INotificationService. Drop one at the app root; call INotificationService from your components. *@
-<NotificationListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" OnPause="@(id => Service.Pause(id))" OnResume="@(id => Service.Resume(id))" Placement="Placement" />
+<NotificationListView Items="Service.Items" OnRemove="@(id => Service.Remove(id))" OnPause="@(id => Service.Pause(id))" OnResume="@(id => Service.Resume(id))" Placement="Placement"
+                      CloseButtonLabel="@CloseButtonLabel" SeverityLabel="SeverityLabel" />
 
 @code {
     /// <summary>
@@ -13,6 +14,16 @@
     /// different MFEs sharing one process can each anchor their own container independently.
     /// </summary>
     [Parameter] public NotificationPlacement Placement { get; set; } = NotificationPlacement.TopRight;
+
+    /// <summary>Accessible name of every notification's close button. Override to localize.
+    /// Forwarded to <see cref="NotificationListView.CloseButtonLabel"/> -- set per container instance
+    /// (render-tree-scoped, MFE-safe), not on the service.</summary>
+    [Parameter] public string CloseButtonLabel { get; set; } = "Close";
+
+    /// <summary>Overrides the sr-only severity word each notification announces ahead of its
+    /// message. Null (default) keeps the built-in English words. Forwarded to
+    /// <see cref="NotificationListView.SeverityLabel"/> -- see its doc for the exact contract.</summary>
+    [Parameter] public Func<NotificationType, string>? SeverityLabel { get; set; }
 
     protected override void OnInitialized() => Service.OnChange += HandleChange;
 

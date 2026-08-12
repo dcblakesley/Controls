@@ -2,9 +2,20 @@
 @implements IDisposable
 
 @* WASM-only host: reads the static WasmMessageService. For Blazor Server use MessageContainer. *@
-<MessageListView Items="WasmMessageService.Items" OnRemove="@(id => WasmMessageService.Remove(id))" OnPause="@(id => WasmMessageService.Pause(id))" OnResume="@(id => WasmMessageService.Resume(id))" />
+<MessageListView Items="WasmMessageService.Items" OnRemove="@(id => WasmMessageService.Remove(id))" OnPause="@(id => WasmMessageService.Pause(id))" OnResume="@(id => WasmMessageService.Resume(id))"
+                 CloseButtonLabel="@CloseButtonLabel" SeverityLabel="SeverityLabel" />
 
 @code {
+    /// <summary>Accessible name of every toast's close button. Override to localize. Forwarded to
+    /// <see cref="MessageListView.CloseButtonLabel"/> -- set per container instance
+    /// (render-tree-scoped), not on the static service.</summary>
+    [Parameter] public string CloseButtonLabel { get; set; } = "Close";
+
+    /// <summary>Overrides the sr-only severity word each toast announces ahead of its content. Null
+    /// (default) keeps the built-in English words. Forwarded to
+    /// <see cref="MessageListView.SeverityLabel"/> -- see its doc for the exact contract.</summary>
+    [Parameter] public Func<MessageType, string>? SeverityLabel { get; set; }
+
     protected override void OnInitialized() => WasmMessageService.OnChange += HandleChange;
 
     /// <summary>

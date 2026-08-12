@@ -12,7 +12,14 @@ namespace FormTesting.Client.Tests;
 /// circuit there), which the host-guard tests below drive through bUnit's <c>SetRendererInfo</c>. The
 /// rendering assertions go through the shared <c>MessageListView</c> / <c>NotificationListView</c> the
 /// containers delegate to, which is where that DOM actually comes from.
+/// <para>
+/// <c>[Collection]</c>: xUnit runs separate test classes in parallel, and every class that touches the
+/// process-static Wasm services races the others — one class's <c>Clear()</c> wipes another's in-flight
+/// toast mid-assertion. Every such class shares this collection so they serialize (see also
+/// <c>UiKitGalleryHostTests</c>).
+/// </para>
 /// </remarks>
+[Collection(WasmStaticToastCollection.Name)]
 public class WasmToastTests : BunitContext
 {
     // The four RendererInfo.Name values the framework's own renderers report. "Server" is the only
@@ -325,6 +332,50 @@ public class WasmToastTests : BunitContext
                 await Task.Delay(10);
 
             Assert.Empty(WasmNotificationService.Items);
+        }
+        finally
+        {
+            WasmNotificationService.Clear();
+        }
+    }
+
+    // ---- Localizable CloseButtonLabel / SeverityLabel overrides (WASM static containers) ----
+
+    [Fact]
+    public void WasmMessageContainer_forwards_CloseButtonLabel_and_SeverityLabel_overrides()
+    {
+        WasmMessageService.Clear();
+        try
+        {
+            SetRendererInfo(WebView);
+            WasmMessageService.Warning("x", duration: 0);
+            var cut = Render<WasmMessageContainer>(p => p
+                .Add(c => c.CloseButtonLabel, "Dismiss")
+                .Add(c => c.SeverityLabel, (Func<MessageType, string>)(_ => "Attention")));
+
+            cut.WaitForAssertion(() => Assert.Equal("Dismiss", cut.Find(".wss-msg-close").GetAttribute("aria-label")));
+            Assert.Equal("Attention: ", cut.Find(".wss-msg .wss-sr-only").TextContent);
+        }
+        finally
+        {
+            WasmMessageService.Clear();
+        }
+    }
+
+    [Fact]
+    public void WasmNotificationContainer_forwards_CloseButtonLabel_and_SeverityLabel_overrides()
+    {
+        WasmNotificationService.Clear();
+        try
+        {
+            SetRendererInfo(WebView);
+            WasmNotificationService.Error("x", duration: 0);
+            var cut = Render<WasmNotificationContainer>(p => p
+                .Add(c => c.CloseButtonLabel, "Dismiss")
+                .Add(c => c.SeverityLabel, (Func<NotificationType, string>)(_ => "Urgent")));
+
+            cut.WaitForAssertion(() => Assert.Equal("Dismiss", cut.Find(".wss-notification-close").GetAttribute("aria-label")));
+            Assert.Equal("Urgent: ", cut.Find(".wss-notification .wss-sr-only").TextContent);
         }
         finally
         {

@@ -49,6 +49,17 @@
     /// </summary>
     [Parameter] public EventCallback<Guid> OnResume { get; set; }
 
+    /// <summary>Accessible name of every toast's close button. Override to localize (mirrors
+    /// <see cref="Alert.CloseButtonLabel"/>).</summary>
+    [Parameter] public string CloseButtonLabel { get; set; } = "Close";
+
+    /// <summary>
+    /// Overrides the sr-only severity word prepended to each toast's content (see
+    /// <see cref="DefaultSeverityWord"/>). Null (default) keeps the built-in English words. Set to
+    /// localize -- return just the word; the component still appends the trailing ": " separator.
+    /// </summary>
+    [Parameter] public Func<MessageType, string>? SeverityLabel { get; set; }
+
     // One item template for both regions (mirrors NotificationListView.Row) — the assertive region
     // only ever receives Error items, so the computed severity class is the same "error" it used to
     // hardcode, with no second copy of the markup to drift.
@@ -56,12 +67,19 @@
         @onmouseenter="() => OnPause.InvokeAsync(m.Id)" @onmouseleave="() => OnResume.InvokeAsync(m.Id)"
         @onfocusin="() => OnPause.InvokeAsync(m.Id)" @onfocusout="() => OnResume.InvokeAsync(m.Id)">
         <span class="wss-msg-icon wss-msg-icon-@m.Type.ToString().ToLowerInvariant()">@Icon(m.Type)</span>
-        <span class="wss-sr-only">@SeverityLabel(m.Type)</span>
-        <span class="wss-msg-content">@m.Content</span>
-        <button type="button" class="wss-msg-close" aria-label="Close" @onclick="() => OnRemove.InvokeAsync(m.Id)">
+        <span class="wss-sr-only">@ResolveSeverityLabel(m.Type)</span>
+        <span class="wss-msg-content" id="@ContentId(m.Id)">@m.Content</span>
+        <button type="button" class="wss-msg-close" aria-label="@CloseButtonLabel" aria-describedby="@ContentId(m.Id)" @onclick="() => OnRemove.InvokeAsync(m.Id)">
             @UiKitIcons.CloseCross
         </button>
     </div>;
+
+    // Stable per-item id for the close button's aria-describedby, so a screen reader tabbing through
+    // several stacked toasts hears "Close, button -- <message text>" instead of an indistinguishable
+    // "Close, button" three times in a row. Prefixed with the item's own (already-unique) Guid, so
+    // it can never collide with another toast's id, or with NotificationListView's own ids (different
+    // prefix) if both regions are on the same page.
+    static string ContentId(Guid id) => $"wss-msg-content-{id:N}";
 
     // The spin comes from .wss-msg-icon-loading on the surrounding span (wss-controls.css), which is
     // why the shared LoadingSpinner glyph — deliberately animation-free — drops straight in here.
@@ -75,15 +93,16 @@
     };
 
     // Sighted users tell severity apart by the icon's shape (never just color -- WCAG 1.4.1); the
-    // icon is aria-hidden, so assistive tech needs the word instead. Hardcoded English, matching the
-    // kit's existing unlocalized "Close" convention -- see the accessibility audit for the i18n
-    // limitation this carries forward.
-    static string SeverityLabel(MessageType type) => type switch
+    // icon is aria-hidden, so assistive tech needs the word instead. SeverityLabel overrides just the
+    // word (localizable) -- the trailing ": " separator is always this component's own.
+    string ResolveSeverityLabel(MessageType type) => $"{(SeverityLabel is not null ? SeverityLabel(type) : DefaultSeverityWord(type))}: ";
+
+    static string DefaultSeverityWord(MessageType type) => type switch
     {
-        MessageType.Success => "Success: ",
-        MessageType.Warning => "Warning: ",
-        MessageType.Error => "Error: ",
-        MessageType.Loading => "Loading: ",
-        _ => "Info: ",
+        MessageType.Success => "Success",
+        MessageType.Warning => "Warning",
+        MessageType.Error => "Error",
+        MessageType.Loading => "Loading",
+        _ => "Info",
     };
 }

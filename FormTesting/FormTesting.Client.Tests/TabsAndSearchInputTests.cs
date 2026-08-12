@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -121,6 +122,37 @@ public class TabsAndSearchInputTests : BunitContext
         // ...and ArrowRight from the last enabled tab wraps back to the first.
         cut.FindAll("[role=tab]")[2].KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
         Assert.Equal("overdue", selected);
+    }
+
+    [Fact]
+    public void Under_a_right_to_left_culture_ArrowRight_moves_to_the_previous_enabled_tab()
+    {
+        // ArrowRight/ArrowLeft are physical keys. Under an LTR culture (the test above) ArrowRight
+        // from the first tab moves to "missing" (the next tab). Under a right-to-left UI culture the
+        // strip's flex layout mirrors (dir="rtl"), so the physical Right key has to move focus to the
+        // tab now on its visual right instead -- "other", the PREVIOUS tab in declaration order,
+        // wrapping backward -- and ArrowLeft becomes the mirror image. See RtlSupport for why the
+        // ambient UI culture (rather than a parameter) is the signal read here.
+        var originalCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = new CultureInfo("he-IL");
+
+            string? selected = null;
+            var cut = RenderTabs(changed: EventCallback.Factory.Create<string?>(this, v => selected = v));
+
+            cut.FindAll("[role=tab]")[0].KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+            Assert.Equal("other", selected);
+
+            // ArrowLeft now moves forward and wraps -- from the last tab ("other"), that lands back
+            // on the first ("overdue"), the same wrap-around shape ArrowRight has under LTR.
+            cut.FindAll("[role=tab]")[2].KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+            Assert.Equal("overdue", selected);
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalCulture;
+        }
     }
 
     [Fact]
@@ -1687,6 +1719,19 @@ public class TabsAndSearchInputTests : BunitContext
         var btn = cut.Find(".wss-search-btn");
         Assert.DoesNotContain("wss-search-btn-enter", btn.ClassList);
         Assert.Equal("Search", btn.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void SearchInput_with_no_labeling_source_falls_back_to_SearchButtonLabel_for_its_own_name()
+    {
+        // M10 floor: a bare <SearchInput /> (no InputLabel/AddonLabel/AddonContent/Placeholder) was
+        // the only part of the component with no guaranteed accessible name -- SearchButtonLabel
+        // ("Search" by default) is the last resort, mirroring the buttons' own guaranteed-name floor.
+        var cut = Render<SearchInput>();
+
+        var input = cut.Find(".wss-search-input");
+        Assert.Equal("Search", input.GetAttribute("aria-label"));
+        Assert.Null(input.GetAttribute("aria-labelledby"));
     }
 
     [Fact]
