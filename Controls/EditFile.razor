@@ -47,6 +47,16 @@
 
         @if (ShowEditor)
         {
+            @* LST-3/LST-4: the only other observable effect while a batch is validated/buffered is the
+               <input> going disabled -- nothing announces that a batch is running, nor its outcome
+               (successful additions/removals, including a partial success where some files were
+               deduped/capped alongside others that succeeded -- the rejections already have their own
+               role="alert" block below, but the surviving list was never announced at all). One
+               role="status" region covers both: it reads the loading text while a batch is in flight,
+               then flips to the current file-list status once _isLoadingFiles clears -- a real content
+               change either way, which is what a browser/AT keys an announcement off. *@
+            <span class="edit-sr-only" role="status">@(_isLoadingFiles ? LoadingStatusText : FileListStatusText)</span>
+
             @if (CanAddMoreFiles)
             {
                 @if (Variant == EditFileVariant.Button)
@@ -73,6 +83,12 @@
                             {
                                 <div class="edit-file-formats">Supported formats: @string.Join(", ", EffectiveAllowedExtensions)</div>
                             }
+                            @* LST-5: the resolved caps were previously discoverable only by triggering a
+                               rejection. EffectiveMaxFileSizeBytes/EffectiveMaxTotalBytes always resolve
+                               to a real, finite default (10 MB/100 MB), so this line always renders; the
+                               file-count clause is appended only when EffectiveMaxFiles is actually
+                               finite (> 0 -- 0 means genuinely unlimited). *@
+                            <div class="edit-file-limits">@CapsHintText</div>
                         </div>
                         @inputFile
                     </div>
@@ -101,7 +117,7 @@
                             }
                             else
                             {
-                                <span class="edit-file-name">@f.Name</span>
+                                <span class="edit-file-name" title="@f.Name">@f.Name</span>
                             }
                             <span class="edit-file-size">@FormatSize(f.Size)</span>
                             <button type="button"
@@ -135,18 +151,18 @@
         {
             @if (Value is null || Value.Count == 0)
             {
-                <ReadOnlyValue Id=@_id CssClass=@FieldCssClass Text="" />
+                <ReadOnlyValue Id=@_id CssClass=@FieldCssClass Text="" AriaDescribedBy=@_describedBy />
             }
             else
             {
-                @* aria-labelledby unconditionally: FormLabel renders lbl-{_id} even when the label is
-                   visually hidden (sr-only), so the old ShouldHideLabel gate dropped the association
+                @* aria-labelledby unconditionally: FormLabel renders lbltext-{_id} even when the label
+                   is visually hidden (sr-only), so the old ShouldHideLabel gate dropped the association
                    on a premise that no longer holds — matching every other control's read-only view.
                    The edit-mode list above names itself with a literal aria-label instead. *@
                 <ul class="edit-file-list edit-file-list--readonly @FieldCssClass"
                     id=@_id
                     data-test-id=@_id
-                    aria-labelledby="lbl-@_id">
+                    aria-labelledby="lbltext-@_id">
                     @foreach (var file in Value)
                     {
                         <li class="edit-file-item">

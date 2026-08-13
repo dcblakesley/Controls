@@ -100,6 +100,24 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
     [Parameter] public string ListboxLabel { get; set; } = SelectDefaults.ListboxLabel;
 
+    /// <inheritdoc cref="Select{TValue}.ResultCountAnnouncementFormat"/>
+    [Parameter] public string ResultCountAnnouncementFormat { get; set; } = SelectDefaults.ResultCountAnnouncementFormat;
+
+    /// <inheritdoc cref="Select{TValue}.SelectedAnnouncementFormat"/>
+    [Parameter] public string SelectedAnnouncementFormat { get; set; } = SelectDefaults.SelectedAnnouncementFormat;
+
+    /// <inheritdoc cref="Select{TValue}.DeselectedAnnouncementFormat"/>
+    [Parameter] public string DeselectedAnnouncementFormat { get; set; } = SelectDefaults.DeselectedAnnouncementFormat;
+
+    /// <inheritdoc cref="Select{TValue}.SelectionClearedAnnouncement"/>
+    [Parameter] public string SelectionClearedAnnouncement { get; set; } = SelectDefaults.SelectionClearedAnnouncement;
+
+    /// <inheritdoc cref="Select{TValue}.LoadingAnnouncement"/>
+    [Parameter] public string LoadingAnnouncement { get; set; } = SelectDefaults.LoadingAnnouncement;
+
+    /// <inheritdoc cref="Select{TValue}.MaxTagCountLabelFormat"/>
+    [Parameter] public string MaxTagCountLabelFormat { get; set; } = SelectDefaults.MaxTagCountLabelFormat;
+
     // Read-only view: comma-joined option labels (or the value's ToString when unmatched), resolved by
     // the same shared SelectLabelCache EditSelectSearch uses -- it caches both the value -> option
     // lookup (per Options reference) and the joined text (per bound-list reference), so the read-only

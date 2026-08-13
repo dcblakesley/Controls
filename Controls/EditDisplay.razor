@@ -13,7 +13,7 @@
              class="edit-readonly-value @Class"
              style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
              role="group"
-             aria-labelledby=@(string.IsNullOrEmpty(Label) ? null : $"lbl-{_id}")>
+             aria-labelledby=@(string.IsNullOrEmpty(Label) ? null : $"lbltext-{_id}")>
             @* R5: role="group" legitimizes the aria-labelledby above -- a bare div is role-generic, and
                ARIA prohibits naming a roleless element (an axe-core scan flagged exactly this shape;
                some assistive technology drops the name entirely rather than announcing it). Mirrors

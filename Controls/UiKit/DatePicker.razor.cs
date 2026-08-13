@@ -29,6 +29,9 @@ namespace Controls;
 /// without JS the dropdown opens below the field at the CSS default placement, everything remains
 /// clickable, Tab still reaches the grid, and arrow-key grid navigation still updates the
 /// roving-tabindex state (just without the DOM focus follow or the native page-scroll suppression).
+/// The one degradation that is NOT purely cosmetic is the focus-out dismissal — see
+/// <see cref="PickerBase"/>'s own remarks for exactly what that costs and why C# can't substitute
+/// for it.
 /// </remarks>
 public partial class DatePicker : PickerBase
 {
@@ -171,6 +174,20 @@ public partial class DatePicker : PickerBase
     /// </summary>
     [Parameter] public EventCallback<string> OnParseError { get; set; }
 
+    /// <summary>
+    /// Raised with the offending text when a typed commit (Enter or blur) parses into a perfectly
+    /// well-formed date that this picker nonetheless REFUSES — one rejected by <see cref="Min"/>,
+    /// <see cref="Max"/>, <see cref="DisabledDate"/> or <see cref="DisabledTime"/>. Deliberately a
+    /// separate signal from <see cref="OnParseError"/> (which is parse failure only, and is documented
+    /// as such): the two need different messages, and until this existed the rejection was completely
+    /// silent — the field reverted, nothing changed, and a keyboard-only user had no way to discover
+    /// why. Same optional contract as <see cref="OnParseError"/>: with no handler attached the text is
+    /// still silently reverted to the formatted bound value, exactly as before this parameter existed.
+    /// The typed-text commit paths are the only ones that raise it — a CLICK on a rejected cell is
+    /// already visible as <c>aria-disabled</c>, so it needs no announcement of its own.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnRangeError { get; set; }
+
     /// <summary>Input placeholder. Null (default) picks <see cref="Mode"/>'s default: <c>Date</c>/
     /// <c>DateTime</c> "Select date" (the Figma spec) · <c>Month</c> "Select month" · <c>Time</c>
     /// "Select time" · <c>Year</c> "Select year" · <c>Quarter</c> "Select quarter" · <c>Week</c>
@@ -257,6 +274,27 @@ public partial class DatePicker : PickerBase
     /// <summary>HTML id applied to the input — wires a consumer label / test hook.</summary>
     [Parameter] public string? Id { get; set; }
 
+    /// <summary>
+    /// The input's <c>autocomplete</c> token. Null (default) renders <c>"off"</c>, the value this
+    /// input hardcoded before this parameter existed. Set it to the field's real purpose (e.g.
+    /// <c>"bday"</c>, <c>"cc-exp"</c>) so browsers and assistive tech can autofill — WCAG 1.3.5
+    /// (Identify Input Purpose) is only satisfiable through this attribute, and consumer attributes
+    /// can't supply it because <see cref="AdditionalAttributes"/> lands on the outer wrapper, not the
+    /// input. Same role as <c>EditString</c>'s own <c>Autocomplete</c> parameter.
+    /// </summary>
+    [Parameter] public string? Autocomplete { get; set; }
+
+    /// <summary>
+    /// Value for the input's <c>aria-labelledby</c>; null (default) omits it, leaving
+    /// <see cref="InputLabel"/> as the accessible name. Set by a form wrapper
+    /// (<see cref="EditDate{T}"/>) to point at its <c>FormLabel</c>'s <c>lbltext-{id}</c> naming
+    /// anchor, so the input's name is the label's own text — live, and excluding the tooltip
+    /// trigger that sits inside the same <c>&lt;label&gt;</c>. Wins over <see cref="InputLabel"/>
+    /// when both are set (per the accessible-name spec), which is why the wrapper only sets it while
+    /// it isn't carrying an explicit name of its own.
+    /// </summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
+
     // Localizable accessibility strings. Defaults are English, matching DateRangePicker's convention.
 
     /// <summary>Accessible name of the input. Override to localize.</summary>
@@ -308,6 +346,31 @@ public partial class DatePicker : PickerBase
     /// entirely. Deliberately separate from <see cref="Placeholder"/>, which stays the Figma spec's
     /// visible "Select date".</summary>
     [Parameter] public string FormatHintLabel { get; set; } = "Format:";
+
+    /// <summary>Leading text of the visually-hidden <see cref="Min"/> clause of the range hint the
+    /// input's <c>aria-describedby</c> points at — rendered as "<c>{RangeHintMinLabel} {Min}</c>",
+    /// beside <see cref="FormatHintLabel"/>'s format clause in the same element. Only rendered when
+    /// <see cref="Min"/> is set (and never in <see cref="DatePickerMode.Time"/>, which ignores
+    /// <see cref="Min"/>/<see cref="Max"/> entirely). Defaults to "Earliest date:"; override to
+    /// localize, or set to an empty string to drop this clause. The bound is formatted with the same
+    /// <see cref="Format"/> the field itself displays and parses, so the hint reads in the shape the
+    /// user is expected to type. Exists because <see cref="Min"/>/<see cref="Max"/> otherwise reach
+    /// the user only as per-cell <c>aria-disabled</c> in the calendar — invisible to someone typing,
+    /// which is the faster path.</summary>
+    [Parameter] public string RangeHintMinLabel { get; set; } = "Earliest date:";
+    /// <summary>The <see cref="Max"/> clause of the same hint (see <see cref="RangeHintMinLabel"/>).
+    /// Defaults to "Latest date:". With both bounds set the two clauses render together, period-
+    /// separated, in <see cref="Min"/>-then-<see cref="Max"/> order.</summary>
+    [Parameter] public string RangeHintMaxLabel { get; set; } = "Latest date:";
+
+    /// <summary>Leading text of the week-number row header in <see cref="DatePickerMode.Week"/> —
+    /// rendered as the accessible name "<c>{WeekLabel} {number}</c>" on each row's week-number cell,
+    /// which is a <c>role="rowheader"</c> there (the row, not the day, is the selection unit in that
+    /// mode, and the field displays <c>yyyy-Www</c>, so the grid has to expose the number for the two
+    /// to be correlated). Override to localize. In every other mode the same cell stays
+    /// <c>aria-hidden</c> decoration — <see cref="ShowWeekNumbers"/> changes nothing about what a day
+    /// click commits, so its numbers are context, not structure.</summary>
+    [Parameter] public string WeekLabel { get; set; } = "Week";
 
     // Validation-state ARIA passthrough onto the actual <input>, for form wrappers (EditDate).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio (which EditSelectSearch
@@ -423,19 +486,62 @@ public partial class DatePicker : PickerBase
     // The dropdown panel's own id -- what the input's aria-controls points at while open.
     string PanelId => $"{BaseId}-panel";
 
-    // The visually-hidden format hint's id, appended to the input's aria-describedby.
+    // The visually-hidden typing hint's id, appended to the input's aria-describedby. Still named
+    // "-format" (a published, test-anchored id) even though the element now also carries the
+    // Min/Max clauses -- it is one hint about what may be typed, not two.
     string FormatHintId => $"{BaseId}-format";
 
-    // "Format: MM/dd/yyyy" (or blank, which suppresses both the span and its describedby token).
+    // "Format: MM/dd/yyyy" (or blank, which suppresses that clause).
     string FormatHintText =>
         string.IsNullOrEmpty(FormatHintLabel) ? string.Empty : $"{FormatHintLabel} {DescribedFormat}";
 
+    // "Earliest date: 01/01/2026" / "Latest date: 12/31/2026" / both, period-separated -- the Min/Max
+    // bounds as TEXT, which is the only channel someone typing (rather than clicking a cell) has for
+    // them. Formatted with FormatDate, so the hint reads in exactly the shape the field parses.
+    // Mode.Time contributes nothing: it ignores Min/Max outright (see their doc comments), so naming
+    // them there would describe a constraint that isn't enforced.
+    string RangeHintText
+    {
+        get
+        {
+            if (Mode == DatePickerMode.Time) return string.Empty;
+            var min = Min is { } lo && !string.IsNullOrEmpty(RangeHintMinLabel)
+                ? $"{RangeHintMinLabel} {FormatDate(lo)}" : string.Empty;
+            var max = Max is { } hi && !string.IsNullOrEmpty(RangeHintMaxLabel)
+                ? $"{RangeHintMaxLabel} {FormatDate(hi)}" : string.Empty;
+            if (min.Length == 0) return max;
+            return max.Length == 0 ? min : $"{min}. {max}";
+        }
+    }
+
+    // The whole visually-hidden typing hint: the format clause, then the range clauses. Blank (both
+    // suppressed, or nothing to say) drops the element AND its describedby token, exactly as blanking
+    // FormatHintLabel alone always did.
+    string HintText
+    {
+        get
+        {
+            var format = FormatHintText;
+            var range = RangeHintText;
+            if (format.Length == 0) return range;
+            return range.Length == 0 ? format : $"{format}. {range}";
+        }
+    }
+
     // The consumer's own aria-describedby (a form wrapper's error/description ids -- see EditDate)
-    // with the format hint's id APPENDED, so the wrapper's chain keeps its order and the hint reads
+    // with the hint's id APPENDED, so the wrapper's chain keeps its order and the hint reads
     // last. Null (no hint, no consumer value) omits the attribute exactly as before this existed.
-    string? EffectiveAriaDescribedBy => FormatHintText.Length == 0
+    string? EffectiveAriaDescribedBy => HintText.Length == 0
         ? AriaDescribedBy
         : string.IsNullOrEmpty(AriaDescribedBy) ? FormatHintId : $"{AriaDescribedBy} {FormatHintId}";
+
+    // The week-number cell's ARIA in Mode.Week: a real row header naming the row the field's own
+    // yyyy-Www display refers to. Every other mode leaves the cell aria-hidden decoration (see
+    // WeekLabel), so both helpers answer null/"true" there and the markup is unchanged for them.
+    string? WeekHeaderRole => Mode == DatePickerMode.Week ? "rowheader" : null;
+    string? WeekHeaderHidden => Mode == DatePickerMode.Week ? null : "true";
+    string? WeekHeaderLabel(DateTime weekStart) =>
+        Mode == DatePickerMode.Week ? $"{WeekLabel} {WeekNumberOf(weekStart).ToString(PickerCulture)}" : null;
 
     // The month/year (or year, or decade) the panel currently displays: the day/month/quarter/year
     // grid's accessible name AND the text of the panel's aria-live region, so the name a screen
@@ -1239,10 +1345,18 @@ public partial class DatePicker : PickerBase
         await CloseAsync();
     }
 
+    // The clear button unmounts the instant the value goes (ShowClear turns false), so without the
+    // reclaim below DOM focus fell to <body> -- and the panel is open essentially always (the field
+    // opens on focus), which put Escape out of reach of the wrapper's own keydown and left a live
+    // role="dialog" behind a full-viewport backdrop that only a mouse could dismiss. Every other
+    // panel action that unmounts its own trigger already sets this; the clear was the one that
+    // didn't. Reclaiming focus also announces the now-empty field on arrival, which is the clear's
+    // own confirmation.
     async Task ClearAsync()
     {
         if (Disabled) return;
         _edit = null;
+        _pendingInputFocus = true;
         await SetValueAsync(null);
     }
 
@@ -1267,7 +1381,16 @@ public partial class DatePicker : PickerBase
             if (OnParseError.HasDelegate) await OnParseError.InvokeAsync(text);
             return false;
         }
-        if (IsDisabledForCommit(day)) return false;
+        if (IsDisabledForCommit(day))
+        {
+            // A well-formed date this picker won't accept (Min/Max/DisabledDate/DisabledTime). This
+            // used to return in TOTAL SILENCE: the field reverted, Value never changed, so a host
+            // form control never learned anything happened and no validator ran -- a keyboard-only
+            // user got no signal at all. Distinct from OnParseError above, which is parse failure
+            // only, so a wrapper can word the two differently (see EditDate.RangeErrorMessage).
+            if (OnRangeError.HasDelegate) await OnRangeError.InvokeAsync(text);
+            return false;
+        }
         await SetValueAsync(day);
         _viewMonth = ClampView(FirstOfMonth(day));
         return true;

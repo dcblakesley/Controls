@@ -8,7 +8,8 @@
        unmatched-attribute remarks), which for this control is also the only safe home for it: the
        engine's own wrapper carries a JS-owned inline z-index while its dropdown is open. Everything
        else is forwarded to the engine's AdditionalAttributes and splatted onto that wrapper -- the
-       element that actually represents this field. *@
+       element that actually represents this field. The one exception is `aria-label`, which the engine
+       lifts off that wrapper onto its role="combobox" input, the only element it can name. *@
     <div class="edit-control-wrapper @ContainerClass"
          style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
@@ -43,8 +44,13 @@
                     CssClass="@CssClass"
                     ClearSelectionLabel="@ClearSelectionLabel"
                     ListboxLabel="@ListboxLabel"
+                    ResultCountAnnouncementFormat="@ResultCountAnnouncementFormat"
+                    SelectedAnnouncementFormat="@SelectedAnnouncementFormat"
+                    SelectionClearedAnnouncement="@SelectionClearedAnnouncement"
+                    LoadingAnnouncement="@LoadingAnnouncement"
                     AriaRequired="@_isRequired"
                     AriaInvalid="@IsInvalid"
+                    AriaLabelledBy="@($"lbltext-{_id}")"
                     AriaDescribedBy="@_describedBy"
                     AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)"
                     AdditionalAttributes="@AttributeSplat.Rest(AdditionalAttributes)" />

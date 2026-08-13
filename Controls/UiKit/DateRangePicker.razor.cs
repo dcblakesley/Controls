@@ -44,7 +44,9 @@ namespace Controls;
 /// whichever grid owns the roving tabindex) degrades gracefully: without JS the dropdown opens below
 /// the field at the CSS default placement, everything remains clickable, Tab still reaches the
 /// grids, and arrow-key grid navigation still updates the roving-tabindex state (just without the
-/// DOM focus follow or the native page-scroll suppression).
+/// DOM focus follow or the native page-scroll suppression). The one degradation that is NOT purely
+/// cosmetic is the focus-out dismissal — see <see cref="PickerBase"/>'s own remarks for exactly what
+/// that costs and why C# can't substitute for it.
 /// </para>
 /// </remarks>
 public partial class DateRangePicker : PickerBase
@@ -165,6 +167,23 @@ public partial class DateRangePicker : PickerBase
     /// <summary>Same contract as <see cref="OnStartParseError"/>, for the END input.</summary>
     [Parameter] public EventCallback<string> OnEndParseError { get; set; }
 
+    /// <summary>
+    /// Raised with the offending text when a typed commit (Enter or blur) in the START input parses
+    /// into a perfectly well-formed value that this picker nonetheless REFUSES — one rejected by
+    /// <see cref="Min"/>, <see cref="Max"/>, <see cref="DisabledDate"/> or
+    /// <see cref="StartDisabledTime"/>. Deliberately a separate signal from
+    /// <see cref="OnStartParseError"/> (which is parse failure only, and is documented as such): the
+    /// two need different messages, and until this existed the rejection was completely silent — the
+    /// field reverted, neither bound value changed, so a host form control never learned anything
+    /// happened and no validator ran. Same optional contract as the parse callbacks: with no handler
+    /// attached the text is still silently reverted. Only the typed-text commit paths raise it — a
+    /// CLICK on a rejected cell is already visible as <c>aria-disabled</c>.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnStartRangeError { get; set; }
+    /// <summary>Same contract as <see cref="OnStartRangeError"/>, for the END input (guarded by
+    /// <see cref="EndDisabledTime"/> rather than <see cref="StartDisabledTime"/>).</summary>
+    [Parameter] public EventCallback<string> OnEndRangeError { get; set; }
+
     /// <summary>Placeholder for the start input. Null (default) shows the uppercased
     /// <see cref="EffectiveFormat"/> (e.g. "2026-Q3" mode's own null-Format default, <c>yyyy</c>,
     /// uppercases to "YYYY" -- a placeholder that doesn't hint at the quarter shorthand; override
@@ -205,6 +224,38 @@ public partial class DateRangePicker : PickerBase
     /// <summary>HTML id applied to the end input — wires a consumer label / test hook.</summary>
     [Parameter] public string? EndId { get; set; }
 
+    /// <summary>
+    /// The start input's <c>autocomplete</c> token. Null (default) renders <c>"off"</c>, the value
+    /// both inputs hardcoded before this parameter existed. Set it to the field's real purpose so
+    /// browsers and assistive tech can autofill — WCAG 1.3.5 (Identify Input Purpose) is only
+    /// satisfiable through this attribute, and consumer attributes can't supply it because
+    /// <see cref="AdditionalAttributes"/> lands on the outer wrapper, not the inputs. Per-input
+    /// (rather than one shared value) like every other per-endpoint parameter here: the two ends of
+    /// a range are different purposes.
+    /// </summary>
+    [Parameter] public string? StartAutocomplete { get; set; }
+    /// <summary>Same contract as <see cref="StartAutocomplete"/>, for the END input.</summary>
+    [Parameter] public string? EndAutocomplete { get; set; }
+
+    /// <summary>
+    /// Accessible name for the composite field — the <c>.wss-picker-input</c> box holding BOTH
+    /// inputs, which takes <c>role="group"</c> whenever this or <see cref="GroupLabelledBy"/> gives
+    /// it a name. Without it a form wrapper's single visible label associates (<c>label[for]</c>)
+    /// with the start input alone and the two inputs read as unrelated fields, with nothing tying
+    /// the second to the first. Null (default) on both this and <see cref="GroupLabelledBy"/> leaves
+    /// the box unroled and unnamed, byte-identical to before these existed — an unnamed
+    /// <c>role="group"</c> is noise, not structure.
+    /// </summary>
+    [Parameter] public string? GroupLabel { get; set; }
+    /// <summary>
+    /// Id reference form of <see cref="GroupLabel"/> (<c>aria-labelledby</c>), for a wrapper that
+    /// already renders the naming element — <see cref="EditDateRange"/> points it at its
+    /// <c>FormLabel</c>'s <c>lbltext-{id}</c> naming anchor, so the group's name is the label's own
+    /// text, live, and without the tooltip trigger that sits inside the same <c>&lt;label&gt;</c>.
+    /// Wins over <see cref="GroupLabel"/> when both are set (per the accessible-name spec).
+    /// </summary>
+    [Parameter] public string? GroupLabelledBy { get; set; }
+
     // Localizable accessibility strings. Defaults are English, matching Select's convention.
 
     /// <summary>Accessible name of the start input. Override to localize.</summary>
@@ -241,6 +292,16 @@ public partial class DateRangePicker : PickerBase
     /// <summary>Accessible name of the next-decade button (<see cref="DatePickerMode.Year"/>'s
     /// right panel only). Override to localize.</summary>
     [Parameter] public string NextDecadeLabel { get; set; } = "Next decade";
+
+    /// <summary>Leading text of the week-number row header in <see cref="DatePickerMode.Week"/> —
+    /// rendered as the accessible name "<c>{WeekLabel} {number}</c>" on each row's week-number cell,
+    /// which is a <c>role="rowheader"</c> there (the row, not the day, is the selection unit in that
+    /// mode, and the fields display <c>yyyy-Www</c>, so the grids have to expose the number for the
+    /// two to be correlated). Override to localize. In every other mode the same cell stays
+    /// <c>aria-hidden</c> decoration — <see cref="ShowWeekNumbers"/> changes nothing about what a day
+    /// click commits, so its numbers are context, not structure. Mirrors
+    /// <see cref="DatePicker.WeekLabel"/>.</summary>
+    [Parameter] public string WeekLabel { get; set; } = "Week";
 
     // ----- Time/DateTime pick session: time-row options + OK footer -----------------------------
     // Mirror DatePicker's own equivalents one-for-one (defaults included) -- see DatePicker's own
@@ -529,6 +590,32 @@ public partial class DateRangePicker : PickerBase
     // The Time/DateTime pick session's lone calendar panel: its grid's accessible name, and (via
     // ViewLabel above) its live-region text.
     string SessionViewLabel => _viewMonth.ToString("MMMM yyyy", PickerCulture);
+
+    // role="group" on the composite field, but ONLY once something actually names it -- an unnamed
+    // group adds a boundary announcement with no information in it. A standalone picker (no wrapper
+    // supplying either name parameter) therefore renders exactly the DOM it always did.
+    string? GroupRole =>
+        !string.IsNullOrEmpty(GroupLabelledBy) || !string.IsNullOrEmpty(GroupLabel) ? "group" : null;
+
+    // Each panel's own month/year select names, suffixed with the panel's own view label. The two
+    // panels' selects are otherwise character-identical ("Month", "Year", twice each), which left the
+    // dropdown presenting four combo boxes with two distinct names between them and nothing to say
+    // which calendar each drove -- the panels themselves carry no role or name, so only the grids
+    // (which already suffix this way) disambiguated anything.
+    string PanelMonthSelectLabel(DateTime month) => $"{MonthSelectLabel}, {month.ToString("MMMM yyyy", PickerCulture)}";
+    string PanelYearSelectLabel(DateTime month) => $"{YearSelectLabel}, {month.ToString("MMMM yyyy", PickerCulture)}";
+    // Month/Quarter mode's panels show a bare year, which is the whole of their own view label.
+    string PanelYearSelectLabel(int year) => $"{YearSelectLabel}, {year.ToString(PickerCulture)}";
+
+    // The week-number cell's ARIA in Mode.Week: a real row header naming the row the fields' own
+    // yyyy-Www display refers to. Every other mode leaves the cell aria-hidden decoration (see
+    // WeekLabel). Keys off EffectiveMode for the same reason every other grid concern does -- the
+    // pick session's own calendar is day-shaped, so it never takes the header. Mirrors DatePicker's
+    // identical trio.
+    string? WeekHeaderRole => EffectiveMode == DatePickerMode.Week ? "rowheader" : null;
+    string? WeekHeaderHidden => EffectiveMode == DatePickerMode.Week ? null : "true";
+    string? WeekHeaderLabel(DateTime weekStart) =>
+        EffectiveMode == DatePickerMode.Week ? $"{WeekLabel} {WeekNumberOf(weekStart).ToString(PickerCulture)}" : null;
 
     // ----- ARIA grid row grouping --------------------------------------------
     // The day grids get their rows for free (GridWeekRows -- the same 6x7 chunking the week-number
@@ -1547,9 +1634,17 @@ public partial class DateRangePicker : PickerBase
         await CloseAsync();
     }
 
+    // The clear button unmounts the instant both values go (ShowClear turns false), so without the
+    // reclaim below DOM focus fell to <body> -- and the panel is open essentially always (a field
+    // opens on focus), which put Escape out of reach of the wrapper's own keydown and left a live
+    // role="dialog" behind a full-viewport backdrop that only a mouse could dismiss. Every other
+    // panel action that unmounts its own trigger already sets this; the clear was the one that
+    // didn't. Reclaiming focus also announces the now-empty field on arrival, which is the clear's
+    // own confirmation.
     async Task ClearAsync()
     {
         if (Disabled) return;
+        _pendingInputFocus = true;
         _selecting = false;
         _pendingStart = null;
         _hoverDay = null;
@@ -1581,10 +1676,14 @@ public partial class DateRangePicker : PickerBase
         {
             if (!TryParseTimePart(text, Start, out var time))
             {
-                await RaiseParseErrorAsync(OnStartParseError, text);
+                await RaiseTextErrorAsync(OnStartParseError, text);
                 return;
             }
-            if (IsCommitDisabled(0, time)) return;
+            if (IsCommitDisabled(0, time))
+            {
+                await RaiseTextErrorAsync(OnStartRangeError, text);
+                return;
+            }
             await SetRangeAsync(time, End);
             FinishTextCommit();
             return;
@@ -1592,10 +1691,17 @@ public partial class DateRangePicker : PickerBase
         // Invalid or out-of-range text reverts to the formatted bound value (edit state cleared above).
         if (!TryParseDate(text, out var unit))
         {
-            await RaiseParseErrorAsync(OnStartParseError, text);
+            await RaiseTextErrorAsync(OnStartParseError, text);
             return;
         }
-        if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(0, unit) : IsUnitDisabled(unit)) return;
+        // A well-formed value this picker won't accept -- distinct from the parse failure above, and
+        // (until OnStartRangeError existed) a completely silent revert: neither bound value changed,
+        // so no host form control ever learned the entry was refused. See OnStartRangeError.
+        if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(0, unit) : IsUnitDisabled(unit))
+        {
+            await RaiseTextErrorAsync(OnStartRangeError, text);
+            return;
+        }
         await SetRangeAsync(unit, End);
         if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 0);
         FinishTextCommit();
@@ -1616,30 +1722,42 @@ public partial class DateRangePicker : PickerBase
         {
             if (!TryParseTimePart(text, End, out var time))
             {
-                await RaiseParseErrorAsync(OnEndParseError, text);
+                await RaiseTextErrorAsync(OnEndParseError, text);
                 return;
             }
-            if (IsCommitDisabled(1, time)) return;
+            if (IsCommitDisabled(1, time))
+            {
+                await RaiseTextErrorAsync(OnEndRangeError, text);
+                return;
+            }
             await SetRangeAsync(Start, time);
             FinishTextCommit();
             return;
         }
         if (!TryParseDate(text, out var unit))
         {
-            await RaiseParseErrorAsync(OnEndParseError, text);
+            await RaiseTextErrorAsync(OnEndParseError, text);
             return;
         }
-        if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(1, unit) : IsUnitDisabled(unit)) return;
+        // See CommitStartTextAsync's twin -- a refused-but-well-formed value, announced through its
+        // own callback rather than reverting in silence.
+        if (Mode == DatePickerMode.DateTime ? IsCommitDisabled(1, unit) : IsUnitDisabled(unit))
+        {
+            await RaiseTextErrorAsync(OnEndRangeError, text);
+            return;
+        }
         await SetRangeAsync(Start, unit);
         if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 1);
         FinishTextCommit();
     }
 
-    // Raises whichever endpoint's OnStartParseError/OnEndParseError the caller passed, for a GENUINE
-    // parse failure only -- a well-formed value the Min/Max/DisabledDate/DisabledTime guards reject is
-    // a different situation and never reaches here (see OnStartParseError's doc comment). The
-    // HasDelegate check keeps a handler-less picker on exactly its old silent-revert path.
-    Task RaiseParseErrorAsync(EventCallback<string> callback, string text) =>
+    // Raises whichever of the four typed-text failure callbacks the caller passed -- the endpoint's
+    // OnStart/EndParseError for a GENUINE parse failure, or its OnStart/EndRangeError for a
+    // well-formed value the Min/Max/DisabledDate/DisabledTime guards reject. The two stay separate
+    // callbacks (see OnStartParseError/OnStartRangeError) because they are different situations
+    // needing different messages; this only owns the shared HasDelegate check, which keeps a
+    // handler-less picker on exactly its old silent-revert path.
+    Task RaiseTextErrorAsync(EventCallback<string> callback, string text) =>
         callback.HasDelegate ? callback.InvokeAsync(text) : Task.CompletedTask;
 
     // A successful typed commit (a parsed date or an explicit clear) finalizes the field: any

@@ -39,21 +39,66 @@ public partial class EditString : EditTextInputBase
 
     /// <summary>
     /// The autocomplete token actually rendered: the <see cref="Autocomplete"/> parameter, else the
-    /// model property's <c>[Autocomplete]</c>, else the control's built-in default --
-    /// <c>"new-password"</c> for a password field (see <see cref="EffectiveIsPassword"/>),
-    /// <c>"one-time-code"</c> otherwise.
+    /// model property's <c>[Autocomplete]</c>, else -- for a password field (see
+    /// <see cref="EffectiveIsPassword"/>) -- <c>"new-password"</c>; otherwise a token inferred from the
+    /// bound property's own name (see <see cref="InferAutocompleteFromPropertyName"/>), falling back to
+    /// <c>"one-time-code"</c> only when no purpose can be inferred.
     /// </summary>
     /// <remarks>
-    /// Both defaults exist to keep autofill out of the way; they differ because "out of the way"
+    /// All three defaults exist to keep autofill out of the way; they differ because "out of the way"
     /// differs by field. <c>"one-time-code"</c> is the general suppressor, but on a password field it
     /// is a lie the platform acts on: iOS and Android read it as "this is an SMS/OTP field" and offer
     /// the one-time-code keyboard affordance over the password the user is actually typing.
     /// <c>"new-password"</c> is the standard token for exactly this case -- it suppresses filling a
-    /// stored credential without claiming the field is something it isn't. (The non-password default
-    /// stays <c>"one-time-code"</c>: that is a locked decision, not an oversight.)
+    /// stored credential without claiming the field is something it isn't.
+    /// <para>
+    /// TXT-2: applying <c>"one-time-code"</c> to every OTHER field went a step further than merely
+    /// failing to identify the field's purpose (WCAG 1.3.5) -- it actively misidentified it, since that
+    /// token is reserved for OTP/2FA entry. An ordinary <c>Email</c>/<c>FirstName</c>/<c>Phone</c> field
+    /// got a token that can make a mobile browser offer OTP-style autofill over the field's real
+    /// purpose. The property-name inference below closes that gap for the common, unambiguous cases
+    /// while keeping <c>"one-time-code"</c> as the last-resort fallback for a field this short mapping
+    /// doesn't recognize -- preserving the original protection this default exists for (README's
+    /// "prevent browser extensions and autofill from intercepting Blazor input events").
+    /// </para>
     /// </remarks>
     string EffectiveAutocomplete =>
-        Autocomplete ?? _attributes.Autocomplete() ?? (EffectiveIsPassword ? "new-password" : "one-time-code");
+        Autocomplete
+        ?? _attributes.Autocomplete()
+        ?? (EffectiveIsPassword
+            ? "new-password"
+            : InferAutocompleteFromPropertyName(_fieldIdentifier.FieldName) ?? "one-time-code");
+
+    /// <summary>
+    /// Infers a standard HTML autofill token from the bound property's own name, for the last fallback
+    /// tier of <see cref="EffectiveAutocomplete"/> -- mirrors <see cref="AttributesHelper.GetLabelText"/>'s
+    /// fallback-chain style (small, obvious, easy to extend) rather than attempting to cover the WHATWG
+    /// Autofill Field Names table exhaustively. Matched against the FULL property name (case-sensitive
+    /// against the common PascalCase spellings a C# model uses), never a substring: a bare "Name" is
+    /// genuinely ambiguous between full name and given name, so it is deliberately left unmapped and
+    /// falls through to "one-time-code" rather than guessing wrong. Null when nothing in the table
+    /// matches.
+    /// </summary>
+    static string? InferAutocompleteFromPropertyName(string? propertyName) => propertyName switch
+    {
+        "Email" or "EmailAddress" or "Mail" => "email",
+        "Username" or "UserName" => "username",
+        "FirstName" or "GivenName" => "given-name",
+        "LastName" or "FamilyName" or "Surname" => "family-name",
+        "FullName" => "name",
+        "Phone" or "PhoneNumber" or "Telephone" or "TelephoneNumber" or "Mobile" or "MobileNumber" => "tel",
+        "Address" or "Address1" or "AddressLine1" or "StreetAddress" => "address-line1",
+        "Address2" or "AddressLine2" => "address-line2",
+        "City" or "Town" => "address-level2",
+        "State" or "Province" or "Region" => "address-level1",
+        "PostalCode" or "Zip" or "ZipCode" => "postal-code",
+        "Country" or "CountryName" => "country-name",
+        "Organization" or "Company" or "CompanyName" or "Employer" => "organization",
+        "JobTitle" => "organization-title",
+        "Url" or "Website" or "WebsiteUrl" or "HomePage" => "url",
+        "BirthDate" or "DateOfBirth" or "Birthday" => "bday",
+        _ => null
+    };
 
     /// <summary> Optional leading affix content (e.g. a currency symbol or icon), rendered by <see cref="EditInputShell"/>. Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Prefix { get; set; }
@@ -78,6 +123,35 @@ public partial class EditString : EditTextInputBase
     /// matching the control's old default.
     /// </summary>
     bool EffectiveIsPassword => IsPassword ?? _attributes.IsPasswordField();
+
+    /// <summary>
+    /// Overrides the password show/hide toggle's accessible name (default:
+    /// <c>"Show {ResolvedLabel} password"</c>, e.g. "Show Password password") -- see
+    /// <see cref="EditTextInputBase.ClearButtonLabel"/>'s remarks (TXT-4): a Password/Confirm-Password
+    /// pair otherwise renders two toggles both named "Show password", which a screen-reader user
+    /// browsing a button list can't tell apart. The name stays CONSTANT across both reveal states
+    /// either way -- only <c>aria-pressed</c> moves (see the markup's remarks).
+    /// </summary>
+    [Parameter] public string? ShowPasswordButtonLabel { get; set; }
+
+    /// <summary>
+    /// The password toggle's accessible name actually rendered: the
+    /// <see cref="ShowPasswordButtonLabel"/> parameter, else <c>"Show {<see cref="EditTextInputBase.ResolvedLabel"/>} password"</c>.
+    /// </summary>
+    string EffectiveShowPasswordButtonLabel => ShowPasswordButtonLabel ?? $"Show {ResolvedLabel} password";
+
+    /// <summary>
+    /// Overrides the read-only masked row's reveal-toggle accessible name (default:
+    /// <c>"Show {ResolvedLabel} value"</c>) -- the same collision <see cref="ShowPasswordButtonLabel"/>
+    /// fixes (TXT-4): two masked fields on one form otherwise both render a toggle named "Show value".
+    /// </summary>
+    [Parameter] public string? ShowValueButtonLabel { get; set; }
+
+    /// <summary>
+    /// The masked-row toggle's accessible name actually rendered: the <see cref="ShowValueButtonLabel"/>
+    /// parameter, else <c>"Show {<see cref="EditTextInputBase.ResolvedLabel"/>} value"</c>.
+    /// </summary>
+    string EffectiveShowValueButtonLabel => ShowValueButtonLabel ?? $"Show {ResolvedLabel} value";
 
     /// <summary>
     /// The bullet a password field's read-only mask is built from (U+2022, matching what a browser

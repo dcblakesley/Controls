@@ -18,17 +18,26 @@ namespace Controls;
 /// </para>
 /// <para>
 /// One <see cref="FormLabel"/> renders for the whole control, associated (<c>label[for]</c>) with the
-/// Start input — the only one <see cref="DateRangePicker"/> exposes an <c>Id</c> for. Both fields still
-/// register independently with <see cref="FormOptions"/> and each gets its own
-/// <see cref="FieldValidationDisplay"/>, so a validation failure on either Start or End shows its own
-/// message and links from a <c>ValidationView</c> summary.
+/// Start input — the only one <see cref="DateRangePicker"/> exposes an <c>Id</c> for. The composite
+/// field additionally takes <c>role="group"</c> named from that label's <c>lbltext-{id}</c> anchor
+/// (<see cref="DateRangePicker.GroupLabelledBy"/>), which is what ties the End input back to the
+/// label the association can't reach it from. Both fields still register independently with
+/// <see cref="FormOptions"/> and each gets its own <see cref="FieldValidationDisplay"/>, so a
+/// validation failure on either Start or End shows its own message and links from a
+/// <c>ValidationView</c> summary — anchored on the End input in edit mode, and (since no End element
+/// exists there) on the single read-only value in read-only mode. Either field being required raises
+/// the one shared star, while <c>aria-required</c> stays strictly per-input.
 /// </para>
 /// <para>
 /// Validation-state ARIA reaches both actual <c>&lt;input&gt;</c>s through
 /// <see cref="DateRangePicker"/>'s per-input <c>StartAria*</c>/<c>EndAria*</c> parameters, each
 /// reflecting its own field's state (a Start error never marks the End input invalid, and vice
-/// versa); each input's <c>aria-errormessage</c>/<c>aria-describedby</c> references its own
-/// <see cref="FieldValidationDisplay"/> message. The visible <see cref="FormLabel"/> associates
+/// versa); each input's <c>aria-errormessage</c> references its own
+/// <see cref="FieldValidationDisplay"/> message, and each input's <c>aria-describedby</c> starts with
+/// that same message and then references the ONE <see cref="IEditControl.Description"/>/
+/// <see cref="IEditControl.Tooltip"/> pair this control renders (see <c>BuildEndDescribedBy</c>) —
+/// a reference, not ownership, so both inputs get instructions written once. The visible
+/// <see cref="FormLabel"/> associates
 /// (<c>label[for]</c>) with the Start input, but <c>aria-label</c> wins the accessible-name
 /// computation over that association (per the AccName spec) — so both inputs' accessible names come
 /// entirely from <see cref="StartInputLabel"/>/<see cref="EndInputLabel"/>, which default to the
@@ -175,6 +184,25 @@ public partial class EditDateRange : IDisposable
     /// </summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
 
+    /// <summary>
+    /// Error message format string used when a typed entry in EITHER input parses into a perfectly
+    /// well-formed value that the inner <see cref="DateRangePicker"/> nonetheless REFUSES — one
+    /// rejected by <see cref="Min"/>/<see cref="Max"/>/<see cref="DisabledDate"/>/
+    /// <see cref="StartDisabledTime"/>/<see cref="EndDisabledTime"/>
+    /// (<see cref="DateRangePicker.OnStartRangeError"/>/<see cref="DateRangePicker.OnEndRangeError"/>).
+    /// <c>{0}</c> is replaced with the FAILING field's own name, so one format string serves both
+    /// endpoints — same formatting as <see cref="ParsingErrorMessage"/>, same store, and cleared for
+    /// that endpoint alone the moment a valid value next commits for it.
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="ParsingErrorMessage"/> because the two are genuinely different
+    /// situations: "that isn't a date" versus "that IS a date, but not one this field accepts".
+    /// Before this existed the second case was silent in every channel — the picker reverted the
+    /// text, neither bound value changed, <c>NotifyFieldChanged</c> never fired, no validator ran.
+    /// Mirrors <see cref="EditDate{T}.RangeErrorMessage"/>.
+    /// </remarks>
+    [Parameter] public string RangeErrorMessage { get; set; } = "The {0} field must be an allowed date.";
+
     /// <summary> Format string for the read-only "start - end" value display. Null (default) picks
     /// <see cref="Mode"/>'s own default (mirrors <see cref="EditDate{T}.DateFormat"/>'s identical
     /// per-mode contract): <c>Date</c> "MM-dd-yyyy" (the original, unchanged default) · <c>Month</c>
@@ -216,8 +244,22 @@ public partial class EditDateRange : IDisposable
     /// something else entirely.
     /// </summary>
     [Parameter] public string? EndInputLabel { get; set; }
-    /// <inheritdoc cref="DateRangePicker.DialogLabel"/>
-    [Parameter] public string DialogLabel { get; set; } = "Choose date range";
+    /// <summary>
+    /// Accessible name of the picker's dropdown dialog. Null (default) derives it from the resolved
+    /// control label — "Choose Stay Dates" — rather than <see cref="DateRangePicker"/>'s constant
+    /// "Choose date range", which made every range popup on a form announce identically no matter
+    /// which field opened it. Set explicitly to localize or to name it something else entirely.
+    /// </summary>
+    [Parameter] public string? DialogLabel { get; set; }
+    /// <summary>
+    /// The Start input's <c>autocomplete</c> token (see <see cref="DateRangePicker.StartAutocomplete"/>).
+    /// Null (default) falls back to the Start property's own <c>[Autocomplete]</c>, then to the
+    /// picker's <c>"off"</c>. Per-endpoint, resolved against each field's OWN attributes, exactly
+    /// like <see cref="StartPlaceholder"/>.
+    /// </summary>
+    [Parameter] public string? StartAutocomplete { get; set; }
+    /// <summary>Same contract as <see cref="StartAutocomplete"/>, for the End input.</summary>
+    [Parameter] public string? EndAutocomplete { get; set; }
     /// <inheritdoc cref="DateRangePicker.MonthSelectLabel"/>
     [Parameter] public string MonthSelectLabel { get; set; } = "Month";
     /// <inheritdoc cref="DateRangePicker.YearSelectLabel"/>
@@ -246,6 +288,8 @@ public partial class EditDateRange : IDisposable
     [Parameter] public string SecondSelectLabel { get; set; } = "Second";
     /// <inheritdoc cref="DateRangePicker.PeriodSelectLabel"/>
     [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
+    /// <inheritdoc cref="DateRangePicker.WeekLabel"/>
+    [Parameter] public string WeekLabel { get; set; } = "Week";
 
     // Standard derived state — mirrors EditControlListBase's fields, duplicated per bound field. (The
     // validation-state subscription and the field-registration sequence that used to sit alongside
@@ -265,14 +309,23 @@ public partial class EditDateRange : IDisposable
     string _endDescribedBy = string.Empty;
     Func<FieldIdentifier>? _startFieldIdentifierFactory;
     Func<FieldIdentifier>? _endFieldIdentifierFactory;
+    // The anchor id the End field is currently registered under (see EndAnchorId) -- tracked so a
+    // runtime edit/read-only flip can move the registration, which neither of the two existing
+    // re-registration triggers (a resolved-id change, an EditContext swap) would notice on its own.
+    string _registeredEndAnchorId = string.Empty;
 
     /// <summary>
-    /// The control's fully-resolved required-ness, derived from the Start field only (an <c>[Required]</c>
-    /// on End does not raise the shared star — it still surfaces as its own validation message). Same
-    /// resolution as every other control: <see cref="IEditControl.IsRequired"/> parameter →
-    /// <c>[Required]</c> attribute → <see cref="FormOptions.RequiredResolver"/>.
+    /// The control's fully-resolved required-ness: true when EITHER bound field resolves as required.
+    /// Same resolution as every other control per field (<see cref="IEditControl.IsRequired"/>
+    /// parameter → <c>[Required]</c> attribute → <see cref="FormOptions.RequiredResolver"/>), OR-ed
+    /// because this control renders ONE shared visible label for two fields. A <c>[Required]</c> on
+    /// End alone used to mark the End input <c>aria-required</c> while the label showed no star at
+    /// all, so the visual and the programmatic channels disagreed about the very same control — the
+    /// sighted user saw an optional field, the screen-reader user heard a required one. The per-input
+    /// <c>aria-required</c> stays per-field (see <c>_isRequired</c>/<c>_endIsRequired</c>): only the
+    /// shared star is shared.
     /// </summary>
-    protected bool? IsRequiredResolved => _isRequired is not null;
+    protected bool? IsRequiredResolved => _isRequired is not null || _endIsRequired is not null;
 
     /// <summary> True when the Start field currently has a validation error.</summary>
     protected bool IsStartInvalid => EditContext is not null && EditContext.GetValidationMessages(_startFieldIdentifier).Any();
@@ -364,6 +417,29 @@ public partial class EditDateRange : IDisposable
     string EffectiveStartInputLabel => StartInputLabel ?? (Label is not null ? $"{Label} start" : _attributes.GetLabelText(_startFieldIdentifier));
     string EffectiveEndInputLabel => EndInputLabel ?? (Label is not null ? $"{Label} end" : _endAttributes.GetLabelText(_endFieldIdentifier));
 
+    // The control's own resolved label -- what the single visible FormLabel shows, and the base both
+    // input names above are composed from. Also the dialog's own name below.
+    string ResolvedLabel => Label ?? _attributes.GetLabelText(_startFieldIdentifier);
+
+    // The dialog's name, derived from the SAME resolved control label the visible FormLabel shows,
+    // instead of the picker's constant "Choose date range" -- with two range fields on a form, both
+    // popups announced identically and nothing said which one had opened. The explicit parameter
+    // stays the localization override. Mirrors EditDate.EffectiveDialogLabel.
+    string EffectiveDialogLabel => DialogLabel ?? $"Choose {ResolvedLabel}";
+
+    // The naming anchor for the two-input GROUP (see DateRangePicker.GroupLabelledBy): FormLabel's
+    // lbltext-{id} span, which holds the label text alone -- not the whole <label>, which also
+    // contains the tooltip trigger. The single visible label can only be label[for]-associated with
+    // the Start input, so without this the End input read as an unrelated field with nothing tying it
+    // back. Only consumed in edit mode -- read-only renders no picker at all.
+    string GroupLabelledBy => $"lbltext-{_id}";
+
+    // Each endpoint's autocomplete token resolves against its OWN property's attributes -- an
+    // [Autocomplete] on Start must never leak onto End's input, exactly like [Placeholder] above.
+    // Null is preserved so the picker's own "off" default still applies.
+    string? EffectiveStartAutocomplete => StartAutocomplete ?? _attributes.Autocomplete();
+    string? EffectiveEndAutocomplete => EndAutocomplete ?? _endAttributes.Autocomplete();
+
     // Each end resolves against its OWN property's attributes -- a [Placeholder] on Start must never
     // leak onto End's input, and vice versa. Null is intentional and must be preserved when neither
     // the parameter nor the attribute supplies text: forwarding null (rather than substituting a
@@ -442,30 +518,73 @@ public partial class EditDateRange : IDisposable
         _endFieldIdentifierFactory = () => FieldIdentifier.Create(endExpression);
         _endId = $"{_id}-end";
 
-        // Each field registers under its own input's DOM id (DateRangePicker's Id/EndId), so a
-        // ValidationView link for an End-only error lands on the End input, not Start's. Paired with
-        // Dispose below — see EditControlInit.RegisterField's remarks.
-        EditControlInit.RegisterField(FormOptions, _startFieldIdentifier, _id, this);
-        EditControlInit.RegisterField(FormOptions, _endFieldIdentifier, _endId, this);
+        RegisterFields();
         RefreshAriaState();
     }
 
+    /// <summary>
+    /// The element a <c>ValidationView</c> summary link for the END field should anchor on: the End
+    /// input's own id in edit mode, so an End-only error lands on the End input rather than Start's —
+    /// but the Start/read-only id in READ-ONLY mode, where no End element exists at all. Read-only
+    /// renders a single <c>ReadOnlyValue</c> carrying <c>_id</c> and showing "start - end" together;
+    /// registering <c>_endId</c> there pointed the summary link at an id nothing rendered, so
+    /// clicking it silently did nothing. The one element that actually shows the End value is the
+    /// right target.
+    /// </summary>
+    string EndAnchorId => ShowEditor ? _endId : _id;
+
+    /// <summary>
+    /// Registers both bound fields, each under its own anchor id (see <see cref="EndAnchorId"/>), and
+    /// records which anchor End landed on. Paired with <see cref="Dispose"/> — see
+    /// <see cref="EditControlInit.RegisterField"/>'s remarks. Called from
+    /// <see cref="OnInitialized"/>, from <see cref="SyncResolvedIds"/> when the resolved id moves, and
+    /// from <see cref="OnParametersSet"/> when an edit/read-only flip moves End's anchor; a repeat
+    /// call from the same owner updates <c>FormOptions.FieldIds</c> in place, so the link follows the
+    /// element instead of pointing at one the control no longer renders.
+    /// </summary>
+    void RegisterFields()
+    {
+        EditControlInit.RegisterField(FormOptions, _startFieldIdentifier, _id, this);
+        _registeredEndAnchorId = EndAnchorId;
+        EditControlInit.RegisterField(FormOptions, _endFieldIdentifier, _registeredEndAnchorId, this);
+    }
+
     // Both bound fields' ARIA state through the shared helpers, once per field (see
-    // EditControlBase.RefreshAriaState). The End field's state is independent of Start's:
-    // Description/Tooltip belong to the whole control (rendered by the start-anchored FormLabel), so
-    // the end input has no desc-/tooltip- element of its own and its describedby is just its own
-    // validation message. That is why the second call passes a NULL attribute list for the aria refs
-    // while the required-ness resolution still reads _endAttributes: ResolveAriaRefs derives its
-    // description from `description ?? attributes.Description()`, so handing it _endAttributes would
-    // emit desc-{endId} the moment the End property carried its own [Description] — pointing at an
-    // element only Start renders. No-op until OnInitialized has run — _attributes is null before then.
+    // EditControlBase.RefreshAriaState). The End field's ERROR message id is its own; its
+    // description/tooltip refs are Start's, because Description/Tooltip belong to the whole control
+    // and the single start-anchored FormLabel renders exactly one desc-/tooltip- element for both.
+    // That is why the second call passes a NULL attribute list: ResolveAriaRefs derives its
+    // description from `description ?? attributes.Description()` and builds the ids from the id it is
+    // GIVEN, so handing it _endAttributes/_endId would emit desc-{endId} — an element nothing
+    // renders. The required-ness resolution still reads _endAttributes (a [Required] there is the End
+    // field's own business). No-op until OnInitialized has run — _attributes is null before then.
     void RefreshAriaState()
     {
         if (_attributes is null) return;
         (_isRequired, _errorMsgId, _describedBy) = EditControlInit.ResolveAriaState(
             _id, ShouldHideLabel, Description, Tooltip, _attributes, IsRequired, FormOptions, _startFieldIdentifier);
         _endIsRequired = EditControlInit.AriaRequired(_endAttributes, null, FormOptions, _endFieldIdentifier);
-        (_endErrorMsgId, _endDescribedBy) = EditControlInit.ResolveAriaRefs(_endId, true, null, null, null);
+        (_endErrorMsgId, _) = EditControlInit.ResolveAriaRefs(_endId, true, null, null, null);
+        _endDescribedBy = BuildEndDescribedBy();
+    }
+
+    /// <summary>
+    /// The End input's <c>aria-describedby</c>: its OWN <c>error-msg-</c> id, then whatever
+    /// description/tooltip elements Start's chain references. Those elements are rendered ONCE for
+    /// the whole control (one <see cref="FormLabel"/>, ids derived from the Start id), and
+    /// <c>aria-describedby</c> is a reference, not ownership — so both inputs may and should point at
+    /// them. Building End's chain from nulls instead meant a <see cref="IEditControl.Description"/> or
+    /// <see cref="IEditControl.Tooltip"/> written once for the control was announced on Start and
+    /// silently absent on End, which is where the format/range instructions matter just as much.
+    /// Derived by filtering Start's already-resolved chain rather than re-deriving the same
+    /// conditions, so the two can never disagree about which elements actually exist.
+    /// </summary>
+    string BuildEndDescribedBy()
+    {
+        var shared = _describedBy
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(token => !token.StartsWith("error-msg-", StringComparison.Ordinal));
+        return string.Join(' ', shared.Prepend(_endErrorMsgId));
     }
 
     // The two-field form of EditControlInit.SyncResolvedId (see its remarks for the whole rationale).
@@ -479,11 +598,7 @@ public partial class EditDateRange : IDisposable
 
         _id = resolvedId;
         _endId = $"{_id}-end";
-        // Each field re-registers under its own input's DOM id, exactly as OnInitialized did -- a
-        // repeat call from the same owner updates FormOptions.FieldIds in place, so the ValidationView
-        // link follows the element instead of pointing at the id the control no longer renders.
-        EditControlInit.RegisterField(FormOptions, _startFieldIdentifier, _id, this);
-        EditControlInit.RegisterField(FormOptions, _endFieldIdentifier, _endId, this);
+        RegisterFields();
     }
 
     protected override void OnParametersSet()
@@ -507,7 +622,7 @@ public partial class EditDateRange : IDisposable
         if (SyncValidationSubscription())
         {
             // The EditContext changed -- _parseErrorMessages (if this control ever created one) is
-            // bound to the OLD context via AddParseErrorAsync's `??=` and would otherwise keep
+            // bound to the OLD context via AddFieldErrorAsync's `??=` and would otherwise keep
             // silently writing/clearing entries there forever: nothing renders from a context that no
             // longer cascades here, so a parse error typed after the swap would show no message and
             // never set aria-invalid. Clear its entries against the OLD context/FieldIdentifiers --
@@ -528,8 +643,13 @@ public partial class EditDateRange : IDisposable
             // EditControlParametersBase) EditControlListBase.OnParametersSet calls once for its
             // single field.
             SyncFieldRegistration(ref _startFieldIdentifier, _startFieldIdentifierFactory, _id);
-            SyncFieldRegistration(ref _endFieldIdentifier, _endFieldIdentifierFactory, _endId);
+            SyncFieldRegistration(ref _endFieldIdentifier, _endFieldIdentifierFactory, EndAnchorId);
         }
+
+        // An edit/read-only flip (FormOptions.IsEditMode, or this control's own IsEditMode) changes
+        // WHICH element the End field's summary link should anchor on without touching the resolved
+        // id or the EditContext, so neither trigger above sees it. See EndAnchorId.
+        if (!string.Equals(_registeredEndAnchorId, EndAnchorId, StringComparison.Ordinal)) RegisterFields();
 
         // Keep the cached ARIA state current when parameters change (runtime Description/Tooltip or
         // label-hidden toggle) — and deliberately LAST: aria-required resolves through
@@ -569,7 +689,7 @@ public partial class EditDateRange : IDisposable
     // ValidationMessageStores over one EditContext compose fine -- each only ever touches the entries
     // it added itself, so clearing this one can never drop a DataAnnotations message and vice versa.
     // Mirrors EditDate's own _parseErrorMessages, doubled onto two FieldIdentifiers. Bound to whichever
-    // EditContext was current the first time AddParseErrorAsync ran (the `??=` below) -- NOT
+    // EditContext was current the first time AddFieldErrorAsync ran (the `??=` below) -- NOT
     // necessarily forever: OnParametersSet drops it back to null on a genuine EditContext swap (unlike
     // EditDate, this control supports swaps at all -- see OnParametersSet's own remarks), so the next
     // parse error lazily rebinds a fresh store to whatever EditContext is current then.
@@ -582,21 +702,34 @@ public partial class EditDateRange : IDisposable
     /// is deliberately discarded: <see cref="ParsingErrorMessage"/>'s <c>{0}</c> is the field name, not
     /// the text, matching <see cref="EditDate{T}.ParsingErrorMessage"/>'s identical contract.
     /// </summary>
-    Task OnStartParseErrorAsync(string _) => AddParseErrorAsync(_startFieldIdentifier);
+    Task OnStartParseErrorAsync(string _) => AddFieldErrorAsync(_startFieldIdentifier, ParsingErrorMessage);
 
     /// <inheritdoc cref="OnStartParseErrorAsync"/>
-    Task OnEndParseErrorAsync(string _) => AddParseErrorAsync(_endFieldIdentifier);
+    Task OnEndParseErrorAsync(string _) => AddFieldErrorAsync(_endFieldIdentifier, ParsingErrorMessage);
+
+    /// <summary>
+    /// Raised by the inner <see cref="DateRangePicker"/> when typed text in the START input parses
+    /// fine but the Min/Max/DisabledDate/DisabledTime guards refuse it
+    /// (<see cref="DateRangePicker.OnStartRangeError"/>) — adds <see cref="RangeErrorMessage"/>
+    /// against the Start field. Same store and notify as the parse path, different wording; the
+    /// refusal previously reached the form layer through no channel at all.
+    /// </summary>
+    Task OnStartRangeErrorAsync(string _) => AddFieldErrorAsync(_startFieldIdentifier, RangeErrorMessage);
+
+    /// <inheritdoc cref="OnStartRangeErrorAsync"/>
+    Task OnEndRangeErrorAsync(string _) => AddFieldErrorAsync(_endFieldIdentifier, RangeErrorMessage);
 
     // Mirrors the shape of InputBase<T>.SetCurrentValueAsStringAsync's own built-in parsing-error path
     // -- clear this field's prior entry, add the formatted message, and notify -- just against a store
-    // this control owns, and against whichever of the two fields actually failed.
-    Task AddParseErrorAsync(FieldIdentifier field)
+    // this control owns, and against whichever of the two fields actually failed. Shared by both
+    // rejection kinds so they can't drift apart in everything but wording.
+    Task AddFieldErrorAsync(FieldIdentifier field, string messageFormat)
     {
         if (EditContext is null) return Task.CompletedTask;
         _parseErrorMessages ??= new ValidationMessageStore(EditContext);
         _parseErrorMessages.Clear(field);
         _parseErrorMessages.Add(field,
-            string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, field.FieldName));
+            string.Format(CultureInfo.InvariantCulture, messageFormat, field.FieldName));
         // Neither bound value changed (the bad text was reverted, not committed) -- notify explicitly,
         // same as InputBase's own equivalent failure path, so FormOptions/consumers watching field
         // changes still see this as a touch.

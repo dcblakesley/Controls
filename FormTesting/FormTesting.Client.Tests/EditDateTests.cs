@@ -1218,11 +1218,11 @@ public class EditDateTests : BunitContext
             b.CloseComponent();
         }));
 
-        // The clamp lands on that partial first week's own start (0001-01-01 itself).
-        var rule = CultureInfo.CurrentCulture.DateTimeFormat.CalendarWeekRule;
-        var week = new GregorianCalendar().GetWeekOfYear(DateTime.MinValue, rule, DayOfWeek.Sunday);
-        Assert.Equal($"1-W{week.ToString("00", CultureInfo.InvariantCulture)}",
-            cut.Find(".edit-readonly-value").TextContent.Trim());
+        // Still the point of this test: rendering must not throw on the year-1 week walk. What is
+        // DISPLAYED changed with DTE-15 -- a default value on a non-nullable binding now reads as "no
+        // value" in edit mode (it used to sit there as 01/01/0001 with a Clear button offered), so
+        // read-only has to agree or the same model shows a date in one mode and "Not Set" in the other.
+        Assert.Equal("Not Set", cut.Find(".edit-readonly-value").TextContent.Trim());
     }
 
     [Fact]

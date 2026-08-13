@@ -35,6 +35,16 @@ public partial class EditInputShell
     /// refocuses the editor.</summary>
     [Parameter] public EventCallback OnClear { get; set; }
 
+    /// <summary>
+    /// The clear button's <c>aria-label</c>. Null (the default) renders the generic <c>"Clear"</c> --
+    /// fine for a single instance, but a form with two <see cref="AllowClear"/> fields then renders two
+    /// buttons with an identical accessible name, which a screen-reader user browsing a button list
+    /// can't tell apart (TXT-4). A host that can resolve its own field's label passes a field-specific
+    /// name instead -- see <see cref="EditTextInputBase.EffectiveClearButtonLabel"/>, which folds it
+    /// into <c>"Clear {label}"</c>.
+    /// </summary>
+    [Parameter] public string? ClearButtonLabel { get; set; }
+
     /// <summary>Non-null renders the character-count span (e.g. <c>"12"</c> or <c>"12 / 100"</c>)
     /// and switches the shell into affix-mode layout. Null renders no count span. The span itself is
     /// <c>aria-hidden</c> — see <see cref="CountId"/> for what assistive tech gets instead.</summary>
@@ -85,6 +95,16 @@ public partial class EditInputShell
 
     /// <summary>Raised when the password toggle button is activated.</summary>
     [Parameter] public EventCallback OnTogglePassword { get; set; }
+
+    /// <summary>
+    /// The password toggle's <c>aria-label</c>. Null (the default) renders the generic
+    /// <c>"Show password"</c> -- same collision <see cref="ClearButtonLabel"/>'s remarks describe: a
+    /// Password/Confirm-Password pair otherwise renders two toggles both named "Show password". See
+    /// <see cref="EditString.EffectiveShowPasswordButtonLabel"/> for the field-specific override, which
+    /// folds the label in as <c>"Show {label} password"</c>. The name stays CONSTANT across both
+    /// reveal states either way -- only <see cref="IsPasswordRevealed"/>'s <c>aria-pressed</c> moves.
+    /// </summary>
+    [Parameter] public string? ShowPasswordButtonLabel { get; set; }
 
     /// <summary>Whether the host field currently has a validation error — forwarded to
     /// <see cref="InvalidIcon"/> and, in affix mode, adds <c>edit-input-affix-invalid</c> to the

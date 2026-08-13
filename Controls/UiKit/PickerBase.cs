@@ -7,17 +7,36 @@ namespace Controls;
 /// (<see cref="DatePicker"/>, <see cref="DateRangePicker"/>): the <c>wss-overlay.js</c>/<c>wss-picker.js</c>
 /// module import/dispose pair, the open/positioned/close <see cref="OnAfterRenderAsync"/> render
 /// cycle (panel placement + z-index mirroring, roving-tabindex grid keyboard-nav init, and the
-/// focus-reclaim-on-close handoff), and the roving-tabindex DOM-focus follow. Every JS call degrades
+/// focus-reclaim handoff), and the roving-tabindex DOM-focus follow. Every JS call degrades
 /// gracefully to a no-JS fallback (prerender, bUnit) via try/catch, matching each subclass's own
 /// documented degrade contract.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Subclasses own everything mode/range-specific — panel content, day/cell classing, and
 /// commit/selection state — and plug into the shared render cycle through <see cref="WireInputsAsync"/>,
 /// <see cref="GridRefs"/>, and <see cref="FocusReclaimTarget"/>. Not a public extensibility point for
 /// consumers: both implementations live in this assembly, and the shared template in
 /// <see cref="OnAfterRenderAsync"/> is sealed via method-not-virtual (the abstract hooks are the only
 /// customization surface).
+/// </para>
+/// <para>
+/// <b>What actually degrades without JS</b> (each picker's own class remarks say the same, and this
+/// is the authoritative list): panel placement falls back to the CSS default, the arrow-key
+/// page-scroll suppression and the roving-tabindex DOM-focus follow are lost, <c>ArrowDown</c> from
+/// the field no longer steps into the grid (Tab still does), Enter may implicitly submit an enclosing
+/// form — AND, the one that is not merely cosmetic, <see cref="WireInputsAsync"/>'s focus-out
+/// dismissal never wires, so TABBING past the field leaves the panel mounted with
+/// <c>aria-expanded="true"</c> and its full-viewport backdrop still swallowing pointer events. A
+/// click anywhere still closes it (the backdrop's own <c>@onclick</c> is pure C#), but Escape can no
+/// longer reach the wrapper's keydown once focus has left it. There is deliberately no C#
+/// <c>@onfocusout</c> fallback for this: Blazor's <c>FocusEventArgs</c> carries no
+/// <c>relatedTarget</c>, so C# cannot tell "focus moved to a day button inside the panel" from
+/// "focus left the control", and a handler that closed on every focusout would break the calendar
+/// outright. In practice the window is small — Blazor itself cannot run without JS, and
+/// <see cref="JsModule"/> retries a failed import on every subsequent render (see
+/// <see cref="_inputsWired"/>, which latches on success only).
+/// </para>
 /// </remarks>
 public abstract class PickerBase : ComponentBase, IAsyncDisposable
 {
@@ -59,11 +78,15 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     // OnAfterRenderAsync runs — this hands the *date* across the render instead, and wss-picker.js's
     // focusDay looks up the new button by its data-date attribute.
     protected DateTime? _pendingFocusDate;
-    // Set true right before a CloseAsync() call that was triggered by a panel-originated action
-    // (day click/Enter commit/Escape) — anything that means focus was on some now-unmounting element
-    // inside the wrapper. Consumed by the very next OnAfterRenderAsync's closing branch to move
-    // focus back onto FocusReclaimTarget, so it doesn't fall through to <body>. Left false (the
-    // default) for an outside/backdrop close, which must NOT steal focus from wherever the user clicked.
+    // Set true right before ANY action that unmounts the element focus is currently on: a
+    // panel-originated CloseAsync (day click/Enter commit/Escape), or a clear (whose own button
+    // disappears the moment the value does, WITHOUT closing the panel -- see each picker's
+    // ClearAsync). Consumed by the very next OnAfterRenderAsync to move focus back onto
+    // FocusReclaimTarget, so it doesn't fall through to <body>. Deliberately NOT gated on the panel
+    // having closed: a clear leaves it open, and focus stranded on <body> there put Escape out of
+    // reach of the wrapper's keydown, leaving a live role="dialog" behind a full-viewport backdrop
+    // that only a mouse could dismiss. Left false (the default) for an outside/backdrop close, which
+    // must NOT steal focus from wherever the user clicked.
     protected bool _pendingInputFocus;
     // The input opens the panel on focus (OnInputFocus), so the programmatic focus-reclaim above
     // would immediately bounce the panel back open. Set around the FocusAsync call and consumed by
@@ -446,20 +469,23 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
             {
                 // No JS runtime / module — nothing was assigned, nothing to clear.
             }
+        }
 
-            if (_pendingInputFocus)
-            {
-                // The panel subtree (whatever had focus) just unmounted — reclaim focus onto
-                // FocusReclaimTarget rather than leaving it stranded on <body>. Best-effort:
-                // FocusAsync throws if the element isn't actually focusable yet (prerender/tests).
-                _pendingInputFocus = false;
-                var target = FocusReclaimTarget;
-                _suppressOpenOnFocus = true;
-                try { await target.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
-                // Normally consumed by OnInputFocus during the call (the focus event outruns the
-                // interop ack on both runtimes); this backstop covers a failed/eventless focus.
-                _suppressOpenOnFocus = false;
-            }
+        // Focus reclaim, deliberately OUTSIDE the close branch above: whatever had focus just
+        // unmounted (the panel subtree on a close, or the clear button on a clear that left the panel
+        // open), so move focus back onto FocusReclaimTarget rather than leaving it stranded on
+        // <body>. Runs after the close teardown, exactly where it used to sit for that path.
+        // Best-effort: FocusAsync throws if the element isn't actually focusable yet
+        // (prerender/tests).
+        if (_pendingInputFocus)
+        {
+            _pendingInputFocus = false;
+            var target = FocusReclaimTarget;
+            _suppressOpenOnFocus = true;
+            try { await target.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+            // Normally consumed by OnInputFocus during the call (the focus event outruns the
+            // interop ack on both runtimes); this backstop covers a failed/eventless focus.
+            _suppressOpenOnFocus = false;
         }
 
         if (_open && _pendingFocusDate is { } focusDate)

@@ -48,8 +48,15 @@
                     RemoveItemLabelFormat="@RemoveItemLabelFormat"
                     ClearSelectionsLabel="@ClearSelectionsLabel"
                     ListboxLabel="@ListboxLabel"
+                    ResultCountAnnouncementFormat="@ResultCountAnnouncementFormat"
+                    SelectedAnnouncementFormat="@SelectedAnnouncementFormat"
+                    DeselectedAnnouncementFormat="@DeselectedAnnouncementFormat"
+                    SelectionClearedAnnouncement="@SelectionClearedAnnouncement"
+                    LoadingAnnouncement="@LoadingAnnouncement"
+                    MaxTagCountLabelFormat="@MaxTagCountLabelFormat"
                     AriaRequired="@_isRequired"
                     AriaInvalid="@IsInvalid"
+                    AriaLabelledBy="@($"lbltext-{_id}")"
                     AriaDescribedBy="@_describedBy"
                     AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)" />
         }

@@ -21,13 +21,22 @@
        wiring sees focus as inside. (Same pattern as DateRangePicker.) *@
     <div class="wss-picker-input" tabindex="-1" @onclick="OnFieldClickAsync">
         <span class="wss-picker-input-slot">
+            @* role="combobox" is REQUIRED, not decorative: an <input type="text"> is implicitly a
+               textbox, and aria-expanded is not allowed on a textbox (axe's aria-allowed-attr, and
+               a browser is free to drop it). Since the panel deliberately keeps focus on the field
+               (see the role="dialog" comment below), aria-expanded is the ONLY signal that a dialog
+               opened at all -- dropped, the open state reaches nobody. This is the APG Date Picker
+               Combobox shape, and the same pattern Select.razor's own search input already uses
+               with these exact attributes. *@
             <input @ref="_inputRef"
                    class="wss-picker-input-date"
                    id="@Id"
                    data-test-id="@Id"
                    type="text"
-                   autocomplete="off"
+                   autocomplete="@(Autocomplete ?? "off")"
+                   role="combobox"
                    aria-label="@InputLabel"
+                   aria-labelledby="@AriaLabelledBy"
                    aria-haspopup="dialog"
                    aria-expanded="@(_open ? "true" : "false")"
                    aria-controls="@(_open ? PanelId : null)"
@@ -51,14 +60,18 @@
         }
     </div>
 
-    @* The typed-text format, for AT only -- merged into the input's aria-describedby (see
-       EffectiveAriaDescribedBy). Deliberately NOT folded into the placeholder: that string is the
-       Figma spec's own ("Select date"), a documented parameter default, and pinned by a visual
-       baseline. Rendered outside the `@if (_open)` block because aria-describedby has to resolve
-       whether or not the panel is open, and suppressed entirely when FormatHintLabel is blanked. *@
-    @if (FormatHintText is { Length: > 0 } formatHint)
+    @* What may be typed here, for AT only -- the format, plus the Min/Max bounds when set (see
+       HintText/RangeHintText). Merged into the input's aria-describedby (see
+       EffectiveAriaDescribedBy). The bounds otherwise reach the user ONLY as per-cell aria-disabled
+       in the calendar, which someone typing -- the faster path -- never sees; being refused in
+       silence afterwards is not a substitute. Deliberately NOT folded into the placeholder: that
+       string is the Figma spec's own ("Select date"), a documented parameter default, and pinned by
+       a visual baseline. Rendered outside the `@if (_open)` block because aria-describedby has to
+       resolve whether or not the panel is open, and suppressed entirely when every clause is
+       blanked. *@
+    @if (HintText is { Length: > 0 } hint)
     {
-        <span class="wss-sr-only" id="@FormatHintId">@formatHint</span>
+        <span class="wss-sr-only" id="@FormatHintId">@hint</span>
     }
 
     @if (_open)
@@ -209,7 +222,14 @@
                             {
                                 var weekStart = row[0];
                                 <div class="@WeekRowClass(weekStart)" role="row">
-                                    <div class="wss-picker-week-no" aria-hidden="true">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
+                                    @* In Week mode this is a real rowheader named "Week 8" -- the row IS the
+                                       selection unit there and the field displays yyyy-Www, so without it the
+                                       grid and the field's own value can't be correlated at all. Every other
+                                       mode (ShowWeekNumbers in Date/DateTime) keeps it aria-hidden decoration:
+                                       a day click still commits the day, so the number is context, not
+                                       structure. See WeekHeaderRole/WeekHeaderLabel. *@
+                                    <div class="wss-picker-week-no" role="@WeekHeaderRole"
+                                         aria-hidden="@WeekHeaderHidden" aria-label="@WeekHeaderLabel(weekStart)">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
                                     @foreach (var day in row)
                                     {
                                         <div class="wss-picker-cell" role="gridcell" aria-selected="@(IsDaySelected(day) ? "true" : null)">@DayButtonFragment(day)</div>

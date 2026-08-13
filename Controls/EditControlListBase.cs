@@ -146,14 +146,29 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         RefreshAriaState();
     }
 
+    /// <summary>
+    /// The description text actually fed to <c>FormLabel</c> and folded into <c>aria-describedby</c> —
+    /// <see cref="EditControlParametersBase.Description"/> by default (byte-identical to before this
+    /// existed). A derived control overrides this to supply a fallback when the consumer leaves
+    /// <see cref="EditControlParametersBase.Description"/> unset — e.g. <c>CheckedListControlBase</c>
+    /// deriving an up-front hint from the bound list's <c>[MinLength]</c>/<c>[MaxLength]</c> (LST-6).
+    /// Virtual rather than a field so <see cref="EditFile"/> and <c>EditMultiSelect</c> (the other two
+    /// <see cref="EditControlListBase{TItem}"/> descendants) need no changes at all to keep today's
+    /// resolution.
+    /// </summary>
+    protected virtual string? EffectiveDescription => Description;
+
     // aria-required plus the error-msg id and aria-describedby token list, all through the one shared
     // helper (same resolution and same call sites as EditControlBase.RefreshAriaState). No-op until
-    // InitState has run — _attributes is null before then.
+    // InitState has run — _attributes is null before then. Reads EffectiveDescription (not the raw
+    // Description parameter) so a derived control's fallback description is not just rendered but also
+    // reaches aria-describedby via desc-{id} — the same element FormLabel renders for it.
     void RefreshAriaState()
     {
         if (_attributes is null) return;
         (_isRequired, _errorMsgId, _describedBy) =
-            EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier);
+            EditControlInit.ResolveAriaState(_id, ShouldHideLabel, EffectiveDescription, Tooltip,
+                _attributes, IsRequired, FormOptions, _fieldIdentifier);
     }
 
     /// <summary>

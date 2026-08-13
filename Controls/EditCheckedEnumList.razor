@@ -15,8 +15,9 @@
         <fieldset class="edit-checkedList-fieldset"
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
-                  role=@(ShowEditor ? "group" : null)>
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel />
+                  role=@(ShowEditor ? "group" : null)
+                  aria-labelledby=@(ShowEditor ? $"lbltext-{_id}" : null)>
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@EffectiveDescription Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel IsRequiredTextIncluded="true" />
 
             <CheckboxOptionList TItem="TEnum"
                                  Options=@GetOptions()

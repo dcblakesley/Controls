@@ -112,7 +112,7 @@ public class FormA11yTests : BunitContext
     }
 
     [Fact]
-    public void EditDateRange_end_input_never_references_a_description_only_Start_renders()
+    public void EditDateRange_end_input_references_the_shared_description_Start_renders()
     {
         var model = new DescribedRangeModel { Start = new DateTime(2024, 1, 1), End = new DateTime(2024, 1, 5) };
         Expression<Func<DateTime?>> startField = () => model.Start;
@@ -127,16 +127,17 @@ public class FormA11yTests : BunitContext
             b.CloseComponent();
         }));
 
-        // Description/Tooltip belong to the control as a whole and are rendered by the Start-anchored
-        // FormLabel, so the End input's describedby is just its own validation message. The End half
-        // used to be kept honest by the label-hidden gate it passes; with desc- no longer gated on
-        // that, its attribute list has to stay out of the aria-ref resolution entirely.
+        // Description/Tooltip belong to the control as a whole and are rendered once by the
+        // Start-anchored FormLabel. DTE-5: the End input now REFERENCES that same element rather than
+        // going without -- a description like "Both dates must fall in the current fiscal year" was
+        // previously announced on Start and silently absent on End, which is the half of a date range
+        // where a constraint is most likely to be violated. aria-describedby is a reference, not an
+        // ownership claim, so pointing both inputs at the one #desc-Start is correct and needs no
+        // duplicate element (there is still no #desc-Start-end).
         // Both halves also carry the picker's own visually-hidden format hint ("{Id}-format"), appended
         // after the wrapper-supplied chain so the error/description ids keep their reading order.
         Assert.Equal("error-msg-Start desc-Start Start-format", cut.Find("input.wss-picker-input-start").GetAttribute("aria-describedby"));
-        // The End half's id is derived from Start's ("{id}-end"), so its would-be description element
-        // is #desc-Start-end -- which nothing renders.
-        Assert.Equal("error-msg-Start-end Start-format", cut.Find("input.wss-picker-input-end").GetAttribute("aria-describedby"));
+        Assert.Equal("error-msg-Start-end desc-Start Start-format", cut.Find("input.wss-picker-input-end").GetAttribute("aria-describedby"));
         Assert.Empty(cut.FindAll("#desc-Start-end"));
         Assert.NotNull(cut.Find("#desc-Start"));
     }
@@ -169,9 +170,10 @@ public class FormA11yTests : BunitContext
         var cut = Render(WithValidatedForm(model, false, b => AddEditString(b, model, field, ("IsEditMode", false))));
 
         // label[for] must reference a labelable element; the read-only value is a div (named via
-        // aria-labelledby), so the label renders unassociated.
+        // aria-labelledby, pointed at the lbltext-Name naming anchor -- see FormLabel's remarks), so
+        // the label renders unassociated.
         Assert.False(cut.Find("label.edit-label").HasAttribute("for"));
-        Assert.Equal($"lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
+        Assert.Equal($"lbltext-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
     }
 
     [Fact]
@@ -182,11 +184,12 @@ public class FormA11yTests : BunitContext
         var cut = Render(WithValidatedForm(model, false,
             b => AddEditString(b, model, field, ("IsEditMode", false), ("IsLabelHidden", true))));
 
-        // The hidden label renders lbl-Name (visually hidden) instead of nothing at all, so the
-        // read-only div must point at it — omitting aria-labelledby here, on the premise that no
-        // label element existed, left read-only hidden-label fields unnamed to assistive tech.
+        // The hidden label renders lbltext-Name (visually hidden, inside the lbl-Name label) instead
+        // of nothing at all, so the read-only div must point at that naming anchor — omitting
+        // aria-labelledby here, on the premise that no label element existed, left read-only
+        // hidden-label fields unnamed to assistive tech.
         Assert.Equal("lbl-Name", cut.Find("label.edit-sr-only").Id);
-        Assert.Equal("lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
+        Assert.Equal("lbltext-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
     }
 
     [Fact]

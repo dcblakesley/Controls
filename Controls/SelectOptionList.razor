@@ -40,13 +40,18 @@
 }
 @* Indexed rather than foreach so each option pairs with its de-duplicated id segment (OptionIds) --
    raw o.ToId() gave two options that sanitize alike, or two literally equal string options, the same
-   DOM id. See OptionIds for why "none"/"placeholder" are reserved unconditionally. *@
+   DOM id. See OptionIds for why "none"/"placeholder" are reserved unconditionally.
+
+   No title= here. Every option used to carry the FIELD-level help text as its title, so a screen
+   reader repeated the same sentence after each of N options ("Low, Pick the ticket's urgency",
+   "Medium, Pick the ticket's urgency", ...) and a hover anywhere in the open list showed a tooltip
+   about the field rather than the option. It also contradicted the decision one layer up: FormLabel
+   deliberately keeps the tooltip out of the field's aria-describedby for the same reason. *@
 @for (var i = 0; i < OptionList.Count; i++)
 {
     var o = OptionList[i];
     var optionId = $"{Id}-option-{OptionIds[i]}";
-    <option title=@Tooltip
-            class=@($"edit-select-option {CssClass}")
+    <option class=@($"edit-select-option {CssClass}")
             value=@ValueString(o)
             selected=@(Equals(ValueString(o), CurrentValueAsString))
             id=@optionId

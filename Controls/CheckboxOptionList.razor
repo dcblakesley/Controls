@@ -55,14 +55,24 @@ else
 {
     @if (Value is null || Value.Count == 0)
     {
-        <ReadOnlyValue Id=@Id CssClass=@FieldCssClass Text=""/>
+        <ReadOnlyValue Id=@Id CssClass=@FieldCssClass Text="" AriaDescribedBy=@DescribedBy/>
     }
     else
     {
-        @for (var i = 0; i < Value.Count; i++)
-        {
-            var option = Value[i];
-            <ReadOnlyValue Id=@($"{Id}-option-{SelectedIds[i]}") HasLabelElement="false" CssClass=@FieldCssClass Text=@DisplayText(option)/>
-        }
+        @* LST-8: wrapped in a real list (matching EditFile's read-only <ul>/<li>) so a screen reader
+           reports "list, N items" -- position/count could not be reported at all when this rendered
+           one bare ReadOnlyValue per option with no list semantics around them. The group's own name
+           already comes from the enclosing fieldset's aria-labelledby (see EditCheckedEnumList/
+           EditCheckedStringList's fieldset), so this list needs no aria-label/aria-labelledby of its
+           own -- unlike EditFile's read-only list, which has no such enclosing named group. *@
+        <ul class="edit-checkedList-readonly-list" id=@Id data-test-id=@Id>
+            @for (var i = 0; i < Value.Count; i++)
+            {
+                var option = Value[i];
+                <li class="edit-checkedList-readonly-item">
+                    <ReadOnlyValue Id=@($"{Id}-option-{SelectedIds[i]}") HasLabelElement="false" CssClass=@FieldCssClass Text=@DisplayText(option) AriaDescribedBy=@DescribedBy/>
+                </li>
+            }
+        </ul>
     }
 }

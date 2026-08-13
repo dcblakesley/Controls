@@ -24,7 +24,11 @@ namespace Controls;
 /// Validation-state ARIA reaches the picker's actual <c>&lt;input&gt;</c> through
 /// <see cref="DatePicker"/>'s <c>AriaRequired</c>/<c>AriaInvalid</c>/<c>AriaDescribedBy</c>/
 /// <c>AriaErrorMessage</c> parameters — the same forwarding shape as
-/// <see cref="EditSelectSearch{TValue}"/> onto <see cref="Select{TValue}"/>. The consumer's own
+/// <see cref="EditSelectSearch{TValue}"/> onto <see cref="Select{TValue}"/>. The input's NAME comes
+/// from <c>AriaLabelledBy</c> pointed at the <see cref="FormLabel"/>'s <c>lbltext-{id}</c> anchor
+/// (the label's text alone, without the tooltip trigger that sits in the same <c>&lt;label&gt;</c>),
+/// unless <see cref="InputLabel"/> is set explicitly — which suppresses the reference, since
+/// <c>aria-labelledby</c> would otherwise win over it. The consumer's own
 /// unmatched attributes still land on the picker's outer <c>.wss-picker</c> wrapper (its documented
 /// <c>AdditionalAttributes</c> target), which also carries the EditContext state classes via
 /// <c>CssClass</c>.
@@ -109,6 +113,27 @@ public partial class EditDate<T> : EditControlBase<T>
     /// </summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
 
+    /// <summary>
+    /// Error message format string used when a typed entry parses into a perfectly well-formed date
+    /// that the inner <see cref="DatePicker"/> nonetheless REFUSES — one rejected by
+    /// <see cref="Min"/>/<see cref="Max"/>/<see cref="DisabledDate"/>/<see cref="DisabledTime"/>
+    /// (<see cref="DatePicker.OnRangeError"/>). <c>{0}</c> is replaced with the field name, same
+    /// formatting as <see cref="ParsingErrorMessage"/>, and it lands in the same
+    /// <see cref="ValidationMessageStore"/> — so it reaches <c>FieldValidationDisplay</c>'s live
+    /// region and sets <c>aria-invalid</c> exactly as a parse error does, and is cleared the moment a
+    /// valid value next commits (see <see cref="OnValueChanged"/>).
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="ParsingErrorMessage"/> because the two are genuinely different
+    /// situations: "that isn't a date" versus "that IS a date, but not one this field accepts". Before
+    /// this existed the second case was silent in every channel — the picker reverted the text,
+    /// <c>CurrentValue</c> never changed, <c>NotifyFieldChanged</c> never fired, no validator ran —
+    /// so a user typing a date outside the bounds and tabbing away had no way, keyboard or otherwise,
+    /// to find out why the field emptied itself. See also <see cref="DatePicker.RangeHintMinLabel"/>,
+    /// which is the same information delivered BEFORE the refusal.
+    /// </remarks>
+    [Parameter] public string RangeErrorMessage { get; set; } = "The {0} field must be an allowed date.";
+
     /// <summary> The value shape the calendar picks — Date, DateTimeLocal, Month, or Time. Maps onto
     /// the inner <see cref="DatePicker"/>'s <see cref="DatePickerMode"/>: Date→Date, DateTimeLocal→
     /// DateTime, Month→Month, Time→Time (see the class remarks). Falls back to the bound property's
@@ -139,8 +164,13 @@ public partial class EditDate<T> : EditControlBase<T>
     /// over the <c>label[for]</c> association; see the class remarks). Override to set something else.
     /// </summary>
     [Parameter] public string? InputLabel { get; set; }
-    /// <inheritdoc cref="DatePicker.DialogLabel"/>
-    [Parameter] public string DialogLabel { get; set; } = "Choose date";
+    /// <summary>
+    /// Accessible name of the picker's dropdown dialog. Null (default) derives it from the resolved
+    /// field label — "Choose Birth Date" — rather than <see cref="DatePicker"/>'s constant "Choose
+    /// date", which made every date popup on a form announce identically no matter which field
+    /// opened it. Set explicitly to localize or to name it something else entirely.
+    /// </summary>
+    [Parameter] public string? DialogLabel { get; set; }
     /// <inheritdoc cref="DatePicker.MonthSelectLabel"/>
     [Parameter] public string MonthSelectLabel { get; set; } = "Month";
     /// <inheritdoc cref="DatePicker.YearSelectLabel"/>
@@ -219,8 +249,42 @@ public partial class EditDate<T> : EditControlBase<T>
     [Parameter] public string PrevDecadeLabel { get; set; } = "Previous decade";
     /// <inheritdoc cref="DatePicker.NextDecadeLabel"/>
     [Parameter] public string NextDecadeLabel { get; set; } = "Next decade";
+    /// <inheritdoc cref="DatePicker.WeekLabel"/>
+    [Parameter] public string WeekLabel { get; set; } = "Week";
+    /// <inheritdoc cref="DatePicker.FormatHintLabel"/>
+    [Parameter] public string FormatHintLabel { get; set; } = "Format:";
+    /// <inheritdoc cref="DatePicker.RangeHintMinLabel"/>
+    [Parameter] public string RangeHintMinLabel { get; set; } = "Earliest date:";
+    /// <inheritdoc cref="DatePicker.RangeHintMaxLabel"/>
+    [Parameter] public string RangeHintMaxLabel { get; set; } = "Latest date:";
+
+    /// <summary>
+    /// The picker input's <c>autocomplete</c> token (see <see cref="DatePicker.Autocomplete"/>).
+    /// Null (default) falls back to the bound property's <c>[Autocomplete]</c>, then to the picker's
+    /// own <c>"off"</c>. The model-attribute fallback and the parameter are the same pair
+    /// <c>EditString</c> offers — a date-of-birth field needs <c>autocomplete="bday"</c> to satisfy
+    /// WCAG 1.3.5, and the consumer's own splatted attributes can't supply it (they land on the
+    /// picker's outer wrapper, not its input).
+    /// </summary>
+    [Parameter] public string? Autocomplete { get; set; }
 
     string EffectiveInputLabel => InputLabel ?? Label ?? _attributes.GetLabelText(_fieldIdentifier);
+
+    // The dialog's name, derived from the SAME resolved field label the input's own name comes from
+    // (one property away) instead of the picker's constant "Choose date" -- with three date fields on
+    // a form, all three popups announced identically and nothing said which one had opened. The
+    // explicit parameter stays the localization override.
+    string EffectiveDialogLabel => DialogLabel ?? $"Choose {EffectiveInputLabel}";
+
+    // Null unless the consumer named the input explicitly: pointing at FormLabel's lbltext-{id}
+    // naming anchor keeps the input's accessible name identical to the label's own visible text
+    // (live, and excluding the tooltip trigger inside the same <label>). aria-labelledby WINS over
+    // aria-label, so an explicit InputLabel has to suppress it or the override would be inert.
+    string? EffectiveAriaLabelledBy => InputLabel is null ? $"lbltext-{_id}" : null;
+
+    // The autocomplete token actually forwarded: the parameter, else the model's own [Autocomplete].
+    // Null is preserved so the picker's "off" default still applies -- see DatePicker.Autocomplete.
+    string? EffectiveAutocomplete => Autocomplete ?? _attributes.Autocomplete();
 
     /// <summary>
     /// Resolves <see cref="Placeholder"/> against the bound property's <see cref="PlaceholderAttribute"/>/
@@ -312,17 +376,27 @@ public partial class EditDate<T> : EditControlBase<T>
     ValidationMessageStore? _parseErrorMessages;
 
     // Raised by the inner DatePicker when a typed commit can't be parsed as a date at all (see
-    // DatePicker.OnParseError's doc comment for exactly which failures reach here). Mirrors the shape
-    // of InputBase<T>.SetCurrentValueAsStringAsync's own built-in parsing-error path -- clear this
-    // field's prior entry, add the formatted message, and notify -- just against a store this control
-    // owns instead of InputBase's private one, since that path is never reached here.
-    Task OnPickerParseErrorAsync(string text)
+    // DatePicker.OnParseError's doc comment for exactly which failures reach here).
+    Task OnPickerParseErrorAsync(string text) => AddFieldErrorAsync(ParsingErrorMessage);
+
+    // Raised by the inner DatePicker when a typed commit parses fine but the Min/Max/DisabledDate/
+    // DisabledTime guards refuse it (DatePicker.OnRangeError). Same store, same notify, different
+    // message -- the refusal used to reach the form layer through no channel at all, so nothing
+    // showed, nothing was announced, and aria-invalid stayed false. The offending text is discarded
+    // for the same reason the parse path discards it: {0} is the field name, not the text.
+    Task OnPickerRangeErrorAsync(string text) => AddFieldErrorAsync(RangeErrorMessage);
+
+    // Mirrors the shape of InputBase<T>.SetCurrentValueAsStringAsync's own built-in parsing-error
+    // path -- clear this field's prior entry, add the formatted message, and notify -- just against a
+    // store this control owns instead of InputBase's private one, since that path is never reached
+    // here. Shared by both rejection kinds above so they can't drift apart in everything but wording.
+    Task AddFieldErrorAsync(string messageFormat)
     {
         if (EditContext is null) return Task.CompletedTask;
         _parseErrorMessages ??= new ValidationMessageStore(EditContext);
         _parseErrorMessages.Clear(FieldIdentifier);
         _parseErrorMessages.Add(FieldIdentifier,
-            string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, FieldIdentifier.FieldName));
+            string.Format(CultureInfo.InvariantCulture, messageFormat, FieldIdentifier.FieldName));
         // CurrentValue never changed (the bad text was reverted, not committed) -- notify explicitly,
         // same as InputBase's own equivalent failure path, so FormOptions/consumers watching field
         // changes still see this as a touch.
@@ -353,14 +427,22 @@ public partial class EditDate<T> : EditControlBase<T>
     // CurrentValue to and from it. Boxing+pattern-match on the runtime type (not typeof(T) == checks)
     // mirrors EditDateNative<T>'s GetDisplayValue/IsValueDefault, which already rely on the CLR boxing a
     // non-null Nullable<T> as its underlying T (so "DateTime dt" matches DateTime? too).
+    //
+    // A DEFAULT date value reads as empty, not as 0001-01-01: a non-nullable T can't hold null, so
+    // "Clear date" writes default(T) back through TryFromPickerValue -- and the picker then displayed
+    // "01/01/0001" and went on offering its clear button, so the control claimed to hold a date that
+    // clearing had just removed and the clear appeared to do nothing. This is the same "semantically
+    // empty" rule IsValueDefault already applies for HidingMode (EditControlInit.IsDateValueDefault),
+    // applied one layer further in. TimeOnly is deliberately EXEMPT: default(TimeOnly) is midnight,
+    // an entirely legitimate time-of-day, so blanking it would make 00:00 unrepresentable.
     DateTime? PickerValue => CurrentValue switch
     {
         null => null,
-        DateTime dt => dt,
+        DateTime dt => dt == default ? null : dt,
         // Face value, matching how EditDateNative displays a DateTimeOffset via BindConverter.FormatValue --
         // no UTC/Local conversion, just the same clock time the offset carries.
-        DateTimeOffset dto => dto.DateTime,
-        DateOnly d => d.ToDateTime(TimeOnly.MinValue),
+        DateTimeOffset dto => dto == default ? null : dto.DateTime,
+        DateOnly d => d == default ? null : d.ToDateTime(TimeOnly.MinValue),
         TimeOnly t => DateTime.Today.Add(t.ToTimeSpan()),
         _ => throw UnsupportedType()
     };
@@ -467,6 +549,16 @@ public partial class EditDate<T> : EditControlBase<T>
     string GetDisplayValue()
     {
         if (CurrentValue is null) return string.Empty;
+        // DTE-15: a default value on a non-nullable binding reads as "no value" in edit mode, so it has
+        // to read that way here too -- otherwise the same model renders "Not Set" in the editor and a
+        // date in read-only. This early return is also what keeps the two in step mechanically: the
+        // Week/Quarter branch below is driven by PickerValue, which DTE-15 already nulls for a default,
+        // and falling through with that null lands on the verbatim ToString path ("0001") rather than
+        // on either intended answer. TimeOnly is exempt for the same reason PickerValue exempts it --
+        // default(TimeOnly) is midnight, a legitimate time.
+        if (CurrentValue is DateTime { Ticks: 0 } or DateOnly { DayNumber: 0 }
+            || (CurrentValue is DateTimeOffset dtoDefault && dtoDefault == default))
+            return string.Empty;
         // Gregorian-forced like the picker's own display, so read-only and edit mode can never
         // disagree about the year under a non-Gregorian-default culture (th-TH, ar-SA).
         var culture = GregorianCultureHelper.Gregorian(CultureInfo.CurrentCulture);

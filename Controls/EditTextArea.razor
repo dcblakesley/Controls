@@ -17,6 +17,7 @@
                             AllowClear=@AllowClear
                             IsClearable=@IsClearable
                             OnClear=@Clear
+                            ClearButtonLabel=@EffectiveClearButtonLabel
                             CountText=@CountText
                             CountId=@CountId
                             CountAccessibleText=@CountAccessibleText
@@ -40,6 +41,7 @@
                           rows=@EffectiveRows
                           maxlength=@EffectiveMaxLength
                           placeholder=@EffectivePlaceholder
+                          aria-labelledby="lbltext-@_id"
                           aria-required=@_isRequired
                           aria-invalid=@(IsInvalid ? "true" : null)
                           aria-describedby=@_describedBy
@@ -48,7 +50,7 @@
         }
         else
         {
-            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@Value />
+            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@Value AriaDescribedBy=@_describedBy />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

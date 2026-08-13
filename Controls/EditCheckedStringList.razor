@@ -14,8 +14,9 @@
         <fieldset class="edit-checkedList-fieldset"
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
-                  role=@(ShowEditor ? "group" : null)>
-            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel />
+                  role=@(ShowEditor ? "group" : null)
+                  aria-labelledby=@(ShowEditor ? $"lbltext-{_id}" : null)>
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@EffectiveDescription Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel IsRequiredTextIncluded="true" />
 
             <CheckboxOptionList TItem="string"
                                  Options=@Options
@@ -31,7 +32,7 @@
                                  IsInvalid=@IsInvalid
                                  DescribedBy=@_describedBy
                                  OnToggle="ToggleAsync"
-                                 DisplayText="@(o => o)" />
+                                 DisplayText="@(o => string.IsNullOrEmpty(o) ? "(blank)" : o)" />
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label/>
             <BoundValueDisplay Text=@string.Join(", ", Value ?? []) />

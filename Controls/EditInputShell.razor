@@ -32,7 +32,7 @@
         <span class="edit-input-suffix">
             @if (IsClearable)
             {
-                <button type="button" class="edit-input-clear" aria-label="Clear" @onclick="OnClear">
+                <button type="button" class="edit-input-clear" aria-label="@(ClearButtonLabel ?? "Clear")" @onclick="OnClear">
                     @EditIcons.ClearCircle
                 </button>
             }
@@ -57,7 +57,7 @@
                    to others. Same rule as EditString's masked-row eye toggle. *@
                 <button type="button" class="edit-input-password-toggle"
                         disabled="@IsDisabled"
-                        aria-label="Show password"
+                        aria-label="@(ShowPasswordButtonLabel ?? "Show password")"
                         aria-pressed="@(IsPasswordRevealed ? "true" : "false")"
                         @onclick="OnTogglePassword">
                     @(IsPasswordRevealed ? EditIcons.Eye : EditIcons.EyeInvisible)

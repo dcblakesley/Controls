@@ -20,14 +20,28 @@
        the field itself instead of <body>, so Escape still bubbles through the wrapper's keydown
        and the focus-out close wiring sees focus as inside. (Same pattern as Select's wrapper;
        also iOS tap-to-click synthesis.) *@
-    <div class="wss-picker-input" tabindex="-1" @onclick="OnFieldClickAsync">
+    @* role="group" + a name (see GroupRole/GroupLabel/GroupLabelledBy) whenever a wrapper supplies
+       one: a form wrapper renders ONE visible label, which label[for] can only associate with the
+       start input, so without the group the two inputs read as unrelated fields and nothing ties the
+       second back to the first. Nameless (a standalone picker), the role is omitted entirely rather
+       than announcing an empty boundary. *@
+    <div class="wss-picker-input" tabindex="-1" role="@GroupRole"
+         aria-label="@GroupLabel" aria-labelledby="@GroupLabelledBy" @onclick="OnFieldClickAsync">
         <span class="wss-picker-input-slot @(_open && _activeInput == 0 ? "wss-picker-slot-active" : null)">
+            @* role="combobox" is REQUIRED, not decorative: an <input type="text"> is implicitly a
+               textbox, and aria-expanded is not allowed on a textbox (axe's aria-allowed-attr, and a
+               browser is free to drop it). Since the panel deliberately keeps focus on the active
+               field (see the role="dialog" comment below), aria-expanded is the ONLY signal that a
+               dialog opened at all -- dropped, the open state reaches nobody. This is the APG Date
+               Picker Combobox shape, and the same pattern Select.razor's own search input already
+               uses with these exact attributes. Both inputs carry it. *@
             <input @ref="_startInputRef"
                    class="wss-picker-input-start"
                    id="@Id"
                    data-test-id="@Id"
                    type="text"
-                   autocomplete="off"
+                   autocomplete="@(StartAutocomplete ?? "off")"
+                   role="combobox"
                    aria-label="@StartInputLabel"
                    aria-haspopup="dialog"
                    aria-expanded="@(_open ? "true" : "false")"
@@ -51,7 +65,8 @@
                    id="@EndId"
                    data-test-id="@EndId"
                    type="text"
-                   autocomplete="off"
+                   autocomplete="@(EndAutocomplete ?? "off")"
+                   role="combobox"
                    aria-label="@EndInputLabel"
                    aria-haspopup="dialog"
                    aria-expanded="@(_open ? "true" : "false")"
@@ -214,8 +229,12 @@
                                     <span class="wss-picker-nav wss-picker-nav-placeholder" aria-hidden="true"></span>
                                 }
                                 <div class="wss-picker-month-selects">
+                                    @* Suffixed with this panel's own view label -- both panels' selects are
+                                       otherwise character-identical, and the panels carry no role or name of
+                                       their own, so nothing said which calendar each drove. See
+                                       PanelYearSelectLabel. *@
                                     <span class="wss-picker-select">
-                                        <select aria-label="@YearSelectLabel" value="@year"
+                                        <select aria-label="@PanelYearSelectLabel(year)" value="@year"
                                                 @onchange="@(e => OnRangeYearSelectChanged(panel, e))">
                                             @for (var y = fromYear; y <= toYear; y++)
                                             {
@@ -370,8 +389,14 @@
                                     <span class="wss-picker-nav wss-picker-nav-placeholder" aria-hidden="true"></span>
                                 }
                                 <div class="wss-picker-month-selects">
+                                    @* Both selects are suffixed with this panel's own view label -- the two
+                                       panels' pairs are otherwise character-identical ("Month"/"Year" twice
+                                       each), leaving four combo boxes with two names between them and nothing
+                                       to say which calendar each drove; the panels themselves carry no role or
+                                       name, so only the grids (which already suffix this way) disambiguated
+                                       anything. See PanelMonthSelectLabel/PanelYearSelectLabel. *@
                                     <span class="wss-picker-select">
-                                        <select aria-label="@MonthSelectLabel" value="@month.Month"
+                                        <select aria-label="@PanelMonthSelectLabel(month)" value="@month.Month"
                                                 @onchange="@(e => OnMonthSelectChanged(panel, e))">
                                             @for (var m = 1; m <= 12; m++)
                                             {
@@ -381,7 +406,7 @@
                                         @PickerIcons.DownIcon
                                     </span>
                                     <span class="wss-picker-select">
-                                        <select aria-label="@YearSelectLabel" value="@month.Year"
+                                        <select aria-label="@PanelYearSelectLabel(month)" value="@month.Year"
                                                 @onchange="@(e => OnYearSelectChanged(panel, e))">
                                             @for (var y = fromYear; y <= toYear; y++)
                                             {
@@ -420,7 +445,14 @@
                                     {
                                         var weekStart = row[0];
                                         <div class="@WeekRowClass(weekStart)" role="row">
-                                            <div class="wss-picker-week-no" aria-hidden="true">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
+                                            @* In Week mode this is a real rowheader named "Week 8" -- the row IS
+                                               the selection unit there and the fields display yyyy-Www, so
+                                               without it the grids and the bound values can't be correlated at
+                                               all. ShowWeekNumbers in Date mode keeps it aria-hidden decoration:
+                                               a day click still commits the day. (The pick session's own rows
+                                               above are day-shaped by definition, so they never take it.) *@
+                                            <div class="wss-picker-week-no" role="@WeekHeaderRole"
+                                                 aria-hidden="@WeekHeaderHidden" aria-label="@WeekHeaderLabel(weekStart)">@WeekNumberOf(weekStart).ToString(PickerCulture)</div>
                                             @foreach (var day in row)
                                             {
                                                 @* Week mode's aria-selected is the ROW's answer, not the day's -- the row is the

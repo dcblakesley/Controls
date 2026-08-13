@@ -537,9 +537,12 @@ public class OptionIdUniquenessAndSplatTests : BunitContext
         // The whole attribute list, in order, so an accidentally-emitted empty splat (or a reordering
         // from moving one) fails here rather than silently in a visual baseline. `value` and
         // `blazor:onchange` trail the hand-written ones because bUnit's htmlizer defers the bound
-        // value/event; everything before them is this control's own markup order.
+        // value/event; everything before them is this control's own markup order. `aria-labelledby`
+        // (TXT naming-anchor wiring) is a deliberate addition -- it points at FormLabel's
+        // lbltext-{id} span rather than relying on <label for>, which used to fold the tooltip
+        // trigger's own name into the field's accessible name.
         Assert.Equal(
-            "type|id|data-test-id|min|max|class|aria-required|aria-describedby|value|blazor:onchange",
+            "type|id|data-test-id|min|max|class|aria-labelledby|aria-required|aria-describedby|value|blazor:onchange",
             string.Join("|", input.Attributes.Select(a => a.Name)));
     }
 
@@ -783,8 +786,8 @@ public class OptionIdUniquenessAndSplatTests : BunitContext
         }));
 
         var list = cut.Find(".edit-file-list--readonly");
-        Assert.Equal("lbl-Files", list.GetAttribute("aria-labelledby"));
-        Assert.NotNull(cut.Find("#lbl-Files"));            // the sr-only label it points at really exists
+        Assert.Equal("lbltext-Files", list.GetAttribute("aria-labelledby"));
+        Assert.NotNull(cut.Find("#lbltext-Files"));        // the sr-only naming anchor it points at really exists
         Assert.False(list.HasAttribute("aria-label"));     // no competing name now that labelledby is on
     }
 }

@@ -41,7 +41,9 @@ public class EditStringMaskedValueTests : BunitContext
         var wrapper = cut.Find(".edit-masked-value");
         Assert.Equal("Name", wrapper.GetAttribute("id"));
         Assert.Equal("Name", wrapper.GetAttribute("data-test-id"));
-        Assert.Equal("lbl-Name", wrapper.GetAttribute("aria-labelledby"));
+        // Points at the lbltext- naming anchor (label text alone), not the <label> element itself
+        // (lbl-{id}), which also wraps the tooltip trigger and would fold its name in too.
+        Assert.Equal("lbltext-Name", wrapper.GetAttribute("aria-labelledby"));
         // A bare div is role-generic, where ARIA prohibits naming -- the aria-labelledby above was
         // inert. role="group" is both accurate (a value plus the control that reveals it) and
         // nameable, and it can carry the field's describedby the way the link branch already does.
@@ -52,7 +54,9 @@ public class EditStringMaskedValueTests : BunitContext
         Assert.Equal("****-fgh", span.TextContent);
 
         var button = cut.Find(".edit-masked-value button");
-        Assert.Equal("Show value", button.GetAttribute("aria-label"));
+        // TXT-4: the toggle's name folds in the field's own label ("Full Name" -- PersonModel.Name's
+        // [DisplayName]) so two masked fields on one form don't render two identically-named toggles.
+        Assert.Equal("Show Full Name value", button.GetAttribute("aria-label"));
         Assert.Equal("false", button.GetAttribute("aria-pressed"));
         Assert.Contains("edit-icon-eye-invisible", button.ClassList);
         Assert.Equal("eye-invisible", cut.Find(".edit-masked-value svg").GetAttribute("data-icon"));
@@ -75,7 +79,7 @@ public class EditStringMaskedValueTests : BunitContext
 
         var wrapper = cut.Find(".edit-masked-value");
         Assert.Equal("Name", wrapper.GetAttribute("id"));
-        Assert.Equal("lbl-Name", wrapper.GetAttribute("aria-labelledby"));
+        Assert.Equal("lbltext-Name", wrapper.GetAttribute("aria-labelledby"));
 
         var span = cut.Find(".edit-masked-value .edit-readonly-value");
         Assert.Equal("abcdefgh", span.TextContent);
@@ -84,7 +88,7 @@ public class EditStringMaskedValueTests : BunitContext
         // name and pressed state both flip ("Hide value, pressed") is ambiguous about whether the
         // press already happened.
         var button = cut.Find(".edit-masked-value button");
-        Assert.Equal("Show value", button.GetAttribute("aria-label"));
+        Assert.Equal("Show Full Name value", button.GetAttribute("aria-label"));
         Assert.Equal("true", button.GetAttribute("aria-pressed"));
         Assert.Contains("edit-icon-eye", button.ClassList);
         Assert.DoesNotContain("edit-icon-eye-invisible", button.ClassList);

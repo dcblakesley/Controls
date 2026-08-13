@@ -27,6 +27,17 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// disabled when this returns true OR the whole group's <c>IsDisabled</c> is true. Null
     /// (default) disables nothing beyond <c>IsDisabled</c>.
     /// </summary>
+    /// <remarks>
+    /// RAD-2 hazard: per native radio-group semantics, roving tabindex hands the group's one native
+    /// Tab stop to whichever radio is currently checked. If this predicate names exactly the
+    /// currently-selected value (a realistic "this choice is now locked" scenario), naively
+    /// rendering that option's native <c>disabled</c> strands the <i>entire group</i> out of the Tab
+    /// sequence -- no other radio becomes a fallback stop. This control defends against that itself
+    /// (see <c>IsOptionLockedFor</c> in the code-behind): the selected option stays natively
+    /// focusable and is marked <c>aria-disabled="true"</c> instead, so it never widens into a
+    /// whole-group focus trap. Only <see cref="EditControlBase{TValue}.IsDisabled"/> (the
+    /// whole-group switch) still natively disables the selected option.
+    /// </remarks>
     // Can't hoist to RadioGroupControlBase: this control declares Func<TEnum, bool>? while inheriting
     // RadioGroupControlBase<TEnum?>, so the predicate's type argument isn't the base's TValue.
     [Parameter] public Func<TEnum, bool>? IsOptionDisabled { get; set; }
@@ -43,6 +54,16 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
 
     /// <summary> Event callback that fires when the OtherValue changes.</summary>
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
+
+    /// <summary>
+    /// Overrides the "Other" free-text box's accessible name
+    /// (<see cref="Controls.RadioOtherInput.AriaLabel"/>). Null (default) uses
+    /// <see cref="Controls.RadioOtherInput.DefaultAriaLabel"/> ("Custom text value input") -- RAD-4:
+    /// that generic literal used to be hard-coded with no parameter, no localization, and no tie back
+    /// to this field or its "Other" option. Set this to something field-specific ("Other priority
+    /// reason", etc.) or a localized string.
+    /// </summary>
+    [Parameter] public string? OtherAriaLabel { get; set; }
 
     // No local _isNullable mirror (unlike EditSelectEnum, whose markup reads one for the leading
     // empty option): nothing in this control's markup needs it, and TryParseValueFromString below
@@ -168,6 +189,24 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     // disabled by the predicate.
     bool IsOptionDisabledFor(TEnum? option) =>
         IsDisabled || (option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true);
+
+    // RAD-2: the whole-group IsDisabled always natively disables every option, selected or not (that
+    // strands the WHOLE group out of the Tab sequence, same as any other disabled control -- expected,
+    // not a hazard). Only the per-option predicate exempts the currently-selected option from native
+    // `disabled` -- see the IsOptionDisabled remarks. Split from IsOptionDisabledFor above (which
+    // stays the plain logical answer -- the Other free-text box's own disabled wiring still reads that
+    // one directly, unaffected by this split) purely so the markup can pick "native disabled" vs.
+    // "aria-disabled only" per option without recomputing the same predicate twice.
+    bool IsOptionNativelyDisabledFor(TEnum? option) =>
+        IsDisabled || (option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true &&
+                        !EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option));
+
+    // The complement: logically disabled by the predicate (NOT the whole group) AND selected --
+    // rendered as aria-disabled so assistive tech (and any future CSS hook) still sees "locked"
+    // without the native attribute stripping the group's one Tab stop.
+    bool IsOptionLockedFor(TEnum? option) =>
+        !IsDisabled && option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true &&
+        EqualityComparer<TEnum?>.Default.Equals(CurrentValue, option);
 
     // No IsValueDefault override here (matching EditSelectEnum): the base's
     // EqualityComparer<TValue>.Default.Equals(CurrentValue, default) already answers "is this the

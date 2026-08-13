@@ -292,10 +292,14 @@ public class PickerSizeAndParsingTests : BunitContext
     }
 
     [Fact]
-    public void Out_of_range_rejection_does_not_surface_a_parsing_error_message()
+    public void Out_of_range_rejection_surfaces_a_range_message_not_a_parsing_one()
     {
         // Min/Max rejecting a well-formed date is not a parse failure (see DatePicker.OnParseError's
-        // doc comment) -- ParsingErrorMessage must not appear for it.
+        // doc comment) -- ParsingErrorMessage must not appear for it. It used to surface NOTHING at
+        // all, though (DTE-1): the commit guard returned false without raising anything, so the value
+        // silently reverted and a keyboard-only user had no way to discover why. It now raises a
+        // distinct range error, which is what this asserts -- the "not a parse error" half of the
+        // original intent still holds.
         var model = new PersonModel { BirthDate = Feb14 };
         Expression<Func<DateTime?>> field = () => model.BirthDate;
         var cut = Render(WithForm(model, b =>
@@ -313,6 +317,8 @@ public class PickerSizeAndParsingTests : BunitContext
         cut.Find(".wss-picker-input-date").Input("03/01/2026"); // parseable, but outside Min/Max
         cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
 
-        Assert.Equal(string.Empty, cut.Find(".edit-validation-message").TextContent);
+        var message = cut.Find(".edit-validation-message").TextContent;
+        Assert.Contains("must be an allowed date", message);
+        Assert.DoesNotContain("must be a date", message); // the ParsingErrorMessage wording
     }
 }

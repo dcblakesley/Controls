@@ -94,6 +94,18 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// <inheritdoc cref="Select{TValue}.ListboxLabel"/>
     [Parameter] public string ListboxLabel { get; set; } = SelectDefaults.ListboxLabel;
 
+    /// <inheritdoc cref="Select{TValue}.ResultCountAnnouncementFormat"/>
+    [Parameter] public string ResultCountAnnouncementFormat { get; set; } = SelectDefaults.ResultCountAnnouncementFormat;
+
+    /// <inheritdoc cref="Select{TValue}.SelectedAnnouncementFormat"/>
+    [Parameter] public string SelectedAnnouncementFormat { get; set; } = SelectDefaults.SelectedAnnouncementFormat;
+
+    /// <inheritdoc cref="Select{TValue}.SelectionClearedAnnouncement"/>
+    [Parameter] public string SelectionClearedAnnouncement { get; set; } = SelectDefaults.SelectionClearedAnnouncement;
+
+    /// <inheritdoc cref="Select{TValue}.LoadingAnnouncement"/>
+    [Parameter] public string LoadingAnnouncement { get; set; } = SelectDefaults.LoadingAnnouncement;
+
     // Label for the read-only view: the matching option's label, else the value's own ToString --
     // resolved (and cached at both levels: the value -> option lookup and the resolved text) by the
     // shared SelectLabelCache, which EditMultiSelect uses too. Read-only only; the editor's own label

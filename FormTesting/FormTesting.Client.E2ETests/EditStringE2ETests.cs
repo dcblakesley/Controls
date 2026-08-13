@@ -214,10 +214,13 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : DemoPa
 
         // The label names the ACTION and never changes; aria-pressed alone carries the state. A
         // toggle whose name AND pressed state both flip is ambiguous ("Hide password, pressed").
-        await Expect(toggle).ToHaveAttributeAsync("aria-label", "Show password");
+        // TXT-4: the name also folds in the field's own label ("Password" -- DemoEditString's
+        // Password property has no [DisplayName]) so a Password/Confirm-Password pair wouldn't
+        // render two toggles with the same accessible name.
+        await Expect(toggle).ToHaveAttributeAsync("aria-label", "Show Password password");
         await toggle.ClickAsync();
         await Expect(toggle).ToHaveAttributeAsync("aria-pressed", "true");
-        await Expect(toggle).ToHaveAttributeAsync("aria-label", "Show password");
+        await Expect(toggle).ToHaveAttributeAsync("aria-label", "Show Password password");
     }
 
     [Fact]
@@ -261,7 +264,10 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : DemoPa
         // tail still shows. ("123-45-6789" under mask "***" -> "***-45-6789".)
         await Expect(text).ToHaveTextAsync("***-45-6789");
         await Expect(eye).ToHaveAttributeAsync("aria-pressed", "false");
-        await Expect(eye).ToHaveAttributeAsync("aria-label", "Show value");
+        // TXT-4: folds in the bound property's own auto-generated label ("Masked Text" --
+        // _model.MaskedText has no [DisplayName]) so two masked fields on the demo page aren't both
+        // named "Show value".
+        await Expect(eye).ToHaveAttributeAsync("aria-label", "Show Masked Text value");
 
         await eye.ClickAsync();
 
@@ -277,7 +283,7 @@ public class EditStringE2ETests(AppFixture app, BrowserFixture browser) : DemoPa
         await eye.ClickAsync();
         await Expect(text).ToHaveTextAsync("***-45-6789");
         await Expect(eye).ToHaveAttributeAsync("aria-pressed", "false");
-        await Expect(eye).ToHaveAttributeAsync("aria-label", "Show value");
+        await Expect(eye).ToHaveAttributeAsync("aria-label", "Show Masked Text value");
         await Expect(eye).ToBeFocusedAsync();
     }
 

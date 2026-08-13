@@ -15,7 +15,14 @@
             <EditInputShell IsInvalid=@IsInvalid
                             IsDisabled=@IsDisabled
                             WrapperClass=@(EditInputShell.SizeClass(Size))>
-                @* Splat first so every explicit attribute below wins. *@
+                @* Splat first so every explicit attribute below wins.
+
+                   aria-labelledby points at FormLabel's lbltext-{id} naming anchor rather than
+                   relying on the label[for] association alone: the <label> also contains the tooltip
+                   TRIGGER, whose own accessible name is concatenated into the field's name by the
+                   label[for] path ("Birth Date More information about Birth Date"). The anchor holds
+                   the label text only. It never dangles -- FormLabel renders it in every mode,
+                   visually hidden alongside a hidden label. *@
                 <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
                        type=@HtmlInputType
                        @bind-value=@CurrentValueAsString
@@ -27,11 +34,22 @@
                        min=@MinAttribute
                        max=@MaxAttribute
                        disabled=@IsDisabled
+                       aria-labelledby="lbltext-@_id"
                        aria-required=@_isRequired
                        aria-invalid=@(IsInvalid ? "true" : null)
-                       aria-describedby=@_describedBy
+                       aria-describedby=@EffectiveDescribedBy
                        aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
             </EditInputShell>
+
+            @* Type="Month"'s typed-entry format, for AT only (see FormatHintLabel's remarks for why
+               only that type gets one): a browser without native month support renders a plain text
+               box here, with no affordance for the strict invariant yyyy-MM the parse demands.
+               Outside the shell so the shell's own layout is untouched -- the span is
+               position:absolute anyway (.edit-sr-only). *@
+            @if (FormatHintText is { Length: > 0 } formatHint)
+            {
+                <span class="edit-sr-only" id="@FormatHintId">@formatHint</span>
+            }
         }
         else
         {

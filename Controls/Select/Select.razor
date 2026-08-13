@@ -4,16 +4,53 @@
 @* Backdrop: closes the dropdown on any outside click without needing JS interop.
    tabindex="-1" (here and on the wrapper below): iOS-class WebKit only synthesizes a click from a
    tap when the target chain contains a focusable/interactive element — a plain div/span gets touch
-   and pointer events but never the click that drives @onclick. -1 keeps both out of the Tab order. *@
+   and pointer events but never the click that drives @onclick. -1 keeps both out of the Tab order.
+   It also makes the backdrop CLICK-focusable, which is what used to strand keyboard focus: the
+   outside click focused the backdrop, and closing then deleted it with focus still on it, so focus
+   fell to <body>. Suppressing the mousedown default keeps focus where it was (the combobox input)
+   without affecting the click that follows — including WebKit's synthesized one, which comes from the
+   touch sequence, not from mousedown — and CloseFromBackdropAsync re-asserts it for the browsers that
+   ignore the suppression. *@
 @if (_open)
 {
-    <div class="wss-select-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
+    <div class="wss-select-backdrop" tabindex="-1" @onmousedown:preventDefault="true" @onclick="CloseFromBackdropAsync"></div>
 }
 
 @* AdditionalAttributes splatted first so every attribute written below wins. class/style are withheld
    by AttributeSplat.Rest and stay this component's own -- see the parameter's remarks for why the
-   inline style in particular can't take a consumer's declarations. *@
-<div @attributes="AttributeSplat.Rest(AdditionalAttributes)" class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation aria-busy="@(Loading ? "true" : null)">
+   inline style in particular can't take a consumer's declarations. aria-label is withheld too (by
+   SplatRest) and re-homed onto the combobox input below, where it actually names something. *@
+<div @attributes="SplatRest" class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation aria-busy="@(Loading ? "true" : null)">
+
+    @* One persistent live region, rendered from the very first pass with no content: an aria-live
+       region INJECTED together with its text is not reliably announced -- it has to already be in the
+       accessibility tree when its content changes. Everything this control does to the option list or
+       the selection used to be silent (filtering, "no results", select/deselect, tag removal, clear,
+       Loading), because aria-busy on this roleless wrapper announces nothing on its own. Visually
+       hidden and absolutely positioned, so it contributes no layout. *@
+    <div class="wss-sr-only" role="status" id="@StatusId">@StatusAnnouncement</div>
+
+    @if (IsMultiple)
+    {
+        @* The multiple/tags counterpart of single mode's combobox value: the input's own value is the
+           live tag-entry text there, so the current selection reaches assistive tech through
+           aria-describedby instead. Always rendered (empty when nothing is selected) so the id the
+           input references always resolves. *@
+        <span class="wss-sr-only" id="@SelectedValuesId">@_selectedValuesText</span>
+    }
+
+    @if (_open && _groupNames.Count > 0)
+    {
+        @* One hidden span per surviving group run, referenced by every option in that run (see
+           _groupNames): grouping that sighted users read off the header rows, given to assistive tech
+           without a role="group" the flat virtualized list can't have. Outside the listbox on purpose
+           -- a listbox's children should be options, and an id reference resolves document-wide
+           anyway. *@
+        @for (var g = 0; g < _groupNames.Count; g++)
+        {
+            <span class="wss-sr-only" id="@GroupNameId(g)">@_groupNames[g]</span>
+        }
+    }
 
     <div class="wss-select-selector">
 
@@ -30,6 +67,16 @@
             // template avoids drift between them (an ARIA/interop tweak applied to one branch and
             // missed on the other). Only one branch ever renders per render, so the shared @ref
             // capture into _inputRef behaves exactly as it did when each branch declared its own.
+            //
+            // Two ARIA attributes are conditional on ShowSearch, and both used to lie:
+            //  - aria-autocomplete="list" advertised that typing narrows the list, on a select whose
+            //    input takes no typing at all. Emitted only when there is a search box.
+            //  - readonly is a real requirement for a non-searchable select (nothing else stops the
+            //    browser from putting characters into the box, which @oninput would then treat as
+            //    search text), but it made a screen reader announce "read only" about a control whose
+            //    value the arrows, Enter, Space and type-ahead all change. aria-readonly="false" is
+            //    the explicit override: the host-language attribute keeps its behaviour, the ARIA
+            //    property states what is actually true of the widget.
             RenderFragment searchInput = @<input @ref="_inputRef"
                    class="wss-select-selection-search-input"
                    id="@Id"
@@ -38,17 +85,21 @@
                    autocomplete="off"
                    role="combobox"
                    aria-haspopup="listbox"
-                   aria-autocomplete="list"
+                   aria-autocomplete="@(ShowSearch ? "list" : null)"
+                   aria-label="@EffectiveInputLabel"
+                   aria-labelledby="@AriaLabelledBy"
                    aria-expanded=@(_open ? "true" : "false")
                    aria-controls="@(_open ? $"{BaseId}-listbox" : null)"
                    aria-activedescendant="@(_open && ActiveOption != null ? $"{BaseId}-active" : null)"
                    aria-required="@AriaRequired"
                    aria-invalid="@(AriaInvalid ? "true" : null)"
-                   aria-describedby="@AriaDescribedBy"
+                   aria-describedby="@ComboDescribedBy"
                    aria-errormessage="@AriaErrorMessage"
+                   aria-busy="@(Loading ? "true" : null)"
                    readonly="@(!ShowSearch)"
+                   aria-readonly="@(ShowSearch ? null : "false")"
                    disabled="@Disabled"
-                   value="@_searchText"
+                   value="@ComboValue"
                    @oninput="OnInputAsync"
                    @onkeydown="OnKeyDownAsync"
                    @onkeydown:stopPropagation="@_open" />;
@@ -104,8 +155,14 @@
 
                 @if (_hiddenTagCount > 0)
                 {
+                    @* The visible chip is a compact glyph-ish "+ 3 ...", which a screen reader reads
+                       literally as "plus 3 dot dot dot" and which no consumer could localize. It is
+                       hidden from assistive tech and paired with a visually-hidden localizable
+                       sentence instead (the .wss-sr-only element is absolutely positioned, so the
+                       chip's own layout is untouched). *@
                     <span class="wss-select-selection-item wss-select-selection-item-rest">
-                        <span class="wss-select-selection-item-content">+ @_hiddenTagCount ...</span>
+                        <span class="wss-select-selection-item-content" aria-hidden="true">+ @_hiddenTagCount ...</span>
+                        <span class="wss-sr-only">@(string.Format(CultureInfo.CurrentCulture, MaxTagCountLabelFormat, _hiddenTagCount))</span>
                     </span>
                 }
 
@@ -176,18 +233,34 @@
                     {
                         @* Not an option: role="presentation" keeps it out of the listbox's accessible
                            option list (never role="option"), and it is never clickable/hover-highlighted
-                           or a keyboard-navigation stop (Move*/FindLabelPrefix skip IsHeader rows). *@
+                           or a keyboard-navigation stop (Move*/FindLabelPrefix skip IsHeader rows).
+                           It stays aria-hidden so it is not read as a stray text node between options;
+                           the group reaches assistive tech through the hidden per-run spans above,
+                           which — unlike this row — cannot be unmounted by virtualization while the
+                           options describing themselves by it are still on screen. *@
                         <div class="wss-select-item wss-select-item-group-label" @key="row" role="presentation" aria-hidden="true">@row.Header</div>
                     }
                     else
                     {
                         var option = row.Option!;
+                        @* aria-describedby carries the group: sighted users get the category from the
+                           header row above, and this is what gives a screen-reader user the same thing.
+                           A role="group" wrapper is the usual answer and is impossible here — the rows
+                           are a flat, virtualized list, so a group's options are not DOM children of
+                           anything, and a run can be scrolled in and out of existence a row at a time.
+                           aria-setsize/aria-posinset are the same problem in the other direction: only
+                           ~8 rows are ever in the DOM, so without them a screen reader announced
+                           "1 of 8" against a list of tens of thousands. Both are stamped once per
+                           filter pass in RebuildFiltered, never derived at render time. *@
                         <div class="@OptionClass(option)"
                              @key="option"
                              role="option"
                              id="@(ReferenceEquals(option, ActiveOption) ? $"{BaseId}-active" : null)"
                              aria-selected="@(IsSelected(option.Value) ? "true" : "false")"
                              aria-disabled="@(option.Disabled ? "true" : null)"
+                             aria-describedby="@GroupNameId(row.GroupIndex)"
+                             aria-setsize="@_optionCount"
+                             aria-posinset="@row.PosInSet"
                              @onclick="@(e => SelectAsync(option))"
                              @onclick:stopPropagation>
                             <span class="wss-select-item-option-content">@option.Label</span>
@@ -233,4 +306,37 @@
 
     /// <summary>Accessible name of the dropdown listbox. Override to localize.</summary>
     [Parameter] public string ListboxLabel { get; set; } = SelectDefaults.ListboxLabel;
+
+    /// <summary>
+    /// <see cref="string.Format(IFormatProvider, string, object)"/> template announced by the status
+    /// region after the option list is filtered or reloaded; <c>{0}</c> is the number of matching
+    /// options. A list that filtered down to nothing announces <see cref="EmptyText"/> instead.
+    /// </summary>
+    [Parameter] public string ResultCountAnnouncementFormat { get; set; } = SelectDefaults.ResultCountAnnouncementFormat;
+
+    /// <summary>
+    /// <see cref="string.Format(IFormatProvider, string, object)"/> template announced when an option
+    /// (or a typed tag) is selected; <c>{0}</c> is its label.
+    /// </summary>
+    [Parameter] public string SelectedAnnouncementFormat { get; set; } = SelectDefaults.SelectedAnnouncementFormat;
+
+    /// <summary>
+    /// <see cref="string.Format(IFormatProvider, string, object)"/> template announced when a selection
+    /// is undone — an option toggled off, a tag's × pressed, or Backspace removing the last tag;
+    /// <c>{0}</c> is its label.
+    /// </summary>
+    [Parameter] public string DeselectedAnnouncementFormat { get; set; } = SelectDefaults.DeselectedAnnouncementFormat;
+
+    /// <summary>Announced after the clear button empties the selection. Override to localize.</summary>
+    [Parameter] public string SelectionClearedAnnouncement { get; set; } = SelectDefaults.SelectionClearedAnnouncement;
+
+    /// <summary>Announced (and held) while <see cref="Loading"/> is true. Override to localize.</summary>
+    [Parameter] public string LoadingAnnouncement { get; set; } = SelectDefaults.LoadingAnnouncement;
+
+    /// <summary>
+    /// <see cref="string.Format(IFormatProvider, string, object)"/> template read in place of the
+    /// <see cref="MaxTagCount"/> overflow chip's literal "+ n ..." text; <c>{0}</c> is the number of
+    /// collapsed tags. The chip's visible text is unchanged.
+    /// </summary>
+    [Parameter] public string MaxTagCountLabelFormat { get; set; } = SelectDefaults.MaxTagCountLabelFormat;
 }

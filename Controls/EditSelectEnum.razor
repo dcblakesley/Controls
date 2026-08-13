@@ -21,6 +21,7 @@
                     aria-required=@_isRequired
                     aria-invalid=@(IsInvalid ? "true" : null)
                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)
+                    aria-labelledby=@($"lbltext-{_id}")
                     aria-describedby=@_describedBy>
 
                 @* Options rendered by the shared SelectOptionList (see its source for why the leading
@@ -30,7 +31,6 @@
                 <SelectOptionList Options=@GetOptions()
                                   Id=@_id
                                   CssClass=@CssClass
-                                  Tooltip=@_attributes.Tooltip()
                                   CurrentValueAsString=@CurrentValueAsString
                                   ShowNullOption=@_isNullable
                                   NullOptionText=@EffectiveNullOptionText

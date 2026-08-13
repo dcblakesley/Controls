@@ -7,10 +7,11 @@
     <span class="edit-radio-button-wrap">
         <InputRadio Value=@Value
                     disabled=@IsDisabled
+                    aria-disabled=@(IsLocked ? "true" : null)
                     class=@($"edit-radio-button-input {CssClass}")
                     id=@OptionId
                     data-test-id=@OptionId />
-        <label class=@($"edit-radio-button {LabelClass}") for=@OptionId>@Display</label>
+        <label class=@($"edit-radio-button {LabelClass}") for=@OptionId>@EffectiveDisplay</label>
     </span>
 }
 else
@@ -18,9 +19,10 @@ else
     <label class=@($"edit-radio-label {LabelClass}")>
         <InputRadio Value=@Value
                     disabled=@IsDisabled
+                    aria-disabled=@(IsLocked ? "true" : null)
                     class=@($"edit-radio-input {CssClass}")
                     id=@OptionId
                     data-test-id=@OptionId />
-        @Display
+        @EffectiveDisplay
     </label>
 }

@@ -28,6 +28,18 @@ public partial class RadioOptionItem<[DynamicallyAccessedMembers(DynamicallyAcce
     [Parameter] public bool IsDisabled { get; set; }
 
     /// <summary>
+    /// RAD-2: true when this option is logically disabled by the host's <c>IsOptionDisabled</c>
+    /// predicate but is ALSO the currently-selected option, so it must stay natively focusable --
+    /// native <c>disabled</c> here would strip the radiogroup's one native Tab stop (roving
+    /// tabindex hands it to whichever radio is checked) and strand the whole group out of the Tab
+    /// sequence, since no other radio takes over as a fallback stop. Renders
+    /// <c>aria-disabled="true"</c> instead, so assistive tech (and any future CSS hook) still sees
+    /// "locked" without removing the option from the Tab order. Both hosts compute this and
+    /// <see cref="IsDisabled"/> as mutually exclusive for any option -- at most one is ever true.
+    /// </summary>
+    [Parameter] public bool IsLocked { get; set; }
+
+    /// <summary>
     /// The <b>host control's</b> id (its <c>_id</c>), not the finished element id — see
     /// <see cref="OptionId"/> for what actually gets rendered.
     /// </summary>
@@ -53,4 +65,15 @@ public partial class RadioOptionItem<[DynamicallyAccessedMembers(DynamicallyAcce
     /// <c>rb-{host id}-{option}</c> shape.
     /// </summary>
     string OptionId => $"rb-{Id}-{IdSuffix ?? Value.ToId()}";
+
+    /// <summary>
+    /// RAD-1: <see cref="Display"/> falls back to a visible placeholder when null/empty --
+    /// <see cref="EditRadioString.Options"/> is a plain <c>required List&lt;string&gt;</c> with no
+    /// non-empty constraint, so a blank entry used to render a radio with an empty accessible name
+    /// (a screen reader announcing a bare "radio button, not checked" with nothing identifying it).
+    /// The fallback is visible, not just present in the accessible name computation: a blank
+    /// <see cref="Display"/> means the option had no visible label either, so this surfaces the bad
+    /// data instead of merely not crashing on it.
+    /// </summary>
+    string EffectiveDisplay => string.IsNullOrEmpty(Display) ? "(blank)" : Display;
 }

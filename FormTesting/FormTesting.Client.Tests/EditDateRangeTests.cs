@@ -838,10 +838,13 @@ public class EditDateRangeTests : BunitContext
     }
 
     [Fact]
-    public void Out_of_range_rejection_does_not_surface_a_parsing_error_message()
+    public void Out_of_range_rejection_surfaces_a_range_message_on_the_rejected_endpoint_only()
     {
         // Min/Max rejecting a well-formed value is not a parse failure (see
-        // DateRangePicker.OnStartParseError's doc comment) -- ParsingErrorMessage must not appear for it.
+        // DateRangePicker.OnStartParseError's doc comment) -- ParsingErrorMessage must not appear for
+        // it. Previously NOTHING appeared either (DTE-1), so the typed value silently reverted with no
+        // way to find out why. A distinct range error is now raised, and -- the part worth pinning --
+        // it lands on the endpoint that was actually rejected, not on both.
         var model = new RangeModel { Start = Jan15, End = Feb3 };
         var cut = Render(RenderRange(model, (b, seq) =>
         {
@@ -852,8 +855,9 @@ public class EditDateRangeTests : BunitContext
         Open(cut);
         Commit(cut, StartInput, "03/01/2025"); // parseable, but outside Min/Max
 
-        Assert.Equal(string.Empty, MessageFor(cut, StartInput));
-        Assert.Equal(string.Empty, MessageFor(cut, EndInput));
+        Assert.Contains("must be an allowed date", MessageFor(cut, StartInput));
+        Assert.DoesNotContain("must be a date", MessageFor(cut, StartInput)); // the parse-error wording
+        Assert.Equal(string.Empty, MessageFor(cut, EndInput));                // untouched endpoint stays clean
     }
 
     // ----- EditContext swap (_parseErrorMessages must follow it, not the first context forever) ---

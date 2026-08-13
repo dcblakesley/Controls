@@ -94,6 +94,48 @@ public partial class EditDateNative<[DynamicallyAccessedMembers(DynamicallyAcces
     /// <summary> Error message format string used when the value can't be parsed. <c>{0}</c> is replaced with the field name.</summary>
     [Parameter] public string ParsingErrorMessage { get; set; } = "The {0} field must be a date.";
 
+    /// <summary>
+    /// Leading text of the visually-hidden format hint appended to the input's
+    /// <c>aria-describedby</c> in <see cref="InputDateType.Month"/> — rendered as
+    /// "<c>{FormatHintLabel} yyyy-MM</c>". Defaults to "Format:" (matching
+    /// <see cref="EditDate{T}.FormatHintLabel"/>); override to localize, or set to an empty string to
+    /// drop the hint and its <c>aria-describedby</c> token entirely.
+    /// </summary>
+    /// <remarks>
+    /// Only <see cref="InputDateType.Month"/> renders it, because it is the only one of the four
+    /// types whose native picker is still not universally implemented: a browser without
+    /// <c>&lt;input type="month"&gt;</c> support falls back to a PLAIN TEXT BOX that shows no format
+    /// affordance of its own while <see cref="TryParseValueFromString"/> keeps demanding a strict
+    /// invariant <c>yyyy-MM</c>, so the user is left guessing and then told only that the value "must
+    /// be a date". The other three types either render a real native picker everywhere or degrade to
+    /// a text box whose format (<c>yyyy-MM-dd</c>, <c>HH:mm:ss</c>) their own placeholder-less native
+    /// UI has long conditioned users to — and adding a describedby token for all four would change
+    /// every existing <c>EditDateNative</c>'s ARIA for no equivalent gain. <see cref="EditDate{T}"/>
+    /// hints unconditionally instead (see <see cref="DatePicker.FormatHintLabel"/>): its field is a
+    /// plain text box in every browser.
+    /// </remarks>
+    [Parameter] public string FormatHintLabel { get; set; } = "Format:";
+
+    /// <summary>The visually-hidden format hint's element id, appended to
+    /// <see cref="EffectiveDescribedBy"/>. Same <c>{prefix}-{id}</c> shape as the
+    /// <c>desc-</c>/<c>tooltip-</c>/<c>error-msg-</c> ids <c>FormLabel</c>/<c>FieldValidationDisplay</c>
+    /// render.</summary>
+    string FormatHintId => $"format-{_id}";
+
+    /// <summary>"Format: yyyy-MM", or empty — which drops both the element and its
+    /// <c>aria-describedby</c> token (see <see cref="FormatHintLabel"/> for the Month-only gate).</summary>
+    string FormatHintText =>
+        EffectiveType == InputDateType.Month && !string.IsNullOrEmpty(FormatHintLabel)
+            ? $"{FormatHintLabel} {InputFormat}"
+            : string.Empty;
+
+    /// <summary>The cached <c>aria-describedby</c> chain with the format hint's id APPENDED, so the
+    /// existing error/description/tooltip refs keep their order and the hint reads last. Falls back
+    /// to the chain itself when there is no hint, leaving the attribute byte-identical to before this
+    /// existed.</summary>
+    string EffectiveDescribedBy =>
+        FormatHintText.Length == 0 ? _describedBy : $"{_describedBy} {FormatHintId}";
+
     /// <inheritdoc/>
     /// <remarks>
     /// This control's answer is <see cref="UpdateTrigger.Change"/>, and overriding it with

@@ -156,6 +156,28 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// <summary> <see cref="BeforeAdd"/> rejection message. {0} = file name.</summary>
     [Parameter] public string BeforeAddRejectedMessageFormat { get; set; } = "{0} was rejected.";
 
+    /// <summary>
+    /// LST-3: live-region text (announced via a polite <c>role="status"</c> region) while a picked/
+    /// dropped batch is being validated and buffered. Until this existed, the only observable effect
+    /// during that window was the <c>&lt;input&gt;</c> going <c>disabled</c> -- nothing a screen-reader
+    /// user could notice on their own, which matters most for a large multi-file drop against the
+    /// default 100&#160;MB aggregate cap. The same region reads <see cref="FileListStatusText"/> once
+    /// the batch finishes.
+    /// </summary>
+    [Parameter] public string LoadingStatusText { get; set; } = "Loading files…";
+
+    /// <summary>
+    /// LST-4: live-region status announced after each add/remove commit, when at least one file is
+    /// selected -- the successful half of an upload gesture was previously never announced at all
+    /// (only a rejection, via <see cref="_uploadErrors"/>'s own <c>role="alert"</c> block). {0} = file
+    /// count, {1} = comma-joined file names, {2} = "file"/"files" (English plural of {0} — ignore when
+    /// localizing).
+    /// </summary>
+    [Parameter] public string FilesSelectedStatusFormat { get; set; } = "{0} {2} selected: {1}.";
+
+    /// <summary> Live-region status (LST-4) announced when the selection becomes -- or starts -- empty.</summary>
+    [Parameter] public string NoFilesSelectedStatusText { get; set; } = "No files selected.";
+
     [Inject] IJSRuntime JS { get; set; } = default!;
 
     readonly List<string> _uploadErrors = [];
@@ -294,6 +316,39 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     // lives, rather than an inline ternary at the markup call site.
     string BoundValueText => Value?.Count == 0 ? "(none)" : string.Join(", ", (Value ?? []).Select(f => f.Name));
 
+    /// <summary>
+    /// LST-4: the text the status region reads once a batch finishes (<see cref="_isLoadingFiles"/> is
+    /// false) -- reflects the CURRENT <c>Value</c>, so it announces additions, removals, and a partial
+    /// success (some files added, others deduped/capped/rejected) uniformly: whatever survived is what
+    /// gets read. Reactive rather than a one-shot flag set at commit time -- the live region's content
+    /// simply differs from what it read before the change, which is what a browser/AT actually keys an
+    /// announcement off of.
+    /// </summary>
+    string FileListStatusText => Value is null || Value.Count == 0
+        ? NoFilesSelectedStatusText
+        : string.Format(CultureInfo.CurrentCulture, FilesSelectedStatusFormat,
+            Value.Count, string.Join(", ", Value.Select(f => f.Name)), Value.Count == 1 ? "file" : "files");
+
+    /// <summary>
+    /// LST-5: the resolved per-file/aggregate/count caps, rendered as a second static instruction line
+    /// alongside "Supported formats" so they're discoverable up front instead of only after a
+    /// rejection. Not a <c>*Format</c> parameter like the message strings above -- matches "Click or
+    /// drag files..."/"Supported formats: ..." right next to it in the markup, neither of which is
+    /// parameterized either. The file-count clause is omitted when <see cref="EffectiveMaxFiles"/> is 0
+    /// (genuinely unlimited); <see cref="EffectiveMaxFileSizeBytes"/>/<see cref="EffectiveMaxTotalBytes"/>
+    /// always resolve to a real, finite default (10&#160;MB/100&#160;MB), so those two clauses always render.
+    /// </summary>
+    string CapsHintText
+    {
+        get
+        {
+            var text = $"Max {FormatSize(EffectiveMaxFileSizeBytes)} per file, {FormatSize(EffectiveMaxTotalBytes)} total";
+            return EffectiveMaxFiles > 0
+                ? $"{text}, up to {EffectiveMaxFiles} file{(EffectiveMaxFiles == 1 ? "" : "s")}."
+                : $"{text}.";
+        }
+    }
+
     // Name + size + last-modified is the same identity a user would judge by eye and is cheap to
     // compare (no content hashing) — good enough to catch the common case of re-dropping the same
     // file without reading it twice.
@@ -330,6 +385,11 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     {
         if (IsDisabled || _isLoadingFiles) return;
         _isLoadingFiles = true;
+        // No StateHasChanged() here on purpose: this arrives through InputFile's OnChange, and
+        // ComponentBase.HandleEventAsync already renders as soon as the handler yields (it calls
+        // StateHasChanged before awaiting an incomplete task), which is what puts the "loading"
+        // status on screen. Calling it here as well breaks the direct-invocation re-entrancy tests,
+        // which drive this method outside the renderer's synchronization context.
         try
         {
             await LoadFilesCore(e);

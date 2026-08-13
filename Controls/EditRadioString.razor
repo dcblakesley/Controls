@@ -9,8 +9,14 @@
 
         @* id/data-test-id/role/aria-* come from RadioAria, shared with EditRadio/EditRadioEnum;
            splatted first so the explicit class below wins, and merged with the consumer's own
-           unmatched attributes (RadioAria's keys win; one element, one @attributes). *@
-        <fieldset @attributes="AttributeSplat.RestWith(AdditionalAttributes, RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId))"
+           unmatched attributes (RadioAria's keys win; one element, one @attributes).
+           RAD-7: the explicit role below drops it when the group would own no radios. It stays off in
+           read-only mode too -- RadioAria.Fieldset already emits nothing there, and re-adding the role
+           here would recreate the very aria-required-children violation this prevents (a radiogroup
+           whose children are ReadOnlyValue divs). NOTE both comments live OUT here: a Razor comment
+           placed between attributes INSIDE the tag silently corrupts the attributes that follow it. *@
+        <fieldset @attributes="AttributeSplat.RestWith(AdditionalAttributes, RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId, isHorizontal: IsHorizontal || OptionType == RadioOptionType.Button))"
+                  role=@(ShowEditor && HasAnyOption ? "radiogroup" : null)
                   class="edit-radio-fieldset">
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend=true IsLabelHidden=@ShouldHideLabel />
 
@@ -31,7 +37,7 @@
                             @for (var i = 0; i < Options.Count; i++)
                             {
                                 var option = Options[i];
-                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionDisabledFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option />
+                                <RadioOptionItem Value=@option IsButtonMode="true" IsDisabled=@IsOptionNativelyDisabledFor(option) IsLocked=@IsOptionLockedFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option />
                             }
                             @if (HasOther)
                             {
@@ -44,6 +50,7 @@
                                 <RadioOtherInput Id=@($"txt-{_id}-custom-value")
                                                  Value=@_otherText
                                                  IsDisabled=@(_selectedOption != _otherName || IsDisabled)
+                                                 AriaLabel=@(OtherAriaLabel ?? RadioOtherInput.DefaultAriaLabel)
                                                  CommitAttributes=@OtherInputAttribute />
                             </div>
                         }
@@ -62,7 +69,7 @@
                             {
                                 var option = Options[i];
                                 <div class="edit-radio-option">
-                                    <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionDisabledFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option />
+                                    <RadioOptionItem Value=@option IsButtonMode="false" IsDisabled=@IsOptionNativelyDisabledFor(option) IsLocked=@IsOptionLockedFor(option) Id=@_id IdSuffix=@(_optionIds[i]) CssClass=@CssClass LabelClass=@LabelClass Display=@option />
                                 </div>
                             }
 
@@ -76,6 +83,7 @@
                                     <RadioOtherInput Id=@($"txt-{_id}-custom-value")
                                                      Value=@_otherText
                                                      IsDisabled=@(_selectedOption != _otherName || IsDisabled)
+                                                     AriaLabel=@(OtherAriaLabel ?? RadioOtherInput.DefaultAriaLabel)
                                                      CommitAttributes=@OtherInputAttribute />
                                 </div>
                             }

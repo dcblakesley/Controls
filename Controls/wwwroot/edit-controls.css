@@ -528,10 +528,19 @@
     color: var(--edit-color-primary-strong);
 }
 
+/* RAD-6 (WCAG 1.4.1 Use of Color): Outline mode signalled "checked" with color/border-color alone, so
+   a user who can't reliably separate the gray border+text from the primary-colored one had no cue as
+   to which segment was selected. The inset shadow doubles the border's apparent weight -- a
+   non-hue-dependent affordance -- and is deliberately NOT font-weight: these segments are joined
+   (margin-inline-start: -1px above), so bolding the checked label would change its text width and
+   shove every neighbouring segment sideways. box-shadow doesn't participate in layout, so the row's
+   geometry is byte-identical to before. Solid mode needs nothing: its background fill is already a
+   non-color-dependent change. */
 .edit-radio-button-input:checked + .edit-radio-button {
     z-index: 2;
     color: var(--edit-color-primary-strong);
     border-color: var(--edit-color-primary);
+    box-shadow: inset 0 0 0 1px var(--edit-color-primary);
 }
 
 /* ButtonStyle="Solid" -- the checked button fills with the primary color instead of just tinting
@@ -560,8 +569,11 @@
 
 /* Checked-but-disabled keeps the primary-tinted border instead of vanishing into the plain
    disabled look, so a preselected-then-locked option is still readably "the checked one". */
+/* Disabled+checked keeps the same doubled-weight cue: a disabled control is exempt from contrast
+   minimums, but "which one is selected" still has to be readable without relying on hue. */
 .edit-radio-button-input:disabled:checked + .edit-radio-button {
     border-color: var(--edit-color-primary);
+    box-shadow: inset 0 0 0 1px var(--edit-color-primary);
 }
 
 .edit-radio-button-group-solid .edit-radio-button-input:disabled:checked + .edit-radio-button {
@@ -1176,6 +1188,28 @@
        #f3f3f3, 7.0:1 on white). */
     color: var(--color-text-secondary-strong, #595959);
     font-size: 0.85em;
+}
+
+/* LST-5 (WCAG 3.3.2): the size/count caps, stated up front rather than only in the rejection message
+   a user gets after already picking a too-large file. Same text grade as the formats line above, so
+   the same -strong secondary token. */
+.edit-file-limits {
+    color: var(--color-text-secondary-strong, #595959);
+    font-size: 0.85em;
+}
+
+/* LST-8: the read-only checked-list rows are a real list, so a screen reader can report "list, 3
+   items" and position within it -- EditFile's read-only view already did this and the checkbox lists
+   rendered bare divs. Unstyled: display:block keeps each row stacking exactly as those divs did, so
+   the change is semantic only and moves no pixels. */
+.edit-checkedList-readonly-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.edit-checkedList-readonly-item {
+    display: block;
 }
 
 /* Loaded files list */

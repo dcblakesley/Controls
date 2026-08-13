@@ -9,11 +9,11 @@ public partial class ReadOnlyValue
 
     /// <summary>
     /// False when no <see cref="FormLabel"/> element exists for this value to be named by, which
-    /// suppresses <c>aria-labelledby</c> so it can't dangle at a missing <c>lbl-{id}</c>. Only the
+    /// suppresses <c>aria-labelledby</c> so it can't dangle at a missing <c>lbltext-{id}</c>. Only the
     /// per-option rows of a read-only checked list set this — each carries its own derived id and no
     /// label of its own. A <em>hidden</em> label is not such a case: <see cref="FormLabel"/> still
-    /// renders the <c>lbl-{id}</c> element (visually hidden), and dropping the reference would leave
-    /// the value with no accessible name at all. Defaults to true.
+    /// renders the <c>lbltext-{id}</c> naming anchor (visually hidden), and dropping the reference
+    /// would leave the value with no accessible name at all. Defaults to true.
     /// </summary>
     [Parameter] public bool HasLabelElement { get; set; } = true;
 
@@ -31,9 +31,10 @@ public partial class ReadOnlyValue
     /// <summary>
     /// Optional <c>aria-describedby</c> token(s) for the rendered value (TXT-5) -- e.g. the field's own
     /// description/tooltip/error-message ids, the same references its editor carries in edit mode. Null
-    /// by default, and not yet passed by any call site -- <c>EditNumber</c>/<c>EditTextArea</c>/
-    /// <c>EditString</c>'s plain read-only branch (which already computes a <c>_describedBy</c> for
-    /// their own editor) are the candidates to start passing it here.
+    /// by default. Wired by <see cref="CheckboxOptionList{TItem}"/> (both the empty-selection row and
+    /// each selected-option row) and <see cref="EditFile"/>'s empty-selection row --
+    /// <c>EditNumber</c>/<c>EditTextArea</c>/<c>EditString</c>'s plain read-only branch (which already
+    /// computes a <c>_describedBy</c> for their own editor) remain candidates to also start passing it.
     /// </summary>
     [Parameter] public string? AriaDescribedBy { get; set; }
 }

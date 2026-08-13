@@ -781,10 +781,12 @@ public class ScaffoldConformanceTests : BunitContext
 
     // ----- EditDateRange: bespoke coverage for its two-field shape --------------------------------
 
-    // [Required]/AlwaysInvalid live on Start only in this model -- EditDateRange derives its single
-    // shared star/aria-required from Start alone (see EditDateRange.razor.cs's IsRequiredResolved
-    // remarks), and leaving End with no validation attributes at all lets the test also prove Start's
-    // failure never bleeds into End's independent validation state.
+    // [Required]/AlwaysInvalid live on Start only in this model. EditDateRange's single shared star
+    // is raised by EITHER field being required (see its IsRequiredResolved remarks) while per-input
+    // aria-required stays strictly per-field, so a Start-only [Required] exercises both halves at
+    // once; leaving End with no validation attributes at all also lets the test prove Start's failure
+    // never bleeds into End's independent validation state. (The End-only star case lives in
+    // A11yDateTests.)
     class RequiredStartDateRangeModel
     {
         [Required, AlwaysInvalidAttribute] public DateTime? Start { get; set; } = new(2024, 1, 1);

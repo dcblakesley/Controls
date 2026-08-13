@@ -43,6 +43,24 @@ internal static class SelectDefaults
     /// <summary>Accessible name of the dropdown listbox.</summary>
     public const string ListboxLabel = "Options";
 
+    /// <summary><c>string.Format</c> template announced after the option list is filtered/reloaded.</summary>
+    public const string ResultCountAnnouncementFormat = "{0} results";
+
+    /// <summary><c>string.Format</c> template announced when an option or typed tag is selected.</summary>
+    public const string SelectedAnnouncementFormat = "{0} selected";
+
+    /// <summary><c>string.Format</c> template announced when a selection is undone.</summary>
+    public const string DeselectedAnnouncementFormat = "{0} deselected";
+
+    /// <summary>Announced after the clear button empties the selection.</summary>
+    public const string SelectionClearedAnnouncement = "Selection cleared";
+
+    /// <summary>Announced while the control is loading.</summary>
+    public const string LoadingAnnouncement = "Loading";
+
+    /// <summary><c>string.Format</c> template read in place of the MaxTagCount overflow chip's "+ n ...".</summary>
+    public const string MaxTagCountLabelFormat = "{0} more selected";
+
     /// <summary>
     /// The placeholder actually forwarded to the engine: the wrapper's own <c>Placeholder</c> parameter
     /// (the consumer set it explicitly) → the bound model property's

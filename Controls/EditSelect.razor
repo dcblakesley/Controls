@@ -20,6 +20,7 @@
                     data-test-id=@_id
                     aria-required=@_isRequired
                     aria-invalid=@(IsInvalid ? "true" : null)
+                    aria-labelledby=@($"lbltext-{_id}")
                     aria-describedby=@_describedBy
                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)>
 

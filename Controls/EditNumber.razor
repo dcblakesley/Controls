@@ -38,6 +38,7 @@
                        @bind-value=@CurrentValueAsString
                        @bind-value:event="@UpdateEventName"
                        class=@InputClass
+                       aria-labelledby="lbltext-@_id"
                        aria-required=@_isRequired
                        aria-invalid=@(IsInvalid ? "true" : null)
                        aria-describedby=@_describedBy
@@ -46,7 +47,7 @@
         }
         else
         {
-            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@GetFormattedNumber() />
+            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@GetFormattedNumber() AriaDescribedBy=@_describedBy />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />

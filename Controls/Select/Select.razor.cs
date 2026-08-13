@@ -58,8 +58,27 @@ public partial class Select<TValue> : IAsyncDisposable
     readonly HashSet<TValue> _selectedSet = new(_comparer);
     readonly List<SelectOption<TValue>> _tagOptions = [];
     List<SelectRow> _filtered = [];
+    // Selectable options in _filtered (group headers excluded) -- the aria-setsize every option row
+    // reports. Virtualize keeps only the rows in view in the DOM, so without this a screen reader
+    // counted the ~8 materialized rows ("1 of 16") against a list of tens of thousands.
+    int _optionCount;
+    // Header text of each surviving group run, indexed by SelectRow.GroupIndex. Rendered as
+    // visually-hidden spans OUTSIDE the virtualized list, which is what each option's
+    // aria-describedby actually points at: the visible header row is a virtualized row like any
+    // other, so on a group longer than the viewport it is unmounted while its own options are still
+    // on screen -- and an aria-describedby pointing at an unmounted id silently resolves to nothing.
+    readonly List<string> _groupNames = [];
     int _hiddenTagCount;
     readonly List<(SelectOption<TValue> Option, int Index)> _visibleTags = [];
+    // Comma-joined labels of everything currently selected (multiple/tags modes). The combobox input's
+    // own value is the live search text there, so this is what a screen reader is pointed at (via
+    // aria-describedby) to hear the current selection. Cached alongside the visible tags rather than
+    // rebuilt per render -- the selection can only change through RebuildVisibleTags' callers.
+    string _selectedValuesText = string.Empty;
+    // The text of the persistent status region (see StatusAnnouncement). Empty on first render: an
+    // aria-live region has to already be in the accessibility tree before its content changes, so it
+    // is rendered from the first pass and only ever filled in afterwards.
+    string? _status;
 
     // value -> option, rebuilt only when Options changes, so FindOption is O(1)
     // instead of scanning the (potentially huge) option list on every render.
@@ -81,14 +100,33 @@ public partial class Select<TValue> : IAsyncDisposable
         public string? Header { get; }
         public bool IsHeader => Header is not null;
 
+        /// <summary>
+        /// Index into <c>_groupNames</c> of the group run this row belongs to; -1 for an ungrouped
+        /// option. A run's header row and every option in it share one index, which becomes each
+        /// option's <c>aria-describedby</c> — the flat, virtualized row model can't nest options
+        /// inside a <c>role="group"</c>, so the association is by reference instead of by containment.
+        /// </summary>
+        public int GroupIndex { get; init; } = -1;
+
+        /// <summary>
+        /// 1-based position among the OPTIONS in <c>_filtered</c> (headers don't count and leave this
+        /// 0), paired with <c>_optionCount</c> as <c>aria-setsize</c>. Stamped here rather than derived
+        /// at render time because <c>Virtualize</c> materializes only the rows in view — a row cannot
+        /// see its own place in the list.
+        /// </summary>
+        public int PosInSet { get; init; }
+
         SelectRow(SelectOption<TValue>? option, string? header)
         {
             Option = option;
             Header = header;
         }
 
-        public static SelectRow ForOption(SelectOption<TValue> option) => new(option, null);
-        public static SelectRow ForHeader(string header) => new(null, header);
+        public static SelectRow ForOption(SelectOption<TValue> option, int groupIndex, int posInSet) =>
+            new(option, null) { GroupIndex = groupIndex, PosInSet = posInSet };
+
+        public static SelectRow ForHeader(string header, int groupIndex) =>
+            new(null, header) { GroupIndex = groupIndex };
     }
 
     // ----- Parameters -------------------------------------------------------
@@ -193,6 +231,27 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // ----- Form-integration pass-throughs (set by the Edit* wrappers) -------
 
+    /// <summary>
+    /// Accessible name of the combobox itself, rendered as the input's <c>aria-label</c> (the pattern
+    /// <see cref="DatePicker.InputLabel"/> uses). A standalone <c>&lt;Select&gt;</c> has no
+    /// <c>&lt;label for&gt;</c> of its own, so without this — or <see cref="AriaLabelledBy"/>, which the
+    /// form wrappers supply — the <c>role="combobox"</c> input is nameless to assistive tech.
+    /// </summary>
+    /// <remarks>
+    /// A bare <c>aria-label</c> written on the component is honored too: it is lifted out of
+    /// <see cref="AdditionalAttributes"/> onto the input instead of landing on the roleless wrapper
+    /// <c>&lt;div&gt;</c> (where it was silently ignored). This parameter wins if both are supplied.
+    /// </remarks>
+    [Parameter] public string? InputLabel { get; set; }
+
+    /// <summary>
+    /// Value for the combobox input's <c>aria-labelledby</c> — the id of the element holding its label
+    /// text. The <c>Edit*</c> wrappers pass <c>FormLabel</c>'s <c>lbltext-{id}</c> naming anchor, so the
+    /// field's accessible name tracks the rendered label (and excludes the tooltip trigger inside it).
+    /// Wins over <see cref="InputLabel"/> when both resolve to text, per the accessible-name spec.
+    /// </summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
+
     /// <summary>HTML id applied to the search input — wires the form label/validation/test hooks.</summary>
     [Parameter] public string? Id { get; set; }
 
@@ -220,6 +279,9 @@ public partial class Select<TValue> : IAsyncDisposable
     /// on this component threw at render time).
     /// </summary>
     /// <remarks>
+    /// <c>aria-label</c> is withheld as well, and applied to the <c>role="combobox"</c> input instead
+    /// (see <see cref="InputLabel"/>): on the wrapper it named a roleless <c>&lt;div&gt;</c>, where it
+    /// is ignored — a nameless combobox that looked labelled in the markup.
     /// <c>class</c> and <c>style</c> are deliberately NOT applied here. <see cref="CssClass"/> is the
     /// wrapper's single class channel (the wrappers already feed it their <c>CssClass</c>/
     /// <c>FieldCssClass</c>, which folds in a consumer's own <c>class</c>), and the wrapper's inline
@@ -277,12 +339,22 @@ public partial class Select<TValue> : IAsyncDisposable
         var optionsChanged = !ReferenceEquals(Options, _lastOptions);
         var filterOptionChanged = !ReferenceEquals(FilterOption, _lastFilterOption);
         _lastFilterOption = FilterOption;
+        // _lastOptions is null only before the very first parameter set (Options is non-nullable and
+        // defaults to an empty array), which is what distinguishes "the options were REPLACED" from
+        // "this component is being set up" for the announcement below.
+        var firstParameterSet = _lastOptions is null;
 
         if (optionsChanged)
         {
             _lastOptions = Options;
             RebuildLookup();
             RebuildFiltered();
+            // Server-driven search (OnSearch -> the consumer reassigns Options): the list the user is
+            // looking at just changed under them with no keystroke of their own to trigger
+            // ApplySearchAsync's announcement. Not on the first set (a DefaultOpen select would then
+            // render its live region already full, the one thing the region exists to avoid), and not
+            // while closed -- there is no list on screen to have changed.
+            if (_open && !firstParameterSet) AnnounceResults();
         }
         else if (filterOptionChanged)
         {
@@ -421,6 +493,88 @@ public partial class Select<TValue> : IAsyncDisposable
 
     string SelectedLabel => FindOption(Value)?.Label ?? Value?.ToString() ?? string.Empty;
 
+    // ----- ARIA wiring for the combobox input -------------------------------
+
+    // The combobox's VALUE, in single mode. It used to be _searchText unconditionally -- empty except
+    // while the user is actively typing -- so a screen reader read a completed field as "combo box,
+    // blank" even though the trigger visibly showed the selected label (which lives in a sibling
+    // <span> that nothing tied back to the input). Binding the label here while closed is the APG
+    // editable-combobox contract: the input carries the current value, and typing replaces it only for
+    // as long as the popup is open. Multiple/tags mode keeps _searchText -- there the input genuinely
+    // is the tag-entry box, and the selection is surfaced through SelectedValuesId/aria-describedby
+    // instead.
+    //
+    // REQUIRES the companion stylesheet rule that makes the closed single-mode input's own text
+    // invisible:
+    //
+    //     .wss-select-single:not(.wss-select-open) .wss-select-selection-search-input { color: transparent; }
+    //
+    // The input is absolutely positioned OVER the .wss-select-selection-item span that is styled to
+    // paint the label (ellipsis truncation, the 18px arrow gutter, the dimming while open), so without
+    // that rule both render the same characters on top of each other. The rule is a no-op for every
+    // state that existed before this: a closed input's value was always empty.
+    string ComboValue => IsMultiple || _open ? _searchText : SelectedLabel;
+
+    // Ids of the two AT-only elements the input points at. Kept off BaseId's callers' hands so the
+    // markup and the attribute values can't drift.
+    string StatusId => $"{BaseId}-status";
+    string SelectedValuesId => $"{BaseId}-selection";
+
+    // aria-describedby for the combobox: whatever the form wrapper supplies (description, character
+    // count, ...) plus, in multiple/tags mode, the visually-hidden element holding the joined selected
+    // labels. The status region is deliberately NOT in here -- it is a live region, announced when it
+    // changes; referencing it would also read the last announcement back on every focus.
+    string? ComboDescribedBy => !IsMultiple
+        ? AriaDescribedBy
+        : string.IsNullOrEmpty(AriaDescribedBy) ? SelectedValuesId : $"{AriaDescribedBy} {SelectedValuesId}";
+
+    // The combobox's accessible name via aria-label: the explicit parameter first, else a bare
+    // aria-label written on the component (lifted off the roleless wrapper div -- see
+    // AdditionalAttributes' remarks). Null leaves the attribute off entirely, so aria-labelledby (the
+    // form wrappers' route) or a <label for> is free to name it.
+    string? EffectiveInputLabel
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(InputLabel)) return InputLabel;
+            if (AdditionalAttributes is null || !AdditionalAttributes.TryGetValue("aria-label", out var splatted)) return null;
+            return Convert.ToString(splatted, CultureInfo.InvariantCulture) is { Length: > 0 } text ? text : null;
+        }
+    }
+
+    // AttributeSplat.Rest minus aria-label, which EffectiveInputLabel above re-homes onto the input.
+    // Returns Rest's own dictionary untouched whenever no aria-label was supplied (the common case),
+    // so the wrapper's splatted frames stay exactly what they were.
+    IReadOnlyDictionary<string, object>? SplatRest
+    {
+        get
+        {
+            var rest = AttributeSplat.Rest(AdditionalAttributes);
+            if (rest is null || !rest.ContainsKey("aria-label")) return rest;
+            var trimmed = rest.Where(kv => kv.Key != "aria-label").ToDictionary(kv => kv.Key, kv => kv.Value);
+            return trimmed.Count == 0 ? null : trimmed;
+        }
+    }
+
+    // Text of the persistent live region. Loading wins while it is on, so a pending server-driven
+    // search says so instead of leaving the (roleless, silent) aria-busy wrapper to announce nothing;
+    // the count/selection message underneath returns the moment loading ends.
+    string? StatusAnnouncement => Loading ? LoadingAnnouncement : _status;
+
+    // The id of the always-present hidden span carrying a row's group name, or null for an ungrouped
+    // row -- what each option points aria-describedby at. The flat Virtualize row model rules out the
+    // role="group" containment the ARIA pattern would otherwise use, and rules out the visible header
+    // row as the target too (see _groupNames).
+    string? GroupNameId(int groupIndex) => groupIndex < 0 ? null : $"{BaseId}-grp-{groupIndex}";
+
+    // Announce how many options survived the filter (or the empty-state text). Called from the paths
+    // where the list itself just changed under the user: opening, applying a search, and options
+    // arriving from a server-driven OnSearch.
+    void AnnounceResults() =>
+        _status = _optionCount == 0
+            ? EmptyText
+            : string.Format(CultureInfo.CurrentCulture, ResultCountAnnouncementFormat, _optionCount);
+
     bool ShowClear => AllowClear && !Disabled &&
         (IsMultiple ? _selected.Count > 0 : HasSingleValue);
 
@@ -440,6 +594,13 @@ public partial class Select<TValue> : IAsyncDisposable
             var v = _selected[i];
             _visibleTags.Add((FindOption(v) ?? new SelectOption<TValue>(v, v?.ToString()), i));
         }
+
+        // Every selected label, not just the visible tags: the AT-only description has to carry the
+        // ones MaxTagCount collapsed into "+ n ..." too. Labels only (no SelectOption allocation for
+        // the hidden entries, which the visible loop above deliberately avoids as well).
+        _selectedValuesText = _selected.Count == 0
+            ? string.Empty
+            : string.Join(", ", _selected.Select(v => FindOption(v)?.Label ?? v?.ToString() ?? string.Empty));
     }
 
     // The keyboard-highlighted option (compared by reference so each rendered row
@@ -493,6 +654,12 @@ public partial class Select<TValue> : IAsyncDisposable
         var rows = new List<SelectRow>();
         string? pendingGroup = null;
         List<SelectOption<TValue>>? pendingBuffer = null;
+        // Stamped onto the rows as they are emitted (see SelectRow.GroupIndex/PosInSet): the group run
+        // an option belongs to (its index into _groupNames), and its 1-based place among the options
+        // only. Both are known here and nowhere else -- a virtualized row can't count the rows above
+        // it at render time.
+        var position = 0;
+        _groupNames.Clear();
 
         void FlushPendingGroup()
         {
@@ -500,8 +667,10 @@ public partial class Select<TValue> : IAsyncDisposable
             var matched = pendingBuffer.Where(MatchesFilter).ToList();
             if (matched.Count > 0)
             {
-                rows.Add(SelectRow.ForHeader(pendingGroup));
-                foreach (var o in matched) rows.Add(SelectRow.ForOption(o));
+                var run = _groupNames.Count;
+                _groupNames.Add(pendingGroup);
+                rows.Add(SelectRow.ForHeader(pendingGroup, run));
+                foreach (var o in matched) rows.Add(SelectRow.ForOption(o, run, ++position));
             }
             pendingGroup = null;
             pendingBuffer = null;
@@ -513,7 +682,7 @@ public partial class Select<TValue> : IAsyncDisposable
             if (group is null)
             {
                 FlushPendingGroup();
-                if (MatchesFilter(o)) rows.Add(SelectRow.ForOption(o));
+                if (MatchesFilter(o)) rows.Add(SelectRow.ForOption(o, -1, ++position));
             }
             else if (group == pendingGroup)
             {
@@ -529,6 +698,7 @@ public partial class Select<TValue> : IAsyncDisposable
         FlushPendingGroup();
 
         _filtered = rows;
+        _optionCount = position;
         ClampActiveToSelectableRow();
     }
 
@@ -639,6 +809,10 @@ public partial class Select<TValue> : IAsyncDisposable
         _focused = true;
         RebuildFiltered();
         SetInitialActive();
+        // "12 results" / "No data" the moment the popup opens. Without it the empty state was a plain
+        // <div> nothing announced, so a search that matched nothing was indistinguishable from one
+        // that hadn't run yet.
+        AnnounceResults();
         await RaiseOpenChangedAsync();
         await FocusInputAsync();
     }
@@ -666,6 +840,18 @@ public partial class Select<TValue> : IAsyncDisposable
     int FindSelectedRow() => IsMultiple
         ? (_selected.Count > 0 ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _selectedSet.Contains(r.Option.Value)) : -1)
         : (HasSingleValue ? _filtered.FindIndex(r => !r.IsHeader && !r.Option!.Disabled && _comparer.Equals(r.Option.Value, Value)) : -1);
+
+    // Outside-click dismiss. The backdrop is a full-screen element that swallows the click, and closing
+    // deletes it from under the pointer — the same "the element you just activated left the DOM"
+    // situation RemoveAsync and ClearAsync document, and with the same consequence: keyboard focus fell
+    // to <body>, so Tab restarted at the top of the page. The backdrop also suppresses the focus its
+    // own mousedown would take (see Select.razor), so in practice this call is usually a no-op that
+    // re-asserts where focus already is; it is the browsers that ignore that suppression this covers.
+    async Task CloseFromBackdropAsync()
+    {
+        await CloseAsync();
+        await FocusInputAsync();
+    }
 
     Task CloseAsync()
     {
@@ -763,6 +949,9 @@ public partial class Select<TValue> : IAsyncDisposable
         // what the explicit MoveActiveTo(0, 1) that used to follow this call did.)
         _activeIndex = 0;
         RebuildFiltered();
+        // Filtering used to be entirely silent: the list rebuilt under a screen-reader user with no
+        // signal that anything had happened, least of all that it was now empty.
+        AnnounceResults();
         if (OnSearch.HasDelegate) await OnSearch.InvokeAsync(_searchText);
     }
 
@@ -789,10 +978,12 @@ public partial class Select<TValue> : IAsyncDisposable
             {
                 RemoveSelected(option.Value);
                 PruneTagOption(option.Value);
+                Announce(DeselectedAnnouncementFormat, option.Label);
             }
             else
             {
                 AddSelected(option.Value);
+                Announce(SelectedAnnouncementFormat, option.Label);
             }
 
             ResetSearch();
@@ -802,10 +993,16 @@ public partial class Select<TValue> : IAsyncDisposable
         else
         {
             Value = option.Value;
+            Announce(SelectedAnnouncementFormat, option.Label);
             await ValueChanged.InvokeAsync(Value);
             await CloseAsync();
         }
     }
+
+    // One place that formats a "{label} …" announcement into the status region, so the culture and the
+    // null-label fallback can't drift between the four call sites.
+    void Announce(string format, string? label) =>
+        _status = string.Format(CultureInfo.CurrentCulture, format, label ?? string.Empty);
 
     // restoreFocus is true only for the × button. The × the user just activated is removed from the
     // DOM by this render, and removal fires no focusout — so keyboard focus fell to <body>: Tab
@@ -822,8 +1019,14 @@ public partial class Select<TValue> : IAsyncDisposable
     async Task RemoveAsync(TValue value, bool restoreFocus)
     {
         if (Disabled) return;
+        // Resolved before the removal, while the tag's option is still reachable through the lookup
+        // (PruneTagOption can drop a user-created tag's option entirely).
+        var label = FindOption(value)?.Label ?? value?.ToString();
         RemoveSelected(value);
         PruneTagOption(value);
+        // Backspace-removing tags used to be completely silent -- five presses, five tags gone, nothing
+        // announced. The × button was no better: its own accessible name leaves the DOM with it.
+        Announce(DeselectedAnnouncementFormat, label);
         await RaiseValuesChangedAsync();
         if (restoreFocus) await FocusInputAsync();
     }
@@ -868,6 +1071,9 @@ public partial class Select<TValue> : IAsyncDisposable
             await ValueChanged.InvokeAsync(Value);
         }
 
+        // The clear button leaves the DOM the instant the value does (ShowClear), so nothing else can
+        // report what just happened.
+        _status = SelectionClearedAnnouncement;
         ResetSearch();
         // Same reason as RemoveAsync: ShowClear goes false the moment the value is gone, so the button
         // the user just activated leaves the DOM and takes keyboard focus to <body> with it.
@@ -909,6 +1115,7 @@ public partial class Select<TValue> : IAsyncDisposable
         if (!_selectedSet.Contains(value))
         {
             AddSelected(value);
+            Announce(SelectedAnnouncementFormat, FindOption(value)?.Label ?? text);
             await RaiseValuesChangedAsync();
         }
 
@@ -932,12 +1139,26 @@ public partial class Select<TValue> : IAsyncDisposable
         switch (e.Key)
         {
             case "ArrowDown":
+                // APG combobox: Alt+ArrowDown opens the popup WITHOUT moving the highlight (plain
+                // ArrowDown does both). On an already-open popup it is a no-op, not a navigation.
+                if (e.AltKey)
+                {
+                    if (!_open) await OpenAsync();
+                    return;
+                }
                 if (!_open) { await OpenAsync(); return; }
                 MoveActive(1);
                 await ScrollActiveIntoViewAsync();
                 break;
 
             case "ArrowUp":
+                // APG combobox: Alt+ArrowUp closes the popup and keeps focus on the combobox (the
+                // keyboard-only counterpart of Escape that does not also imply "revert").
+                if (e.AltKey)
+                {
+                    if (_open) await CloseAsync();
+                    return;
+                }
                 if (!_open) { await OpenAsync(); return; }
                 MoveActive(-1);
                 await ScrollActiveIntoViewAsync();
@@ -945,11 +1166,10 @@ public partial class Select<TValue> : IAsyncDisposable
 
             case "Enter":
                 // A disabled active option (e.g. every match is disabled) falls through — in Tags
-                // mode the typed text still commits instead of the keystroke dying on it. The active
-                // index never lands on a header row, but the IsHeader check guards the Option! below.
-                if (_open && _activeIndex >= 0 && _activeIndex < _filtered.Count && !_filtered[_activeIndex].IsHeader && !_filtered[_activeIndex].Option!.Disabled)
+                // mode the typed text still commits instead of the keystroke dying on it.
+                if (ActiveSelectableOption is { } enterOption)
                 {
-                    await SelectAsync(_filtered[_activeIndex].Option!);
+                    await SelectAsync(enterOption);
                 }
                 else if (Mode == SelectMode.Tags && !string.IsNullOrWhiteSpace(_searchText))
                 {
@@ -966,11 +1186,14 @@ public partial class Select<TValue> : IAsyncDisposable
                 break;
 
             case " ":
-                // ARIA combobox pattern: Space opens a closed, non-searchable select — its input is
-                // readonly, so Space has no text-entry meaning there (wss-select.js suppresses the
-                // page-scroll default for this case). When ShowSearch is on, Space belongs to the
-                // search text and passes through untouched.
-                if (!ShowSearch && !_open) await OpenAsync();
+                // APG's select-only combobox: Space opens the popup when closed and SELECTS the active
+                // option when open — its input is readonly, so Space has no text-entry meaning here and
+                // was previously dead on an open list (wss-select.js suppresses the page-scroll default
+                // for both cases). When ShowSearch is on, Space belongs to the search text and passes
+                // through untouched.
+                if (ShowSearch) break;
+                if (!_open) await OpenAsync();
+                else if (ActiveSelectableOption is { } spaceOption) await SelectAsync(spaceOption);
                 break;
 
             case "Backspace":
@@ -991,7 +1214,12 @@ public partial class Select<TValue> : IAsyncDisposable
             default:
                 // Type-ahead for non-searchable selects: jump to an option by typed letters.
                 // (When ShowSearch is on, the same keystrokes filter the list through the input.)
-                if (!ShowSearch && e.Key.Length == 1 && char.IsLetterOrDigit(e.Key[0]))
+                // The modifier guard is what keeps a shortcut out of the type-ahead: Ctrl+F carries
+                // Key == "f", so it used to open the dropdown and move the highlight instead of
+                // reaching the browser's Find. Shift is deliberately NOT excluded — it is how a
+                // capital letter is typed.
+                if (!ShowSearch && !e.CtrlKey && !e.AltKey && !e.MetaKey &&
+                    e.Key.Length == 1 && char.IsLetterOrDigit(e.Key[0]))
                 {
                     if (!_open) await OpenAsync();
                     TypeAhead(e.Key);
@@ -1000,6 +1228,15 @@ public partial class Select<TValue> : IAsyncDisposable
                 break;
         }
     }
+
+    // The option Enter/Space would commit: the highlighted row, when the popup is open and that row is
+    // a real, enabled option. Null otherwise — the active index never lands on a header row, but the
+    // IsHeader check is what makes the Option! dereference safe regardless.
+    SelectOption<TValue>? ActiveSelectableOption =>
+        _open && _activeIndex >= 0 && _activeIndex < _filtered.Count &&
+        !_filtered[_activeIndex].IsHeader && !_filtered[_activeIndex].Option!.Disabled
+            ? _filtered[_activeIndex].Option
+            : null;
 
     void MoveActive(int delta)
     {

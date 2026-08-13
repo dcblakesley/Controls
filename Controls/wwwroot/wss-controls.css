@@ -367,6 +367,23 @@
     height: 30px;
 }
 
+/* SEL-1 (WCAG 4.1.2): a closed single-mode combobox now carries the selected label as its `value`, so
+   the control reports a VALUE to assistive tech -- before this, a screen reader hit a completed field
+   and announced "combo box, blank" because the label lived only in the sibling span below.
+   That span is still what PAINTS the label (it owns the ellipsis truncation, the arrow gutter, and the
+   dimming while open), so the input's own glyphs have to be hidden or the two render on top of each
+   other. Transparent text rather than `display: none`/`visibility: hidden`, both of which would pull
+   the input out of the accessibility tree and undo the fix. The caret stays visible so a focused
+   searchable select still shows where typing will go, and typed text reappears on open (the value
+   reverts to the search text then). Renders pixel-identically to before, since a closed input's value
+   was always empty previously. */
+.wss-select-single:not(.wss-select-open) .wss-select-selection-search-input {
+    color: transparent;
+    /* WebKit ignores `color` on form-control text; this is the property it honours. */
+    -webkit-text-fill-color: transparent;
+    caret-color: var(--wss-color-text);
+}
+
 .wss-select-single .wss-select-selection-item,
 .wss-select-single .wss-select-selection-placeholder {
     line-height: 30px;

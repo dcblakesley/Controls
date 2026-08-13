@@ -17,7 +17,6 @@ public partial class SelectOptionList<TItem>
     [Parameter, EditorRequired] public IEnumerable<TItem> Options { get; set; } = [];
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter] public string? CssClass { get; set; }
-    [Parameter] public string? Tooltip { get; set; }
     [Parameter] public string? CurrentValueAsString { get; set; }
     [Parameter] public bool ShowNullOption { get; set; }
     [Parameter] public string? NullOptionText { get; set; }
@@ -25,6 +24,25 @@ public partial class SelectOptionList<TItem>
     [Parameter] public string? PlaceholderText { get; set; }
     [Parameter, EditorRequired] public Func<TItem, string?> DisplayText { get; set; } = null!;
     [Parameter, EditorRequired] public Func<TItem, string?> ValueString { get; set; } = null!;
+
+    /// <summary>
+    /// No longer rendered. This carried the <em>field-level</em> tooltip onto every single
+    /// <c>&lt;option&gt;</c> as a <c>title</c>, which becomes that option's accessible description — so a
+    /// screen reader repeated the same field-wide help text after each of N options. It also
+    /// contradicted a deliberate decision one layer up: <c>FormLabel</c> excludes <c>tooltip-</c> from
+    /// <c>aria-describedby</c> on purpose, and this re-injected it N times through a different channel.
+    /// </summary>
+    /// <remarks>
+    /// Kept as an inert parameter rather than deleted so existing markup still compiles — this type is
+    /// public, and removing a <c>[Parameter]</c> would be a source-breaking change in what is otherwise
+    /// an all-patch release. Setting it now does nothing; the tooltip still reaches assistive
+    /// technology once, through the field's own <c>aria-describedby</c>.
+    /// </remarks>
+    [Parameter]
+    [Obsolete("No longer rendered: it put the field's tooltip on every <option>, so screen readers " +
+              "repeated it once per option. The tooltip already reaches AT via the field's " +
+              "aria-describedby. Remove this parameter; it has no effect.")]
+    public string? Tooltip { get; set; }
 
     /// <summary>
     /// <see cref="Options"/> materialized once per parameter cycle so the markup can index it in step

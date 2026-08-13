@@ -271,10 +271,12 @@ public class ControlSmokeTests : BunitContext
     [Fact]
     public void EditString_read_only_link_is_named_by_the_label_AND_its_own_text()
     {
-        // aria-labelledby="lbl-Name" alone OVERWRITES the link text, so every URL field announced as
-        // just its label ("Email") and never its destination -- two same-labeled links in a list were
-        // indistinguishable to a screen reader working through them. Referencing the element's own id
-        // is legal ARIA and concatenates the link text after the label.
+        // aria-labelledby="lbltext-Name" alone OVERWRITES the link text, so every URL field announced
+        // as just its label ("Email") and never its destination -- two same-labeled links in a list
+        // were indistinguishable to a screen reader working through them. Referencing the element's
+        // own id is legal ARIA and concatenates the link text after the label. The first token names
+        // the NAMING ANCHOR (lbltext-{id} -- the label text alone), not the <label> element itself
+        // (lbl-{id}, which also wraps the tooltip trigger and would otherwise fold its name in too).
         var model = new PersonModel { Name = "example.com" };
         Expression<Func<string>> field = () => model.Name;
         var cut = Render(WithForm(model, b =>
@@ -289,8 +291,8 @@ public class ControlSmokeTests : BunitContext
 
         var a = cut.Find("a.edit-string-link");
         Assert.Equal("Name", a.GetAttribute("id"));            // the self-reference has to resolve
-        Assert.Equal("lbl-Name Name", a.GetAttribute("aria-labelledby"));
-        Assert.Equal("lbl-Name", cut.Find("label").Id);        // ...and so does the label reference
+        Assert.Equal("lbltext-Name Name", a.GetAttribute("aria-labelledby"));
+        Assert.Equal("lbl-Name", cut.Find("label").Id);        // the <label> element itself is unchanged
     }
 
     [Theory]
@@ -669,9 +671,10 @@ public class ControlSmokeTests : BunitContext
     [Fact]
     public void ReadOnlyValue_keeps_aria_labelledby_when_the_label_is_hidden()
     {
-        // A hidden FormLabel still renders lbl-Name — visually hidden, but present — so the read-only
-        // value must keep referencing it. Suppressing the reference left the value with no accessible
-        // name at all.
+        // A hidden FormLabel still renders lbltext-Name (the naming anchor -- see FormLabel's remarks
+        // for why it, not the lbl-Name label element, is what a value's aria-labelledby should point
+        // at) -- visually hidden, but present -- so the read-only value must keep referencing it.
+        // Suppressing the reference left the value with no accessible name at all.
         var model = new PersonModel { Name = "Alice" };
         Expression<Func<string>> field = () => model.Name;
         var cut = Render(WithForm(model, b =>
@@ -685,7 +688,7 @@ public class ControlSmokeTests : BunitContext
         }));
 
         Assert.Equal("lbl-Name", cut.Find("label.edit-sr-only").Id);
-        Assert.Equal("lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
+        Assert.Equal("lbltext-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
     }
 
     [Fact]
@@ -702,7 +705,7 @@ public class ControlSmokeTests : BunitContext
             b.CloseComponent();
         }));
 
-        Assert.Equal("lbl-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
+        Assert.Equal("lbltext-Name", cut.Find(".edit-readonly-value").GetAttribute("aria-labelledby"));
     }
 
     [Fact]

@@ -41,4 +41,35 @@ public abstract class CheckedListControlBase<TItem> : EditControlListBase<TItem>
 
     /// <summary> <see cref="UseStyledCheckbox"/> resolved through the FormOptions/FormDefaults/static chain. </summary>
     protected bool EffectiveUseStyledCheckbox => EditControlInit.UseStyledCheckbox(UseStyledCheckbox, FormOptions, FormDefaults);
+
+    /// <summary>
+    /// LST-6: a default up-front instruction derived from the bound list's <c>[MinLength]</c>/
+    /// <c>[MaxLength]</c> — the same <see cref="AttributesHelper.GetMinAndMaxLengths"/>
+    /// <c>FieldValidationDisplay</c> already extracts for its post-validation message — rendered only
+    /// when the consumer supplies neither an explicit <see cref="EditControlParametersBase.Description"/>
+    /// parameter nor a model <c>[Description]</c> attribute of their own; either of those always wins
+    /// outright. Null when neither length attribute is present, so an otherwise-undescribed field
+    /// renders with no description exactly as before this existed.
+    /// </summary>
+    protected override string? EffectiveDescription
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(Description)) return Description;
+            var attributes = _attributes;
+            if (attributes is null) return null;
+
+            var attributeDescription = attributes.Description();
+            if (!string.IsNullOrEmpty(attributeDescription)) return attributeDescription;
+
+            var (min, max) = AttributesHelper.GetMinAndMaxLengths(attributes);
+            return (min, max) switch
+            {
+                (int mn, int mx) => $"Select between {mn} and {mx} options.",
+                (int mn, null) => $"Select at least {mn} option{(mn == 1 ? "" : "s")}.",
+                (null, int mx) => $"Select up to {mx} option{(mx == 1 ? "" : "s")}.",
+                _ => null
+            };
+        }
+    }
 }

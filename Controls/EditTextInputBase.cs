@@ -7,8 +7,9 @@ namespace Controls;
 /// and hoists the surface the two declared as byte-identical copies: the
 /// <see cref="Placeholder"/>/<see cref="EffectivePlaceholder"/> and
 /// <see cref="MaxLength"/>/<see cref="EffectiveMaxLength"/> pairs, the clear affordance
-/// (<see cref="AllowClear"/>, <see cref="IsClearable"/>, <see cref="Clear"/> and the
-/// <see cref="_editorRef"/> it refocuses), the character counter (<see cref="ShowCount"/>,
+/// (<see cref="AllowClear"/>, <see cref="IsClearable"/>, <see cref="Clear"/>, the
+/// <see cref="_editorRef"/> it refocuses, and its <see cref="ClearButtonLabel"/>/<see cref="EffectiveClearButtonLabel"/>
+/// accessible-name pair), the character counter (<see cref="ShowCount"/>,
 /// <see cref="CountText"/>), the pass-through <see cref="TryParseValueFromString"/>, the
 /// empty-string-is-default rule (<see cref="IsValueDefault"/>), and the shared
 /// <see cref="UpdateTrigger.Input"/> commit default.
@@ -60,6 +61,34 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
 
     /// <summary> Shows a clear button (via <see cref="EditInputShell"/>) while the editor's text is non-empty and the control is enabled. Clicking it empties the value (see <see cref="Clear"/>) and refocuses the editor.</summary>
     [Parameter] public bool AllowClear { get; set; }
+
+    /// <summary>
+    /// Overrides the clear button's accessible name (default: <c>"Clear {ResolvedLabel}"</c>, e.g.
+    /// "Clear Email") -- see <see cref="EffectiveClearButtonLabel"/>. A form with two
+    /// <see cref="AllowClear"/> fields otherwise renders two buttons both named "Clear", which a
+    /// screen-reader user browsing a button list can't tell apart (TXT-4). Same per-instance
+    /// localization convention as the toast containers' <c>CloseButtonLabel</c>.
+    /// </summary>
+    [Parameter] public string? ClearButtonLabel { get; set; }
+
+    /// <summary>
+    /// The field's resolved label text -- same precedence <see cref="FormLabel"/>'s own internal
+    /// resolution uses (the <see cref="IEditControl.Label"/> parameter, else <c>GetLabelText</c>'s
+    /// model-attribute chain, which always falls through to the auto-generated property name) --
+    /// computed independently here because <see cref="FormLabel"/> keeps its resolved label private.
+    /// Used to fold the field's identity into this control's generic icon-only button names so they
+    /// don't collide across fields (TXT-4): <see cref="EffectiveClearButtonLabel"/> here, plus
+    /// <see cref="EditString"/>'s own password-toggle and masked-value-toggle names.
+    /// </summary>
+    protected string ResolvedLabel => Label ?? _attributes.GetLabelText(_fieldIdentifier);
+
+    /// <summary>
+    /// The clear button's accessible name actually rendered: the <see cref="ClearButtonLabel"/>
+    /// parameter, else <c>"Clear {<see cref="ResolvedLabel"/>}"</c>. Passed to
+    /// <see cref="EditInputShell.ClearButtonLabel"/>, whose own generic "Clear" fallback only applies
+    /// when a host passes nothing at all.
+    /// </summary>
+    protected string EffectiveClearButtonLabel => ClearButtonLabel ?? $"Clear {ResolvedLabel}";
 
     /// <summary>
     /// Shows a character-count indicator (via <see cref="EditInputShell"/>): <c>"{length}"</c> alone,

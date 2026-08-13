@@ -439,8 +439,12 @@ public class DateRangePickerTests : BunitContext
         Assert.Equal("End date", cut.Find(".wss-picker-input-end").GetAttribute("aria-label"));
         Assert.Equal("Choose date range", cut.Find(".wss-picker-dropdown").GetAttribute("aria-label"));
         Assert.Equal("Quick ranges", cut.Find(".wss-picker-presets").GetAttribute("aria-label"));
-        Assert.Equal("Month", cut.FindAll(".wss-picker-month select")[0].GetAttribute("aria-label"));
-        Assert.Equal("Year", cut.FindAll(".wss-picker-month select")[1].GetAttribute("aria-label"));
+        // Each panel's selects are suffixed with that panel's own view label: both panels render an
+        // otherwise character-identical "Month"/"Year" pair, and the panels themselves carry no role
+        // or name, so four combo boxes shared two names between them. See A11yDateTests' DTE-11
+        // coverage for the full four-way distinctness check.
+        Assert.Equal("Month, January 2025", cut.FindAll(".wss-picker-month select")[0].GetAttribute("aria-label"));
+        Assert.Equal("Year, January 2025", cut.FindAll(".wss-picker-month select")[1].GetAttribute("aria-label"));
         // Endpoint days announce their selection state on the gridcell wrapper.
         Assert.Equal("true", CellOf(Day(cut, 0, 15)).GetAttribute("aria-selected"));
         Assert.Null(CellOf(Day(cut, 0, 16)).GetAttribute("aria-selected"));

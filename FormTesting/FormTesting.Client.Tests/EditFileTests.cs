@@ -582,7 +582,9 @@ public class EditFileTests : BunitContext
         }));
 
         var list = cut.Find(".edit-file-list--readonly");
-        Assert.Equal($"lbl-{list.GetAttribute("id")}", list.GetAttribute("aria-labelledby"));
+        // The naming anchor, not the lbl-{id} label element that also holds the tooltip trigger --
+        // see FormLabel's remarks.
+        Assert.Equal($"lbltext-{list.GetAttribute("id")}", list.GetAttribute("aria-labelledby"));
     }
 
     // ------------------------------------------------------------------------------------------

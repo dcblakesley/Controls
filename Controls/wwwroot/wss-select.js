@@ -53,6 +53,8 @@ export function placeDropdown(wrapper, dropdown, gap) {
 //  - Home/End (open only): navigate the list, not the caret. When closed the caret keeps them.
 //  - Escape: type="search" natively clears the text and fires an input event, which would
 //    re-open the dropdown the component just closed. The component owns the text lifecycle.
+//  - Space (select-only combobox): opens the popup when closed and selects the active option when
+//    open — both would otherwise also scroll the page.
 // Degrades gracefully: without JS everything still works, minus these polish behaviors.
 export function initInput(input, wrapper) {
     if (input && !input.__wssKeysWired) {
@@ -63,9 +65,10 @@ export function initInput(input, wrapper) {
                 e.preventDefault();
             } else if ((key === 'Home' || key === 'End') && input.getAttribute('aria-expanded') === 'true') {
                 e.preventDefault();
-            } else if (key === ' ' && input.readOnly) {
-                // Space opens a closed non-searchable select (readonly input) — without this the
-                // browser's default scrolls the page. A searchable input keeps Space for typing.
+            } else if (key === ' ' && isSelectOnly(input)) {
+                // Space carries a real action on a select-only combobox in BOTH states (open: select
+                // the active option; closed: open the popup — see Select.razor.cs's " " case), so the
+                // page-scroll default has to go in both. A searchable input keeps Space for typing.
                 e.preventDefault();
             }
         });
@@ -74,4 +77,15 @@ export function initInput(input, wrapper) {
     // Tabbing away used to leave the dropdown open with its invisible backdrop silently swallowing
     // the next click anywhere on the page (routes through the component's own close path).
     wireDismissOnFocusOut(wrapper, 'wss-select-backdrop');
+}
+
+// "This combobox takes no typed text" (ShowSearch=false). The `readonly` attribute is what enforces
+// that in the DOM, and `.readOnly` reads it directly — deliberately NOT the aria-readonly="false" the
+// input also carries, which exists to stop screen readers announcing "read only" about a widget whose
+// value the arrows/Enter/Space/type-ahead all change. The two are describing different things and
+// must not be conflated: one is "the text box rejects keystrokes", the other "the value is fixed".
+// The missing aria-autocomplete is the same signal from the ARIA side, kept as a fallback in case a
+// future variant drops the attribute.
+function isSelectOnly(input) {
+    return input.readOnly || !input.hasAttribute('aria-autocomplete');
 }

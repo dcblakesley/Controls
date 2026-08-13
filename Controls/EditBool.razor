@@ -50,6 +50,15 @@
     // <input> wrapped in a styled <span> below — whenever EffectiveUseStyledCheckbox flips.
     // Splatted first so every explicit attribute below wins; `class` travels CssClass and `style` the
     // wrapper, so AttributeSplat.Rest withholds both. A null splat emits no frames at all.
+    // aria-labelledby targets lbltext-{id} -- FormLabel's naming anchor (the span holding just the
+    // label text) -- rather than relying on the implicit name a native <input> gets from wrapping
+    // <label> text content. The checkbox sits INSIDE its own <label> (see FormLabel's NestedInput
+    // remarks), and that label also renders a LabelTooltip trigger button as a sibling of the label
+    // text; accessible-name computation for an implicitly-labelled control folds a descendant
+    // button's own name in, so without this every tooltipped checkbox announced as
+    // "Description More information about Description" instead of just "Description". Unconditional:
+    // FormLabel renders the anchor in all four of its branches (hidden label included), so the
+    // reference never dangles.
     RenderFragment CheckboxInput(string cssClass) => @<input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
                                                 type="checkbox"
                                                 value="@CurrentValue"
@@ -65,7 +74,8 @@
                                                 aria-required=@_isRequired
                                                 aria-invalid=@(IsInvalid ? "true" : null)
                                                 aria-describedby=@_describedBy
-                                                aria-errormessage=@(IsInvalid ? _errorMsgId : null) />;
+                                                aria-errormessage=@(IsInvalid ? _errorMsgId : null)
+                                                aria-labelledby=@($"lbltext-{_id}") />;
 
     RenderFragment CheckboxFragment => CheckboxInput($"edit-input {CssClass}");
 

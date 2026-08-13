@@ -19,13 +19,15 @@
                             AllowClear=@AllowClear
                             IsClearable=@IsClearable
                             OnClear=@Clear
+                            ClearButtonLabel=@EffectiveClearButtonLabel
                             CountText=@CountText
                             CountId=@CountId
                             CountAccessibleText=@CountAccessibleText
                             CountLimitStatus=@CountLimitStatus
                             ShowPasswordToggle=@EffectiveIsPassword
                             IsPasswordRevealed=@_passwordRevealed
-                            OnTogglePassword=@TogglePasswordVisibility>
+                            OnTogglePassword=@TogglePasswordVisibility
+                            ShowPasswordButtonLabel=@EffectiveShowPasswordButtonLabel>
                 @* One @attributes per element, so the consumer's unmatched attributes and this
                    control's own oninput handler are merged (the control's own win) -- and the splat is
                    FIRST, so every explicitly-written attribute below, including the ones @bind-value
@@ -43,6 +45,7 @@
                        placeholder=@EffectivePlaceholder
                        maxlength=@EffectiveMaxLength
                        type=@(EffectiveIsPassword ? (_passwordRevealed ? "text" : "password") : null)
+                       aria-labelledby="lbltext-@_id"
                        aria-invalid=@(IsInvalid ? "true" : null)
                        aria-required=@_isRequired
                        aria-describedby=@_describedBy
@@ -85,7 +88,9 @@
                    that reveals it, so `group` is both accurate and nameable, and it can carry the
                    field's aria-describedby the same way the link branch does.
 
-                   The toggle's aria-label is CONSTANT ("Show value") with aria-pressed carrying the
+                   The toggle's aria-label is CONSTANT (EffectiveShowValueButtonLabel, "Show {label}
+                   value" by default -- folding the field's label in so two masked fields on one form
+                   don't render two identically-named toggles, TXT-4) with aria-pressed carrying the
                    state. A toggle whose name AND pressed state both flip is ambiguous -- "Hide
                    value, pressed" reads as "hiding is already in effect" to some users and "press to
                    hide" to others. Name the action, let aria-pressed carry the state.
@@ -97,11 +102,11 @@
                      id=@_id
                      data-test-id=@_id
                      role="group"
-                     aria-labelledby="lbl-@_id"
+                     aria-labelledby="lbltext-@_id"
                      aria-describedby=@_describedBy>
                     <span class="edit-readonly-value">@(_showMaskedValue ? Value : GetMaskValue())</span>
                     <button type="button"
-                            aria-label="Show value"
+                            aria-label="@EffectiveShowValueButtonLabel"
                             aria-pressed=@(_showMaskedValue ? "true" : "false")
                             class=@(_showMaskedValue ? "edit-icon-eye" : "edit-icon-eye-invisible")
                             @onclick="ToggleMaskedValue">
@@ -122,7 +127,7 @@
                    id=@_id
                    data-test-id=@_id
                    aria-describedby=@_describedBy
-                   aria-labelledby="lbl-@_id @_id"
+                   aria-labelledby="lbltext-@_id @_id"
                    href=@SafeUrl
                    target=@UrlTarget
                    rel=@UrlRel>
@@ -139,7 +144,7 @@
             }
             else
             {
-                <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@Value />
+                <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@Value AriaDescribedBy=@_describedBy />
             }
         }
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
