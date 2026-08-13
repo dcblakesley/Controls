@@ -290,6 +290,12 @@ public partial class EditDateRange : IDisposable
     [Parameter] public string PeriodSelectLabel { get; set; } = "AM/PM";
     /// <inheritdoc cref="DateRangePicker.WeekLabel"/>
     [Parameter] public string WeekLabel { get; set; } = "Week";
+    /// <inheritdoc cref="DateRangePicker.FormatHintLabel"/>
+    [Parameter] public string FormatHintLabel { get; set; } = "Format:";
+    /// <inheritdoc cref="DateRangePicker.RangeHintMinLabel"/>
+    [Parameter] public string RangeHintMinLabel { get; set; } = "Earliest date:";
+    /// <inheritdoc cref="DateRangePicker.RangeHintMaxLabel"/>
+    [Parameter] public string RangeHintMaxLabel { get; set; } = "Latest date:";
 
     // Standard derived state — mirrors EditControlListBase's fields, duplicated per bound field. (The
     // validation-state subscription and the field-registration sequence that used to sit alongside

@@ -378,6 +378,24 @@ public partial class DateRangePicker : PickerBase
     /// from <see cref="StartPlaceholder"/>/<see cref="EndPlaceholder"/>.</summary>
     [Parameter] public string FormatHintLabel { get; set; } = "Format:";
 
+    /// <summary>Leading text of the visually-hidden <see cref="Min"/> clause of the range hint BOTH
+    /// inputs' <c>aria-describedby</c> points at — rendered as "<c>{RangeHintMinLabel} {Min}</c>",
+    /// beside <see cref="FormatHintLabel"/>'s format clause in the same shared element (one calendar,
+    /// one pair of bounds, so one hint serves both endpoints). Only rendered when <see cref="Min"/> is
+    /// set (and never in <see cref="DatePickerMode.Time"/>, which ignores <see cref="Min"/>/
+    /// <see cref="Max"/> entirely — see <see cref="IsCommitDisabled"/>'s Time arm). Defaults to
+    /// "Earliest date:"; override to localize, or set to an empty string to drop this clause. The
+    /// bound is formatted with the same <see cref="Format"/> the fields themselves display and parse,
+    /// so the hint reads in the shape the user is expected to type. Exists because
+    /// <see cref="Min"/>/<see cref="Max"/> otherwise reach the user only as per-cell
+    /// <c>aria-disabled</c> in the calendars — invisible to someone typing, which is the faster path,
+    /// and a range has TWO endpoints to get wrong. Mirrors <see cref="DatePicker.RangeHintMinLabel"/>.</summary>
+    [Parameter] public string RangeHintMinLabel { get; set; } = "Earliest date:";
+    /// <summary>The <see cref="Max"/> clause of the same hint (see <see cref="RangeHintMinLabel"/>).
+    /// Defaults to "Latest date:". With both bounds set the two clauses render together, period-
+    /// separated, in <see cref="Min"/>-then-<see cref="Max"/> order.</summary>
+    [Parameter] public string RangeHintMaxLabel { get; set; } = "Latest date:";
+
     // Validation-state ARIA passthrough onto the actual inputs, for form wrappers (EditDateRange).
     // Same shape as Select's AriaRequired/AriaInvalid/AriaDescribedBy trio, doubled because the two
     // bound fields validate independently — AdditionalAttributes can't do this job because it lands
@@ -550,21 +568,58 @@ public partial class DateRangePicker : PickerBase
     // The dropdown panel's own id -- what BOTH inputs' aria-controls point at while open.
     string PanelId => $"{BaseId}-panel";
 
-    // The single visually-hidden format hint's id, appended to BOTH inputs' aria-describedby.
+    // The single visually-hidden typing hint's id, appended to BOTH inputs' aria-describedby. Still
+    // named "-format" (a published, test-anchored id) even though the element now also carries the
+    // Min/Max clauses -- it is one hint about what may be typed, not two.
     string FormatHintId => $"{BaseId}-format";
 
-    // "Format: MM/dd/yyyy" (or blank, which suppresses both the span and its describedby tokens).
+    // "Format: MM/dd/yyyy" (or blank, which suppresses that clause).
     string FormatHintText =>
         string.IsNullOrEmpty(FormatHintLabel) ? string.Empty : $"{FormatHintLabel} {DescribedFormat}";
 
+    // "Earliest date: 01/01/2026" / "Latest date: 12/31/2026" / both, period-separated -- the Min/Max
+    // bounds as TEXT, which is the only channel someone typing (rather than clicking a cell) has for
+    // them. ONE pair of clauses for both inputs, like the format clause above: Min/Max bound the
+    // single shared calendar, not one endpoint each. Formatted with FormatDate, so the hint reads in
+    // exactly the shape the fields parse. Keys off the RAW Mode, not EffectiveMode's Date fold:
+    // Mode.Time ignores Min/Max outright (see IsCommitDisabled's Time arm), so naming them there would
+    // describe a constraint that isn't enforced. Mirrors DatePicker.RangeHintText.
+    string RangeHintText
+    {
+        get
+        {
+            if (Mode == DatePickerMode.Time) return string.Empty;
+            var min = Min is { } lo && !string.IsNullOrEmpty(RangeHintMinLabel)
+                ? $"{RangeHintMinLabel} {FormatDate(lo)}" : string.Empty;
+            var max = Max is { } hi && !string.IsNullOrEmpty(RangeHintMaxLabel)
+                ? $"{RangeHintMaxLabel} {FormatDate(hi)}" : string.Empty;
+            if (min.Length == 0) return max;
+            return max.Length == 0 ? min : $"{min}. {max}";
+        }
+    }
+
+    // The whole visually-hidden typing hint: the format clause, then the range clauses. Blank (every
+    // clause suppressed, or nothing to say) drops the element AND both describedby tokens, exactly as
+    // blanking FormatHintLabel alone always did.
+    string HintText
+    {
+        get
+        {
+            var format = FormatHintText;
+            var range = RangeHintText;
+            if (format.Length == 0) return range;
+            return range.Length == 0 ? format : $"{format}. {range}";
+        }
+    }
+
     // Each endpoint's own consumer-supplied aria-describedby (a form wrapper's error/description ids
-    // -- see EditDateRange) with the shared format hint's id APPENDED, so the wrapper's chain keeps
+    // -- see EditDateRange) with the shared hint's id APPENDED, so the wrapper's chain keeps
     // its order and the hint reads last. Null (no hint, no consumer value) omits the attribute exactly
     // as before this existed.
     string? EffectiveStartAriaDescribedBy => WithFormatHint(StartAriaDescribedBy);
     string? EffectiveEndAriaDescribedBy => WithFormatHint(EndAriaDescribedBy);
 
-    string? WithFormatHint(string? describedBy) => FormatHintText.Length == 0
+    string? WithFormatHint(string? describedBy) => HintText.Length == 0
         ? describedBy
         : string.IsNullOrEmpty(describedBy) ? FormatHintId : $"{describedBy} {FormatHintId}";
 

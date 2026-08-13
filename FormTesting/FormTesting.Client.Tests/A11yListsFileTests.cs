@@ -501,6 +501,76 @@ public class A11yListsFileTests : BunitContext
         Assert.DoesNotContain("up to", hint);
     }
 
+    [Fact]
+    public void Button_variant_also_renders_the_resolved_caps_hint()
+    {
+        // The compact Button variant has no "Supported formats" instructional block the way the
+        // dropzone does, so it used to surface nothing at all up front -- WCAG 3.3.2 is identical
+        // regardless of Variant, which is a purely visual choice. The hint renders as plain visible
+        // content right below the button (not folded into aria-describedby only), matching how the
+        // dropzone's own equivalent text isn't wired into aria-describedby either.
+        var model = new FileModel();
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Variant", EditFileVariant.Button);
+            b.AddAttribute(4, "MaxFileSizeBytes", 5L * 1024 * 1024);
+            b.AddAttribute(5, "MaxTotalBytes", 20L * 1024 * 1024);
+            b.AddAttribute(6, "MaxFiles", 3);
+            b.CloseComponent();
+        }));
+
+        Assert.NotNull(cut.Find(".edit-file-select-btn"));
+        var hint = cut.Find(".edit-file-limits").TextContent;
+        Assert.Contains("5 MB", hint);
+        Assert.Contains("20 MB", hint);
+        Assert.Contains("3", hint);
+    }
+
+    [Fact]
+    public void Button_variant_caps_hint_omits_the_file_count_clause_when_unlimited()
+    {
+        var model = new FileModel();
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Variant", EditFileVariant.Button);
+            b.CloseComponent();
+        }));
+
+        var hint = cut.Find(".edit-file-limits").TextContent;
+        Assert.Contains("10 MB", hint);
+        Assert.Contains("100 MB", hint);
+        Assert.DoesNotContain("up to", hint);
+    }
+
+    [Fact]
+    public void Button_variant_caps_hint_disappears_once_MaxFiles_is_reached()
+    {
+        // Matches the dropzone: the whole picker (button + hint) unmounts at the cap, since there is
+        // nothing left to pick and no InputFile for a label/hint to describe.
+        var model = new FileModel { Files = [new FakeBrowserFile("a.txt")] };
+        Expression<Func<List<IBrowserFile>>> field = () => model.Files;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditFile>(0);
+            b.AddAttribute(1, "Value", model.Files);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Variant", EditFileVariant.Button);
+            b.AddAttribute(4, "MaxFiles", 1);
+            b.CloseComponent();
+        }));
+
+        Assert.Empty(cut.FindAll(".edit-file-select-btn"));
+        Assert.Empty(cut.FindAll(".edit-file-limits"));
+    }
+
     // ----- CSS-10: the plain file-name span keeps the full name recoverable via title ---------------
 
     [Fact]

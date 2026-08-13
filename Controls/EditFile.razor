@@ -69,6 +69,16 @@
                         <span>@ButtonText</span>
                         @inputFile
                     </span>
+                    @* LST-5 (Button variant): the compact button has no instructional-text block the
+                       way the dropzone does, so the caps hint gets its own line right below it instead
+                       -- same text, same edit-file-limits class (the button is inline-flex, so this
+                       block-level div wraps onto its own line without disturbing the button's own
+                       compact box). Rendered as plain visible content, not folded into aria-describedby
+                       only, for parity with the dropzone's own equivalent text, which isn't wired into
+                       aria-describedby either -- both just rely on a screen reader's browse-mode cursor
+                       reaching them as ordinary page content. WCAG 3.3.2's up-front-caps requirement is
+                       the same regardless of Variant, which is a purely visual choice. *@
+                    <div class="edit-file-limits">@CapsHintText</div>
                 }
                 else
                 {

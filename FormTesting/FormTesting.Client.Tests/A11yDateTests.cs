@@ -449,6 +449,93 @@ public class A11yDateTests : BunitContext
         Assert.Contains("Latest date: 02/28/2026", cut.Find($"#{hintId}").TextContent);
     }
 
+    [Fact]
+    public void The_range_pickers_bounds_are_described_as_text_in_the_one_shared_hint()
+    {
+        // Min/Max bound the single calendar BOTH endpoints pick from, so there is one pair of clauses
+        // in one element, referenced from both inputs -- exactly like the format clause they join.
+        var cut = Render<DateRangePicker>(p => p
+            .Add(c => c.Id, "stay")
+            .Add(c => c.Format, "MM/dd/yyyy")
+            .Add(c => c.Min, new DateTime(2026, 2, 1))
+            .Add(c => c.Max, new DateTime(2026, 2, 28)));
+
+        Assert.Single(cut.FindAll("#stay-format"));
+        Assert.Equal("Format: MM/dd/yyyy. Earliest date: 02/01/2026. Latest date: 02/28/2026",
+            cut.Find("#stay-format").TextContent);
+        Assert.Equal("stay-format", cut.Find(StartInput).GetAttribute("aria-describedby"));
+        Assert.Equal("stay-format", cut.Find(EndInput).GetAttribute("aria-describedby"));
+    }
+
+    [Fact]
+    public void The_range_pickers_one_sided_bounds_describe_only_the_side_that_exists()
+    {
+        var minOnly = Render<DateRangePicker>(p => p
+            .Add(c => c.Id, "ra").Add(c => c.Format, "MM/dd/yyyy").Add(c => c.Min, new DateTime(2026, 2, 1)));
+        Assert.Equal("Format: MM/dd/yyyy. Earliest date: 02/01/2026", minOnly.Find("#ra-format").TextContent);
+
+        var maxOnly = Render<DateRangePicker>(p => p
+            .Add(c => c.Id, "rb").Add(c => c.Format, "MM/dd/yyyy").Add(c => c.Max, new DateTime(2026, 2, 28)));
+        Assert.Equal("Format: MM/dd/yyyy. Latest date: 02/28/2026", maxOnly.Find("#rb-format").TextContent);
+    }
+
+    [Fact]
+    public void The_range_pickers_bounds_hint_is_absent_where_unenforced_or_blanked()
+    {
+        // Time mode ignores Min/Max outright (IsCommitDisabled's Time arm guards only the per-endpoint
+        // time-of-day), so naming them would describe a constraint that isn't applied.
+        var time = Render<DateRangePicker>(p => p
+            .Add(c => c.Id, "rt").Add(c => c.Mode, DatePickerMode.Time).Add(c => c.Min, new DateTime(2026, 2, 1)));
+        Assert.DoesNotContain("Earliest", time.Find("#rt-format").TextContent, StringComparison.Ordinal);
+
+        // Blanking every clause drops the element AND both inputs' describedby tokens, exactly as
+        // blanking FormatHintLabel alone always did.
+        var blanked = Render<DateRangePicker>(p => p
+            .Add(c => c.Id, "rc")
+            .Add(c => c.Format, "MM/dd/yyyy")
+            .Add(c => c.FormatHintLabel, string.Empty)
+            .Add(c => c.RangeHintMinLabel, string.Empty)
+            .Add(c => c.RangeHintMaxLabel, string.Empty)
+            .Add(c => c.Min, new DateTime(2026, 2, 1))
+            .Add(c => c.Max, new DateTime(2026, 2, 28)));
+        Assert.Empty(blanked.FindAll("#rc-format"));
+        Assert.Null(blanked.Find(StartInput).GetAttribute("aria-describedby"));
+        Assert.Null(blanked.Find(EndInput).GetAttribute("aria-describedby"));
+
+        // ...and one blanked clause drops only that clause.
+        var maxBlanked = Render<DateRangePicker>(p => p
+            .Add(c => c.Id, "rd")
+            .Add(c => c.Format, "MM/dd/yyyy")
+            .Add(c => c.RangeHintMaxLabel, string.Empty)
+            .Add(c => c.Min, new DateTime(2026, 2, 1))
+            .Add(c => c.Max, new DateTime(2026, 2, 28)));
+        Assert.Equal("Format: MM/dd/yyyy. Earliest date: 02/01/2026", maxBlanked.Find("#rd-format").TextContent);
+    }
+
+    [Fact]
+    public void EditDateRange_forwards_the_resolved_bounds_into_the_shared_hint()
+    {
+        // Composes with DTE-5: End's chain is its OWN error message, then the shared description, then
+        // the shared hint -- so the bounds reach the endpoint that has no label association of its own.
+        var model = new StayModel();
+        var cut = Render(RenderRange(model, (b, i) =>
+        {
+            b.AddAttribute(i, "Min", new DateTime(2026, 2, 1));
+            b.AddAttribute(i + 1, "Max", new DateTime(2026, 2, 28));
+            b.AddAttribute(i + 2, "Description", "Both dates are inclusive.");
+        }));
+
+        var startChain = cut.Find(StartInput).GetAttribute("aria-describedby")!.Split(' ');
+        var endChain = cut.Find(EndInput).GetAttribute("aria-describedby")!.Split(' ');
+        Assert.Equal("Start-format", startChain.Last());
+        Assert.Equal("Start-format", endChain.Last()); // the hint reads last on BOTH endpoints
+        Assert.Contains("desc-Start", endChain);
+
+        var hint = cut.Find("#Start-format").TextContent;
+        Assert.Contains("Earliest date: 02/01/2026", hint);
+        Assert.Contains("Latest date: 02/28/2026", hint);
+    }
+
     // ----- DTE-9: the native month input's fallback needs a format hint --------------------------
 
     [Fact]

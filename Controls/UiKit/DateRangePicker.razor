@@ -91,14 +91,18 @@
         }
     </div>
 
-    @* One visually-hidden format hint for BOTH inputs (they share a single Format), referenced from
-       each one's aria-describedby -- see EffectiveStartAriaDescribedBy. Deliberately not folded into
-       the placeholders, which stay the uppercased-format strings this control already documents.
-       Outside the `@if (_open)` block: aria-describedby has to resolve whether the panel is open or
-       not. *@
-    @if (FormatHintText is { Length: > 0 } formatHint)
+    @* One visually-hidden hint for BOTH inputs -- what may be typed into either: the format (they
+       share a single Format) plus the Min/Max bounds when set (they share a single calendar, so one
+       pair of bounds). Referenced from each input's aria-describedby -- see
+       EffectiveStartAriaDescribedBy/HintText. The bounds otherwise reach the user ONLY as per-cell
+       aria-disabled in the two calendars, which someone typing -- the faster path, and the one with
+       two endpoints to get wrong -- never sees; being refused in silence afterwards is not a
+       substitute. Deliberately not folded into the placeholders, which stay the uppercased-format
+       strings this control already documents. Outside the `@if (_open)` block: aria-describedby has
+       to resolve whether the panel is open or not. *@
+    @if (HintText is { Length: > 0 } hint)
     {
-        <span class="wss-sr-only" id="@FormatHintId">@formatHint</span>
+        <span class="wss-sr-only" id="@FormatHintId">@hint</span>
     }
 
     @if (_open)
