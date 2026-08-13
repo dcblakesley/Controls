@@ -427,9 +427,13 @@ public class FieldRegistrationTests : BunitContext
 
         var fieldset = cut.Find("fieldset.edit-radio-fieldset");
         Assert.Equal("b-Priority", fieldset.Id);
-        Assert.Equal("lbl-b-Priority", fieldset.GetAttribute("aria-labelledby"));
+        // aria-labelledby names the group from FormLabel's lbltext- naming anchor (the label text
+        // alone), not the lbl- legend that also contains the tooltip trigger -- see FormLabel's
+        // remarks. Both ids must still track the re-resolved IdPrefix.
+        Assert.Equal("lbltext-b-Priority", fieldset.GetAttribute("aria-labelledby"));
         Assert.Equal("error-msg-b-Priority", fieldset.GetAttribute("aria-describedby"));
         Assert.NotNull(cut.Find("#lbl-b-Priority"));
+        Assert.NotNull(cut.Find("#lbltext-b-Priority"));
         var entry = Assert.Single(formOptions.FieldIds, kv => kv.Key.FieldName == "Priority");
         Assert.Equal("b-Priority", entry.Value);
         Assert.Single(formOptions.FieldIdentifiers, fi => fi.FieldName == "Priority");

@@ -448,7 +448,11 @@ public class ControlSmokeTests : BunitContext
         Assert.Empty(cut.FindAll("a"));
         var readOnly = cut.Find("div.edit-readonly-value");
         Assert.Equal("Name", readOnly.GetAttribute("id"));
-        Assert.Equal("No Value", readOnly.QuerySelector("span[aria-hidden=\"true\"]")!.TextContent);
+        // ReadOnlyValue's own empty-value fallback (LST-2): real, visible text -- not aria-hidden --
+        // so a screen-reader user hears something instead of just the label followed by silence.
+        var placeholder = readOnly.QuerySelector("span");
+        Assert.False(placeholder!.HasAttribute("aria-hidden"));
+        Assert.Equal("Not Set", placeholder.TextContent);
     }
 
     [Fact]

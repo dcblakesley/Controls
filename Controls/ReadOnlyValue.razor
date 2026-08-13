@@ -6,7 +6,8 @@
 <div class="edit-readonly-value @CssClass"
      id=@Id
      data-test-id=@Id
-     aria-labelledby=@(HasLabelElement ? $"lbl-{Id}" : null)>
+     aria-labelledby=@(HasLabelElement ? $"lbl-{Id}" : null)
+     aria-describedby=@AriaDescribedBy>
 
     @if (!string.IsNullOrEmpty(Text))
     {
@@ -14,7 +15,16 @@
     }
     else
     {
-        <span aria-hidden="true" style="visibility: hidden">No Value</span>
+        @* LST-2: this placeholder used to be BOTH aria-hidden AND visibility:hidden -- reaching
+           neither sighted users (invisible) nor assistive technology (hidden), so a screen-reader user
+           heard the label and then silence. EmptyText is real, visible (if de-emphasized) text
+           instead: it reaches everyone, and being a real text node it reserves the row's line-height on
+           its own -- the old visibility:hidden hack existed only to fake that height for invisible
+           text, and a genuine text node needs no such trick. De-emphasized via --edit-color-placeholder
+           (the same token the editors' own placeholder text already uses, with its WCAG-legible value
+           repeated here as the var() fallback) rather than a new CSS class, since this component can't
+           add one to edit-controls.css. *@
+        <span style="color: var(--edit-color-placeholder, rgba(0, 0, 0, 0.55))">@EmptyText</span>
     }
 
 </div>

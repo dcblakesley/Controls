@@ -72,13 +72,17 @@ public class FormA11yTests : BunitContext
         // under a column header, say), not a decision to drop its instructions.
         var description = cut.Find("#desc-Name");
         Assert.Contains("edit-sr-only", description.ClassList);
-        Assert.Equal("Format: first last", description.TextContent.Trim());
+        Assert.Contains("Format: first last", description.TextContent);
+        // ...and the tooltip text rides along in the same element. The trigger BUTTON still doesn't
+        // render here, but dropping its text too made a tooltip the one piece of help that reached
+        // nobody in this mode -- not merely visually hidden like the label and the description.
+        Assert.Contains("Some hint", description.TextContent);
 
         var describedBy = (cut.Find("input.edit-string-input").GetAttribute("aria-describedby") ?? "")
             .Split(' ', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("desc-Name", describedBy);
-        // The tooltip is the deliberate exception: it is an interactive hover/focus widget and the
-        // hidden-label branch renders no trigger for it, so the reference would dangle.
+        // The tooltip's own reference is the deliberate exception: it is an interactive hover/focus
+        // widget and the hidden-label branch renders no trigger for it, so tooltip-Name would dangle.
         Assert.DoesNotContain("tooltip-Name", describedBy);
         Assert.Empty(cut.FindAll("#tooltip-Name"));
         // Nothing in the token list may point at a missing element, in either state.

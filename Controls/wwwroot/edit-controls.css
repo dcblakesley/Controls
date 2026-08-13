@@ -2,18 +2,35 @@
     /* Centralized fallbacks so the danger + focus colors aren't repeated as literals throughout this
        file. Bridges to the consumer's --color-* vars where present (mirroring wss-controls.css). */
     /* Fallback darkened from the AntDesign #ff4d4f (3.27:1 on white — fails WCAG 1.4.3 for the
-       validation message / summary text) to #cf1322 (~5.9:1). Consumers' --color-danger still wins. */
+       validation message / summary text) to #cf1322 (5.57:1 — the comment here previously claimed
+       ~5.9:1, which overstates it). Consumers' --color-danger still wins. */
     --edit-color-danger: var(--color-danger, #cf1322);
     /* Single source of truth for the primary/interactive fallback -- every var(--color-primary, ...)
        in this file must reuse this token so an unset --color-primary renders one consistent color
        instead of each usage picking its own literal fallback. */
     --edit-color-primary: var(--color-primary, #0066cc);
-    /* Border bridge, same fallback AntD uses (#d9d9d9) -- mirrors wss-controls.css's
-       --wss-color-border (:root there). Not a derived state (hover/shadow/focus): a static bridge
-       constant is fine at :root per the theming contract. NOTE: .edit-theme (below) re-declares this
-       same property name with the same fallback -- that scoped declaration wins for any descendant
-       of .edit-theme, so this :root definition only supplies the unthemed default. */
-    --edit-color-border: var(--border-color, #d9d9d9);
+    /* TEXT-grade primary (WCAG 1.4.3), mirroring --wss-color-primary-strong in wss-controls.css:
+       --edit-color-primary backs chrome (borders, focus rings, fills), which only needs 1.4.11's
+       3:1; sites where the primary IS text (the AllowDownload file-name link, the button-mode
+       radio's hover/checked label, EditFile's hovered select button) or is a FILL under white text
+       (ButtonStyle="Solid"'s checked segment) need 4.5:1 in one or both directions.
+       The unthemed fallback stays #0066cc -- identical to --edit-color-primary above, because that
+       value is already 5.57:1 on white and 5.57:1 under white text, so nothing outside .edit-theme
+       changes color. The .edit-theme block re-declares this token with a darker fallback, since ITS
+       primary (#1890ff) is only 3.24:1 -- same split, same reason, as --edit-color-primary's own
+       two declarations. A consumer's --color-primary-strong wins at either scope. */
+    --edit-color-primary-strong: var(--color-primary-strong, #0066cc);
+    /* Border bridge -- mirrors wss-controls.css's --wss-color-border (:root there). Not a derived
+       state (hover/shadow/focus): a static bridge constant is fine at :root per the theming
+       contract. NOTE: .edit-theme (below) re-declares this same property name with the same
+       fallback -- that scoped declaration wins for any descendant of .edit-theme, so this :root
+       definition only supplies the unthemed default.
+       Fallback darkened from AntD's #d9d9d9 to #8c8c8c: for the controls whose whole visual
+       boundary IS this border (an unchecked .edit-checkbox-box, a .edit-theme text input), #d9d9d9
+       is 1.41:1 on white -- far under WCAG 1.4.11's 3:1 for the boundary of a UI component, i.e.
+       nothing reliably tells a low-vision user a control is there at all. #8c8c8c is 3.36:1.
+       A consumer's own --border-color still wins, so only the undefaulted case moves. */
+    --edit-color-border: var(--border-color, #8c8c8c);
     /* --edit-focus-ring is deliberately NOT declared here: a var() inside a custom property is
        substituted once, where the property is declared, so defining it at :root as
        var(--edit-color-primary) would freeze that lookup at :root and ignore a consumer's scoped
@@ -93,7 +110,10 @@
 .bound-value {
     /* Shown only when FormOptions.ShowBoundValues is true — a debug echo of the raw bound value. */
     font-size: 0.85em;
-    color: var(--color-text-secondary, #8c8c8c);
+    /* Real TEXT at 0.85em, so WCAG 1.4.3's 4.5:1 applies: the plain --color-text-secondary fallback
+       (#8c8c8c) is 3.36:1 on white and fails. Takes the -strong split .edit-input-count already uses
+       (#595959, 7.0:1) -- see that rule for why the two secondaries are separate tokens. */
+    color: var(--color-text-secondary-strong, #595959);
 }
 
 /************************************************ FormLabel **********************************************/
@@ -229,6 +249,12 @@
 .edit-checkbox-input-styled {
     position: absolute;
     inset: 0;
+    /* Explicit, not just inset -- same host-reset defense .edit-file-drop-zone input[type=file]
+       documents further down: a consumer's global `input { width/height: ... }` reset over-constrains
+       the box and wins over `inset`, shrinking (or inflating) the invisible click-catcher that IS
+       this checkbox's only pointer target. */
+    width: 100%;
+    height: 100%;
     margin: 0;
     opacity: 0;
     cursor: pointer;
@@ -238,8 +264,9 @@
 .edit-checkbox-box {
     position: absolute;
     inset: 0;
-    /* #d9d9d9 (not the library-wide #ccc fallback) — the styled checkbox is pixel-matched to the
-       antd checkbox spec, whose default colorBorder is #d9d9d9. */
+    /* The dedicated border token -- its fallback was AntD's #d9d9d9, which this box (whose border is
+       the ONLY thing that says an unchecked checkbox exists) rendered at 1.41:1 on white; see the
+       token's own note at :root for the WCAG 1.4.11 darkening to #8c8c8c. */
     border: 1px solid var(--edit-color-border);
     border-radius: 4px;
     /* Bridged to the consumer theme like every other color in this block — a hardcoded #fff would
@@ -428,6 +455,13 @@
 .edit-radio-button-input {
     position: absolute;
     inset: 0;
+    /* Explicit, not just inset -- same host-reset defense as .edit-checkbox-input-styled above (and
+       .edit-file-drop-zone input[type=file] further down). It matters most here: this overlay is the
+       segment's ONLY click target (z-index: 1 over the label chrome), so a consumer's global
+       `input { height: ... }` reset inflating it past the wrap makes it cover the NEXT segment --
+       clicking option 2 selects option 1. */
+    width: 100%;
+    height: 100%;
     margin: 0;
     opacity: 0;
     cursor: pointer;
@@ -445,10 +479,18 @@
     position: relative;
     display: inline-flex;
     align-items: center;
-    height: 32px;
+    /* min-height + no fixed line-height (was height: 32px; line-height: 30px): a hard height clips
+       the label the moment the text grows -- a user stylesheet raising line-height/letter-spacing
+       (WCAG 1.4.12), a browser zoom that reflows a two-word option onto two lines, or simply a
+       longer translation. The `align-items: center` above already centers the label in the taller
+       box, so the fixed line-height was only ever doing the same job less safely.
+       The height literal is kept as the var() fallback on purpose: this button mode is NOT gated
+       behind .edit-theme (see the section comment above), and --edit-control-height is declared only
+       on that class -- so unthemed the box stays exactly 32px, and inside a themed scope it now
+       tracks the consumer's own control-height token. */
+    min-height: var(--edit-control-height, 32px);
     padding: 0 15px;
     font-size: 14px;
-    line-height: 30px;
     /* Unified fallback -- see this file's --color-text single-fallback policy note near
        .edit-file-drop-text further down. */
     color: var(--color-text, #262626);
@@ -477,21 +519,30 @@
     border-end-end-radius: 6px;
 }
 
+/* The primary as LABEL TEXT takes the text-grade --edit-color-primary-strong (4.5:1, WCAG 1.4.3);
+   the border below stays on plain --edit-color-primary, which is chrome (1.4.11's 3:1). Inside
+   .edit-theme the two differ (#0958d9 vs #1890ff, 6.16:1 vs 3.24:1); unthemed both resolve to
+   #0066cc, so nothing moves there. See --edit-color-primary-strong's note at :root. */
 .edit-radio-button:hover {
     z-index: 2;
-    color: var(--edit-color-primary);
+    color: var(--edit-color-primary-strong);
 }
 
 .edit-radio-button-input:checked + .edit-radio-button {
     z-index: 2;
-    color: var(--edit-color-primary);
+    color: var(--edit-color-primary-strong);
     border-color: var(--edit-color-primary);
 }
 
 /* ButtonStyle="Solid" -- the checked button fills with the primary color instead of just tinting
-   its border/text (ButtonStyle="Outline", the default, needs no extra rule beyond the one above). */
+   its border/text (ButtonStyle="Outline", the default, needs no extra rule beyond the one above).
+   The fill takes the -strong token too: here the primary is the BACKGROUND under white label text,
+   the other direction of the same 4.5:1 requirement (#1890ff would leave that label at 3.24:1). */
 .edit-radio-button-group-solid .edit-radio-button-input:checked + .edit-radio-button {
-    background: var(--edit-color-primary);
+    background: var(--edit-color-primary-strong);
+    /* Border matches the fill so the segment stays one solid block -- without this it would keep the
+       outline rule's lighter --edit-color-primary edge, reading as a stray 1px ring. */
+    border-color: var(--edit-color-primary-strong);
     color: var(--color-on-primary, #fff);
 }
 
@@ -520,19 +571,23 @@
 }
 
 /* Size="Small"/"Large" -- button-group-specific dimensions matching antd's Radio.Group size
-   recipe (EditInputShell's edit-input-sm/-lg tokens are for the text-input family, not this). */
+   recipe (EditInputShell's edit-input-sm/-lg tokens are for the text-input family, not this).
+   min-height + token-with-literal-fallback, and no fixed line-height, for the same reasons the base
+   rule above documents. min-width on the small size: at 24px tall with 7px side padding a 1-2 char
+   label ("S", "M") renders a ~22px-wide target, and WCAG 2.5.8's spacing exception can't rescue it
+   because the segments are deliberately joined (margin-inline-start: -1px) -- there is no undisturbed
+   24px circle around one. 24px min-width lifts the smallest segment onto the floor. */
 .edit-radio-button-group-sm .edit-radio-button {
-    height: 24px;
+    min-height: var(--edit-control-height-sm, 24px);
+    min-width: 24px;
     padding: 0 7px;
     font-size: 14px;
-    line-height: 22px;
 }
 
 .edit-radio-button-group-lg .edit-radio-button {
-    height: 40px;
+    min-height: var(--edit-control-height-lg, 40px);
     padding: 0 15px;
     font-size: 16px;
-    line-height: 38px;
 }
 
 /************************************************ EditSelect(String and Enum) *********************************************/
@@ -597,6 +652,19 @@
     align-items: center;
     gap: 4px;
 }
+/* Suffix only (the prefix never holds two of these buttons). Each icon button below extends its
+   pointer target with an invisible inset: -5px ::before, so two adjacent 14px buttons -- clear +
+   password toggle, EditString's one pairing -- overlap by (5 + 5 - gap) px. At the shared 4px gap
+   that was 6px of overlap, and the later-in-DOM toggle wins hit-testing there, cutting the clear
+   button's uncontested target to ~18x24 despite its own extension being correct (WCAG 2.5.8).
+   10px is the value that actually closes it, so that is what this uses: two full 24x24 targets need
+   24px between centers, and 14 + 10 + 14 + the two outer 5px extensions = 48 = 2 x 24. Anything
+   smaller only shrinks the overlap rather than removing it, leaving the clear button hit-tested out
+   of part of its own target -- and 2.5.8's spacing exception can't rescue that either, since it
+   likewise requires 24px between centers. The 2px of extra suffix spacing vs. AntD is the cost. */
+.edit-input-suffix {
+    gap: 10px;
+}
 
 .edit-icon-invalid {
     /* The x-circle that shows up when a textbox has validation errors. The SVG uses
@@ -635,7 +703,7 @@
    .edit-textarea-count further down, which reuses this same bridge) is real TEXT, not an icon, so it
    needs the 4.5:1 floor the icon color above fails. Dedicated bridge token (not a reuse of
    --color-text-secondary) so a consumer can tune count-text contrast independently of icon color;
-   #595959 is ~7.4:1 on white. */
+   #595959 is 7.0:1 on white (an earlier comment here said ~7.4:1 -- recomputed). */
 .edit-input-count {
     color: var(--color-text-secondary-strong, #595959);
 }
@@ -929,12 +997,15 @@
     opacity: 0;
 }
 
-/* WCAG 2.5.8: the visible icon is 12px — extend the pointer target to ~24px without moving
-   layout (an invisible hit area, not padding, so visual baselines are untouched). */
+/* WCAG 2.5.8: the visible icon is 12px — extend the pointer target to 24px without moving
+   layout (an invisible hit area, not padding, so visual baselines are untouched). Symmetric -6px:
+   the previous `inset: -1px -6px` only did the horizontal axis, leaving a 24 x 14px target that
+   still failed the 24px floor vertically (and the spacing exception can't rescue it -- the label
+   sits 4px away and is itself a target). 12 + 6 + 6 = 24 on both axes. */
 .edit-tooltip-container::before {
     content: "";
     position: absolute;
-    inset: -1px -6px;
+    inset: -6px;
 }
 
 /*
@@ -1032,11 +1103,19 @@
        fallback #d9d9d9 differs from this dashed border's #b7b7b7) so an unthemed consumer's
        rendering stays byte-identical. */
     background: var(--color-page-background, #f3f3f3);
-    border: 1px dashed var(--border-color, #b7b7b7);
+    /* Dash darkened from #b7b7b7 (1.81:1 against this zone's own #f3f3f3 fill) to #767676 (4.09:1
+       on that fill): the dashed rule is the whole visual boundary of the drop target, which WCAG
+       1.4.11 wants at 3:1. A consumer's --border-color still wins. */
+    border: 1px dashed var(--border-color, #767676);
     border-radius: 4px;
-    height: 146px;
+    /* min-height + no overflow clip (was height: 146px; overflow: hidden). The zone renders two
+       centered text lines (the instruction and the accepted-formats list) inside a ~42px content
+       budget, so ANY wrap -- a 320px viewport, a long extension list, a user stylesheet applying
+       WCAG 1.4.12 text spacing -- pushed text past the fixed box; with justify-content: center it
+       was then clipped at BOTH ends and unreachable. Nothing here needs clipping: the invisible
+       file input below is inset: 0, so it cannot spill. */
+    min-height: 146px;
     cursor: pointer;
-    overflow: hidden;
 }
 
 .edit-file-drop-zone input[type=file] {
@@ -1091,10 +1170,11 @@
 }
 
 .edit-file-formats {
-    /* --color-text-secondary single-fallback policy: same literal as .edit-file-size / .bound-value
-       (below/above) -- this rule previously used its own rgba(0, 0, 0, 0.65), a real, visible drift
-       the old comment here incorrectly asserted didn't exist. */
-    color: var(--color-text-secondary, #8c8c8c);
+    /* Real TEXT at 0.85em, and it sits on the drop zone's own #f3f3f3 fill rather than white, where
+       the plain --color-text-secondary fallback (#8c8c8c) measures just 3.03:1 -- WCAG 1.4.3 wants
+       4.5:1. Takes the same -strong split as .edit-file-size / .bound-value (#595959: 6.31:1 on
+       #f3f3f3, 7.0:1 on white). */
+    color: var(--color-text-secondary-strong, #595959);
     font-size: 0.85em;
 }
 
@@ -1132,8 +1212,9 @@
 .edit-file-size {
     flex-shrink: 0;
     white-space: nowrap;
-    /* --color-text-secondary single-fallback policy -- see .edit-file-formats above. */
-    color: var(--color-text-secondary, #8c8c8c);
+    /* -strong secondary -- see .edit-file-formats above. #8c8c8c was 3.36:1 on white and 3.08:1 on
+       the row's own hover tint, both under WCAG 1.4.3's 4.5:1 for this 0.85em text. */
+    color: var(--color-text-secondary-strong, #595959);
     font-size: 0.85em;
 }
 
@@ -1198,7 +1279,9 @@
     font: inherit;
     text-align: left;
     cursor: pointer;
-    color: var(--edit-color-primary);
+    /* Link TEXT, so the text-grade primary (WCAG 1.4.3's 4.5:1) -- .edit-theme's plain
+       --edit-color-primary is #1890ff, only 3.24:1. See --edit-color-primary-strong at :root. */
+    color: var(--edit-color-primary-strong);
 }
 
 .edit-file-name-link:hover,
@@ -1217,8 +1300,10 @@
     border-radius: 6px;
 }
 
+/* Label text takes the text-grade token, the border stays on the chrome-grade one -- same split as
+   .edit-radio-button:hover above. */
 .edit-file-select-btn:hover {
-    color: var(--edit-color-primary);
+    color: var(--edit-color-primary-strong);
     border-color: var(--edit-color-primary);
 }
 
@@ -1312,11 +1397,20 @@
 
 .edit-theme {
     --edit-color-primary: var(--color-primary, #1890ff);
-    --edit-color-border: var(--border-color, #d9d9d9);
+    /* TEXT-grade companion to the token above -- see --edit-color-primary-strong's full note at
+       :root. The split actually bites here and only here: this scope's primary fallback (#1890ff) is
+       3.24:1 on white, fine as chrome but short of 4.5:1 wherever the primary is (or backs) label
+       text. #0958d9 is 6.16:1 in both directions, matching --wss-color-primary-strong in
+       wss-controls.css so the two stylesheets agree on the themed blue. */
+    --edit-color-primary-strong: var(--color-primary-strong, #0958d9);
+    /* Same 1.41:1-boundary darkening as the :root declaration of this token -- see its note there.
+       (Re-declared here only so a .edit-theme scope keeps owning its own border color.) */
+    --edit-color-border: var(--border-color, #8c8c8c);
     --edit-color-bg-disabled: var(--color-bg-disabled, #f5f5f5);
     /* #bfbfbf on white is 1.84:1 -- illegible (WCAG 1.4.3 doesn't technically cover placeholder text,
-       but a placeholder this faint fails on readability grounds regardless). rgba(0, 0, 0, 0.55) is
-       ~6.5:1. */
+       but a placeholder this faint fails on readability grounds regardless). rgba(0, 0, 0, 0.55)
+       composites to #737373 on white: 4.76:1 (an earlier comment here claimed ~6.5:1 -- recomputed;
+       it clears 4.5:1, but not by much, so don't lighten it). */
     --edit-color-placeholder: rgba(0, 0, 0, 0.55);
     --edit-color-text-disabled: rgba(0, 0, 0, 0.25);
     /* Secondary-text tint for the affix suffix's clear/password items -- overrides the unthemed
@@ -1325,10 +1419,11 @@
        count-TEXT equivalent (1.4.3's 4.5:1 floor). */
     --edit-color-text-secondary: rgba(0, 0, 0, 0.45);
     /* Count text (.edit-input-count/.edit-textarea-count) needs WCAG 1.4.3's 4.5:1, which the
-       secondary tint above (rgba(0, 0, 0, 0.45), ~4.1:1) doesn't quite clear. rgba(0, 0, 0, 0.65) is
-       ~7.4:1 -- and resolves to the same #595959-ish gray as the unthemed fallback those same
-       selectors use (see --color-text-secondary-strong there), so themed and unthemed count text read
-       as the same color. */
+       secondary tint above misses badly: rgba(0, 0, 0, 0.45) composites to #8c8c8c on white, which
+       is 3.36:1 -- NOT the ~4.1:1 an earlier comment here claimed, so it is nowhere near a judgement
+       call. rgba(0, 0, 0, 0.65) composites to #595959: 7.0:1, and the same gray as the unthemed
+       fallback those same selectors use (see --color-text-secondary-strong there), so themed and
+       unthemed count text read as the same color. */
     --edit-color-text-secondary-strong: rgba(0, 0, 0, 0.65);
     --edit-radius: 2px;
     --edit-control-height: 32px;
@@ -1370,11 +1465,15 @@
    wrapper has no focus of its own (the naked inner editor is what actually receives it), so
    :focus-within is its equivalent. Kept as two separate rules (not one comma-joined selector list,
    though each selector's own specificity -- and so the invalid:focus tie documented below -- is
-   unaffected either way): the wrapper's border-color is now the plain --edit-color-primary rather
-   than this color-mix derivation (see that selector's own rule, just below), since the derivation
-   measured ~2.63:1 against the page background -- too weak as a WCAG 2.4.7 focus indicator (3:1). */
+   unaffected either way).
+   BOTH now take the plain --edit-color-primary rather than the hover color-mix: that derivation
+   (--edit-color-primary at 82% toward #fff = rgb(66, 164, 255)) is 2.63:1 against the page
+   background and the glow around it is 1.25:1, while the :focus-visible rule below removes the
+   library's own outline -- so the strongest thing marking a focused field measured under WCAG
+   2.4.7's 3:1. Plain --edit-color-primary is 3.24:1 and clears it. The fix had been applied to the
+   affix wrapper only; the legacy-mode editor here was missed. */
 .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus {
-    border-color: var(--edit-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--edit-color-primary) 82%, #fff)));
+    border-color: var(--edit-color-primary);
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
@@ -1532,6 +1631,58 @@
     .edit-icon-eye-invisible,
     .edit-file-delete-btn {
         display: none !important;
+    }
+}
+
+/* Windows High Contrast (forced-colors): the OS substitutes its own palette for every author color
+   and drops box-shadow altogether, which silently deletes several cues this file leans on. Mirrors
+   wss-controls.css's own forced-colors block (its Select/Picker focus rings) and is deliberately
+   just as narrow -- only the states that would otherwise have nothing visible left at all.
+   Everything else here signals with borders/outlines/text, which the mode preserves by itself.
+   Placed after the print block and BEFORE the reduced-motion block, which must stay the file's LAST
+   rule (see that block's own ordering note).
+   (i)  Themed focus: the .edit-theme chrome marks focus with a border tint plus a box-shadow glow,
+        and its :focus-visible rule removes the library's plain outline ring. Forced colors drops the
+        glow and overrides the border, so a focused field renders identically to an unfocused one --
+        WCAG 2.4.7 with literally nothing to see. Each selector below repeats the shape of its own
+        glow rule further up, which also makes the editor one (0,6,0): higher than the outline: none
+        rule's (0,5,0) outright, so restoring the ring here does not depend on source order. (The
+        wrapper selector has no competing outline rule at all.)
+   (ii) Checked / indeterminate / selected: those indicators are painted as an author background over
+        an opacity: 0 real input, so once backgrounds are forced, checked and unchecked render the
+        same. The mask-drawn glyphs are backgrounds too -- and for .edit-icon-delete that background
+        is the file-remove button's ONLY visible content, so the control vanishes outright. A system
+        color (CanvasText / Highlight) is the one paint the mode keeps; forced-color-adjust: none
+        stops the engine re-forcing the values we are setting here deliberately. */
+@media (forced-colors: active) {
+    .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
+    .edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
+        outline: 2px solid Highlight;
+        outline-offset: 1px;
+    }
+
+    /* Every mask-drawn glyph in the file: EditBool's check and mixed-state square, EditFile's
+       upload / upload-error / delete icons and the Variant="Button" upload glyph. */
+    .edit-checkbox-input-styled:checked + .edit-checkbox-box::after,
+    .edit-checkbox-input-styled:indeterminate + .edit-checkbox-box::after,
+    .edit-icon-upload,
+    .edit-icon-upload-error,
+    .edit-icon-upload-btn,
+    .edit-icon-delete {
+        background: CanvasText;
+        forced-color-adjust: none;
+    }
+
+    /* Button-mode radio: "checked" is a text-color + border + (solid) fill change, all three forced
+       away. Both selectors are listed so the (0,4,0) one exactly ties ButtonStyle="Solid"'s own
+       checked rule -- won on source order, since this block is later in the file -- while the
+       (0,3,0) one covers the default outline style. */
+    .edit-radio-button-input:checked + .edit-radio-button,
+    .edit-radio-button-group-solid .edit-radio-button-input:checked + .edit-radio-button {
+        background: Highlight;
+        border-color: Highlight;
+        color: HighlightText;
+        forced-color-adjust: none;
     }
 }
 

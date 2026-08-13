@@ -19,4 +19,21 @@ public partial class ReadOnlyValue
 
     [Parameter] public string? CssClass { get; set; }
     [Parameter] public string? Text { get; set; }
+
+    /// <summary>
+    /// The fallback text rendered in place of <see cref="Text"/> when it's empty (LST-2) -- e.g. the
+    /// default "Not Set". A parameter (not a hardcoded string) so a consumer can localize it, matching
+    /// the resolution pattern <see cref="EditBoolNullRadio.NullText"/> already establishes for a
+    /// comparable "nothing here" text.
+    /// </summary>
+    [Parameter] public string EmptyText { get; set; } = "Not Set";
+
+    /// <summary>
+    /// Optional <c>aria-describedby</c> token(s) for the rendered value (TXT-5) -- e.g. the field's own
+    /// description/tooltip/error-message ids, the same references its editor carries in edit mode. Null
+    /// by default, and not yet passed by any call site -- <c>EditNumber</c>/<c>EditTextArea</c>/
+    /// <c>EditString</c>'s plain read-only branch (which already computes a <c>_describedBy</c> for
+    /// their own editor) are the candidates to start passing it here.
+    /// </summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
 }

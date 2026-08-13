@@ -235,8 +235,11 @@ public class RadioTextAreaAndCultureTests : BunitContext
         }));
         var fieldset = cut.Find("fieldset.edit-radio-fieldset");
         Assert.Equal("radiogroup", fieldset.GetAttribute("role"));         // still a radiogroup in edit mode
-        Assert.Equal("lbl-Name", fieldset.GetAttribute("aria-labelledby")); // the sr-only legend still names it
-        Assert.NotNull(cut.Find("legend.edit-sr-only#lbl-Name"));           // and that legend really renders
+        // The naming anchor inside the sr-only legend still names it (see FormLabel's remarks for why
+        // aria-labelledby targets lbltext- rather than the legend element).
+        Assert.Equal("lbltext-Name", fieldset.GetAttribute("aria-labelledby"));
+        Assert.NotNull(cut.Find("legend.edit-sr-only#lbl-Name"));   // the legend really renders...
+        Assert.NotNull(cut.Find("legend.edit-sr-only #lbltext-Name")); // ...and so does the anchor in it
     }
 
     [Fact]

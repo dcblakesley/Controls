@@ -70,20 +70,27 @@
     row-gap: 16px;
 }
 
+/* min-height, not height: a hard 28px on a text element clips the moment the heading wraps (narrow
+   viewport, zoom) or grows (a user stylesheet applying WCAG 1.4.12 text spacing). */
 .wss-demo-heading {
     font-weight: 700;
     font-size: 20px;
     line-height: 28px;
     color: #262626;
     margin: 0;
-    height: 28px;
+    min-height: 28px;
 }
 
 /* Sidebar/toggle nav state. Was ".active"/".inactive" -- generic enough to collide with a host
    app's own nav/tab active-state styling (Bootstrap, AntD, etc.), which is exactly how this
    demo's green was bleeding into consuming applications. */
+/* These are <button>s, so the label inherits the UA's near-black buttontext: `green` (#008000) put
+   that at 4.09:1, under WCAG 1.4.3's 4.5:1. Darkening alone makes it worse, not better (black on
+   #006100 is 2.71:1), so the pairing flips -- white on #006100 is 7.75:1. The inactive state keeps
+   its default dark label on grey (#808080), which is already 5.32:1. */
 .wss-demo-nav-active {
-    background: green;
+    background: #006100;
+    color: #fff;
 }
 
 .wss-demo-nav-inactive {

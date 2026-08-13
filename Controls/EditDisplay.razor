@@ -12,20 +12,27 @@
              data-test-id=@_id
              class="edit-readonly-value @Class"
              style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)"
+             role="group"
              aria-labelledby=@(string.IsNullOrEmpty(Label) ? null : $"lbl-{_id}")>
-            @* The same hidden line-height placeholder ReadOnlyValue renders for an empty value (see
-               that component). Without it an empty EditDisplay collapses to zero height while every
-               sibling read-only field still reserves a line, so the row it sits in loses alignment.
-               ReadOnlyValue itself can't be reused here: this div also carries the consumer's
-               splatted attributes, merged style and the Class parameter, none of which that
-               component takes. *@
+            @* R5: role="group" legitimizes the aria-labelledby above -- a bare div is role-generic, and
+               ARIA prohibits naming a roleless element (an axe-core scan flagged exactly this shape;
+               some assistive technology drops the name entirely rather than announcing it). Mirrors
+               EditString's identical role="group" + aria-labelledby row on its masked-value div (see
+               that markup's remarks) rather than introducing a new pattern -- the least-change option,
+               since this element already only ever holds a plain value, never focusable content that a
+               more specific role would need to account for. *@
+
+            @* The same line-height-reserving placeholder ReadOnlyValue renders for an empty value (see
+               that component's LST-2 remarks) -- restated here rather than reused because this div also
+               carries the consumer's splatted attributes, merged style and the Class parameter, none of
+               which that component takes. *@
             @if (!string.IsNullOrEmpty(Text))
             {
                 @Text
             }
             else
             {
-                <span aria-hidden="true" style="visibility: hidden">No Value</span>
+                <span style="color: var(--edit-color-placeholder, rgba(0, 0, 0, 0.55))">@EmptyText</span>
             }
         </div>
         

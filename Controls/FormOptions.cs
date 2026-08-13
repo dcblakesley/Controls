@@ -16,6 +16,24 @@ public class FormOptions
     /// recomputing a guess that misses those. </summary>
     public Dictionary<FieldIdentifier, string> FieldIds { get; } = new();
 
+    /// <summary>
+    /// Per-field label-resolution inputs -- the model's attributes and any explicit <c>Label</c>
+    /// parameter -- keyed the same as <see cref="FieldIds"/>, so <see cref="ValidationView"/> can
+    /// rewrite each DataAnnotations message through the same label
+    /// <see cref="FieldValidationDisplay"/> uses for that field's own inline message, instead of
+    /// the framework's raw member-name text (INF-4). Populated by
+    /// <see cref="EditControlBase{TValue}"/> (see its <c>RefreshAriaState</c>) -- list-bound controls,
+    /// <c>EditRadio</c> and <c>EditDateRange</c> don't register here yet, so a field with no entry
+    /// falls back to the unresolved message rather than guessing at a label.
+    /// </summary>
+    public Dictionary<FieldIdentifier, (List<Attribute>? Attributes, string? Label)> FieldMetadata { get; } = new();
+
+    /// <summary> Records (or updates) a field's label-resolution inputs -- see <see cref="FieldMetadata"/>.
+    /// Last-writer-wins per field, same as <see cref="FieldIds"/>: two controls sharing a bound property
+    /// resolve to the same model attributes regardless of which one wrote last. </summary>
+    public void RegisterFieldMetadata(FieldIdentifier field, List<Attribute>? attributes, string? label) =>
+        FieldMetadata[field] = (attributes, label);
+
     // Live registrant controls per field, each with the DOM id it registered under. RegisterField
     // dedups because two controls may bind the same property (page section + edit modal); this tracks
     // who still holds the shared entry so UnregisterField doesn't drop it while another registrant is
@@ -87,6 +105,7 @@ public class FormOptions
         _fieldOwners.Remove(field);
         FieldIdentifiers.Remove(field);
         FieldIds.Remove(field);
+        FieldMetadata.Remove(field);
     }
 
     /// <summary> Allows you to set the hiding mode for the entire form. </summary>

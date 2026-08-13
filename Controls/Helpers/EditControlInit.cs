@@ -263,13 +263,18 @@ public static class EditControlInit
         bool hasCount = false)
     {
         var errorMsgId = $"error-msg-{id}";
+        var hasTooltipText = !string.IsNullOrEmpty(tooltip ?? attributes.Tooltip());
         // Not gated on shouldHideLabel: FormLabel renders the desc- element either way (visually
         // hidden alongside the hidden label). Hiding the label is a layout decision, and dropping the
-        // field's format instructions with it took them from sighted users too.
-        var hasDescription = !string.IsNullOrEmpty(description ?? attributes.Description());
-        // The tooltip IS gated: it is an interactive hover/focus widget, and FormLabel renders no
-        // trigger for it in the hidden-label branch -- so tooltip-{id} would dangle.
-        var hasTooltip = !shouldHideLabel && !string.IsNullOrEmpty(tooltip ?? attributes.Tooltip());
+        // field's format instructions with it took them from sighted users too. In that mode it also
+        // FOLDS THE TOOLTIP TEXT into the same element, so a hidden-label control with only a tooltip
+        // still has a desc- to point at (see FormLabel's hidden branch).
+        var hasDescription = !string.IsNullOrEmpty(description ?? attributes.Description())
+            || (shouldHideLabel && hasTooltipText);
+        // The tooltip's own REFERENCE is still gated: the trigger is an interactive hover/focus
+        // widget, FormLabel renders none in the hidden-label branch -- so tooltip-{id} would dangle.
+        // Only the element goes away there; the text survives via desc- above.
+        var hasTooltip = !shouldHideLabel && hasTooltipText;
         return (errorMsgId, BuildDescribedBy(id, hasDescription, hasTooltip, hasCount));
     }
 

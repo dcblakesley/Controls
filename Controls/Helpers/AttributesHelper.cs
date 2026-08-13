@@ -396,9 +396,11 @@ public static class AttributesHelper
 
         if (string.IsNullOrEmpty(labelText))
         {
-            labelText = fieldIdentifier.FieldName;
-            // split by camel case
-            labelText = string.Concat(labelText.Select(x => char.IsUpper(x) ? " " + x : x.ToString())).TrimStart(' ');
+            // Tier 1 of the labelling contract: auto-generate from the property name. Shares
+            // EnumHelpers' splitter rather than keeping a second copy of the word-boundary rule --
+            // the two implementations had drifted into the same acronym-shredding bug ("URLPath" ->
+            // "U R L Path"), and this text feeds the validation messages as well as the label.
+            labelText = EnumHelpers.SplitCamelCase(fieldIdentifier.FieldName);
         }
 
         return labelText;

@@ -1,19 +1,28 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @implements IDisposable
 
-<section @attributes="AdditionalAttributes" class="validation-summary" aria-label="Validation errors">
+@* INF-3: role="status" (not "alert") tells assistive technology that this section's content just
+   changed, without the interruption "alert" carries -- a submit can populate this with several
+   messages at once, and alert's assertive announcement would barge in and read the whole batch over
+   whatever the user was already doing. status is polite: it waits for a pause, which is the right
+   volume for "N errors happened, here's where" rather than a single urgent interruption. Each field's
+   OWN error already gets its own polite live region (FieldValidationDisplay) for the immediate
+   per-field announcement; this section is only the aggregate "how many, where" view, read once after
+   the whole batch has rendered. The section itself stays unconditionally present (a live region
+   created together with its first content is not reliably announced) -- only its content changes. *@
+<section @attributes="AdditionalAttributes" class="validation-summary" aria-label="Validation errors" role="status">
     @if (FormOptions is not null)
     {
         @foreach (var v in FormOptions.FieldIdentifiers)
         {
             @foreach (var z in CurrentEditContext.GetValidationMessages(v))
             {
-                <a class="validation-summary-message" href="#@(FormOptions.FieldIds.TryGetValue(v, out var fid) ? fid : AttributesHelper.GetId(null, FormGroupOptions, null, v))">@z</a>
+                <a class="validation-summary-message" href="#@(FormOptions.FieldIds.TryGetValue(v, out var fid) ? fid : AttributesHelper.GetId(null, FormGroupOptions, null, v))">@GetSummaryMessage(v, z)</a>
             }
         }
     }
 </section>
-        
+
 
 @code
 {
@@ -44,6 +53,45 @@
 
         _validationSubscription ??= new ValidationStateSubscription(StateHasChanged);
         _validationSubscription.SyncTo(CurrentEditContext);
+    }
+
+    /// <summary>
+    /// INF-4: rewrites a raw DataAnnotations <paramref name="message"/> through the same label as the
+    /// field's own <see cref="FieldValidationDisplay"/>
+    /// (<see cref="ValidationHelper.GetValidationMessage(string, string, string?, string, string?, int?, int?, bool)"/>),
+    /// instead of leaving DataAnnotations' own text verbatim -- which names the field by its raw C#
+    /// member name (<c>[DisplayName]</c> is never read by DataAnnotations; <c>[Display(Name=…)]</c>
+    /// only when present). A property with e.g. <c>[DisplayName("Full Name")]</c> then reads "Full Name
+    /// is required" here too, matching the control and its own inline message, instead of "The Name
+    /// field is required."
+    /// </summary>
+    /// <remarks>
+    /// <see cref="FormOptions.FieldMetadata"/> is populated only by
+    /// <see cref="EditControlBase{TValue}"/>-derived scalar controls (see its <c>RefreshAriaState</c>)
+    /// -- a field with no entry (list-bound controls, <c>EditRadio</c>, <c>EditDateRange</c>) falls
+    /// back to <paramref name="message"/> verbatim rather than guessing at a label.
+    /// <para>
+    /// <c>includeLabel</c> is passed <c>true</c> unconditionally, regardless of
+    /// <see cref="FormOptions.ShowFieldNameInValidation"/>: that flag governs the per-field INLINE
+    /// message, where the label is redundant with the visible <see cref="FormLabel"/> right beside it
+    /// -- but a summary link with no field name at all would be meaningless the moment there is more
+    /// than one error in the list, since nothing else here distinguishes which field a message belongs
+    /// to.
+    /// </para>
+    /// </remarks>
+    string GetSummaryMessage(FieldIdentifier field, string message)
+    {
+        if (FormOptions is null || !FormOptions.FieldMetadata.TryGetValue(field, out var meta))
+            return message;
+
+        var attributes = meta.Attributes;
+        var label = meta.Label ?? attributes.GetLabelText(field);
+        var displayName = attributes?.OfType<DisplayAttribute>().FirstOrDefault()?.GetName();
+        var valueType = FieldValidationDisplay.GetValueTypeName(field);
+        (int? MinLength, int? MaxLength) lengths = attributes is null ? default : AttributesHelper.GetMinAndMaxLengths(attributes);
+
+        return ValidationHelper.GetValidationMessage(
+            message, field.FieldName, displayName, label, valueType, lengths.MaxLength, lengths.MinLength, includeLabel: true);
     }
 
     public void Dispose() => _validationSubscription?.Detach();

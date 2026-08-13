@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components.Web;
+
 namespace Controls;
 
 /// <summary>
@@ -178,6 +180,14 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         if (_stateInitialized)
             EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, _fieldIdentifier);
         RefreshAriaState();
+
+        // TXT-1: only these two modes can unmount a focused editor mid-edit (see ShouldShowComponent)
+        // — gating the injected focus-tracking handlers to just that case keeps every
+        // HidingMode.None control (the overwhelming common case) exactly as cheap as before, with no
+        // extra per-keystroke dictionary allocation or focus/blur round trip.
+        var effectiveHiding = Hiding ?? FormOptions?.Hiding ?? HidingMode.None;
+        if (effectiveHiding is HidingMode.WhenNull or HidingMode.WhenNullOrDefault)
+            AdditionalAttributes = WithFocusTracking(AdditionalAttributes);
     }
 
     /// <summary>
@@ -197,6 +207,10 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         if (_attributes is null) return;
         (_isRequired, _errorMsgId, _describedBy) =
             EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier, HasCharacterCount);
+        // INF-4: keep the validation summary's label-resolution inputs current too (see
+        // FormOptions.FieldMetadata), so a runtime Label change is reflected in ValidationView's
+        // rewritten message the same way it already is in this control's own FieldValidationDisplay.
+        FormOptions?.RegisterFieldMetadata(_fieldIdentifier, _attributes, Label);
     }
 
     /// <summary>
@@ -260,6 +274,119 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected virtual bool ShouldShowComponent()
     {
         var isNull = CurrentValue is null;
-        return EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull || IsValueDefault());
+        var shouldShow = EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull || IsValueDefault());
+        if (shouldShow || IsHidden || !ShowEditor)
+            return shouldShow;
+        // TXT-1: reached only for a VALUE-driven hide (HidingMode.WhenNull/WhenNullOrDefault) while the
+        // editor is showing — defer it while the editor holds focus (_editorFocused, tracked by the
+        // onfocus/onblur handlers OnParametersSet injects below) instead of unmounting the element the
+        // user is currently typing into, which used to drop focus to <body> with no warning to a
+        // screen-reader user. The deferred hide finally applies once the user's own blur/Tab-away moves
+        // focus on its own — nothing left to rescue by then. An explicit IsHidden=true bypasses this
+        // (returned above): it's a deliberate, immediate consumer decision (e.g. leaving a wizard step),
+        // not a side effect of what the user just typed, and must still take effect at once.
+        return _editorFocused;
+    }
+
+    // ───────────────────────── TXT-1: focus preservation under value-driven hiding ─────────────────────────
+
+    // Whether this control's own editor currently holds DOM focus. Known only from the synthetic
+    // onfocus/onblur handlers below — InputBase's CurrentValue commit path doesn't distinguish the
+    // user's own keystroke from a parent reassigning the bound model, so there is no other signal to
+    // read this off of without a JS round trip (and the library has no existing JS primitive that
+    // queries focus state, only JsInteropEc.FocusById, which SETS it — seeded by a computed target id
+    // rather than a live "is X focused" answer irrelevant here).
+    bool _editorFocused;
+
+    // A consumer's own onfocus/onblur, when they supplied one. Captured and re-invoked rather than
+    // overwritten: unlike EditTextInputBase's oninput (genuinely library-owned — it drives binding),
+    // onfocus/onblur are ordinary consumer-facing DOM events, so clobbering them would pay for an
+    // accessibility fix with a silent behavioural regression in any app that uses them.
+    object? _consumerOnFocus;
+    object? _consumerOnBlur;
+
+    async Task OnEditorFocusIn(FocusEventArgs e)
+    {
+        _editorFocused = true;
+        await InvokeConsumerHandlerAsync(_consumerOnFocus, e);
+    }
+
+    // No explicit re-render call needed: Blazor already re-renders after any bound event handler runs,
+    // which is what lets ShouldShowComponent() re-evaluate (and finally hide, if the value is still
+    // empty/default) now that focus has genuinely moved on by the user's own action, rather than being
+    // torn away from them.
+    async Task OnEditorFocusOut(FocusEventArgs e)
+    {
+        _editorFocused = false;
+        await InvokeConsumerHandlerAsync(_consumerOnBlur, e);
+    }
+
+    // Type-pattern dispatch rather than reflection, so this stays trim/AOT-clean (Controls.csproj sets
+    // IsAotCompatible). Covers the shapes Blazor actually hands through a splatted attribute
+    // dictionary; anything else is ignored rather than throwing, since a stray value here must never
+    // break the control's own focus tracking.
+    static Task InvokeConsumerHandlerAsync(object? handler, FocusEventArgs e)
+    {
+        switch (handler)
+        {
+            case EventCallback<FocusEventArgs> typedCallback:
+                return typedCallback.InvokeAsync(e);
+            case EventCallback untypedCallback:
+                return untypedCallback.InvokeAsync(e);
+            case Func<FocusEventArgs, Task> asyncHandler:
+                return asyncHandler(e);
+            case Action<FocusEventArgs> syncHandler:
+                syncHandler(e);
+                return Task.CompletedTask;
+            case Action bareHandler:
+                bareHandler();
+                return Task.CompletedTask;
+            default:
+                return Task.CompletedTask;
+        }
+    }
+
+    // The dictionary WithFocusTracking returned last time, held so a re-entrant parameter cycle can be
+    // detected by reference (see that method's remarks).
+    Dictionary<string, object>? _focusTrackedAttributes;
+
+    /// <summary>
+    /// Injects synthetic onfocus/onblur handlers into <paramref name="attributes"/> so
+    /// <see cref="ShouldShowComponent"/> can tell whether this control's own editor currently holds
+    /// focus before deciding to unmount it (see <see cref="_editorFocused"/>). Every derived control's
+    /// markup already splats <see cref="InputBase{TValue}.AdditionalAttributes"/> onto its editor
+    /// element via <c>AttributeSplat.Rest</c> (or <c>RestWith</c>, layering its own synthetic
+    /// attributes on top — e.g. <see cref="EditTextInputBase"/>'s <c>oninput</c> handler) — so
+    /// reassigning this property in <see cref="OnParametersSet"/> is picked up with no change needed
+    /// at any of those call sites, and without any new JS.
+    /// </summary>
+    /// <remarks>
+    /// A same-named consumer handler is <em>chained</em>, not overwritten: it is captured into
+    /// <see cref="_consumerOnFocus"/>/<see cref="_consumerOnBlur"/> and re-invoked from this control's
+    /// own handler. <c>onfocus</c>/<c>onblur</c> are ordinary consumer-facing DOM events, so the
+    /// "own wins" precedent <c>AttributeSplat.RestWith</c> sets for <see cref="EditTextInputBase"/>'s
+    /// <c>oninput</c> (which drives binding, and is genuinely library-owned) does not extend to them.
+    /// <para>
+    /// The reference-equality guard matters: <see cref="OnParametersSet"/> also runs when only a
+    /// cascading value changed, and in that case <see cref="InputBase{TValue}.AdditionalAttributes"/>
+    /// still holds the dictionary this method returned last time. Re-processing it would capture this
+    /// control's own callbacks as if they were the consumer's and recurse. Returning the cached
+    /// instance also avoids re-allocating the dictionary on every parameter cycle.
+    /// </para>
+    /// </remarks>
+    IReadOnlyDictionary<string, object> WithFocusTracking(IReadOnlyDictionary<string, object>? attributes)
+    {
+        if (_focusTrackedAttributes is not null && ReferenceEquals(attributes, _focusTrackedAttributes))
+            return _focusTrackedAttributes;
+
+        var merged = attributes is null
+            ? new Dictionary<string, object>(2)
+            : new Dictionary<string, object>(attributes);
+        _consumerOnFocus = merged.GetValueOrDefault("onfocus");
+        _consumerOnBlur = merged.GetValueOrDefault("onblur");
+        merged["onfocus"] = EventCallback.Factory.Create<FocusEventArgs>(this, OnEditorFocusIn);
+        merged["onblur"] = EventCallback.Factory.Create<FocusEventArgs>(this, OnEditorFocusOut);
+        _focusTrackedAttributes = merged;
+        return merged;
     }
 }

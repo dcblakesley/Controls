@@ -56,13 +56,24 @@ public partial class FieldValidationDisplay
         _maxCharacters = minAndMax.MaxLength;
         _fieldName = FieldIdentifier.FieldName;
         _label = Label ?? Attributes.GetLabelText(FieldIdentifier);
-        _valueType = _valueTypeCache.GetOrAdd(
-            (FieldIdentifier.Model.GetType(), FieldIdentifier.FieldName),
-            static key => GetPropertyTypeName(key.Item1, key.Item2));
+        _valueType = GetValueTypeName(FieldIdentifier);
         // Field registration with FormOptions.FieldIdentifiers moved to EditControlBase.InitState
         // (and the list/radio equivalents) so it runs once per control regardless of whether
         // this validation display is conditionally rendered.
     }
+
+    /// <summary>
+    /// The bound property's CLR type name (e.g. <c>"System.String"</c>), memoized per (model type,
+    /// field name) pair in <see cref="_valueTypeCache"/>. Exposed <c>internal</c> (rather than kept a
+    /// private implementation detail of this component) so <see cref="ValidationView"/> can resolve the
+    /// same value type for its own message rewrite (INF-4:
+    /// <see cref="ValidationHelper.GetValidationMessage(string, string, string?, string, string?, int?, int?, bool)"/>'s
+    /// numeric-range wording depends on it) without a second reflection-plus-cache of its own.
+    /// </summary>
+    internal static string GetValueTypeName(FieldIdentifier fieldIdentifier) =>
+        _valueTypeCache.GetOrAdd(
+            (fieldIdentifier.Model.GetType(), fieldIdentifier.FieldName),
+            static key => GetPropertyTypeName(key.Item1, key.Item2));
 
     // Trimming (IL2070): the bound property is statically referenced by the consumer's Field lambda
     // (the expression tree ldtokens the getter), so ILLink keeps the accessor and with it the property

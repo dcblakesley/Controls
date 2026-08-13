@@ -27,6 +27,14 @@ public partial class EditDisplay : EditControlParametersBase
     /// <summary>The read-only text to display, styled like the other Edit controls' read-only values.</summary>
     [Parameter] public string Text { get; set; } = "";
 
+    /// <summary>
+    /// The fallback text rendered in place of <see cref="Text"/> when it's empty (LST-2) -- mirrors
+    /// <see cref="ReadOnlyValue.EmptyText"/> (this control hand-builds its own read-only div rather
+    /// than reusing that component -- see the markup's remarks). A parameter so a consumer can
+    /// localize it. Defaults to "Not Set".
+    /// </summary>
+    [Parameter] public string EmptyText { get; set; } = "Not Set";
+
     // Same resolution as every other control (EditControlInit.ShouldHideLabel): the per-control
     // parameter or the cascaded form-wide setting. Not on EditControlParametersBase itself -- every
     // deriving control (EditControlListBase, EditDateRange) redeclares this one-liner rather than

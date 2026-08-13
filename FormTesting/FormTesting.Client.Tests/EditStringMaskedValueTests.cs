@@ -255,8 +255,11 @@ public class EditStringMaskedValueTests : BunitContext
 
         var readOnly = cut.Find("div.edit-readonly-value");
         Assert.Equal("Name", readOnly.GetAttribute("id"));
-        // ReadOnlyValue's own empty case: a hidden placeholder holding the line's height open.
-        Assert.Equal("No Value", readOnly.QuerySelector("span[aria-hidden=\"true\"]")!.TextContent);
+        // ReadOnlyValue's own empty case (LST-2): real, visible fallback text -- not aria-hidden --
+        // holding the line's height open while still reaching assistive technology.
+        var placeholder = readOnly.QuerySelector("span");
+        Assert.False(placeholder!.HasAttribute("aria-hidden"));
+        Assert.Equal("Not Set", placeholder.TextContent);
     }
 
     [Fact]

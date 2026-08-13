@@ -50,11 +50,25 @@
     /* Text */
     --wss-color-text: rgba(0, 0, 0, 0.85);
     --wss-color-text-secondary: rgba(0, 0, 0, 0.45);
+    /* TEXT-grade secondary (WCAG 1.4.3). --wss-color-text-secondary above composites to #8c8c8c on
+       white: 3.36:1 -- fine for the muted chrome it mostly backs (group labels, arrows, meta rows
+       sitting beside their own visible control), short of the 4.5:1 that real, information-carrying
+       secondary CONTENT needs. rgba(0, 0, 0, 0.65) composites to #595959: 7.0:1 on white, 6.7:1 on
+       --wss-color-thead-bg. Mirrors --edit-color-text-secondary-strong in edit-controls.css, which
+       exists for exactly this split, so the two stylesheets agree on the darker gray. */
+    --wss-color-text-secondary-strong: rgba(0, 0, 0, 0.65);
     --wss-color-text-disabled: rgba(0, 0, 0, 0.25);
-    --wss-color-placeholder: #bfbfbf;
+    /* Was #bfbfbf: 1.84:1 on white, illegible. WCAG 1.4.3 doesn't formally cover placeholder text,
+       but this token also tints REAL content -- the single Select's chosen item while the dropdown
+       is open, and the range picker's separator glyph -- so it can't stay at a decorative contrast.
+       rgba(0, 0, 0, 0.55) composites to #737373: 4.76:1. Same value and reasoning as
+       --edit-color-placeholder in edit-controls.css, which was remediated first; this file's copy
+       was simply missed at the time. */
+    --wss-color-placeholder: rgba(0, 0, 0, 0.55);
     /* De-emphasized but OPERABLE text — the picker's outside-month days and outside-decade years,
-       which are real buttons a click commits. They used --wss-color-placeholder (1.84:1), a value
-       that is only defensible for text nobody can activate; WCAG 1.4.3 wants 4.5:1 here. #737373
+       which are real buttons a click commits. They used --wss-color-placeholder (#bfbfbf, 1.84:1 at
+       the time; that token has since been darkened too -- see its note above), a value that is only
+       defensible for text nobody can activate; WCAG 1.4.3 wants 4.5:1 here. #737373
        was 4.74:1 on white but only 4.35:1 on --wss-color-bg-hover (the cell's own hover fill) --
        under AA on hover, so darkened to #696969: 5.49:1 on white, 5.04:1 on --wss-color-bg-hover,
        and 5.00:1 on --wss-color-bg-selected's #e6f7ff (checked for completeness -- a selected cell
@@ -611,6 +625,22 @@
 .wss-select-item-option-active:not(.wss-select-item-option-disabled),
 .wss-select-item-option:not(.wss-select-item-option-disabled):hover {
     background-color: var(--wss-color-bg-hover);
+}
+
+/* The keyboard highlight (aria-activedescendant's virtually-focused option) needs a cue that is NOT
+   a background fill, for two independent reasons:
+     - the tint above is #f5f5f5 on #fff, about 1.1:1 -- invisible as a focus indicator (WCAG 2.4.7
+       wants 3:1 against what surrounds it);
+     - .wss-select-item-option-selected below has EQUAL specificity and comes later, so it wins
+       background-color outright: in a multiple Select, arrowing between options that are already
+       selected produced no visual change whatsoever.
+   An outline is immune to both (nothing else here sets one) and, unlike box-shadow, survives forced
+   colors -- see the forced-colors block near the end of this file, which re-states it in Highlight.
+   Inset offset because the option row spans the dropdown's full width; a positive offset would be
+   clipped by the scroll container. */
+.wss-select-item-option-active:not(.wss-select-item-option-disabled) {
+    outline: 2px solid var(--wss-color-primary);
+    outline-offset: -2px;
 }
 
 .wss-select-item-option-selected:not(.wss-select-item-option-disabled) {
@@ -2153,9 +2183,13 @@
     display: none;
 }
 
+/* Table.EmptyText -- ordinary content ("No rows match your filter"), and the only feedback that a
+   filter matched nothing, so it takes the readable secondary rather than --wss-color-text-disabled
+   (1.83:1). That token stays as-is elsewhere: it is legitimately disabled-grade and WCAG 1.4.3
+   exempts disabled CONTROLS -- this row is not one. */
 .wss-table-placeholder .wss-table-cell {
     text-align: center;
-    color: var(--wss-color-text-disabled);
+    color: var(--wss-color-text-secondary-strong);
 }
 
 /* Summary/footer row (Table.FooterContent) -- the consumer supplies the <tr>/<td> structure
@@ -3311,11 +3345,14 @@
        still line up over their day columns below. */
 }
 
+/* The Su/Mo/Tu... header of every calendar panel: small, real, load-bearing text (it is what tells
+   you which column is which), so it takes the readable secondary -- --wss-color-text-secondary
+   composites to #8c8c8c, 3.36:1, under WCAG 1.4.3's 4.5:1. */
 .wss-picker-week-day {
     display: flex;
     justify-content: center;
     padding: 3px 6px;
-    color: var(--wss-color-text-secondary);
+    color: var(--wss-color-text-secondary-strong);
     font-size: var(--wss-font-size-sm);
     line-height: 22px;
 }
@@ -4102,7 +4139,11 @@
        survives, and outline-offset keeps it clear of the field's own forced border.
    (ii) SelectVariant.Borderless is transparent border AND background by design -- once the forced
         page background replaces the hover tint there is no boundary at all, so it gets the system
-        ButtonBorder to stay identifiable as a control (WCAG 1.4.11). */
+        ButtonBorder to stay identifiable as a control (WCAG 1.4.11).
+   (iii) The dropdown's keyboard highlight is an author-colored outline (see the option rules) --
+        outline-color is forced, so it survives as SOME system color either way, but re-stating it in
+        Highlight keeps it the same cue the focused field uses instead of blending into the option
+        text. Matching :not(...) shape so it ties that rule and wins on source order. */
 @media (forced-colors: active) {
     .wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
     .wss-select:not(.wss-select-disabled) .wss-select-selector:focus-within,
@@ -4110,6 +4151,11 @@
     .wss-picker:not(.wss-picker-disabled) .wss-picker-input:focus-within {
         outline: 2px solid Highlight;
         outline-offset: 1px;
+    }
+
+    .wss-select-item-option-active:not(.wss-select-item-option-disabled) {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
     }
 
     /* .wss-select. prefix only for specificity: the borderless variant re-declares

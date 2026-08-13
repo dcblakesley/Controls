@@ -97,7 +97,10 @@ public class EditDisplayTests : BunitContext
             .Add(d => d.Text, "15.3 oz"));
 
         var value = cut.Find(".edit-readonly-value");
-        Assert.False(value.HasAttribute("role"));
+        // role="group" (R5) legitimizes the aria-labelledby a roleless div can't reliably carry -- this
+        // assertion's real intent (not an editable field) is preserved by asserting "group", not
+        // "textbox" or absent, rather than by asserting no role at all.
+        Assert.Equal("group", value.GetAttribute("role"));
         Assert.False(value.HasAttribute("tabindex"));
     }
 
@@ -136,16 +139,30 @@ public class EditDisplayTests : BunitContext
     }
 
     [Fact]
-    public void EditDisplay_with_no_text_reserves_a_line_like_every_other_read_only_value()
+    public void EditDisplay_with_no_text_renders_an_accessible_fallback_that_still_reserves_a_line()
     {
-        // EditDisplay hand-builds its read-only div instead of using ReadOnlyValue, and had missed
-        // that component's hidden "No Value" placeholder -- so an empty one collapsed to zero height
-        // beside sibling read-only fields that each reserve a line, and the row lost its alignment.
+        // EditDisplay hand-builds its read-only div instead of using ReadOnlyValue, and shares that
+        // component's fallback-placeholder contract (LST-2): the old placeholder was BOTH aria-hidden
+        // AND visibility:hidden, reaching neither sighted users nor assistive technology -- a
+        // screen-reader user heard the label and then silence. EmptyText is now real, visible text
+        // (reaching everyone) that reserves the row's line-height simply by being a real text node, with
+        // no visibility trick needed.
         var cut = Render<EditDisplay>(p => p.Add(d => d.Label, "Volume"));
 
         var placeholder = cut.Find(".edit-readonly-value span");
-        Assert.Equal("true", placeholder.GetAttribute("aria-hidden"));
-        Assert.Contains("visibility: hidden", placeholder.GetAttribute("style"));
+        Assert.False(placeholder.HasAttribute("aria-hidden"));
+        Assert.Equal("Not Set", placeholder.TextContent);
+    }
+
+    [Fact]
+    public void EditDisplay_EmptyText_parameter_overrides_the_default_fallback()
+    {
+        var cut = Render<EditDisplay>(p => p
+            .Add(d => d.Label, "Volume")
+            .Add(d => d.EmptyText, "None recorded"));
+
+        var placeholder = cut.Find(".edit-readonly-value span");
+        Assert.Equal("None recorded", placeholder.TextContent);
     }
 
     [Fact]

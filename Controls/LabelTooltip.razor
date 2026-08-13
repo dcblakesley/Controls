@@ -5,7 +5,7 @@
 {
 	<button type="button"
 	        class="edit-tooltip-container"
-	        aria-label="More information"
+	        aria-label="@EffectiveTriggerLabel"
 	        aria-describedby="tooltip-@Id"
 	        tabindex="0"
 	        @onmouseleave="ClearDismissal"
@@ -37,8 +37,26 @@
 	// usage (e.g. an info icon in a Table column header) just sets Tooltip.
 	[Parameter] public List<Attribute>? Attributes { get; set; }
 	[Parameter] public string? Tooltip { get; set; }
+
+	/// <summary>
+	/// The trigger button's accessible name. <see cref="FormLabel"/> passes "More information about
+	/// {label}" (or <see cref="FormLabel.TooltipTriggerLabel"/> when the consumer overrides it) so a
+	/// form with several tooltipped fields doesn't present a button list of identical, unattributable
+	/// "More information" entries. Standalone callers (a Table column header's info icon) set it
+	/// directly — both to distinguish and to localize. Unset or empty falls back to a bare
+	/// "More information", which is what every trigger used to be hard-coded to.
+	/// </summary>
+	[Parameter] public string? TriggerLabel { get; set; }
+
 	// Only used to resolve the wss-tooltip.js import URL for cross-origin MFE hosts (AssetBase).
 	[CascadingParameter] FormDefaults? FormDefaults { get; set; }
+
+	// Empty is treated as unset, not as "no accessible name": FormLabel passes null when it has no
+	// label to name the field with, and a splat/binding that resolves to "" must not silently strip
+	// the button's name.
+	const string DefaultTriggerLabel = "More information";
+
+	string EffectiveTriggerLabel => TriggerLabel is { Length: > 0 } label ? label : DefaultTriggerLabel;
 
 	// True after Escape until the pointer/focus leaves the trigger (WCAG 1.4.13 dismissible).
 	// The bubble's normal show/hide is CSS-only; this is the sole piece of C#-owned tooltip state.

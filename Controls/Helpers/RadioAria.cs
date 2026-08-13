@@ -3,7 +3,7 @@ namespace Controls.Helpers;
 /// <summary>
 /// The <c>&lt;fieldset&gt;</c> id/test-id/ARIA attribute block that the three radio-group controls —
 /// <c>EditRadio&lt;TValue&gt;</c>, <c>EditRadioEnum&lt;TEnum&gt;</c> and <c>EditRadioString</c> — render
-/// identically, returned for an <c>@attributes</c> splat so the eight attributes and their gating have
+/// identically, returned for an <c>@attributes</c> splat so the nine attributes and their gating have
 /// one authoring site instead of three.
 /// </summary>
 /// <remarks>
@@ -32,9 +32,17 @@ internal static class RadioAria
     /// <param name="isInvalid">The control's <c>IsInvalid</c>; gates <c>aria-invalid</c> and <c>aria-errormessage</c>.</param>
     /// <param name="describedBy">The control's cached <c>aria-describedby</c> token list (<c>_describedBy</c>).</param>
     /// <param name="errorMsgId">The control's cached validation-message element id (<c>_errorMsgId</c>).</param>
+    /// <param name="isHorizontal">
+    /// True when the options are laid out in a row — the control's own <c>IsHorizontal</c>, OR'd with
+    /// its <c>OptionType == RadioOptionType.Button</c> (the segmented button mode is inherently
+    /// horizontal whatever the flag says). Emits <c>aria-orientation="horizontal"</c>: the APG Radio
+    /// Group pattern's default assumption is vertical (Up/Down arrows), so a horizontal group that
+    /// never says so leaves the user reaching for the wrong keys. Defaults to false, which emits
+    /// nothing at all — <c>vertical</c> is the role's implicit value and spelling it out is noise.
+    /// </param>
     public static IReadOnlyDictionary<string, object>? Fieldset(
         bool showEditor, string id, string? ariaRequired, bool isInvalid,
-        string? describedBy, string? errorMsgId)
+        string? describedBy, string? errorMsgId, bool isHorizontal = false)
     {
         if (!showEditor)
             return null;
@@ -42,16 +50,23 @@ internal static class RadioAria
         // Every optional entry is ADDED only when it has a value rather than stored with a null value:
         // an omitted attribute is what the a11y suite pins (no aria-required="false"/
         // aria-invalid="false" noise), and a null dictionary value is not a reliable way to spell
-        // "omit" across every render path. aria-labelledby is unconditional: FormLabel renders the
-        // lbl-{id} legend even when the label is hidden (visually-hidden), so the reference never
-        // dangles.
-        var attributes = new Dictionary<string, object>(8)
+        // "omit" across every render path.
+        //
+        // aria-labelledby points at lbltext-{id} -- FormLabel's naming anchor, the span holding just
+        // the label text -- NOT at the lbl-{id} legend that contains it. The legend also contains the
+        // LabelTooltip trigger, and accessible-name computation folds a descendant button's own name
+        // in, so naming the group from the whole legend made every tooltipped radio group announce as
+        // "Priority More information about Priority". Unconditional either way: FormLabel renders the
+        // anchor in all four of its branches, hidden label included, so the reference never dangles.
+        var attributes = new Dictionary<string, object>(9)
         {
             ["id"] = id,
             ["data-test-id"] = id,
             ["role"] = "radiogroup",
-            ["aria-labelledby"] = $"lbl-{id}"
+            ["aria-labelledby"] = $"lbltext-{id}"
         };
+        if (isHorizontal)
+            attributes["aria-orientation"] = "horizontal";
         if (ariaRequired is not null)
             attributes["aria-required"] = ariaRequired;
         if (isInvalid)

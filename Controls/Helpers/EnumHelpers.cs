@@ -16,7 +16,9 @@ public static class EnumHelpers
     /// Returns the human-readable display name for an enum value, in priority order:
     /// 1. <c>[EnumDisplayName("…")]</c> (this library's attribute)
     /// 2. <c>[Display(Name="…")]</c> (System.ComponentModel.DataAnnotations)
-    /// 3. The enum member name with camelCase split into spaced words (e.g. <c>InProgress</c> → <c>"In Progress"</c>).
+    /// 3. The enum member name with camelCase split into spaced words (e.g. <c>InProgress</c> →
+    ///    <c>"In Progress"</c>), acronyms kept whole (<c>XMLExport</c> → <c>"XML Export"</c>) — see
+    ///    <see cref="SplitCamelCase"/>.
     /// </summary>
     /// <remarks>
     /// Memoized per (enum type, member name) — <b>except</b> for a member whose
@@ -75,28 +77,57 @@ public static class EnumHelpers
     }
 
     /// <summary>
-    /// Splits camelCase/PascalCase into spaced words — <c>InProgress</c> → <c>"In Progress"</c>.
+    /// Splits camelCase/PascalCase into spaced words — <c>InProgress</c> → <c>"In Progress"</c>,
+    /// <c>XMLParser</c> → <c>"XML Parser"</c>, <c>ID</c> → <c>"ID"</c>.
     /// </summary>
     /// <remarks>
-    /// A space goes in before an upper-case letter only when the previous character isn't already
-    /// whitespace. That guard is what keeps a combined <c>[Flags]</c> value readable: its
-    /// <c>ToString()</c> is already <c>"A, B"</c>, and inserting unconditionally turned that into
-    /// <c>"A,  B"</c> (two spaces) — then <see cref="GetName"/> memoized the doubled space, so every
-    /// checked-enum-list / radio-enum read-only view showed it for the process lifetime.
+    /// <para>
+    /// The one word-boundary rule the whole naming pipeline shares: <see cref="GetName"/> for enum
+    /// member names, and <see cref="AttributesHelper.GetLabelText"/> for the auto-generated field
+    /// label (which also feeds the validation messages). It lived twice, and the two copies were free
+    /// to drift.
+    /// </para>
+    /// <para>
+    /// A space goes in before an upper-case letter only at a real word boundary — see
+    /// <see cref="IsWordBoundary"/>. Splitting on EVERY capital (what both copies used to do) shredded
+    /// every acronym: <c>URLPath</c> read "U R L Path", <c>ID</c> read "I D", <c>CustomerSSN</c> read
+    /// "Customer S S N" — in the visible label AND in every message that names the field.
+    /// </para>
+    /// <para>
+    /// Nothing is inserted after whitespace or punctuation, which is what keeps a combined
+    /// <c>[Flags]</c> value readable: its <c>ToString()</c> is already <c>"A, B"</c>, and inserting
+    /// unconditionally turned that into <c>"A,  B"</c> (two spaces) — then <see cref="GetName"/>
+    /// memoized the doubled space, so every checked-enum-list / radio-enum read-only view showed it
+    /// for the process lifetime.
+    /// </para>
     /// </remarks>
-    static string SplitCamelCase(string name)
+    internal static string SplitCamelCase(string name)
     {
         var result = new StringBuilder(name.Length + 8);
         for (var i = 0; i < name.Length; i++)
         {
             var c = name[i];
-            if (i > 0 && char.IsUpper(c) && !char.IsWhiteSpace(name[i - 1]))
+            if (i > 0 && char.IsUpper(c) && IsWordBoundary(name, i))
                 result.Append(' ');
             result.Append(c);
         }
         // Preserved from the original expression: a leading space (only reachable for a non-enum
         // object whose ToString starts with one) is dropped rather than rendered.
         return result.ToString().TrimStart(' ');
+    }
+
+    // name[i] is a known upper-case letter, and i > 0. It starts a new word when
+    // the run of capitals is just beginning (previous character is lower-case -- BirthDate -- or a
+    // digit, which is what keeps today's "Address1 Line"), or when a run of capitals is ending INTO
+    // the next word: the previous character is also upper-case and the next one is lower-case, i.e.
+    // the 'P' of "XMLParser". A trailing all-caps run has no following lower-case letter, so nothing
+    // splits it -- "ID" and "CustomerSSN" stay whole.
+    static bool IsWordBoundary(string name, int i)
+    {
+        var previous = name[i - 1];
+        if (char.IsLower(previous) || char.IsDigit(previous))
+            return true;
+        return char.IsUpper(previous) && i + 1 < name.Length && char.IsLower(name[i + 1]);
     }
 
     // Trimming (IL2070): callers only reach this behind an IsEnum check, and ILLink keeps all
