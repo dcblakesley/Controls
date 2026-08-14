@@ -1,5 +1,29 @@
-﻿@using Controls.Demo
+@using Controls
+@using Controls.Demo
 
 @page "/"
 
-<EditControlsDemo />
+@* The optional "assetBase" query parameter is a TEST HOOK, mirroring /js-interop-fallback's own: it
+   points every lazily-imported wss-*.js module at a path nothing serves, so the whole gallery renders
+   in its no-JS degraded mode inside a real browser -- which is the only place a fallback that depends
+   on real DOM values (ColorPicker's MouseEventArgs.OffsetX handle positioning) can actually be
+   verified, since bUnit executes no JavaScript at all.
+
+   Deliberately an @if rather than an always-on <FormDefaults> wrapper: with no parameter the render
+   tree is byte-identical to what it was before this hook existed, so no existing e2e test or visual
+   baseline can be perturbed by its presence. *@
+@if (string.IsNullOrEmpty(AssetBase))
+{
+    <EditControlsDemo />
+}
+else
+{
+    <FormDefaults AssetBase="@AssetBase">
+        <EditControlsDemo />
+    </FormDefaults>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "assetBase")]
+    public string? AssetBase { get; set; }
+}

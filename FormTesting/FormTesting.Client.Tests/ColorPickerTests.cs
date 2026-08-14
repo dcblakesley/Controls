@@ -398,6 +398,20 @@ public class ColorPickerTests : BunitContext
     }
 
     [Fact]
+    public void Enter_in_the_hex_box_commits_without_waiting_for_a_change_event()
+    {
+        // Enter is handled explicitly rather than relying on the browser's own change-on-Enter, which
+        // wss-color.js's preventDefault (there to stop an enclosing form submitting) makes unreliable.
+        var cut = RenderPicker(out var committed);
+        Open(cut);
+
+        cut.Find(".wss-color-picker-hex").Input("#00ff00");
+        cut.Find(".wss-color-picker-hex").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("#00ff00", committed());
+    }
+
+    [Fact]
     public void An_unparseable_typed_hex_raises_OnParseError_reverts_the_box_and_commits_nothing()
     {
         var errors = new List<string>();

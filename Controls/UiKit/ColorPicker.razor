@@ -116,7 +116,8 @@
                            spellcheck="false"
                            value="@_hexEdit"
                            @oninput="@(e => _hexEdit = e.Value?.ToString() ?? string.Empty)"
-                           @onchange="CommitHexAsync" />
+                           @onchange="OnHexChangeAsync"
+                           @onkeydown="OnHexKeyDownAsync" />
                 }
                 else
                 {

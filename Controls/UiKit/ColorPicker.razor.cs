@@ -551,9 +551,20 @@ public partial class ColorPicker : PopupOverlayBase
     // Takes the change event's own value rather than reading _hexEdit alone, so a commit is
     // self-sufficient: the per-keystroke @oninput keeps _hexEdit in step for the render diff (see its
     // declaration), but a change event that arrives without one still commits what the box holds.
-    async Task CommitHexAsync(ChangeEventArgs e)
+    Task OnHexChangeAsync(ChangeEventArgs e) => CommitHexAsync(e.Value?.ToString() ?? string.Empty);
+
+    /// <summary>
+    /// Enter commits the typed color explicitly, rather than relying on the browser's own
+    /// change-on-Enter: <c>wss-color.js</c> preventDefaults that keydown (so it can't also submit an
+    /// enclosing form), and whether a UA still fires <c>change</c> after that is not something to
+    /// depend on. A duplicate commit from a <c>change</c> that does follow is a no-op — the same text
+    /// yields the same value, which <see cref="CommitAsync"/> recognizes and drops.
+    /// </summary>
+    Task OnHexKeyDownAsync(KeyboardEventArgs e) =>
+        e.Key == "Enter" ? CommitHexAsync(_hexEdit) : Task.CompletedTask;
+
+    async Task CommitHexAsync(string text)
     {
-        var text = e.Value?.ToString() ?? string.Empty;
         _hexEdit = text;
         if (string.IsNullOrWhiteSpace(text))
         {

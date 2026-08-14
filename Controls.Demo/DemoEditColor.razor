@@ -18,8 +18,11 @@
                    ShowText="true"
                    Label="Brand Color (with text)" />
 
+        @* Explicit Id: this second instance binds the SAME property as the one above, and the default
+           id is the property name -- two elements would otherwise share it. *@
         <EditColor @bind-Value="_model.ShownColor"
                    IsEditMode="false"
+                   Id="ShownColorReadOnly"
                    Label="Same value, read-only" />
 
         <h3>Markup</h3>
@@ -113,6 +116,7 @@
 
 <EditColor @bind-Value=""_model.ShownColor""
            IsEditMode=""false""
+           Id=""ShownColorReadOnly""
            Label=""Same value, read-only"" />";
 
     readonly string _noAlphaExample = @"<EditColor @bind-Value=""_model.OpaqueColor""
