@@ -386,6 +386,16 @@ public partial class EditDate<T> : EditControlBase<T>
     // for the same reason the parse path discards it: {0} is the field name, not the text.
     Task OnPickerRangeErrorAsync(string text) => AddFieldErrorAsync(RangeErrorMessage);
 
+    /// <summary>
+    /// Raised by the inner <see cref="DatePicker"/> on every accepted commit — including one whose value
+    /// EQUALS what is already bound, which the picker's own dedup keeps out of
+    /// <see cref="DatePicker.ValueChanged"/> entirely. Without this channel, retyping the date the field
+    /// already holds left a prior <see cref="ParsingErrorMessage"/>/<see cref="RangeErrorMessage"/> — and
+    /// the <c>aria-invalid</c> it drives — up permanently, blocking <c>OnValidSubmit</c> with no entry the
+    /// user could type to clear it.
+    /// </summary>
+    void OnPickerValidCommit() => ClearParseError();
+
     // Mirrors the shape of InputBase<T>.SetCurrentValueAsStringAsync's own built-in parsing-error
     // path -- clear this field's prior entry, add the formatted message, and notify -- just against a
     // store this control owns instead of InputBase's private one, since that path is never reached
@@ -466,12 +476,17 @@ public partial class EditDate<T> : EditControlBase<T>
         // A value only ever reaches here once the picker itself successfully committed it -- clear
         // any stale parse-error message from a prior unparseable entry (see OnPickerParseErrorAsync)
         // so it can never outlive the very next valid commit.
-        if (_parseErrorMessages is not null && EditContext is not null)
-        {
-            _parseErrorMessages.Clear(FieldIdentifier);
-            EditContext.NotifyValidationStateChanged();
-        }
+        ClearParseError();
         CurrentValue = result;
+    }
+
+    // Only ever touches the entries this control added itself -- see _parseErrorMessages. Same shape as
+    // EditDateRange.ClearParseError.
+    void ClearParseError()
+    {
+        if (_parseErrorMessages is null || EditContext is null) return;
+        _parseErrorMessages.Clear(FieldIdentifier);
+        EditContext.NotifyValidationStateChanged();
     }
 
     // Returns false only for the DateTimeOffset/DateTimeOffset? arm, and only when the conversion

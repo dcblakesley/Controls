@@ -292,6 +292,40 @@ public class PickerSizeAndParsingTests : BunitContext
     }
 
     [Fact]
+    public void Retyping_the_date_the_field_already_holds_clears_the_parsing_error_message()
+    {
+        // DatePicker.SetValueAsync dedups a commit equal to the value already bound, so ValueChanged --
+        // the channel that used to be the ONLY thing clearing this message -- never fires for it. The
+        // message (and the aria-invalid it drives) then outlived every possible correction: nothing the
+        // user could type would clear it, so EditForm.OnValidSubmit stayed blocked. DatePicker's
+        // OnValidCommit is the channel that survives the dedup.
+        var model = new PersonModel { BirthDate = Feb14 };
+        Expression<Func<DateTime?>> field = () => model.BirthDate;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditDate<DateTime?>>(0);
+            b.AddAttribute(1, "Value", model.BirthDate);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Format", "MM/dd/yyyy");
+            b.AddAttribute(4, "ValueChanged", EventCallback.Factory.Create<DateTime?>(this, v => model.BirthDate = v));
+            b.CloseComponent();
+        }));
+
+        cut.Find(".wss-picker-input").Click();
+        cut.Find(".wss-picker-input-date").Input("not a date");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Assert.Contains("must be a date", cut.Find(".edit-validation-message").TextContent);
+
+        // The bound value, retyped verbatim -- a valid entry that changes nothing.
+        cut.Find(".wss-picker-input-date").Input("02/14/2026");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal(string.Empty, cut.Find(".edit-validation-message").TextContent);
+        Assert.Null(cut.Find(".wss-picker-input-date").GetAttribute("aria-invalid"));
+        Assert.Equal(Feb14, model.BirthDate);
+    }
+
+    [Fact]
     public void Out_of_range_rejection_surfaces_a_range_message_not_a_parsing_one()
     {
         // Min/Max rejecting a well-formed date is not a parse failure (see DatePicker.OnParseError's

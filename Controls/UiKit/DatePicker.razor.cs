@@ -188,6 +188,17 @@ public partial class DatePicker : PickerBase
     /// </summary>
     [Parameter] public EventCallback<string> OnRangeError { get; set; }
 
+    /// <summary>
+    /// Raised on every ACCEPTED commit — a cell click, a typed entry, a time select, a preset —
+    /// <b>including</b> one whose value equals what is already bound, which <see cref="ValueChanged"/>
+    /// deliberately drops (see <c>SetValueAsync</c>). That dedup is exactly why this callback exists: a
+    /// host form control showing an <see cref="OnParseError"/>/<see cref="OnRangeError"/> message has to
+    /// retire it the moment an accepted entry lands, and "the user retyped the date that was already
+    /// there" is an accepted entry. <see cref="EditDate{T}"/> clears its validation message from here.
+    /// Optional, like the two error callbacks; a disabled picker never raises it.
+    /// </summary>
+    [Parameter] public EventCallback OnValidCommit { get; set; }
+
     /// <summary>Input placeholder. Null (default) picks <see cref="Mode"/>'s default: <c>Date</c>/
     /// <c>DateTime</c> "Select date" (the Figma spec) · <c>Month</c> "Select month" · <c>Time</c>
     /// "Select time" · <c>Year</c> "Select year" · <c>Quarter</c> "Select quarter" · <c>Week</c>
@@ -1406,6 +1417,11 @@ public partial class DatePicker : PickerBase
     {
         if (Disabled) return;
         value = value is { } v ? NormalizeForMode(v) : null;
+        // Before the dedup below, and unconditionally: this says "an accepted value was committed",
+        // which is true even when it matches what is already bound. A host form control's stale
+        // parse/range error has to clear on THAT case too, and the dedup means ValueChanged can never
+        // carry the news -- see OnValidCommit.
+        if (OnValidCommit.HasDelegate) await OnValidCommit.InvokeAsync();
         if (Value == value) return;
         Value = value;
         await ValueChanged.InvokeAsync(value);
