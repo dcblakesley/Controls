@@ -646,6 +646,11 @@ public partial class ColorPicker : PopupOverlayBase
 
     void OnFormatChanged(ChangeEventArgs e)
     {
+        // Guarded in its own right, not just via CommitAsync: nothing here commits, but it does mutate
+        // the session (which row renders, and the wiring latch that row depends on) -- so a change event
+        // queued against the pre-disable render tree could still reshape a disabled picker's panel.
+        // Same defense-in-depth reasoning as AdoptAsync's own guard.
+        if (Disabled) return;
         // String compare rather than Enum.TryParse: two known values, no reflection, nothing for the
         // trim/AOT analyzers to consider.
         _format = string.Equals(e.Value?.ToString(), nameof(ColorFormat.Rgb), StringComparison.Ordinal)
@@ -673,6 +678,12 @@ public partial class ColorPicker : PopupOverlayBase
 
     async Task CommitHexAsync(string text)
     {
+        // Guarded ahead of the CommitAsync/ClearAsync calls below rather than relying on theirs: this
+        // path can raise OnParseError, which is the one signal a disabled picker must never send. A
+        // wrapper turns that into a validation message, and the very channel that retires it
+        // (OnValidCommit, via CommitAsync) is blocked by the same Disabled flag -- so an event queued
+        // against the pre-disable render tree could leave a disabled field permanently invalid.
+        if (Disabled) return;
         _hexEdit = text;
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -708,6 +719,10 @@ public partial class ColorPicker : PopupOverlayBase
     // event-value-first contract as CommitHexAsync above.
     Task CommitChannelAsync(int index, string text)
     {
+        // Guarded in its own right for the same reason as CommitHexAsync above (minus the OnParseError
+        // half, which this row deliberately never raises): it mutates the row's edit text before any
+        // commit guard is reached.
+        if (Disabled) return Task.CompletedTask;
         _channelEdit[index] = text;
         if (!int.TryParse(_channelEdit[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out var raw))
         {
