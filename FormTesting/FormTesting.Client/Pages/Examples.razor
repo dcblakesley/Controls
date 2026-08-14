@@ -28,15 +28,26 @@ else
     public string? AssetBase { get; set; }
 
     // A test hook, but one whose value ends up as the URL of a dynamic import(): a crafted link could
-    // otherwise turn this page into an arbitrary-module loader from any origin. Only same-origin
-    // relative paths are honored -- anything carrying a scheme ("https:", "data:", "javascript:") or a
-    // protocol-relative "//host" prefix is dropped and the page renders exactly as it does with no
-    // parameter at all. Stricter than /js-interop-fallback's own hook, which is passed an absolute
+    // otherwise turn this page into an arbitrary-module loader from any origin. Only a rooted
+    // same-origin path is honored; anything else is dropped and the page renders exactly as it does with
+    // no parameter at all. Stricter than /js-interop-fallback's own hook, which is passed an absolute
     // same-origin URL by its e2e test; every caller of THIS one uses a rooted path.
-    string? SafeAssetBase =>
-        AssetBase is { Length: > 0 } value &&
-        !value.StartsWith("//", StringComparison.Ordinal) &&
-        !value.Contains(':', StringComparison.Ordinal)
-            ? value
-            : null;
+    string? SafeAssetBase => AssetBase is { Length: > 0 } value && IsRootedSameOriginPath(value) ? value : null;
+
+    // A WHITELIST, deliberately: the blacklist this replaces (reject a leading "//" or any ":") let
+    // "/\evil.example" through, because the URL parser treats a backslash as a forward slash under a
+    // special (http) scheme -- so the import specifier became a protocol-relative reference to another
+    // host, which is exactly the arbitrary-module load the guard exists to stop. Accepted shape:
+    // ^/[A-Za-z0-9._~/-]*$ with no second leading slash, i.e. one leading "/" followed only by the
+    // URL-unreserved characters a path segment needs. That excludes a scheme (":"), a backslash, a
+    // "%"-escape, a userinfo "@", a query/fragment, and every other character with URL syntax.
+    static bool IsRootedSameOriginPath(string value)
+    {
+        if (value[0] != '/' || value.StartsWith("//", StringComparison.Ordinal)) return false;
+        foreach (var c in value)
+        {
+            if (!char.IsAsciiLetterOrDigit(c) && c is not ('.' or '_' or '~' or '/' or '-')) return false;
+        }
+        return true;
+    }
 }

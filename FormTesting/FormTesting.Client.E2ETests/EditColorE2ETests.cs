@@ -334,6 +334,22 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
         await Expect(section.Locator(".wss-color-picker-value")).ToHaveTextAsync(new Regex("^#[0-9a-f]{6}$"));
     }
 
+    // Navigates to this view with the demo page's ?assetBase test hook set to `assetBase` verbatim
+    // (encoded on the way into the query string).
+    async Task GotoWithAssetBaseAsync(string assetBase)
+    {
+        await Page.GotoAsync($"{App.BaseUrl}/?view={View}&assetBase={Uri.EscapeDataString(assetBase)}",
+            new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 60_000 });
+        await Expect(Page.Locator("h1", new() { HasTextString = "EditColor Demo" }))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
+    }
+
+    // Resolves once wss-color.js has actually imported AND run initTrack on the hue track -- the
+    // module's own idempotency expando is the only in-DOM evidence that the wiring happened.
+    Task WaitForHueWiredAsync() => Page.WaitForFunctionAsync(
+        "() => document.querySelector('.wss-color-picker-hue')?.__wssColorWired === true",
+        null, new PageWaitForFunctionOptions { Timeout = 15_000 });
+
     [Fact]
     public async Task Without_the_js_module_a_click_still_positions_the_handle()
     {
@@ -343,10 +359,7 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
         // carry the press. bUnit can only simulate this with synthetic event args (see
         // ColorPickerTests' Strict-mode fallback tests); this proves the browser really does populate
         // those offsets relative to the track, which the handles being pointer-events:none guarantees.
-        await Page.GotoAsync($"{App.BaseUrl}/?view={View}&assetBase={Uri.EscapeDataString("/definitely-not-a-real-path")}",
-            new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 60_000 });
-        await Expect(Page.Locator("h1", new() { HasTextString = "EditColor Demo" }))
-            .ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await GotoWithAssetBaseAsync("/definitely-not-a-real-path");
 
         var section = Section(0);
         await Trigger(section).ClickAsync();
@@ -364,6 +377,85 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
         await Expect(panel.Locator(".wss-color-picker-sv"))
             .ToHaveAttributeAsync("aria-valuetext", "Saturation 50%, brightness 50%");
         await Expect(Trigger(section)).Not.ToHaveAttributeAsync("aria-label", "Basic Color: #1890ff");
+    }
+
+    [Fact]
+    public async Task An_asset_base_that_would_escape_the_origin_is_dropped_by_the_test_hook()
+    {
+        // Not a library behavior -- the demo page's own ?assetBase hook, whose value becomes the
+        // specifier of a dynamic import(). Its guard used to be a blacklist (reject a leading "//" or
+        // any ":"), which "/\evil.example" walked straight through: under a special (http) scheme the
+        // URL parser treats a backslash as a forward slash, so "/\evil.example/_content/..." resolves
+        // protocol-relative to another HOST. The whitelist rejects it, and the page then renders exactly
+        // as it does with no parameter at all -- which is what the wiring + request assertions below
+        // pin down. Its mirror image is Without_the_js_module_a_click_still_positions_the_handle above,
+        // where an ACCEPTED (rooted, same-origin) base really does stop the module from loading.
+        var colorModuleRequests = new List<string>();
+        Page.Request += (_, request) =>
+        {
+            if (request.Url.Contains("wss-color.js", StringComparison.Ordinal)) colorModuleRequests.Add(request.Url);
+        };
+
+        await GotoWithAssetBaseAsync("/\\evil.example");
+        await Trigger(Section(0)).ClickAsync();
+        await WaitForHueWiredAsync(); // the module loaded and wired: the crafted base never reached it
+
+        Assert.NotEmpty(colorModuleRequests);
+        Assert.All(colorModuleRequests, url => Assert.StartsWith(App.BaseUrl, url, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Re_wiring_an_already_wired_track_stays_a_single_commit_per_press()
+    {
+        // The F5/F4 fixes (a ShowAlpha flip drops the wiring latches so the newly-rendered alpha track
+        // gets wired, re-running the whole pass) rest entirely on wss-color.js's initTrack/initTextInput
+        // being idempotent per ELEMENT -- the __wssColorWired/__wssColorInputWired expandos. bUnit can't
+        // cover that (it executes no JS), so this re-invokes both entry points on already-wired elements
+        // in a real browser and counts what one press produces. Each initTrack call builds its OWN
+        // closure state (dragging/pending/frame/last), so without the expando two listeners would each
+        // dispatch their own input event for a single pointerdown -- two commits, two renders, two
+        // Blazor Server round trips.
+        await NavigateAsync();
+        var section = Section(0);
+        var panel = await OpenAsync(section);
+        await WaitForHueWiredAsync();
+
+        // Re-import (the same cached module instance -- the guard is in the DOM, not in module state),
+        // re-init the hue track and the HEX box, and count input events on the hue track's own drag
+        // signal from here on.
+        var alreadyWired = await Page.EvaluateAsync<bool>(
+            """
+            async () => {
+                const m = await import('/_content/WssBlazorControls/wss-color.js');
+                const hue = document.querySelector('.wss-color-picker-hue');
+                const signal = document.querySelectorAll('.wss-color-picker-signal')[1];
+                const hex = document.querySelector('.wss-color-picker-hex');
+                const wired = hue.__wssColorWired === true && hex.__wssColorInputWired === true;
+                window.__wssSignalCount = 0;
+                signal.addEventListener('input', () => window.__wssSignalCount++);
+                m.initTrack(hue, signal);
+                m.initTextInput(hex);
+                return wired;
+            }
+            """);
+        Assert.True(alreadyWired); // both expandos were already set -- the re-init hit the guard
+
+        var hue = panel.Locator(".wss-color-picker-hue");
+        var box = await hue.BoundingBoxAsync();
+        Assert.NotNull(box);
+        await Page.Mouse.ClickAsync(box.X + box.Width / 2, box.Y + box.Height / 2);
+
+        // One press, one report. (Two wirings would make this 2 -- delete either expando guard and it
+        // fails.) The commit itself still lands, which the hue value proves.
+        await Expect(hue).ToHaveAttributeAsync("aria-valuenow", new Regex("^1(79|80|81)$"));
+        Assert.Equal(1, await Page.EvaluateAsync<int>("() => window.__wssSignalCount"));
+
+        // The text box survives its own re-init: Enter still commits exactly once and still doesn't
+        // submit the enclosing EditForm (a duplicate keydown preventDefault is unobservable by design).
+        await panel.Locator(".wss-color-picker-hex").FillAsync("#00ff00");
+        await panel.Locator(".wss-color-picker-hex").PressAsync("Enter");
+        await Expect(Trigger(section)).ToHaveAttributeAsync("aria-label", "Basic Color: #00ff00");
+        await Expect(panel).ToBeVisibleAsync();
     }
 
     static Task<string> ForcedColorAdjustAsync(ILocator locator) =>
