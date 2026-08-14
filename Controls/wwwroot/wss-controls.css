@@ -4550,7 +4550,20 @@
    (iii) The dropdown's keyboard highlight is an author-colored outline (see the option rules) --
         outline-color is forced, so it survives as SOME system color either way, but re-stating it in
         Highlight keeps it the same cue the focused field uses instead of blending into the option
-        text. Matching :not(...) shape so it ties that rule and wins on source order. */
+        text. Matching :not(...) shape so it ties that rule and wins on source order.
+   (iv) The ColorPicker is the one place in the kit where color IS the information: its swatches, the
+        2D area's two gradients, and the hue/alpha tracks are nothing BUT color, so forcing them
+        leaves a control that conveys nothing at all -- neither the value it holds nor anything to
+        aim at. They opt out with forced-color-adjust: none, the same "the color is the content"
+        exception edit-controls.css makes for its mask-drawn glyphs. The property inherits, so each
+        track's handle, the alpha gradient overlay and each swatch's fill (including the red-diagonal
+        empty indicator) come with it.
+   (v)  The selected preset is marked with a ring in --wss-color-primary, drawn as a box-shadow.
+        Even opted out of the forced palette (iv), an author blue over a forced Canvas is not a
+        reliable cue, so the ring is re-expressed as an outline in the system Highlight color -- the
+        same substitution (i) makes for the focused/open field -- and the swatch's own inset hairline
+        is re-stated so dropping the outer shadow doesn't take it too. Same selector as the base rule
+        (0,3,0), won on source order. */
 @media (forced-colors: active) {
     .wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
     .wss-select:not(.wss-select-disabled) .wss-select-selector:focus-within,
@@ -4570,6 +4583,19 @@
        selector here would lose that state back to invisible. */
     .wss-select.wss-select-borderless .wss-select-selector {
         border: 1px solid ButtonBorder;
+    }
+
+    .wss-color-picker-swatch,
+    .wss-color-picker-sv,
+    .wss-color-picker-hue,
+    .wss-color-picker-alpha {
+        forced-color-adjust: none;
+    }
+
+    .wss-color-picker-preset[aria-pressed="true"] .wss-color-picker-swatch {
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+        outline: 2px solid Highlight;
+        outline-offset: 1px;
     }
 }
 

@@ -296,6 +296,44 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
         await Expect(Trigger(section)).Not.ToHaveAttributeAsync("aria-label", "Basic Color: #1890ff");
     }
 
+    static Task<string> ForcedColorAdjustAsync(ILocator locator) =>
+        locator.EvaluateAsync<string>("el => getComputedStyle(el).forcedColorAdjust");
+
+    [Fact]
+    public async Task Under_forced_colors_the_swatches_and_tracks_keep_carrying_their_color()
+    {
+        // Windows High Contrast substitutes the OS palette for every author color and drops box-shadow.
+        // For this control that erases the entire signal: swatches, the 2D area's gradients and the
+        // hue/alpha tracks are nothing BUT color, so they opt out with forced-color-adjust: none (the
+        // "color IS the information" exception, media-query-gated so nothing changes at rest).
+        await NavigateAsync();
+        var section = Section(3); // presets -- PresetColor is pinned to the first one, so it reads pressed
+        var panel = await OpenAsync(section);
+        var swatch = section.Locator(".wss-color-picker-trigger-swatch");
+        var fill = swatch.Locator(".wss-color-picker-swatch-fill");
+        var pressed = panel.Locator(".wss-color-picker-preset[aria-pressed=\"true\"] .wss-color-picker-swatch");
+        await Expect(pressed).ToBeVisibleAsync();
+
+        // Baseline: nothing opts out while forced colors are off, so the assertions below aren't vacuous.
+        Assert.Equal("auto", await ForcedColorAdjustAsync(swatch));
+        Assert.Equal("auto", await ForcedColorAdjustAsync(panel.Locator(".wss-color-picker-sv")));
+
+        await Page.EmulateMediaAsync(new PageEmulateMediaOptions { ForcedColors = ForcedColors.Active });
+
+        Assert.Equal("none", await ForcedColorAdjustAsync(swatch));
+        Assert.Equal("none", await ForcedColorAdjustAsync(panel.Locator(".wss-color-picker-sv")));
+        Assert.Equal("none", await ForcedColorAdjustAsync(panel.Locator(".wss-color-picker-hue")));
+        Assert.Equal("none", await ForcedColorAdjustAsync(panel.Locator(".wss-color-picker-alpha")));
+        Assert.Equal("none", await ForcedColorAdjustAsync(pressed));
+        // The property inherits, which is why the fills/handles/gradient overlays need no rule of their own.
+        Assert.Equal("none", await ForcedColorAdjustAsync(fill));
+
+        // The selected preset's ring is a box-shadow (dropped by forced colors even where the swatch
+        // itself opts out of the palette), re-expressed as a system-colored outline.
+        Assert.Equal("2px", await pressed.EvaluateAsync<string>("el => getComputedStyle(el).outlineWidth"));
+        Assert.Equal("solid", await pressed.EvaluateAsync<string>("el => getComputedStyle(el).outlineStyle"));
+    }
+
     [Fact]
     public async Task Visual_baseline_open_panel()
     {
