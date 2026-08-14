@@ -12,13 +12,13 @@
    Deliberately an @if rather than an always-on <FormDefaults> wrapper: with no parameter the render
    tree is byte-identical to what it was before this hook existed, so no existing e2e test or visual
    baseline can be perturbed by its presence. *@
-@if (string.IsNullOrEmpty(AssetBase))
+@if (string.IsNullOrEmpty(SafeAssetBase))
 {
     <EditControlsDemo />
 }
 else
 {
-    <FormDefaults AssetBase="@AssetBase">
+    <FormDefaults AssetBase="@SafeAssetBase">
         <EditControlsDemo />
     </FormDefaults>
 }
@@ -26,4 +26,17 @@ else
 @code {
     [SupplyParameterFromQuery(Name = "assetBase")]
     public string? AssetBase { get; set; }
+
+    // A test hook, but one whose value ends up as the URL of a dynamic import(): a crafted link could
+    // otherwise turn this page into an arbitrary-module loader from any origin. Only same-origin
+    // relative paths are honored -- anything carrying a scheme ("https:", "data:", "javascript:") or a
+    // protocol-relative "//host" prefix is dropped and the page renders exactly as it does with no
+    // parameter at all. Stricter than /js-interop-fallback's own hook, which is passed an absolute
+    // same-origin URL by its e2e test; every caller of THIS one uses a rooted path.
+    string? SafeAssetBase =>
+        AssetBase is { Length: > 0 } value &&
+        !value.StartsWith("//", StringComparison.Ordinal) &&
+        !value.Contains(':', StringComparison.Ordinal)
+            ? value
+            : null;
 }
