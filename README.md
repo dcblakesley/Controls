@@ -1027,7 +1027,7 @@ Deliberately has no model-attribute counterpart: delegates/`RenderFragment`s/`Ev
 | `←` / `→` | saturation ∓1% | hue ∓1° | opacity ∓1% |
 | `↑` / `↓` | brightness ±1% | hue ±1° | opacity ±1% |
 | `Shift` + arrow, `PageUp`/`PageDown` | the same, ×10 | ×10 | ×10 |
-| `Home` / `End` | — | 0° / 360° | 0% / 100% |
+| `Home` / `End` | saturation 0% / 100% | 0° / 360° | 0% / 100% |
 
 The 2D area's `aria-valuenow` carries saturation, with an `aria-valuetext` naming both axes (no single-axis value can describe a 2D handle) — override its wording with `SaturationValueTextFormat`. `Escape` closes the popup and returns focus to the trigger. The trigger's own accessible name is the field label plus the current value ("Brand Color: #1890ff"), so the value is announced, not just seen.
 

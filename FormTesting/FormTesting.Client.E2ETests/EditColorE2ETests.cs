@@ -190,6 +190,16 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
         await Expect(hue).ToHaveAttributeAsync("aria-valuenow", "11");
 
         Assert.NotEqual("11", before); // the steps actually moved something
+
+        // The 2D area's own Home/End (saturation to either end) -- the keys wss-color.js has always
+        // preventDefaulted on every track, and which this one now actually handles.
+        var area = panel.Locator(".wss-color-picker-sv");
+        await area.FocusAsync();
+        await area.PressAsync("Home");
+        await Expect(area).ToHaveAttributeAsync("aria-valuenow", "0");
+        await area.PressAsync("End");
+        await Expect(area).ToHaveAttributeAsync("aria-valuenow", "100");
+
         // The page must not have scrolled: wss-color.js preventDefaults exactly these keys.
         Assert.Equal(0, await Page.EvaluateAsync<int>("() => Math.round(window.scrollY)"));
     }

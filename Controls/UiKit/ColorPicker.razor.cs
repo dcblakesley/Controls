@@ -567,6 +567,15 @@ public partial class ColorPicker : PopupOverlayBase
             "ArrowRight" => SetSvAsync(_hsv.S + step, _hsv.V),
             "ArrowUp" or "PageUp" => SetSvAsync(_hsv.S, _hsv.V + step),
             "ArrowDown" or "PageDown" => SetSvAsync(_hsv.S, _hsv.V - step),
+            // Saturation, not brightness: it is the x axis, the one aria-valuenow/valuemin/valuemax
+            // describe, so the ARIA slider convention's "Home/End go to the minimum/maximum" applies to
+            // it. Brightness has no single-key end -- it isn't the reported value, and picking one axis
+            // to own the keys beats two keys that disagree with the ARIA. Also closes a dead
+            // preventDefault: wss-color.js suppresses the native Home/End page jump on every track
+            // (it can't know which keys a given track's component handles), so on this one the keys
+            // were swallowed and did nothing at all.
+            "Home" => SetSvAsync(0d, _hsv.V),
+            "End" => SetSvAsync(1d, _hsv.V),
             _ => Task.CompletedTask
         };
     }

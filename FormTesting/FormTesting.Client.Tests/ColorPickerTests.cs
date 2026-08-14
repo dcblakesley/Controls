@@ -277,6 +277,27 @@ public class ColorPickerTests : BunitContext
     }
 
     [Fact]
+    public void Home_and_End_jump_saturation_to_its_ends_and_leave_brightness_alone()
+    {
+        // Saturation is the axis aria-valuenow reports, so it is the one the ARIA slider convention's
+        // Home/End belong to. Both keys were preventDefaulted by wss-color.js and then handled by
+        // nothing, so they were simply dead on this track.
+        var cut = RenderPicker(out var committed);
+        Open(cut);
+        cut.Find(".wss-color-picker-sv").KeyDown(new KeyboardEventArgs { Key = "PageDown" }); // brightness 90%
+
+        cut.Find(".wss-color-picker-sv").KeyDown(new KeyboardEventArgs { Key = "Home" });
+        Assert.Equal("0", cut.Find(".wss-color-picker-sv").GetAttribute("aria-valuenow"));
+        Assert.Equal("Saturation 0%, brightness 90%", cut.Find(".wss-color-picker-sv").GetAttribute("aria-valuetext"));
+        Assert.Equal("#e6e6e6", committed()); // achromatic at 90% brightness
+
+        cut.Find(".wss-color-picker-sv").KeyDown(new KeyboardEventArgs { Key = "End" });
+        Assert.Equal("100", cut.Find(".wss-color-picker-sv").GetAttribute("aria-valuenow"));
+        Assert.Equal("Saturation 100%, brightness 90%", cut.Find(".wss-color-picker-sv").GetAttribute("aria-valuetext"));
+        Assert.Equal("#e60000", committed());
+    }
+
+    [Fact]
     public void Hue_arrow_steps_one_degree_and_Home_End_jump_to_the_ends()
     {
         var cut = RenderPicker();
