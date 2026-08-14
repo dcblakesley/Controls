@@ -3173,6 +3173,14 @@
     border-color: var(--wss-color-error);
 }
 
+/* Keep the error-red border on HOVER: the primary hover rule is (0,4,0) against the base invalid
+   rule's (0,3,0), so merely pointing at an invalid field replaced its error border with the primary
+   hover one and the validation state vanished under the cursor. Same shape plus .invalid, so it wins
+   on specificity rather than on file order (as .wss-select-pill.invalid's hover rule does). */
+.wss-picker.invalid:not(.wss-picker-disabled):hover .wss-picker-input {
+    border-color: var(--wss-color-error);
+}
+
 /* Keep the error-red border on open/focus: the primary open/focus-within rule above has the same
    specificity (0,4,0) and would otherwise win the border-color (red glow, blue border). */
 .wss-picker.invalid.wss-picker-open .wss-picker-input,

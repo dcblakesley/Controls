@@ -71,6 +71,12 @@ public class EditDateE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         // app.css overrides --color-danger to #CF1322 at :root -- that bridged value (not the
         // #ff4d4f fallback) is what actually reaches the browser here.
         await Expect(pickerInput).ToHaveCSSAsync("border-color", "rgb(207, 19, 34)");
+
+        // ...and it survives hover: .wss-picker:not(.wss-picker-disabled):hover .wss-picker-input is
+        // (0,4,0) against the base invalid rule's (0,3,0), so pointing at an invalid field used to
+        // replace the error border with the primary hover one.
+        await pickerInput.HoverAsync();
+        await Expect(pickerInput).ToHaveCSSAsync("border-color", "rgb(207, 19, 34)");
     }
 
     [Fact]
