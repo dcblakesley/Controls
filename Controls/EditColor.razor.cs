@@ -115,6 +115,15 @@ public partial class EditColor : EditControlBase<string?>
     // compose fine -- each only ever touches the entries it added itself. Same shape as EditDate's.
     ValidationMessageStore? _parseErrorMessages;
 
+    // Whether _parseErrorMessages currently holds a message for this field. ClearParseError is called
+    // on EVERY valid commit from two independent channels (OnValidCommit and, when the value actually
+    // changed, ValueChanged), and each call used to end in NotifyValidationStateChanged whether or not
+    // there was anything to retire -- so a single drag frame could cost a ValidationSummary two extra
+    // re-renders (a network round trip each, on Blazor Server). Tracking it here makes the clear a true
+    // no-op when the store is empty, without giving up the "raise OnValidCommit on every valid commit"
+    // contract that makes the retirement reliable. Same field, same reason, in EditDate/EditDateRange.
+    bool _hasParseError;
+
     /// <summary>
     /// Raised by the inner <see cref="ColorPicker"/> when a typed HEX entry can't be parsed as a color
     /// at all. Mirrors <see cref="EditDate{T}"/>'s equivalent (and, through it, the shape of
@@ -129,6 +138,7 @@ public partial class EditColor : EditControlBase<string?>
         _parseErrorMessages.Clear(FieldIdentifier);
         _parseErrorMessages.Add(FieldIdentifier,
             string.Format(CultureInfo.InvariantCulture, ParsingErrorMessage, FieldIdentifier.FieldName));
+        _hasParseError = true;
         // CurrentValue never changed (the bad text was reverted, not committed) -- notify explicitly,
         // same as InputBase's own equivalent failure path, so FormOptions/consumers watching field
         // changes still see this as a touch.
@@ -157,10 +167,13 @@ public partial class EditColor : EditControlBase<string?>
     void OnPickerValidCommit() => ClearParseError();
 
     // Only ever touches the entries this control added itself -- see _parseErrorMessages. Same shape as
-    // EditDateRange.ClearParseError.
+    // EditDateRange.ClearParseError. Returns immediately when there is nothing outstanding: the notify
+    // below is the expensive part (every ValidationSummary/ValidationView subscriber re-renders), and
+    // this runs on every valid commit from two channels -- see _hasParseError.
     void ClearParseError()
     {
-        if (_parseErrorMessages is null || EditContext is null) return;
+        if (!_hasParseError || _parseErrorMessages is null || EditContext is null) return;
+        _hasParseError = false;
         _parseErrorMessages.Clear(FieldIdentifier);
         EditContext.NotifyValidationStateChanged();
     }
@@ -170,15 +183,12 @@ public partial class EditColor : EditControlBase<string?>
     /// the <see cref="EditContext"/>, not on this component, so a control removed while showing a parse
     /// error (an <c>IsHidden</c>/<see cref="HidingMode"/> toggle, a tab switch) would otherwise leave
     /// the message behind for a <c>ValidationView</c> summary to link to a field that no longer renders.
-    /// Only ever touches entries this control added — see <see cref="_parseErrorMessages"/>.
+    /// Only ever touches entries this control added — see <see cref="_parseErrorMessages"/>; a control
+    /// unmounting with nothing outstanding notifies nobody (see <see cref="ClearParseError"/>).
     /// </summary>
     protected override void Dispose(bool disposing)
     {
-        if (disposing && _parseErrorMessages is not null && EditContext is not null)
-        {
-            _parseErrorMessages.Clear(FieldIdentifier);
-            EditContext.NotifyValidationStateChanged();
-        }
+        if (disposing) ClearParseError();
         base.Dispose(disposing);
     }
 

@@ -375,6 +375,15 @@ public partial class EditDate<T> : EditControlBase<T>
     // it added itself, so clearing this one can never drop a DataAnnotations message and vice versa.
     ValidationMessageStore? _parseErrorMessages;
 
+    // Whether _parseErrorMessages currently holds a message for this field. ClearParseError is called
+    // on EVERY accepted commit from two independent channels (OnValidCommit and, when the value actually
+    // changed, ValueChanged), and each call used to end in NotifyValidationStateChanged whether or not
+    // there was anything to retire -- so an ordinary commit cost a ValidationSummary two extra
+    // re-renders (a network round trip each, on Blazor Server). Tracking it here makes the clear a true
+    // no-op when the store is empty, without giving up the "raise OnValidCommit on every accepted
+    // commit" contract that makes the retirement reliable. Same field, same reason, in EditColor.
+    bool _hasParseError;
+
     // Raised by the inner DatePicker when a typed commit can't be parsed as a date at all (see
     // DatePicker.OnParseError's doc comment for exactly which failures reach here).
     Task OnPickerParseErrorAsync(string text) => AddFieldErrorAsync(ParsingErrorMessage);
@@ -407,6 +416,7 @@ public partial class EditDate<T> : EditControlBase<T>
         _parseErrorMessages.Clear(FieldIdentifier);
         _parseErrorMessages.Add(FieldIdentifier,
             string.Format(CultureInfo.InvariantCulture, messageFormat, FieldIdentifier.FieldName));
+        _hasParseError = true;
         // CurrentValue never changed (the bad text was reverted, not committed) -- notify explicitly,
         // same as InputBase's own equivalent failure path, so FormOptions/consumers watching field
         // changes still see this as a touch.
@@ -420,15 +430,12 @@ public partial class EditDate<T> : EditControlBase<T>
     /// on the <see cref="EditContext"/>, not on this component, so a control removed while showing a
     /// parse error (an <c>IsHidden</c>/<see cref="HidingMode"/> toggle, a tab switch) would otherwise
     /// leave the message behind for a <c>ValidationView</c> summary to link to a field that no longer
-    /// renders. Only ever touches entries this control added -- see <see cref="_parseErrorMessages"/>.
+    /// renders. Only ever touches entries this control added -- see <see cref="_parseErrorMessages"/>;
+    /// a control unmounting with nothing outstanding notifies nobody (see <see cref="ClearParseError"/>).
     /// </summary>
     protected override void Dispose(bool disposing)
     {
-        if (disposing && _parseErrorMessages is not null && EditContext is not null)
-        {
-            _parseErrorMessages.Clear(FieldIdentifier);
-            EditContext.NotifyValidationStateChanged();
-        }
+        if (disposing) ClearParseError();
         base.Dispose(disposing);
     }
 
@@ -481,10 +488,13 @@ public partial class EditDate<T> : EditControlBase<T>
     }
 
     // Only ever touches the entries this control added itself -- see _parseErrorMessages. Same shape as
-    // EditDateRange.ClearParseError.
+    // EditDateRange.ClearParseError. Returns immediately when there is nothing outstanding: the notify
+    // below is the expensive part (every ValidationSummary/ValidationView subscriber re-renders), and
+    // this runs on every accepted commit from two channels -- see _hasParseError.
     void ClearParseError()
     {
-        if (_parseErrorMessages is null || EditContext is null) return;
+        if (!_hasParseError || _parseErrorMessages is null || EditContext is null) return;
+        _hasParseError = false;
         _parseErrorMessages.Clear(FieldIdentifier);
         EditContext.NotifyValidationStateChanged();
     }
