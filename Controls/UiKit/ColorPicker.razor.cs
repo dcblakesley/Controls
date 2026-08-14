@@ -48,6 +48,15 @@ public partial class ColorPicker : PopupOverlayBase
     [Parameter] public EventCallback<string?> ValueChanged { get; set; }
 
     /// <summary>
+    /// Obsolete compile-time guard: never used — <c>@bind-Value</c> alone is sufficient. This inert
+    /// stub exists only so a <c>Field="..."</c> attribute copied over from an older control's markup
+    /// is a compile error instead of an unmatched-parameter throw at first render, matching
+    /// <see cref="DatePicker"/>'s own stub and the library-wide convention. Remove the attribute.
+    /// </summary>
+    [Obsolete("Field is no longer used -- @bind-Value alone is sufficient. Remove this attribute.", error: true)]
+    [Parameter] public Expression<Func<string?>>? Field { get; set; }
+
+    /// <summary>
     /// Raised with the offending text when a typed entry in the HEX input can't be parsed as a color at
     /// all; the entry is reverted and <see cref="ValueChanged"/> does NOT fire. The RGB row's number
     /// inputs never raise this — an out-of-range or non-numeric entry there clamps or reverts silently,
