@@ -7,9 +7,9 @@ A comprehensive library of form controls for Blazor applications providing consi
 
 ## Features
 
-- **Rich Form Controls**: String, Number, Date, Boolean, Select, Radio, Checkbox lists, and TextArea components
+- **Rich Form Controls**: String, Number, Date, Color, Boolean, Select, Radio, Checkbox lists, and TextArea components
 - **Searchable & Multi-Select**: AntDesign-style `EditSelectSearch` / `EditMultiSelect` — type-to-search, tags, virtualized dropdown
-- **AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, DateRangePicker, Skeleton, and toasts
+- **AntDesign-style UI Kit**: dependency-free Alert, Modal, Drawer, Table, Pagination, Popover, Popconfirm, DateRangePicker, ColorPicker, Skeleton, and toasts
 - **Data Annotations Integration**: Full support for validation attributes (Required, Range, MinLength, etc.)
 - **Validator-Agnostic Core**: messages, invalid-state ARIA, and the validation summary work with any `EditContext` validator; a form-level `RequiredResolver` bridges required-star/`aria-required` for FluentValidation and other stacks
 - **Accessibility First**: ARIA attributes, screen reader support, and keyboard navigation
@@ -50,8 +50,9 @@ Install-Package WssBlazorControls
    **Both are required as of 10.7.0.** `wss-controls.css` used to be needed only if you used the
    AntDesign-style UI-kit controls (`Select`, `Alert`, `Modal`, `Table`, ...) — but `EditDate` (the
    default date control since 10.7.0) is built on the UI-kit `DatePicker`, so its `wss-picker-*`
-   styling now ships from this stylesheet too. Omit it only if every date field in your app uses
-   `EditDateNative` instead of `EditDate`.
+   styling now ships from this stylesheet too, as does `EditColor`'s (`wss-color-picker-*`). Omit it
+   only if every date field in your app uses `EditDateNative` instead of `EditDate` and you use no
+   `EditColor`.
 
 3. **Include the JS helpers** (next to your Blazor script tag):
 
@@ -61,7 +62,7 @@ Install-Package WssBlazorControls
 
    Required by `JsInteropEc.FocusFirstInvalidField` (focus the first invalid field on a failed
    submit). The UI-kit controls — including the `DatePicker` that now backs `EditDate` — load their
-   own JS modules (`wss-select.js`, `wss-picker.js`, `wss-overlay.js`, ...) lazily; no extra
+   own JS modules (`wss-select.js`, `wss-picker.js`, `wss-color.js`, `wss-overlay.js`, ...) lazily; no extra
    `<script>` tags needed for them. If the script tag isn't linked (e.g. a cross-origin
    micro-frontend whose host page doesn't serve `_content/WssBlazorControls/`), `JsInteropEc`'s
    methods lazily import the module themselves and never throw — see
@@ -183,6 +184,12 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
   - `Format`/`DateFormat` fall back to a `[DisplayFormat]` on `Start`'s attributes first, then `End`'s. See [Model-declared field attributes](#model-declared-field-attributes-autocompletestepbooltextrowsfileconstraints).
   - `ParsingErrorMessage` (`string`, default `"The {0} field must be a date."`) surfaces a validation message against whichever endpoint's typed text can't be parsed as a date at all (`{0}` is that endpoint's own field name; a well-formed value merely rejected by `Min`/`Max`/`DisabledDate`/`*DisabledTime` does not trigger it), each endpoint's message clearing independently as soon as that endpoint next commits a valid value.
   - `RangeErrorMessage` (`string`, default `"The {0} field must be an allowed date."`) is `ParsingErrorMessage`'s counterpart for a well-formed typed date that endpoint's own `Min`/`Max`/`DisabledDate`/`*DisabledTime` rejects — same per-endpoint clearing, previously silent.
+- **`EditColor`** — Form-bound color field (an AntDesign-5-style swatch trigger opening the UI-kit `ColorPicker`), binding a plain `string?`.
+  - Accepts 3/4/6/8-digit hex (with or without `#`) and `rgb()`/`rgba()` text; emits normalized lowercase `#rrggbb`, extended to `#rrggbbaa` only when the color is translucent *and* `ShowAlpha` is on. A value it can't parse (including null/empty) renders as "no color" rather than an error.
+  - `ShowAlpha` (`bool`, default `true`) shows the alpha slider and allows an alpha channel in the value; `false` also **strips** the channel from what's emitted. `ShowText` (`bool`, default `false`) renders the normalized hex beside the swatch. `AllowClear` (`bool`, default `false`) adds a clear affordance that sets the bound value to `null`.
+  - `Presets` (`IReadOnlyList<string>?`) adds a labeled swatch row inside the popup; any form the control accepts works as an entry.
+  - `ParsingErrorMessage` (`string`, default `"The {0} field must be a color."`) surfaces a validation message when a typed HEX entry can't be parsed at all — the same `ValidationMessageStore` mechanism `EditDate` uses, since a picker commits through a value callback rather than string parsing.
+  - See [Color picking](#color-picking-editcolor--colorpicker) for the keyboard model, the popup's contents, and what happens without JavaScript.
 - **`EditBool`** - Checkbox for boolean values. `TrueText`/`FalseText` (now `string?`) fall back to the bound property's `[BoolText]` — see [Model-declared field attributes](#model-declared-field-attributes-autocompletestepbooltextrowsfileconstraints)
 - **`EditBoolNullRadio`** - Three-state radio for nullable booleans. `TrueText`/`FalseText`/`NullText` (now `string?`) fall back to the same `[BoolText]` attribute
 - **`EditFile`** — Multi-file upload bound to a `List<IBrowserFile>` (drag-and-drop + click-to-browse, extension filtering, per-file size cap, aggregate size cap, optional max count).
@@ -259,6 +266,12 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Popover`** — Click-triggered popover (4 placements); controlled `Visible`/`VisibleChanged` (`@bind-Visible`) mirrors `Select`'s controlled `Open` design.
   - `AriaLabel` (default **"Popover"**) names the `role="dialog"` panel whenever no `Title`/`TitleContent` is set — a dialog must never be nameless (axe `aria-dialog-name`); ignored once a title is present.
   - While open, the trigger's `aria-controls` mirrors the panel's own id.
+- **`ColorPicker`** — The swatch-trigger color popup behind `EditColor`; usable standalone, binding a plain `string?` via `@bind-Value` (see [Color picking](#color-picking-editcolor--colorpicker)).
+  - A saturation/brightness area, a hue slider, an optional alpha slider (`ShowAlpha`), a HEX/RGB input row, and an optional `Presets` swatch row; `ShowText`, `AllowClear`, `Disabled`, and `Placement` round out the surface.
+  - Every track is a `role="slider"` the arrow keys step (Shift or PageUp/PageDown for the larger step); the popup is a `role="dialog"` whose id the trigger mirrors as `aria-controls` while open.
+  - `OnParseError` (`EventCallback<string>`) reports a typed HEX entry that can't be parsed — what `EditColor` turns into a validation message.
+  - Deliberately **uncontrolled**: unlike `Popover`/`Popconfirm` there is no `Visible`/`VisibleChanged`, because the popup is only ever opened by its own trigger and a controlled open is the shape that can bypass `Disabled`.
+  - Needs JS for pointer dragging; without it a single click still positions the handle and the keyboard path is unaffected.
 - **`Pagination`** — Controlled pager.
   - `ShowTotal`, a `PageSizeOptions` size-changer (`@bind-PageSize`), `ShowQuickJumper`, and `Small` round out AntD 4.x parity (see [Pagination parity features](#pagination-parity-features-pagination)).
   - `Disabled` makes the whole pager inert (buttons, size-changer, quick-jumper) — `Table.Loading` uses it to give its own masked pagers keyboard, not just pointer, inertness.
@@ -988,6 +1001,40 @@ These four read the DataAnnotations attribute directly — there's no bespoke `C
 
 Deliberately has no model-attribute counterpart: delegates/`RenderFragment`s/`EventCallback`s, runtime state (`IsDisabled`, `Open`, `Indeterminate`), view composition (`Size`, `Width`, CSS classes, `IsHorizontal`), form-level localization strings (picker labels, `*MessageFormat` strings — use `FormDefaults`/markup instead), and runtime data (`Options`, `Presets`). Model attributes are for constant, field-semantic metadata only — not everything a control parameter could ever hold.
 
+### Color picking (`EditColor` / `ColorPicker`)
+
+```razor
+<EditColor @bind-Value="_model.BrandColor" ShowText="true" AllowClear="true" Presets="_swatches" />
+
+@code {
+    static readonly IReadOnlyList<string> _swatches = ["#f5222d", "#1890ff", "#52c41a", "rgba(0, 0, 0, 0.35)"];
+}
+```
+
+**The value contract.** `EditColor` and the standalone `ColorPicker` both bind a plain `string?`.
+
+- **In:** 3-, 4-, 6-, or 8-digit hex, with or without the leading `#`, plus `rgb()`/`rgba()` in the comma, space, and slash spellings, with a numeric or percentage alpha. Out-of-range channels clamp rather than fail.
+- **Out:** normalized lowercase `#rrggbb`, extended to `#rrggbbaa` only when the color is translucent **and** `ShowAlpha` is on. `ShowAlpha="false"` therefore *strips* an alpha channel a bound-in value carried.
+- **Unusable in:** null, empty, and anything unparseable (a named CSS color like `chartreuse`, an `hsl()` string) all render as "no color" — AntD's white-with-a-red-diagonal empty swatch — rather than throwing. The read-only view shows nothing for the same values, so the two modes agree. A `[Required]` `string` is still satisfied by unparseable-but-non-empty text; add a `[RegularExpression]` if the exact form matters to your model.
+- Only a **typed** entry that fails to parse is an error, surfaced through `ParsingErrorMessage`/`OnParseError`. The RGB row's number boxes clamp or revert silently — a `number` input has no unparseable-text state worth reporting.
+
+**Inside the popup.** A saturation (x) / brightness (y) area, a hue slider, an alpha slider (`ShowAlpha`, default on), a HEX/RGB format switch with matching inputs, and an optional `Presets` row. The format switch changes only what the input row *edits* — the bound value is always normalized hex either way. Typed entries commit on Enter or blur.
+
+**Keyboard.** All three tracks are `role="slider"` elements in the tab order:
+
+| Key | Saturation/brightness area | Hue slider | Alpha slider |
+|---|---|---|---|
+| `←` / `→` | saturation ∓1% | hue ∓1° | opacity ∓1% |
+| `↑` / `↓` | brightness ±1% | hue ±1° | opacity ±1% |
+| `Shift` + arrow, `PageUp`/`PageDown` | the same, ×10 | ×10 | ×10 |
+| `Home` / `End` | — | 0° / 360° | 0% / 100% |
+
+The 2D area's `aria-valuenow` carries saturation, with an `aria-valuetext` naming both axes (no single-axis value can describe a 2D handle) — override its wording with `SaturationValueTextFormat`. `Escape` closes the popup and returns focus to the trigger. The trigger's own accessible name is the field label plus the current value ("Brand Color: #1890ff"), so the value is announced, not just seen.
+
+**Without JavaScript** (static prerender, or a host that can't reach `wss-color.js`): a single click still positions the handle, computed from the click's offset within the track, and the keyboard steps above work with no JS at all. Only *dragging* is lost. That click fallback is the one place the control assumes its default metrics — `MouseEventArgs` reports an offset in pixels but not the element's size — so if you override `--wss-color-picker-width`/`--wss-color-picker-sv-height`, a no-JS click lands proportionally off while the normal (JS) path, which measures the real element, is unaffected.
+
+**Deliberately out of scope**, and not planned: sizes, custom gradient/color-scheme panels, grouped or collapsible preset sections, and AntD's color-picker-inside-an-input variants.
+
 ## Styling and Customization
 
 The library provides default styling through the included CSS file. You can customize the appearance by:
@@ -1005,6 +1052,8 @@ The AntDesign-style UI-kit controls (Alert, Modal, Table, Select, ...) are theme
 - The unthemed `--wss-color-warning`/`--wss-color-success` defaults are likewise darkened off the plain AntD 4 palette so their status icons clear WCAG 1.4.11 on their own — the `-bg`/`-border` tint tokens beside them are intentionally left alone, since backgrounds carry no contrast floor of their own.
 - A small `--wss-color-text-deemphasized` token backs *operable* de-emphasized text (the pickers' outside-month/decade cells) at 4.5:1+, distinct from `--wss-color-placeholder`, which stays reserved for true input placeholders.
 - `--wss-color-placeholder` (default `rgba(0, 0, 0, 0.55)`, darkened from an earlier `#bfbfbf` that measured only 1.84:1) and the new `--wss-color-text-secondary-strong` (default `rgba(0, 0, 0, 0.65)`, mirroring `edit-controls.css`'s `--edit-color-text-secondary-strong`) back text-grade secondary content in the kit.
+
+- `ColorPicker`'s own geometry lives in `--wss-color-picker-width` (`234px`), `--wss-color-picker-sv-height` (`140px`), `--wss-color-picker-slider-height` (`10px`), `--wss-color-picker-swatch-size` (`24px`), `--wss-color-picker-radius` (`8px`), and `--wss-color-picker-checker` (`#dedede`, the transparency checkerboard's tint). The first two are mirrored as constants in the component, purely for the no-JavaScript click fallback — see [Color picking](#color-picking-editcolor--colorpicker).
 
 UI-kit control chrome (`--wss-control-height`/`-sm`/`-lg`, default `32px`/`24px`/`40px`) is sized in fixed pixels: page zoom scales it fine, but OS-level text-only scaling (no zoom) can clip taller text into that fixed height — override the `--wss-control-height*` tokens if you need to support larger text sizes without zoom.
 
@@ -1122,9 +1171,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ### Unreleased
 
-A full accessibility audit of the `Edit*` form controls and the shared label/validation/stylesheet layers they render through (~75 findings — see `A11Y-AUDIT-2026-08-13.md` at the repo root for the complete report and remediation status), the counterpart to the 2026-08-11 UI-kit audit below. The form controls had never been audited before this pass. Landed in two waves — shared label/validation/stylesheet infrastructure first, then per-control fixes across select, date, radio/bool, checked-lists/file, and text — so the entries below span both.
+A full accessibility audit of the `Edit*` form controls and the shared label/validation/stylesheet layers they render through (~75 findings — see `A11Y-AUDIT-2026-08-13.md` at the repo root for the complete report and remediation status), the counterpart to the 2026-08-11 UI-kit audit below. The form controls had never been audited before this pass. Landed in two waves — shared label/validation/stylesheet infrastructure first, then per-control fixes across select, date, radio/bool, checked-lists/file, and text — so the entries below span both. Alongside it, unrelated to the audit: a **new color control** (`EditColor` plus the UI-kit `ColorPicker` it wraps), the first addition to the `Edit*` family since `EditDate`'s rename.
 
 **New** (Edit Controls)
+- **New control: `EditColor`** — an AntDesign-5-style color field binding a plain `string?`. A swatch trigger over a transparency checkerboard opens a popup with a saturation/brightness area, a hue slider, an optional alpha slider, a HEX/RGB input row, and an optional preset row.
+  - Accepts 3/4/6/8-digit hex (with or without `#`) and `rgb()`/`rgba()` text on the way in; emits normalized lowercase `#rrggbb`, extended to `#rrggbbaa` only when the color is translucent **and** `ShowAlpha` is on. A value it can't parse — including a named CSS color like `chartreuse` — renders as "no color" rather than throwing.
+  - Parameters: **`ShowAlpha`** (`bool`, default `true` — `false` also strips the channel from the emitted value), **`ShowText`** (`bool`, default `false`), **`AllowClear`** (`bool`, default `false`, clears to `null`), **`Presets`**/**`PresetsLabel`**, **`Placement`** (`PopupPlacement`, default `Bottom`), **`ParsingErrorMessage`** (`string`, default `"The {0} field must be a color."`), plus the usual localizable accessible-name set (`TriggerLabel`/`EmptyLabel`/`PanelLabel`/`SaturationLabel`/`SaturationValueTextFormat`/`HueLabel`/`AlphaLabel`/`ClearLabel`/`FormatLabel`/`HexLabel`/`RedLabel`/`GreenLabel`/`BlueLabel`/`AlphaPercentLabel`).
+  - Every track is a `role="slider"` the arrow keys step (Shift or PageUp/PageDown for the ×10 step), and the trigger's accessible name carries the current value ("Brand Color: #1890ff"). Dragging needs `wss-color.js`; without it a single click still positions the handle and the keyboard path is untouched.
+  - Needs `wss-controls.css` (and, for dragging, the lazily-imported `wss-color.js`) — same asset requirement as `EditDate`. See [Color picking](#color-picking-editcolor--colorpicker).
 - `FormLabel` gains **`TooltipTriggerLabel`** (`string?`, default `null`) — overrides the tooltip trigger's accessible name, which otherwise defaults to `"More information about {label}"` (or the bare "More information" when there's no label text to name it with) so a form with several tooltipped fields doesn't read as a list of identical "More information" buttons — and **`IsRequiredTextIncluded`** (`bool`, default `false`) — adds a visually-hidden "(required)" after a `role="group"` fieldset's legend text, since ARIA 1.2 permits `aria-required` on `radiogroup` but not on `group`, leaving a required checked-list with no channel for its required-ness to reach assistive tech at all (the star alone is `aria-hidden`). Opt-in, since a control whose field already carries `aria-required` must leave it false or the name would announce "required" twice.
 - `LabelTooltip` gains **`TriggerLabel`** (`string?`, default `null`) — the parameter `FormLabel.TooltipTriggerLabel` forwards into, falling back to the existing bare `"More information"`.
 - `ReadOnlyValue` gains **`EmptyText`** (`string`, default `"Not Set"`) — real, announced text for an empty read-only value, replacing a placeholder that was previously `aria-hidden` **and** `visibility: hidden`, reaching nobody. `EditDisplay` gains its own parallel **`EmptyText`** (`string`, default `"Not Set"`) for the same reason — it hand-rolls its own read-only view rather than using `ReadOnlyValue`, so the two parameters are independent, not inherited.
@@ -1135,6 +1189,8 @@ A full accessibility audit of the `Edit*` form controls and the shared label/val
 - `EditString` gains **`ShowPasswordButtonLabel`**/**`ShowValueButtonLabel`** (`string?`, default `null` each; effective text `"Show {label} password"`/`"Show {label} value"`), and the shared `EditTextInputBase` (backing both `EditString` and `EditTextArea`) gains **`ClearButtonLabel`** (`string?`, default `null`; effective `"Clear {label}"`) — all three were previously fixed literals repeated identically on every field, so a form with two of the same control read as indistinguishable "Clear"/"Show password" buttons to a screen reader browsing by button list.
 
 **New** (UI Kit)
+- **New control: `ColorPicker`** — the popup engine behind `EditColor` above, usable standalone via `@bind-Value` (a `string?`). Adds `Value`/`ValueChanged`, `OnParseError`, `Disabled`, `ShowAlpha`, `ShowText`, `AllowClear`, `Presets`/`PresetsLabel`, `Placement`, `Id`, and the localizable label set. Built on `PopupOverlayBase` — the same placement/dismiss/trigger-ARIA/focus-restore engine behind `Popover`/`Popconfirm`, so it inherits viewport flip/shift, backdrop-and-Escape dismiss, `aria-controls`, and focus restore on close. Deliberately **uncontrolled** (no `Visible`/`VisibleChanged`): a color popup is only ever opened by its own trigger, and a controlled open is the shape that can bypass `Disabled`. New `ColorFormat` enum (`Hex`/`Rgb`) for the input row's format switch — presentation only; the bound value is always normalized hex. New `ColorMath` helper (public, in `Controls.Helpers`) exposes the underlying hex/`rgb()` parsing, normalization, and HSV↔RGB conversions.
+- New JS module **`wss-color.js`** (lazily imported, like every other `wss-*.js`) — pointer dragging plus the per-key `preventDefault` Blazor can't express. It reports normalized coordinates by writing them into hidden inputs the component already listens to rather than through a `DotNetObjectReference`, keeping the library's interop one-way and avoiding a by-name `[JSInvokable]` that would need explicit rooting under `TrimMode=full`.
 - `Select<TValue>` gains **`InputLabel`** (`string?`, default `null`) and **`AriaLabelledBy`** (`string?`, default `null`, wins over `InputLabel` when both resolve) — names the `role="combobox"` input, which a standalone `<Select>` previously had no way to do at all: no `<label for>`, and a bare `aria-label` used to land on the roleless wrapper `<div>` and get silently ignored (now lifted onto the input automatically too). The `Edit*` wrappers already wire `AriaLabelledBy` internally to `FormLabel`'s `lbltext-{id}` naming anchor, so only a `Select` used standalone needs to set either parameter itself.
 - `Select<TValue>` gains its first live region — filtering, selection, deselection, tag removal, "no results", and loading were all previously silent — customizable via **`ResultCountAnnouncementFormat`** (default `"{0} results"`), **`SelectedAnnouncementFormat`** (`"{0} selected"`), **`DeselectedAnnouncementFormat`** (`"{0} deselected"`), **`SelectionClearedAnnouncement`** (`"Selection cleared"`), and **`LoadingAnnouncement`** (`"Loading"`) — all `string`/`string.Format` templates with unchanged-English defaults (`SelectDefaults`), matching the "override to localize" convention the rest of the kit already uses. **`MaxTagCountLabelFormat`** (default `"{0} more selected"`) similarly names the `MaxTagCount` overflow chip's sr-only text. `EditSelectSearch` forwards the single-select subset (`ResultCountAnnouncementFormat`/`SelectedAnnouncementFormat`/`SelectionClearedAnnouncement`/`LoadingAnnouncement` — no `Deselected`/`MaxTagCount`, which don't apply to a single selection); `EditMultiSelect` forwards the full multi-select set (adding `DeselectedAnnouncementFormat`/`MaxTagCountLabelFormat`).
 - `DatePicker` gains **`OnRangeError`** (`EventCallback<string>`) — raised for a well-formed typed date that `Min`/`Max`/`DisabledDate`/`DisabledTime` rejects (previously reverted in total silence: no error, no announcement, no validation message of any kind — distinct from the existing `OnParseError`, which covers text that isn't a date at all), plus **`Autocomplete`** (`string?`, default `null`, renders `autocomplete="off"` — the value both this and `DateRangePicker`'s inputs hardcoded before the parameter existed), **`AriaLabelledBy`** (`string?`, default `null`, wins over `InputLabel`), **`RangeHintMinLabel`**/**`RangeHintMaxLabel`** (default `"Earliest date:"`/`"Latest date:"`, rendered only when `Min`/`Max` is set, folded into the same `aria-describedby` element as the format hint — otherwise a bound reaches the user only as a per-cell `aria-disabled` in the calendar, invisible to someone typing), and **`WeekLabel`** (default `"Week"`, names each row's week-number cell — a `role="rowheader"` in `Week` mode, since the row rather than the day is the selection unit there).
