@@ -184,6 +184,37 @@ public partial class DateRangePicker : PickerBase
     /// <see cref="EndDisabledTime"/> rather than <see cref="StartDisabledTime"/>).</summary>
     [Parameter] public EventCallback<string> OnEndRangeError { get; set; }
 
+    /// <summary>
+    /// Raised on every ACCEPTED commit, carrying which endpoint(s) that commit ASSIGNED a value to —
+    /// <b>including</b> an assignment whose value equals what that endpoint already holds, which
+    /// <see cref="StartChanged"/>/<see cref="EndChanged"/> deliberately drop (each fires only when its
+    /// own side actually changed). That per-endpoint dedup is exactly why this callback exists: a host
+    /// form control showing an <see cref="OnStartParseError"/>/<see cref="OnStartRangeError"/> message
+    /// has to retire it the moment an accepted entry lands in THAT input, and "the user retyped the date
+    /// that endpoint already held" is an accepted entry no <c>Changed</c> callback can report.
+    /// <see cref="EditDateRange"/> clears each endpoint's validation message from here.
+    /// </summary>
+    /// <remarks>
+    /// One callback with a flags payload rather than the per-endpoint pair every other parameter on this
+    /// control uses (<see cref="OnStartParseError"/>/<see cref="OnEndParseError"/>, …): a single commit
+    /// can assign both ends, and reporting that as two callback invocations would make "one commit"
+    /// unrecoverable. What each path reports: a two-click range pick, a preset click, a session OK, and
+    /// <see cref="AllowClear"/>'s clear (a commit of "no range") all assign
+    /// <see cref="DateRangeEndpoints.Both"/>; a typed entry — or an emptied input — assigns only its own
+    /// side, even though the commit passes the other side's CURRENT value through unchanged (passing a
+    /// value through is not assigning it, and clearing the other endpoint's message off the back of it
+    /// would retire a message for text that was never revalidated). A commit whose endpoints get swapped
+    /// for being backwards still reports only what the caller assigned — the other endpoint necessarily
+    /// CHANGED in that case, so its own <c>Changed</c> callback carries the news. Not raised at all by
+    /// the paths that commit nothing: an unparseable entry (<see cref="OnStartParseError"/>), a
+    /// <see cref="Min"/>/<see cref="Max"/>/<see cref="DisabledDate"/>/<c>*DisabledTime</c> refusal
+    /// (<see cref="OnStartRangeError"/>), a click on a rejected cell, the first click of a two-click
+    /// pick (which commits nothing yet), and anything at all while <see cref="Disabled"/>. Optional,
+    /// like the four error callbacks. Same contract as <see cref="DatePicker.OnValidCommit"/>, split per
+    /// endpoint.
+    /// </remarks>
+    [Parameter] public EventCallback<DateRangeEndpoints> OnValidCommit { get; set; }
+
     /// <summary>Placeholder for the start input. Null (default) shows the uppercased
     /// <see cref="EffectiveFormat"/> (e.g. "2026-Q3" mode's own null-Format default, <c>yyyy</c>,
     /// uppercases to "YYYY" -- a placeholder that doesn't hint at the quarter shorthand; override
@@ -1585,7 +1616,7 @@ public partial class DateRangePicker : PickerBase
         _pendingStart = null;
         _hoverDay = null;
         _focusDay = unit;
-        await SetRangeAsync(start, unit);
+        await SetRangeAsync(start, unit, DateRangeEndpoints.Both);
         _pendingInputFocus = true; // the clicked button is about to unmount
         await CloseAsync();
     }
@@ -1684,7 +1715,7 @@ public partial class DateRangePicker : PickerBase
         _selecting = false;
         _pendingStart = null;
         _hoverDay = null;
-        await SetRangeAsync(start, end);
+        await SetRangeAsync(start, end, DateRangeEndpoints.Both);
         _pendingInputFocus = true; // the clicked preset button is about to unmount
         await CloseAsync();
     }
@@ -1706,7 +1737,7 @@ public partial class DateRangePicker : PickerBase
         _pendingSessionStart = null;
         _pendingSessionEnd = null;
         _startEdit = _endEdit = null;
-        await SetRangeAsync(null, null);
+        await SetRangeAsync(null, null, DateRangeEndpoints.Both);
     }
 
     // Typed input keeps the SAME per-endpoint immediate-commit route in every mode, including
@@ -1723,7 +1754,7 @@ public partial class DateRangePicker : PickerBase
         _startEdit = null;
         if (text.Length == 0)
         {
-            if (Start is not null) await SetRangeAsync(null, End);
+            if (Start is not null) await SetRangeAsync(null, End, DateRangeEndpoints.Start);
             FinishTextCommit();
             return;
         }
@@ -1739,7 +1770,7 @@ public partial class DateRangePicker : PickerBase
                 await RaiseTextErrorAsync(OnStartRangeError, text);
                 return;
             }
-            await SetRangeAsync(time, End);
+            await SetRangeAsync(time, End, DateRangeEndpoints.Start);
             FinishTextCommit();
             return;
         }
@@ -1757,7 +1788,7 @@ public partial class DateRangePicker : PickerBase
             await RaiseTextErrorAsync(OnStartRangeError, text);
             return;
         }
-        await SetRangeAsync(unit, End);
+        await SetRangeAsync(unit, End, DateRangeEndpoints.Start);
         if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 0);
         FinishTextCommit();
     }
@@ -1769,7 +1800,7 @@ public partial class DateRangePicker : PickerBase
         _endEdit = null;
         if (text.Length == 0)
         {
-            if (End is not null) await SetRangeAsync(Start, null);
+            if (End is not null) await SetRangeAsync(Start, null, DateRangeEndpoints.End);
             FinishTextCommit();
             return;
         }
@@ -1785,7 +1816,7 @@ public partial class DateRangePicker : PickerBase
                 await RaiseTextErrorAsync(OnEndRangeError, text);
                 return;
             }
-            await SetRangeAsync(Start, time);
+            await SetRangeAsync(Start, time, DateRangeEndpoints.End);
             FinishTextCommit();
             return;
         }
@@ -1801,7 +1832,7 @@ public partial class DateRangePicker : PickerBase
             await RaiseTextErrorAsync(OnEndRangeError, text);
             return;
         }
-        await SetRangeAsync(Start, unit);
+        await SetRangeAsync(Start, unit, DateRangeEndpoints.End);
         if (Mode == DatePickerMode.DateTime) _viewMonth = ClampView(FirstOfMonth(unit)); else AnchorView(unit, 1);
         FinishTextCommit();
     }
@@ -1835,7 +1866,12 @@ public partial class DateRangePicker : PickerBase
     // but every commit path in the control funnels through here, so one guard makes it structurally
     // impossible for a disabled picker to write through, whatever route a caller (or an event queued
     // against the pre-disable render tree) takes to reach it.
-    async Task SetRangeAsync(DateTime? start, DateTime? end)
+    //
+    // `assigned` is what the CALLER is actually setting, which the value pair itself cannot say: a
+    // typed Start commit passes the current End straight through (SetRangeAsync(unit, End)), and
+    // "passed through unchanged" must not read as "assigned". Only the caller knows, so each one
+    // declares it -- see OnValidCommit for what every path reports and why.
+    async Task SetRangeAsync(DateTime? start, DateTime? end, DateRangeEndpoints assigned)
     {
         if (Disabled) return;
         start = start is { } s ? NormalizeForMode(s) : null;
@@ -1846,6 +1882,12 @@ public partial class DateRangePicker : PickerBase
         var endChanged = End != end;
         Start = start;
         End = end;
+        // Before the two per-endpoint callbacks below, and independent of whether either side actually
+        // changed: this says "these endpoints received an accepted value", which is true even when the
+        // value matches what was already there. A host form control's stale parse/range error for that
+        // endpoint has to clear on THAT case too, and the per-side dedup below means neither Changed
+        // callback can ever carry the news -- see OnValidCommit.
+        if (assigned != DateRangeEndpoints.None && OnValidCommit.HasDelegate) await OnValidCommit.InvokeAsync(assigned);
         if (startChanged) await StartChanged.InvokeAsync(start);
         if (endChanged) await EndChanged.InvokeAsync(end);
     }
@@ -2092,7 +2134,8 @@ public partial class DateRangePicker : PickerBase
         }
 
         await SetRangeAsync(_activeInput == 0 ? activeValue : otherValue.Value,
-                            _activeInput == 0 ? otherValue.Value : activeValue);
+                            _activeInput == 0 ? otherValue.Value : activeValue,
+                            DateRangeEndpoints.Both);
         _pendingInputFocus = true; // the OK button is about to unmount
         await CloseAsync();
     }

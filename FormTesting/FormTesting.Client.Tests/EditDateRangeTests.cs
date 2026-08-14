@@ -823,6 +823,61 @@ public class EditDateRangeTests : BunitContext
     }
 
     [Fact]
+    public void Retyping_the_value_an_endpoint_already_holds_clears_only_that_endpoints_parsing_error()
+    {
+        // The picker raises StartChanged/EndChanged per endpoint AND only when that endpoint's value
+        // actually changed -- and those callbacks used to be the only thing clearing these messages. So
+        // retyping the date an endpoint already held (a perfectly valid entry) reached nothing at all:
+        // the message, and the aria-invalid it drives, outlived every possible correction and blocked
+        // OnValidSubmit with no text the user could type to fix it. DateRangePicker.OnValidCommit is the
+        // channel that survives the per-endpoint dedup, and it names the endpoint(s) it assigned -- so
+        // this retires Start's message and leaves End's, whose own text nothing revalidated.
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var cut = Render(RenderRange(model));
+
+        Open(cut);
+        Commit(cut, StartInput, "not a date");
+        Commit(cut, EndInput, "garbage");
+        Assert.Contains("Start must be a date.", MessageFor(cut, StartInput));
+        Assert.Contains("End must be a date.", MessageFor(cut, EndInput));
+
+        // Exactly the bound Start, retyped -- and deliberately still before End, so no swap fires
+        // EndChanged as a side effect.
+        Commit(cut, StartInput, "01/15/2025");
+
+        Assert.Equal(string.Empty, MessageFor(cut, StartInput));
+        Assert.Contains("End must be a date.", MessageFor(cut, EndInput));
+        Assert.Null(cut.Find(StartInput).GetAttribute("aria-invalid"));
+        Assert.Equal("true", cut.Find(EndInput).GetAttribute("aria-invalid"));
+        Assert.Equal(Jan15, model.Start); // nothing changed, which is the whole point
+    }
+
+    [Fact]
+    public void A_range_selection_click_retires_both_endpoints_stale_parsing_errors()
+    {
+        // One commit assigning BOTH endpoints (the second click of a two-click pick, and equally a
+        // preset, a session OK or the clear) has to retire both messages -- the payload is a flags enum
+        // precisely so a single commit can say so.
+        var model = new RangeModel { Start = Jan15, End = Feb3 };
+        var cut = Render(RenderRange(model));
+
+        Open(cut);
+        Commit(cut, StartInput, "not a date");
+        Commit(cut, EndInput, "garbage");
+        Assert.Contains("must be a date", MessageFor(cut, StartInput));
+        Assert.Contains("must be a date", MessageFor(cut, EndInput));
+
+        Open(cut); // a typed commit discards the pick session; reopen for the two-click pick
+        Day(cut, 0, 10).Click();
+        Day(cut, 0, 20).Click();
+
+        Assert.Equal(string.Empty, MessageFor(cut, StartInput));
+        Assert.Equal(string.Empty, MessageFor(cut, EndInput));
+        Assert.Equal(new DateTime(2025, 1, 10), model.Start);
+        Assert.Equal(new DateTime(2025, 1, 20), model.End);
+    }
+
+    [Fact]
     public void Custom_ParsingErrorMessage_is_honored_for_both_endpoints()
     {
         var model = new RangeModel { Start = Jan15, End = Feb3 };

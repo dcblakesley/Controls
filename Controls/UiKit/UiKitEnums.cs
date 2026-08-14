@@ -83,6 +83,26 @@ public enum DatePickerMode
 }
 
 /// <summary>
+/// Which end(s) of a <see cref="DateRangePicker"/>'s range a single commit assigned — the payload of
+/// <see cref="DateRangePicker.OnValidCommit"/>. A flags enum rather than one-callback-per-endpoint
+/// (the shape every other per-endpoint parameter on that control uses) because one commit genuinely
+/// can report both: a two-click range pick, a preset, a session OK and the clear all assign both ends
+/// at once, while a typed entry in one input assigns only that one.
+/// </summary>
+[Flags]
+public enum DateRangeEndpoints
+{
+    /// <summary>Neither endpoint — nothing was assigned, so nothing is reported.</summary>
+    None = 0,
+    /// <summary>The range's start.</summary>
+    Start = 1,
+    /// <summary>The range's end.</summary>
+    End = 2,
+    /// <summary>Both endpoints, assigned by the same commit.</summary>
+    Both = Start | End
+}
+
+/// <summary>
 /// Which text form a <see cref="ColorPicker"/>'s input row edits. Presentation only — the bound
 /// <see cref="ColorPicker.Value"/> is always normalized hex regardless of the selected format.
 /// </summary>

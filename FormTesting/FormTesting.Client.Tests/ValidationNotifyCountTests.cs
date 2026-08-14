@@ -179,4 +179,63 @@ public class ValidationNotifyCountTests : BunitContext
         Assert.Equal(1, counter.Count);
         Assert.Equal(string.Empty, cut.Find("#error-msg-BirthDate").TextContent);
     }
+
+    // ----- EditDateRange -----------------------------------------------------
+
+    static void CommitStart(IRenderedComponent<ContainerFragment> cut, string text)
+    {
+        cut.Find(".wss-picker-input-start").Input(text);
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+    }
+
+    [Fact]
+    public void EditDateRange_commits_notify_validation_state_only_when_something_actually_changed()
+    {
+        // Per endpoint here: the picker's OnValidCommit names which endpoint(s) it assigned, and this
+        // control retires exactly those messages. The counting matters more than for the single-value
+        // controls, because a commit assigning BOTH endpoints would otherwise notify twice with nothing
+        // to retire on either side.
+        var model = new RangeModel { Start = new DateTime(2025, 1, 15), End = new DateTime(2025, 2, 3) };
+        var counter = new Counter();
+        Expression<Func<DateTime?>> startField = () => model.Start;
+        Expression<Func<DateTime?>> endField = () => model.End;
+        var cut = RenderWithCounter(model, counter, content =>
+        {
+            content.OpenComponent<EditDateRange>(1);
+            content.AddAttribute(2, "Start", model.Start);
+            content.AddAttribute(3, "StartExpression", startField);
+            content.AddAttribute(4, "StartChanged",
+                EventCallback.Factory.Create<DateTime?>(this, v => model.Start = v));
+            content.AddAttribute(5, "End", model.End);
+            content.AddAttribute(6, "EndExpression", endField);
+            content.AddAttribute(7, "EndChanged",
+                EventCallback.Factory.Create<DateTime?>(this, v => model.End = v));
+            content.AddAttribute(8, "Format", "MM/dd/yyyy");
+            content.CloseComponent();
+        });
+        cut.Find(".wss-picker-input").Click(); // open
+
+        CommitStart(cut, "not a date");
+        CommitStart(cut, "01/20/2025");
+        Assert.Equal(new DateTime(2025, 1, 20), model.Start);
+
+        // (a) value-changing, nothing outstanding: the Start field change alone.
+        counter.Reset();
+        CommitStart(cut, "01/21/2025");
+        Assert.Equal(new DateTime(2025, 1, 21), model.Start);
+        Assert.Equal(1, counter.Count);
+
+        // (b) the same date retyped -- accepted and reported (that is what retires a stale message),
+        // but with nothing to retire and no value change, nobody hears about it.
+        counter.Reset();
+        CommitStart(cut, "01/21/2025");
+        Assert.Equal(0, counter.Count);
+
+        // (c) the same date retyped over a stale Start message -- exactly the retirement.
+        CommitStart(cut, "not a date");
+        counter.Reset();
+        CommitStart(cut, "01/21/2025");
+        Assert.Equal(1, counter.Count);
+        Assert.Equal(string.Empty, cut.Find("#error-msg-Start").TextContent);
+    }
 }

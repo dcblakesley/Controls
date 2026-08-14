@@ -639,6 +639,8 @@ public partial class EditDateRange : IDisposable
             {
                 _parseErrorMessages.Clear(_startFieldIdentifier);
                 _parseErrorMessages.Clear(_endFieldIdentifier);
+                _startParseError = false;
+                _endParseError = false;
                 previousEditContext?.NotifyValidationStateChanged();
                 _parseErrorMessages = null;
             }
@@ -669,12 +671,15 @@ public partial class EditDateRange : IDisposable
     // Write the new value back to the bound model BEFORE notifying the EditContext — the validator
     // reads the property live off the model via reflection during NotifyFieldChanged (see
     // EditControlListBase.ToggleAsync for the full rationale).
+    //
+    // The parse-error clear does NOT live here (it used to, and only here): the picker raises
+    // Start/EndChanged per endpoint and only when that endpoint's value actually changed, so retyping
+    // an endpoint's CURRENT value -- a perfectly valid entry -- never reached this method and left that
+    // endpoint's message, and the aria-invalid it drives, up permanently with nothing the user could
+    // type to clear it. OnPickerValidCommit below owns the retirement now, on the channel that survives
+    // the dedup.
     async Task OnStartChanged(DateTime? value)
     {
-        // A value only ever reaches here once the picker itself successfully committed it -- drop any
-        // stale parse-error message for THIS endpoint (the other endpoint's own message is untouched,
-        // since its own text was never revalidated) so it can't outlive the very next valid commit.
-        ClearParseError(_startFieldIdentifier);
         Start = value;
         await StartChanged.InvokeAsync(value);
         EditContext?.NotifyFieldChanged(_startFieldIdentifier);
@@ -682,10 +687,24 @@ public partial class EditDateRange : IDisposable
 
     async Task OnEndChanged(DateTime? value)
     {
-        ClearParseError(_endFieldIdentifier);
         End = value;
         await EndChanged.InvokeAsync(value);
         EditContext?.NotifyFieldChanged(_endFieldIdentifier);
+    }
+
+    /// <summary>
+    /// Raised by the inner <see cref="DateRangePicker"/> on every accepted commit, carrying which
+    /// endpoint(s) that commit assigned a value to — including an assignment equal to what the endpoint
+    /// already held, which <see cref="DateRangePicker.StartChanged"/>/<see cref="DateRangePicker.EndChanged"/>
+    /// deliberately drop (each fires only when its own side changed). Each named endpoint's stale
+    /// <see cref="ParsingErrorMessage"/>/<see cref="RangeErrorMessage"/> is retired here and only here;
+    /// the endpoint NOT named keeps its own message, because its own text was never revalidated. A
+    /// range-selection click, a preset, a session OK and the clear all name both, so they retire both.
+    /// </summary>
+    void OnPickerValidCommit(DateRangeEndpoints assigned)
+    {
+        if (assigned.HasFlag(DateRangeEndpoints.Start)) ClearParseError(_startFieldIdentifier, ref _startParseError);
+        if (assigned.HasFlag(DateRangeEndpoints.End)) ClearParseError(_endFieldIdentifier, ref _endParseError);
     }
 
     // Dedicated store for the two parse-error messages below -- a separate instance from whatever
@@ -701,6 +720,15 @@ public partial class EditDateRange : IDisposable
     // parse error lazily rebinds a fresh store to whatever EditContext is current then.
     ValidationMessageStore? _parseErrorMessages;
 
+    // Whether _parseErrorMessages currently holds a message for the Start / End field. Same purpose as
+    // EditColor/EditDate's single _hasParseError, doubled: OnPickerValidCommit runs on every accepted
+    // commit (a drag through a preset, a retyped date, a clear), and an unguarded clear would end in
+    // NotifyValidationStateChanged whether or not there was anything to retire -- one wasted re-render
+    // of every ValidationSummary subscriber per commit, per endpoint, over a network round trip on
+    // Blazor Server.
+    bool _startParseError;
+    bool _endParseError;
+
     /// <summary>
     /// Raised by the inner <see cref="DateRangePicker"/> when typed text in the START input can't be
     /// parsed at all (see <see cref="DateRangePicker.OnStartParseError"/> for exactly which failures
@@ -708,10 +736,12 @@ public partial class EditDateRange : IDisposable
     /// is deliberately discarded: <see cref="ParsingErrorMessage"/>'s <c>{0}</c> is the field name, not
     /// the text, matching <see cref="EditDate{T}.ParsingErrorMessage"/>'s identical contract.
     /// </summary>
-    Task OnStartParseErrorAsync(string _) => AddFieldErrorAsync(_startFieldIdentifier, ParsingErrorMessage);
+    Task OnStartParseErrorAsync(string _) =>
+        AddFieldErrorAsync(_startFieldIdentifier, ParsingErrorMessage, ref _startParseError);
 
     /// <inheritdoc cref="OnStartParseErrorAsync"/>
-    Task OnEndParseErrorAsync(string _) => AddFieldErrorAsync(_endFieldIdentifier, ParsingErrorMessage);
+    Task OnEndParseErrorAsync(string _) =>
+        AddFieldErrorAsync(_endFieldIdentifier, ParsingErrorMessage, ref _endParseError);
 
     /// <summary>
     /// Raised by the inner <see cref="DateRangePicker"/> when typed text in the START input parses
@@ -720,22 +750,28 @@ public partial class EditDateRange : IDisposable
     /// against the Start field. Same store and notify as the parse path, different wording; the
     /// refusal previously reached the form layer through no channel at all.
     /// </summary>
-    Task OnStartRangeErrorAsync(string _) => AddFieldErrorAsync(_startFieldIdentifier, RangeErrorMessage);
+    Task OnStartRangeErrorAsync(string _) =>
+        AddFieldErrorAsync(_startFieldIdentifier, RangeErrorMessage, ref _startParseError);
 
     /// <inheritdoc cref="OnStartRangeErrorAsync"/>
-    Task OnEndRangeErrorAsync(string _) => AddFieldErrorAsync(_endFieldIdentifier, RangeErrorMessage);
+    Task OnEndRangeErrorAsync(string _) =>
+        AddFieldErrorAsync(_endFieldIdentifier, RangeErrorMessage, ref _endParseError);
 
     // Mirrors the shape of InputBase<T>.SetCurrentValueAsStringAsync's own built-in parsing-error path
     // -- clear this field's prior entry, add the formatted message, and notify -- just against a store
     // this control owns, and against whichever of the two fields actually failed. Shared by both
-    // rejection kinds so they can't drift apart in everything but wording.
-    Task AddFieldErrorAsync(FieldIdentifier field, string messageFormat)
+    // rejection kinds so they can't drift apart in everything but wording. `hasError` is that field's
+    // own outstanding-message flag, passed by ref alongside its FieldIdentifier so the pair can never be
+    // mismatched at a call site (same reason OnParametersSet passes each identifier to
+    // SyncFieldRegistration by ref).
+    Task AddFieldErrorAsync(FieldIdentifier field, string messageFormat, ref bool hasError)
     {
         if (EditContext is null) return Task.CompletedTask;
         _parseErrorMessages ??= new ValidationMessageStore(EditContext);
         _parseErrorMessages.Clear(field);
         _parseErrorMessages.Add(field,
             string.Format(CultureInfo.InvariantCulture, messageFormat, field.FieldName));
+        hasError = true;
         // Neither bound value changed (the bad text was reverted, not committed) -- notify explicitly,
         // same as InputBase's own equivalent failure path, so FormOptions/consumers watching field
         // changes still see this as a touch.
@@ -744,11 +780,14 @@ public partial class EditDateRange : IDisposable
         return Task.CompletedTask;
     }
 
-    // Drops `field`'s own parse-error entry, if this control ever added one. Only ever touches entries
-    // it added itself -- see _parseErrorMessages.
-    void ClearParseError(FieldIdentifier field)
+    // Drops `field`'s own parse-error entry, if this control has one outstanding. Only ever touches
+    // entries it added itself -- see _parseErrorMessages. Returns immediately when that field has
+    // nothing outstanding: the notify is the expensive part, and this runs on every accepted commit
+    // (see _startParseError). Same ref-pairing as AddFieldErrorAsync above.
+    void ClearParseError(FieldIdentifier field, ref bool hasError)
     {
-        if (_parseErrorMessages is null || EditContext is null) return;
+        if (!hasError || _parseErrorMessages is null || EditContext is null) return;
+        hasError = false;
         _parseErrorMessages.Clear(field);
         EditContext.NotifyValidationStateChanged();
     }
@@ -811,10 +850,14 @@ public partial class EditDateRange : IDisposable
     /// behind for a <c>ValidationView</c> summary to link to a field that no longer renders. </summary>
     public void Dispose()
     {
-        if (_parseErrorMessages is not null && EditContext is not null)
+        // Both endpoints through the guarded clear, so a control unmounting with nothing outstanding
+        // notifies nobody (see ClearParseError); one notification covers both when they do.
+        if ((_startParseError || _endParseError) && _parseErrorMessages is not null && EditContext is not null)
         {
             _parseErrorMessages.Clear(_startFieldIdentifier);
             _parseErrorMessages.Clear(_endFieldIdentifier);
+            _startParseError = false;
+            _endParseError = false;
             EditContext.NotifyValidationStateChanged();
         }
         DetachValidationSubscription();

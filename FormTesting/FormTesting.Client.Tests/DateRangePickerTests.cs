@@ -2906,6 +2906,114 @@ public class DateRangePickerTests : BunitContext
         Assert.Null(cut.Instance.End);
     }
 
+    // ----- OnValidCommit: which endpoint(s) a commit assigned ------------------
+
+    // Every accepted commit's payload, collected in order.
+    IRenderedComponent<DateRangePicker> RenderWithCommits(
+        List<DateRangeEndpoints> commits, Action<ComponentParameterCollectionBuilder<DateRangePicker>>? configure = null) =>
+        RenderPicker(p =>
+        {
+            p.Add(c => c.Start, Jan15);
+            p.Add(c => c.End, Feb3);
+            p.Add(c => c.OnValidCommit, EventCallback.Factory.Create<DateRangeEndpoints>(this, commits.Add));
+            configure?.Invoke(p);
+        });
+
+    [Fact]
+    public void A_typed_commit_reports_only_its_own_endpoint()
+    {
+        // The commit passes the OTHER endpoint's current value straight through (SetRangeAsync(unit,
+        // End)), which must not read as an assignment -- a wrapper clearing that endpoint's parse
+        // message off the back of it would retire a message for text nothing revalidated.
+        var commits = new List<DateRangeEndpoints>();
+        var cut = RenderWithCommits(commits);
+
+        Open(cut);
+        cut.Find(".wss-picker-input-start").Input("01/20/2025");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Assert.Equal([DateRangeEndpoints.Start], commits);
+
+        cut.Find(".wss-picker-input-end").Input("02/10/2025");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Assert.Equal([DateRangeEndpoints.Start, DateRangeEndpoints.End], commits);
+    }
+
+    [Fact]
+    public void A_typed_commit_equal_to_the_bound_value_still_reports_its_endpoint()
+    {
+        // The whole point of the callback: StartChanged is per-endpoint AND dedup'd, so retyping the
+        // date that endpoint already holds reaches no Changed callback at all.
+        var commits = new List<DateRangeEndpoints>();
+        var changed = 0;
+        var cut = RenderWithCommits(commits, p => p.Add(c => c.StartChanged, (DateTime? _) => changed++));
+
+        Open(cut);
+        cut.Find(".wss-picker-input-start").Input("01/15/2025"); // exactly the bound Start
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal([DateRangeEndpoints.Start], commits);
+        Assert.Equal(0, changed);
+    }
+
+    [Fact]
+    public void A_two_click_range_pick_reports_both_endpoints()
+    {
+        var commits = new List<DateRangeEndpoints>();
+        var cut = RenderWithCommits(commits);
+
+        Open(cut);
+        Day(cut, 0, 10).Click();
+        Assert.Empty(commits); // the first click commits nothing yet
+        Day(cut, 0, 20).Click();
+
+        Assert.Equal([DateRangeEndpoints.Both], commits);
+    }
+
+    [Fact]
+    public void A_preset_click_reports_both_endpoints()
+    {
+        var commits = new List<DateRangeEndpoints>();
+        var cut = RenderWithCommits(commits, p => p.Add(c => c.Presets,
+            (IReadOnlyList<DateRangePreset>)[new DateRangePreset("Fixed", new DateTime(2025, 1, 5), new DateTime(2025, 1, 9))]));
+
+        Open(cut);
+        cut.Find(".wss-picker-preset").Click();
+
+        Assert.Equal([DateRangeEndpoints.Both], commits);
+    }
+
+    [Fact]
+    public void The_clear_reports_both_endpoints()
+    {
+        // Clearing is a commit of "no range" -- both endpoints were assigned null, so both endpoints'
+        // stale messages are the wrapper's to retire.
+        var commits = new List<DateRangeEndpoints>();
+        var cut = RenderWithCommits(commits, p => p.Add(c => c.AllowClear, true));
+
+        cut.Find(".wss-picker-clear").Click();
+
+        Assert.Equal([DateRangeEndpoints.Both], commits);
+    }
+
+    [Fact]
+    public void A_refused_or_unparseable_typed_commit_reports_nothing()
+    {
+        var commits = new List<DateRangeEndpoints>();
+        var cut = RenderWithCommits(commits, p =>
+        {
+            p.Add(c => c.Min, new DateTime(2025, 1, 10));
+            p.Add(c => c.Max, new DateTime(2025, 2, 20));
+        });
+
+        Open(cut);
+        cut.Find(".wss-picker-input-start").Input("not a date");
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        cut.Find(".wss-picker-input-start").Input("03/01/2025"); // well-formed, but past Max
+        cut.Find(".wss-picker").KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Empty(commits);
+    }
+
     // ----- Disabled => closed, and the commit funnel's own guard --------------
 
     [Fact]
