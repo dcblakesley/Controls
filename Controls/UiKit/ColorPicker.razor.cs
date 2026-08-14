@@ -65,6 +65,19 @@ public partial class ColorPicker : PopupOverlayBase
     /// </summary>
     [Parameter] public EventCallback<string> OnParseError { get; set; }
 
+    /// <summary>
+    /// Raised on every commit of a VALID color — a drag, an arrow-key step, a preset click, a typed
+    /// entry — <b>including</b> one that turns out to equal the value already bound, which
+    /// <see cref="ValueChanged"/> deliberately drops (re-raising an unchanged value costs a render, and
+    /// a round trip on Blazor Server, for every redundant drag report). That dedup is exactly why this
+    /// callback exists: a wrapper showing an <see cref="OnParseError"/> message has to retire it the
+    /// moment a valid entry lands, and "the user retyped the color that was already there" — or clicked
+    /// the preset matching it — is a valid entry. <see cref="EditColor"/> clears its parse-error
+    /// validation message from here; <see cref="AllowClear"/>'s clear is not a commit and does not
+    /// raise this (it raises <see cref="ValueChanged"/> with <c>null</c> instead).
+    /// </summary>
+    [Parameter] public EventCallback OnValidCommit { get; set; }
+
     /// <summary>Disables the trigger and every interactive path — the popup can't be opened, and an
     /// already-open popup closes if this flips to true.</summary>
     [Parameter] public bool Disabled { get; set; }
@@ -396,6 +409,11 @@ public partial class ColorPicker : PopupOverlayBase
         _hasColor = true;
         RefreshEditText();
         var hex = DisplayHex;
+        // Before the dedup below, and unconditionally: this says "a valid color was committed", which
+        // is true even when it matches what is already bound. A wrapper's stale parse error has to
+        // clear on THAT case too, and the dedup means ValueChanged can never carry the news -- see
+        // OnValidCommit.
+        if (OnValidCommit.HasDelegate) await OnValidCommit.InvokeAsync();
         if (string.Equals(hex, _lastValueParam, StringComparison.Ordinal)) return;
         _lastValueParam = hex;
         if (ValueChanged.HasDelegate) await ValueChanged.InvokeAsync(hex);

@@ -306,6 +306,47 @@ public class EditColorTests : BunitContext
         Assert.Equal("#00ff00", model.Brand);
     }
 
+    [Fact]
+    public void Retyping_the_value_the_field_already_holds_clears_the_parse_error()
+    {
+        // The picker dedups a commit equal to the value already bound, so ValueChanged -- the channel
+        // that used to be the ONLY thing clearing this message -- never fires for it. The message (and
+        // the aria-invalid it drives) then outlived every possible correction, permanently blocking
+        // OnValidSubmit: there is no entry a user could type that would clear it.
+        var model = new ColorModel { Brand = "#ff0000" };
+        var cut = RenderColor(model);
+
+        Open(cut);
+        cut.Find(".wss-color-picker-hex").Input("nope");
+        cut.Find(".wss-color-picker-hex").Change("nope");
+        Assert.Contains("must be a color", MessageFor(cut));
+
+        // Exactly the bound value, so the commit is deduped and the value never "changes".
+        cut.Find(".wss-color-picker-hex").Change("#ff0000");
+
+        Assert.Equal(string.Empty, MessageFor(cut));
+        Assert.Equal("#ff0000", model.Brand);
+        Assert.Null(cut.Find(".wss-color-picker-trigger").GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void Clicking_the_preset_that_matches_the_current_value_clears_the_parse_error()
+    {
+        // Same dedup, reached through a preset click rather than the HEX box.
+        var model = new ColorModel { Brand = "#00ff00" };
+        var cut = RenderColor(model, b =>
+            b.AddAttribute(10, "Presets", (IReadOnlyList<string>)["#00ff00", "#0000ff"]));
+
+        Open(cut);
+        cut.Find(".wss-color-picker-hex").Change("nope");
+        Assert.Contains("must be a color", MessageFor(cut));
+
+        cut.FindAll(".wss-color-picker-preset")[0].Click(); // already the bound value
+
+        Assert.Equal(string.Empty, MessageFor(cut));
+        Assert.Equal("#00ff00", model.Brand);
+    }
+
     // ----- Read-only ---------------------------------------------------------
 
     [Fact]

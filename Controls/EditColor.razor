@@ -13,6 +13,7 @@
             <ColorPicker Value="@CurrentValue"
                          ValueChanged="@OnValueChanged"
                          OnParseError="@OnPickerParseErrorAsync"
+                         OnValidCommit="@OnPickerValidCommit"
                          Id="@_id"
                          ShowAlpha="@ShowAlpha"
                          ShowText="@ShowText"

@@ -139,15 +139,30 @@ public partial class EditColor : EditControlBase<string?>
 
     void OnValueChanged(string? value)
     {
-        // A value only ever reaches here once the picker itself successfully committed it -- clear any
-        // stale parse-error message from a prior unparseable entry so it can never outlive the very
-        // next valid commit.
-        if (_parseErrorMessages is not null && EditContext is not null)
-        {
-            _parseErrorMessages.Clear(FieldIdentifier);
-            EditContext.NotifyValidationStateChanged();
-        }
+        // A value only ever reaches here once the picker itself successfully committed it (or cleared
+        // it, which raises null) -- clear any stale parse-error message from a prior unparseable entry
+        // so it can never outlive the very next valid commit.
+        ClearParseError();
         CurrentValue = value;
+    }
+
+    /// <summary>
+    /// Raised by the inner <see cref="ColorPicker"/> on every valid commit — including one whose value
+    /// EQUALS what is already bound, which the picker's own dedup keeps out of
+    /// <see cref="ColorPicker.ValueChanged"/> entirely. Without this channel, retyping the color the
+    /// field already holds (or clicking the preset that matches it) left a prior
+    /// <see cref="ParsingErrorMessage"/> — and the <c>aria-invalid</c> it drives — up permanently,
+    /// blocking <c>OnValidSubmit</c> with no way for the user to clear it.
+    /// </summary>
+    void OnPickerValidCommit() => ClearParseError();
+
+    // Only ever touches the entries this control added itself -- see _parseErrorMessages. Same shape as
+    // EditDateRange.ClearParseError.
+    void ClearParseError()
+    {
+        if (_parseErrorMessages is null || EditContext is null) return;
+        _parseErrorMessages.Clear(FieldIdentifier);
+        EditContext.NotifyValidationStateChanged();
     }
 
     /// <summary>
