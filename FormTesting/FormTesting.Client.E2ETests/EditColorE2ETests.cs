@@ -329,6 +329,13 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
         var panel = await OpenAsync(section);
         await Expect(panel.Locator(".wss-color-picker-alpha")).Not.ToBeVisibleAsync();
 
+        // The demo's last preset is rgba(0, 0, 0, 0.35), and this section renders the preset row with
+        // alpha OFF: the swatch has to paint opaque, because that is the color a click on it commits
+        // (the channel is stripped from the emitted value). The same entry in the section below, whose
+        // alpha is on, paints translucent -- see the open-panel visual baseline.
+        var lastPreset = panel.Locator(".wss-color-picker-preset .wss-color-picker-swatch-fill").Last;
+        await Expect(lastPreset).ToHaveCSSAsync("background-color", "rgb(0, 0, 0)");
+
         await DragAsync(panel.Locator(".wss-color-picker-hue"), 0.2, 0.6);
 
         await Expect(section.Locator(".wss-color-picker-value")).ToHaveTextAsync(new Regex("^#[0-9a-f]{6}$"));

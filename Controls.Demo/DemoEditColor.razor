@@ -30,9 +30,13 @@
     </section>
 
     <section class="demo-section">
+        @* Same preset row as the section below, deliberately: its last entry is translucent, and with
+           ShowAlpha off that swatch has to paint OPAQUE -- a preset must show the color a click on it
+           would actually commit, and the alpha channel is stripped from the emitted value here. *@
         <EditColor @bind-Value="_model.OpaqueColor"
                    ShowAlpha="false"
                    ShowText="true"
+                   Presets="_presets"
                    Label="No alpha channel" />
 
         <h3>Markup</h3>
@@ -119,9 +123,12 @@
            Id=""ShownColorReadOnly""
            Label=""Same value, read-only"" />";
 
-    readonly string _noAlphaExample = @"<EditColor @bind-Value=""_model.OpaqueColor""
+    readonly string _noAlphaExample = @"@* The translucent preset below paints opaque here: a swatch
+   shows the color a click on it would commit, and ShowAlpha=""false"" strips the alpha channel. *@
+<EditColor @bind-Value=""_model.OpaqueColor""
            ShowAlpha=""false""
            ShowText=""true""
+           Presets=""_presets""
            Label=""No alpha channel"" />";
 
     readonly string _noAlphaModel = @"// ShowAlpha=""false"" hides the alpha slider AND strips the
