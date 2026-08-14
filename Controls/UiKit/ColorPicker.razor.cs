@@ -442,8 +442,14 @@ public partial class ColorPicker : PopupOverlayBase
 
     // The single commit path: every interaction (drag, key, preset, typed entry) lands here, so the
     // emitted text, the in-progress input text, and the "has a color" state can never disagree.
+    // The Disabled guard is defense in depth for OnParametersSetAsync's Disabled => closed invariant:
+    // that unmounts the whole panel the moment Disabled is observed, so nothing reachable gets this far
+    // -- but every commit path funnels through here, so one guard makes it structurally impossible for a
+    // disabled picker to write through, whatever route a caller (or an event queued against the
+    // pre-disable render tree) takes to reach it. Same guard and rationale as DatePicker.SetValueAsync.
     async Task CommitAsync()
     {
+        if (Disabled) return;
         _hasColor = true;
         RefreshEditText();
         var hex = DisplayHex;
@@ -461,6 +467,10 @@ public partial class ColorPicker : PopupOverlayBase
     // rule as SyncFromValue) and commits. Shared by the preset row and the RGB input row.
     Task AdoptAsync(ColorMath.Rgba rgba)
     {
+        // Guarded in its own right, not just via CommitAsync below: this one mutates the HSV session
+        // first, so a disabled picker reached through here would silently move the handles even though
+        // nothing could be committed.
+        if (Disabled) return Task.CompletedTask;
         var derived = ColorMath.ToHsv(rgba);
         _hsv = derived.S <= 0d ? new ColorMath.Hsv(_hsv.H, derived.S, derived.V) : derived;
         if (ShowAlpha) _alpha = rgba.A;
