@@ -483,6 +483,10 @@ public partial class ColorPicker : PopupOverlayBase
     Task OnAlphaSignalAsync(ChangeEventArgs e) =>
         TryReadSignal(e, out var x, out _) ? SetAlphaAsync(x) : Task.CompletedTask;
 
+    // NumberStyles.Float also accepts "NaN"/"Infinity", and Math.Clamp propagates NaN rather than
+    // clamping it -- a report of "NaN,NaN" would otherwise commit through as a NaN saturation/value (an
+    // unrenderable handle offset, and a wedged keyboard path), so a non-finite coordinate is a malformed
+    // report and the whole report is dropped. Same guard as ColorMath.TryChannel/TryAlpha's.
     static bool TryReadSignal(ChangeEventArgs e, out double x, out double y)
     {
         x = 0d;
@@ -491,7 +495,8 @@ public partial class ColorPicker : PopupOverlayBase
         var comma = text.IndexOf(',');
         if (comma < 0) return false;
         return double.TryParse(text.AsSpan(0, comma), NumberStyles.Float, CultureInfo.InvariantCulture, out x) &&
-               double.TryParse(text.AsSpan(comma + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out y);
+               double.TryParse(text.AsSpan(comma + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out y) &&
+               double.IsFinite(x) && double.IsFinite(y);
     }
 
     // ----- No-JS click fallbacks ---------------------------------------------

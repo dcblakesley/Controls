@@ -44,7 +44,9 @@ public static class ColorMath
     /// <c>#</c> is optional), <c>rgb(r, g, b)</c>, and <c>rgba(r, g, b, a)</c> — the latter two also
     /// accepting whitespace or <c>/</c> in place of commas (CSS Color 4's space-separated form) and a
     /// percentage alpha. Channel percentages (<c>rgb(100%, 0%, 0%)</c>) are NOT supported and fail the
-    /// parse. Out-of-range channels/alpha clamp rather than fail. Returns false for anything else,
+    /// parse. Out-of-range channels/alpha clamp rather than fail; a non-finite one
+    /// (<c>NaN</c>/<c>Infinity</c>, both of which <see cref="NumberStyles.Float"/> itself accepts) fails
+    /// the parse instead, since there is nothing to clamp it to. Returns false for anything else,
     /// including null/whitespace — a color control treats that as "no color", never as an error.
     /// </summary>
     public static bool TryParse(string? text, out Rgba color)
@@ -202,10 +204,19 @@ public static class ColorMath
         return true;
     }
 
+    // NumberStyles.Float also accepts "NaN"/"Infinity"/"-Infinity" (and the current culture's symbols
+    // for them), and Math.Clamp PROPAGATES NaN rather than clamping it -- so without the IsFinite guard
+    // these two hand back a color whose channel/alpha is NaN, which then poisons every consumer of it:
+    // an unrenderable inline style, a `left: NaN%` handle, arrow keys that can never recover. Out of
+    // range is a clamp (see the class docs); not-a-number is a failed parse.
     static bool TryChannel(string text, out byte value)
     {
         value = 0;
-        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var raw)) return false;
+        if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var raw) ||
+            !double.IsFinite(raw))
+        {
+            return false;
+        }
         value = (byte)Math.Clamp(Math.Round(raw), 0d, 255d);
         return true;
     }
@@ -215,7 +226,11 @@ public static class ColorMath
         value = 1d;
         var isPercent = text.EndsWith('%');
         var number = isPercent ? text[..^1] : text;
-        if (!double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out var raw)) return false;
+        if (!double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out var raw) ||
+            !double.IsFinite(raw))
+        {
+            return false;
+        }
         value = Math.Clamp(isPercent ? raw / 100d : raw, 0d, 1d);
         return true;
     }

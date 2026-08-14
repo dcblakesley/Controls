@@ -120,6 +120,16 @@ public class ColorMathTests
     [InlineData("rgb 1 2 3")]    // no parentheses
     [InlineData("rgb(1, 2, 3")]  // unclosed
     [InlineData("hsl(0, 100%, 50%)")]
+    // NumberStyles.Float accepts all three of these spellings, and Math.Clamp propagates NaN instead of
+    // clamping it -- so without an IsFinite guard these parsed as "true" with a NaN/infinite channel or
+    // alpha, and the NaN then reached the swatch style, the handle offsets and the emitted hex.
+    [InlineData("rgb(NaN, 0, 0)")]
+    [InlineData("rgb(0, Infinity, 0)")]
+    [InlineData("rgb(0, 0, -Infinity)")]
+    [InlineData("rgba(255, 0, 0, NaN)")]
+    [InlineData("rgba(255, 0, 0, Infinity)")]
+    [InlineData("rgba(255, 0, 0, -Infinity)")]
+    [InlineData("rgba(255, 0, 0, NaN%)")]
     public void Rejects_text_that_is_not_a_supported_color(string? text)
     {
         Assert.False(ColorMath.TryParse(text, out var color));

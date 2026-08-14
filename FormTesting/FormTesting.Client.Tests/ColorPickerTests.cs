@@ -160,6 +160,14 @@ public class ColorPickerTests : BunitContext
     [InlineData("0.5")]      // no separator
     [InlineData("x,0.5")]
     [InlineData("0.5,y")]
+    // NumberStyles.Float accepts these, and Math.Clamp propagates NaN rather than clamping it -- so a
+    // non-finite coordinate used to commit through (NaN,NaN landed on #000000, and left the handle at
+    // `left: NaN%` with the arrow keys unable to recover).
+    [InlineData("NaN,NaN")]
+    [InlineData("NaN,0.5")]
+    [InlineData("0.5,NaN")]
+    [InlineData("Infinity,0.5")]
+    [InlineData("0.5,-Infinity")]
     public void A_malformed_drag_report_is_ignored(string payload)
     {
         var cut = RenderPicker(out var committed);
@@ -168,6 +176,9 @@ public class ColorPickerTests : BunitContext
         Signals(cut)[0].Input(payload);
 
         Assert.Null(committed());
+        // ...and the handle offsets stay renderable, which a NaN coordinate would not be (`left: NaN%`).
+        Assert.DoesNotContain("NaN", cut.Find(".wss-color-picker-sv-handle").GetAttribute("style"));
+        Assert.Equal("100", cut.Find(".wss-color-picker-sv").GetAttribute("aria-valuenow"));
     }
 
     // Strict JSInterop, not this class's usual Loose: under Loose, bUnit hands back a working fake
