@@ -220,6 +220,8 @@ public partial class ColorPicker : PopupOverlayBase
     // drag already reported that press; per the Pointer Events spec a click still fires afterwards) and
     // is reset on close, because the next open renders brand-new track elements to wire.
     bool _dragWired;
+    // The ShowAlpha the two latches above/below were last computed for -- see OnParametersSetAsync.
+    bool? _wiredShowAlpha;
     // Whether the input row's Enter suppression is attached. One flag for both rows: the format switch
     // renders a whole new row, and only one of the two exists at a time.
     bool _inputsWired;
@@ -257,6 +259,20 @@ public partial class ColorPicker : PopupOverlayBase
         {
             _lastValueParam = Value;
             SyncFromValue();
+        }
+
+        // ShowAlpha flipped: the alpha track and the RGB row's fourth box appear/disappear, so the
+        // wiring latches have to drop -- they were only ever reset on close, which left an alpha slider
+        // enabled mid-session with no drag wiring AND its @onclick fallback gated off (it is gated on
+        // _dragWired, which the sv/hue tracks had already latched), i.e. pointer-dead. Re-running the
+        // whole wiring pass is safe: initTrack/initTextInput are idempotent per element, so the
+        // already-wired tracks/inputs no-op and only the new elements attach. Nullable so the first
+        // parameters set stores the initial value without pretending anything changed.
+        if (_wiredShowAlpha != ShowAlpha)
+        {
+            _wiredShowAlpha = ShowAlpha;
+            _dragWired = false;
+            _inputsWired = false;
         }
 
         // Disabled flipped on while the popup was open -- close it rather than leaving a live panel

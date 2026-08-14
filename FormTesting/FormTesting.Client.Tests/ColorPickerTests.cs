@@ -385,6 +385,25 @@ public class ColorPickerTests : BunitContext
     }
 
     [Fact]
+    public void Enabling_ShowAlpha_while_the_panel_is_open_wires_the_new_alpha_track()
+    {
+        // The wiring latches were reset only on close, so an alpha slider switched on mid-session got no
+        // drag wiring at all -- and its @onclick fallback is gated on the very latch the sv/hue tracks
+        // had already set, so the new track was pointer-dead in both channels.
+        var cut = RenderPicker(p => p.Add(c => c.ShowAlpha, false));
+        Open(cut);
+        Assert.Equal(2, TrackWirings()); // sv + hue only
+
+        cut.Render(p => p.Add(c => c.ShowAlpha, true));
+
+        Assert.Single(cut.FindAll(".wss-color-picker-alpha"));
+        // The whole pass re-runs (initTrack is idempotent per element, so the first two are no-ops).
+        Assert.Equal(5, TrackWirings());
+    }
+
+    int TrackWirings() => JSInterop.Invocations.Count(i => i.Identifier == "initTrack");
+
+    [Fact]
     public void ShowAlpha_false_drops_the_alpha_column_from_the_rgb_row()
     {
         var cut = RenderPicker(p => p.Add(c => c.ShowAlpha, false));
