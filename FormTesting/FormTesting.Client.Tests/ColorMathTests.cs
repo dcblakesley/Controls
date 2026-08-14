@@ -120,20 +120,40 @@ public class ColorMathTests
     [InlineData("rgb 1 2 3")]    // no parentheses
     [InlineData("rgb(1, 2, 3")]  // unclosed
     [InlineData("hsl(0, 100%, 50%)")]
-    // NumberStyles.Float accepts all three of these spellings, and Math.Clamp propagates NaN instead of
-    // clamping it -- so without an IsFinite guard these parsed as "true" with a NaN/infinite channel or
-    // alpha, and the NaN then reached the swatch style, the handle offsets and the emitted hex.
+    // NumberStyles.Float accepts "NaN" as a number, and Math.Clamp PROPAGATES it instead of clamping --
+    // so without the guard these parsed as "true" with a NaN channel or alpha, and the NaN then reached
+    // the swatch style, the handle offsets and the emitted hex. The infinities are deliberately NOT here:
+    // they clamp like any other out-of-range value (see Clamps_infinite_channels_and_alpha below).
     [InlineData("rgb(NaN, 0, 0)")]
-    [InlineData("rgb(0, Infinity, 0)")]
-    [InlineData("rgb(0, 0, -Infinity)")]
     [InlineData("rgba(255, 0, 0, NaN)")]
-    [InlineData("rgba(255, 0, 0, Infinity)")]
-    [InlineData("rgba(255, 0, 0, -Infinity)")]
     [InlineData("rgba(255, 0, 0, NaN%)")]
     public void Rejects_text_that_is_not_a_supported_color(string? text)
     {
         Assert.False(ColorMath.TryParse(text, out var color));
         Assert.Equal(default(ColorMath.Rgba), color);
+    }
+
+    // An infinity has a range end to clamp to, so it takes the documented out-of-range CLAMP path
+    // rather than failing the parse. "1e400" matters most: it is an ordinary finite-LOOKING numeral
+    // that merely overflows double, and rejecting it broke the "out-of-range channels clamp rather than
+    // fail" contract for text a stylesheet can genuinely carry.
+    [Theory]
+    [InlineData("rgb(1e400, 0, 0)", 255, 0, 0, 1d)]
+    [InlineData("rgb(-1e400, 0, 0)", 0, 0, 0, 1d)]
+    [InlineData("rgb(0, Infinity, 0)", 0, 255, 0, 1d)]
+    [InlineData("rgb(0, 0, -Infinity)", 0, 0, 0, 1d)]
+    [InlineData("rgba(255, 0, 0, 1e400)", 255, 0, 0, 1d)]
+    [InlineData("rgba(255, 0, 0, -1e400)", 255, 0, 0, 0d)]
+    [InlineData("rgba(255, 0, 0, Infinity)", 255, 0, 0, 1d)]
+    [InlineData("rgba(255, 0, 0, -Infinity)", 255, 0, 0, 0d)]
+    [InlineData("rgba(255, 0, 0, Infinity%)", 255, 0, 0, 1d)]
+    public void Clamps_infinite_channels_and_alpha(string text, int r, int g, int b, double a)
+    {
+        Assert.True(ColorMath.TryParse(text, out var color));
+        Assert.Equal(r, color.R);
+        Assert.Equal(g, color.G);
+        Assert.Equal(b, color.B);
+        Assert.Equal(a, color.A);
     }
 
     // ----- Formatting -------------------------------------------------------

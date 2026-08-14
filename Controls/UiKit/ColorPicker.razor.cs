@@ -533,8 +533,11 @@ public partial class ColorPicker : PopupOverlayBase
 
     // NumberStyles.Float also accepts "NaN"/"Infinity", and Math.Clamp propagates NaN rather than
     // clamping it -- a report of "NaN,NaN" would otherwise commit through as a NaN saturation/value (an
-    // unrenderable handle offset, and a wedged keyboard path), so a non-finite coordinate is a malformed
-    // report and the whole report is dropped. Same guard as ColorMath.TryChannel/TryAlpha's.
+    // unrenderable handle offset, and a wedged keyboard path), so a NaN coordinate makes the whole
+    // report malformed and it is dropped. An INFINITE coordinate is not: every Set*Async below clamps
+    // its argument, and Math.Clamp maps ±inf onto the range ends correctly, so an infinity reads as
+    // "the far end of the track" -- the same out-of-range-is-a-clamp rule ColorMath.TryChannel/TryAlpha
+    // apply to color text.
     static bool TryReadSignal(ChangeEventArgs e, out double x, out double y)
     {
         x = 0d;
@@ -544,7 +547,7 @@ public partial class ColorPicker : PopupOverlayBase
         if (comma < 0) return false;
         return double.TryParse(text.AsSpan(0, comma), NumberStyles.Float, CultureInfo.InvariantCulture, out x) &&
                double.TryParse(text.AsSpan(comma + 1), NumberStyles.Float, CultureInfo.InvariantCulture, out y) &&
-               double.IsFinite(x) && double.IsFinite(y);
+               !double.IsNaN(x) && !double.IsNaN(y);
     }
 
     // ----- No-JS click fallbacks ---------------------------------------------

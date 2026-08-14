@@ -160,14 +160,13 @@ public class ColorPickerTests : BunitContext
     [InlineData("0.5")]      // no separator
     [InlineData("x,0.5")]
     [InlineData("0.5,y")]
-    // NumberStyles.Float accepts these, and Math.Clamp propagates NaN rather than clamping it -- so a
-    // non-finite coordinate used to commit through (NaN,NaN landed on #000000, and left the handle at
-    // `left: NaN%` with the arrow keys unable to recover).
+    // NumberStyles.Float accepts "NaN", and Math.Clamp propagates it rather than clamping -- so a NaN
+    // coordinate used to commit through (NaN,NaN landed on #000000, and left the handle at
+    // `left: NaN%` with the arrow keys unable to recover). An INFINITE coordinate is not malformed; it
+    // clamps to the far end of the track (see An_infinite_drag_coordinate_clamps_to_the_track_end).
     [InlineData("NaN,NaN")]
     [InlineData("NaN,0.5")]
     [InlineData("0.5,NaN")]
-    [InlineData("Infinity,0.5")]
-    [InlineData("0.5,-Infinity")]
     public void A_malformed_drag_report_is_ignored(string payload)
     {
         var cut = RenderPicker(out var committed);
@@ -179,6 +178,29 @@ public class ColorPickerTests : BunitContext
         // ...and the handle offsets stay renderable, which a NaN coordinate would not be (`left: NaN%`).
         Assert.DoesNotContain("NaN", cut.Find(".wss-color-picker-sv-handle").GetAttribute("style"));
         Assert.Equal("100", cut.Find(".wss-color-picker-sv").GetAttribute("aria-valuenow"));
+    }
+
+    [Theory]
+    // x = +inf -> saturation clamps to 100%, y = 0.5 -> brightness 50%.
+    [InlineData("Infinity,0.5", "#800000", "100", "50")]
+    // y = -inf -> 1 - (-inf) is +inf -> brightness clamps to 100%; x = 0.5 -> saturation 50%.
+    [InlineData("0.5,-Infinity", "#ff8080", "50", "100")]
+    public void An_infinite_drag_coordinate_clamps_to_the_track_end(
+        string payload, string expected, string saturation, string brightness)
+    {
+        // Every Set*Async clamps its own argument and Math.Clamp maps ±inf onto the range ends, so an
+        // infinite coordinate is an ordinary out-of-range report, not a malformed one -- the same rule
+        // ColorMath applies to "rgb(1e400, 0, 0)". Only NaN (which Math.Clamp propagates) is dropped.
+        var cut = RenderPicker(out var committed);
+        Open(cut);
+
+        Signals(cut)[0].Input(payload);
+
+        Assert.Equal(expected, committed());
+        var area = cut.Find(".wss-color-picker-sv");
+        Assert.Equal(saturation, area.GetAttribute("aria-valuenow"));
+        Assert.Equal($"Saturation {saturation}%, brightness {brightness}%", area.GetAttribute("aria-valuetext"));
+        Assert.DoesNotContain("NaN", cut.Find(".wss-color-picker-sv-handle").GetAttribute("style"));
     }
 
     // Strict JSInterop, not this class's usual Loose: under Loose, bUnit hands back a working fake

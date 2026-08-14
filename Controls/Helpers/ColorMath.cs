@@ -44,10 +44,12 @@ public static class ColorMath
     /// <c>#</c> is optional), <c>rgb(r, g, b)</c>, and <c>rgba(r, g, b, a)</c> — the latter two also
     /// accepting whitespace or <c>/</c> in place of commas (CSS Color 4's space-separated form) and a
     /// percentage alpha. Channel percentages (<c>rgb(100%, 0%, 0%)</c>) are NOT supported and fail the
-    /// parse. Out-of-range channels/alpha clamp rather than fail; a non-finite one
-    /// (<c>NaN</c>/<c>Infinity</c>, both of which <see cref="NumberStyles.Float"/> itself accepts) fails
-    /// the parse instead, since there is nothing to clamp it to. Returns false for anything else,
-    /// including null/whitespace — a color control treats that as "no color", never as an error.
+    /// parse. Out-of-range channels/alpha clamp rather than fail — including an infinite one, whether
+    /// spelled <c>Infinity</c> or reached by an overflowing numeral like <c>1e400</c>, since clamping is
+    /// exactly what "±∞ is out of range" means. <c>NaN</c> (which <see cref="NumberStyles.Float"/> itself
+    /// accepts) is the single numeric rejection: there is no range end to clamp it to. Returns false for
+    /// anything else, including null/whitespace — a color control treats that as "no color", never as an
+    /// error.
     /// </summary>
     public static bool TryParse(string? text, out Rgba color)
     {
@@ -205,15 +207,18 @@ public static class ColorMath
     }
 
     // NumberStyles.Float also accepts "NaN"/"Infinity"/"-Infinity" (and the current culture's symbols
-    // for them), and Math.Clamp PROPAGATES NaN rather than clamping it -- so without the IsFinite guard
-    // these two hand back a color whose channel/alpha is NaN, which then poisons every consumer of it:
-    // an unrenderable inline style, a `left: NaN%` handle, arrow keys that can never recover. Out of
-    // range is a clamp (see the class docs); not-a-number is a failed parse.
+    // for them), and an ordinary-looking numeral that overflows double ("1e400") parses to an infinity
+    // too. NaN is the only one of the three that has to fail: Math.Clamp PROPAGATES it rather than
+    // clamping, and a NaN channel/alpha then poisons every consumer of the color -- an unrenderable
+    // inline style, a `left: NaN%` handle, arrow keys that can never recover. Math.Clamp handles the
+    // infinities correctly (+inf -> the range maximum, -inf -> the minimum), so they stay on the
+    // documented out-of-range CLAMP path (see the class docs) rather than turning a finite-looking
+    // "rgb(1e400, 0, 0)" into a parse failure.
     static bool TryChannel(string text, out byte value)
     {
         value = 0;
         if (!double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var raw) ||
-            !double.IsFinite(raw))
+            double.IsNaN(raw))
         {
             return false;
         }
@@ -227,7 +232,7 @@ public static class ColorMath
         var isPercent = text.EndsWith('%');
         var number = isPercent ? text[..^1] : text;
         if (!double.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out var raw) ||
-            !double.IsFinite(raw))
+            double.IsNaN(raw))
         {
             return false;
         }

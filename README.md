@@ -1013,7 +1013,7 @@ Deliberately has no model-attribute counterpart: delegates/`RenderFragment`s/`Ev
 
 **The value contract.** `EditColor` and the standalone `ColorPicker` both bind a plain `string?`.
 
-- **In:** 3-, 4-, 6-, or 8-digit hex, with or without the leading `#`, plus `rgb()`/`rgba()` in the comma, space, and slash spellings, with a numeric or percentage alpha. Out-of-range channels clamp rather than fail.
+- **In:** 3-, 4-, 6-, or 8-digit hex, with or without the leading `#`, plus `rgb()`/`rgba()` in the comma, space, and slash spellings, with a numeric or percentage alpha. Out-of-range channels clamp rather than fail — including an infinite one, whether written `Infinity` or reached by an overflowing numeral like `1e400`. A literal `NaN` is the one numeric rejection (nothing to clamp it to).
 - **Out:** normalized lowercase `#rrggbb`, extended to `#rrggbbaa` only when the color is translucent **and** `ShowAlpha` is on. `ShowAlpha="false"` therefore *strips* an alpha channel a bound-in value carried.
 - **Unusable in:** null, empty, and anything unparseable (a named CSS color like `chartreuse`, an `hsl()` string) all render as "no color" — AntD's white-with-a-red-diagonal empty swatch — rather than throwing. The read-only view shows nothing for the same values, so the two modes agree. A `[Required]` `string` is still satisfied by unparseable-but-non-empty text; add a `[RegularExpression]` if the exact form matters to your model.
 - Only a **typed** entry that fails to parse is an error, surfaced through `ParsingErrorMessage`/`OnParseError`. The RGB row's number boxes clamp or revert silently — a `number` input has no unparseable-text state worth reporting.
