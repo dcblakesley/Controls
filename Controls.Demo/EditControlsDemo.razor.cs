@@ -69,6 +69,7 @@ public enum CurrentView
     BoolNullRadio,
     CheckedStringList,
     CheckedEnumList,
+    Color,
     Date,
     DateNative,
     DateRange,

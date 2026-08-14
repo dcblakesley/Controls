@@ -77,6 +77,10 @@ public class ScaffoldConformanceTests : BunitContext
         [Required, AlwaysInvalid] public string StringRequired { get; set; } = "value";
         public string StringOptional { get; set; } = "value";
 
+        // EditColor
+        [Required, AlwaysInvalid] public string? ColorRequired { get; set; } = "#ff0000";
+        public string? ColorOptional { get; set; } = "#ff0000";
+
         // EditTextArea
         [Required, AlwaysInvalid] public string TextAreaRequired { get; set; } = "value";
         public string TextAreaOptional { get; set; } = "value";
@@ -330,6 +334,29 @@ public class ScaffoldConformanceTests : BunitContext
         Wrapper = cut => cut.Find(".edit-control-wrapper"),
         LabelOrLegend = cut => cut.Find("legend.edit-label-legend"),
         AriaCarriers = cut => [cut.Find("fieldset.edit-radio-fieldset")]
+    };
+
+    static ScaffoldCase ColorCase() => new()
+    {
+        Name = "EditColor",
+        Build = required =>
+        {
+            var model = new ScaffoldModel();
+            Expression<Func<string?>> field = required ? () => model.ColorRequired : () => model.ColorOptional;
+            var value = required ? model.ColorRequired : model.ColorOptional;
+            RenderFragment content = b =>
+            {
+                b.OpenComponent<EditColor>(0);
+                b.AddAttribute(1, "Value", value);
+                b.AddAttribute(2, "ValueExpression", field);
+                b.CloseComponent();
+            };
+            return (model, content);
+        },
+        Wrapper = cut => cut.Find(".edit-control-wrapper"),
+        LabelOrLegend = cut => cut.Find("label.edit-label"),
+        // The picker's trigger button, the same way EditDate's carrier is the picker's own input.
+        AriaCarriers = cut => [cut.Find("button.wss-color-picker-trigger")]
     };
 
     static ScaffoldCase DateCase() => new()
@@ -656,6 +683,7 @@ public class ScaffoldConformanceTests : BunitContext
         "EditNumber<int?>" => NumberCase(),
         "EditBool" => BoolCase(),
         "EditBoolNullRadio" => BoolNullRadioCase(),
+        "EditColor" => ColorCase(),
         "EditDate<DateTime?>" => DateCase(),
         "EditDateNative<DateTime?>" => DateNativeCase(),
         "EditFile" => FileCase(),
@@ -675,7 +703,7 @@ public class ScaffoldConformanceTests : BunitContext
     public static TheoryData<string> ControlNames() => new()
     {
         "EditString", "EditTextArea", "EditNumber<int?>", "EditBool", "EditBoolNullRadio",
-        "EditDate<DateTime?>", "EditDateNative<DateTime?>", "EditFile",
+        "EditColor", "EditDate<DateTime?>", "EditDateNative<DateTime?>", "EditFile",
         "EditRadio<string>", "EditRadioEnum<Priority>", "EditRadioString",
         "EditCheckedEnumList<Priority>", "EditCheckedStringList",
         "EditSelect<string>", "EditSelectEnum<Priority?>", "EditSelectString<string>",

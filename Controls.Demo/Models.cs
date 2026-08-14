@@ -45,6 +45,10 @@ internal class DemoModelForEditControls
     public DateTime? EditDateRangeStart { get; set; } = new DateTime(2026, 2, 1);
     public DateTime? EditDateRangeEnd { get; set; } = new DateTime(2026, 2, 14);
 
+    [DisplayName("EditColor")]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
+    public string? EditColor { get; set; } = "#1890ff";
+
     [DisplayName("EditSelectEnum")]
     public Animal EditSelectEnum { get; set; }
 

@@ -1,0 +1,154 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
+
+<h1>EditColor Demo</h1>
+
+<EditForm Model="@_model" class="wss-demo-row wss-demo-wrap" @ref=_form>
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <EditColor @bind-Value="_model.BasicColor" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditColor @bind-Value="_model.ShownColor"
+                   ShowText="true"
+                   Label="Brand Color (with text)" />
+
+        <EditColor @bind-Value="_model.ShownColor"
+                   IsEditMode="false"
+                   Label="Same value, read-only" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_showTextExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditColor @bind-Value="_model.OpaqueColor"
+                   ShowAlpha="false"
+                   ShowText="true"
+                   Label="No alpha channel" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_noAlphaExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_noAlphaModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditColor @bind-Value="_model.PresetColor"
+                   Presets="_presets"
+                   ShowText="true"
+                   Label="From a preset row" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_presetsExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_presetsModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditColor @bind-Value="_model.ClearableColor"
+                   AllowClear="true"
+                   ShowText="true"
+                   Label="Clearable" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_allowClearExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditColor @bind-Value="_model.Disabled"
+                   IsDisabled="true"
+                   ShowText="true" />
+
+        <EditColor @bind-Value="_model.Required" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+</EditForm>
+
+@code {
+    readonly DemoEditColorModel _model = new();
+
+    // Resolved once; any form EditColor accepts is fine as a preset (the rgba() entry below proves it).
+    static readonly IReadOnlyList<string> _presets =
+    [
+        "#f5222d", "#fa8c16", "#fadb14", "#52c41a",
+        "#1890ff", "#722ed1", "#000000", "rgba(0, 0, 0, 0.35)"
+    ];
+
+    public class DemoEditColorModel
+    {
+        // Pinned values throughout, so the e2e visual baselines are deterministic.
+        public string? BasicColor { get; set; } = "#1890ff";
+
+        [DisplayName("Brand Color")]
+        public string? ShownColor { get; set; } = "#722ed1";
+
+        public string? OpaqueColor { get; set; } = "#52c41a";
+        public string? PresetColor { get; set; } = "#f5222d";
+        public string? ClearableColor { get; set; } = "#fa8c16";
+        public string? Disabled { get; set; } = "#8c8c8c";
+
+        [Required]
+        public string? Required { get; set; }
+    }
+
+    readonly string _basicExample = @"<EditColor @bind-Value=""_model.BasicColor"" />";
+
+    readonly string _showTextExample = @"<EditColor @bind-Value=""_model.ShownColor""
+           ShowText=""true""
+           Label=""Brand Color (with text)"" />
+
+<EditColor @bind-Value=""_model.ShownColor""
+           IsEditMode=""false""
+           Label=""Same value, read-only"" />";
+
+    readonly string _noAlphaExample = @"<EditColor @bind-Value=""_model.OpaqueColor""
+           ShowAlpha=""false""
+           ShowText=""true""
+           Label=""No alpha channel"" />";
+
+    readonly string _noAlphaModel = @"// ShowAlpha=""false"" hides the alpha slider AND strips the
+// channel from the value, so this stays 6-digit hex even if
+// something binds in an 8-digit or rgba() color.
+public string? OpaqueColor { get; set; } = ""#52c41a"";";
+
+    readonly string _presetsExample = @"<EditColor @bind-Value=""_model.PresetColor""
+           Presets=""_presets""
+           ShowText=""true""
+           Label=""From a preset row"" />";
+
+    readonly string _presetsModel = @"static readonly IReadOnlyList<string> _presets =
+[
+    ""#f5222d"", ""#fa8c16"", ""#fadb14"", ""#52c41a"",
+    ""#1890ff"", ""#722ed1"", ""#000000"", ""rgba(0, 0, 0, 0.35)""
+];";
+
+    readonly string _allowClearExample = @"<EditColor @bind-Value=""_model.ClearableColor""
+           AllowClear=""true""
+           ShowText=""true""
+           Label=""Clearable"" />";
+
+    readonly string _validationExample = @"<EditColor @bind-Value=""_model.Disabled""
+           IsDisabled=""true""
+           ShowText=""true"" />
+
+<EditColor @bind-Value=""_model.Required"" />";
+
+    readonly string _validationModel = @"public string? Disabled { get; set; } = ""#8c8c8c"";
+
+[Required]
+public string? Required { get; set; }";
+}
