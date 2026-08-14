@@ -18,12 +18,18 @@
                    ShowText="true"
                    Label="Brand Color (with text)" />
 
-        @* Explicit Id: this second instance binds the SAME property as the one above, and the default
-           id is the property name -- two elements would otherwise share it. *@
+        @* Explicit Id on each read-only instance: both bind the SAME property as the editable one
+           above, and the default id is the property name -- three elements would otherwise share it. *@
         <EditColor @bind-Value="_model.ShownColor"
                    IsEditMode="false"
-                   Id="ShownColorReadOnly"
-                   Label="Same value, read-only" />
+                   Id="ShownColorReadOnlySwatch"
+                   Label="Same value, read-only (swatch only)" />
+
+        <EditColor @bind-Value="_model.ShownColor"
+                   IsEditMode="false"
+                   ShowText="true"
+                   Id="ShownColorReadOnlyText"
+                   Label="Same value, read-only (with text)" />
 
         <h3>Markup</h3>
         <pre class="code-block"><code>@_showTextExample</code></pre>
@@ -118,10 +124,15 @@
            ShowText=""true""
            Label=""Brand Color (with text)"" />
 
+@* Read-only: the swatch alone by default, or swatch + hex text with ShowText on. *@
 <EditColor @bind-Value=""_model.ShownColor""
            IsEditMode=""false""
-           Id=""ShownColorReadOnly""
-           Label=""Same value, read-only"" />";
+           Label=""Same value, read-only (swatch only)"" />
+
+<EditColor @bind-Value=""_model.ShownColor""
+           IsEditMode=""false""
+           ShowText=""true""
+           Label=""Same value, read-only (with text)"" />";
 
     readonly string _noAlphaExample = @"@* The translucent preset below paints opaque here: a swatch
    shows the color a click on it would commit, and ShowAlpha=""false"" strips the alpha channel. *@
