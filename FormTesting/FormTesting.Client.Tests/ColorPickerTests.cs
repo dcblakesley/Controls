@@ -494,6 +494,54 @@ public class ColorPickerTests : BunitContext
     }
 
     [Fact]
+    public void Enter_in_an_rgb_channel_commits_without_waiting_for_a_change_event()
+    {
+        // Same contract the HEX box has: wss-color.js preventDefaults Enter (so it can't submit an
+        // enclosing form), which makes the browser's own change-on-Enter unreliable -- and before this
+        // the channel boxes had NO keydown handler at all, so Enter there did nothing but submit.
+        var cut = RenderPicker(out var committed);
+        Open(cut);
+        cut.Find(".wss-color-picker-format").Change(nameof(ColorFormat.Rgb));
+
+        cut.FindAll(".wss-color-picker-channel")[1].Input("128");
+        cut.FindAll(".wss-color-picker-channel")[1].KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("#ff8000", committed());
+    }
+
+    [Fact]
+    public void Enter_in_the_rgb_alpha_column_commits_a_percentage()
+    {
+        var cut = RenderPicker(out var committed);
+        Open(cut);
+        cut.Find(".wss-color-picker-format").Change(nameof(ColorFormat.Rgb));
+
+        cut.FindAll(".wss-color-picker-channel")[3].Input("50");
+        cut.FindAll(".wss-color-picker-channel")[3].KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("#ff000080", committed());
+    }
+
+    [Theory]
+    [InlineData(true, 4)]
+    [InlineData(false, 3)]
+    public void Every_rendered_input_gets_the_Enter_suppression_wiring(bool showAlpha, int channels)
+    {
+        // The preventDefault Blazor can't express per-key comes from JS, so each rendered box has to be
+        // handed to initTextInput -- only the HEX one ever was, leaving Enter in a channel box free to
+        // submit the enclosing form.
+        var cut = RenderPicker(p => p.Add(c => c.ShowAlpha, showAlpha));
+        Open(cut);
+        Assert.Equal(1, TextInputWirings()); // the HEX row, which renders first
+
+        cut.Find(".wss-color-picker-format").Change(nameof(ColorFormat.Rgb));
+
+        Assert.Equal(1 + channels, TextInputWirings());
+    }
+
+    int TextInputWirings() => JSInterop.Invocations.Count(i => i.Identifier == "initTextInput");
+
+    [Fact]
     public void The_rgb_alpha_column_commits_a_percentage()
     {
         var cut = RenderPicker(out var committed);

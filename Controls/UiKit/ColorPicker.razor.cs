@@ -208,6 +208,9 @@ public partial class ColorPicker : PopupOverlayBase
     ElementReference _hueSignal;
     ElementReference _alphaSignal;
     ElementReference _hexRef;
+    // R/G/B/alpha-percent, parallel to _channelEdit. Only the ones actually rendered (3, or 4 with
+    // ShowAlpha) are ever handed to JS -- an unset ElementReference is not serializable.
+    readonly ElementReference[] _channelRefs = new ElementReference[4];
 
     readonly JsModule _colorModule = new("wss-color.js");
     // Instance-unique prefix for the panel's internal ARIA references (the preset row's
@@ -217,7 +220,9 @@ public partial class ColorPicker : PopupOverlayBase
     // drag already reported that press; per the Pointer Events spec a click still fires afterwards) and
     // is reset on close, because the next open renders brand-new track elements to wire.
     bool _dragWired;
-    bool _hexWired;
+    // Whether the input row's Enter suppression is attached. One flag for both rows: the format switch
+    // renders a whole new row, and only one of the two exists at a time.
+    bool _inputsWired;
 
     protected override string PlacementName => Placement.ToString().ToLowerInvariant();
     protected override string PanelClassPrefix => "wss-color-picker";
@@ -270,7 +275,7 @@ public partial class ColorPicker : PopupOverlayBase
         {
             // The panel subtree unmounted; the next open renders new elements that need wiring again.
             _dragWired = false;
-            _hexWired = false;
+            _inputsWired = false;
             return;
         }
 
@@ -295,20 +300,33 @@ public partial class ColorPicker : PopupOverlayBase
             }
         }
 
-        if (!_hexWired && _format == ColorFormat.Hex)
+        // Every text/number box in the row, not just the HEX one: Enter in any of them commits through
+        // the component's own keydown handler, and each therefore needs the preventDefault that stops it
+        // ALSO submitting an enclosing form.
+        if (!_inputsWired)
         {
             var module = await _colorModule.GetAsync(JS, FormDefaults);
             if (module is not null)
             {
                 try
                 {
-                    await module.InvokeVoidAsync("initTextInput", _hexRef);
-                    _hexWired = true;
+                    if (_format == ColorFormat.Hex)
+                    {
+                        await module.InvokeVoidAsync("initTextInput", _hexRef);
+                    }
+                    else
+                    {
+                        // Gated like the alpha track above: the fourth box only exists with ShowAlpha on.
+                        var count = ShowAlpha ? 4 : 3;
+                        for (var i = 0; i < count; i++) await module.InvokeVoidAsync("initTextInput", _channelRefs[i]);
+                    }
+                    _inputsWired = true;
                 }
                 catch
                 {
-                    // No JS -- Enter in the HEX input may also submit an enclosing form (the same
-                    // documented degrade the date pickers' own initPicker wiring carries).
+                    // No JS -- Enter in an input may also submit an enclosing form (the same documented
+                    // degrade the date pickers' own initPicker wiring carries). The commit itself is
+                    // pure C# and still happens.
                 }
             }
         }
@@ -575,8 +593,8 @@ public partial class ColorPicker : PopupOverlayBase
         _format = string.Equals(e.Value?.ToString(), nameof(ColorFormat.Rgb), StringComparison.Ordinal)
             ? ColorFormat.Rgb
             : ColorFormat.Hex;
-        // The switched-in row renders fresh elements -- the HEX input needs its Enter wiring again.
-        _hexWired = false;
+        // The switched-in row renders fresh elements -- they need their Enter wiring again.
+        _inputsWired = false;
         RefreshEditText();
     }
 
@@ -617,12 +635,22 @@ public partial class ColorPicker : PopupOverlayBase
         await AdoptAsync(rgba);
     }
 
+    /// <summary>
+    /// Enter commits the typed channel explicitly, for the same reason the HEX box does (see
+    /// <see cref="OnHexKeyDownAsync"/>): <c>wss-color.js</c> preventDefaults the keydown so it can't also
+    /// submit an enclosing form, which leaves the browser's own change-on-Enter unreliable. A duplicate
+    /// commit from a <c>change</c> that does still follow is a no-op — the same text yields the same
+    /// value, which <see cref="CommitAsync"/> recognizes and drops.
+    /// </summary>
+    Task OnChannelKeyDownAsync(int index, KeyboardEventArgs e) =>
+        e.Key == "Enter" ? CommitChannelAsync(index, _channelEdit[index]) : Task.CompletedTask;
+
     // One RGB-row channel: 0/1/2 are R/G/B in 0..255, 3 is alpha as a percentage. A non-numeric entry
     // reverts, an out-of-range one clamps -- see OnParseError for why neither is surfaced. Same
     // event-value-first contract as CommitHexAsync above.
-    Task CommitChannelAsync(int index, ChangeEventArgs e)
+    Task CommitChannelAsync(int index, string text)
     {
-        _channelEdit[index] = e.Value?.ToString() ?? string.Empty;
+        _channelEdit[index] = text;
         if (!int.TryParse(_channelEdit[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out var raw))
         {
             RefreshEditText();

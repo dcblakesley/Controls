@@ -180,11 +180,12 @@
     // One RGB-row channel input. Index 0/1/2 are R/G/B (0-255), 3 is alpha as a percentage; the raw
     // keystrokes live in _channelEdit so a clamped entry refreshes (see its declaration).
     RenderFragment<(int Index, string Label, int Max)> ChannelFragment => c =>
-        @<input type="number" class="wss-color-picker-channel"
+        @<input type="number" class="wss-color-picker-channel" @ref="_channelRefs[c.Index]"
                 aria-label="@c.Label"
                 min="0" max="@c.Max" step="1"
                 autocomplete="off"
                 value="@_channelEdit[c.Index]"
                 @oninput="@(e => _channelEdit[c.Index] = e.Value?.ToString() ?? string.Empty)"
-                @onchange="@(e => CommitChannelAsync(c.Index, e))" />;
+                @onchange="@(e => CommitChannelAsync(c.Index, e.Value?.ToString() ?? string.Empty))"
+                @onkeydown="@(e => OnChannelKeyDownAsync(c.Index, e))" />;
 }

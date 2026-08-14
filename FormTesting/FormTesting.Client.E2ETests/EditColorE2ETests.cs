@@ -125,6 +125,24 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
     }
 
     [Fact]
+    public async Task A_typed_rgb_channel_commits_on_Enter_without_submitting_the_form()
+    {
+        await NavigateAsync();
+        var section = Section(0);
+        var panel = await OpenAsync(section);
+
+        await panel.Locator(".wss-color-picker-format").SelectOptionAsync("Rgb");
+        var green = panel.Locator(".wss-color-picker-channel").Nth(1);
+        await green.FillAsync("0");
+        await green.PressAsync("Enter");
+
+        // #1890ff with green zeroed. The channel boxes had no Enter handling at all before: Enter
+        // neither committed nor was preventDefaulted, so it just submitted the enclosing EditForm.
+        await Expect(Trigger(section)).ToHaveAttributeAsync("aria-label", "Basic Color: #1800ff");
+        await Expect(panel).ToBeVisibleAsync();
+    }
+
+    [Fact]
     public async Task An_unparseable_typed_hex_surfaces_a_validation_message()
     {
         await NavigateAsync();
