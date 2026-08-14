@@ -189,14 +189,25 @@ public partial class DatePicker : PickerBase
     [Parameter] public EventCallback<string> OnRangeError { get; set; }
 
     /// <summary>
-    /// Raised on every ACCEPTED commit — a cell click, a typed entry, a time select, a preset —
-    /// <b>including</b> one whose value equals what is already bound, which <see cref="ValueChanged"/>
-    /// deliberately drops (see <c>SetValueAsync</c>). That dedup is exactly why this callback exists: a
-    /// host form control showing an <see cref="OnParseError"/>/<see cref="OnRangeError"/> message has to
-    /// retire it the moment an accepted entry lands, and "the user retyped the date that was already
-    /// there" is an accepted entry. <see cref="EditDate{T}"/> clears its validation message from here.
-    /// Optional, like the two error callbacks; a disabled picker never raises it.
+    /// Raised on every ACCEPTED commit, <b>including</b> one whose value equals what is already bound,
+    /// which <see cref="ValueChanged"/> deliberately drops (see <c>SetValueAsync</c>). That dedup is
+    /// exactly why this callback exists: a host form control showing an <see cref="OnParseError"/>/
+    /// <see cref="OnRangeError"/> message has to retire it the moment an accepted entry lands, and "the
+    /// user retyped the date that was already there" is an accepted entry. <see cref="EditDate{T}"/>
+    /// clears its validation message from here.
     /// </summary>
+    /// <remarks>
+    /// Every accepted-entry path raises it, because they all funnel through <c>SetValueAsync</c>: a
+    /// day/month/quarter/year/week cell click, a typed entry, a time select or the time panel's OK, a
+    /// preset click, and <see cref="AllowClear"/>'s clear (a commit of "no date" — its
+    /// <c>SetValueAsync(null)</c> is an ordinary commit, so an emptied field retires a stale
+    /// parse/range message too). The paths that do NOT raise it are the ones that commit nothing: an
+    /// unparseable typed entry (<see cref="OnParseError"/>), a well-formed one the
+    /// <see cref="Min"/>/<see cref="Max"/>/<see cref="DisabledDate"/>/<see cref="DisabledTime"/> guards
+    /// refuse (<see cref="OnRangeError"/>), a click on a rejected cell, and anything at all while
+    /// <see cref="Disabled"/>. Optional, like the two error callbacks. Same contract as
+    /// <see cref="ColorPicker.OnValidCommit"/>.
+    /// </remarks>
     [Parameter] public EventCallback OnValidCommit { get; set; }
 
     /// <summary>Input placeholder. Null (default) picks <see cref="Mode"/>'s default: <c>Date</c>/

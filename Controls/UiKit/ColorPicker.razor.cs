@@ -66,16 +66,25 @@ public partial class ColorPicker : PopupOverlayBase
     [Parameter] public EventCallback<string> OnParseError { get; set; }
 
     /// <summary>
-    /// Raised on every commit of a VALID color — a drag, an arrow-key step, a preset click, a typed
-    /// entry — <b>including</b> one that turns out to equal the value already bound, which
-    /// <see cref="ValueChanged"/> deliberately drops (re-raising an unchanged value costs a render, and
-    /// a round trip on Blazor Server, for every redundant drag report). That dedup is exactly why this
-    /// callback exists: a wrapper showing an <see cref="OnParseError"/> message has to retire it the
-    /// moment a valid entry lands, and "the user retyped the color that was already there" — or clicked
-    /// the preset matching it — is a valid entry. <see cref="EditColor"/> clears its parse-error
-    /// validation message from here; <see cref="AllowClear"/>'s clear is not a commit and does not
-    /// raise this (it raises <see cref="ValueChanged"/> with <c>null</c> instead).
+    /// Raised on every commit of a VALID color, <b>including</b> one that turns out to equal the value
+    /// already bound — which <see cref="ValueChanged"/> deliberately drops (re-raising an unchanged value
+    /// costs a render, and a round trip on Blazor Server, for every redundant drag report). That dedup is
+    /// exactly why this callback exists: a wrapper showing an <see cref="OnParseError"/> message has to
+    /// retire it the moment a valid entry lands, and "the user retyped the color that was already there" —
+    /// or clicked the preset matching it — is a valid entry. <see cref="EditColor"/> clears its
+    /// parse-error validation message from here.
     /// </summary>
+    /// <remarks>
+    /// Every accepted-entry path raises it: a pointer drag, an arrow-key step, a 2D-area/track click, a
+    /// preset click, a typed HEX or RGB-channel commit, and <see cref="AllowClear"/>'s clear — clearing is
+    /// a valid commit of "no color", and the emptied HEX box that routes into it is exactly the sort of
+    /// valid entry a stale parse message has to yield to. (The clear raises this <i>before</i> its
+    /// <see cref="ValueChanged"/> with <c>null</c>, the same order as every other commit.) The only paths
+    /// that do NOT raise it are the ones that commit nothing: an unparseable typed HEX entry (that raises
+    /// <see cref="OnParseError"/> instead), a non-numeric RGB-channel entry that reverts, an emptied HEX
+    /// box with no clear to fall back on (<see cref="AllowClear"/> off, or no color set), and anything at
+    /// all while <see cref="Disabled"/>. Same contract as <see cref="DatePicker.OnValidCommit"/>.
+    /// </remarks>
     [Parameter] public EventCallback OnValidCommit { get; set; }
 
     /// <summary>Disables the trigger and every interactive path — the popup can't be opened, and an
@@ -508,6 +517,13 @@ public partial class ColorPicker : PopupOverlayBase
         _alpha = 1d;
         RefreshEditText();
         _lastValueParam = null;
+        // Clearing IS a valid commit -- of "no color" -- so it raises OnValidCommit like every other
+        // commit path, before ValueChanged for the same reason CommitAsync does. This used to be the one
+        // accepted entry that bypassed the callback: a standalone consumer rendering its own
+        // OnParseError message therefore had no channel to retire it from when the user emptied the HEX
+        // box (which routes here whenever AllowClear is on), and the contract disagreed with
+        // DatePicker's, whose clear has always routed through its own SetValueAsync(null).
+        if (OnValidCommit.HasDelegate) await OnValidCommit.InvokeAsync();
         if (ValueChanged.HasDelegate) await ValueChanged.InvokeAsync(null);
     }
 

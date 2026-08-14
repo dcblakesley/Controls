@@ -330,6 +330,28 @@ public class EditColorTests : BunitContext
     }
 
     [Fact]
+    public void Clearing_the_color_retires_a_stale_parse_error()
+    {
+        // Clearing is a valid commit of "no color" -- the field must not be left invalid over text the
+        // user has since removed. (This control reaches the same outcome through the picker's null
+        // ValueChanged as well, so the discriminating assertion for the clear now ALSO raising
+        // OnValidCommit -- which is what closes the same gap for a standalone ColorPicker consumer --
+        // lives in ColorPickerTests.Clear_raises_OnValidCommit_before_its_null_ValueChanged.)
+        var model = new ColorModel { Brand = "#ff0000" };
+        var cut = RenderColor(model, b => b.AddAttribute(10, "AllowClear", true));
+
+        Open(cut);
+        cut.Find(".wss-color-picker-hex").Change("nope");
+        Assert.Contains("must be a color", MessageFor(cut));
+
+        cut.Find(".wss-color-picker-clear").Click();
+
+        Assert.Equal(string.Empty, MessageFor(cut));
+        Assert.Null(model.Brand);
+        Assert.Null(cut.Find(".wss-color-picker-trigger").GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
     public void Clicking_the_preset_that_matches_the_current_value_clears_the_parse_error()
     {
         // Same dedup, reached through a preset click rather than the HEX box.

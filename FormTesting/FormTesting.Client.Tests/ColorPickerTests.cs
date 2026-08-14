@@ -713,6 +713,43 @@ public class ColorPickerTests : BunitContext
     }
 
     [Fact]
+    public void Clear_raises_OnValidCommit_before_its_null_ValueChanged()
+    {
+        // Clearing is a valid commit of "no color", so it belongs on the same callback every other
+        // accepted entry raises -- it was the one path that skipped it, which left a standalone consumer
+        // rendering its own OnParseError message with no channel to retire it from when the user emptied
+        // the field (the emptied HEX box routes straight into the clear whenever AllowClear is on), and
+        // disagreed with DatePicker, whose clear has always gone through its ordinary commit path.
+        var events = new List<string>();
+        var cut = Render<ColorPicker>(p => p
+            .Add(c => c.Value, Red)
+            .Add(c => c.AllowClear, true)
+            .Add(c => c.OnValidCommit, EventCallback.Factory.Create(this, () => events.Add("valid-commit")))
+            .Add(c => c.ValueChanged,
+                EventCallback.Factory.Create<string?>(this, v => events.Add($"value:{v ?? "null"}"))));
+
+        cut.Find(".wss-color-picker-clear").Click();
+
+        // Order matters: a wrapper retires its stale message on the commit signal, then takes the value.
+        Assert.Equal(["valid-commit", "value:null"], events);
+    }
+
+    [Fact]
+    public void An_emptied_hex_box_raises_OnValidCommit_through_the_clear_it_routes_into()
+    {
+        var events = new List<string>();
+        var cut = Render<ColorPicker>(p => p
+            .Add(c => c.Value, Red)
+            .Add(c => c.AllowClear, true)
+            .Add(c => c.OnValidCommit, EventCallback.Factory.Create(this, () => events.Add("valid-commit"))));
+        Open(cut);
+
+        cut.Find(".wss-color-picker-hex").Change(string.Empty);
+
+        Assert.Equal(["valid-commit"], events);
+    }
+
+    [Fact]
     public void Clear_does_not_toggle_the_popup()
     {
         var cut = RenderPicker(p => p.Add(c => c.AllowClear, true));
