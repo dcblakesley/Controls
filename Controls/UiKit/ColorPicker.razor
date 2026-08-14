@@ -174,7 +174,7 @@
     RenderFragment<(ColorMath.Rgba? Color, string ExtraClass)> SwatchFragment => s =>
         @<span class="wss-color-picker-swatch @s.ExtraClass">
             <span class="wss-color-picker-swatch-fill @(s.Color is null ? "wss-color-picker-swatch-empty" : null)"
-                  style="@(s.Color is { } c ? SwatchStyle(c) : null)"></span>
+                  style="@(s.Color is { } c ? SwatchStyle(c, ShowAlpha) : null)"></span>
         </span>;
 
     // One RGB-row channel input. Index 0/1/2 are R/G/B (0-255), 3 is alpha as a percentage; the raw

@@ -614,6 +614,24 @@ public class ColorPickerTests : BunitContext
         Assert.Equal("false", cut.FindAll(".wss-color-picker-preset")[0].GetAttribute("aria-pressed"));
     }
 
+    [Theory]
+    [InlineData(true, "rgba(0, 0, 0, 0.35)")]
+    [InlineData(false, "rgb(0, 0, 0)")]
+    public void A_preset_swatch_renders_its_alpha_only_when_the_picker_allows_one(bool showAlpha, string expected)
+    {
+        // A swatch has to show the color a click on it would COMMIT. With ShowAlpha off the channel is
+        // stripped from the emitted value, so painting a translucent preset as translucent promised a
+        // color this picker can't produce (checkerboard showing through and all).
+        var cut = RenderPicker(p => p
+            .Add(c => c.ShowAlpha, showAlpha)
+            .Add(c => c.Presets, (IReadOnlyList<string>)["rgba(0, 0, 0, 0.35)"]));
+        Open(cut);
+
+        var fill = cut.Find(".wss-color-picker-preset .wss-color-picker-swatch-fill");
+        Assert.Contains(expected, fill.GetAttribute("style"));
+        if (!showAlpha) Assert.DoesNotContain("rgba", fill.GetAttribute("style"));
+    }
+
     [Fact]
     public void An_unparseable_preset_is_disabled_and_shows_the_empty_indicator()
     {
