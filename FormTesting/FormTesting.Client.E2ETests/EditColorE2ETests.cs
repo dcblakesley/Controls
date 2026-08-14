@@ -274,8 +274,13 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
         var wrapper = section.Locator(".wss-color-picker", new() { Has = Page.Locator("#Required") });
         // --wss-color-error bridges to --color-danger, which the FormTesting host's app.css overrides
         // to #CF1322 at :root -- that value, not the #ff4d4f fallback, is what reaches the browser.
-        await Expect(wrapper.Locator(".wss-color-picker-trigger"))
-            .ToHaveCSSAsync("border-color", "rgb(207, 19, 34)");
+        var invalidTrigger = wrapper.Locator(".wss-color-picker-trigger");
+        await Expect(invalidTrigger).ToHaveCSSAsync("border-color", "rgb(207, 19, 34)");
+
+        // ...and it survives hover: the primary hover rule is more specific than the base invalid one,
+        // so pointing at an invalid field used to turn its border blue.
+        await invalidTrigger.HoverAsync();
+        await Expect(invalidTrigger).ToHaveCSSAsync("border-color", "rgb(207, 19, 34)");
     }
 
     [Fact]

@@ -4176,11 +4176,18 @@
 }
 
 /* EditColor forwards the EditContext state classes onto this wrapper (the picker-backed controls'
-   documented splat target), so an invalid field reads here. Re-asserted for the open state at higher
-   specificity, since the open rule above would otherwise win the tie-break and pair a red glow with
-   a primary border -- the exact bug .wss-select.invalid / .wss-picker.invalid already carry a comment
-   about. */
+   documented splat target), so an invalid field reads here. Re-asserted for the hover and open states
+   at higher specificity: the hover rule above is (0,4,0) and this one (0,3,0), so pointing at an
+   invalid trigger dropped the error border for the primary hover one, and the open rule would
+   likewise win the tie-break and pair a red glow with a primary border -- the exact bug
+   .wss-select.invalid / .wss-picker.invalid already carry a comment about. Adding .invalid to each
+   shape (rather than leaning on file order) keeps the error state winning wherever a future edit
+   moves these blocks, same as .wss-select-pill.invalid's own hover rule. */
 .wss-color-picker.invalid .wss-color-picker-trigger {
+    border-color: var(--wss-color-error);
+}
+
+.wss-color-picker.invalid:not(.wss-color-picker-disabled) .wss-color-picker-trigger:hover {
     border-color: var(--wss-color-error);
 }
 
