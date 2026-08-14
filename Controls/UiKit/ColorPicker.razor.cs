@@ -407,13 +407,6 @@ public partial class ColorPicker : PopupOverlayBase
     static string Percent(double normalized) =>
         (Math.Clamp(normalized, 0d, 1d) * 100d).ToString("0.##", CultureInfo.InvariantCulture) + "%";
 
-    // allowAlpha rather than a hardcoded true: a swatch has to show the color a click on it would
-    // COMMIT, and with ShowAlpha off the channel is stripped from the emitted value -- so painting a
-    // translucent preset as translucent promised a color this picker cannot produce. (The trigger's own
-    // swatch is unaffected either way: _alpha is pinned to 1 while ShowAlpha is off.)
-    static string SwatchStyle(ColorMath.Rgba color, bool allowAlpha) =>
-        $"background-color:{ColorMath.ToRgbString(color, allowAlpha)};";
-
     // A preset entry that isn't parseable renders as the empty indicator instead of an arbitrary color.
     static bool TryPreset(string? preset, out ColorMath.Rgba color) => ColorMath.TryParse(preset, out color);
 

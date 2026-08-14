@@ -92,6 +92,14 @@ public static class ColorMath
     }
 
     /// <summary>
+    /// The inline <c>background-color</c> declaration for one swatch fill — shared by
+    /// <c>ColorPicker</c>'s trigger/preset swatches and <c>EditColor</c>'s read-only view, so the two
+    /// can never paint the same color differently.
+    /// </summary>
+    public static string SwatchStyle(Rgba color, bool allowAlpha) =>
+        $"background-color:{ToRgbString(color, allowAlpha)};";
+
+    /// <summary>
     /// RGB → HSV. Hue is 0 for any achromatic color (black, white, every grey) — the information
     /// genuinely isn't there, which is why the picker keeps its own hue rather than round-tripping
     /// through here (see the class remarks).

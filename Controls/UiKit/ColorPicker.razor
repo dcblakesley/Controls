@@ -171,10 +171,15 @@
     // One swatch: the transparency checkerboard with a (possibly translucent) fill over it, or the
     // AntD-style empty indicator when there is no color. Rendered by the trigger and by every preset
     // button, which must never drift apart -- same reasoning as DatePicker's DayButtonFragment.
+    // ShowAlpha (not a hardcoded true) is passed as ColorMath.SwatchStyle's allowAlpha: a swatch has to
+    // show the color a click on it would COMMIT, and with ShowAlpha off the channel is stripped from the
+    // emitted value -- so painting a translucent preset as translucent promised a color this picker
+    // cannot produce. (The trigger's own swatch is unaffected either way: _alpha is pinned to 1 while
+    // ShowAlpha is off.)
     RenderFragment<(ColorMath.Rgba? Color, string ExtraClass)> SwatchFragment => s =>
         @<span class="wss-color-picker-swatch @s.ExtraClass">
             <span class="wss-color-picker-swatch-fill @(s.Color is null ? "wss-color-picker-swatch-empty" : null)"
-                  style="@(s.Color is { } c ? SwatchStyle(c, ShowAlpha) : null)"></span>
+                  style="@(s.Color is { } c ? ColorMath.SwatchStyle(c, ShowAlpha) : null)"></span>
         </span>;
 
     // One RGB-row channel input. Index 0/1/2 are R/G/B (0-255), 3 is alpha as a percentage; the raw

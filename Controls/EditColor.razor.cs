@@ -199,14 +199,13 @@ public partial class EditColor : EditControlBase<string?>
     IReadOnlyDictionary<string, object> PickerAttributes => EditControlInit.BuildPickerAttributes(AdditionalAttributes, CssClass);
 
     /// <summary>
-    /// The read-only view's text: the normalized form of the bound value, or empty when there is none —
-    /// including for a value the picker itself can't parse, so read-only and edit mode agree about what
-    /// counts as "no color".
+    /// The read-only view's color, or null when there is none — including for a value the picker itself
+    /// can't parse, so read-only and edit mode agree about what counts as "no color". Drives the
+    /// read-only swatch; <see cref="ColorMath.ToHex"/> derives the accompanying hex text alongside it
+    /// when <see cref="ShowText"/> is on.
     /// </summary>
-    string GetDisplayValue() =>
-        CurrentValue is { Length: > 0 } text && ColorMath.TryParse(text, out var color)
-            ? ColorMath.ToHex(color, ShowAlpha)
-            : string.Empty;
+    ColorMath.Rgba? ReadOnlyColor =>
+        CurrentValue is { Length: > 0 } text && ColorMath.TryParse(text, out var color) ? color : null;
 
     // Empty string counts as semantically empty for a color field, same as the text controls' own
     // rule (EditTextInputBase.IsValueDefault) -- the base's EqualityComparer default would only

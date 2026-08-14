@@ -42,9 +42,31 @@
                          AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)"
                          @attributes="PickerAttributes" />
         }
+        else if (ReadOnlyColor is { } color)
+        {
+            @* Swatch first, hex text only with ShowText on -- read-only mirrors the trigger's own
+               swatch(-plus-text) display rather than ReadOnlyValue's plain hex string, so a read-only
+               field actually shows the color instead of making the reader decode hex. Hand-rolled
+               (not <ReadOnlyValue>) for the same reason EditFile's non-empty read-only view is: richer
+               content than that component's single Text string, so it replicates ReadOnlyValue's own
+               id/aria contract directly -- same shape as EditString's .edit-masked-value wrapper. *@
+            <div class="edit-color-readonly-value @CssClass"
+                 id=@_id
+                 data-test-id=@_id
+                 aria-labelledby="lbltext-@_id"
+                 aria-describedby=@_describedBy>
+                <span class="wss-color-picker-swatch">
+                    <span class="wss-color-picker-swatch-fill" style="@ColorMath.SwatchStyle(color, ShowAlpha)"></span>
+                </span>
+                @if (ShowText)
+                {
+                    <span class="edit-readonly-value">@ColorMath.ToHex(color, ShowAlpha)</span>
+                }
+            </div>
+        }
         else
         {
-            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@GetDisplayValue() AriaDescribedBy=@_describedBy />
+            <ReadOnlyValue Id=@_id CssClass=@CssClass AriaDescribedBy=@_describedBy />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

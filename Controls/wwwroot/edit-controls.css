@@ -628,6 +628,17 @@
     max-width: 100%;
 }
 
+/************************************************ EditColor **********************************************/
+/* Read-only wrapper: the swatch plus (with ShowText on) the hex text alongside it -- same
+   swatch-plus-text layout as the picker's own trigger button, and the same wrapper shape as
+   .edit-masked-value above. The swatch reuses ColorPicker's own .wss-color-picker-swatch* classes
+   verbatim so the read-only and edit-mode colors can never drift apart. */
+.edit-color-readonly-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /************************************************ Input + InvalidIcon wrapper ********************************/
 .edit-input-with-icon {
     /* Wraps a single editor element (<input>/<textarea>/<InputDate>) together with the optional

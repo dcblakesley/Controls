@@ -372,12 +372,29 @@ public class EditColorTests : BunitContext
     // ----- Read-only ---------------------------------------------------------
 
     [Fact]
-    public void Read_only_mode_renders_the_normalized_value_instead_of_the_picker()
+    public void Read_only_mode_renders_a_swatch_instead_of_the_hex_value()
     {
+        // Default (no ShowText): the swatch alone carries the color -- the hex text is not echoed, so a
+        // sighted reader isn't left to decode it.
         var model = new ColorModel { Brand = "rgb(255, 0, 170)" };
         var cut = RenderColor(model, b => b.AddAttribute(10, "IsEditMode", false));
 
         Assert.Empty(cut.FindAll(".wss-color-picker"));
+        Assert.Contains("255, 0, 170", cut.Find(".wss-color-picker-swatch-fill").GetAttribute("style"));
+        Assert.Empty(cut.FindAll(".edit-readonly-value"));
+    }
+
+    [Fact]
+    public void Read_only_mode_with_ShowText_renders_both_the_swatch_and_the_hex_value()
+    {
+        var model = new ColorModel { Brand = "rgb(255, 0, 170)" };
+        var cut = RenderColor(model, b =>
+        {
+            b.AddAttribute(10, "IsEditMode", false);
+            b.AddAttribute(11, "ShowText", true);
+        });
+
+        Assert.Contains("255, 0, 170", cut.Find(".wss-color-picker-swatch-fill").GetAttribute("style"));
         Assert.Equal("#ff00aa", cut.Find(".edit-readonly-value").TextContent.Trim());
     }
 
@@ -387,9 +404,10 @@ public class EditColorTests : BunitContext
         var model = new ColorModel { Brand = "chartreuse" };
         var cut = RenderColor(model, b => b.AddAttribute(10, "IsEditMode", false));
 
-        // ReadOnlyValue's own de-emphasized EmptyText placeholder renders instead, and the unusable
-        // raw value is NOT echoed. Asserted structurally rather than by the placeholder's wording,
-        // which is ReadOnlyValue's business, not this control's.
+        // ReadOnlyValue's own de-emphasized EmptyText placeholder renders instead -- no swatch, and the
+        // unusable raw value is NOT echoed. Asserted structurally rather than by the placeholder's
+        // wording, which is ReadOnlyValue's business, not this control's.
+        Assert.Empty(cut.FindAll(".wss-color-picker-swatch"));
         var readOnly = cut.Find(".edit-readonly-value");
         Assert.Single(readOnly.QuerySelectorAll("span"));
         Assert.DoesNotContain("chartreuse", readOnly.TextContent);
