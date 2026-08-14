@@ -324,9 +324,12 @@ public class EditColorTests : BunitContext
         var model = new ColorModel { Brand = "chartreuse" };
         var cut = RenderColor(model, b => b.AddAttribute(10, "IsEditMode", false));
 
-        // ReadOnlyValue's own empty state: a visibility:hidden "No Value" spacer, exactly what every
-        // other control renders for an empty read-only field.
-        Assert.Equal("No Value", cut.Find(".edit-readonly-value").TextContent.Trim());
+        // ReadOnlyValue's own de-emphasized EmptyText placeholder renders instead, and the unusable
+        // raw value is NOT echoed. Asserted structurally rather than by the placeholder's wording,
+        // which is ReadOnlyValue's business, not this control's.
+        var readOnly = cut.Find(".edit-readonly-value");
+        Assert.Single(readOnly.QuerySelectorAll("span"));
+        Assert.DoesNotContain("chartreuse", readOnly.TextContent);
     }
 
     // ----- Empty / hiding ----------------------------------------------------

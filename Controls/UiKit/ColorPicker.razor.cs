@@ -201,6 +201,9 @@ public partial class ColorPicker : PopupOverlayBase
     protected override string PanelClassPrefix => "wss-color-picker";
     protected override bool TriggerDisabled => Disabled;
 
+    /// <inheritdoc/>
+    protected override string PanelId => $"{_id}-panel";
+
     /// <summary>
     /// No-op: <c>ColorPicker</c> is deliberately uncontrolled. <see cref="Popover"/>/
     /// <see cref="Popconfirm"/> expose <c>Visible</c>/<c>VisibleChanged</c> because a consumer drives

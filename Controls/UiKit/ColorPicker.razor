@@ -44,7 +44,7 @@
            under the panel (it resolves the backdrop by `${prefix}-backdrop`). *@
         <div class="wss-color-picker-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
         <div class="wss-color-picker-panel wss-color-picker-@(_resolvedPlacement ?? PlacementName) @(_positioned ? null : "wss-measuring")"
-             @ref="_panelRef" role="dialog" tabindex="-1" aria-label="@PanelLabel"
+             @ref="_panelRef" id="@PanelId" role="dialog" tabindex="-1" aria-label="@PanelLabel"
              @onkeydown="OnPanelKeyDownAsync"
              @onkeydown:stopPropagation="true"
              @onclick:stopPropagation="true">
