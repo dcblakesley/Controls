@@ -1,0 +1,52 @@
+@inherits EditControlBase<string?>
+
+@if (ShouldShowComponent())
+{
+    <div class="edit-control-wrapper @ContainerClass">
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+
+        @if (ShowEditor)
+        {
+            @* Value MUST carry the @ prefix: ColorPicker.Value is a string, so an unprefixed
+               Value="CurrentValue" is a LITERAL, not an expression -- unlike the date controls, whose
+               non-string picker Value makes the bare form an expression either way. *@
+            <ColorPicker Value="@CurrentValue"
+                         ValueChanged="@OnValueChanged"
+                         OnParseError="@OnPickerParseErrorAsync"
+                         Id="@_id"
+                         ShowAlpha="@ShowAlpha"
+                         ShowText="@ShowText"
+                         AllowClear="@AllowClear"
+                         Disabled="@IsDisabled"
+                         Presets="@Presets"
+                         PresetsLabel="@PresetsLabel"
+                         Placement="@Placement"
+                         TriggerLabel="@EffectiveTriggerLabel"
+                         EmptyLabel="@EmptyLabel"
+                         PanelLabel="@PanelLabel"
+                         SaturationLabel="@SaturationLabel"
+                         SaturationValueTextFormat="@SaturationValueTextFormat"
+                         HueLabel="@HueLabel"
+                         AlphaLabel="@AlphaLabel"
+                         ClearLabel="@ClearLabel"
+                         FormatLabel="@FormatLabel"
+                         HexLabel="@HexLabel"
+                         RedLabel="@RedLabel"
+                         GreenLabel="@GreenLabel"
+                         BlueLabel="@BlueLabel"
+                         AlphaPercentLabel="@AlphaPercentLabel"
+                         AriaRequired="@_isRequired"
+                         AriaInvalid="@IsInvalid"
+                         AriaDescribedBy="@_describedBy"
+                         AriaErrorMessage="@(IsInvalid ? _errorMsgId : null)"
+                         @attributes="PickerAttributes" />
+        }
+        else
+        {
+            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@GetDisplayValue() />
+        }
+
+        <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />
+        <BoundValueDisplay Text=@CurrentValueAsString />
+    </div>
+}

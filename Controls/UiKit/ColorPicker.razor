@@ -1,0 +1,189 @@
+@namespace Controls
+@inherits PopupOverlayBase
+
+<span @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+      class="wss-color-picker @(Disabled ? "wss-color-picker-disabled" : null) @(_open ? "wss-color-picker-open" : null) @AttributeSplat.ConsumerClass(AdditionalAttributes)"
+      style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
+
+    @* The trigger button's native activation bubbles to this span's @onclick, so the span itself
+       carries no button semantics (wss-overlay.js's syncTrigger mirrors the popup ARIA onto the
+       button, which it resolves as the FIRST interactive child -- hence the clear button coming
+       second). While open, keydown must not bubble further: an Escape meant for this popup would
+       otherwise also close an enclosing Modal/Drawer. *@
+    <span class="wss-color-picker-trigger-slot" @ref="_triggerRef"
+          @onclick="ToggleAsync" @onkeydown="OnTriggerKeyDownAsync" @onkeydown:stopPropagation="@_open">
+        <button type="button" class="wss-color-picker-trigger"
+                id="@Id"
+                data-test-id="@Id"
+                disabled="@Disabled"
+                aria-label="@TriggerAriaLabel"
+                aria-required="@AriaRequired"
+                aria-invalid="@(AriaInvalid ? "true" : null)"
+                aria-describedby="@AriaDescribedBy"
+                aria-errormessage="@AriaErrorMessage">
+            @SwatchFragment((_hasColor ? CurrentColor : (ColorMath.Rgba?)null, "wss-color-picker-trigger-swatch"))
+            @if (ShowText && _hasColor)
+            {
+                <span class="wss-color-picker-value">@DisplayHex</span>
+            }
+        </button>
+        @if (ShowClear)
+        {
+            @* stopPropagation: without it the clear click would also reach the slot's @onclick and
+               toggle the popup. Clearing deliberately leaves the open state alone. *@
+            <button type="button" class="wss-color-picker-clear" aria-label="@ClearLabel"
+                    @onclick="ClearAsync" @onclick:stopPropagation>@UiKitIcons.CloseCross</button>
+        }
+    </span>
+
+    @if (_open)
+    {
+        @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap when the target chain
+           contains a focusable element -- without it a backdrop tap never reaches @onclick on touch.
+           Rendered as the panel's previous sibling so wss-overlay.js's place() can stack it just
+           under the panel (it resolves the backdrop by `${prefix}-backdrop`). *@
+        <div class="wss-color-picker-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
+        <div class="wss-color-picker-panel wss-color-picker-@(_resolvedPlacement ?? PlacementName) @(_positioned ? null : "wss-measuring")"
+             @ref="_panelRef" role="dialog" tabindex="-1" aria-label="@PanelLabel"
+             @onkeydown="OnPanelKeyDownAsync"
+             @onkeydown:stopPropagation="true"
+             @onclick:stopPropagation="true">
+
+            @* The 2D area: a single role="slider" whose aria-valuenow carries saturation and whose
+               aria-valuetext describes both axes (no single-axis value can). The handle is
+               pointer-events:none in CSS so a click's OffsetX/OffsetY is always relative to THIS
+               element -- the no-JS fallback depends on it. *@
+            <div class="wss-color-picker-sv" @ref="_svRef"
+                 role="slider" tabindex="0"
+                 aria-label="@SaturationLabel"
+                 aria-valuemin="0" aria-valuemax="100"
+                 aria-valuenow="@SaturationPercent"
+                 aria-valuetext="@SvValueText"
+                 style="background-color:@HueBaseHex;"
+                 @onclick="OnSvClickAsync" @onkeydown="OnSvKeyDownAsync">
+                <span class="wss-color-picker-sv-handle"
+                      style="left:@Percent(_hsv.S);top:@Percent(1d - _hsv.V);background-color:@SvHandleHex;"></span>
+            </div>
+
+            <div class="wss-color-picker-sliders">
+                <div class="wss-color-picker-slider wss-color-picker-hue" @ref="_hueRef"
+                     role="slider" tabindex="0"
+                     aria-label="@HueLabel"
+                     aria-valuemin="0" aria-valuemax="360"
+                     aria-valuenow="@HueDegrees"
+                     aria-valuetext="@HueValueText"
+                     @onclick="OnHueClickAsync" @onkeydown="OnHueKeyDownAsync">
+                    <span class="wss-color-picker-slider-handle" style="left:@Percent(_hsv.H / 360d);"></span>
+                </div>
+
+                @if (ShowAlpha)
+                {
+                    <div class="wss-color-picker-slider wss-color-picker-alpha" @ref="_alphaRef"
+                         role="slider" tabindex="0"
+                         aria-label="@AlphaLabel"
+                         aria-valuemin="0" aria-valuemax="100"
+                         aria-valuenow="@AlphaPercent"
+                         aria-valuetext="@AlphaValueText"
+                         @onclick="OnAlphaClickAsync" @onkeydown="OnAlphaKeyDownAsync">
+                        <span class="wss-color-picker-alpha-track"
+                              style="background-image:linear-gradient(to right, transparent, @AlphaGradientHex);"></span>
+                        <span class="wss-color-picker-slider-handle" style="left:@Percent(_alpha);"></span>
+                    </div>
+                }
+            </div>
+
+            <div class="wss-color-picker-inputs">
+                @* Also .wss-picker-select: the date pickers' select chrome + arrow positioning is
+                   reused verbatim here (PickerIcons.DownIcon renders with .wss-picker-select-arrow),
+                   with only the width overridden. *@
+                <span class="wss-picker-select wss-color-picker-select">
+                    <select class="wss-color-picker-format" aria-label="@FormatLabel"
+                            value="@_format" @onchange="OnFormatChanged">
+                        <option value="@nameof(ColorFormat.Hex)" selected="@(_format == ColorFormat.Hex)">HEX</option>
+                        <option value="@nameof(ColorFormat.Rgb)" selected="@(_format == ColorFormat.Rgb)">RGB</option>
+                    </select>
+                    @PickerIcons.DownIcon
+                </span>
+
+                @if (_format == ColorFormat.Hex)
+                {
+                    @* Commits on change (blur, and Enter -- which wss-color.js preventDefaults so it
+                       can't also submit an enclosing form). _hexEdit tracks the raw keystrokes so a
+                       reverted/normalized entry actually refreshes the box; see its declaration. *@
+                    <input type="text" class="wss-color-picker-hex" @ref="_hexRef"
+                           aria-label="@HexLabel"
+                           autocomplete="off"
+                           spellcheck="false"
+                           value="@_hexEdit"
+                           @oninput="@(e => _hexEdit = e.Value?.ToString() ?? string.Empty)"
+                           @onchange="CommitHexAsync" />
+                }
+                else
+                {
+                    <span class="wss-color-picker-channels">
+                        @ChannelFragment((0, RedLabel, 255))
+                        @ChannelFragment((1, GreenLabel, 255))
+                        @ChannelFragment((2, BlueLabel, 255))
+                        @if (ShowAlpha)
+                        {
+                            @ChannelFragment((3, AlphaPercentLabel, 100))
+                        }
+                    </span>
+                }
+            </div>
+
+            @if (Presets is { Count: > 0 })
+            {
+                <div class="wss-color-picker-presets">
+                    <div class="wss-color-picker-presets-label" id="@($"{_id}-presets")">@PresetsLabel</div>
+                    <div class="wss-color-picker-preset-row" role="group" aria-labelledby="@($"{_id}-presets")">
+                        @foreach (var entry in Presets)
+                        {
+                            var preset = entry;
+                            var parsed = TryPreset(preset, out var presetColor);
+                            <button type="button" class="wss-color-picker-preset"
+                                    aria-label="@preset"
+                                    aria-pressed="@(parsed && string.Equals(ColorMath.ToHex(presetColor, ShowAlpha), DisplayHex, StringComparison.Ordinal) ? "true" : "false")"
+                                    disabled="@(!parsed)"
+                                    @onclick="@(() => OnPresetClickAsync(preset))">
+                                @SwatchFragment((parsed ? presetColor : (ColorMath.Rgba?)null, "wss-color-picker-preset-swatch"))
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Drag channel: wss-color.js writes the normalized "x,y" it measured into these and
+               dispatches an input event, which Blazor delivers to the handlers below. Hidden inputs
+               rather than a DotNetObjectReference -- see wss-color.js's header for why. *@
+            <input type="hidden" class="wss-color-picker-signal" @ref="_svSignal" @oninput="OnSvSignalAsync" />
+            <input type="hidden" class="wss-color-picker-signal" @ref="_hueSignal" @oninput="OnHueSignalAsync" />
+            @if (ShowAlpha)
+            {
+                <input type="hidden" class="wss-color-picker-signal" @ref="_alphaSignal" @oninput="OnAlphaSignalAsync" />
+            }
+        </div>
+    }
+</span>
+
+@code {
+    // One swatch: the transparency checkerboard with a (possibly translucent) fill over it, or the
+    // AntD-style empty indicator when there is no color. Rendered by the trigger and by every preset
+    // button, which must never drift apart -- same reasoning as DatePicker's DayButtonFragment.
+    RenderFragment<(ColorMath.Rgba? Color, string ExtraClass)> SwatchFragment => s =>
+        @<span class="wss-color-picker-swatch @s.ExtraClass">
+            <span class="wss-color-picker-swatch-fill @(s.Color is null ? "wss-color-picker-swatch-empty" : null)"
+                  style="@(s.Color is { } c ? SwatchStyle(c) : null)"></span>
+        </span>;
+
+    // One RGB-row channel input. Index 0/1/2 are R/G/B (0-255), 3 is alpha as a percentage; the raw
+    // keystrokes live in _channelEdit so a clamped entry refreshes (see its declaration).
+    RenderFragment<(int Index, string Label, int Max)> ChannelFragment => c =>
+        @<input type="number" class="wss-color-picker-channel"
+                aria-label="@c.Label"
+                min="0" max="@c.Max" step="1"
+                autocomplete="off"
+                value="@_channelEdit[c.Index]"
+                @oninput="@(e => _channelEdit[c.Index] = e.Value?.ToString() ?? string.Empty)"
+                @onchange="@(e => CommitChannelAsync(c.Index, e))" />;
+}

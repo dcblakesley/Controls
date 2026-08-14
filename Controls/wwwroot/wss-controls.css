@@ -135,6 +135,20 @@
     --wss-picker-radius-lg: 8px;
     --wss-picker-split: #e6e6e6;
 
+    /* ColorPicker. --wss-color-picker-width and --wss-color-picker-sv-height are MIRRORED as
+       constants in ColorPicker.razor.cs (TrackWidth/SvHeight): MouseEventArgs carries an OffsetX in
+       px but no element size, so the no-JS click fallback has to assume the default metrics -- keep
+       the two in sync, and see those constants for what an override costs (the JS path measures the
+       real element and is unaffected). --wss-color-picker-checker is the transparency
+       checkerboard's tint; the empty indicator's diagonal reuses --wss-color-error rather than
+       introducing a token of its own. */
+    --wss-color-picker-width: 234px;
+    --wss-color-picker-sv-height: 140px;
+    --wss-color-picker-slider-height: 10px;
+    --wss-color-picker-swatch-size: 24px;
+    --wss-color-picker-radius: 8px;
+    --wss-color-picker-checker: #dedede;
+
     /* Status (alerts / messages / notifications).
        The success/warning glyph colors are darkened off AntD 4's palette (toward AntD 5's): the
        originals were #52c41a (2.27:1 on white, 2.21:1 on the success tint) and #faad14 (1.90:1 /
@@ -208,7 +222,14 @@
  *     ([data-tooltip].wss-tooltip-left/-right, and edit-controls.css's
  *     .edit-tooltip-container.wss-tooltip-left/-right) are an explicit physical side the caller (or
  *     wss-tooltip.js's auto-placement) chose relative to the trigger's on-screen position, same
- *     reasoning as DrawerPlacement above -- not text-direction-relative.
+ *     reasoning as DrawerPlacement above -- not text-direction-relative;
+ *   - the ColorPicker's own `-top`/`-bottom`/`-left`/`-right` panel modifiers
+ *     (same reasoning as Popover's), AND its three tracks' gradients + handle
+ *     offsets (.wss-color-picker-sv-handle / -slider-handle's physical
+ *     left/top + negative margins): a hue spectrum is not text, it paints
+ *     left-to-right in both directions, and wss-color.js normalizes a pointer
+ *     against the physical getBoundingClientRect -- a mirrored handle would
+ *     disagree with both the gradient under it and the value it reports.
  */
 
 /* ============================================================================
@@ -1134,6 +1155,7 @@
    the delegated listener; outline:none because each backdrop div is tabindex="-1". */
 .wss-popover-backdrop,
 .wss-popconfirm-backdrop,
+.wss-color-picker-backdrop,
 .wss-select-backdrop,
 .wss-table-filter-backdrop,
 .wss-picker-backdrop {
@@ -1143,7 +1165,7 @@
     outline: none;
 }
 
-.wss-popover-backdrop, .wss-popconfirm-backdrop {
+.wss-popover-backdrop, .wss-popconfirm-backdrop, .wss-color-picker-backdrop {
     z-index: 1029;
 }
 
@@ -4084,6 +4106,365 @@
 }
 
 /* ============================================================================
+ * ColorPicker
+ * A swatch trigger opening a popup with a saturation/brightness area, a hue
+ * slider, an optional alpha slider, a HEX/RGB input row and an optional preset
+ * row (AntD 5's ColorPicker). Positioned by the same wss-overlay.js place() the
+ * Popover uses, so the four placement modifiers below mirror that geometry
+ * (minus the arrow -- AntD's color popup has none). The tracks' gradients and
+ * handle offsets stay deliberately PHYSICAL: see the RTL note at the top of
+ * this file. Not gated behind .edit-theme -- like the date pickers, this
+ * control carries its own styling rather than opting into the classic-input
+ * recipe.
+ * ============================================================================ */
+
+.wss-color-picker {
+    position: relative;
+    display: inline-flex;
+    /* Shrink-wrap the trigger so the absolutely-positioned panel anchors to it even when the wrapper
+       is a flex/grid item (those stretch it to full width, breaking left: 50%) -- same reason
+       .wss-popover-wrap does. */
+    width: fit-content;
+    box-sizing: border-box;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: var(--wss-line-height);
+}
+
+.wss-color-picker * {
+    box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------------ Trigger */
+
+.wss-color-picker-trigger-slot {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* min-height, never a fixed height: consuming apps reset buttons with max-height: fit-content, which
+   clamps a fixed height and squashes the swatch. */
+.wss-color-picker-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: var(--wss-control-height);
+    margin: 0;
+    padding: 3px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-color-picker-radius);
+    cursor: pointer;
+    transition: border-color 0.3s var(--wss-ease-standard);
+}
+
+.wss-color-picker:not(.wss-color-picker-disabled) .wss-color-picker-trigger:hover {
+    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+}
+
+.wss-color-picker-open .wss-color-picker-trigger {
+    border-color: var(--wss-color-primary);
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
+}
+
+.wss-color-picker-disabled .wss-color-picker-trigger {
+    background: var(--wss-color-bg-disabled);
+    cursor: not-allowed;
+}
+
+/* EditColor forwards the EditContext state classes onto this wrapper (the picker-backed controls'
+   documented splat target), so an invalid field reads here. Re-asserted for the open state at higher
+   specificity, since the open rule above would otherwise win the tie-break and pair a red glow with
+   a primary border -- the exact bug .wss-select.invalid / .wss-picker.invalid already carry a comment
+   about. */
+.wss-color-picker.invalid .wss-color-picker-trigger {
+    border-color: var(--wss-color-error);
+}
+
+.wss-color-picker.invalid.wss-color-picker-open .wss-color-picker-trigger {
+    border-color: var(--wss-color-error);
+    box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
+}
+
+.wss-color-picker-value {
+    padding-inline-end: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ Swatches */
+
+/* The transparency checkerboard a (possibly translucent) fill floats over. Shared by the trigger and
+   every preset button via ColorPicker's SwatchFragment, so the two can never drift. */
+.wss-color-picker-swatch {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: var(--wss-color-picker-swatch-size);
+    height: var(--wss-color-picker-swatch-size);
+    overflow: hidden;
+    background-color: #fff;
+    background-image: conic-gradient(var(--wss-color-picker-checker) 0 25%, transparent 0 50%, var(--wss-color-picker-checker) 0 75%, transparent 0);
+    background-size: 8px 8px;
+    border-radius: var(--wss-picker-radius-sm);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.wss-color-picker-swatch-fill {
+    position: absolute;
+    inset: 0;
+    /* background-color is set inline by the component (per-value, not per-state). */
+}
+
+/* AntD's "no color chosen" mark: a red diagonal over white. */
+.wss-color-picker-swatch-empty {
+    background-color: #fff;
+    background-image: linear-gradient(45deg, transparent 45%, var(--wss-color-error) 45%, var(--wss-color-error) 55%, transparent 55%);
+}
+
+/* 24px square: WCAG 2.5.8's minimum target size, even though the glyph is smaller. */
+.wss-color-picker-clear {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    color: var(--wss-color-text-secondary);
+    font-size: 12px;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 0.2s var(--wss-ease-standard), background-color 0.2s var(--wss-ease-standard);
+}
+
+.wss-color-picker-clear:hover {
+    color: var(--wss-color-text);
+    background: var(--wss-color-bg-hover);
+}
+
+/* -------------------------------------------------------------------- Panel */
+
+.wss-color-picker-panel {
+    position: absolute;
+    /* Same no-JS/pre-hydration rank as .wss-popover (see its own comment): once wss-overlay.js runs,
+       place() assigns an inline open-order z-index that supersedes this. */
+    z-index: 1030;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    background: var(--wss-color-bg);
+    border-radius: var(--wss-color-picker-radius);
+    box-shadow: var(--wss-shadow);
+    cursor: auto;
+    /* Focus moves to the 2D area on open, not to the panel -- no ring on the container itself. */
+    outline: none;
+}
+
+/* --wss-shift (set by wss-overlay.js's place()) keeps the panel in the viewport; both default to 0
+   when JS is unavailable, leaving the CSS placement below. */
+.wss-color-picker-top { bottom: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-color-picker-bottom { top: calc(100% + 10px); left: 50%; transform: translateX(calc(-50% + var(--wss-shift, 0px))); }
+.wss-color-picker-left { right: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+.wss-color-picker-right { left: calc(100% + 10px); top: 50%; transform: translateY(calc(-50% + var(--wss-shift, 0px))); }
+
+/* ------------------------------------------------------------------- Tracks */
+
+/* background-color (the fully-saturated hue) is set inline; these two gradients paint white->clear
+   horizontally and clear->black vertically over it, which is what makes the area a saturation
+   (x) / brightness (y) plane. touch-action: none hands the whole gesture to the pointer drag
+   instead of letting the browser pan/zoom mid-pick. */
+.wss-color-picker-sv {
+    position: relative;
+    width: var(--wss-color-picker-width);
+    height: var(--wss-color-picker-sv-height);
+    background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent);
+    border-radius: var(--wss-picker-radius-sm);
+    cursor: crosshair;
+    outline: none;
+    touch-action: none;
+}
+
+.wss-color-picker-sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.wss-color-picker-slider {
+    position: relative;
+    width: var(--wss-color-picker-width);
+    height: var(--wss-color-picker-slider-height);
+    border-radius: calc(var(--wss-color-picker-slider-height) / 2);
+    cursor: pointer;
+    outline: none;
+    touch-action: none;
+}
+
+.wss-color-picker-hue {
+    background-image: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+}
+
+/* The checkerboard is the track itself; the transparent->color gradient is a child so the component
+   can set it inline without clobbering the pattern. */
+.wss-color-picker-alpha {
+    background-color: #fff;
+    background-image: conic-gradient(var(--wss-color-picker-checker) 0 25%, transparent 0 50%, var(--wss-color-picker-checker) 0 75%, transparent 0);
+    background-size: 8px 8px;
+}
+
+.wss-color-picker-alpha-track {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* pointer-events: none on both handles is load-bearing, not cosmetic: the no-JS fallback reads a
+   click's OffsetX/OffsetY, which are relative to the EVENT TARGET -- a hit-testable handle would
+   make itself the target and report coordinates within its own 16px box. */
+.wss-color-picker-sv-handle {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    background-color: #fff;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+}
+
+.wss-color-picker-slider-handle {
+    position: absolute;
+    top: 50%;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+}
+
+/* --------------------------------------------------------------- Input row */
+
+.wss-color-picker-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: var(--wss-color-picker-width);
+}
+
+/* The span also carries .wss-picker-select, reusing the date pickers' select chrome + arrow
+   positioning verbatim (PickerIcons.DownIcon renders with .wss-picker-select-arrow); only the width
+   differs -- "HEX"/"RGB" needs less than a month name. */
+.wss-color-picker-select {
+    flex: none;
+    width: 78px;
+}
+
+.wss-color-picker-hex,
+.wss-color-picker-channel {
+    min-width: 0;
+    margin: 0;
+    padding-block: 1px;
+    padding-inline: 8px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    line-height: 22px;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-picker-radius-sm);
+}
+
+.wss-color-picker-hex {
+    flex: 1 1 auto;
+    font-variant-numeric: tabular-nums;
+}
+
+.wss-color-picker-channels {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 4px;
+    min-width: 0;
+}
+
+.wss-color-picker-channel {
+    flex: 1 1 0;
+    /* Drop the native spinners: at this width they eat most of the box, and the arrow keys plus the
+       sliders above already cover stepping. */
+    appearance: textfield;
+    padding-inline: 4px;
+    text-align: center;
+}
+
+.wss-color-picker-channel::-webkit-outer-spin-button,
+.wss-color-picker-channel::-webkit-inner-spin-button {
+    margin: 0;
+    appearance: none;
+}
+
+/* ------------------------------------------------------------------ Presets */
+
+.wss-color-picker-presets {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: var(--wss-color-picker-width);
+    padding-top: 10px;
+    border-top: 1px solid var(--wss-picker-split);
+}
+
+/* The TEXT-grade secondary token, not --wss-color-text-secondary: this is a real, information-
+   carrying label (it names the row below it), so WCAG 1.4.3's 4.5:1 applies -- see the two tokens'
+   own notes at the top of this file. */
+.wss-color-picker-presets-label {
+    color: var(--wss-color-text-secondary-strong);
+    font-size: var(--wss-font-size-sm);
+}
+
+.wss-color-picker-preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.wss-color-picker-preset {
+    display: inline-flex;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: var(--wss-picker-radius-sm);
+    cursor: pointer;
+    transition: transform 0.2s var(--wss-ease-standard);
+}
+
+.wss-color-picker-preset:hover:not(:disabled) {
+    transform: scale(1.1);
+}
+
+.wss-color-picker-preset:disabled {
+    cursor: not-allowed;
+}
+
+/* The selected preset gets a ring rather than a border, so the swatch itself never resizes. */
+.wss-color-picker-preset[aria-pressed="true"] .wss-color-picker-swatch {
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06), 0 0 0 2px var(--wss-color-primary);
+}
+
+/* The hidden channels wss-color.js reports normalized drag coordinates through -- never visible, and
+   never a layout participant even if a consumer's reset gives inputs a display. */
+.wss-color-picker-signal {
+    display: none !important;
+}
+
+/* ============================================================================
  * Accessibility
  * ============================================================================ */
 
@@ -4126,21 +4507,30 @@
 .wss-search-clear:focus-visible,
 .wss-search-input:focus-visible,
 .wss-picker-clear:focus-visible,
+.wss-color-picker-trigger:focus-visible,
+.wss-color-picker-clear:focus-visible,
 .wss-pagination-size-select:focus-visible,
 .wss-pagination-jumper-input:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 2px;
 }
 
-/* Picker popup interactives use a tighter offset — the 24px day cells sit 6px apart, so a 2px
-   offset ring would overlap the neighboring cells' band. */
+/* Popup interactives use a tighter offset — the date picker's 24px day cells sit 6px apart, and the
+   ColorPicker packs its three tracks 10-12px apart, so a 2px offset ring would overlap the
+   neighbor's band. The ColorPicker's tracks are tabindex="0" role="slider" DIVS, not buttons:
+   without an explicit ring a keyboard user has no idea which one the arrow keys are driving, and the
+   ring has to sit outward (the sliders are only 10px tall, so an inset one would swallow the
+   gradient). */
 .wss-picker-day:focus-visible,
 .wss-picker-month-btn:focus-visible,
 .wss-picker-preset:focus-visible,
 .wss-picker-select select:focus-visible,
 .wss-picker-nav:focus-visible,
 .wss-picker-ok:focus-visible,
-.wss-picker-today-btn:focus-visible {
+.wss-picker-today-btn:focus-visible,
+.wss-color-picker-sv:focus-visible,
+.wss-color-picker-slider:focus-visible,
+.wss-color-picker-preset:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 1px;
 }
@@ -4199,6 +4589,7 @@
     .wss-search-clear,
     .wss-search-btn,
     .wss-picker-clear,
+    .wss-color-picker-clear,
     .wss-table-filter-trigger,
     .wss-pagination,
     .wss-tabs-nav {
@@ -4228,6 +4619,9 @@
     .wss-picker-nav,
     .wss-picker-ok,
     .wss-picker-today-btn,
+    .wss-color-picker-trigger,
+    .wss-color-picker-clear,
+    .wss-color-picker-preset,
     .wss-table-expand-btn,
     .wss-table-expand-btn svg,
     .wss-tabs-tab,

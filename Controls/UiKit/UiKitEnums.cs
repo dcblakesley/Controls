@@ -82,6 +82,18 @@ public enum DatePickerMode
     Week
 }
 
+/// <summary>
+/// Which text form a <see cref="ColorPicker"/>'s input row edits. Presentation only — the bound
+/// <see cref="ColorPicker.Value"/> is always normalized hex regardless of the selected format.
+/// </summary>
+public enum ColorFormat
+{
+    /// <summary><c>#rrggbb</c> / <c>#rrggbbaa</c> in a single text box (the default).</summary>
+    Hex,
+    /// <summary>One number box per channel, plus an alpha percentage box when alpha is enabled.</summary>
+    Rgb
+}
+
 /// <summary>Shape of a <see cref="Skeleton"/>'s <see cref="Skeleton.Avatar"/> placeholder.</summary>
 public enum SkeletonAvatarShape
 {
