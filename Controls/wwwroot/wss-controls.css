@@ -4321,6 +4321,25 @@
     touch-action: none;
 }
 
+/* WCAG 2.5.8 target size: the two tracks are 10px tall and 10px apart, so neither the 24x24 size nor
+   the spacing exception is met by the visible design -- which stays exactly as it is (AntD parity, and
+   the gradients ARE the control). Each track instead grows an invisible 24px-tall hit box, the same
+   ::before/inset trick .wss-picker-clear uses, so nothing about layout or paint changes: an absolutely
+   positioned pseudo-element is not part of its element's getBoundingClientRect, so wss-color.js keeps
+   normalizing a press against the VISIBLE track (the expanded box must never become the denominator)
+   and the no-JS OffsetX fallback is likewise untouched. Horizontal insets stay 0 for the same reason --
+   only height is short of the 24px floor.
+   The vertical split is deliberately asymmetric because the 10px between the two tracks cannot serve
+   7px of expansion each: measuring from the hue track's own box, hue takes -7px..+7px (24px, leaving
+   5px clear of the 2D area above) and alpha takes -3px..+11px (24px, ending 1px clear of the input
+   row below), so the two hit boxes meet exactly at the midpoint and never overlap each other or a
+   neighboring target. */
+.wss-color-picker-slider::before {
+    content: '';
+    position: absolute;
+    inset: -7px 0;
+}
+
 .wss-color-picker-hue {
     background-image: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
 }
@@ -4338,6 +4357,13 @@
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
+}
+
+/* The lower half of the asymmetric hit-box split described on .wss-color-picker-slider::before above:
+   24px tall, reaching only 3px up (the hue box already owns the midpoint) and 11px down. Same
+   specificity as that rule, won on source order. */
+.wss-color-picker-alpha::before {
+    inset: -3px 0 -11px;
 }
 
 /* pointer-events: none on both handles is load-bearing, not cosmetic: the no-JS fallback reads a

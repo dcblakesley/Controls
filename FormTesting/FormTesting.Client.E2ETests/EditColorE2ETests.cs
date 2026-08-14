@@ -109,6 +109,43 @@ public class EditColorE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
     }
 
     [Fact]
+    public async Task The_tracks_take_a_press_from_their_expanded_hit_area_without_moving_the_mapping()
+    {
+        await NavigateAsync();
+        var section = Section(0);
+        var panel = await OpenAsync(section);
+        var sv = panel.Locator(".wss-color-picker-sv");
+        var hue = panel.Locator(".wss-color-picker-hue");
+        var alpha = panel.Locator(".wss-color-picker-alpha");
+        var svBox = await sv.BoundingBoxAsync();
+        var hueBox = await hue.BoundingBoxAsync();
+        var alphaBox = await alpha.BoundingBoxAsync();
+        Assert.NotNull(svBox);
+        Assert.NotNull(hueBox);
+        Assert.NotNull(alphaBox);
+
+        // The visible design is unchanged (WCAG 2.5.8 is met with an invisible ::before, not a taller
+        // track) -- if this ever reads 24, the visual baselines moved with it.
+        Assert.True(hueBox.Height is > 9 and < 11, $"hue track height {hueBox.Height}");
+        Assert.True(alphaBox.Height is > 9 and < 11, $"alpha track height {alphaBox.Height}");
+
+        // 6px ABOVE the hue track's top edge is outside its own box but inside its hit area...
+        await Page.Mouse.ClickAsync(hueBox.X + hueBox.Width / 2, hueBox.Y - 6);
+        // ...and the coordinate math still normalizes against the VISIBLE track, so mid-width is still
+        // 180 degrees -- the expanded box must never become the denominator.
+        await Expect(hue).ToHaveAttributeAsync("aria-valuenow", new Regex("^1(79|80|81)$"));
+
+        // 8px BELOW the alpha track, at a quarter of its width.
+        await Page.Mouse.ClickAsync(alphaBox.X + (float)(alphaBox.Width * 0.25), alphaBox.Y + alphaBox.Height + 8);
+        await Expect(alpha).ToHaveAttributeAsync("aria-valuenow", new Regex("^(24|25|26)$"));
+
+        // The expansion must not eat into the 2D area above: a press just inside its bottom edge still
+        // belongs to the 2D area (and reads as near-zero brightness), not to the hue track's hit box.
+        await Page.Mouse.ClickAsync(svBox.X + svBox.Width / 2, svBox.Y + svBox.Height - 2);
+        await Expect(sv).ToHaveAttributeAsync("aria-valuetext", new Regex("^Saturation 50%, brightness [012]%$"));
+    }
+
+    [Fact]
     public async Task A_typed_hex_commits_on_Enter_without_submitting_the_form()
     {
         await NavigateAsync();
