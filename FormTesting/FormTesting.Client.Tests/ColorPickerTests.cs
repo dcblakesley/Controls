@@ -340,6 +340,29 @@ public class ColorPickerTests : BunitContext
     }
 
     [Fact]
+    public void The_session_saturation_survives_a_commit_that_produces_black()
+    {
+        // The hue assertion above does NOT actually discriminate the _lastValueParam guard: with the
+        // guard removed, SyncFromValue would still keep the session hue, because #000000 is achromatic
+        // and that path has its own S <= 0 rule. SATURATION is what only the guard preserves -- so this
+        // is the assertion that fails if the guard goes, and the reason a user dragging brightness to
+        // black and back doesn't lose the color they were mixing.
+        var cut = RenderPicker(out var committed);
+        Open(cut);
+        Signals(cut)[1].Input("0.5,0"); // hue 180
+        Signals(cut)[0].Input("0.5,1"); // half saturation, zero brightness -> black, which carries neither
+
+        Assert.Equal("#000000", committed());
+        // The binding writes that value back (the normal controlled round trip); recognized as our own
+        // emission, so no re-derivation happens at all.
+        cut.Render(p => p.Add(c => c.Value, committed()));
+
+        Assert.Equal("Saturation 50%, brightness 0%",
+            cut.Find(".wss-color-picker-sv").GetAttribute("aria-valuetext"));
+        Assert.Equal("180", cut.Find(".wss-color-picker-hue").GetAttribute("aria-valuenow"));
+    }
+
+    [Fact]
     public void An_achromatic_external_value_keeps_the_session_hue_and_adopts_its_brightness()
     {
         var cut = RenderPicker();
