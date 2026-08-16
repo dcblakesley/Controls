@@ -77,6 +77,7 @@ public enum CurrentView
     Radio,
     RadioEnum,
     RadioString,
+    Range,
     Select,
     SelectEnum,
     SelectString,

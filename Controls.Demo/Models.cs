@@ -49,6 +49,10 @@ internal class DemoModelForEditControls
     [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
     public string? EditColor { get; set; } = "#1890ff";
 
+    [DisplayName("EditRange")]
+    [ToolTip("AAAAAAAAA BBBBBBBBBBBBB")]
+    public int EditRange { get; set; } = 40;
+
     [DisplayName("EditSelectEnum")]
     public Animal EditSelectEnum { get; set; }
 

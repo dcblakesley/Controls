@@ -1,0 +1,221 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inherits DemoFormPage
+
+<h1>EditRange Demo</h1>
+
+<EditForm Model="@_model" class="wss-demo-row wss-demo-wrap" @ref=_form>
+    <ObjectGraphDataAnnotationsValidator />
+
+    <section class="demo-section">
+        <EditRange @bind-Value="_model.Volume" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_basicExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRange @bind-Value="_model.Temperature"
+                   Min="-20"
+                   Max="40"
+                   Step="5" />
+
+        @* Same three settings, declared on the model instead of the markup. *@
+        <EditRange @bind-Value="_model.Rating" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_boundsExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_boundsModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRange @bind-Value="_model.Marked" Marks="_temperatureMarks" />
+
+        @* SnapToMarks: only the four marked values are reachable, by pointer or keyboard. *@
+        <EditRange @bind-Value="_model.Snapped" Marks="_temperatureMarks" SnapToMarks="true" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_marksExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_marksModel</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRange @bind-Value="_model.Level" Step="10" Dots="true" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_dotsExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        @* Included="false": no filled track, and no active styling on the dots/marks below the
+           handle -- the marks read as a set of independent choices rather than a magnitude. *@
+        <EditRange @bind-Value="_model.Discrete"
+                   Marks="_discreteMarks"
+                   SnapToMarks="true"
+                   Dots="true"
+                   Included="false" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_includedExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRange @bind-Value="_model.Storage"
+                   Min="0"
+                   Max="1000"
+                   Step="50"
+                   TooltipFormat="0 GB" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_tooltipFormatExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        <EditRange @bind-Value="_model.Disabled" IsDisabled="true" />
+
+        @* Read-only renders the formatted value as text -- the same TooltipFormat drives both. *@
+        <EditRange @bind-Value="_model.Storage"
+                   IsEditMode="false"
+                   Id="StorageReadOnly"
+                   TooltipFormat="0 GB"
+                   Label="Same value, read-only" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_disabledExample</code></pre>
+    </section>
+
+    <section class="demo-section">
+        @* A null value parks the handle at Min and reports aria-valuenow there without committing
+           anything -- the [Required] error stands until the first interaction. *@
+        <EditRange @bind-Value="_model.Required" Min="1" Max="10" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_validationExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_validationModel</code></pre>
+    </section>
+
+</EditForm>
+
+@code {
+    readonly DemoEditRangeModel _model = new();
+
+    // AntD's own slider-with-marks demo values.
+    static readonly Dictionary<decimal, string> _temperatureMarks = new()
+    {
+        [0] = "0°C",
+        [26] = "26°C",
+        [37] = "37°C",
+        [100] = "100°C"
+    };
+
+    static readonly Dictionary<decimal, string> _discreteMarks = new()
+    {
+        [0] = "XS",
+        [25] = "S",
+        [50] = "M",
+        [75] = "L",
+        [100] = "XL"
+    };
+
+    public class DemoEditRangeModel
+    {
+        // Pinned values throughout, so the e2e visual baselines are deterministic.
+        public int Volume { get; set; } = 40;
+
+        [DisplayName("Temperature (°C)")]
+        public int Temperature { get; set; } = 10;
+
+        // Bounds and step declared on the model rather than in the markup -- the same
+        // [MinValue]/[MaxValue]/[Step] resolution EditNumber uses.
+        [MinValue(0), MaxValue(5), Step(0.5)]
+        [DisplayName("Rating (model-declared bounds)")]
+        public double Rating { get; set; } = 3.5;
+
+        [DisplayName("Body temperature")]
+        public int Marked { get; set; } = 37;
+
+        [DisplayName("Snapped to marks")]
+        public int Snapped { get; set; } = 26;
+
+        public int Level { get; set; } = 30;
+
+        [DisplayName("Size")]
+        public int Discrete { get; set; } = 50;
+
+        [DisplayName("Storage")]
+        public int Storage { get; set; } = 350;
+
+        public int Disabled { get; set; } = 60;
+
+        [Required]
+        [DisplayName("Priority")]
+        public int? Required { get; set; }
+    }
+
+    readonly string _basicExample = @"@* No bounds anywhere: a slider always needs both ends, so they
+   fall through to 0 and 100 (and a step of 1). *@
+<EditRange @bind-Value=""_model.Volume"" />";
+
+    readonly string _boundsExample = @"<EditRange @bind-Value=""_model.Temperature""
+           Min=""-20""
+           Max=""40""
+           Step=""5"" />
+
+@* Same three settings, declared on the model instead. *@
+<EditRange @bind-Value=""_model.Rating"" />";
+
+    readonly string _boundsModel = @"[MinValue(0), MaxValue(5), Step(0.5)]
+[DisplayName(""Rating (model-declared bounds)"")]
+public double Rating { get; set; } = 3.5;";
+
+    readonly string _marksExample = @"<EditRange @bind-Value=""_model.Marked"" Marks=""_temperatureMarks"" />
+
+@* SnapToMarks: only the four marked values are reachable, by pointer or keyboard
+   (arrow keys move between adjacent marks). This is AntD's step={null}. *@
+<EditRange @bind-Value=""_model.Snapped"" Marks=""_temperatureMarks"" SnapToMarks=""true"" />";
+
+    readonly string _marksModel = @"static readonly Dictionary<decimal, string> _temperatureMarks = new()
+{
+    [0] = ""0°C"",
+    [26] = ""26°C"",
+    [37] = ""37°C"",
+    [100] = ""100°C""
+};";
+
+    readonly string _dotsExample = @"<EditRange @bind-Value=""_model.Level"" Step=""10"" Dots=""true"" />";
+
+    readonly string _includedExample = @"<EditRange @bind-Value=""_model.Discrete""
+           Marks=""_discreteMarks""
+           SnapToMarks=""true""
+           Dots=""true""
+           Included=""false"" />";
+
+    readonly string _tooltipFormatExample = @"@* Any .NET numeric format string; it drives the bubble,
+   aria-valuetext, and the read-only text. *@
+<EditRange @bind-Value=""_model.Storage""
+           Min=""0""
+           Max=""1000""
+           Step=""50""
+           TooltipFormat=""0 GB"" />";
+
+    readonly string _disabledExample = @"<EditRange @bind-Value=""_model.Disabled"" IsDisabled=""true"" />
+
+<EditRange @bind-Value=""_model.Storage""
+           IsEditMode=""false""
+           Id=""StorageReadOnly""
+           TooltipFormat=""0 GB""
+           Label=""Same value, read-only"" />";
+
+    readonly string _validationExample = @"<EditRange @bind-Value=""_model.Required"" Min=""1"" Max=""10"" />";
+
+    readonly string _validationModel = @"// A null value parks the handle at Min and reports
+// aria-valuenow there WITHOUT committing anything.
+[Required]
+[DisplayName(""Priority"")]
+public int? Required { get; set; }";
+}
