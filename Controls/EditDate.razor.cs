@@ -63,7 +63,7 @@ public partial class EditDate<T> : EditControlBase<T>
     /// focuses its typed-entry <c>&lt;input&gt;</c>. That input opens the calendar on focus, so this
     /// opens the dropdown too — the same thing a user tabbing into the field gets.
     /// </remarks>
-    public override ValueTask FocusAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
+    protected override ValueTask FocusCoreAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor

@@ -79,7 +79,8 @@ public class FocusApiTests : BunitContext
         "EditDate", "EditSelectSearch", "EditMultiSelect", nameof(EditFile), nameof(EditDateRange)
     ];
 
-    IRenderedComponent<ContainerFragment> RenderByName(string control, FocusModel model, bool isEditMode = true)
+    IRenderedComponent<ContainerFragment> RenderByName(string control, FocusModel model, bool isEditMode = true,
+        bool isDisabled = false)
     {
         Expression<Func<string>> text = () => model.Text;
         Expression<Func<string?>> color = () => model.Color;
@@ -187,6 +188,7 @@ public class FocusApiTests : BunitContext
                     throw new ArgumentOutOfRangeException(nameof(control), control, "Unmapped control");
             }
             if (!isEditMode) b.AddAttribute(90, "IsEditMode", false);
+            if (isDisabled) b.AddAttribute(91, "IsDisabled", true);
             b.CloseComponent();
         });
     }
@@ -253,6 +255,147 @@ public class FocusApiTests : BunitContext
         await cut.InvokeAsync(() => FocusOf(control, cut).AsTask());
 
         Assert.Equal(before, ElementFocusCalls());
+    }
+
+    // ───────────────────────── disabled: never move focus onto a dead control ─────────────────────────
+
+    [Theory]
+    [MemberData(nameof(ElementFocusControls))]
+    public async Task FocusAsync_is_a_silent_no_op_when_the_control_is_disabled(string control)
+    {
+        // Held by the explicit IsDisabled guard on FocusAsync, not by native `disabled` semantics.
+        // Those cover most of the library by accident (.focus() on a disabled <input>/<select> is a
+        // browser no-op), but not EditRange: its target is a role="slider" <div> that carries
+        // tabindex="-1" while disabled, which is out of the TAB order yet still programmatically
+        // focusable -- so focus really did land on it, pulled off wherever the user was, onto a control
+        // whose OnKeyDown early-returns. One guard on the shared entry point covers every control and
+        // any future non-native target.
+        var cut = RenderByName(control, new FocusModel(), isDisabled: true);
+        var before = ElementFocusCalls();
+
+        await cut.InvokeAsync(() => FocusOf(control, cut).AsTask());
+
+        Assert.Equal(before, ElementFocusCalls());
+    }
+
+    [Fact]
+    public async Task A_disabled_radio_group_and_checkbox_list_issue_no_group_focus_call_either()
+    {
+        // The other channel: these resolve the option through JS rather than an ElementReference, so
+        // the guard has to sit on the C# entry point to stop the call being issued at all. EditRadio
+        // (InputRadioGroup-derived) and EditRadioEnum (EditControlBase-derived) reach the guard by two
+        // different routes -- EditRadio's own copy, and the shared base's -- so both are pinned.
+        var model = new FocusModel();
+        Expression<Func<string>> text = () => model.Text;
+        Expression<Func<Priority?>> priority = () => model.Priority;
+        Expression<Func<List<string>>> tags = () => model.Tags;
+
+        var radioCut = RenderControl(model, b =>
+        {
+            b.OpenComponent<EditRadio<string>>(0);
+            b.AddAttribute(1, "Value", model.Text);
+            b.AddAttribute(2, "ValueExpression", text);
+            b.AddAttribute(3, "IsDisabled", true);
+            b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
+            {
+                cb.OpenComponent<InputRadio<string>>(0);
+                cb.AddAttribute(1, "Value", "Alice");
+                cb.CloseComponent();
+            }));
+            b.CloseComponent();
+        });
+        await Focus<EditRadio<string>>(radioCut, c => c.FocusAsync());
+
+        var enumCut = RenderControl(model, b =>
+        {
+            b.OpenComponent<EditRadioEnum<Priority?>>(0);
+            b.AddAttribute(1, "Value", model.Priority);
+            b.AddAttribute(2, "ValueExpression", priority);
+            b.AddAttribute(3, "IsDisabled", true);
+            b.CloseComponent();
+        });
+        await Focus<EditRadioEnum<Priority?>>(enumCut, c => c.FocusAsync());
+
+        var listCut = RenderControl(model, b =>
+        {
+            b.OpenComponent<EditCheckedStringList>(0);
+            b.AddAttribute(1, "Value", model.Tags);
+            b.AddAttribute(2, "ValueExpression", tags);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(4, "IsDisabled", true);
+            b.CloseComponent();
+        });
+        await Focus<EditCheckedStringList>(listCut, c => c.FocusAsync());
+
+        Assert.Empty(GroupFocusCalls());
+    }
+
+    [Fact]
+    public async Task FocusOnFirstRender_does_not_fire_on_a_disabled_control()
+    {
+        // The declarative form runs through FocusAsync, so it inherits the guard rather than needing
+        // its own -- pinned on EditRange, the control the guard exists for.
+        var model = new FocusModel();
+        RenderControl(model, b =>
+        {
+            b.OpenComponent<EditRange<int>>(0);
+            b.AddAttribute(1, "Value", model.Volume);
+            b.AddAttribute(2, "ValueExpression", (Expression<Func<int>>)(() => model.Volume));
+            b.AddAttribute(3, "IsDisabled", true);
+            b.AddAttribute(4, "FocusOnFirstRender", true);
+            b.CloseComponent();
+        });
+
+        await Task.Yield(); // OnAfterRenderAsync's continuation
+        Assert.Equal(0, ElementFocusCalls());
+    }
+
+    [Fact]
+    public void A_disabled_EditRange_track_is_still_programmatically_focusable_which_is_why_the_guard_exists()
+    {
+        // The DOM fact the guard compensates for, pinned so a future markup change that makes the
+        // track natively unfocusable (or drops tabindex entirely) shows up here rather than making the
+        // guard look redundant. tabindex="-1" removes it from the Tab order, NOT from .focus().
+        var model = new FocusModel();
+        var cut = RenderByName("EditRange", model, isDisabled: true);
+
+        var track = cut.Find("div[role=slider]");
+        Assert.Equal("-1", track.GetAttribute("tabindex"));
+    }
+
+    // ─────────────────── read-only: the two meanings, which differ ───────────────────
+
+    [Fact]
+    public void A_native_readonly_attribute_is_not_read_only_MODE_and_stays_focusable()
+    {
+        // The contract sentence says a "read-only" control doesn't move focus, and that means
+        // IsEditMode=false -- which renders a display <div> and no editor at all (see the theory
+        // above). A splatted native `readonly` is a different thing entirely: the <input> is still
+        // rendered and still a tab stop, so focus DOES move to it. Nothing here should "fix" that.
+        var model = new FocusModel();
+
+        var input = RenderWithExtraAttribute(model, "readonly", true);
+
+        Assert.True(input.HasAttribute("readonly"));
+        Assert.False(input.HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task FocusAsync_still_moves_focus_to_a_natively_readonly_input()
+    {
+        var model = new FocusModel();
+        var cut = RenderControl(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Text);
+            b.AddAttribute(2, "ValueExpression", (Expression<Func<string>>)(() => model.Text));
+            b.AddAttribute(3, "readonly", true);
+            b.CloseComponent();
+        });
+
+        await Focus<EditString>(cut, c => c.FocusAsync());
+
+        Assert.Equal(1, ElementFocusCalls());
     }
 
     // ───────────────────────── the group controls (radio / checkbox lists) ─────────────────────────

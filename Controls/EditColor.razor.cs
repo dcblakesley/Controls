@@ -36,7 +36,7 @@ public partial class EditColor : EditControlBase<string?>
     /// which focuses the swatch trigger button — the widget's tab stop while closed. Unlike the date
     /// controls this does NOT open the panel: the trigger opens on activation, not on focus.
     /// </remarks>
-    public override ValueTask FocusAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
+    protected override ValueTask FocusCoreAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor

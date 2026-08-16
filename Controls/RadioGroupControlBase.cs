@@ -41,7 +41,7 @@ public abstract class RadioGroupControlBase<TValue> : EditControlBase<TValue>
     /// candidate -- <c>input[type=radio]</c> excludes it -- since focus should land on the choice, not
     /// on the box that only becomes live once its radio is picked.
     /// </remarks>
-    public override ValueTask FocusAsync() =>
+    protected override ValueTask FocusCoreAsync() =>
         new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=radio]", preferChecked: true, FormDefaults));
 
     /// <summary> When true, displays radio buttons horizontally.</summary>

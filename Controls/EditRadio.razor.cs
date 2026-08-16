@@ -171,12 +171,15 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     /// fieldset (which already carries this control's own id — see <c>RadioAria.Fieldset</c>) is the
     /// only channel that reaches them. <c>EditRadioEnum</c>/<c>EditRadioString</c>/
     /// <c>EditBoolNullRadio</c> deliberately share it, so all four radio groups can't disagree about
-    /// which radio "focus the group" means. Best-effort like every other <c>FocusAsync</c>: no-op in
-    /// read-only mode (no fieldset id renders), when every option is disabled, or with no JS
-    /// (prerender / tests).
+    /// which radio "focus the group" means. Best-effort like every other <c>FocusAsync</c>: no-op when
+    /// <see cref="IsDisabled"/> (the same explicit guard the control bases carry, spelled out here
+    /// because this control shares no base with them), in read-only mode (no fieldset id renders), when
+    /// every option is disabled, or with no JS (prerender / tests).
     /// </remarks>
     public ValueTask FocusAsync() =>
-        new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=radio]", preferChecked: true, FormDefaults));
+        IsDisabled
+            ? ValueTask.CompletedTask
+            : new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=radio]", preferChecked: true, FormDefaults));
 
     /// <inheritdoc cref="EditControlBase{TValue}.OnAfterRenderAsync"/>
     protected override async Task OnAfterRenderAsync(bool firstRender)

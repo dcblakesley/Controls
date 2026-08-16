@@ -339,10 +339,28 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Never throws: a control that is read-only, hidden, disabled or not yet interactive (prerender)
-    /// simply doesn't move focus — see <see cref="EditControlInit.FocusElementAsync"/>. That is
+    /// Never throws, and never moves focus onto a control the user can't use: <see cref="IsDisabled"/>
+    /// short-circuits it here, and read-only (no editor renders at all), hidden, and not-yet-interactive
+    /// (prerender) all bottom out as no-ops in <see cref="EditControlInit.FocusElementAsync"/>. That is
     /// deliberate; a focus call is a nicety, and making a consumer guard every one of them against
-    /// state they can't see would be worse than a no-op.
+    /// state they can't see would be worse than a no-op. Note a native <c>readonly</c> attribute is NOT
+    /// one of those states — a read-only input is still a tab stop, so focus does move to it.
+    /// </para>
+    /// <para>
+    /// <b>Why the disabled check lives here</b> rather than being left to native
+    /// <c>disabled</c> semantics (<c>.focus()</c> on a disabled element is a browser no-op, which is
+    /// why this held structurally before it was written down): not every focus target IS a natively
+    /// disableable element. <see cref="EditRange{T}"/>'s is a <c>role="slider"</c> <c>&lt;div&gt;</c>
+    /// carrying <c>tabindex="-1"</c> when disabled — out of the Tab order, but still PROGRAMMATICALLY
+    /// focusable — so <c>FocusAsync()</c> yanked focus out of wherever the user was and parked it on a
+    /// control whose key handler early-returns. One guard on the shared entry point makes the
+    /// documented contract true for that control and for any future non-native target, instead of
+    /// depending on each control's markup to keep it true by accident.
+    /// </para>
+    /// <para>
+    /// Non-virtual for the same reason: an override would silently opt out of the guard. Controls whose
+    /// target isn't <see cref="FocusTarget"/> override <see cref="FocusCoreAsync"/> instead, which runs
+    /// only once the guard has passed.
     /// </para>
     /// <para>
     /// A method rather than a public <see cref="ElementReference"/> property, for two reasons: it keeps
@@ -356,7 +374,14 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// hold a reference to — a different component's field, or one reached only by id.
     /// </para>
     /// </remarks>
-    public virtual ValueTask FocusAsync() => EditControlInit.FocusElementAsync(FocusTarget);
+    public ValueTask FocusAsync() => IsDisabled ? ValueTask.CompletedTask : FocusCoreAsync();
+
+    /// <summary>
+    /// The actual focus move, run by <see cref="FocusAsync"/> once its disabled guard has passed.
+    /// Defaults to focusing <see cref="FocusTarget"/>; overridden by controls that reach their target
+    /// some other way (a nested component's own <c>FocusAsync</c>, or a JS group query).
+    /// </summary>
+    protected virtual ValueTask FocusCoreAsync() => EditControlInit.FocusElementAsync(FocusTarget);
 
     /// <summary>
     /// The element <see cref="FocusAsync"/> moves focus to. Defaults to <see cref="_editorRef"/>, which

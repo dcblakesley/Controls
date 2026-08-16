@@ -62,9 +62,12 @@ public partial class EditDateRange : IDisposable
     /// <remarks>
     /// Focuses the START input, always — see <c>DateRangePicker.PrimaryInputRef</c> for why that is
     /// deliberately not "whichever end the user was last in". Like the single date control, focusing
-    /// the input opens the calendar, which is what tabbing into the field does too.
+    /// the input opens the calendar, which is what tabbing into the field does too. Carries the same
+    /// explicit <see cref="IEditControl.IsDisabled"/> guard as the control bases, spelled out here
+    /// because this control shares no base with them.
     /// </remarks>
-    public ValueTask FocusAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
+    public ValueTask FocusAsync() =>
+        IsDisabled ? ValueTask.CompletedTask : _picker?.FocusAsync() ?? ValueTask.CompletedTask;
 
     /// <inheritdoc cref="EditControlBase{TValue}.OnAfterRenderAsync"/>
     protected override async Task OnAfterRenderAsync(bool firstRender)

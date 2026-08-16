@@ -1107,7 +1107,9 @@ Each control focuses the element a `Tab` into it would land on:
 
 `EditDisplay` has no `FocusAsync` — it binds no field and renders nothing focusable.
 
-**It never throws.** A control that is read-only, hidden, or not yet interactive simply doesn't move focus, so you don't have to guard the call against state you can't see (a cascaded `FormOptions.IsEditMode`, a `HidingMode` that just unmounted the field). The same applies once JS is unavailable — see below.
+**It never throws, and it never parks focus on a control the user can't use.** A control that is `IsDisabled`, read-only (`IsEditMode="false"`, which renders a display value and no editor at all), hidden, or not yet interactive simply doesn't move focus — so you don't have to guard the call against state you can't see (a cascaded `FormOptions.IsEditMode`, a `HidingMode` that just unmounted the field). The same applies once JS is unavailable — see below.
+
+A native `readonly` attribute is **not** one of those states: a read-only `<input>` is still rendered and still a tab stop, so `FocusAsync()` does move focus to it. That's deliberate — read-only fields are meant to be reachable, copyable, and announced.
 
 The UI-kit components the picker/select-backed controls delegate to expose the same method, for use outside a form: **`Select<T>`**, **`DatePicker`**, **`DateRangePicker`**, and **`ColorPicker`**.
 

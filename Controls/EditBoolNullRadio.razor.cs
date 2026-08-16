@@ -14,7 +14,7 @@ public partial class EditBoolNullRadio : EditControlBase<bool?>
     /// captured element references instead; agreeing with <c>EditRadio</c> (which cannot, its radios
     /// being consumer-authored) was judged worth more than avoiding the JS hop for one control.
     /// </remarks>
-    public override ValueTask FocusAsync() =>
+    protected override ValueTask FocusCoreAsync() =>
         new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=radio]", preferChecked: true, FormDefaults));
 
     // Component-specific parameters

@@ -196,10 +196,14 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// <remarks>
     /// The list controls' targets, each the element a Tab into the control would land on: the first
     /// enabled checkbox (<c>EditCheckedEnumList</c>/<c>EditCheckedStringList</c>), the file input
-    /// (<see cref="EditFile"/>), the combobox search input (<c>EditMultiSelect</c>). Same
-    /// never-throws contract as the scalar base's — see <see cref="EditControlInit.FocusElementAsync"/>.
+    /// (<see cref="EditFile"/>), the combobox search input (<c>EditMultiSelect</c>). Same contract as
+    /// the scalar base's, including the non-virtual disabled guard over an overridable
+    /// <see cref="FocusCoreAsync"/> — see <see cref="EditControlBase{TValue}.FocusAsync"/>.
     /// </remarks>
-    public virtual ValueTask FocusAsync() => EditControlInit.FocusElementAsync(FocusTarget);
+    public ValueTask FocusAsync() => IsDisabled ? ValueTask.CompletedTask : FocusCoreAsync();
+
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusCoreAsync"/>
+    protected virtual ValueTask FocusCoreAsync() => EditControlInit.FocusElementAsync(FocusTarget);
 
     /// <summary>
     /// The element <see cref="FocusAsync"/> moves focus to. Null here — unlike the scalar base, no list

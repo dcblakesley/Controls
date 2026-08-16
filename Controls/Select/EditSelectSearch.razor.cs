@@ -24,7 +24,7 @@ public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
     /// control renders no field element of its own, so there is no <c>_editorRef</c> to inherit the
     /// base's default from.
     /// </remarks>
-    public override ValueTask FocusAsync() => _select?.FocusAsync() ?? ValueTask.CompletedTask;
+    protected override ValueTask FocusCoreAsync() => _select?.FocusAsync() ?? ValueTask.CompletedTask;
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor

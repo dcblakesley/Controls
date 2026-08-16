@@ -32,7 +32,7 @@ public abstract class CheckedListControlBase<TItem> : EditControlListBase<TItem>
     /// per-option array would silently start pointing at the wrong boxes. Best-effort — a no-op in
     /// read-only mode (no fieldset id renders), with every option disabled, or with no JS.
     /// </remarks>
-    public override ValueTask FocusAsync() =>
+    protected override ValueTask FocusCoreAsync() =>
         new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=checkbox]", preferChecked: false, FormDefaults));
 
     /// <summary> Labels for the checkboxes.</summary>

@@ -24,7 +24,7 @@ public partial class EditMultiSelect<TValue> : EditControlListBase<TValue>
     /// mode too (the tags themselves are not tab stops; only their × buttons are, and those are not
     /// where entering the control should land).
     /// </remarks>
-    public override ValueTask FocusAsync() => _select?.FocusAsync() ?? ValueTask.CompletedTask;
+    protected override ValueTask FocusCoreAsync() => _select?.FocusAsync() ?? ValueTask.CompletedTask;
 
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
