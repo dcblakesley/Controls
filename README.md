@@ -1,4 +1,4 @@
-﻿# WssBlazorControls
+# WssBlazorControls
 
 [![NuGet Version](https://img.shields.io/nuget/v/WssBlazorControls.svg)](https://www.nuget.org/packages/WssBlazorControls/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/WssBlazorControls.svg)](https://www.nuget.org/packages/WssBlazorControls/)
@@ -186,7 +186,7 @@ Under the hood the highest-priority source wins: the `Label` parameter overrides
   - `RangeErrorMessage` (`string`, default `"The {0} field must be an allowed date."`) is `ParsingErrorMessage`'s counterpart for a well-formed typed date that endpoint's own `Min`/`Max`/`DisabledDate`/`*DisabledTime` rejects — same per-endpoint clearing, previously silent.
 - **`EditColor`** — Form-bound color field (an AntDesign-5-style swatch trigger opening the UI-kit `ColorPicker`), binding a plain `string?`.
   - Accepts 3/4/6/8-digit hex (with or without `#`) and `rgb()`/`rgba()` text; emits normalized lowercase `#rrggbb`, extended to `#rrggbbaa` only when the color is translucent *and* `ShowAlpha` is on. A value it can't parse (including null/empty) renders as "no color" rather than an error.
-  - `ShowAlpha` (`bool`, default `true`) shows the alpha slider and allows an alpha channel in the value; `false` also **strips** the channel from what's emitted. `ShowText` (`bool`, default `false`) renders the normalized hex beside the swatch. `AllowClear` (`bool`, default `false`) adds a clear affordance that sets the bound value to `null`.
+  - `ShowAlpha` (`bool`, default `true`) shows the alpha slider and allows an alpha channel in the value; `false` also **strips** the channel from what's emitted. `ShowText` (`bool`, default `false`) renders the normalized hex beside the swatch, on both the edit-mode trigger and the read-only view (which otherwise shows the swatch alone). `AllowClear` (`bool`, default `false`) adds a clear affordance that sets the bound value to `null`.
   - `Presets` (`IReadOnlyList<string>?`) adds a labeled swatch row inside the popup; any form the control accepts works as an entry.
   - `ParsingErrorMessage` (`string`, default `"The {0} field must be a color."`) surfaces a validation message when a typed HEX entry can't be parsed at all — the same `ValidationMessageStore` mechanism `EditDate` uses, since a picker commits through a value callback rather than string parsing.
   - See [Color picking](#color-picking-editcolor--colorpicker) for the keyboard model, the popup's contents, and what happens without JavaScript.
@@ -1015,8 +1015,10 @@ Deliberately has no model-attribute counterpart: delegates/`RenderFragment`s/`Ev
 
 - **In:** 3-, 4-, 6-, or 8-digit hex, with or without the leading `#`, plus `rgb()`/`rgba()` in the comma, space, and slash spellings, with a numeric or percentage alpha. Out-of-range channels clamp rather than fail — including an infinite one, whether written `Infinity` or reached by an overflowing numeral like `1e400`. A literal `NaN` is the one numeric rejection (nothing to clamp it to).
 - **Out:** normalized lowercase `#rrggbb`, extended to `#rrggbbaa` only when the color is translucent **and** `ShowAlpha` is on. `ShowAlpha="false"` therefore *strips* an alpha channel a bound-in value carried.
-- **Unusable in:** null, empty, and anything unparseable (a named CSS color like `chartreuse`, an `hsl()` string) all render as "no color" — AntD's white-with-a-red-diagonal empty swatch — rather than throwing. The read-only view shows nothing for the same values, so the two modes agree. A `[Required]` `string` is still satisfied by unparseable-but-non-empty text; add a `[RegularExpression]` if the exact form matters to your model.
+- **Unusable in:** null, empty, and anything unparseable (a named CSS color like `chartreuse`, an `hsl()` string) all render as "no color" — AntD's white-with-a-red-diagonal empty swatch — rather than throwing. The read-only view falls back to `ReadOnlyValue`'s plain "Not Set" placeholder for the same values. A `[Required]` `string` is still satisfied by unparseable-but-non-empty text; add a `[RegularExpression]` if the exact form matters to your model.
 - Only a **typed** entry that fails to parse is an error, surfaced through `ParsingErrorMessage`/`OnParseError`. The RGB row's number boxes clamp or revert silently — a `number` input has no unparseable-text state worth reporting.
+
+**Read-only mode.** Renders the swatch alone by default — the reader sees the actual color instead of decoding hex. `ShowText="true"` adds the normalized hex text beside it, the same swatch-plus-text layout the edit-mode trigger uses.
 
 **Inside the popup.** A saturation (x) / brightness (y) area, a hue slider, an alpha slider (`ShowAlpha`, default on), a HEX/RGB format switch with matching inputs, and an optional `Presets` row. The format switch changes only what the input row *edits* — the bound value is always normalized hex either way. Typed entries commit on Enter or blur.
 
@@ -1169,13 +1171,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
-### Unreleased
+### 10.8.1
 
 A full accessibility audit of the `Edit*` form controls and the shared label/validation/stylesheet layers they render through (~75 findings — see `A11Y-AUDIT-2026-08-13.md` at the repo root for the complete report and remediation status), the counterpart to the 2026-08-11 UI-kit audit below. The form controls had never been audited before this pass. Landed in two waves — shared label/validation/stylesheet infrastructure first, then per-control fixes across select, date, radio/bool, checked-lists/file, and text — so the entries below span both. Alongside it, unrelated to the audit: a **new color control** (`EditColor` plus the UI-kit `ColorPicker` it wraps), the first addition to the `Edit*` family since `EditDate`'s rename.
 
 **New** (Edit Controls)
 - **New control: `EditColor`** — an AntDesign-5-style color field binding a plain `string?`. A swatch trigger over a transparency checkerboard opens a popup with a saturation/brightness area, a hue slider, an optional alpha slider, a HEX/RGB input row, and an optional preset row.
   - Accepts 3/4/6/8-digit hex (with or without `#`) and `rgb()`/`rgba()` text on the way in; emits normalized lowercase `#rrggbb`, extended to `#rrggbbaa` only when the color is translucent **and** `ShowAlpha` is on. A value it can't parse — including a named CSS color like `chartreuse` — renders as "no color" rather than throwing.
+  - Read-only mode renders the swatch itself — plus the normalized hex text when `ShowText` is on, the same swatch-plus-text layout as the edit-mode trigger — rather than making the reader decode a hex string. An unset or unparseable value falls back to `ReadOnlyValue`'s plain "Not Set" placeholder.
   - Parameters: **`ShowAlpha`** (`bool`, default `true` — `false` also strips the channel from the emitted value), **`ShowText`** (`bool`, default `false`), **`AllowClear`** (`bool`, default `false`, clears to `null`), **`Presets`**/**`PresetsLabel`**, **`Placement`** (`PopupPlacement`, default `Bottom`), **`ParsingErrorMessage`** (`string`, default `"The {0} field must be a color."`), plus the usual localizable accessible-name set (`TriggerLabel`/`EmptyLabel`/`PanelLabel`/`SaturationLabel`/`SaturationValueTextFormat`/`HueLabel`/`AlphaLabel`/`ClearLabel`/`FormatLabel`/`HexLabel`/`RedLabel`/`GreenLabel`/`BlueLabel`/`AlphaPercentLabel`).
   - Every track is a `role="slider"` the arrow keys step (Shift or PageUp/PageDown for the ×10 step), and the trigger's accessible name carries the current value ("Brand Color: #1890ff"). Dragging needs `wss-color.js`; without it a single click still positions the handle and the keyboard path is untouched.
   - The hue and alpha tracks keep AntD's 10px-tall design but carry an invisible 24px-tall pointer target each (WCAG 2.5.8), added as a pseudo-element so nothing about the layout, the paint, or the click→value mapping changes.
@@ -2103,222 +2106,4 @@ A library-wide hardening release: six adversarial review rounds (documented acro
 - `Skeleton` announces its loading state to screen readers: `role="status"` + `aria-busy="true"` and a visually-hidden `LoadingText` (default `"Loading"`); the placeholder bars are `aria-hidden`. New `.wss-sr-only` utility class.
 - Toast (`Message`) and `Notification` containers route each toast by severity into two always-present live regions — a polite `role="status"` region and an assertive `role="alert"` region — instead of flipping a single shared region's politeness when an error arrives (a change screen readers don't reliably re-announce, which could swallow the error). The regions are `display:contents`, so the on-screen layout is unchanged (errors group below the polite toasts).
 
-### 10.2.0
-
-*Headline release: debuts the dependency-free AntDesign-style UI-kit controls (`Select`, `Alert`, `Modal`, `Drawer`, `Table`, `Pagination`, `Popover` / `Popconfirm`, `Skeleton`, toasts) and the searchable form selects (`EditSelectSearch` / `EditMultiSelect`), alongside a library-wide accessibility & architecture overhaul (the `EditControlBase` refactor). Adds `Table` column sorting and configurable pager placement. Includes one **breaking dependency change** — see below.*
-
-**New: `Table` column sorting**
-- Columns can now sort. Set `Sortable="true"` on a `PropertyColumn` (the comparison is derived from its `Property` via `Comparer<T>.Default`), or supply a `SortBy` comparison on any `Column` for custom/template columns.
-  - Clicking a sortable header cycles ascending -> descending -> unsorted (restoring the original `DataSource` order); the sort is stable (ties keep their original order). Headers expose `aria-sort` (`ascending`/`descending`/`none`) and a keyboard-focusable `<button>` so the feature is screen-reader- and keyboard-accessible.
-  - Sorting resets to page 1 and survives a `DataSource` swap.
-
-**`Table` / `Pagination` polish**
-- The table pager is now configurable: `PagerPosition="Top | Bottom | Both"` (default `Bottom`) places it above, below, or both above and below the table, and `PagerAlign="Left | Center | Right"` (default `Right`, matching AntD) aligns it horizontally. When `Both`, the two pagers stay synced to the same page.
-- The pager buttons now hold a consistent 32px square via a `min-height` floor, so an aggressive consumer reset such as `button { max-height: fit-content }` can no longer collapse them to content height (which made the icon-only prev/next buttons render shorter than the numbered ones).
-- The `Table` now renders its grid and pager inside a single root element, so a parent's flex/grid `gap` doesn't stack on top of the pager's margin and inflate the space between the table and its pager.
-
-**Accessibility, theming & performance (audit follow-up)**
-- **Grouped controls now surface validation state.**
-  - The radio controls (`EditRadio`, `EditRadioEnum`, `EditRadioString`, `EditBoolNullRadio`) expose `aria-invalid`/`aria-required`/`aria-describedby` on a `role="radiogroup"` `<fieldset>` named by its legend (previously splatted onto `<InputRadioGroup>`, which renders no element — so they didn't reliably appear).
-  - The checkbox lists (`EditCheckedStringList`, `EditCheckedEnumList`) mark each checkbox `aria-invalid` (they had none). And because the list controls are `ComponentBase` (not `InputBase`), they now subscribe to the `EditContext` so their invalid state updates live on validation — matching the scalar controls.
-  - This completes "`aria-invalid` on every editable control".
-- **`aria-describedby` no longer dangles** — it references only the `desc-` / `tooltip-` ids that actually render, and is resolved once per control rather than re-interpolated on every render. `aria-errormessage` is emitted only while the field is invalid (per the ARIA spec).
-- **Form controls are self-sufficient out of the box.**
-  - `edit-controls.css` now ships a `:focus-visible` ring for the editable elements (WCAG 2.4.7 — no longer dependent on the browser default the consumer may have reset) and an `.invalid` border, so keyboard focus and the validation error state are visible without the consumer supplying their own styles.
-  - The validation X icon and the tooltip info icon use `currentColor` driven by `--color-danger`/`--color-text`, so they follow the consumer theme.
-- **`wss-controls.css`:** the `Select` sizing now uses the existing `--wss-*` tokens (overriding a token rescales the control as intended), and the classes the markup referenced but the stylesheet never defined (`wss-popconfirm-title`, `wss-table-caption`, `wss-select-selection-item-rest`, …) are now declared.
-- **Fewer per-render allocations.** `Select` caches its visible tags and `Table` caches the current page (it was materializing the page twice per render). `Table` now treats `DataSource` / `SelectedItems` as immutable parameters (reference-guarded) — reassign them to refresh rather than mutating in place.
-- **Removed the unused `ReadOnlyValue.IsRequired` parameter** (it was `required` but never rendered).
-- **Nullable enum selects can represent null.** `EditSelectEnum<TEnum?>` now renders a leading empty/placeholder option (label via the new `NullOptionText` parameter) so a null value shows blank instead of silently displaying the first member, and the user can clear the field. Non-nullable enums are unchanged.
-- **More ARIA correctness.**
-  - All bool-bound ARIA booleans (`aria-expanded`/`aria-hidden`/`aria-disabled`) now render lowercase `"true"`/`"false"`; `Alert` announces by severity (`role`/`aria-live`: error = assertive, otherwise polite) instead of always `role="alert"`.
-  - The radio `<fieldset>` itself is the `role="radiogroup"` (no nested double-group) with its id gated to edit mode so it doesn't collide with the read-only value; read-only `aria-labelledby` is suppressed when the label is hidden.
-  - The `Select` gets a focus ring before it opens; and `Escape` closes `Popover`/`Popconfirm` from inside the panel.
-- **Correctness fixes.**
-  - `Select` now shows the selected label and clear button even when a single value equals `default(TValue)` (e.g. a non-nullable enum's `0` member — previously mis-rendered as the empty placeholder).
-  - `ValidationView` summary links now target each control's actual id, honoring `IdPrefix`/an explicit `Id` (the resolved id is captured at field registration) instead of a recomputed guess.
-  - The checkbox lists no longer throw in read-only mode when the bound list is `null`, and sanitize their read-only per-option ids via `ToId()`; a disabled `Popconfirm` trigger is now `aria-disabled` and removed from the tab order.
-- **More correctness & a11y fixes.**
-  - `EditRadioString` now follows an externally-changed value (form reset, async-loaded model, programmatic set) instead of caching the selection once — and a custom initial value correctly resolves to the "Other" radio with its text box pre-filled.
-  - `EditRadioEnum`'s "Other" free-text input gained an accessible name (`aria-label`), matching its `EditRadioString` sibling.
-  - The `Select` clear button is now revealed on keyboard focus (`:focus-within`), not only on hover, so a keyboard user can see the control they've tabbed to.
-  - The `Table`'s "select all" checkbox enters the native `indeterminate` (mixed) state when only some rows on the page are selected, so screen readers announce the partial selection.
-  - The length-attribute helper takes the *tighter* (smaller) upper bound when both `[StringLength]` and `[MaxLength]` apply.
-- **Checkbox-list validation links resolve.** `EditCheckedStringList`/`EditCheckedEnumList` now render their resolved id on the `<fieldset>` in edit mode (gated like the radio groups), so a `ValidationView` summary link for one of these fields actually jumps to the control — their checkboxes/label/error elements all carry *decorated* ids, so the bare id previously had nowhere to land, leaving the link dangling.
-- **Visual & robustness fixes.** `Pagination` clamps an out-of-range `Current` to the valid range, so Previous/Next enable correctly instead of looking clickable but doing nothing.
-  - A long `Popconfirm` title now wraps inside the panel instead of overflowing it; and the loading `Skeleton` shows a flat fill under `prefers-reduced-motion` rather than a frozen, off-centre shimmer band.
-- **Overlay focus-trap & scroll-lock hardening.** The Modal / Drawer focus trap no longer lets Shift+Tab escape when focus is on the panel itself (e.g. after clicking an empty area of the body) — focus is pulled back into the dialog. The body-scroll lock is now ref-counted, so stacked overlays don't unlock the page when the first-opened one closes, and the focus handle's disposal is idempotent.
-
-**New: AntDesign-style controls (ported from `Standalone.Controls`)**
-- **Form selects:** `EditSelectSearch<T>` (searchable single-select) and `EditMultiSelect<T>` (multiple / tags, binds `List<T>`) — full `Edit*` controls (validation, label, read-only, `FormOptions`) backed by a new dependency-free, virtualized dropdown engine (`Select<T>`). They sit **alongside** the existing `EditSelect` / `EditSelectEnum` / `EditSelectString`, which are unchanged.
-- **UI kit (non-form):** `Select<T>`, `Alert`, `Skeleton`, `Popover`, `Pagination`, `Modal`, `Drawer`, `Popconfirm`, `Table<TItem>` (+ `Column`/`PropertyColumn`/`ActionColumn`), and toasts/notifications in two flavors — **scoped/Server-safe** (`IMessageService`/`INotificationService` via `AddWssControlsToasts()` + `MessageContainer`/`NotificationContainer`) and **registration-free static for WASM** (`WasmMessageService`/`WasmNotificationService` + their containers).
-  - `Icon`, `Button`, `Checkbox`, and `Tag` were intentionally excluded.
-- **New stylesheet:** these controls use the `wss-` class prefix and `--wss-*` theme tokens shipped in `wss-controls.css`. Add a second link alongside `edit-controls.css`:
-  ```html
-  <link href="_content/WssBlazorControls/wss-controls.css" rel="stylesheet" />
-  ```
-  Tokens default to the AntDesign 4.x look and bridge to your existing `--color-*` / `--border-color` where present. The Select keyboard helper ships as an RCL JS module at `_content/WssBlazorControls/wss-select.js` (auto-imported, degrades gracefully).
-- No service registration required (consistent with the rest of the library).
-
-**Accessibility & correctness (library audit)**
-- **Modal / Drawer:** trap focus while open, restore focus to the trigger on close, close on `Escape`, lock body scroll, and expose `role="dialog"` + `aria-modal="true"` + `aria-labelledby` (the title). OK/confirm still never auto-closes — the caller decides.
-- **Popover / Popconfirm:** the trigger is a real focusable control (`role="button"`, `tabindex="0"`, `aria-haspopup`, `aria-expanded`) operable from the keyboard — `Enter` / `Space` to open, `Escape` to close. Both flip to the opposite side and shift along the cross axis to stay within the viewport, rendering hidden for one frame so the placement is never seen to jump.
-- **`Select` / `EditSelectSearch` / `EditMultiSelect`:** full combobox ARIA (`role="combobox"` / `listbox` / `option`, `aria-expanded`, `aria-controls`, `aria-activedescendant`); the dropdown now opens **upward** when it would otherwise run off the bottom of the viewport.
-- **`Pagination`:** rewritten as a semantic `<nav aria-label="Pagination">` of `<button>`s with `aria-current="page"` on the active page and `aria-label`s on the prev/next controls (was `<ul>` / `<li>` / `<a>`).
-- **Toasts / notifications:** the live region is announced via `role="status"` + `aria-live="polite"`.
-- **`ReadOnlyValue` now HTML-encodes** the value it displays instead of rendering it as raw markup — bound user data can no longer inject markup.
-- **`EditDate` read-only** formats the bound value by its own type with `DateFormat`. The old code round-tripped through the editor string, which could shift the date across midnight in non-UTC zones and rendered a `TimeOnly` as a date; an incompatible format now degrades to the value's own `ToString` rather than throwing.
-- **`EditCheckedEnumList` / `EditCheckedStringList`** build a new list when toggling instead of mutating the caller's bound collection in place.
-- The placement enum for `Popover` / `Popconfirm` is named `PopupPlacement` (it positions popups, not tooltips). The library builds with **0 warnings** across net8 / net9 / net10.
-
-**Breaking dependency change**
-- Removed `Microsoft.AspNetCore.Components.DataAnnotations.Validation` (3.2.0-rc1) from the `WssBlazorControls` package — the library itself never used it. Consumers who use `<ObjectGraphDataAnnotationsValidator>` or the `[ValidateComplexType]` attribute for nested-object validation must now add the package to their own project:
-  ```bash
-  dotnet add package Microsoft.AspNetCore.Components.DataAnnotations.Validation --version 3.2.0-rc1.20223.4
-  ```
-  This eliminates the prerelease-dependency warning that previously bled through to consumer builds.
-
-**Behavior**
-- Validation messages now respect the `Label` parameter override on every control. Previously only `EditCheckedStringList` and `EditCheckedEnumList` passed `Label` through to `FieldValidationDisplay`; the other 12 controls would still derive the label from the model's attribute. Now if you set `<EditString Label="Username" ... />`, the validation message shows "Username is required" instead of falling back to the property name.
-- `EditSelectString` `<option>` elements now render the `title` tooltip (consistent with `EditSelectEnum`).
-- Cosmetic: `EditDate`'s `ReadOnlyValue` now uses `@_id` / `@_isRequired` like every other control.
-
-**Build / packaging**
-- `<GeneratePackageOnBuild>` is now scoped to `Configuration == Release`. Dev / inner-loop builds no longer regenerate `.nupkg` files on every save — `dotnet pack -c Release -o ./nupkg` continues to produce them on demand.
-- Package now ships with a 128×128 icon (`icon.png`, white "W" on Blazor purple). Visible in NuGet listings and Visual Studio's Manage NuGet Packages dialog.
-
-**New shared CSS class**
-- `.edit-input` is now applied to every editable element (`<input>`, `<textarea>`, `<InputSelect>`, `<InputDate>`) across `EditString`, `EditNumber`, `EditDate`, `EditTextArea`, `EditSelect`, `EditSelectString`, `EditSelectEnum`, plus the "Other" text inputs in `EditRadioString` / `EditRadioEnum`. The bundled `edit-controls.css` ships an empty rule — consumers can now style every editable element with one selector instead of writing per-element CSS for `input` / `textarea` / `select` separately. Per-control classes (`.edit-string-input`, `.edit-textarea-input`, `.edit-select-select`, etc.) remain available for fine-tuning.
-
-**Internal**
-- `HidingMode`: dropped the meaningless explicit `= 1, 2, 3, 4, 5` numeric values. Default is now `0` (`None`) which matches the `?? HidingMode.None` fallback already in every control. Consumers don't notice unless they were persisting the enum as an int — in which case existing values shift down by 1.
-- `ValidationHelper`: replaced the brittle `message.Split(' ')` + hardcoded array-index parsing of Range messages with a compiled regex. Now tolerates multi-word field names (`"Order Total"`) and small format variations. Type-min/max sentinel detection moved into `HashSet<string>` lookups instead of a long `||` chain.
-
-**Architecture: `EditControlBase<TValue>`**
-- 11 of 14 controls now inherit a single `EditControlBase<TValue> : InputBase<TValue>, IEditControl` instead of inheriting one of Microsoft's specialized `Input*` classes (InputText / InputNumber / InputDate / InputCheckbox / InputSelect / etc.). The base hoists every IEditControl parameter, both cascading parameters, the protected derived state (`_id`, `_isRequired`, `_attributes`, `_fieldIdentifier`), and the `ShowEditor` / `ShouldHideLabel` checks — so each derived control's `.razor.cs` shrinks to just its component-specific parameters + parser + helpers. Net ~430 lines removed across the 11 controls.
-- The string-input/textarea/number/date/select parsing logic that Microsoft's `Input*` classes used to provide is now ported into each control (typically a 5-15 line `TryParseValueFromString` override that delegates to `BindConverter`). Behavior is preserved — the new parsers route through the same `BindConverter` Microsoft uses internally.
-- `EditCheckedStringList` and `EditCheckedEnumList` migrated to a sibling `EditControlListBase<TItem>` (different shape — binds `List<TItem>` instead of a scalar). The `SetAsync(item)` rename to `ToggleAsync(item)` is the only consumer-facing surface change.
-- `EditRadio` is the one remaining control still on Microsoft's `InputRadioGroup<T>` — it depends on the cascading-context plumbing that `<InputRadio>` children consume, and replacing the group requires also replacing the public `<InputRadio>` API. Intentional.
-- `_Imports.razor` now exposes `Microsoft.AspNetCore.Components.Forms` and `Controls.Helpers` so individual razor files no longer need per-file `@using` directives for `<InputRadioGroup>` / `<InputRadio>` / `.ToId()` / etc.
-
-**Tests**
-- `FormTesting/FormTesting.Client.Tests/` (xUnit + bUnit, multi-targeted net8/9/10) — 270 tests (run once per TFM) covering the helpers (`EnumHelpers` cache + attribute precedence, `AttributesHelper.GetId` / `GetLabelText` / `GetMinAndMaxLengths`, `EditControlInit`, `ValidationHelper` regex parsing), bUnit smoke tests for the form controls (rendered DOM, ARIA, edit/read-only switching), the AntDesign-style selects, and the UI-kit widgets (Table, dialogs, toasts) — plus regression tests for the audit fixes (`ReadOnlyValue` HTML-encoding, `EditDate` read-only formatting, checked-list immutability). Run with `dotnet test FormTesting/FormTesting.Client.Tests/FormTesting.Client.Tests.csproj`.
-- `FormTesting/FormTesting.Client.E2ETests/` (xUnit + Playwright .NET, net10) — a 67-test end-to-end suite (one class per `Edit*` control plus the searchable selects and a driver for the `/uikit` gallery) with committed visual-regression baselines. Run with `dotnet test FormTesting/FormTesting.Client.E2ETests/FormTesting.Client.E2ETests.csproj`.
-
-### 10.1.0
-
-**Behavioral changes** *(read before upgrading)*
-- `EditBool`: read-only mode now renders `ReadOnlyValue` with the new `TrueText` / `FalseText` parameters (default `"Yes"` / `"No"`), matching every other control. Set `RenderAsCheckboxWhenReadOnly="true"` to keep the legacy disabled-checkbox display.
-- `EditString`: `aria-required` now reflects the actual required state instead of being hard-coded to `"true"`.
-
-**New CSS class — required for the invalid-icon overlay**
-- `.edit-input-with-icon` wraps `<input>` / `<textarea>` / `<InputDate>` together with the optional red-X invalid icon in `EditString`, `EditNumber`, `EditDate`, `EditTextArea`. The bundled `edit-controls.css` ships an empty hook (the icon overlays the input via `.edit-icon-invalid`'s negative margin and needs no positioning here). If you have your own stylesheet, no changes are required unless you want to adjust the input row's layout.
-
-**New parameters**
-- `EditBool.TrueText` (default `"Yes"`)
-- `EditBool.FalseText` (default `"No"`)
-- `EditBool.RenderAsCheckboxWhenReadOnly` (default `false`)
-
-**New components / helpers**
-- `<InvalidIcon CssClass="..." />` — reusable red-X SVG, conditional on the host's `CssClass` containing `"invalid"`.
-- `EditControlInit` (in `Controls.Helpers`) — static helper that consolidates the `OnInitialized` setup and the `ShowEditor` / `ShouldHideLabel` checks every control was duplicating.
-
-**Markup consistency**
-- `EditSelectEnum` switched from `@bind:get` / `@bind:set` to `<InputSelect @bind-Value=...>` so it matches `EditSelect` / `EditSelectString`.
-- `EditBoolNullRadio` radio inputs now carry `aria-required`, `aria-invalid`, `aria-describedby`, and `aria-errormessage`. *(Moved to a group-level `role="radiogroup"` container in the next release — see Unreleased.)*
-- `aria-invalid` is now rendered on every **scalar** editable control. *(The grouped radio / checkbox-list controls are brought to parity in the next release — see Unreleased.)*
-- `.ToId()` is now applied to enum option `id`s in `EditSelectEnum` and `EditRadioEnum` — fixes invalid HTML ids when an enum's display name contains spaces or punctuation.
-- The red-X invalid icon (previously only on `EditString`) now appears on `EditNumber`, `EditDate`, and `EditTextArea` as well.
-
-**Performance**
-- `EnumHelpers._nameCache` is now a thread-safe `ConcurrentDictionary<(Type, string), string>` keyed by enum type — fixes potential cross-type collisions and removes a thread-safety hazard on pre-rendering.
-- `EnumHelpers.GetName` now honors both `[EnumDisplayName]` *and* `[Display(Name=...)]`. Previously `[Display]` only affected sort order and `[EnumDisplayName]` only affected display, so the two could disagree.
-- The reflection-heavy enum sort blocks in `EditSelectEnum` / `EditRadioEnum` / `EditCheckedEnumList` collapsed to `OrderBy(x => x.GetName())` and benefit from the cache.
-
-**Bug fixes**
-- Fixed package description typo (`HierarchyAndEmployeeRecordproviding` artifact).
-- Removed stray `IsRequiredChanged` parameter that existed only on `EditRadioEnum`.
-- `EditCheckedStringList` was silently dropping the `IdPrefix` parameter (`null` was being passed instead). Now consistent with every other control.
-- `EditBoolNullRadio` false-radio's `class` attribute incorrectly used `@ContainerClass` instead of `@CssClass`.
-- `focusFirstInvalidField` (JS) now correctly handles invalid wrapper elements that aren't form fields, includes `<select>`, and guards `.select()` for input types that don't support it.
-
-**Refactoring (internal)**
-- All 14 controls now call `EditControlInit.Init(...)` in `OnInitialized` instead of duplicating the same 4 lines.
-- All controls use `EditControlInit.ShowEditor(...)` and `EditControlInit.ShouldHideLabel(...)` for the visibility checks.
-- JavaScript helpers namespaced under `window.WssEditControls.*`. Legacy `window.focusFirstInvalidField` / `window.log` / etc. are still exposed for back-compat — safe to migrate at your own pace.
-- `JsInteropEc.FocusFirstInvalidField` uses `Task.Yield()` instead of `Task.Delay(1)`.
-- `FormLabel._isRequired` changed from `string` (`"true"`/`"false"`) to `bool`.
-- `IEditControl.IsDisabled` doc comment fixed (was `"Not used"` despite being used by every control).
-- Deleted dead `ExampleJsInterop.cs` template code.
-- Removed unused `EditCheckedStringList.hasError` and `ReadOnlyValue._emptyValue` fields.
-- Build warnings reduced from 87 → 57.
-
-### 10.0.7
-- EditString: Add `Autocomplete` parameter (defaults to `"one-time-code"`) to prevent browser extensions and autofill from intercepting Blazor input events on fields with IDs containing keywords like "email"
-
-### 10.0.2
-- Support .net 8,9,10
-
-### 10.0.1
-- Upgrade to .net 10
-- Add the ability to hide the required star within FormOptions
-- Changed editControls.js to edit-controls.js
-
-### 1.13.8
-- Exposed xmldoc comments
-
-### 1.13.7
-- refactoring
-
-### 1.13.6
-- Move the star for non-legends to the left.
-
-### 1.13.5
-- Enable tooltips through markup
-- Move the required star to the left of the label
-
-### 1.13.4
-- EditDate and other controls. Add a null value string to display when the value is null, such as a dash instead of blank space.
-
-### 1.13.3
-- Current stable release
-- Full feature set with comprehensive validation support
-
-### 1.0.13.2
-- EditCheckedListEnum
-
-### 1.0.13.1
-- Rename icons to have edit- in front of the current names
-  - `.icon-eye` => `.edit-icon-eye`
-  - Icon-invalid, icon-eye-invisible
-- EditSelectEnum no longer requires specifying the type.
-- Tooltips exist on the controls
-  - Only from attributes right now `[Tooltip("My cool tooltip")]`
-
-### 1.0.12.11
-- Import js into application in App.razor or index.html
-  - `<script src="_content/WssBlazorControls/editControls.js"></script>`
-  - This is to add the functionality of "When submit is clicked, but invalid, scroll to the first input that is invalid."
-  - Use JsInteropEc to access js methods. Use JsInteropEc.FocusFirstInvalidField() when there are validation errors while submitting.
-- EditCheckedStringList
-  - Error message shows up on each checkbox
-
-### 1.0.12.10
-- IsRequired parameter on all controls. When set forces the "edit-label-required-star" to show up without being required in the DataAnnotations.
-- Accessibility updates for EditCheckedStringList
-
-### 1.0.12.x
-- moved away from utilizing bootstrap css classes such as form-group to using classes that start with edit- to avoid conflicts with other libraries
-- New Features
-  - IsHidden to hide controls without wrapping them in an if statement
-  - Hiding allows hiding controls based on their own property for `[Never, WhenReadonlyAndNull, WhenReadonly, etc.]`
-    - This also exists within FormOptions, so the hiding can be controlled over a large group of controls.
-- Control Changes
-  - EditRadio and EditCheckedList
-    - Change parameter from HasHorizontalButtons -> IsHorizontal
-    - Removed the need for "Type" parameter, now uses the type of the value passed in.
-  - EditSelectEnum
-    - Removed the need for "Type" parameter, now uses the type of the value passed in.
-- New Controls
-  - EditBoolNullRadio
-
+Entries for releases before 10.3.0 have been removed to keep this file within NuGet's readme size; see the repository's git history for the older changelog.

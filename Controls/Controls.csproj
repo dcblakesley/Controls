@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.8.0</AssemblyVersion>
+	  <AssemblyVersion>10.8.1</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -52,24 +52,28 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
     <PackageReleaseNotes>
-10.8.0 -- a full accessibility audit of the UI Kit (58 findings, adversarially verified) plus an EditFile addition.
-
-BREAKING
-- IMessageService/INotificationService gain Pause(Guid)/Resume(Guid) (WCAG 2.2.1 toast auto-dismiss control). Source break only for a hand-written implementation of either interface -- the built-in MessageService/NotificationService and static Wasm facades already implement both, wired automatically from hover/focus.
+10.8.1 -- a new color control, plus a full accessibility audit of the Edit* form controls (~75 findings) -- the counterpart to 10.8.0's UI-kit audit.
 
 NEW
-- EditFile gains Bordered (wraps the field in a bordered card) and AllowDownload (file names become re-save links) -- matches Ant Design's already-uploaded-file card pattern.
-- Table gains AriaLabel/ScrollRegionLabel/LoadingLabel/SelectRowLabelFor/FilterAppliedButtonLabelFormat/FilterAppliedLabel and keyboard row activation (Enter, WCAG 2.1.1); Pagination gains Disabled/AnnounceTotal.
-- DatePicker/DateRangePicker: calendars are now real ARIA grids, FormatHintLabel, RTL-aware arrow keys, ArrowDown moves focus into the grid. Tabs also gain RTL-aware arrows.
-- Alert/toasts gain SeverityLabel/CloseButtonLabel/Live localization; Popover/Popconfirm get aria-label fallbacks; Modal/Drawer inert their background while open (data-wss-keep-interactive escape hatch); tooltips gain full AT exposure + Escape-dismiss (WCAG 1.4.13).
-- New --wss-color-primary-strong/--wss-color-error-strong tokens for AA text-on-fill contrast.
+- EditColor: an AntDesign-5-style color field binding a plain string? -- swatch trigger, saturation/brightness area, hue slider, optional alpha slider, HEX/RGB input row, optional presets. Accepts hex (3/4/6/8-digit) and rgb()/rgba(); emits normalized lowercase hex. Read-only mode shows the swatch itself (plus hex text with ShowText). Backed by the new standalone UI-kit ColorPicker, the public ColorMath helper, and lazily-imported wss-color.js (keyboard and single-click work without JS).
+- Localizable accessible-name/announcement parameters across the library: FormLabel.TooltipTriggerLabel + IsRequiredTextIncluded, ReadOnlyValue/EditDisplay EmptyText, EditString show/clear button labels, radio OtherAriaLabel, Select live-region announcement formats + InputLabel/AriaLabelledBy, picker format/range hints and WeekLabel.
+- EditDate/EditDateRange gain RangeErrorMessage: an out-of-range typed date now raises a validation message instead of silently reverting (DatePicker.OnRangeError; per-endpoint on DateRangePicker).
+- EditFile gains a role="status" live region announcing selection changes, and states its size/count caps up front in the drop zone.
 
 CHANGED
-- --wss-color-text-deemphasized darkened to pass AA on hover; fixed control heights become min-height floors (WCAG 1.4.4) so a host page's own resets can't clamp them.
+- Auto-generated labels no longer shatter acronyms (URLPath renders "URL Path", not "U R L Path").
+- A field's accessible name now comes from its label's text alone (new lbltext-{id} naming anchor) -- a tooltipped field no longer announces "More information" as part of its name.
+- EditString's autocomplete fallback infers a real token from the property name (~20 common names) before the one-time-code last resort.
+- Contrast: --edit-color-border darkens to clear WCAG 1.4.11's 3:1; new *-strong tokens split text-grade from chrome-grade color uses; edit-controls.css gains its first Windows High Contrast (forced-colors) support.
+- EditDate/EditDateRange DialogLabel is now string? -- unset derives the dialog name from the field's own label.
 
 FIXED
-- Table: Enter on interactive content in a plain Column no longer double-fires OnRowClick; a synthesized click during Loading no longer bypasses the same guard the keyboard path already had.
-- Pickers: disabled calendar cells use aria-disabled instead of native disabled, so a run of disabled days can no longer trap or strand keyboard focus.
+- A stale parse/range error on EditDate/EditDateRange now clears when the retyped value equals the one already bound (new OnValidCommit channel on both pickers, per-endpoint on ranges).
+- An invalid DatePicker/DateRangePicker field keeps its red error border on hover.
+- Select's combobox input now exposes its selected value; option groups now reach assistive tech.
+
+DEPRECATED
+- SelectOptionList.Tooltip is [Obsolete] and inert -- it repeated the field's tooltip on every option.
 
 Full changelog: https://github.com/dcblakesley/Controls#changelog
     </PackageReleaseNotes>
