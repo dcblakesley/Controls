@@ -3,7 +3,7 @@
 @if (!IsHidden)
 {
     <div class="edit-control-wrapper @ContainerClass">
-        <FormLabel Id=@_id Label=@Label Description=@Description Tooltip=@Tooltip IsRequired=@IsRequired IsLabelHidden=@ShouldHideLabel IsForLabelable="false"/>
+        <FormLabel Id=@_id Label=@Label LabelContent=@LabelContent Description=@Description Tooltip=@Tooltip IsRequired=@IsRequired IsLabelHidden=@ShouldHideLabel IsForLabelable="false"/>
 
         @* No ConsumerClass merge here: parameter matching is case-insensitive, so a consumer's
            class="..." binds to the declared Class parameter and never reaches the capture dict. *@

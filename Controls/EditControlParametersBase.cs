@@ -25,6 +25,8 @@ public abstract class EditControlParametersBase : ComponentBase, IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     /// <inheritdoc/>
     [Parameter] public string? Label { get; set; }
+    /// <inheritdoc cref="EditControlBase{TValue}.LabelContent"/>
+    [Parameter] public RenderFragment? LabelContent { get; set; }
     /// <inheritdoc/>
     [Parameter] public string? Description { get; set; }
     /// <inheritdoc/>

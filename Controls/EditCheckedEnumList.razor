@@ -17,7 +17,7 @@
                   data-test-id=@(ShowEditor ? _id : null)
                   role=@(ShowEditor ? "group" : null)
                   aria-labelledby=@(ShowEditor ? $"lbltext-{_id}" : null)>
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@EffectiveDescription Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel IsRequiredTextIncluded="true" />
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label LabelContent=@LabelContent IsRequired=@IsRequiredResolved Description=@EffectiveDescription Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel IsRequiredTextIncluded="true" />
 
             <CheckboxOptionList TItem="TEnum"
                                  Options=@GetOptions()

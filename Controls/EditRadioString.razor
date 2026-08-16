@@ -18,7 +18,7 @@
         <fieldset @attributes="AttributeSplat.RestWith(AdditionalAttributes, RadioAria.Fieldset(ShowEditor, _id, _isRequired, IsInvalid, _describedBy, _errorMsgId, isHorizontal: IsHorizontal || OptionType == RadioOptionType.Button))"
                   role=@(ShowEditor && HasAnyOption ? "radiogroup" : null)
                   class="edit-radio-fieldset">
-            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend=true IsLabelHidden=@ShouldHideLabel />
+            <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label LabelContent=@LabelContent IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLegend=true IsLabelHidden=@ShouldHideLabel />
 
             @if (ShowEditor)
             {

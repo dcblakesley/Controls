@@ -6,7 +6,7 @@
     {
         <legend class="edit-sr-only" id="lbl-@Id">
             <span id="lbltext-@Id">
-                @DisplayLabel()
+                @LabelFor()
                 @if (IsRequiredTextShown)
                 {
                     <span class="edit-sr-only">&nbsp;(required)</span>
@@ -16,7 +16,7 @@
     }
     else
     {
-        <label class="edit-sr-only" for=@(IsForLabelable ? Id : null) id="lbl-@Id"><span id="lbltext-@Id">@DisplayLabel()</span></label>
+        <label class="edit-sr-only" for=@(IsForLabelable ? Id : null) id="lbl-@Id"><span id="lbltext-@Id">@LabelFor()</span></label>
         @* NestedInput deliberately renders OUTSIDE this label, not within it: the label is
            visually hidden, so a control nested inside it would be hidden too. Renders nothing
            for every caller that doesn't supply it. *@
@@ -61,7 +61,7 @@ else
 			   INSIDE, because for a role="group" fieldset that text is the only way requiredness
 			   reaches assistive tech at all — ARIA 1.2 forbids aria-required there. *@
 			<span id="lbltext-@Id">
-				@DisplayLabel()
+				@LabelFor()
 				@* After the label text so it reads "Colors, required", not "required Colors". The
 				   leading &nbsp; is a real, non-collapsible character: accessible-name computation
 				   concatenates descendant text, and without it the name runs together as
@@ -96,7 +96,7 @@ else
 			}
             @* The naming anchor (see the legend branch above). NestedInput and the star stay outside
 			   it: the nested input is the control this label names, not part of its name. *@
-			<span id="lbltext-@Id">@DisplayLabel()</span>
+			<span id="lbltext-@Id">@LabelFor()</span>
 
             <LabelTooltip Id=@Id Tooltip=@Tooltip Attributes=@Attributes TriggerLabel=@_tooltipTriggerLabel />
         </label>

@@ -7,7 +7,7 @@
        <textarea>'s own inline style is JS-owned while AutoSize is on (see AutoSizeAsync). *@
     <div class="edit-control-wrapper @ContainerClass"
          style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label LabelContent=@LabelContent IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
         {

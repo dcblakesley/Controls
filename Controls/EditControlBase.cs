@@ -69,6 +69,45 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     [Parameter] public string? IdPrefix { get; set; }
     /// <inheritdoc/>
     [Parameter] public string? Label { get; set; }
+
+    /// <summary>
+    /// Optional rich-markup label — a <see cref="RenderFragment"/> rendered instead of <see cref="Label"/>'s
+    /// plain text, for a label that needs inline markup a plain string can't hold (the motivating case:
+    /// a colored icon before the text, e.g. a toggle-group row where the icon identifies the row).
+    /// Null (the default) renders <see cref="Label"/> exactly as before — every existing consumer's
+    /// markup is unaffected.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Renders INSIDE <see cref="FormLabel"/>'s naming anchor (<c>lbltext-{id}</c>), never in place of
+    /// the <c>&lt;label&gt;</c>/<c>&lt;legend&gt;</c> element itself — see the class remarks on
+    /// <see cref="FormLabel"/> for why that anchor exists separately from <c>lbl-{id}</c>. All four of
+    /// <see cref="FormLabel"/>'s rendering branches (hidden-legend, hidden-label, visible-legend,
+    /// visible-label) honor it, including <see cref="EditBool"/>'s checkbox row, which nests its input
+    /// through <see cref="FormLabel.NestedInput"/> rather than sitting beside the label the way every
+    /// other control's editor does.
+    /// </para>
+    /// <para>
+    /// <b>Phrasing content only — no nested buttons, links, or other interactive elements.</b>
+    /// Accessible-name computation folds a descendant interactive control's own name into the name it
+    /// builds from content, which is the exact trap that made the <see cref="LabelTooltip"/> trigger
+    /// live outside this same anchor: a button inside it made a tooltipped checkbox announce
+    /// "Full Name More information about Full Name" instead of "Full Name". Give any decorative icon
+    /// <c>aria-hidden="true"</c> so it never joins the accessible name at all. This is documentation
+    /// only — nothing in the library enforces it, since a <see cref="RenderFragment"/> can render
+    /// anything.
+    /// </para>
+    /// <para>
+    /// <b>Still set <see cref="Label"/></b> (or leave the property name/[DisplayName] meaningful) even
+    /// when this is used. <see cref="Label"/> — not this fragment — is what
+    /// <see cref="Helpers.AttributesHelper.GetLabelText"/>, <see cref="FieldValidationDisplay"/>, and
+    /// <see cref="ValidationView"/> read to build validation-message text and the accessible-name
+    /// fallback chain; a consumer who sets only this parameter gets validation text derived from the
+    /// auto-generated/attribute-derived name, which may not match what's shown here.
+    /// </para>
+    /// </remarks>
+    [Parameter] public RenderFragment? LabelContent { get; set; }
+
     /// <inheritdoc/>
     [Parameter] public string? Description { get; set; }
     /// <inheritdoc/>

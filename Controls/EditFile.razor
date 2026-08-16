@@ -44,7 +44,7 @@
         RenderFragment fieldContent = @<text>
         @* IsForLabelable gates on CanAddMoreFiles too — at the MaxFiles cap the <InputFile> carrying
            _id unmounts, and a label pointing at a missing id is invalid (and clicks dead). *@
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@(ShowEditor && CanAddMoreFiles) />
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label LabelContent=@LabelContent IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@(ShowEditor && CanAddMoreFiles) />
 
         @if (ShowEditor)
         {

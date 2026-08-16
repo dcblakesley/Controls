@@ -12,7 +12,7 @@
        lifts off that wrapper onto its role="combobox" input, the only element it can name. *@
     <div class="edit-control-wrapper @ContainerClass"
          style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
-        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label LabelContent=@LabelContent IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable=@ShowEditor />
 
         @if (ShowEditor)
         {

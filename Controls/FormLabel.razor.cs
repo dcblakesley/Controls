@@ -42,7 +42,21 @@ public partial class FormLabel
     
     /// <inheritdoc cref="IEditControl.Label"/>
     [Parameter] public string? Label { get; set; }
-    
+
+    /// <summary>
+    /// Optional rich-markup label, rendered inside the naming anchor (<c>lbltext-{id}</c>) in place of
+    /// the plain <see cref="Label"/> text, in all four rendering branches below. Null (the default)
+    /// falls back to <see cref="DisplayLabel"/>, so a caller that never sets this renders byte-identical
+    /// markup to before. See <see cref="EditControlBase{TValue}.LabelContent"/> for the full contract —
+    /// phrasing content only (no nested buttons/links: the same accessible-name-folding trap the
+    /// tooltip trigger's placement outside this anchor exists to avoid), decorative icons need
+    /// <c>aria-hidden="true"</c>, and <see cref="Label"/> should still be set even when this is used,
+    /// since <see cref="DisplayLabel"/>'s resolved text — not this fragment — still feeds the
+    /// validation-message and accessible-name fallback chain (<see cref="FieldValidationDisplay"/>,
+    /// <see cref="ValidationView"/>, <see cref="Helpers.AttributesHelper.GetLabelText"/>).
+    /// </summary>
+    [Parameter] public RenderFragment? LabelContent { get; set; }
+
     /// <inheritdoc cref="IEditControl.Description"/>
     [Parameter] public string? Description { get; set; }
     
@@ -131,6 +145,14 @@ public partial class FormLabel
 
     string DisplayLabel() => _label;
     string? DisplayDescription() => _description;
+
+    /// <summary>
+    /// The naming anchor's content for this render: <see cref="LabelContent"/> when set, else the plain
+    /// <see cref="DisplayLabel"/> text — mirrors <c>Tab.LabelFor</c>'s <c>TitleContent ?? Title</c>
+    /// shape. Called from all four branches in FormLabel.razor so none of them can drift from the
+    /// others.
+    /// </summary>
+    RenderFragment LabelFor() => LabelContent ?? (b => b.AddContent(0, DisplayLabel()));
 
     /// <summary>
     /// The tooltip text folded into the visually-hidden description, and only in the

@@ -37,7 +37,10 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     
     /// <inheritdoc/>
     [Parameter] public string? Label { get; set; }
-    
+
+    /// <inheritdoc cref="EditControlBase{TValue}.LabelContent"/>
+    [Parameter] public RenderFragment? LabelContent { get; set; }
+
     /// <inheritdoc/>
     [Parameter] public string? Description { get; set; }
     
