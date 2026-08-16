@@ -15,7 +15,23 @@ public partial class EditBool : EditControlBase<bool>
     [Parameter] public Expression<Func<bool>>? Field { get; set; }
 
     /// <summary> When true, allows the checkbox to receive focus even when disabled. Defaults to true.</summary>
+    /// <remarks>
+    /// Implemented by withholding the native <c>disabled</c> attribute (the click is suppressed with
+    /// <c>@onclick:preventDefault</c> instead), so the checkbox stays a real tab stop while disabled —
+    /// the discoverable-but-inoperable pattern. <see cref="CanFocusWhenDisabled"/> below carries that
+    /// same opt-in over to <see cref="EditControlBase{TValue}.FocusAsync"/>.
+    /// </remarks>
     [Parameter] public bool AllowFocusWhenDisabled { get; set; } = true;
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The library's one exception, and only because <see cref="AllowFocusWhenDisabled"/> already made
+    /// it one: a disabled <c>EditBool</c> is still in the Tab order by default, so a consumer's
+    /// <c>FocusAsync()</c> is putting focus somewhere the user could have reached anyway. Set
+    /// <c>AllowFocusWhenDisabled="false"</c> and it behaves like every other disabled control — natively
+    /// disabled, out of the Tab order, and not programmatically focusable either.
+    /// </remarks>
+    protected override bool CanFocusWhenDisabled => AllowFocusWhenDisabled;
 
     /// <summary>
     /// Text shown by the read-only view when the value is true. Falls back to the bound property's

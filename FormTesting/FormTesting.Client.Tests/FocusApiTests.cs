@@ -72,12 +72,14 @@ public class FocusApiTests : BunitContext
     // One entry per control that focuses a captured ElementReference. Each renders the control and
     // returns the cut; the shared facts below drive every one of them through the same assertions, so
     // a control added without a focus target fails here rather than silently no-op'ing in production.
-    public static TheoryData<string> ElementFocusControls =>
+    static readonly string[] AllElementFocusControls =
     [
         nameof(EditString), nameof(EditTextArea), "EditNumber", "EditDateNative", nameof(EditBool),
         "EditSelect", "EditSelectEnum", "EditSelectString", "EditRange", nameof(EditColor),
         "EditDate", "EditSelectSearch", "EditMultiSelect", nameof(EditFile), nameof(EditDateRange)
     ];
+
+    public static TheoryData<string> ElementFocusControls => [.. AllElementFocusControls];
 
     IRenderedComponent<ContainerFragment> RenderByName(string control, FocusModel model, bool isEditMode = true,
         bool isDisabled = false)
@@ -259,8 +261,13 @@ public class FocusApiTests : BunitContext
 
     // ───────────────────────── disabled: never move focus onto a dead control ─────────────────────────
 
+    // Every element-focus control except EditBool, which opts into staying focusable while disabled --
+    // see the two facts under this theory.
+    public static TheoryData<string> ElementFocusControlsDisabled =>
+        [.. AllElementFocusControls.Where(c => c != nameof(EditBool))];
+
     [Theory]
-    [MemberData(nameof(ElementFocusControls))]
+    [MemberData(nameof(ElementFocusControlsDisabled))]
     public async Task FocusAsync_is_a_silent_no_op_when_the_control_is_disabled(string control)
     {
         // Held by the explicit IsDisabled guard on FocusAsync, not by native `disabled` semantics.
@@ -276,6 +283,45 @@ public class FocusApiTests : BunitContext
         await cut.InvokeAsync(() => FocusOf(control, cut).AsTask());
 
         Assert.Equal(before, ElementFocusCalls());
+    }
+
+    [Fact]
+    public async Task A_disabled_EditBool_DOES_still_focus_because_it_stays_in_the_tab_order()
+    {
+        // The library's one exception, and it predates the guard: AllowFocusWhenDisabled (default
+        // true) withholds the native `disabled` attribute so the checkbox remains a real tab stop
+        // while disabled -- the discoverable-but-inoperable pattern. The guard exists to stop focus
+        // landing where the user could never have put it themselves; here they could just Tab to it.
+        var cut = RenderByName(nameof(EditBool), new FocusModel(), isDisabled: true);
+        var before = ElementFocusCalls();
+
+        await cut.InvokeAsync(() => FocusOf(nameof(EditBool), cut).AsTask());
+
+        Assert.Equal(before + 1, ElementFocusCalls());
+        Assert.False(cut.Find("input#Flag").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task A_disabled_EditBool_with_AllowFocusWhenDisabled_false_behaves_like_every_other_control()
+    {
+        // Turning the opt-in off puts the native `disabled` attribute back, taking the checkbox out of
+        // the Tab order -- and the programmatic call goes with it, so the two can't disagree.
+        var model = new FocusModel();
+        var cut = RenderControl(model, b =>
+        {
+            b.OpenComponent<EditBool>(0);
+            b.AddAttribute(1, "Value", model.Flag);
+            b.AddAttribute(2, "ValueExpression", (Expression<Func<bool>>)(() => model.Flag));
+            b.AddAttribute(3, "IsDisabled", true);
+            b.AddAttribute(4, "AllowFocusWhenDisabled", false);
+            b.CloseComponent();
+        });
+        var before = ElementFocusCalls();
+
+        await Focus<EditBool>(cut, c => c.FocusAsync());
+
+        Assert.Equal(before, ElementFocusCalls());
+        Assert.True(cut.Find("input#Flag").HasAttribute("disabled"));
     }
 
     [Fact]

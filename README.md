@@ -1112,6 +1112,8 @@ Each control focuses the element a `Tab` into it would land on:
 
 A native `readonly` attribute is **not** one of those states: a read-only `<input>` is still rendered and still a tab stop, so `FocusAsync()` does move focus to it. That's deliberate — read-only fields are meant to be reachable, copyable, and announced.
 
+`EditBool` is the one disabled control that still takes focus, because its `AllowFocusWhenDisabled` (default `true`) deliberately keeps the checkbox in the tab order while disabled — the discoverable-but-inoperable pattern. The rule is "focus can go anywhere the user could `Tab` to"; set `AllowFocusWhenDisabled="false"` and it behaves like every other disabled control.
+
 **Inside a `Modal` or `Drawer` it just works.** Those gate their children on visibility, so a child's first render *is* the open, and the overlay's own "focus the first focusable element" runs in the same cycle. The overlay defers: it only takes initial focus when nothing inside the panel has it, so `FocusOnFirstRender="true"` (or your own `FocusAsync()`) on a field in the dialog wins over the close X.
 
 The UI-kit components the picker/select-backed controls delegate to expose the same method, for use outside a form: **`Select<T>`**, **`DatePicker`**, **`DateRangePicker`**, and **`ColorPicker`**.

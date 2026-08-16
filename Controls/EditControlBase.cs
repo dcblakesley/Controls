@@ -374,7 +374,25 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// hold a reference to — a different component's field, or one reached only by id.
     /// </para>
     /// </remarks>
-    public ValueTask FocusAsync() => IsDisabled ? ValueTask.CompletedTask : FocusCoreAsync();
+    public ValueTask FocusAsync() =>
+        IsDisabled && !CanFocusWhenDisabled ? ValueTask.CompletedTask : FocusCoreAsync();
+
+    /// <summary>
+    /// Whether this control is still a legitimate focus target while <see cref="IsDisabled"/>. False
+    /// for every control but <see cref="EditBool"/>, which has a documented <c>AllowFocusWhenDisabled</c>
+    /// opt-in (default true) that deliberately withholds the native <c>disabled</c> attribute so the
+    /// checkbox stays in the TAB order while disabled — the discoverable-but-inoperable pattern.
+    /// </summary>
+    /// <remarks>
+    /// The line this draws: a control that keeps itself reachable by <c>Tab</c> while disabled may also
+    /// be reached programmatically, because focus can legitimately be there and the user can leave it
+    /// the same way they arrived. A control that takes itself OUT of the Tab order while disabled
+    /// (<see cref="EditRange{T}"/>'s <c>tabindex="-1"</c>, and every control whose native
+    /// <c>disabled</c> makes <c>.focus()</c> a no-op) must not be reachable programmatically either —
+    /// otherwise <c>FocusAsync()</c> puts focus somewhere the user could never have put it themselves.
+    /// Nothing about the Tab order changes here; only the programmatic call is gated.
+    /// </remarks>
+    protected virtual bool CanFocusWhenDisabled => false;
 
     /// <summary>
     /// The actual focus move, run by <see cref="FocusAsync"/> once its disabled guard has passed.
