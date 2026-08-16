@@ -107,6 +107,81 @@ public partial class EditString : EditTextInputBase
     [Parameter] public RenderFragment? Suffix { get; set; }
 
     /// <summary>
+    /// Open-vocabulary autofill hints, rendered as an HTML <c>&lt;datalist&gt;</c> wired to the input
+    /// via <c>list=</c>. The browser offers these as suggestions while the user types, but the bound
+    /// value is NOT restricted to them -- this is genuinely different from
+    /// <c>EditSelectSearch</c>/<c>EditMultiSelect</c> (closed vocabulary: the bound value must be one of
+    /// the supplied options). Pick <c>Suggestions</c> when any typed value is valid and you only want to
+    /// speed up entry with hints; pick one of the Select controls when the value must come from a known
+    /// list.
+    /// </summary>
+    /// <remarks>
+    /// Null (the default) renders neither the <c>list</c> attribute nor a <c>&lt;datalist&gt;</c> -- so a
+    /// consumer who already hand-wires <c>list="myListId"</c> plus their own
+    /// <c>&lt;datalist id="myListId"&gt;</c> (a path that already works today: an unmatched <c>list</c>
+    /// attribute splats straight onto the input via <see cref="AttributeSplat.RestWith"/>) keeps working
+    /// untouched -- see <see cref="SuggestionsInputAttributes"/> for why that requires folding
+    /// <c>list</c> into the merged attribute dictionary rather than writing it as its own explicit
+    /// attribute. A non-null but EMPTY sequence still renders the <c>list</c> attribute and an empty
+    /// <c>&lt;datalist&gt;</c>: treating "Suggestions is set" (not "Suggestions has entries") as the
+    /// on/off switch means a consumer binding a filtered list that transiently empties (e.g. mid-fetch)
+    /// doesn't see the attribute flicker on and off. Suppressed on a password field (see
+    /// <see cref="EffectiveIsPassword"/>) -- browsers ignore <c>list</c> on <c>type="password"</c>
+    /// outright, so wiring it there would be dead markup with nothing to show.
+    /// </remarks>
+    [Parameter] public IEnumerable<string>? Suggestions { get; set; }
+
+    /// <summary>
+    /// <see cref="Suggestions"/>, or null when it must not render -- see <see cref="Suggestions"/>'s
+    /// remarks for the password suppression.
+    /// </summary>
+    IEnumerable<string>? EffectiveSuggestions => EffectiveIsPassword ? null : Suggestions;
+
+    /// <summary>
+    /// The id of the <c>&lt;datalist&gt;</c> this control renders (and the input's <c>list=</c> points
+    /// at), or null when none should render -- see <see cref="EffectiveSuggestions"/>. Named
+    /// <c>dl-{id}</c>, following the established <c>count-{id}</c>/<c>desc-{id}</c>/<c>lbl-{id}</c>
+    /// id-shape convention.
+    /// </summary>
+    string? SuggestionsListId => EffectiveSuggestions is not null ? $"dl-{_id}" : null;
+
+    /// <summary>
+    /// The <c>list</c> attribute contribution, folded into the merged <c>@attributes</c> dictionary
+    /// (see <see cref="AttributeSplat.RestWith"/>) rather than written as its own explicit attribute on
+    /// the <c>&lt;input&gt;</c> element.
+    /// </summary>
+    /// <remarks>
+    /// This is not a style choice -- an explicit attribute frame written after a splat wins outright
+    /// over ANY earlier same-named frame in Blazor's render tree, including one the splat itself
+    /// supplied, and that is true even when the explicit frame's own value is null (a null frame still
+    /// "wins" and the net effect is that the attribute is omitted entirely). Writing
+    /// <c>list=@SuggestionsListId</c> directly on the element therefore erased a consumer's
+    /// hand-splatted <c>list="myListId"</c> the instant <see cref="Suggestions"/> was unset -- silently
+    /// breaking exactly the pre-existing hand-wire path this feature is contractually required not to
+    /// disturb (caught by
+    /// <c>EditStringSuggestionsTests.A_consumer_splatted_list_attribute_still_reaches_the_input_when_Suggestions_is_null</c>).
+    /// Folding it into the dictionary instead means a null <see cref="SuggestionsListId"/> contributes
+    /// no <c>"list"</c> key at all, leaving whatever the consumer's own splatted attributes carried
+    /// completely untouched; a non-null value lands in the SAME merged dictionary <see cref="AttributeSplat.RestWith"/>
+    /// already layers over the consumer's own, so the library wins the collision when it IS managing the
+    /// list -- exactly the intended precedence, with none of the null-frame hazard.
+    /// </remarks>
+    IReadOnlyDictionary<string, object>? SuggestionsInputAttributes =>
+        SuggestionsListId is { } id ? new Dictionary<string, object>(1) { ["list"] = id } : null;
+
+    /// <summary>
+    /// The input's full <c>@attributes</c> splat: the consumer's unmatched attributes, this control's
+    /// own <c>oninput</c> handler when needed (<see cref="EditTextInputBase.EditorInputAttributes"/>),
+    /// and the <c>list</c> contribution (<see cref="SuggestionsInputAttributes"/>) -- merged via two
+    /// chained <see cref="AttributeSplat.RestWith"/> calls in that precedence order (its first parameter
+    /// re-applies <see cref="AttributeSplat.Rest"/>, a no-op on a dictionary that never carried
+    /// class/style, so nesting the calls is safe). One dictionary, because Razor allows only one
+    /// <c>@attributes</c> per element.
+    /// </summary>
+    IReadOnlyDictionary<string, object>? EditorAttributes =>
+        AttributeSplat.RestWith(AttributeSplat.RestWith(AdditionalAttributes, EditorInputAttributes), SuggestionsInputAttributes);
+
+    /// <summary>
     /// Marks the field as a secret. In edit mode it renders as <c>type="password"</c> with a show/hide
     /// toggle (via <see cref="EditInputShell"/>); in read-only mode it renders the same masked row
     /// <see cref="MaskText"/> produces, bulleted to the value's length -- a password field must not
