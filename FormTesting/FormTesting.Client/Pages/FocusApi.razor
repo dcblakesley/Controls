@@ -1,0 +1,96 @@
+@page "/focus-api"
+@using Controls
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>Focus API</h1>
+
+@* Test-only page (not part of the Controls.Demo gallery), same precedent as JsInteropFallback.razor.
+   Every control here is held by @ref and focused ONLY through its public FocusAsync() -- no id, no
+   JsInteropEc.FocusById, no click. FocusApiE2ETests then reads document.activeElement, which is the
+   one thing bUnit can't do: ElementReference.FocusAsync and WssEditControls.focusGroupInput are both
+   JS interop, so a bUnit test can prove the call was issued but never that focus landed.
+
+   The buttons are what make the assertions meaningful: activating one puts focus on the BUTTON, so
+   any assertion that focus is on the field afterwards can only pass if FocusAsync actually moved it. *@
+
+<EditForm Model="_model">
+    <EditString @ref="_string" @bind-Value="_model.Text" AutoFocus="@(Auto == "string")" />
+
+    <EditNumber @ref="_number" @bind-Value="_model.Number" />
+
+    <EditBool @ref="_bool" @bind-Value="_model.Flag" />
+
+    @* Priority starts at High -- the THIRD option -- so "focus the checked radio, not the first one"
+       is observable rather than accidentally true. *@
+    <EditRadioEnum @ref="_radio" @bind-Value="_model.Priority" />
+
+    @* Three-way discriminator: "a" is disabled and "c" is ticked, so the expected target ("b") is
+       neither the first checkbox nor the checked one -- "first ENABLED, checked is irrelevant" is the
+       only rule that lands there. *@
+    <EditCheckedStringList @ref="_list" @bind-Value="_model.Tags"
+                           Options="_tagOptions"
+                           IsOptionDisabled="@(o => o == "a")" />
+
+    <EditDateRange @ref="_range" @bind-Start="_model.Start" @bind-End="_model.End" />
+
+    <EditSelectSearch @ref="_search" @bind-Value="_model.Choice" Options="_choices" />
+
+    @* Read-only: FocusAsync must be a silent no-op rather than an error, since a control's mode can
+       change under a consumer who is holding a reference to it. *@
+    <EditString @ref="_readOnly" @bind-Value="_model.ReadOnlyText" IsEditMode="false" />
+</EditForm>
+
+<div class="focus-buttons">
+    <button type="button" id="focus-string" @onclick="FocusStringAsync">Focus string</button>
+    <button type="button" id="focus-number" @onclick="FocusNumberAsync">Focus number</button>
+    <button type="button" id="focus-bool" @onclick="FocusBoolAsync">Focus bool</button>
+    <button type="button" id="focus-radio" @onclick="FocusRadioAsync">Focus radio</button>
+    <button type="button" id="focus-list" @onclick="FocusListAsync">Focus list</button>
+    <button type="button" id="focus-range" @onclick="FocusRangeAsync">Focus range</button>
+    <button type="button" id="focus-search" @onclick="FocusSearchAsync">Focus search</button>
+    <button type="button" id="focus-readonly" @onclick="FocusReadOnlyAsync">Focus read-only</button>
+</div>
+
+@code {
+    // "string" turns AutoFocus on for the first EditString, so the e2e suite can assert the
+    // declarative form lands focus on load without a second page.
+    [SupplyParameterFromQuery(Name = "auto")]
+    public string? Auto { get; set; }
+
+    readonly Model _model = new();
+    readonly List<string> _tagOptions = ["a", "b", "c"];
+    readonly List<SelectOption<string>> _choices = [new("alpha", "Alpha"), new("beta", "Beta")];
+
+    EditString? _string;
+    EditString? _readOnly;
+    EditNumber<int?>? _number;
+    EditBool? _bool;
+    EditRadioEnum<PriorityLevel?>? _radio;
+    EditCheckedStringList? _list;
+    EditDateRange? _range;
+    EditSelectSearch<string>? _search;
+
+    async Task FocusStringAsync() => await _string!.FocusAsync();
+    async Task FocusNumberAsync() => await _number!.FocusAsync();
+    async Task FocusBoolAsync() => await _bool!.FocusAsync();
+    async Task FocusRadioAsync() => await _radio!.FocusAsync();
+    async Task FocusListAsync() => await _list!.FocusAsync();
+    async Task FocusRangeAsync() => await _range!.FocusAsync();
+    async Task FocusSearchAsync() => await _search!.FocusAsync();
+    async Task FocusReadOnlyAsync() => await _readOnly!.FocusAsync();
+
+    public enum PriorityLevel { Low, Medium, High, Critical }
+
+    class Model
+    {
+        public string? Text { get; set; } = "Alice";
+        public string? ReadOnlyText { get; set; } = "Read only";
+        public int? Number { get; set; } = 7;
+        public bool Flag { get; set; }
+        public PriorityLevel? Priority { get; set; } = PriorityLevel.High;
+        public List<string> Tags { get; set; } = ["c"];
+        public DateTime? Start { get; set; }
+        public DateTime? End { get; set; }
+        public string? Choice { get; set; }
+    }
+}

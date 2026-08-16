@@ -1,0 +1,196 @@
+namespace FormTesting.Client.E2ETests;
+
+/// <summary>
+/// The only proof that <c>FocusAsync()</c> actually MOVES focus. Both of its channels bottom out in
+/// JS interop (<see cref="Microsoft.AspNetCore.Components.ElementReference"/>'s own focus call, and
+/// <c>WssEditControls.focusGroupInput</c> for the radio/checkbox groups), so bUnit can only show that
+/// the right call was issued — <c>FocusApiTests</c> does that part. Here a real browser answers the
+/// question that matters: is <c>document.activeElement</c> the element the contract names?
+/// </summary>
+/// <remarks>
+/// <para>
+/// Every assertion below is preceded by a button CLICK, which puts focus on the button. So each
+/// <c>ToBeFocusedAsync</c> can only pass if <c>FocusAsync()</c> pulled focus off the button and onto
+/// the field — there is no starting state that makes one of these pass by accident.
+/// </para>
+/// <para>
+/// One class covering a representative control per mechanism, rather than the usual one-class-per-
+/// control split: the mechanisms are what vary (a captured <c>_editorRef</c>, a forwarded picker/select
+/// reference, <c>InputFile.Element</c>, the group-query JS), and the rest of the library reaches focus
+/// through one of these four. Drives <c>/focus-api</c> directly, following
+/// <see cref="JsInteropFallbackE2ETests"/>'s precedent for a standalone test-only route.
+/// </para>
+/// </remarks>
+[Collection(PlaywrightCollection.Name)]
+public class FocusApiE2ETests : IAsyncLifetime
+{
+    readonly AppFixture _app;
+    readonly BrowserFixture _browser;
+    IBrowserContext _context = default!;
+    IPage _page = default!;
+
+    public FocusApiE2ETests(AppFixture app, BrowserFixture browser)
+    {
+        _app = app;
+        _browser = browser;
+    }
+
+    public async Task InitializeAsync()
+    {
+        _context = await _browser.Browser.NewContextAsync(new BrowserNewContextOptions
+        {
+            ViewportSize = new ViewportSize { Width = 1280, Height = 800 },
+            DeviceScaleFactor = 1,
+        });
+        _page = await _context.NewPageAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _page.CloseAsync();
+        await _context.CloseAsync();
+    }
+
+    async Task GotoAsync(string? auto = null)
+    {
+        var url = $"{_app.BaseUrl}/focus-api";
+        if (auto is not null) url += $"?auto={Uri.EscapeDataString(auto)}";
+
+        await _page.GotoAsync(url, new PageGotoOptions
+        {
+            WaitUntil = WaitUntilState.NetworkIdle,
+            Timeout = 60_000, // first-run WASM download can be slow
+        });
+        await Expect(_page.Locator("h1", new() { HasTextString = "Focus API" }))
+            .ToBeVisibleAsync(new() { Timeout = 15_000 });
+    }
+
+    // Clicks the button and asserts focus ended up on `expected` rather than staying on the button.
+    async Task ExpectFocusMovesAsync(string buttonId, string expectedSelector)
+    {
+        await _page.Locator($"#{buttonId}").ClickAsync();
+        await Expect(_page.Locator($"#{buttonId}")).Not.ToBeFocusedAsync();
+        await Expect(_page.Locator(expectedSelector)).ToBeFocusedAsync();
+    }
+
+    // ───────────── captured _editorRef: the scalar single-editor controls ─────────────
+
+    [Fact]
+    public async Task EditString_FocusAsync_moves_focus_to_its_input()
+    {
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-string", "input#Text");
+    }
+
+    [Fact]
+    public async Task EditNumber_FocusAsync_moves_focus_to_its_input()
+    {
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-number", "input#Number");
+    }
+
+    [Fact]
+    public async Task EditBool_FocusAsync_moves_focus_to_its_checkbox()
+    {
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-bool", "input#Flag");
+    }
+
+    // ───────────── forwarded child references: pickers and the select engine ─────────────
+
+    [Fact]
+    public async Task EditDateRange_FocusAsync_moves_focus_to_the_START_input()
+    {
+        // Not the End input, and not "whichever end was last active" -- see DateRangePicker's
+        // PrimaryInputRef. #Start is the Start field's own id; the End input is #Start-end.
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-range", "input#Start");
+        await Expect(_page.Locator("input#Start-end")).Not.ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task EditSelectSearch_FocusAsync_moves_focus_to_the_combobox_input()
+    {
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-search", "input#Choice");
+    }
+
+    // ───────────── the group-query channel: radios and checkbox lists ─────────────
+
+    [Fact]
+    public async Task EditRadioEnum_FocusAsync_lands_on_the_CHECKED_radio_not_the_first_one()
+    {
+        // The bound value starts at High, the third option, so the two candidate rules disagree and
+        // only "focus the checked radio" (real radiogroup Tab semantics) puts focus here.
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-radio", "input#rb-Priority-High");
+        await Expect(_page.Locator("input#rb-Priority-Low")).Not.ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task EditCheckedStringList_FocusAsync_lands_on_the_first_ENABLED_checkbox()
+    {
+        // "a" is disabled and "c" is ticked, so "b" is neither the first box nor the checked one --
+        // the mirror image of the radio rule, and the whole reason the shared JS helper takes a
+        // preferChecked flag.
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-list", "input#cbx-Tags-b");
+        await Expect(_page.Locator("input#cbx-Tags-a")).Not.ToBeFocusedAsync();
+        await Expect(_page.Locator("input#cbx-Tags-c")).Not.ToBeFocusedAsync();
+    }
+
+    // ───────────── the never-throws contract, in a real browser ─────────────
+
+    [Fact]
+    public async Task FocusAsync_on_a_read_only_control_is_silent_and_leaves_focus_alone()
+    {
+        // Read-only renders a display value, not an editor, so there is nothing to focus. The contract
+        // is a no-op, not an error -- and specifically not an unhandled exception reaching the page,
+        // which on Blazor Server would tear the circuit down.
+        await GotoAsync();
+        var pageErrors = new List<string>();
+        _page.PageError += (_, error) => pageErrors.Add(error);
+
+        await _page.Locator("#focus-readonly").ClickAsync();
+        await _page.WaitForTimeoutAsync(300);
+
+        Assert.Empty(pageErrors);
+        // Focus stayed where the click left it rather than jumping somewhere arbitrary.
+        await Expect(_page.Locator("#focus-readonly")).ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task FocusAsync_is_repeatable_across_an_intervening_focus_change()
+    {
+        await GotoAsync();
+        await ExpectFocusMovesAsync("focus-string", "input#Text");
+        await ExpectFocusMovesAsync("focus-number", "input#Number");
+        await ExpectFocusMovesAsync("focus-string", "input#Text");
+    }
+
+    // ───────────────────────────────── AutoFocus ─────────────────────────────────
+
+    [Fact]
+    public async Task AutoFocus_lands_focus_on_the_control_once_the_page_is_interactive()
+    {
+        // The declarative form, and the reason the caveat is documented: the focus can't happen during
+        // prerender (this page renders InteractiveWebAssembly with prerendering on), so it lands on the
+        // first INTERACTIVE render instead -- which is exactly what this asserts.
+        await GotoAsync(auto: "string");
+
+        await Expect(_page.Locator("input#Text")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+    }
+
+    [Fact]
+    public async Task AutoFocus_defaults_off_so_a_plain_load_focuses_nothing()
+    {
+        await GotoAsync();
+
+        await Expect(_page.Locator("input#Text")).Not.ToBeFocusedAsync();
+        // ...and no OTHER field on the page grabbed it either. Asserting document.activeElement is
+        // <body> would be wrong: the app's router applies its own focus-on-navigation (the heading),
+        // which is nothing to do with this parameter. What matters is that no form control took focus.
+        Assert.False(await _page.EvaluateAsync<bool>(
+            "() => ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)"));
+    }
+}
