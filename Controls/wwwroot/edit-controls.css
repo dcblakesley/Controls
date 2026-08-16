@@ -706,6 +706,238 @@
     font-size: 16px;
 }
 
+/************************************************ EditRange **********************************************/
+/* AntDesign-style horizontal slider. Structure (see EditRange.razor):
+       .edit-range                      container -- owns the width, the marks row's space
+           .edit-range-track            role="slider" tab stop; the CLICK TARGET and the drag surface
+               .edit-range-rail         the unfilled groove
+               .edit-range-fill         min..value, omitted entirely when Included="false"
+               .edit-range-dot(-active) one per step increment / mark, when Dots="true"
+               .edit-range-handle       decorative -- pointer-events:none is load-bearing (below)
+               .edit-range-tooltip      the value bubble
+           .edit-range-marks            absolutely-positioned labels under the rail
+               .edit-range-mark(-active)
+           .edit-range-signal           the hidden drag-report input (display:none via type=hidden)
+   Every derived hover/active color below is a color-mix computed AT THE USAGE SITE, never baked into
+   a token -- so a consumer's scoped --edit-color-primary override carries into all of them (see the
+   theming contract in the file header region / README "Styling and Customization"). */
+.edit-range {
+    position: relative;
+    /* A fixed default width rather than 100%: the no-JS click fallback normalizes MouseEventArgs's
+       OffsetX against EditRange.TrackWidth, which has to mirror THIS value (a consumer who overrides
+       the token gets a proportionally-off no-JS click -- the same documented trade-off
+       --wss-color-picker-width carries). max-width keeps it from overflowing a narrower column. */
+    width: var(--edit-range-width, 320px);
+    max-width: 100%;
+    /* Room above the rail for the value bubble, which is absolutely positioned out of flow. */
+    padding-top: 4px;
+}
+
+.edit-range-track {
+    position: relative;
+    /* Tall enough to contain the 14px handle; the rail inside is 4px, AntD's own. */
+    height: 14px;
+    cursor: pointer;
+    outline: none;
+    /* Hands the whole gesture to the pointer drag instead of letting the browser pan/zoom mid-drag. */
+    touch-action: none;
+}
+
+/* WCAG 2.5.8 target size: the visible track is 14px tall, short of the 24px floor, and the visible
+   design stays exactly as it is (AntD parity). The track instead grows an invisible 24px-tall hit
+   box, the same pseudo-element/inset trick .wss-color-picker-slider uses, so nothing about layout or
+   paint changes: an absolutely positioned pseudo-element is not part of its element's
+   getBoundingClientRect, so wss-slider.js keeps normalizing a press against the VISIBLE track (the
+   expanded box must never become the denominator) and the no-JS OffsetX fallback is likewise
+   untouched. Horizontal insets stay 0 -- only height is short of the floor -- and the 5px below is
+   clear of the marks row, which starts 6px down. */
+.edit-range-track::before {
+    content: '';
+    position: absolute;
+    inset: -5px 0;
+}
+
+.edit-range-track:focus-visible {
+    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
+    outline-offset: var(--edit-focus-offset);
+    border-radius: 2px;
+}
+
+.edit-range-rail,
+.edit-range-fill {
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    margin-top: -2px;
+    border-radius: 2px;
+}
+
+.edit-range-rail {
+    left: 0;
+    right: 0;
+    /* AntD's rail is #f5f5f5 (1.05:1 on white) -- near-invisible, and this groove IS the boundary of
+       the component for anyone who can't make out the handle. Derived from the border token instead,
+       so a consumer's --border-color carries through, at a weight that still reads as a groove
+       rather than a border. */
+    background: color-mix(in srgb, var(--edit-color-border) 40%, #fff);
+}
+
+.edit-range-fill {
+    left: 0;
+    background: color-mix(in srgb, var(--edit-color-primary) 45%, #fff);
+}
+
+.edit-range-track:hover .edit-range-fill {
+    background: color-mix(in srgb, var(--edit-color-primary) 65%, #fff);
+}
+
+.edit-range-dot {
+    position: absolute;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    background: #fff;
+    border: 2px solid color-mix(in srgb, var(--edit-color-border) 55%, #fff);
+    border-radius: 50%;
+    /* Same reason as the handle's: the track must stay the click target for the OffsetX fallback. */
+    pointer-events: none;
+}
+
+.edit-range-dot-active {
+    border-color: color-mix(in srgb, var(--edit-color-primary) 45%, #fff);
+}
+
+/* pointer-events: none is load-bearing, not cosmetic: the no-JS fallback reads a click's OffsetX,
+   which is relative to the EVENT TARGET -- a hit-testable handle would make itself the target and
+   report coordinates within its own 14px box. Same contract as .wss-color-picker-slider-handle. */
+.edit-range-handle {
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    background: #fff;
+    border: 2px solid var(--edit-color-primary);
+    border-radius: 50%;
+    pointer-events: none;
+    transition: width 0.2s var(--edit-ease-standard), height 0.2s var(--edit-ease-standard),
+                margin 0.2s var(--edit-ease-standard), box-shadow 0.2s var(--edit-ease-standard);
+}
+
+.edit-range-track:hover .edit-range-handle,
+.edit-range-track:focus-visible .edit-range-handle {
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--edit-color-primary) 12%, transparent);
+}
+
+/* Invalid: the EditContext's own "invalid" class lands on the track through CssClass, so the handle
+   and the fill pick up the danger color the rest of the library uses for a failed field. */
+.edit-range-track.invalid .edit-range-handle {
+    border-color: var(--edit-color-danger);
+}
+
+.edit-range-track.invalid .edit-range-fill,
+.edit-range-track.invalid:hover .edit-range-fill {
+    background: color-mix(in srgb, var(--edit-color-danger) 45%, #fff);
+}
+
+/* The value bubble. Same recipe as .edit-tooltip-content (dark chip, rotated-square arrow, layered
+   shadow, fade) rather than that component itself: LabelTooltip is a static help trigger beside the
+   label, where this one tracks the handle and has to be positioned from C#. aria-hidden in the
+   markup -- the value already reaches assistive tech via aria-valuenow/aria-valuetext. */
+.edit-range-tooltip {
+    position: absolute;
+    bottom: calc(100% + 9px);
+    transform: translateX(-50%);
+    z-index: 1;
+    padding: 4px 8px;
+    color: var(--color-tooltip-text, #fff);
+    background: var(--color-tooltip-bg, #262626);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: nowrap;
+    box-shadow: var(--edit-shadow);
+    /* Forced-colors strips background and box-shadow; this keeps the chip's boundary visible there. */
+    border: 1px solid transparent;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+}
+
+.edit-range-tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: -5px; /* bubble above the handle -> tip points down */
+    left: 50%;
+    margin-left: -5px;
+    width: 10px;
+    height: 10px;
+    background: inherit;
+    transform: rotate(45deg);
+}
+
+/* Revealed on hover, on keyboard focus, and -- through the C#-owned class -- for the whole of a drag,
+   including the part that happens off the track where :hover has stopped applying. */
+.edit-range-track:hover .edit-range-tooltip,
+.edit-range-track:focus-visible .edit-range-tooltip,
+.edit-range-tooltip-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.edit-range-marks {
+    position: relative;
+    height: 20px;
+    margin-top: 6px;
+    /* The row itself must not intercept presses aimed at the track's expanded hit box; only the
+       labels themselves are targets. */
+    pointer-events: none;
+}
+
+.edit-range-mark {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    pointer-events: auto;
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-text-secondary, #595959);
+}
+
+.edit-range-mark-active {
+    color: var(--edit-color-primary-strong);
+}
+
+/* Disabled: no primary anywhere, and the handle keeps a visible border so the control still reads as
+   a slider (a disabled control is exempt from contrast minimums, but "invisible" is not the goal). */
+.edit-range-disabled .edit-range-track {
+    cursor: not-allowed;
+}
+
+.edit-range-disabled .edit-range-fill {
+    background: var(--edit-color-text-disabled, rgba(0, 0, 0, 0.25));
+}
+
+.edit-range-disabled .edit-range-handle {
+    border-color: var(--edit-color-text-disabled, rgba(0, 0, 0, 0.25));
+    box-shadow: none;
+}
+
+.edit-range-disabled .edit-range-dot-active {
+    border-color: var(--edit-color-text-disabled, rgba(0, 0, 0, 0.25));
+}
+
+.edit-range-disabled .edit-range-mark {
+    cursor: not-allowed;
+    color: var(--edit-color-text-disabled, rgba(0, 0, 0, 0.25));
+}
+
 /************************************************ EditSelect(String and Enum) *********************************************/
 .edit-select-select { }
 .edit-select-option { /* The options within the select control */ }
@@ -1864,6 +2096,27 @@
         forced-color-adjust: none;
     }
 
+    /* EditRange: the rail/fill/handle are nothing but author backgrounds and a primary border, so
+       forced colors collapses the groove, the "how far along" fill and the handle into one flat,
+       uniform strip -- the slider's entire visual state, gone. System colors are the one paint the
+       mode keeps. Scoped to these three elements rather than the whole .edit-range (the mark labels
+       and the value bubble are ordinary text/chip, which the mode renders correctly on its own). */
+    .edit-range-rail {
+        background: GrayText;
+        forced-color-adjust: none;
+    }
+
+    .edit-range-fill {
+        background: Highlight;
+        forced-color-adjust: none;
+    }
+
+    .edit-range-handle {
+        background: Canvas;
+        border-color: CanvasText;
+        forced-color-adjust: none;
+    }
+
     /* Button-mode radio: "checked" is a text-color + border + (solid) fill change, all three forced
        away. Both selectors are listed so the (0,4,0) one exactly ties ButtonStyle="Solid"'s own
        checked rule -- won on source order, since this block is later in the file -- while the
@@ -1899,7 +2152,9 @@
     .edit-theme .edit-input-affix-wrapper,
     .edit-radio-button,
     .edit-number-step,
-    .edit-file-select-btn {
+    .edit-file-select-btn,
+    .edit-range-handle,
+    .edit-range-tooltip {
         transition: none;
     }
 }

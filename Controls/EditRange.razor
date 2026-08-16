@@ -1,0 +1,91 @@
+@typeparam T
+@inherits EditControlBase<T>
+@implements IAsyncDisposable
+
+@if (ShouldShowComponent())
+{
+    @* The consumer's `style` lands on the wrapper (one rule for every control -- see EditControlBase's
+       unmatched-attribute remarks); the remaining unmatched attributes go on the track below, which is
+       the element that represents the field. *@
+    <div class="edit-control-wrapper @ContainerClass"
+         style="@AttributeSplat.MergeStyle(null, AdditionalAttributes)">
+        @* IsForLabelable is always false: the field element is a role="slider" <div>, and label[for]
+           may only reference a labelable element -- the track carries aria-labelledby back at the
+           label's naming anchor instead (see the a11y conventions in the edit-controls skill). *@
+        <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label IsRequired=@IsRequiredResolved Description=@Description Tooltip=@Tooltip IsLabelHidden=@ShouldHideLabel IsForLabelable="false" />
+
+        @if (ShowEditor)
+        {
+            <div class="@RangeClass">
+                @* Splat first so every explicit attribute below wins (`class` travels CssClass into
+                   TrackClass and `style` the wrapper, so AttributeSplat.Rest withholds both). A null
+                   splat emits no frames at all. *@
+                <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+                     @ref="_trackRef"
+                     class="@TrackClass"
+                     id=@_id
+                     data-test-id=@_id
+                     role="slider"
+                     tabindex=@(IsDisabled ? "-1" : "0")
+                     aria-orientation="horizontal"
+                     aria-labelledby="lbltext-@_id"
+                     aria-valuemin=@ToCommitText(EffectiveMin)
+                     aria-valuemax=@ToCommitText(EffectiveMax)
+                     aria-valuenow=@AriaValueNow
+                     aria-valuetext=@AriaValueText
+                     aria-disabled=@(IsDisabled ? "true" : null)
+                     aria-required=@_isRequired
+                     aria-invalid=@(IsInvalid ? "true" : null)
+                     aria-describedby=@_describedBy
+                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)
+                     @onclick="OnTrackClick"
+                     @onkeydown="OnKeyDown">
+                    <span class="edit-range-rail"></span>
+                    @if (Included)
+                    {
+                        <span class="edit-range-fill" style="width:@Percent(Fraction)"></span>
+                    }
+                    @foreach (var dot in DotValues())
+                    {
+                        <span class="edit-range-dot @(IsActive(dot) ? "edit-range-dot-active" : null)"
+                              style="left:@Percent(FractionOf(dot))"></span>
+                    }
+                    @* Decorative: pointer-events:none in CSS, so the track stays the event target for
+                       the no-JS OffsetX fallback. The value it shows is exposed to assistive tech by
+                       the track's own aria-valuenow/aria-valuetext, not by this element. *@
+                    <span class="edit-range-handle" style="left:@Percent(Fraction)"></span>
+                    @if (ShowTooltip)
+                    {
+                        <span class="edit-range-tooltip @(_dragging ? "edit-range-tooltip-visible" : null)"
+                              style="left:@Percent(Fraction)"
+                              aria-hidden="true">@FormattedValue</span>
+                    }
+                </div>
+
+                @if (_sortedMarks.Count > 0)
+                {
+                    <div class="edit-range-marks">
+                        @foreach (var mark in _sortedMarks)
+                        {
+                            <span class="edit-range-mark @(IsActive(mark.Key) ? "edit-range-mark-active" : null)"
+                                  style="left:@Percent(FractionOf(mark.Key))"
+                                  @onclick="@(() => OnMarkClick(mark.Key))">@mark.Value</span>
+                        }
+                    </div>
+                }
+
+                @* Drag channel: wss-slider.js writes the normalized "x,pressed" it measured into this
+                   and dispatches an input event, which Blazor delivers to OnDragSignal. A hidden input
+                   rather than a DotNetObjectReference -- see wss-slider.js's header for why. *@
+                <input type="hidden" class="edit-range-signal" @ref="_signalRef" @oninput="OnDragSignal" />
+            </div>
+        }
+        else
+        {
+            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@ReadOnlyText AriaDescribedBy=@_describedBy />
+        }
+
+        <FieldValidationDisplay Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
+        <BoundValueDisplay Text=@CurrentValueAsString />
+    </div>
+}
