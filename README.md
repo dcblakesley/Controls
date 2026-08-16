@@ -595,6 +595,7 @@ All form controls implement the `IEditControl` interface and provide:
 - **Styling**: `ContainerClass` for custom CSS
 - **Validation**: required-ness from `[Required]`, the three-state `IsRequired` parameter, or `FormOptions.RequiredResolver` — see [Validation stacks](#validation-stacks-dataannotations-fluentvalidation-custom)
 - **Conditional Display**: `Hiding` modes and `HidingMode` enum
+- **Programmatic focus**: `FocusAsync()` on a control held by `@ref`, or the `AutoFocus` parameter — see [Programmatic focus](#programmatic-focus-focusasync--autofocus)
 
 > **`HidingMode.WhenNull`/`WhenNullOrDefault` apply in edit mode too**, unlike their `WhenReadOnly*` siblings — so pairing either with a field the user can empty from inside the control (`EditDateRange` with `AllowClear`, a nullable-bound `EditNumber<int?>`/`EditDate<T?>`, or `EditString`'s `AllowClear` under `WhenNullOrDefault`, which clears to `""`) **unmounts the control the moment it's cleared**, taking the only way to put a value back with it. That is the intended reading of the mode — the rule is about the value, and it behaves the same however the value got emptied — but for the usual "hide empty optional fields on a detail view" goal, reach for `WhenReadOnlyAndNull`/`WhenReadOnlyAndNullOrDefault` instead.
 
@@ -1044,6 +1045,69 @@ The 2D area's `aria-valuenow` carries saturation, with an `aria-valuetext` namin
 **Without JavaScript** (static prerender, or a host that can't reach `wss-color.js`): a single click still positions the handle, computed from the click's offset within the track, and the keyboard steps above work with no JS at all. Only *dragging* is lost. That click fallback is the one place the control assumes its default metrics — `MouseEventArgs` reports an offset in pixels but not the element's size — so if you override `--wss-color-picker-width`/`--wss-color-picker-sv-height`, a no-JS click lands proportionally off while the normal (JS) path, which measures the real element, is unaffected.
 
 **Deliberately out of scope**, and not planned: sizes, custom gradient/color-scheme panels, grouped or collapsible preset sections, and AntD's color-picker-inside-an-input variants.
+
+### Programmatic focus (`FocusAsync` / `AutoFocus`)
+
+Every `Edit*` control exposes **`public ValueTask FocusAsync()`**. Hold the control with `@ref` and call it:
+
+```razor
+<EditString @ref="_search" @bind-Value="model.Query" />
+<button type="button" @onclick="OpenAsync">Search</button>
+
+@code {
+    EditString? _search;
+
+    async Task OpenAsync()
+    {
+        _isOpen = true;
+        await _search!.FocusAsync();
+    }
+}
+```
+
+Each control focuses the element a `Tab` into it would land on:
+
+| Control | Focus target |
+|---|---|
+| `EditString`, `EditTextArea`, `EditNumber<T>`, `EditDateNative<T>` | its `<input>`/`<textarea>` |
+| `EditBool` | its checkbox |
+| `EditSelect<T>`, `EditSelectEnum<T>`, `EditSelectString<T>` | its `<select>` |
+| `EditRange<T>` | the `role="slider"` track (the tab stop) |
+| `EditSelectSearch<T>`, `EditMultiSelect<T>` | the engine's `role="combobox"` search input |
+| `EditDate<T>` | the picker's typed-entry input (which opens the calendar, as tabbing in does) |
+| `EditDateRange` | the **Start** input — always, never "whichever end was last active" |
+| `EditColor` | the swatch trigger button (does **not** open the panel) |
+| `EditFile` | the file `<input>` |
+| `EditRadio<T>`, `EditRadioEnum<T>`, `EditRadioString`, `EditBoolNullRadio` | the **checked** radio if there is one, else the first enabled radio |
+| `EditCheckedEnumList<T>`, `EditCheckedStringList<T>` | the **first enabled** checkbox (each box is its own tab stop, so what's ticked is irrelevant) |
+
+`EditDisplay` has no `FocusAsync` — it binds no field and renders nothing focusable.
+
+**It never throws.** A control that is read-only, hidden, or not yet interactive simply doesn't move focus, so you don't have to guard the call against state you can't see (a cascaded `FormOptions.IsEditMode`, a `HidingMode` that just unmounted the field). The same applies once JS is unavailable — see below.
+
+The UI-kit components the picker/select-backed controls delegate to expose the same method, for use outside a form: **`Select<T>`**, **`DatePicker`**, **`DateRangePicker`**, and **`ColorPicker`**.
+
+**`AutoFocus`** (`bool`, default `false`) is the declarative form — the control focuses itself once, after its **first** render:
+
+```razor
+<EditString @bind-Value="model.Query" AutoFocus="true" />
+```
+
+Setting it `true` later at runtime does not focus the control; that's a state change, and `FocusAsync()` is the call for it. The standard Blazor SSR caveat applies: focus is a DOM operation, so under static SSR — or during the prerender pass of an interactive render mode — nothing happens at prerender time and the focus lands on the first *interactive* render. If you need the browser to do it from server-rendered HTML alone, the native `autofocus` attribute splats through like any other unmatched attribute.
+
+**JavaScript dependency.** The single-element controls use `ElementReference.FocusAsync()` and need nothing from this package's scripts. The four radio groups and the two checked lists are the exception: their per-option `<input>`s are rendered by Microsoft's `InputRadio` (and, for `EditRadio`, by your own markup), so no element reference can be captured and no id computed — they resolve the option inside the group at focus time via `edit-controls.js`, with the same lazy-import fallback the rest of `JsInteropEc` uses. Without that script reachable, focus simply doesn't move.
+
+**`JsInteropEc.FocusById` is still the answer** for focusing a control you don't hold a reference to — a field owned by a different component, or one reached only by id:
+
+```razor
+<EditString Id="customer-email" @bind-Value="model.Email" />
+@code {
+    [Inject] IJSRuntime JS { get; set; } = default!;
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
+
+    Task FocusEmail() => JsInteropEc.FocusById(JS, "customer-email", FormDefaults);
+}
+```
 
 ## Styling and Customization
 
