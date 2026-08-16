@@ -136,10 +136,10 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     protected abstract ElementReference PrimaryInputRef { get; }
 
     /// <summary>
-    /// Moves keyboard focus to this picker's <see cref="PrimaryInputRef"/> without opening the panel.
-    /// Public so a host component holding the picker through <c>@ref</c> can focus it —
-    /// <see cref="EditDate{T}"/> and <see cref="EditDateRange"/>'s own <c>FocusAsync()</c> forward
-    /// straight here.
+    /// Moves keyboard focus to this picker's <see cref="PrimaryInputRef"/>, which in a browser also
+    /// OPENS the panel (the input's own <c>@onfocus</c> does that — see the remarks). Public so a host
+    /// component holding the picker through <c>@ref</c> can focus it — <see cref="EditDate{T}"/> and
+    /// <see cref="EditDateRange"/>'s own <c>FocusAsync()</c> forward straight here.
     /// </summary>
     /// <remarks>
     /// Best-effort (see <see cref="EditControlInit.FocusElementAsync"/>): a no-op before first render,

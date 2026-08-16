@@ -179,10 +179,15 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// setting this.
     /// </summary>
     /// <remarks>
-    /// Adding an <c>@ref</c> to an element changes nothing about the rendered markup — it emits a
-    /// reference-capture frame, not an attribute — so a control gains this (and with it a working
-    /// <see cref="FocusAsync"/>) with no DOM/visual change at all. Also what
-    /// <see cref="EditTextInputBase.Clear"/> refocuses after emptying the text.
+    /// Adding an <c>@ref</c> to an element emits a reference-capture frame rather than an attribute in
+    /// the render tree, but it is NOT invisible in the DOM: Blazor's client-side renderer materializes
+    /// the capture with <c>applyCaptureIdToElement</c>, which does
+    /// <c>element.setAttribute('_bl_' + id, '')</c> — so every element with an <c>@ref</c> carries one
+    /// extra empty <c>_bl_{guid}</c> attribute once the component is interactive (never in
+    /// static-SSR output, which skips reference captures). It is inert: no styling, no layout, no
+    /// accessibility effect, and no visual change. The one thing it can move is a consumer test that
+    /// asserts on an EXACT attribute list (<c>getAttributeNames()</c>) rather than on the attributes it
+    /// cares about. Also what <see cref="EditTextInputBase.Clear"/> refocuses after emptying the text.
     /// </remarks>
     protected ElementReference _editorRef;
 

@@ -187,9 +187,13 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     /// <inheritdoc cref="EditControlListBase{TItem}.FocusTarget"/>
     /// <remarks>
-    /// Null until first render, and null again once the <see cref="MaxFiles"/> cap unmounts the
-    /// <c>InputFile</c> or the control flips to read-only -- all cases where there is genuinely nothing
-    /// to focus, which <c>FocusAsync</c> treats as a no-op. Note this is the FILE INPUT, not the
+    /// Null until first render, which <c>FocusAsync</c> treats as a no-op. It does NOT go back to null
+    /// once the <see cref="MaxFiles"/> cap unmounts the <c>InputFile</c> or the control flips to
+    /// read-only: Blazor never clears a reference capture (see
+    /// <see cref="EditControlInit.FocusElementAsync"/>'s remarks), so <c>_inputFile</c> stays set and
+    /// its <c>Element</c> goes STALE -- which is the second failure shape that helper already swallows,
+    /// a <see cref="JSException"/> from an element JS can no longer find. Either way focus doesn't
+    /// move and nothing throws, so there is nothing here to guard. Note this is the FILE INPUT, not the
     /// per-file delete buttons that <see cref="RemoveFile"/>'s own focus restoration targets by id.
     /// </remarks>
     protected override ElementReference? FocusTarget => _inputFile?.Element;
