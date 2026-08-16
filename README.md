@@ -1179,6 +1179,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.2
+
+An additive, non-breaking release: a new slider control and a stepper mode for the existing numeric input.
+
+**New**
+- **New control: `EditRange<T>`** — an AntDesign-style horizontal slider bound via `@bind-Value` to any numeric type: rail, filled track, round handle, optional marks/dots, and a value tooltip.
+  - `Min`/`Max` (`decimal?`) resolve param → the bound property's `[MinValue]`/`[MaxValue]`/`[Range]` → **0/100** (unlike `EditNumber`, whose bounds are simply omitted when nothing resolves, a slider always needs both ends to place its handle). `Step` (`decimal?`) resolves param → `[Step]` → 1.
+  - `Marks` (`IReadOnlyDictionary<decimal, string>?`) renders labeled, clickable points under the rail. `SnapToMarks` restricts the value to those positions (AntD's `step={null}` equivalent). `Dots` draws a dot at every step increment and every mark, capped at 100 dots. `Included` (default true) fills the track and styles the active mark/dot; off gives AntD's discrete-points presentation.
+  - `ShowTooltip` (default true) shows a value bubble on hover, focus, and drag; `TooltipFormat` (a numeric format string, falling back to `[DisplayFormat]`) drives that bubble, the `aria-valuetext` it implies, and the read-only text. `ParsingErrorMessage` covers an unparseable bound value.
+  - The `role="slider"` tab stop is the track: arrow keys step one increment (one mark under `SnapToMarks`), PageUp/PageDown step ten, Home/End jump to the bounds. Pointer drag is handled by a new lazily-imported `wss-slider.js` module (24px hit area); without it a click still positions the handle and the keyboard model is untouched. Read-only mode renders the formatted value as text. Forced-colors and reduced-motion are both supported.
+  - Deliberate exclusions: no vertical or reversed orientation, no dual-handle range mode, no always-open tooltip. See the `edit-controls` skill for the full deviation list.
+- **`EditNumber<T>` gains `ShowStepper`** (`bool`, default false) — adds a minus button before the input and a plus button after it, joined into one group. A press moves the value by the effective step (`Step` → model `[Step]` → 1), clamped to `EffectiveMin`/`EffectiveMax`; each button auto-disables at its bound and when the control itself is disabled. Native number spinners are hidden while the mode is on. Buttons carry `tabindex="-1"` (not a tab stop — keyboard users still step via the input's native arrows) with accessible names defaulting to `"Decrease {label}"`/`"Increase {label}"`, overridable via `DecreaseButtonLabel`/`IncreaseButtonLabel`. No press-and-hold auto-repeat. Leaving it off renders byte-identical markup to 10.8.1.
+
 ### 10.8.1
 
 A full accessibility audit of the `Edit*` form controls and the shared label/validation/stylesheet layers they render through (~75 findings — see `A11Y-AUDIT-2026-08-13.md` at the repo root for the complete report and remediation status), the counterpart to the 2026-08-11 UI-kit audit below. The form controls had never been audited before this pass. Landed in two waves — shared label/validation/stylesheet infrastructure first, then per-control fixes across select, date, radio/bool, checked-lists/file, and text — so the entries below span both. Alongside it, unrelated to the audit: a **new color control** (`EditColor` plus the UI-kit `ColorPicker` it wraps), the first addition to the `Edit*` family since `EditDate`'s rename.

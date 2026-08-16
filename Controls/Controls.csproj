@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.8.1</AssemblyVersion>
+	  <AssemblyVersion>10.8.2</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -52,28 +52,11 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
     <PackageReleaseNotes>
-10.8.1 -- a new color control, plus a full accessibility audit of the Edit* form controls (~75 findings) -- the counterpart to 10.8.0's UI-kit audit.
+10.8.2 -- an additive, non-breaking release: a new slider control and a stepper mode for the existing numeric input.
 
 NEW
-- EditColor: an AntDesign-5-style color field binding a plain string? -- swatch trigger, saturation/brightness area, hue slider, optional alpha slider, HEX/RGB input row, optional presets. Accepts hex (3/4/6/8-digit) and rgb()/rgba(); emits normalized lowercase hex. Read-only mode shows the swatch itself (plus hex text with ShowText). Backed by the new standalone UI-kit ColorPicker, the public ColorMath helper, and lazily-imported wss-color.js (keyboard and single-click work without JS).
-- Localizable accessible-name/announcement parameters across the library: FormLabel.TooltipTriggerLabel + IsRequiredTextIncluded, ReadOnlyValue/EditDisplay EmptyText, EditString show/clear button labels, radio OtherAriaLabel, Select live-region announcement formats + InputLabel/AriaLabelledBy, picker format/range hints and WeekLabel.
-- EditDate/EditDateRange gain RangeErrorMessage: an out-of-range typed date now raises a validation message instead of silently reverting (DatePicker.OnRangeError; per-endpoint on DateRangePicker).
-- EditFile gains a role="status" live region announcing selection changes, and states its size/count caps up front in the drop zone.
-
-CHANGED
-- Auto-generated labels no longer shatter acronyms (URLPath renders "URL Path", not "U R L Path").
-- A field's accessible name now comes from its label's text alone (new lbltext-{id} naming anchor) -- a tooltipped field no longer announces "More information" as part of its name.
-- EditString's autocomplete fallback infers a real token from the property name (~20 common names) before the one-time-code last resort.
-- Contrast: --edit-color-border darkens to clear WCAG 1.4.11's 3:1; new *-strong tokens split text-grade from chrome-grade color uses; edit-controls.css gains its first Windows High Contrast (forced-colors) support.
-- EditDate/EditDateRange DialogLabel is now string? -- unset derives the dialog name from the field's own label.
-
-FIXED
-- A stale parse/range error on EditDate/EditDateRange now clears when the retyped value equals the one already bound (new OnValidCommit channel on both pickers, per-endpoint on ranges).
-- An invalid DatePicker/DateRangePicker field keeps its red error border on hover.
-- Select's combobox input now exposes its selected value; option groups now reach assistive tech.
-
-DEPRECATED
-- SelectOptionList.Tooltip is [Obsolete] and inert -- it repeated the field's tooltip on every option.
+- EditRange&lt;T&gt;: an AntDesign-style horizontal slider bound via @bind-Value to any numeric type -- rail, filled track, round handle, optional marks/dots, and a value tooltip. Min/Max resolve param -&gt; [MinValue]/[MaxValue]/[Range] -&gt; 0/100; Step resolves param -&gt; [Step] -&gt; 1. Marks render clickable labeled points; SnapToMarks restricts the value to them; Dots draws step/mark dots (capped at 100); Included (default true) fills the track and styles the active mark. ShowTooltip (default true) shows a value bubble on hover/focus/drag, formatted via TooltipFormat (falls back to [DisplayFormat]) which also drives aria-valuetext and the read-only text. role="slider" track with full keyboard support (arrows/Home/End/PageUp/PageDown); pointer drag via the new lazily-imported wss-slider.js, with a no-JS click fallback and a 24px hit area. Forced-colors and reduced-motion supported. Deliberately excludes vertical/reverse orientation, dual-handle range mode, and an always-open tooltip.
+- EditNumber&lt;T&gt; gains ShowStepper (bool, default false): renders a minus/plus button pair around the input, stepping by the effective Step (param -&gt; model [Step] -&gt; 1), clamped to EffectiveMin/EffectiveMax; buttons auto-disable at the bounds and when the control is disabled. Native spinners hide while the mode is on. DecreaseButtonLabel/IncreaseButtonLabel override the accessible names (default "Decrease {label}"/"Increase {label}"). Buttons are not tab stops -- keyboard users step via the input's native arrows -- and there is no press-and-hold auto-repeat. Off by default; the stepper-off DOM is byte-identical to 10.8.1.
 
 Full changelog: https://github.com/dcblakesley/Controls#changelog
     </PackageReleaseNotes>
