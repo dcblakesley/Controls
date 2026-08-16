@@ -108,6 +108,35 @@
 		<h3>Model</h3>
 		<pre class="code-block code-block-model"><code>@_minMaxAttributeModel</code></pre>
 	</section>
+
+	<section class="demo-section">
+		<h3>Stepper (ShowStepper)</h3>
+		<p>
+			Opt-in minus/plus buttons flanking the input. Each press moves the value by the effective step
+			(the <code>Step</code> parameter, the model's <code>[Step]</code>, else 1) and clamps to
+			<code>Min</code>/<code>Max</code>; a button disables itself once the value sits at its bound.
+			The buttons are not tab stops &mdash; keyboard users step with the input's own arrow keys.
+		</p>
+
+		<EditNumber @bind-Value="_model.StepperBasic" ShowStepper="true"/>
+		<EditNumber @bind-Value="_model.StepperAtMax" ShowStepper="true" Min="0" Max="10"/>
+		<EditNumber @bind-Value="_model.StepperAtMin" ShowStepper="true" Min="5" Max="50"/>
+		<EditNumber @bind-Value="_model.StepperDecimal" ShowStepper="true" Step="0.25m"/>
+		<EditNumber @bind-Value="_model.StepperDisabled" ShowStepper="true" IsDisabled="true"/>
+
+		<p>
+			<code>Size</code> scales the buttons off the same <code>--edit-control-height-sm</code>/
+			<code>-lg</code> tokens the editor's own size classes use. Only the buttons visibly move on
+			this page: the editor's <code>edit-input-sm</code>/<code>-lg</code> are inert outside
+			<code>.edit-theme</code>, and this demo host pins every <code>input</code> to a flat 32px.
+		</p>
+
+		<EditNumber @bind-Value="_model.StepperSmall" ShowStepper="true" Size="SelectSize.Small"/>
+		<EditNumber @bind-Value="_model.StepperLarge" ShowStepper="true" Size="SelectSize.Large"/>
+
+		<h3>Markup</h3>
+		<pre class="code-block"><code>@_stepperExample</code></pre>
+	</section>
 </EditForm>
 
 @code {
@@ -140,6 +169,16 @@
 		[MinValue(0)]
 		[MaxValue(100)]
 		public int? WithMinMaxAttribute { get; set; }
+
+		// Every stepper value is pinned: the e2e visual baseline screenshots this section, and the
+		// two bounded fields are pinned AT their bound so the disabled-button state is in the shot.
+		[DisplayName("Stepper")] public int StepperBasic { get; set; } = 3;
+		[DisplayName("At Max")] public int StepperAtMax { get; set; } = 10;
+		[DisplayName("At Min")] public int StepperAtMin { get; set; } = 5;
+		[DisplayName("Quarter Steps")] public decimal StepperDecimal { get; set; } = 1.5m;
+		[DisplayName("Stepper Disabled")] public int StepperDisabled { get; set; } = 7;
+		[DisplayName("Stepper Small")] public int StepperSmall { get; set; } = 1;
+		[DisplayName("Stepper Large")] public int StepperLarge { get; set; } = 2;
 	}
 
 	readonly string _basicExample = @"<EditNumber @bind-Value=""_model.Int"" />
@@ -212,5 +251,23 @@ public int? WithPlaceholderAttribute { get; set; }";
 	readonly string _minMaxAttributeModel = @"[MinValue(0)]
 [MaxValue(100)]
 public int? WithMinMaxAttribute { get; set; }";
+
+	readonly string _stepperExample = @"<EditNumber @bind-Value=""_model.StepperBasic""
+          ShowStepper=""true"" />
+
+<!-- Value pinned at Max, so the plus button is disabled -->
+<EditNumber @bind-Value=""_model.StepperAtMax""
+          ShowStepper=""true""
+          Min=""0"" Max=""10"" />
+
+<!-- Fractional step -->
+<EditNumber @bind-Value=""_model.StepperDecimal""
+          ShowStepper=""true""
+          Step=""0.25m"" />
+
+<!-- Size variants line the buttons up with the editor -->
+<EditNumber @bind-Value=""_model.StepperSmall""
+          ShowStepper=""true""
+          Size=""SelectSize.Small"" />";
 
 }

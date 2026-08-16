@@ -1,4 +1,4 @@
-﻿@typeparam T
+@typeparam T
 @inherits EditTextControlBase<T>
 
 @if (ShouldShowComponent())
@@ -11,39 +11,35 @@
 
         @if (ShowEditor)
         {
-            @* @bind-value:event defaults to UpdateTrigger.Change (onchange), NOT Input (oninput):
-               browsers report type=number as "" while the text is a partial number ("-", "3.", "1e"),
-               so per-keystroke binding would flash "must be a number" mid-typing. Matches Microsoft's
-               InputNumber. See DefaultUpdateTrigger's doc comment in EditNumber.razor.cs for the
-               full rationale (UpdateOn itself now lives on EditTextControlBase<TValue>).
-               (Comment deliberately outside the tag — a Razor comment inside an attribute list
-               compiles into a literal attribute name and breaks setAttribute.) *@
-            <EditInputShell IsInvalid=@IsInvalid
-                            IsDisabled=@IsDisabled
-                            WrapperClass=@(EditInputShell.SizeClass(Size))
-                            Prefix=@Prefix
-                            Suffix=@Suffix>
-                @* Splat first so every explicit attribute below wins (inputmode/readonly/spellcheck/
-                   data-*/aria-* are the point; `class` travels CssClass and `style` the wrapper, so
-                   AttributeSplat.Rest withholds both). A null splat emits no frames at all. *@
-                <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
-                       type="number"
-                       disabled=@IsDisabled
-                       id=@_id
-                       data-test-id=@_id
-                       step=@EffectiveStep
-                       min=@(EffectiveMin?.ToString(CultureInfo.InvariantCulture))
-                       max=@(EffectiveMax?.ToString(CultureInfo.InvariantCulture))
-                       placeholder=@EffectivePlaceholder
-                       @bind-value=@CurrentValueAsString
-                       @bind-value:event="@UpdateEventName"
-                       class=@InputClass
-                       aria-labelledby="lbltext-@_id"
-                       aria-required=@_isRequired
-                       aria-invalid=@(IsInvalid ? "true" : null)
-                       aria-describedby=@_describedBy
-                       aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
-            </EditInputShell>
+            @* ShowStepper wraps the SAME editor fragment in a button group -- rendered from one
+               template rather than transcribed into both branches, so the default (no-stepper) branch
+               provably emits today's markup byte for byte. *@
+            @if (ShowStepper)
+            {
+                <div class="@StepperGroupClass">
+                    <button type="button"
+                            class="edit-number-step edit-number-step-down"
+                            tabindex="-1"
+                            disabled=@(IsDisabled || IsAtMin)
+                            aria-label=@EffectiveDecreaseButtonLabel
+                            @onclick="@(() => StepValue(-1))">
+                        @EditIcons.Minus
+                    </button>
+                    @EditorFragment
+                    <button type="button"
+                            class="edit-number-step edit-number-step-up"
+                            tabindex="-1"
+                            disabled=@(IsDisabled || IsAtMax)
+                            aria-label=@EffectiveIncreaseButtonLabel
+                            @onclick="@(() => StepValue(1))">
+                        @EditIcons.Plus
+                    </button>
+                </div>
+            }
+            else
+            {
+                @EditorFragment
+            }
         }
         else
         {
@@ -53,4 +49,44 @@
         <FieldValidationDisplay Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label />
         <BoundValueDisplay Text=@CurrentValueAsString />
     </div>
+}
+
+@code {
+    // The editor itself, factored out of the markup above so ShowStepper's group wrapper and the
+    // default branch render the exact same frames.
+    //
+    // @bind-value:event defaults to UpdateTrigger.Change (onchange), NOT Input (oninput): browsers
+    // report type=number as "" while the text is a partial number ("-", "3.", "1e"), so per-keystroke
+    // binding would flash "must be a number" mid-typing. Matches Microsoft's InputNumber. See
+    // DefaultUpdateTrigger's doc comment in EditNumber.razor.cs for the full rationale (UpdateOn
+    // itself now lives on EditTextControlBase<TValue>). (Comment deliberately outside the tag -- a
+    // Razor comment inside an attribute list compiles into a literal attribute name and breaks
+    // setAttribute.)
+    //
+    // Splat first so every explicit attribute below wins (inputmode/readonly/spellcheck/data-*/aria-*
+    // are the point; `class` travels CssClass and `style` the wrapper, so AttributeSplat.Rest
+    // withholds both). A null splat emits no frames at all.
+    RenderFragment EditorFragment => @<EditInputShell IsInvalid=@IsInvalid
+                                                      IsDisabled=@IsDisabled
+                                                      WrapperClass=@(EditInputShell.SizeClass(Size))
+                                                      Prefix=@Prefix
+                                                      Suffix=@Suffix>
+        <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+               type="number"
+               disabled=@IsDisabled
+               id=@_id
+               data-test-id=@_id
+               step=@EffectiveStep
+               min=@(EffectiveMin?.ToString(CultureInfo.InvariantCulture))
+               max=@(EffectiveMax?.ToString(CultureInfo.InvariantCulture))
+               placeholder=@EffectivePlaceholder
+               @bind-value=@CurrentValueAsString
+               @bind-value:event="@UpdateEventName"
+               class=@InputClass
+               aria-labelledby="lbltext-@_id"
+               aria-required=@_isRequired
+               aria-invalid=@(IsInvalid ? "true" : null)
+               aria-describedby=@_describedBy
+               aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
+    </EditInputShell>;
 }

@@ -71,20 +71,12 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     /// </summary>
     [Parameter] public string? ClearButtonLabel { get; set; }
 
-    /// <summary>
-    /// The field's resolved label text -- same precedence <see cref="FormLabel"/>'s own internal
-    /// resolution uses (the <see cref="IEditControl.Label"/> parameter, else <c>GetLabelText</c>'s
-    /// model-attribute chain, which always falls through to the auto-generated property name) --
-    /// computed independently here because <see cref="FormLabel"/> keeps its resolved label private.
-    /// Used to fold the field's identity into this control's generic icon-only button names so they
-    /// don't collide across fields (TXT-4): <see cref="EffectiveClearButtonLabel"/> here, plus
-    /// <see cref="EditString"/>'s own password-toggle and masked-value-toggle names.
-    /// </summary>
-    protected string ResolvedLabel => Label ?? _attributes.GetLabelText(_fieldIdentifier);
+    // ResolvedLabel -- the field-identity half of EffectiveClearButtonLabel below -- moved up to
+    // EditTextControlBase<TValue> once EditNumber<T>'s stepper buttons needed the same folding.
 
     /// <summary>
     /// The clear button's accessible name actually rendered: the <see cref="ClearButtonLabel"/>
-    /// parameter, else <c>"Clear {<see cref="ResolvedLabel"/>}"</c>. Passed to
+    /// parameter, else <c>"Clear {<see cref="EditTextControlBase{TValue}.ResolvedLabel"/>}"</c>. Passed to
     /// <see cref="EditInputShell.ClearButtonLabel"/>, whose own generic "Clear" fallback only applies
     /// when a host passes nothing at all.
     /// </summary>

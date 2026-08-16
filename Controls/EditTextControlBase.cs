@@ -79,4 +79,18 @@ public abstract class EditTextControlBase<TValue> : EditControlBase<TValue>
 
     /// <summary> The resolved DOM event name ("oninput" or "onchange") driving <c>@bind-value:event</c>, per <see cref="UpdateOn"/>'s resolution order.</summary>
     protected string UpdateEventName => ResolveUpdateEvent(UpdateOn, DefaultUpdateTrigger);
+
+    /// <summary>
+    /// The field's resolved label text -- same precedence <see cref="FormLabel"/>'s own internal
+    /// resolution uses (the <see cref="IEditControl.Label"/> parameter, else <c>GetLabelText</c>'s
+    /// model-attribute chain, which always falls through to the auto-generated property name) --
+    /// computed independently here because <see cref="FormLabel"/> keeps its resolved label private.
+    /// Used to fold the field's identity into a control's generic icon-only button names so they
+    /// don't collide across fields (TXT-4): <see cref="EditTextInputBase.EffectiveClearButtonLabel"/>
+    /// and <see cref="EditString"/>'s password/masked-value toggles, plus
+    /// <see cref="EditNumber{T}"/>'s stepper buttons -- which is why this sits here rather than one
+    /// level down on <see cref="EditTextInputBase"/> (where it used to live, before the numeric
+    /// control needed it too).
+    /// </summary>
+    protected string ResolvedLabel => Label ?? _attributes.GetLabelText(_fieldIdentifier);
 }

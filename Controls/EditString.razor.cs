@@ -136,7 +136,7 @@ public partial class EditString : EditTextInputBase
 
     /// <summary>
     /// The password toggle's accessible name actually rendered: the
-    /// <see cref="ShowPasswordButtonLabel"/> parameter, else <c>"Show {<see cref="EditTextInputBase.ResolvedLabel"/>} password"</c>.
+    /// <see cref="ShowPasswordButtonLabel"/> parameter, else <c>"Show {<see cref="EditTextControlBase{TValue}.ResolvedLabel"/>} password"</c>.
     /// </summary>
     string EffectiveShowPasswordButtonLabel => ShowPasswordButtonLabel ?? $"Show {ResolvedLabel} password";
 
@@ -149,7 +149,7 @@ public partial class EditString : EditTextInputBase
 
     /// <summary>
     /// The masked-row toggle's accessible name actually rendered: the <see cref="ShowValueButtonLabel"/>
-    /// parameter, else <c>"Show {<see cref="EditTextInputBase.ResolvedLabel"/>} value"</c>.
+    /// parameter, else <c>"Show {<see cref="EditTextControlBase{TValue}.ResolvedLabel"/>} value"</c>.
     /// </summary>
     string EffectiveShowValueButtonLabel => ShowValueButtonLabel ?? $"Show {ResolvedLabel} value";
 

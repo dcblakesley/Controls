@@ -112,6 +112,133 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// </summary>
     string? EffectivePlaceholder => Placeholder ?? _attributes.Placeholder();
 
+    /// <summary>
+    /// Opt-in AntD-style stepper: renders a minus button before the editor and a plus button after
+    /// it, as one joined input group. Off by default, and while off this control renders exactly
+    /// today's markup -- no group wrapper, no buttons (see <see cref="StepperGroupClass"/>). Each
+    /// press moves the value by <see cref="StepAmount"/>, clamped to
+    /// <see cref="EffectiveMin"/>/<see cref="EffectiveMax"/>.
+    /// </summary>
+    /// <remarks>
+    /// Two deliberate deviations from AntD's <c>InputNumber</c> handlers. The buttons are laid out
+    /// horizontally (flanking the editor) rather than stacked up/down inside the box, so they stay a
+    /// comfortable pointer target at every <see cref="EditTextControlBase{TValue}.Size"/> without the
+    /// two 16px-tall halves AntD's vertical stack produces. And there is no press-and-hold
+    /// auto-repeat: a held button steps once. Keyboard users step with the native input's own
+    /// Up/Down arrows -- which is why the buttons carry <c>tabindex="-1"</c> and are not tab stops
+    /// (matching AntD's own handlers): tabbing through a form should not have to pass three stops per
+    /// numeric field to reach the next one.
+    /// </remarks>
+    [Parameter] public bool ShowStepper { get; set; }
+
+    /// <summary>
+    /// Overrides the stepper's decrement-button accessible name (default:
+    /// <c>"Decrease {ResolvedLabel}"</c>, e.g. "Decrease Quantity"). Folding the field's own label in
+    /// follows the same rule as <see cref="EditTextInputBase.ClearButtonLabel"/>: a form with two
+    /// stepper fields otherwise renders two buttons both named "Decrease", which a screen-reader user
+    /// browsing a button list can't tell apart. No effect unless <see cref="ShowStepper"/> is set.
+    /// </summary>
+    [Parameter] public string? DecreaseButtonLabel { get; set; }
+
+    /// <summary> Overrides the stepper's increment-button accessible name (default: <c>"Increase {ResolvedLabel}"</c>) -- see <see cref="DecreaseButtonLabel"/>.</summary>
+    [Parameter] public string? IncreaseButtonLabel { get; set; }
+
+    /// <summary> The decrement button's accessible name actually rendered: the <see cref="DecreaseButtonLabel"/> parameter, else <c>"Decrease {<see cref="EditTextControlBase{TValue}.ResolvedLabel"/>}"</c>.</summary>
+    string EffectiveDecreaseButtonLabel => DecreaseButtonLabel ?? $"Decrease {ResolvedLabel}";
+
+    /// <summary> The increment button's accessible name actually rendered: the <see cref="IncreaseButtonLabel"/> parameter, else <c>"Increase {<see cref="EditTextControlBase{TValue}.ResolvedLabel"/>}"</c>.</summary>
+    string EffectiveIncreaseButtonLabel => IncreaseButtonLabel ?? $"Increase {ResolvedLabel}";
+
+    /// <summary>
+    /// The stepper group's class list -- <c>edit-number-stepper</c> plus this control's
+    /// <see cref="EditInputShell.SizeClass"/> token, so the buttons track the same
+    /// <c>--edit-control-height-sm/-lg</c> the editor beside them does. Only ever consulted inside the
+    /// <see cref="ShowStepper"/> branch, so a default-mode render emits no group element at all.
+    /// </summary>
+    string StepperGroupClass => $"edit-number-stepper {EditInputShell.SizeClass(Size)}".TrimEnd();
+
+    /// <summary>
+    /// How far one stepper press moves the value: the explicitly-configured step (the
+    /// <see cref="Step"/> parameter, else the model property's <c>[Step]</c>) when it's a positive
+    /// number, otherwise 1. The fallback covers both shapes <see cref="EffectiveStep"/> renders
+    /// without a number -- <c>"any"</c> for a non-integral <typeparamref name="T"/> and no attribute
+    /// at all for an integral one -- since both mean "the control imposes no increment", and a
+    /// press still has to move by something. A non-positive configured step falls back too: stepping
+    /// by zero is a no-op button and stepping by a negative would invert both arrows.
+    /// </summary>
+    decimal StepAmount => (Step ?? _attributes.Step()) is { } step && step > 0 ? step : 1m;
+
+    /// <summary>
+    /// True once the bound value already sits at or past <see cref="EffectiveMin"/> -- the press would
+    /// clamp straight back to where it started, so the button is natively <c>disabled</c> rather than
+    /// silently doing nothing (which also removes it from the accessibility tree's actionable set).
+    /// An empty (null) value is never "at" a bound: its first press steps from zero.
+    /// </summary>
+    bool IsAtMin => IsAtBound(EffectiveMin, -1);
+
+    /// <summary> True once the bound value already sits at or past <see cref="EffectiveMax"/> -- see <see cref="IsAtMin"/>.</summary>
+    bool IsAtMax => IsAtBound(EffectiveMax, 1);
+
+    bool IsAtBound(decimal? bound, int direction)
+    {
+        if (bound is not { } limit || CurrentValue is null || !TryGetDecimalValue(out var current)) return false;
+        return direction < 0 ? current <= limit : current >= limit;
+    }
+
+    /// <summary>
+    /// Moves the bound value by <paramref name="direction"/> x <see cref="StepAmount"/>, clamped to
+    /// whichever of <see cref="EffectiveMin"/>/<see cref="EffectiveMax"/> is set, and commits through
+    /// <see cref="InputBase{TValue}.CurrentValueAsString"/> -- the same parse/validate/notify path a
+    /// typed entry takes, so the decimal-to-<typeparamref name="T"/> conversion, the
+    /// <see cref="ParsingErrorMessage"/> and the field-changed notification all come for free. (A
+    /// fractional <see cref="Step"/> on an integral <typeparamref name="T"/> therefore surfaces as a
+    /// parse error rather than being silently rounded -- it's a consumer configuration error, and the
+    /// native input's own arrows behave the same way.)
+    /// </summary>
+    void StepValue(int direction)
+    {
+        // Belt-and-braces: the buttons are natively disabled while the control is, so this only fires
+        // if something dispatches the click programmatically.
+        if (IsDisabled) return;
+
+        decimal next;
+        try
+        {
+            // Boxed, because T carries no numeric constraint -- same reason FormatNumber switches on
+            // the CLR type rather than an interface. A null (empty nullable) value steps from zero, so
+            // the first press on an empty field yields +/- one step instead of nothing.
+            var current = CurrentValue is null ? 0m : Convert.ToDecimal(CurrentValue, CultureInfo.InvariantCulture);
+            next = current + direction * StepAmount;
+        }
+        catch (OverflowException)
+        {
+            // A double/float bound outside decimal's range, or a step that would carry the value past
+            // decimal.MaxValue. Drop the press rather than throw out of the click handler.
+            return;
+        }
+
+        if (EffectiveMin is { } min && next < min) next = min;
+        if (EffectiveMax is { } max && next > max) next = max;
+
+        CurrentValueAsString = next.ToString(CultureInfo.InvariantCulture);
+    }
+
+    // CurrentValue as a decimal, false when it doesn't fit in one (a double/float beyond decimal's
+    // range). Only reached with a non-null CurrentValue.
+    bool TryGetDecimalValue(out decimal value)
+    {
+        try
+        {
+            value = Convert.ToDecimal(CurrentValue, CultureInfo.InvariantCulture);
+            return true;
+        }
+        catch (OverflowException)
+        {
+            value = 0m;
+            return false;
+        }
+    }
+
     /// <summary> Optional leading affix content (e.g. a currency symbol or icon), rendered by <see cref="EditInputShell"/>. Setting this switches the control into the shell's AntD-style affix layout.</summary>
     [Parameter] public RenderFragment? Prefix { get; set; }
 

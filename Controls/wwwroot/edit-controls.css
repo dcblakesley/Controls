@@ -153,7 +153,8 @@
    outline — consumers commonly reset it — so a visible :focus-visible ring is shipped as a baseline
    a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. Grouped with the
    icon-button family (EditString's mask toggles, EditInputShell's affix clear/password-toggle
-   buttons, further down this file) -- they share this exact 3-property ring; mirrors how
+   buttons, EditNumber's opt-in stepper buttons -- all further down this file) -- they share this
+   exact 3-property ring; mirrors how
    wss-controls.css's own Accessibility section groups its focus rings. Also grouped here:
    .edit-string-link (the read-only URL view -- an <a>, so it has no other focus indicator once a
    consumer resets the UA default), .edit-file-delete-btn (its own :focus-visible{opacity:1} rule,
@@ -170,6 +171,7 @@
 .edit-icon-eye-invisible:focus-visible,
 .edit-input-clear:focus-visible,
 .edit-input-password-toggle:focus-visible,
+.edit-number-step:focus-visible,
 .edit-string-link:focus-visible,
 .edit-file-delete-btn:focus-visible,
 .edit-file-name-link:focus-visible {
@@ -374,6 +376,108 @@
 
 /************************************************ EditNumber *********************************************/
 .edit-number-input {}
+
+/* EditNumber stepper (opt-in ShowStepper) -- a minus button before the editor and a plus button
+   after it, joined into one AntD-style input group. Like the button-mode radio above (and unlike
+   edit-input-sm/-lg), this is NOT gated behind .edit-theme: the group is an explicit opt-in that has
+   to look like a control on its own, so the base rules below carry a minimal functional chrome and
+   the .edit-theme section further down only adds the AntD hover/focus/disabled palette on top. Every
+   token here therefore takes a literal fallback -- --edit-control-height and friends are declared
+   only on .edit-theme, so unthemed the buttons stay at the same 32/24/40px the button-mode radio
+   uses, and inside a themed scope they track the consumer's own tokens. */
+.edit-number-stepper {
+    display: inline-flex;
+    /* stretch, so the buttons and the editor's wrapper all take the row's height (the tallest item,
+       i.e. the buttons' own min-height floor) instead of each sizing to its own content. */
+    align-items: stretch;
+    /* .edit-control-wrapper is a column flex container, whose default align-items: stretch would blow
+       this group out to the full control column and strand the plus button far from the editor.
+       Shrink-wrapping keeps the three boxes adjacent, which is the whole point of the group. */
+    align-self: flex-start;
+}
+
+.edit-number-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* min-height + min-width, never a fixed height: consuming apps in this workspace globally reset
+       buttons with `max-height: fit-content`, which collapses a fixed height outright -- a floor
+       survives that reset. (Same reasoning as .edit-radio-button/.edit-file-select-btn above, which
+       document the WCAG 1.4.12 half of it: a user stylesheet raising line-height must be able to grow
+       the box rather than have its glyph clipped.) The square min-width also puts the target on
+       WCAG 2.5.8's 24x24 floor at every size. */
+    min-height: var(--edit-control-height, 32px);
+    min-width: var(--edit-control-height, 32px);
+    padding: 0;
+    font-size: 14px;
+    line-height: 1;
+    color: var(--color-text, #262626);
+    background: var(--color-bg, #fff);
+    border: 1px solid var(--edit-color-border);
+    cursor: pointer;
+    user-select: none;
+    /* position + z-index so the hover/focus rules further down can lift a button's own border over
+       the 1px it shares with the editor (see the negative margins below). */
+    position: relative;
+    transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+}
+
+/* Outer corners only, and the adjoining borders collapse into one via a -1px pull -- the joined-group
+   recipe .edit-radio-button already uses. Logical corner longhands (not the physical `border-radius`
+   shorthand) so the group reads correctly under dir="rtl", where the decrement button is on the
+   right. The zeroes are explicit: a UA stylesheet gives <button> its own default radius. */
+.edit-number-step-down {
+    border-start-start-radius: var(--edit-radius, 2px);
+    border-end-start-radius: var(--edit-radius, 2px);
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+    margin-inline-end: -1px;
+}
+
+.edit-number-step-up {
+    border-start-end-radius: var(--edit-radius, 2px);
+    border-end-end-radius: var(--edit-radius, 2px);
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    margin-inline-start: -1px;
+}
+
+/* Unthemed disabled state (at a bound, or the whole control disabled). The .edit-theme rule further
+   down replaces this with the theme's own disabled palette -- it resets opacity, since dimming an
+   already-dimmed color twice reads as missing rather than unavailable. */
+.edit-number-step:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Native spinners are redundant once the stepper buttons render (and AntD's InputNumber hides them
+   for the same reason). Scoped to the group, so a default-mode EditNumber keeps them -- that remains
+   the documented deviation from AntD for every non-stepper instance. */
+.edit-number-stepper input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.edit-number-stepper input[type="number"]::-webkit-outer-spin-button,
+.edit-number-stepper input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+/* Size variants reuse the editor's own edit-input-sm/-lg vocabulary (EditInputShell.SizeClass puts
+   the same token on the group, the affix wrapper and the editor), so the flanking buttons line up
+   with whatever height the editor beside them takes. */
+.edit-number-stepper.edit-input-sm .edit-number-step {
+    min-height: var(--edit-control-height-sm, 24px);
+    min-width: var(--edit-control-height-sm, 24px);
+}
+
+.edit-number-stepper.edit-input-lg .edit-number-step {
+    min-height: var(--edit-control-height-lg, 40px);
+    min-width: var(--edit-control-height-lg, 40px);
+    font-size: var(--edit-font-size-lg, 16px);
+}
 
 /************************************************ EditRadio(String and Enum) *****************************/
 .edit-radio-fieldset { }
@@ -1437,7 +1541,9 @@
  * buttons carry no `.edit-input`-family class at all. Native <select> keeps its default
  * `appearance: auto` -- this section never sets `appearance`, so the browser's own dropdown arrow
  * is untouched; replacing it is out of scope. Number inputs keep their native spinner buttons
- * (documented deviation -- no custom handler buttons here).
+ * (documented deviation -- no custom handler buttons here) unless the consumer opts into
+ * EditNumber's own `ShowStepper` group, whose chrome lives in the EditNumber stepper block above
+ * (ungated, like the button-mode radio) and only picks up this section's palette.
  * ============================================================================ */
 
 .edit-theme {
@@ -1637,6 +1743,45 @@
     font-size: var(--edit-font-size-lg);
 }
 
+/* EditNumber's opt-in stepper group (ShowStepper). The base rules in the EditNumber section above
+   already give the buttons their box, joined corners and collapsed borders -- this only adds the
+   theme's palette: the AntD secondary icon tint at rest, the primary on hover, and the theme's own
+   disabled colors instead of the unthemed opacity dim.
+
+   The editor between the buttons has to give up its own corner radii, or the group renders as three
+   separately-rounded boxes. Both editor shapes are listed (legacy `.edit-input` and affix-mode's
+   `.edit-input-affix-wrapper`), each matching the shape of the base chrome rule that set the radius
+   in the first place, so the selectors tie its specificity and win on source order -- the same
+   technique the `.invalid:focus` and `-sm`/`-lg` rules above document. */
+.edit-theme .edit-number-stepper .edit-input:not(.edit-affix-input):not([type="checkbox"]),
+.edit-theme .edit-number-stepper .edit-input-affix-wrapper {
+    border-radius: 0;
+}
+
+.edit-theme .edit-number-step {
+    font-size: var(--edit-font-size);
+    color: var(--edit-color-text-secondary);
+}
+
+/* Hover mirrors the editor's own themed hover (same color-mix derived AT THE USAGE SITE, never baked
+   into a token -- see the theming contract in CLAUDE.md), plus the primary as the glyph color so the
+   pointer target reads as live. z-index lifts the hovered button's shared 1px border over the
+   editor's. */
+.edit-theme .edit-number-step:not(:disabled):hover {
+    z-index: 2;
+    color: var(--edit-color-primary);
+    border-color: var(--edit-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--edit-color-primary) 82%, #fff)));
+}
+
+/* opacity back to 1: the theme's disabled color/background already carry the state, and stacking the
+   unthemed 0.6 dim on top of them reads as a rendering fault rather than an unavailable control. */
+.edit-theme .edit-number-step:disabled {
+    color: var(--edit-color-text-disabled);
+    background: var(--edit-color-bg-disabled);
+    border-color: var(--edit-color-border);
+    opacity: 1;
+}
+
 /* EditString/EditTextArea/EditNumber's legacy-mode (non-affix) editor reserves this same 2rem at its
    trailing edge for InvalidIcon inside .edit-input-with-icon above -- previously an inline
    `style="padding-inline-end: 2rem"` hand-duplicated on all three. An inline style always wins over
@@ -1674,6 +1819,7 @@
     .edit-input-password-toggle,
     .edit-icon-eye,
     .edit-icon-eye-invisible,
+    .edit-number-step,
     .edit-file-delete-btn {
         display: none !important;
     }
@@ -1752,6 +1898,7 @@
     .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]),
     .edit-theme .edit-input-affix-wrapper,
     .edit-radio-button,
+    .edit-number-step,
     .edit-file-select-btn {
         transition: none;
     }
