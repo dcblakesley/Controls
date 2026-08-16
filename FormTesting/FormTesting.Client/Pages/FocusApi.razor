@@ -59,7 +59,9 @@
 
     readonly Model _model = new();
     readonly List<string> _tagOptions = ["a", "b", "c"];
-    readonly List<SelectOption<string>> _choices = [new("alpha", "Alpha"), new("beta", "Beta")];
+    // SelectOption<string?>, not <string>: the control's TValue is inferred from the bound
+    // `_model.Choice`, which is `string?` -- matching it here keeps the Options argument off CS8620.
+    readonly List<SelectOption<string?>> _choices = [new("alpha", "Alpha"), new("beta", "Beta")];
 
     EditString? _string;
     EditString? _readOnly;
@@ -68,7 +70,7 @@
     EditRadioEnum<PriorityLevel?>? _radio;
     EditCheckedStringList? _list;
     EditDateRange? _range;
-    EditSelectSearch<string>? _search;
+    EditSelectSearch<string?>? _search;
 
     async Task FocusStringAsync() => await _string!.FocusAsync();
     async Task FocusNumberAsync() => await _number!.FocusAsync();
