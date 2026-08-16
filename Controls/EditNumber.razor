@@ -65,13 +65,21 @@
     //
     // Splat first so every explicit attribute below wins (inputmode/readonly/spellcheck/data-*/aria-*
     // are the point; `class` travels CssClass and `style` the wrapper, so AttributeSplat.Rest
-    // withholds both). A null splat emits no frames at all.
-    RenderFragment EditorFragment => @<EditInputShell IsInvalid=@IsInvalid
-                                                      IsDisabled=@IsDisabled
-                                                      WrapperClass=@(EditInputShell.SizeClass(Size))
-                                                      Prefix=@Prefix
-                                                      Suffix=@Suffix>
-        <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+    // withholds both). A null splat emits no frames at all. `list` rides EditorAttributes (merged in
+    // C#) rather than its own explicit attribute here -- see EditorAttributes' remarks: an explicit
+    // frame wins outright over an earlier same-named one even when its own value is null, which would
+    // erase a consumer's splatted `list` the instant Suggestions is unset.
+    // Wrapped in <text> (rather than a bare @<EditInputShell>) so the datalist below can render as its
+    // sibling -- an inline markup block can only have one top-level element otherwise. See
+    // EditString.razor's identical placement remark: a closed <datalist> has no box per spec, so it
+    // belongs next to the shell, not inside the Prefix/Suffix layout it owns.
+    RenderFragment EditorFragment => @<text>
+    <EditInputShell IsInvalid=@IsInvalid
+                    IsDisabled=@IsDisabled
+                    WrapperClass=@(EditInputShell.SizeClass(Size))
+                    Prefix=@Prefix
+                    Suffix=@Suffix>
+        <input @attributes="EditorAttributes"
                type="number"
                @ref="_editorRef"
                disabled=@IsDisabled
@@ -89,5 +97,15 @@
                aria-invalid=@(IsInvalid ? "true" : null)
                aria-describedby=@_describedBy
                aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
-    </EditInputShell>;
+    </EditInputShell>
+    @if (SuggestionsListId is not null)
+    {
+        <datalist id="@SuggestionsListId">
+            @foreach (var suggestion in Suggestions!)
+            {
+                <option value="@suggestion"></option>
+            }
+        </datalist>
+    }
+    </text>;
 }

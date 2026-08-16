@@ -246,6 +246,33 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     [Parameter] public RenderFragment? Suffix { get; set; }
 
     /// <summary>
+    /// Open-vocabulary autofill hints, rendered as an HTML <c>&lt;datalist&gt;</c> wired to the input
+    /// via <c>list=</c> -- same feature and contract as <see cref="EditString.Suggestions"/> (see its
+    /// remarks for the null-vs-empty distinction and why this differs from the closed-vocabulary Select
+    /// controls). <c>list</c> is valid on <c>type="number"</c>, and EditNumber has no password mode to
+    /// suppress it for.
+    /// </summary>
+    [Parameter] public IEnumerable<string>? Suggestions { get; set; }
+
+    /// <summary>
+    /// The id of the <c>&lt;datalist&gt;</c> this control renders (and the input's <c>list=</c> points
+    /// at), or null when <see cref="Suggestions"/> is unset. Named <c>dl-{id}</c>, matching
+    /// <see cref="EditString.SuggestionsListId"/>'s id shape.
+    /// </summary>
+    string? SuggestionsListId => Suggestions is not null ? $"dl-{_id}" : null;
+
+    /// <summary>
+    /// The input's full <c>@attributes</c> splat: the consumer's unmatched attributes with the
+    /// <c>list</c> contribution layered on top -- see <see cref="EditString.EditorAttributes"/>'s
+    /// remarks for why <c>list</c> must be folded into this dictionary rather than written as its own
+    /// explicit attribute (a null explicit frame there would erase a consumer's splatted <c>list</c>
+    /// outright the instant <see cref="Suggestions"/> is unset, not merely omit itself).
+    /// </summary>
+    IReadOnlyDictionary<string, object>? EditorAttributes =>
+        AttributeSplat.RestWith(AdditionalAttributes,
+            SuggestionsListId is { } id ? new Dictionary<string, object>(1) { ["list"] = id } : null);
+
+    /// <summary>
     /// Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal
     /// places). Falls back to the bound property's <c>[DisplayFormat(DataFormatString = …)]</c> when
     /// unset -- see <see cref="EffectiveFormat"/>.
