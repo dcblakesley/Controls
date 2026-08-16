@@ -189,8 +189,8 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
 
     // ───────────────────────────── programmatic focus ─────────────────────────────
 
-    /// <inheritdoc cref="EditControlBase{TValue}.AutoFocus"/>
-    [Parameter] public bool AutoFocus { get; set; }
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusOnFirstRender"/>
+    [Parameter] public bool FocusOnFirstRender { get; set; }
 
     /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
     /// <remarks>
@@ -213,7 +213,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
-        if (firstRender && AutoFocus) await FocusAsync();
+        if (firstRender && FocusOnFirstRender) await FocusAsync();
     }
 
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>

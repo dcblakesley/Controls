@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using AngleSharp.Dom;
 using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -7,7 +8,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// Covers the public <c>FocusAsync()</c> every Edit* control exposes, and the <c>AutoFocus</c>
+/// Covers the public <c>FocusAsync()</c> every Edit* control exposes, and the <c>FocusOnFirstRender</c>
 /// parameter that calls it once after first render.
 /// </summary>
 /// <remarks>
@@ -397,10 +398,59 @@ public class FocusApiTests : BunitContext
         Assert.Single(GroupFocusCalls()); // issued, harmless, and no exception reached the caller
     }
 
-    // ───────────────────────────────── AutoFocus ─────────────────────────────────
+    // ─────────────────── the native `autofocus` attribute must still splat ───────────────────
+
+    // Renders an EditString carrying one extra unmatched attribute, and hands back the inner input.
+    IElement RenderWithExtraAttribute(FocusModel model, string name, object value)
+    {
+        var cut = RenderControl(model, b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Text);
+            b.AddAttribute(2, "ValueExpression", (Expression<Func<string>>)(() => model.Text));
+            b.AddAttribute(3, name, value);
+            b.CloseComponent();
+        });
+        return cut.Find("input#Text");
+    }
 
     [Fact]
-    public void AutoFocus_defaults_off_so_rendering_a_control_focuses_nothing()
+    public void Native_autofocus_reaches_the_input_and_does_not_bind_to_a_component_parameter()
+    {
+        // THE regression pin for a whole defect class. Blazor matches component parameter names
+        // case-INSENSITIVELY -- both the Razor compiler and ComponentProperties, which looks names up
+        // with StringComparer.OrdinalIgnoreCase. So a [Parameter] spelled `AutoFocus` silently SWALLOWS
+        // the native `autofocus` attribute: `<EditString autofocus />` compiles to a parameter
+        // assignment, the attribute never reaches the DOM, and the browser's own pre-hydration focus is
+        // replaced by a post-first-render JS call. (`autofocus="autofocus"` was worse: a build error on
+        // a literal, an InvalidOperationException string->bool cast from a runtime splat.) The
+        // parameter is named FocusOnFirstRender precisely so this can't happen -- no HTML attribute is
+        // spelled that way.
+        var model = new FocusModel();
+
+        var input = RenderWithExtraAttribute(model, "autofocus", true);
+
+        Assert.True(input.HasAttribute("autofocus"));
+        Assert.Equal(0, ElementFocusCalls()); // native attribute only -- no programmatic focus
+    }
+
+    [Fact]
+    public void Native_autofocus_with_a_string_value_reaches_the_input_too()
+    {
+        // The XHTML spelling `autofocus="autofocus"`, which is also the shape a wrapper component
+        // produces when it splats a runtime attribute dictionary rather than writing the literal.
+        var model = new FocusModel();
+
+        var input = RenderWithExtraAttribute(model, "autofocus", "autofocus");
+
+        Assert.Equal("autofocus", input.GetAttribute("autofocus"));
+        Assert.Equal(0, ElementFocusCalls());
+    }
+
+    // ───────────────────────────── FocusOnFirstRender ─────────────────────────────
+
+    [Fact]
+    public void FocusOnFirstRender_defaults_off_so_rendering_a_control_focuses_nothing()
     {
         RenderByName(nameof(EditString), new FocusModel());
 
@@ -414,7 +464,7 @@ public class FocusApiTests : BunitContext
     [InlineData(nameof(EditFile))]        // EditControlListBase's copy of the hook
     [InlineData(nameof(EditDateRange))]   // EditDateRange's own copy (it shares no base with the rest)
     [InlineData(nameof(EditTextArea))]    // overrides OnAfterRenderAsync itself -- must still chain
-    public async Task AutoFocus_focuses_once_on_first_render(string control)
+    public async Task FocusOnFirstRender_focuses_once_on_first_render(string control)
     {
         var model = new FocusModel();
         Expression<Func<string>> text = () => model.Text;
@@ -461,7 +511,7 @@ public class FocusApiTests : BunitContext
                     b.AddAttribute(4, "EndExpression", end);
                     break;
             }
-            b.AddAttribute(90, "AutoFocus", true);
+            b.AddAttribute(90, "FocusOnFirstRender", true);
             b.CloseComponent();
         });
 
@@ -474,7 +524,7 @@ public class FocusApiTests : BunitContext
     }
 
     [Fact]
-    public async Task AutoFocus_on_a_radio_group_goes_through_the_group_channel()
+    public async Task FocusOnFirstRender_on_a_radio_group_goes_through_the_group_channel()
     {
         var model = new FocusModel();
         Expression<Func<Priority?>> field = () => model.Priority;
@@ -483,7 +533,7 @@ public class FocusApiTests : BunitContext
             b.OpenComponent<EditRadioEnum<Priority?>>(0);
             b.AddAttribute(1, "Value", model.Priority);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "AutoFocus", true);
+            b.AddAttribute(3, "FocusOnFirstRender", true);
             b.CloseComponent();
         });
 
@@ -492,10 +542,10 @@ public class FocusApiTests : BunitContext
     }
 
     [Fact]
-    public async Task AutoFocus_on_EditRadio_goes_through_its_own_hook()
+    public async Task FocusOnFirstRender_on_EditRadio_goes_through_its_own_hook()
     {
-        // EditRadio inherits InputRadioGroup, so it carries its own copy of the AutoFocus hook rather
-        // than either control base's -- pinned separately for exactly that reason.
+        // EditRadio inherits InputRadioGroup, so it carries its own copy of the FocusOnFirstRender
+        // hook rather than either control base's -- pinned separately for exactly that reason.
         var model = new FocusModel();
         Expression<Func<string>> field = () => model.Text;
         RenderControl(model, b =>
@@ -503,7 +553,7 @@ public class FocusApiTests : BunitContext
             b.OpenComponent<EditRadio<string>>(0);
             b.AddAttribute(1, "Value", model.Text);
             b.AddAttribute(2, "ValueExpression", field);
-            b.AddAttribute(3, "AutoFocus", true);
+            b.AddAttribute(3, "FocusOnFirstRender", true);
             b.AddAttribute(4, "ChildContent", (RenderFragment)(cb =>
             {
                 cb.OpenComponent<InputRadio<string>>(0);

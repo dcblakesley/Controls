@@ -55,8 +55,8 @@ public partial class EditDateRange : IDisposable
     // first render, which FocusAsync below reads as "nothing to focus".
     DateRangePicker? _picker;
 
-    /// <inheritdoc cref="EditControlBase{TValue}.AutoFocus"/>
-    [Parameter] public bool AutoFocus { get; set; }
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusOnFirstRender"/>
+    [Parameter] public bool FocusOnFirstRender { get; set; }
 
     /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
     /// <remarks>
@@ -70,7 +70,7 @@ public partial class EditDateRange : IDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
-        if (firstRender && AutoFocus) await FocusAsync();
+        if (firstRender && FocusOnFirstRender) await FocusAsync();
     }
 
     /// <summary>

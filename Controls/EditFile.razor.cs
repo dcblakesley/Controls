@@ -561,9 +561,9 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Chained FIRST, and unconditionally: the base honors AutoFocus on the first render, and the
-        // early return below fires on every render where no post-remove focus is pending -- which is
-        // all of them, including the first.
+        // Chained FIRST, and unconditionally: the base honors FocusOnFirstRender on the first render,
+        // and the early return below fires on every render where no post-remove focus is pending --
+        // which is all of them, including the first.
         await base.OnAfterRenderAsync(firstRender);
         if (_pendingFocusId is null) return;
         var id = _pendingFocusId;

@@ -14,7 +14,7 @@
    any assertion that focus is on the field afterwards can only pass if FocusAsync actually moved it. *@
 
 <EditForm Model="_model">
-    <EditString @ref="_string" @bind-Value="_model.Text" AutoFocus="@(Auto == "string")" />
+    <EditString @ref="_string" @bind-Value="_model.Text" FocusOnFirstRender="@(Auto == "string")" />
 
     <EditNumber @ref="_number" @bind-Value="_model.Number" />
 
@@ -52,7 +52,7 @@
 </div>
 
 @code {
-    // "string" turns AutoFocus on for the first EditString, so the e2e suite can assert the
+    // "string" turns FocusOnFirstRender on for the first EditString, so the e2e suite can assert the
     // declarative form lands focus on load without a second page.
     [SupplyParameterFromQuery(Name = "auto")]
     public string? Auto { get; set; }

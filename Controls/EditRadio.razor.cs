@@ -82,8 +82,8 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 
-    /// <inheritdoc cref="EditControlBase{TValue}.AutoFocus"/>
-    [Parameter] public bool AutoFocus { get; set; }
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusOnFirstRender"/>
+    [Parameter] public bool FocusOnFirstRender { get; set; }
 
     string _id = string.Empty;
     string? _isRequired;
@@ -182,7 +182,7 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
-        if (firstRender && AutoFocus) await FocusAsync();
+        if (firstRender && FocusOnFirstRender) await FocusAsync();
     }
 
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);

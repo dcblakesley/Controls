@@ -168,10 +168,10 @@ public class FocusApiE2ETests : IAsyncLifetime
         await ExpectFocusMovesAsync("focus-string", "input#Text");
     }
 
-    // ───────────────────────────────── AutoFocus ─────────────────────────────────
+    // ───────────────────────────────── FocusOnFirstRender ─────────────────────────────────
 
     [Fact]
-    public async Task AutoFocus_lands_focus_on_the_control_once_the_page_is_interactive()
+    public async Task FocusOnFirstRender_lands_focus_on_the_control_once_the_page_is_interactive()
     {
         // The declarative form, and the reason the caveat is documented: the focus can't happen during
         // prerender (this page renders InteractiveWebAssembly with prerendering on), so it lands on the
@@ -182,7 +182,7 @@ public class FocusApiE2ETests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AutoFocus_defaults_off_so_a_plain_load_focuses_nothing()
+    public async Task FocusOnFirstRender_defaults_off_so_a_plain_load_focuses_nothing()
     {
         await GotoAsync();
 

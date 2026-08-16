@@ -133,20 +133,33 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// nothing about an existing control changes until it is set.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// <b>Deliberately not named <c>AutoFocus</c>.</b> Blazor matches component parameter names
+    /// case-INSENSITIVELY (the Razor compiler, and <c>ComponentProperties</c>, which looks them up with
+    /// <see cref="StringComparer.OrdinalIgnoreCase"/>), so a parameter spelled <c>AutoFocus</c> would
+    /// swallow the native <c>autofocus</c> attribute instead of letting it splat: <c>&lt;EditString
+    /// autofocus /&gt;</c> would silently become a parameter assignment (losing the browser's own
+    /// pre-hydration focus), <c>autofocus="autofocus"</c> would be a build error, and a wrapper splatting
+    /// a runtime attribute dictionary would throw a string→bool cast failure. No HTML attribute is
+    /// spelled <c>focusonfirstrender</c>, so this name can't collide — and the two mechanisms stay
+    /// independently usable. Pinned by <c>FocusApiTests.Native_autofocus_*</c>.
+    /// </para>
+    /// <para>
     /// Runs through <see cref="FocusAsync"/>, so it inherits that method's target and its best-effort
-    /// contract (see <see cref="EditControlInit.FocusElementAsync"/>) — a read-only or hidden control
-    /// simply doesn't move focus. The standard Blazor SSR caveat applies: focus is a DOM operation, so
-    /// it can only happen once the component is interactive. Under static SSR (no render mode) or during
-    /// the prerender pass of an interactive one, nothing happens at prerender time and the focus lands
-    /// on the first *interactive* render instead. Use the native <c>autofocus</c> attribute (which
-    /// splats through like any other unmatched attribute) if you need the browser to do it from server-
-    /// rendered HTML alone.
+    /// contract (see <see cref="EditControlInit.FocusElementAsync"/>) — a read-only, hidden or disabled
+    /// control simply doesn't move focus. The standard Blazor SSR caveat applies: focus is a DOM
+    /// operation, so it can only happen once the component is interactive. Under static SSR (no render
+    /// mode) or during the prerender pass of an interactive one, nothing happens at prerender time and
+    /// the focus lands on the first *interactive* render instead. Use the native <c>autofocus</c>
+    /// attribute (which splats through onto the editor like any other unmatched attribute) if you need
+    /// the browser to do it from server-rendered HTML alone.
+    /// </para>
     /// <para>
     /// Only the FIRST render focuses. Setting this true later at runtime does not focus the control —
     /// that is a state change, and <see cref="FocusAsync"/> is the right call for it.
     /// </para>
     /// </remarks>
-    [Parameter] public bool AutoFocus { get; set; }
+    [Parameter] public bool FocusOnFirstRender { get; set; }
 
     // Standard derived state — populated by InitState, which OnInitialized below calls.
     protected string _id = string.Empty;
@@ -349,13 +362,13 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected virtual ElementReference? FocusTarget => _editorRef;
 
     /// <summary>
-    /// Honors <see cref="AutoFocus"/> on the first render. Derived overrides must chain to base —
-    /// forgetting the call silently drops this control's <see cref="AutoFocus"/> support.
+    /// Honors <see cref="FocusOnFirstRender"/> on the first render. Derived overrides must chain to
+    /// base — forgetting the call silently drops this control's <see cref="FocusOnFirstRender"/> support.
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         await base.OnAfterRenderAsync(firstRender);
-        if (firstRender && AutoFocus) await FocusAsync();
+        if (firstRender && FocusOnFirstRender) await FocusAsync();
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

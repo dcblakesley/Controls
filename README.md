@@ -619,7 +619,7 @@ All form controls implement the `IEditControl` interface and provide:
 - **Styling**: `ContainerClass` for custom CSS
 - **Validation**: required-ness from `[Required]`, the three-state `IsRequired` parameter, or `FormOptions.RequiredResolver` — see [Validation stacks](#validation-stacks-dataannotations-fluentvalidation-custom)
 - **Conditional Display**: `Hiding` modes and `HidingMode` enum
-- **Programmatic focus**: `FocusAsync()` on a control held by `@ref`, or the `AutoFocus` parameter — see [Programmatic focus](#programmatic-focus-focusasync--autofocus)
+- **Programmatic focus**: `FocusAsync()` on a control held by `@ref`, or the `FocusOnFirstRender` parameter — see [Programmatic focus](#programmatic-focus-focusasync--focusonfirstrender)
 
 > **`HidingMode.WhenNull`/`WhenNullOrDefault` apply in edit mode too**, unlike their `WhenReadOnly*` siblings — so pairing either with a field the user can empty from inside the control (`EditDateRange` with `AllowClear`, a nullable-bound `EditNumber<int?>`/`EditDate<T?>`, or `EditString`'s `AllowClear` under `WhenNullOrDefault`, which clears to `""`) **unmounts the control the moment it's cleared**, taking the only way to put a value back with it. That is the intended reading of the mode — the rule is about the value, and it behaves the same however the value got emptied — but for the usual "hide empty optional fields on a detail view" goal, reach for `WhenReadOnlyAndNull`/`WhenReadOnlyAndNullOrDefault` instead.
 
@@ -1070,7 +1070,7 @@ The 2D area's `aria-valuenow` carries saturation, with an `aria-valuetext` namin
 
 **Deliberately out of scope**, and not planned: sizes, custom gradient/color-scheme panels, grouped or collapsible preset sections, and AntD's color-picker-inside-an-input variants.
 
-### Programmatic focus (`FocusAsync` / `AutoFocus`)
+### Programmatic focus (`FocusAsync` / `FocusOnFirstRender`)
 
 Every `Edit*` control exposes **`public ValueTask FocusAsync()`**. Hold the control with `@ref` and call it:
 
@@ -1111,13 +1111,19 @@ Each control focuses the element a `Tab` into it would land on:
 
 The UI-kit components the picker/select-backed controls delegate to expose the same method, for use outside a form: **`Select<T>`**, **`DatePicker`**, **`DateRangePicker`**, and **`ColorPicker`**.
 
-**`AutoFocus`** (`bool`, default `false`) is the declarative form — the control focuses itself once, after its **first** render:
+**`FocusOnFirstRender`** (`bool`, default `false`) is the declarative form — the control focuses itself once, after its **first** render:
 
 ```razor
-<EditString @bind-Value="model.Query" AutoFocus="true" />
+<EditString @bind-Value="model.Query" FocusOnFirstRender="true" />
 ```
 
-Setting it `true` later at runtime does not focus the control; that's a state change, and `FocusAsync()` is the call for it. The standard Blazor SSR caveat applies: focus is a DOM operation, so under static SSR — or during the prerender pass of an interactive render mode — nothing happens at prerender time and the focus lands on the first *interactive* render. If you need the browser to do it from server-rendered HTML alone, the native `autofocus` attribute splats through like any other unmatched attribute.
+Setting it `true` later at runtime does not focus the control; that's a state change, and `FocusAsync()` is the call for it. The standard Blazor SSR caveat applies: focus is a DOM operation, so under static SSR — or during the prerender pass of an interactive render mode — nothing happens at prerender time and the focus lands on the first *interactive* render. If you need the browser to do it from server-rendered HTML alone, the native `autofocus` attribute splats through onto the editor like any other unmatched attribute — and the two are independent, so you can use either or both:
+
+```razor
+<EditString @bind-Value="model.Query" autofocus />
+```
+
+> The parameter is spelled `FocusOnFirstRender`, not `AutoFocus`, on purpose. Blazor matches component parameter names **case-insensitively**, so a parameter named `AutoFocus` would capture a native `autofocus` attribute instead of letting it through — `<EditString autofocus />` would silently stop reaching the DOM, and `autofocus="autofocus"` would fail to compile.
 
 **JavaScript dependency.** The single-element controls use `ElementReference.FocusAsync()` and need nothing from this package's scripts. The four radio groups and the two checked lists are the exception: their per-option `<input>`s are rendered by Microsoft's `InputRadio` (and, for `EditRadio`, by your own markup), so no element reference can be captured and no id computed — they resolve the option inside the group at focus time via `edit-controls.js`, with the same lazy-import fallback the rest of `JsInteropEc` uses. Without that script reachable, focus simply doesn't move.
 
