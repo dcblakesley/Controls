@@ -211,6 +211,16 @@ public class EditRangeTests : BunitContext
         Assert.Equal(3, cut.FindAll(".edit-range-dot").Count); // the marks' own dots only
     }
 
+    [Fact]
+    public void The_default_step_over_the_default_bounds_is_already_past_the_dot_cap()
+    {
+        // 0..100 at a step of 1 is 101 dots -- one past MaxDots, and at 320px they would overlap into
+        // a solid line. The cap counts dots, not increments, which is what makes this the boundary.
+        var cut = RenderRange(new RangeModel(), b => b.AddAttribute(10, "Dots", true));
+
+        Assert.Empty(cut.FindAll(".edit-range-dot"));
+    }
+
     // ----- Keyboard ----------------------------------------------------------
 
     [Fact]

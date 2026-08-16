@@ -102,7 +102,9 @@ public partial class EditRange<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     /// Renders a dot on the rail at every <see cref="Step"/> increment and at every mark. Only
     /// sensible with a coarse step — a step that would produce more than <see cref="MaxDots"/> dots
     /// renders none of the step dots at all (marks still get theirs) rather than filling the rail
-    /// with a solid line of overlapping circles.
+    /// with a solid line of overlapping circles. The default step of 1 over the default 0..100 bounds
+    /// is already past that cap (101 dots), so <c>Dots</c> without a coarse <see cref="Step"/> draws
+    /// the marks alone.
     /// </summary>
     [Parameter] public bool Dots { get; set; }
 
@@ -437,7 +439,8 @@ public partial class EditRange<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         {
             try
             {
-                if ((max - min) / EffectiveStep <= MaxDots)
+                // +1 because both ends get a dot: a span of 100 at a step of 1 is 101 dots, not 100.
+                if ((max - min) / EffectiveStep + 1m <= MaxDots)
                     for (var value = min; value <= max; value += EffectiveStep)
                         dots.Add(value);
             }
