@@ -19,7 +19,7 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// Coverage: EditString, EditTextArea, EditNumber&lt;int?&gt;, EditBool, EditBoolNullRadio,
+/// Coverage: EditString, EditTextArea, EditNumber&lt;int?&gt;, EditRange&lt;int?&gt;, EditBool, EditBoolNullRadio,
 /// EditDate&lt;DateTime?&gt;, EditDateNative&lt;DateTime?&gt;, EditFile, EditRadio&lt;string&gt;,
 /// EditRadioEnum&lt;Priority&gt;, EditRadioString, EditCheckedEnumList&lt;Priority&gt;,
 /// EditCheckedStringList, EditSelect&lt;string&gt;, EditSelectEnum&lt;Priority?&gt;,
@@ -88,6 +88,10 @@ public class ScaffoldConformanceTests : BunitContext
         // EditNumber<int?>
         [Required, AlwaysInvalid] public int? NumberRequired { get; set; } = 1;
         public int? NumberOptional { get; set; } = 1;
+
+        // EditRange<int?>
+        [Required, AlwaysInvalid] public int? RangeRequired { get; set; } = 40;
+        public int? RangeOptional { get; set; } = 40;
 
         // EditBool -- [Required]'s presence (not its IsValid result) is what drives the star/aria-required,
         // so it applies just as well to a bool as to any other type; see EditControlInit.IsRequired.
@@ -287,6 +291,30 @@ public class ScaffoldConformanceTests : BunitContext
         Wrapper = cut => cut.Find(".edit-control-wrapper"),
         LabelOrLegend = cut => cut.Find("label.edit-label"),
         AriaCarriers = cut => [cut.Find("input[type=number]")]
+    };
+
+    static ScaffoldCase RangeCase() => new()
+    {
+        Name = "EditRange<int?>",
+        Build = required =>
+        {
+            var model = new ScaffoldModel();
+            Expression<Func<int?>> field = required ? () => model.RangeRequired : () => model.RangeOptional;
+            var value = required ? model.RangeRequired : model.RangeOptional;
+            RenderFragment content = b =>
+            {
+                b.OpenComponent<EditRange<int?>>(0);
+                b.AddAttribute(1, "Value", value);
+                b.AddAttribute(2, "ValueExpression", field);
+                b.CloseComponent();
+            };
+            return (model, content);
+        },
+        Wrapper = cut => cut.Find(".edit-control-wrapper"),
+        LabelOrLegend = cut => cut.Find("label.edit-label"),
+        // The role="slider" track -- this control's field element, the same way EditColor's is the
+        // picker's trigger button.
+        AriaCarriers = cut => [cut.Find("div.edit-range-track")]
     };
 
     static ScaffoldCase BoolCase() => new()
@@ -681,6 +709,7 @@ public class ScaffoldConformanceTests : BunitContext
         "EditString" => StringCase(),
         "EditTextArea" => TextAreaCase(),
         "EditNumber<int?>" => NumberCase(),
+        "EditRange<int?>" => RangeCase(),
         "EditBool" => BoolCase(),
         "EditBoolNullRadio" => BoolNullRadioCase(),
         "EditColor" => ColorCase(),
@@ -702,7 +731,7 @@ public class ScaffoldConformanceTests : BunitContext
 
     public static TheoryData<string> ControlNames() => new()
     {
-        "EditString", "EditTextArea", "EditNumber<int?>", "EditBool", "EditBoolNullRadio",
+        "EditString", "EditTextArea", "EditNumber<int?>", "EditRange<int?>", "EditBool", "EditBoolNullRadio",
         "EditColor", "EditDate<DateTime?>", "EditDateNative<DateTime?>", "EditFile",
         "EditRadio<string>", "EditRadioEnum<Priority>", "EditRadioString",
         "EditCheckedEnumList<Priority>", "EditCheckedStringList",
