@@ -160,6 +160,24 @@ public class FocusApiE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task FocusAsync_on_a_DISABLED_EditRange_leaves_focus_where_it_was()
+    {
+        // The one control the disabled contract could not hold structurally. Every other control's
+        // focus target is a native element carrying `disabled`, where .focus() is a browser no-op;
+        // EditRange's is a role="slider" <div> with tabindex="-1", which is out of the Tab order but
+        // still fully focusable from script -- so this used to pull focus off the button and park it
+        // on a control whose OnKeyDown early-returns. Asserted in a browser rather than bUnit because
+        // "tabindex=-1 is still programmatically focusable" is a DOM fact, not a C# one.
+        await GotoAsync();
+
+        await _page.Locator("#focus-disabled-range").ClickAsync();
+        await _page.WaitForTimeoutAsync(300);
+
+        await Expect(_page.Locator("#focus-disabled-range")).ToBeFocusedAsync();
+        await Expect(_page.Locator("div#Volume[role=slider]")).Not.ToBeFocusedAsync();
+    }
+
+    [Fact]
     public async Task FocusAsync_is_repeatable_across_an_intervening_focus_change()
     {
         await GotoAsync();
@@ -179,6 +197,29 @@ public class FocusApiE2ETests : IAsyncLifetime
         await GotoAsync(auto: "string");
 
         await Expect(_page.Locator("input#Text")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+    }
+
+    // ───────────── FocusOnFirstRender inside an overlay (Modal/Drawer) ─────────────
+
+    [Fact]
+    public async Task FocusOnFirstRender_inside_a_Modal_beats_the_overlays_own_initial_focus()
+    {
+        // Modal gates its children on @if (Visible), so a child control's FIRST render coincides with
+        // the open -- and the overlay's activateModal grabs initial focus at the end of that same
+        // cycle. The two genuinely race, and the child used to lose: the measured focusin/focusout
+        // order was `IN input#ModalText >> OUT input#ModalText >> IN button.wss-modal-close`, i.e. the
+        // control focused itself and the overlay then yanked focus onto the close button. wss-overlay
+        // now skips its initial focus when something inside the panel already has it.
+        await GotoAsync();
+        await _page.Locator("#open-modal").ClickAsync();
+        await Expect(_page.Locator(".wss-modal")).ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        await Expect(_page.Locator("input#ModalText")).ToBeFocusedAsync();
+        await Expect(_page.Locator(".wss-modal-close")).Not.ToBeFocusedAsync();
+        // ...and it STAYS there: the trap's focusin handler only re-routes focus that lands OUTSIDE
+        // the panel, so it must not fight a legitimate in-panel focus a beat later.
+        await _page.WaitForTimeoutAsync(500);
+        await Expect(_page.Locator("input#ModalText")).ToBeFocusedAsync();
     }
 
     [Fact]

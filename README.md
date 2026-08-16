@@ -313,6 +313,7 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
   - While open, everything behind the dialog — outside the toast layers, `#components-reconnect-modal`/`#blazor-error-ui`, and anything marked `data-wss-keep-interactive` (an escape hatch for shell chrome you don't own, e.g. an MFE host header) — is made `inert` (out of the a11y tree, tab order, and hit-testing), not just focus-trapped; stacked dialogs let only the topmost own the background, restoring on the last close.
   - The sweep only **recomputes on open/close**, not continuously, so the toast containers and any `data-wss-keep-interactive` element must already be mounted before a dialog opens (the documented app-root placement guarantees this) — one mounted into an already-inert branch while a dialog is open stays inert until the next open/close.
   - Needs JS; without it the focus trap/inert background are absent but initial focus still lands on the panel from C#.
+  - **Initial focus goes to the first focusable element in the panel — unless something inside it already has focus.** Because the children render for the first time as the dialog opens, a child's own `FocusOnFirstRender` (or your `FocusAsync()` from `OnAfterRenderAsync`) lands first and the overlay leaves it alone; without that check the close X won the race and swallowed every in-dialog focus request. `Drawer` behaves identically.
 - **`Drawer`** — Slide-in panel (4 placements).
   - `Extra` renders a header-right slot beside the close button; `Keyboard` (default true) independently governs Escape-to-close, same as `Modal`.
   - `AriaLabel` (default **"Drawer"**) names the panel when untitled; shares `Modal`'s background-`inert` behavior above.
@@ -1110,6 +1111,8 @@ Each control focuses the element a `Tab` into it would land on:
 **It never throws, and it never parks focus on a control the user can't use.** A control that is `IsDisabled`, read-only (`IsEditMode="false"`, which renders a display value and no editor at all), hidden, or not yet interactive simply doesn't move focus — so you don't have to guard the call against state you can't see (a cascaded `FormOptions.IsEditMode`, a `HidingMode` that just unmounted the field). The same applies once JS is unavailable — see below.
 
 A native `readonly` attribute is **not** one of those states: a read-only `<input>` is still rendered and still a tab stop, so `FocusAsync()` does move focus to it. That's deliberate — read-only fields are meant to be reachable, copyable, and announced.
+
+**Inside a `Modal` or `Drawer` it just works.** Those gate their children on visibility, so a child's first render *is* the open, and the overlay's own "focus the first focusable element" runs in the same cycle. The overlay defers: it only takes initial focus when nothing inside the panel has it, so `FocusOnFirstRender="true"` (or your own `FocusAsync()`) on a field in the dialog wins over the close X.
 
 The UI-kit components the picker/select-backed controls delegate to expose the same method, for use outside a form: **`Select<T>`**, **`DatePicker`**, **`DateRangePicker`**, and **`ColorPicker`**.
 

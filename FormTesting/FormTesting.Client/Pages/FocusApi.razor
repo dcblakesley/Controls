@@ -49,7 +49,24 @@
     <button type="button" id="focus-range" @onclick="FocusRangeAsync">Focus range</button>
     <button type="button" id="focus-search" @onclick="FocusSearchAsync">Focus search</button>
     <button type="button" id="focus-readonly" @onclick="FocusReadOnlyAsync">Focus read-only</button>
+    <button type="button" id="focus-disabled-range" @onclick="FocusDisabledRangeAsync">Focus disabled range</button>
+    <button type="button" id="open-modal" @onclick="() => _modalVisible = true">Open modal</button>
 </div>
+
+@* A disabled EditRange, focused by its own FocusAsync(). Its track is a role="slider" <div> carrying
+   tabindex="-1" while disabled -- out of the Tab order but still programmatically focusable, unlike
+   every native editor's `disabled` -- which is why the disabled guard on FocusAsync is explicit. *@
+<EditForm Model="_model">
+    <EditRange @ref="_disabledRange" @bind-Value="_model.Volume" IsDisabled="true" />
+</EditForm>
+
+@* FocusOnFirstRender inside an overlay. Modal gates its children on @if (Visible), so the child
+   control's FIRST render is the open, and the overlay's own activateModal grabs initial focus at the
+   end of the same cycle -- the two genuinely race. The e2e pins whichever one wins. *@
+<Modal @bind-Visible="_modalVisible" Title="Modal focus" HideFooter="true">
+    <EditString @bind-Value="_model.ModalText" FocusOnFirstRender="true" />
+    <EditString @bind-Value="_model.ModalOther" />
+</Modal>
 
 @code {
     // "string" turns FocusOnFirstRender on for the first EditString, so the e2e suite can assert the
@@ -71,6 +88,9 @@
     EditCheckedStringList? _list;
     EditDateRange? _range;
     EditSelectSearch<string?>? _search;
+    EditRange<int>? _disabledRange;
+
+    bool _modalVisible;
 
     async Task FocusStringAsync() => await _string!.FocusAsync();
     async Task FocusNumberAsync() => await _number!.FocusAsync();
@@ -80,6 +100,7 @@
     async Task FocusRangeAsync() => await _range!.FocusAsync();
     async Task FocusSearchAsync() => await _search!.FocusAsync();
     async Task FocusReadOnlyAsync() => await _readOnly!.FocusAsync();
+    async Task FocusDisabledRangeAsync() => await _disabledRange!.FocusAsync();
 
     public enum PriorityLevel { Low, Medium, High, Critical }
 
@@ -94,5 +115,8 @@
         public DateTime? Start { get; set; }
         public DateTime? End { get; set; }
         public string? Choice { get; set; }
+        public int Volume { get; set; } = 40;
+        public string? ModalText { get; set; } = "In modal";
+        public string? ModalOther { get; set; } = "Also in modal";
     }
 }

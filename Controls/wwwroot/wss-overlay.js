@@ -805,8 +805,20 @@ export function activateModal(panel) {
     document.addEventListener('focusin', onFocusIn);
     traps.push(trap);
 
-    const initial = focusables();
-    try { (initial[0] || panel).focus(); } catch { /* element not focusable yet */ }
+    // Initial focus, but only if nothing inside the panel already has it. A child control that
+    // focused itself on ITS first render -- FocusOnFirstRender, or a consumer's own FocusAsync() in
+    // OnAfterRenderAsync -- wins, because Modal/Drawer gate their children on @if (Visible): the
+    // child's first render IS the open, and its focus call lands a moment before this one. Measured
+    // ordering was `IN input#ModalText >> OUT input#ModalText >> IN button.wss-modal-close`, i.e. the
+    // control focused itself and this line then yanked focus onto the close button -- the least
+    // useful tab stop in the dialog. An explicit, specific focus request beats "the first focusable
+    // thing", so defer to it. Nothing changes for the ordinary case: on open, focus is still on the
+    // trigger (or <body>), both outside the panel, so this grabs it exactly as before. Nested modals
+    // are unaffected too -- the outer panel's focus is not inside THIS panel.
+    if (!panel.contains(document.activeElement)) {
+        const initial = focusables();
+        try { (initial[0] || panel).focus(); } catch { /* element not focusable yet */ }
+    }
 
     let disposed = false;
     return {
