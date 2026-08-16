@@ -142,6 +142,24 @@ Pick the label source by how the text is determined, in this order of preference
 
 Under the hood the highest-priority source wins: the `Label` parameter overrides `[DisplayName]`, which overrides the auto-generated property name. Preferring tier 1, then 2, then 3 keeps you from reaching for a higher-priority source than the text actually needs.
 
+#### Rich-markup labels (`LabelContent`)
+
+Every control also accepts `LabelContent` (`RenderFragment?`), for a label that needs inline markup a plain string can't hold — the motivating case is a toggle group whose rows need a colored icon plus text, where the icon is load-bearing for identifying the row and the control has to stay a raw `<input type="checkbox">`. Null (the default) renders `Label` exactly as before; setting it replaces the label TEXT with your markup, everywhere `Label` would otherwise render (including `EditBool`'s checkbox row):
+
+```razor
+<EditBool @bind-Value="model.IsUrgent">
+    <LabelContent>
+        <span class="priority-icon priority-icon-urgent" aria-hidden="true"></span>
+        Urgent
+    </LabelContent>
+</EditBool>
+```
+
+Two rules to follow:
+
+- **`LabelContent` is phrasing content only — no nested buttons, links, or other interactive elements.** It renders inside the field's naming anchor, and accessible-name computation folds a descendant interactive control's own name into the name built from that content (the same reason the label's own info-tooltip trigger renders as a sibling, not a child, of the label text — a button there once made a tooltipped checkbox announce "Full Name More information about Full Name" instead of "Full Name"). Give any decorative icon `aria-hidden="true"` so it never joins the accessible name.
+- **Still set `Label`** (or leave the property name / `[DisplayName]` meaningful) even when you use `LabelContent`. Validation-message text and the accessible-name fallback chain read the resolved `Label` string, never the `LabelContent` fragment — a consumer who sets only `LabelContent` gets validation text built from the auto-generated/attribute-derived name, which may not match what's visually shown.
+
 ## Available Controls
 
 ### Input Controls
