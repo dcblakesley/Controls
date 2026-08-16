@@ -20,6 +20,7 @@
        renders it) because an inline markup block -- @<Tag> -- cannot nest inside another one, and the
        Bordered fieldContent capture just below is itself one. *@
     RenderFragment inputFile = @<InputFile OnChange="LoadFiles"
+               @ref="_inputFile"
                id=@_id
                accept="@string.Join(",", NormalizedExtensions)"
                multiple

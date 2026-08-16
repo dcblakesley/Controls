@@ -17,6 +17,7 @@
         @if (ShowEditor)
         {
             <Select TValue="TValue"
+                    @ref="_select"
                     Value="CurrentValue"
                     ValueChanged="OnValueChanged"
                     Options="Options"

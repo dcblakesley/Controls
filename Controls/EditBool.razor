@@ -61,6 +61,7 @@
     // reference never dangles.
     RenderFragment CheckboxInput(string cssClass) => @<input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
                                                 type="checkbox"
+                                                @ref="_editorRef"
                                                 value="@CurrentValue"
                                                 @onchange="HandleCheckboxChange"
                                                 @onclick:preventDefault="(!ShowEditor || IsDisabled) && AllowFocusWhenDisabled"

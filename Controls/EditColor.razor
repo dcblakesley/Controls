@@ -10,7 +10,8 @@
             @* Value MUST carry the @ prefix: ColorPicker.Value is a string, so an unprefixed
                Value="CurrentValue" is a LITERAL, not an expression -- unlike the date controls, whose
                non-string picker Value makes the bare form an expression either way. *@
-            <ColorPicker Value="@CurrentValue"
+            <ColorPicker @ref="_picker"
+                         Value="@CurrentValue"
                          ValueChanged="@OnValueChanged"
                          OnParseError="@OnPickerParseErrorAsync"
                          OnValidCommit="@OnPickerValidCommit"

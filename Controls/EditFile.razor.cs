@@ -180,6 +180,20 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     [Inject] IJSRuntime JS { get; set; } = default!;
 
+    // The rendered <InputFile>, captured so FocusAsync can reach the <input type="file"> it renders --
+    // the drop zone / select button is only chrome around it, and it is the control's real tab stop.
+    // A component capture, since InputFile owns the element; it exposes it as InputFile.Element.
+    InputFile? _inputFile;
+
+    /// <inheritdoc cref="EditControlListBase{TItem}.FocusTarget"/>
+    /// <remarks>
+    /// Null until first render, and null again once the <see cref="MaxFiles"/> cap unmounts the
+    /// <c>InputFile</c> or the control flips to read-only -- all cases where there is genuinely nothing
+    /// to focus, which <c>FocusAsync</c> treats as a no-op. Note this is the FILE INPUT, not the
+    /// per-file delete buttons that <see cref="RemoveFile"/>'s own focus restoration targets by id.
+    /// </remarks>
+    protected override ElementReference? FocusTarget => _inputFile?.Element;
+
     readonly List<string> _uploadErrors = [];
     string _hoverClass = string.Empty;
     // The bound list this control itself last committed, or last observed on a parameter set -- what
@@ -547,6 +561,10 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Chained FIRST, and unconditionally: the base honors AutoFocus on the first render, and the
+        // early return below fires on every render where no post-remove focus is pending -- which is
+        // all of them, including the first.
+        await base.OnAfterRenderAsync(firstRender);
         if (_pendingFocusId is null) return;
         var id = _pendingFocusId;
         _pendingFocusId = null;

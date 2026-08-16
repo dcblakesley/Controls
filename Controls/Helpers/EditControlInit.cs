@@ -396,4 +396,48 @@ public static class EditControlInit
         if (!string.IsNullOrEmpty(cssClass)) attrs["class"] = cssClass;
         return attrs;
     }
+
+    /// <summary>
+    /// The one implementation behind every control's public <c>FocusAsync()</c>: moves DOM focus to
+    /// <paramref name="target"/>, and never throws to the caller.
+    /// </summary>
+    /// <param name="target">
+    /// The element to focus, or null when the calling control has nothing focusable rendered right now
+    /// (read-only mode, a picker-backed control before its first render, a list control with no items).
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Two failure shapes are swallowed, and both are ordinary rather than exceptional. An
+    /// <see cref="ElementReference"/> that was never captured -- the control renders no editor in
+    /// read-only mode, or the consumer called <c>FocusAsync()</c> during prerender, before any element
+    /// exists -- has a null <see cref="ElementReference.Context"/> and is filtered out up front rather
+    /// than left to throw. And the capture can be STALE: Blazor does not clear a reference capture when
+    /// the element leaves the DOM, so a control that has since flipped to read-only still holds the id
+    /// of an element JS can no longer find, which surfaces as a <see cref="JSException"/> from the
+    /// interop call. Neither is worth propagating: focusing is a nicety, and a consumer calling
+    /// <c>await field.FocusAsync()</c> in <c>OnAfterRenderAsync</c> must not have their component torn
+    /// down because a field happened to be hidden.
+    /// </para>
+    /// <para>
+    /// This lives here, rather than on a base class, for this class's standing reason: the four control
+    /// bases that expose <c>FocusAsync()</c> (<see cref="EditControlBase{TValue}"/>,
+    /// <see cref="EditControlListBase{TItem}"/>, <c>EditRadio&lt;TValue&gt;</c> and
+    /// <see cref="EditDateRange"/>) share no common ancestor, and the UI-kit pickers/select that the
+    /// forwarding controls delegate to share none with them either.
+    /// </para>
+    /// </remarks>
+    public static async ValueTask FocusElementAsync(ElementReference? target)
+    {
+        // Context is the renderer-supplied handle the interop call needs; a default(ElementReference)
+        // has none, and asking it to focus throws InvalidOperationException before any JS runs.
+        if (target is not { Context: not null } element) return;
+        try
+        {
+            await element.FocusAsync();
+        }
+        catch
+        {
+            // Not focusable (prerender / tests / no JS), or the captured element has since unmounted.
+        }
+    }
 }

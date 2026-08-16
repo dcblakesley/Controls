@@ -45,6 +45,29 @@ public static class JsInteropEc
         await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.focusById", id);
 
     /// <summary>
+    /// Moves focus to one input inside the group element with id <paramref name="containerId"/> — the
+    /// checked one when <paramref name="preferChecked"/> is set and there is one, else the first
+    /// enabled one, else nothing. Backs the radio groups' <c>FocusAsync()</c>, whose per-option
+    /// <c>&lt;input&gt;</c>s are rendered by <see cref="InputRadio{TValue}"/> (or, for
+    /// <c>EditRadio</c>, by consumer markup), so no <see cref="ElementReference"/> can be captured for
+    /// them and no id can be computed. Best-effort — a no-op when the container isn't found, has no
+    /// enabled inputs, or JS is unavailable (prerender / tests); see the class remarks for the
+    /// missing-global (cross-origin MFE) fallback.
+    /// </summary>
+    /// <param name="jsRuntime">The JS runtime to invoke through.</param>
+    /// <param name="containerId">The group element's id — the radio fieldset's, which is the control's own resolved id.</param>
+    /// <param name="selector">A CSS selector for the candidate inputs, e.g. <c>input[type=radio]</c>.</param>
+    /// <param name="preferChecked">
+    /// True to prefer the checked input over the first enabled one. True for radio groups, whose Tab
+    /// stop is the checked radio; false for checkbox lists, where every box is its own Tab stop.
+    /// </param>
+    /// <param name="formDefaults">The cascaded <see cref="Controls.FormDefaults"/> in scope, if any --
+    /// see <see cref="FocusFirstInvalidField"/>.</param>
+    public static async Task FocusGroupInput(
+        IJSRuntime jsRuntime, string containerId, string selector, bool preferChecked, FormDefaults? formDefaults = null) =>
+        await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.focusGroupInput", containerId, selector, preferChecked);
+
+    /// <summary>
     /// Resizes the textarea with the given id to fit its content, clamped between
     /// <paramref name="minRows"/> and <paramref name="maxRows"/> (null = unbounded). Stateless —
     /// <see cref="EditTextArea"/> calls this again after every input and once after first render

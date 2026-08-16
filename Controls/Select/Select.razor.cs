@@ -1297,6 +1297,17 @@ public partial class Select<TValue> : IAsyncDisposable
         return -1;
     }
 
+    /// <summary>
+    /// Moves keyboard focus to this select's combobox input — the single element that owns focus for
+    /// the whole widget, in every mode (the tag list and the dropdown rows are not tab stops; see the
+    /// search input's <c>role="combobox"</c> in the markup). Public so a host component holding this
+    /// engine through <c>@ref</c> can focus it: <see cref="EditSelectSearch{TValue}"/> and
+    /// <see cref="EditMultiSelect{TValue}"/>'s own <c>FocusAsync()</c> forward straight to it.
+    /// </summary>
+    /// <remarks>Best-effort, like every other focus call in this library — a no-op when the input isn't
+    /// rendered yet (prerender / tests) or has since unmounted.</remarks>
+    public ValueTask FocusAsync() => new(FocusInputAsync());
+
     async Task FocusInputAsync()
     {
         try

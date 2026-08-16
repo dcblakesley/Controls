@@ -187,6 +187,35 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         EditContext?.NotifyFieldChanged(_fieldIdentifier);
     }
 
+    // ───────────────────────────── programmatic focus ─────────────────────────────
+
+    /// <inheritdoc cref="EditControlBase{TValue}.AutoFocus"/>
+    [Parameter] public bool AutoFocus { get; set; }
+
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// The list controls' targets, each the element a Tab into the control would land on: the first
+    /// enabled checkbox (<c>EditCheckedEnumList</c>/<c>EditCheckedStringList</c>), the file input
+    /// (<see cref="EditFile"/>), the combobox search input (<c>EditMultiSelect</c>). Same
+    /// never-throws contract as the scalar base's — see <see cref="EditControlInit.FocusElementAsync"/>.
+    /// </remarks>
+    public virtual ValueTask FocusAsync() => EditControlInit.FocusElementAsync(FocusTarget);
+
+    /// <summary>
+    /// The element <see cref="FocusAsync"/> moves focus to. Null here — unlike the scalar base, no list
+    /// control renders its own field element directly (each delegates to <c>CheckboxOptionList</c>,
+    /// <c>InputFile</c> or the <c>Select</c> engine), so there is no shared default to inherit and
+    /// every derived control supplies its own.
+    /// </summary>
+    protected virtual ElementReference? FocusTarget => null;
+
+    /// <inheritdoc cref="EditControlBase{TValue}.OnAfterRenderAsync"/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender && AutoFocus) await FocusAsync();
+    }
+
     /// <summary> Toggles an item in <see cref="Value"/>, notifies the EditContext, and fires <see cref="ValueChanged"/>. </summary>
     protected Task ToggleAsync(TItem item)
     {

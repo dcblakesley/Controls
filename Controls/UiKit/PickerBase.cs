@@ -127,6 +127,28 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     /// <see cref="DateRangePicker"/>.</summary>
     protected abstract ElementReference FocusReclaimTarget { get; }
 
+    /// <summary>The input a caller entering this picker from outside should land on — the sole input
+    /// for <see cref="DatePicker"/>, the START input for <see cref="DateRangePicker"/>. Distinct from
+    /// <see cref="FocusReclaimTarget"/>, which answers "where was the user before the panel took
+    /// focus?" and so tracks the active endpoint; this one is deliberately deterministic, because a
+    /// programmatic <see cref="FocusAsync"/> should not depend on which end the user last typed
+    /// in.</summary>
+    protected abstract ElementReference PrimaryInputRef { get; }
+
+    /// <summary>
+    /// Moves keyboard focus to this picker's <see cref="PrimaryInputRef"/> without opening the panel.
+    /// Public so a host component holding the picker through <c>@ref</c> can focus it —
+    /// <see cref="EditDate{T}"/> and <see cref="EditDateRange"/>'s own <c>FocusAsync()</c> forward
+    /// straight here.
+    /// </summary>
+    /// <remarks>
+    /// Best-effort (see <see cref="EditControlInit.FocusElementAsync"/>): a no-op before first render,
+    /// in read-only mode where no picker exists, or with no JS. Note that the picker opens its panel on
+    /// input focus, so this WILL open the dropdown in a browser — which is the behavior a consumer
+    /// focusing a date field is asking for.
+    /// </remarks>
+    public ValueTask FocusAsync() => EditControlInit.FocusElementAsync(PrimaryInputRef);
+
     // ----- Shared display/parse layer ----------------------------------------
     // FormatDate/TryParseDate are character-identical between the two pickers apart from which mode
     // each keys off, so they live here once, over the five hooks below. Everything in this section

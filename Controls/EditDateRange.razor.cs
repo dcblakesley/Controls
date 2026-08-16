@@ -49,6 +49,30 @@ namespace Controls;
 /// </remarks>
 public partial class EditDateRange : IDisposable
 {
+    // ───────────────────────────── programmatic focus ─────────────────────────────
+
+    // The inner picker, captured so FocusAsync can forward to it. Null in read-only mode and before
+    // first render, which FocusAsync below reads as "nothing to focus".
+    DateRangePicker? _picker;
+
+    /// <inheritdoc cref="EditControlBase{TValue}.AutoFocus"/>
+    [Parameter] public bool AutoFocus { get; set; }
+
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// Focuses the START input, always — see <c>DateRangePicker.PrimaryInputRef</c> for why that is
+    /// deliberately not "whichever end the user was last in". Like the single date control, focusing
+    /// the input opens the calendar, which is what tabbing into the field does too.
+    /// </remarks>
+    public ValueTask FocusAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
+
+    /// <inheritdoc cref="EditControlBase{TValue}.OnAfterRenderAsync"/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender && AutoFocus) await FocusAsync();
+    }
+
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Start</c>/<c>@bind-End</c> alone supply
     /// the accessors those used to require. This inert stub exists only so a leftover

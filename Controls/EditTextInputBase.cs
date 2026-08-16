@@ -8,7 +8,7 @@ namespace Controls;
 /// <see cref="Placeholder"/>/<see cref="EffectivePlaceholder"/> and
 /// <see cref="MaxLength"/>/<see cref="EffectiveMaxLength"/> pairs, the clear affordance
 /// (<see cref="AllowClear"/>, <see cref="IsClearable"/>, <see cref="Clear"/>, the
-/// <see cref="_editorRef"/> it refocuses, and its <see cref="ClearButtonLabel"/>/<see cref="EffectiveClearButtonLabel"/>
+/// <see cref="EditControlBase{TValue}._editorRef"/> it refocuses, and its <see cref="ClearButtonLabel"/>/<see cref="EffectiveClearButtonLabel"/>
 /// accessible-name pair), the character counter (<see cref="ShowCount"/>,
 /// <see cref="CountText"/>), the pass-through <see cref="TryParseValueFromString"/>, the
 /// empty-string-is-default rule (<see cref="IsValueDefault"/>), and the shared
@@ -95,11 +95,10 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     /// </remarks>
     [Parameter] public bool ShowCount { get; set; }
 
-    // Captures the <input>/<textarea> (assigned by each control's @ref) so Clear() can refocus it
-    // directly -- unlike EditFile's RemoveFile, the element never unmounts here, so a plain
-    // ElementReference.FocusAsync (Select/PickerBase's pattern) is enough; no JsInteropEc by-id
-    // fallback needed.
-    protected ElementReference _editorRef;
+    // The <input>/<textarea> capture Clear() refocuses moved up to EditControlBase<TValue> once every
+    // single-editor control needed the same one for its public FocusAsync() -- see _editorRef there.
+    // Nothing about this control's use of it changed: unlike EditFile's RemoveFile, the element never
+    // unmounts here, so a plain ElementReference.FocusAsync is enough; no by-id fallback needed.
 
     /// <summary>
     /// Whether the shell's clear button should render right now: <see cref="AllowClear"/> is set,
@@ -240,7 +239,7 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     /// The shell's clear button action: empties the value (via <see cref="InputBase{TValue}.CurrentValue"/>,
     /// which raises <c>ValueChanged</c>/<c>NotifyFieldChanged</c> itself), refocuses the editor, then
     /// runs the derived control's <see cref="OnClearedAsync"/> hook. Focus is best-effort -- see
-    /// <see cref="_editorRef"/>'s remarks.
+    /// <see cref="EditControlBase{TValue}._editorRef"/>'s remarks.
     /// </summary>
     /// <remarks>
     /// The empty string, not null, and for two reasons. It is the same model value the user's own

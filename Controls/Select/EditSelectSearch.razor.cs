@@ -13,6 +13,19 @@ namespace Controls;
 /// </remarks>
 public partial class EditSelectSearch<TValue> : EditControlBase<TValue>
 {
+    // The engine instance, captured so FocusAsync can forward to it. Null in read-only mode and before
+    // first render, which FocusAsync below reads as "nothing to focus".
+    Select<TValue>? _select;
+
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// Forwards to the <see cref="Select{TValue}"/> engine's own <see cref="Select{TValue}.FocusAsync"/>,
+    /// which focuses its <c>role="combobox"</c> search input — the widget's single tab stop. This
+    /// control renders no field element of its own, so there is no <c>_editorRef</c> to inherit the
+    /// base's default from.
+    /// </remarks>
+    public override ValueTask FocusAsync() => _select?.FocusAsync() ?? ValueTask.CompletedTask;
+
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
     /// this used to require. This inert stub exists only so a leftover <c>Field="..."</c> attribute

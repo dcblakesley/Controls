@@ -194,6 +194,9 @@ public partial class EditTextArea : EditTextInputBase
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Chained FIRST so the base's AutoFocus handling still runs -- the first-render branch below
+        // returns early, which used to skip anything the base wanted to do on exactly that render.
+        await base.OnAfterRenderAsync(firstRender);
         if (firstRender)
         {
             if (ResolvedAutoSize) await AutoSizeAsync();

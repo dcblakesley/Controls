@@ -13,6 +13,7 @@
     <span class="wss-color-picker-trigger-slot" @ref="_triggerRef"
           @onclick="ToggleAsync" @onkeydown="OnTriggerKeyDownAsync" @onkeydown:stopPropagation="@_open">
         <button type="button" class="wss-color-picker-trigger"
+                @ref="_triggerButtonRef"
                 id="@Id"
                 data-test-id="@Id"
                 disabled="@Disabled"

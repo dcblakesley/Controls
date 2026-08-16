@@ -13,9 +13,20 @@ namespace Controls;
 /// </remarks>
 public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue> : InputRadioGroup<TValue>, IEditControl
 {
+    // Injected only for FocusAsync's group-focus call below -- this control renders no JS-driven
+    // behavior of its own.
+    [Inject] IJSRuntime JS { get; set; } = default!;
+
     // Cascading parameters
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    /// <summary>
+    /// The enclosing <see cref="Controls.FormDefaults"/>, if any. Read only so
+    /// <see cref="JsInteropEc.FocusGroupInput"/> can resolve a lazy <c>edit-controls.js</c> re-import
+    /// against the right origin in the cross-origin micro-frontend case; this control derives no
+    /// defaults from it.
+    /// </summary>
+    [CascadingParameter] public FormDefaults? FormDefaults { get; set; }
 
     // IEditControl interface properties
     /// <inheritdoc/>
@@ -67,6 +78,9 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
 
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
+
+    /// <inheritdoc cref="EditControlBase{TValue}.AutoFocus"/>
+    [Parameter] public bool AutoFocus { get; set; }
 
     string _id = string.Empty;
     string? _isRequired;
@@ -140,6 +154,32 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         if (disposing)
             EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
         base.Dispose(disposing);
+    }
+
+    // ───────────────────────────── programmatic focus ─────────────────────────────
+
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// Focuses the CHECKED radio when the group has a selection, else the first enabled one — which is
+    /// what a Tab into a real radiogroup does. Routed through
+    /// <see cref="JsInteropEc.FocusGroupInput"/> rather than an <see cref="ElementReference"/>, because
+    /// this control's radios are <see cref="InputRadio{TValue}"/> children the CONSUMER authors: there
+    /// is no element for <c>@ref</c> to bind and no id to compute, so resolving the option inside the
+    /// fieldset (which already carries this control's own id — see <c>RadioAria.Fieldset</c>) is the
+    /// only channel that reaches them. <c>EditRadioEnum</c>/<c>EditRadioString</c>/
+    /// <c>EditBoolNullRadio</c> deliberately share it, so all four radio groups can't disagree about
+    /// which radio "focus the group" means. Best-effort like every other <c>FocusAsync</c>: no-op in
+    /// read-only mode (no fieldset id renders), when every option is disabled, or with no JS
+    /// (prerender / tests).
+    /// </remarks>
+    public ValueTask FocusAsync() =>
+        new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=radio]", preferChecked: true, FormDefaults));
+
+    /// <inheritdoc cref="EditControlBase{TValue}.OnAfterRenderAsync"/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender && AutoFocus) await FocusAsync();
     }
 
     bool ShowEditor => EditControlInit.ShowEditor(IsEditMode, FormOptions);

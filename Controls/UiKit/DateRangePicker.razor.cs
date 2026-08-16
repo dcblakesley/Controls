@@ -2152,4 +2152,9 @@ public partial class DateRangePicker : PickerBase
     protected override IEnumerable<ElementReference> GridRefs => _gridRefs;
 
     protected override ElementReference FocusReclaimTarget => _activeInput == 1 ? _endInputRef : _startInputRef;
+
+    // Always Start, unlike FocusReclaimTarget above: a caller entering the range from outside is
+    // starting the range over, and landing on End because that is where the user happened to be last
+    // time would put them mid-way through a gesture they didn't begin.
+    protected override ElementReference PrimaryInputRef => _startInputRef;
 }

@@ -25,6 +25,7 @@
                    visually hidden alongside a hidden label. *@
                 <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
                        type=@HtmlInputType
+                       @ref="_editorRef"
                        @bind-value=@CurrentValueAsString
                        @bind-value:event="@UpdateEventName"
                        class=@InputClass

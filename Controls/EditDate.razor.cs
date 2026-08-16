@@ -53,6 +53,18 @@ namespace Controls;
 /// </remarks>
 public partial class EditDate<T> : EditControlBase<T>
 {
+    // The inner picker, captured so FocusAsync can forward to it. Null in read-only mode and before
+    // first render, which FocusAsync below reads as "nothing to focus".
+    DatePicker? _picker;
+
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// Forwards to the inner <see cref="DatePicker"/>'s own <see cref="PickerBase.FocusAsync"/>, which
+    /// focuses its typed-entry <c>&lt;input&gt;</c>. That input opens the calendar on focus, so this
+    /// opens the dropdown too — the same thing a user tabbing into the field gets.
+    /// </remarks>
+    public override ValueTask FocusAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
+
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
     /// this used to require. This inert stub exists only so a leftover <c>Field="..."</c> attribute

@@ -3,6 +3,20 @@ namespace Controls;
 /// <summary> Edit control for nullable boolean values, displays as radio buttons (Yes/No/Not Set).</summary>
 public partial class EditBoolNullRadio : EditControlBase<bool?>
 {
+    // Injected only for FocusAsync's group-focus call below.
+    [Inject] IJSRuntime JS { get; set; } = default!;
+
+    /// <inheritdoc cref="EditRadio{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// The fourth radio group, on the same shared implementation as the other three -- "the checked
+    /// radio, else the first enabled one" -- so a consumer switching between them gets the same
+    /// behavior. This one does render its own <c>&lt;input type="radio"&gt;</c>s and could have
+    /// captured element references instead; agreeing with <c>EditRadio</c> (which cannot, its radios
+    /// being consumer-authored) was judged worth more than avoiding the JS hop for one control.
+    /// </remarks>
+    public override ValueTask FocusAsync() =>
+        new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=radio]", preferChecked: true, FormDefaults));
+
     // Component-specific parameters
 
     /// <summary>

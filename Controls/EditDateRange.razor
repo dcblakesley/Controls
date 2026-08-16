@@ -16,7 +16,8 @@
 
         @if (ShowEditor)
         {
-            <DateRangePicker Start="Start"
+            <DateRangePicker @ref="_picker"
+                             Start="Start"
                              StartChanged="OnStartChanged"
                              End="End"
                              EndChanged="OnEndChanged"

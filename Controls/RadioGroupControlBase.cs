@@ -27,6 +27,23 @@ namespace Controls;
 /// </remarks>
 public abstract class RadioGroupControlBase<TValue> : EditControlBase<TValue>
 {
+    // Injected only for FocusAsync's group-focus call below (see that override's remarks) -- neither
+    // derived control has any other JS-driven behavior.
+    [Inject] IJSRuntime JS { get; set; } = default!;
+
+    /// <inheritdoc cref="EditRadio{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// Shares <c>EditRadio</c>'s implementation -- and its "checked radio, else first enabled"
+    /// semantics -- rather than capturing element references of its own, so all four radio groups agree
+    /// on what focusing a group means. It could not capture them anyway: the per-option
+    /// <c>&lt;input&gt;</c>s come from <see cref="InputRadio{TValue}"/> (via <c>RadioOptionItem</c>),
+    /// which renders the element itself. The <c>"Other"</c> free-text box is deliberately NOT a
+    /// candidate -- <c>input[type=radio]</c> excludes it -- since focus should land on the choice, not
+    /// on the box that only becomes live once its radio is picked.
+    /// </remarks>
+    public override ValueTask FocusAsync() =>
+        new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=radio]", preferChecked: true, FormDefaults));
+
     /// <summary> When true, displays radio buttons horizontally.</summary>
     [Parameter] public bool IsHorizontal { get; set; }
 

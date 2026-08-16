@@ -88,6 +88,27 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     /// <inheritdoc/>
     [Parameter] public bool IsDisabled { get; set; }
 
+    /// <summary>
+    /// When true, this control takes keyboard focus once, after its first render — the declarative form
+    /// of calling <see cref="FocusAsync"/> from a parent's <c>OnAfterRenderAsync</c>. Default false, so
+    /// nothing about an existing control changes until it is set.
+    /// </summary>
+    /// <remarks>
+    /// Runs through <see cref="FocusAsync"/>, so it inherits that method's target and its best-effort
+    /// contract (see <see cref="EditControlInit.FocusElementAsync"/>) — a read-only or hidden control
+    /// simply doesn't move focus. The standard Blazor SSR caveat applies: focus is a DOM operation, so
+    /// it can only happen once the component is interactive. Under static SSR (no render mode) or during
+    /// the prerender pass of an interactive one, nothing happens at prerender time and the focus lands
+    /// on the first *interactive* render instead. Use the native <c>autofocus</c> attribute (which
+    /// splats through like any other unmatched attribute) if you need the browser to do it from server-
+    /// rendered HTML alone.
+    /// <para>
+    /// Only the FIRST render focuses. Setting this true later at runtime does not focus the control —
+    /// that is a state change, and <see cref="FocusAsync"/> is the right call for it.
+    /// </para>
+    /// </remarks>
+    [Parameter] public bool AutoFocus { get; set; }
+
     // Standard derived state — populated by InitState, which OnInitialized below calls.
     protected string _id = string.Empty;
     protected string? _isRequired;
@@ -96,6 +117,22 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     // Cached ARIA references — resolved in InitState and re-resolved each OnParametersSet (see BuildDescribedBy).
     protected string _errorMsgId = string.Empty;
     protected string _describedBy = string.Empty;
+
+    /// <summary>
+    /// The control's single editor element, captured by every markup file that renders one
+    /// (<c>@ref="_editorRef"</c>) — the <c>&lt;input&gt;</c>, <c>&lt;textarea&gt;</c>,
+    /// <c>&lt;select&gt;</c>, or <c>role="slider"</c> track. Default (uncaptured) on the controls whose
+    /// field element belongs to a nested component instead (the pickers, the searchable selects, the
+    /// radio groups); those override <see cref="FocusTarget"/> or <see cref="FocusAsync"/> rather than
+    /// setting this.
+    /// </summary>
+    /// <remarks>
+    /// Adding an <c>@ref</c> to an element changes nothing about the rendered markup — it emits a
+    /// reference-capture frame, not an attribute — so a control gains this (and with it a working
+    /// <see cref="FocusAsync"/>) with no DOM/visual change at all. Also what
+    /// <see cref="EditTextInputBase.Clear"/> refocuses after emptying the text.
+    /// </remarks>
+    protected ElementReference _editorRef;
 
     // False until InitState has run to completion — see Dispose.
     bool _stateInitialized;
@@ -232,6 +269,54 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         if (disposing && _stateInitialized)
             EditControlInit.UnregisterField(FormOptions, _fieldIdentifier, this);
         base.Dispose(disposing);
+    }
+
+    // ───────────────────────────── programmatic focus ─────────────────────────────
+
+    /// <summary>
+    /// Moves keyboard focus to this control's editor. Await it from a parent that holds the control
+    /// through <c>@ref</c>:
+    /// <code>&lt;EditString @ref="_name" @bind-Value="model.Name" /&gt;
+    /// ...
+    /// await _name.FocusAsync();</code>
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Never throws: a control that is read-only, hidden, disabled or not yet interactive (prerender)
+    /// simply doesn't move focus — see <see cref="EditControlInit.FocusElementAsync"/>. That is
+    /// deliberate; a focus call is a nicety, and making a consumer guard every one of them against
+    /// state they can't see would be worse than a no-op.
+    /// </para>
+    /// <para>
+    /// A method rather than a public <see cref="ElementReference"/> property, for two reasons: it keeps
+    /// each control's DOM shape private (several controls' field element has moved between releases),
+    /// and it gives the multi-element controls somewhere to answer the "which element?" question —
+    /// the radio groups focus their checked (else first enabled) radio, the checkbox lists their first
+    /// enabled box, <see cref="EditDateRange"/> its Start input.
+    /// </para>
+    /// <para>
+    /// <c>JsInteropEc.FocusById</c> remains the answer for focusing a control this component doesn't
+    /// hold a reference to — a different component's field, or one reached only by id.
+    /// </para>
+    /// </remarks>
+    public virtual ValueTask FocusAsync() => EditControlInit.FocusElementAsync(FocusTarget);
+
+    /// <summary>
+    /// The element <see cref="FocusAsync"/> moves focus to. Defaults to <see cref="_editorRef"/>, which
+    /// every single-editor control's markup captures; overridden by controls whose focusable element
+    /// belongs to a nested component (e.g. <see cref="EditFile"/>'s <c>InputFile</c>). Null means
+    /// "nothing to focus", which <see cref="FocusAsync"/> treats as a no-op.
+    /// </summary>
+    protected virtual ElementReference? FocusTarget => _editorRef;
+
+    /// <summary>
+    /// Honors <see cref="AutoFocus"/> on the first render. Derived overrides must chain to base —
+    /// forgetting the call silently drops this control's <see cref="AutoFocus"/> support.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (firstRender && AutoFocus) await FocusAsync();
     }
 
     /// <summary> True when the editor input should render. False renders the read-only view. </summary>

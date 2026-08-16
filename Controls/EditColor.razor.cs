@@ -26,6 +26,18 @@ namespace Controls;
 /// </remarks>
 public partial class EditColor : EditControlBase<string?>
 {
+    // The inner picker, captured so FocusAsync can forward to it. Null in read-only mode and before
+    // first render, which FocusAsync below reads as "nothing to focus".
+    ColorPicker? _picker;
+
+    /// <inheritdoc cref="EditControlBase{TValue}.FocusAsync"/>
+    /// <remarks>
+    /// Forwards to the inner <see cref="ColorPicker"/>'s own <see cref="ColorPicker.FocusAsync"/>,
+    /// which focuses the swatch trigger button — the widget's tab stop while closed. Unlike the date
+    /// controls this does NOT open the panel: the trigger opens on activation, not on focus.
+    /// </remarks>
+    public override ValueTask FocusAsync() => _picker?.FocusAsync() ?? ValueTask.CompletedTask;
+
     /// <summary>
     /// Obsolete compile-time guard: no longer used — <c>@bind-Value</c> alone supplies the accessor
     /// this used to require. This inert stub exists only so a leftover <c>Field="..."</c> attribute

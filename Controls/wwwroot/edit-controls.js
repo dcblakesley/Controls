@@ -57,6 +57,29 @@
         if (el && typeof el.focus === 'function') el.focus();
     };
 
+    // Move focus INTO a group control whose individual inputs this library can't capture an
+    // ElementReference for: the four radio groups all render their options through Microsoft's
+    // <InputRadio> (EditRadio's come from consumer markup outright), so there is no element for
+    // @ref to bind and no per-option id EditRadio could compute. Focusing the container id the
+    // fieldset already carries and resolving the option here is the only channel that reaches them.
+    //
+    // preferChecked mirrors real radiogroup tab-order semantics: Tab lands on the CHECKED radio, not
+    // the first one, so a group with a selection must focus that. Checkbox lists are the opposite --
+    // each box is its own tab stop -- so they pass false and take the first enabled box.
+    //
+    // Disabled options are skipped entirely, and a group with none enabled is left alone rather than
+    // focused somewhere the user can't act: `.focus()` on a disabled input is a silent no-op anyway,
+    // but it would still have moved focus AWAY from wherever it was.
+    ns.focusGroupInput = function (containerId, selector, preferChecked) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const enabled = Array.prototype.filter.call(
+            container.querySelectorAll(selector || 'input'), el => !el.disabled);
+        if (enabled.length === 0) return;
+        const target = (preferChecked && enabled.find(el => el.checked)) || enabled[0];
+        if (typeof target.focus === 'function') target.focus();
+    };
+
     // Auto-size a <textarea> to fit its content, clamped between minRows and maxRows (maxRows
     // null/0 = unbounded). Stateless: no listeners are attached here, and nothing is cached between
     // calls -- EditTextArea re-invokes this on every input event and once after first render while

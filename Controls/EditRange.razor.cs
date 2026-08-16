@@ -160,6 +160,14 @@ public partial class EditRange<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     readonly JsModule _sliderModule = new("wss-slider.js");
     ElementReference _trackRef;
     ElementReference _signalRef;
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// The <c>role="slider"</c> track, not an <c>&lt;input&gt;</c> -- it is the element that carries
+    /// the control's <c>tabindex</c> and takes the arrow keys, so it is the one a Tab into this control
+    /// lands on. (The hidden drag-signal input beside it is a JS reporting channel, never a tab stop.)
+    /// </remarks>
+    protected override ElementReference? FocusTarget => _trackRef;
     // Whether wss-slider.js is driving the track. Gates the @onclick fallback off (a pointerdown-
     // driven drag already reported that press; per the Pointer Events spec a click still fires
     // afterwards) and is reset whenever the track leaves the DOM, since a later reappearance renders

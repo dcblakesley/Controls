@@ -541,8 +541,15 @@ public class OptionIdUniquenessAndSplatTests : BunitContext
         // (TXT naming-anchor wiring) is a deliberate addition -- it points at FormLabel's
         // lbltext-{id} span rather than relying on <label for>, which used to fold the tooltip
         // trigger's own name into the field's accessible name.
+        //
+        // `blazor:elementreference` last is the @ref this control's public FocusAsync() needs (see
+        // EditControlBase._editorRef). It is NOT free of DOM effect, contrary to the usual assumption:
+        // a real browser renders a reference capture as an empty `_bl_{guid}` attribute on the element,
+        // which is exactly what bUnit's htmlizer is standing in for here. Valueless and unstyled, so it
+        // moves no visual baseline and matches no selector -- but it does belong in this pin, and
+        // EditString/EditTextArea have carried the same one since their clear button shipped.
         Assert.Equal(
-            "type|id|data-test-id|min|max|class|aria-labelledby|aria-required|aria-describedby|value|blazor:onchange",
+            "type|id|data-test-id|min|max|class|aria-labelledby|aria-required|aria-describedby|value|blazor:onchange|blazor:elementreference",
             string.Join("|", input.Attributes.Select(a => a.Name)));
     }
 

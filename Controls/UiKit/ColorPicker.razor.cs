@@ -35,6 +35,15 @@ namespace Controls;
 public partial class ColorPicker : PopupOverlayBase
 {
     /// <summary>
+    /// Moves keyboard focus to the swatch trigger button — the widget's single tab stop while the
+    /// panel is closed. Public so a host holding this picker through <c>@ref</c> can focus it;
+    /// <see cref="EditColor"/>'s own <c>FocusAsync()</c> forwards straight here. Does not open the
+    /// panel (the trigger opens on click/Enter/Space, not on focus). Best-effort — see
+    /// <see cref="EditControlInit.FocusElementAsync"/>.
+    /// </summary>
+    public ValueTask FocusAsync() => EditControlInit.FocusElementAsync(_triggerButtonRef);
+
+    /// <summary>
     /// The bound color, two-way bindable via <c>@bind-Value</c>. Accepts 3/4/6/8-digit hex (with or
     /// without a leading <c>#</c>) and <c>rgb()</c>/<c>rgba()</c> text; emits the normalized lowercase
     /// <c>#rrggbb</c>, extended to <c>#rrggbbaa</c> only when the color is translucent AND
@@ -210,6 +219,9 @@ public partial class ColorPicker : PopupOverlayBase
     string _hexEdit = string.Empty;
     readonly string[] _channelEdit = ["0", "0", "0", "100"];
 
+    // The trigger BUTTON, not PopupOverlayBase's _triggerRef slot span around it: the span carries no
+    // tabindex (the button is the tab stop), so focusing it would move focus nowhere.
+    ElementReference _triggerButtonRef;
     ElementReference _svRef;
     ElementReference _hueRef;
     ElementReference _alphaRef;

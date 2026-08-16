@@ -1508,4 +1508,8 @@ public partial class DatePicker : PickerBase
     protected override IEnumerable<ElementReference> GridRefs => new[] { _gridRef };
 
     protected override ElementReference FocusReclaimTarget => _inputRef;
+
+    // The same input either way -- this picker has only one, so "where the user was" and "where a
+    // caller from outside should land" can't diverge the way they do for the range picker.
+    protected override ElementReference PrimaryInputRef => _inputRef;
 }

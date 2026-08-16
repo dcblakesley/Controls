@@ -14,6 +14,7 @@
             @* Splat first so every explicit attribute below wins. *@
             <select @attributes="AttributeSplat.Rest(AdditionalAttributes)"
                     @bind=@CurrentValueAsString
+                    @ref="_editorRef"
                     class=@($"edit-input edit-select-select {CssClass}")
                     disabled=@IsDisabled
                     id=@_id

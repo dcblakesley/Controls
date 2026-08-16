@@ -14,6 +14,7 @@
             @* Splat first so every explicit attribute below wins. *@
             <select @attributes="AttributeSplat.Rest(AdditionalAttributes)"
                     @bind=@CurrentValueAsString
+                    @ref="_editorRef"
                     id=@_id
                     data-test-id=@_id
                     disabled=@IsDisabled

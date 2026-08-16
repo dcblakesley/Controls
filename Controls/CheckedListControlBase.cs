@@ -18,6 +18,23 @@ namespace Controls;
 /// </remarks>
 public abstract class CheckedListControlBase<TItem> : EditControlListBase<TItem>
 {
+    // Injected only for FocusAsync's group-focus call below.
+    [Inject] IJSRuntime JS { get; set; } = default!;
+
+    /// <inheritdoc cref="EditControlListBase{TItem}.FocusAsync"/>
+    /// <remarks>
+    /// Focuses the FIRST ENABLED checkbox — not the first checked one, unlike the radio groups that
+    /// share this JS helper: every box in a checkbox list is its own tab stop, so the top of the list
+    /// is where a Tab into the group lands regardless of what is ticked. Resolved from the live DOM
+    /// inside the group fieldset (which carries this control's own id in edit mode) rather than from a
+    /// captured <see cref="ElementReference"/> per option: the option elements are <c>@key</c>ed, and
+    /// Blazor does not re-run a reference capture for an element it reuses across a reorder, so a
+    /// per-option array would silently start pointing at the wrong boxes. Best-effort — a no-op in
+    /// read-only mode (no fieldset id renders), with every option disabled, or with no JS.
+    /// </remarks>
+    public override ValueTask FocusAsync() =>
+        new(JsInteropEc.FocusGroupInput(JS, _id, "input[type=checkbox]", preferChecked: false, FormDefaults));
+
     /// <summary> Labels for the checkboxes.</summary>
     [Parameter] public string? LabelClass { get; set; }
 
