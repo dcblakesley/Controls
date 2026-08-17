@@ -238,6 +238,34 @@ public class EditStringSuggestionsTests : BunitContext
     }
 
     [Fact]
+    public void The_Suggestions_sequence_is_re_enumerated_on_every_render()
+    {
+        // Not a defect -- rendering a sequence means walking it -- but it is the reason the parameter's
+        // documented contract requires a STABLE, REPEATABLE sequence. A generator-backed or
+        // side-effecting one silently renders something different on each pass, which this pins by
+        // demonstration: a materialized List/array (what consumers should pass) is immune.
+        var passes = 0;
+
+        IEnumerable<string> Generated()
+        {
+            passes++;
+            yield return $"pass{passes}";
+        }
+
+        var model = new SuggestionsModel { Text = "hi" };
+        var cut = RenderOne(model, Generated());
+
+        Assert.Equal(new[] { "pass1" }, Options(cut));
+
+        cut.Find("input.edit-string-input").Input("hi there");
+
+        Assert.Equal(new[] { "pass2" }, Options(cut));
+    }
+
+    static string?[] Options(IRenderedComponent<ContainerFragment> cut) =>
+        cut.Find("datalist").QuerySelectorAll("option").Select(o => o.GetAttribute("value")).ToArray();
+
+    [Fact]
     public void Suggestions_containing_html_special_characters_are_encoded_correctly()
     {
         var model = new SuggestionsModel { Text = "hi" };

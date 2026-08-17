@@ -125,16 +125,45 @@ public partial class EditString : EditTextInputBase
     /// attribute. A non-null but EMPTY sequence still renders the <c>list</c> attribute and an empty
     /// <c>&lt;datalist&gt;</c>: treating "Suggestions is set" (not "Suggestions has entries") as the
     /// on/off switch means a consumer binding a filtered list that transiently empties (e.g. mid-fetch)
-    /// doesn't see the attribute flicker on and off. Suppressed on a password field (see
-    /// <see cref="EffectiveIsPassword"/>) -- browsers ignore <c>list</c> on <c>type="password"</c>
-    /// outright, so wiring it there would be dead markup with nothing to show.
+    /// doesn't see the attribute flicker on and off.
+    /// <para>
+    /// The sequence is enumerated once per render and RE-enumerated on every subsequent render, so it
+    /// must be stable and repeatable. A materialized collection (array, <c>List&lt;string&gt;</c>) or a
+    /// pure LINQ query over one is fine; a single-pass or side-effecting sequence (a raw iterator over a
+    /// stream, a generator that yields fresh values each time) is not -- it renders different options on
+    /// each pass, or none at all after the first.
+    /// </para>
+    /// <para>
+    /// Suppressed on a password field (see <see cref="EffectiveIsPassword"/>) -- see
+    /// <see cref="EffectiveSuggestions"/>.
+    /// </para>
+    /// <para>
+    /// Note the interaction with <see cref="EffectiveAutocomplete"/>, which is deliberately NOT
+    /// influenced by this parameter: a field whose property name matches nothing in the inference table
+    /// still renders <c>autocomplete="one-time-code"</c> (the locked general suppressor) alongside
+    /// <c>list=</c>. Coupling an unrelated parameter into the autocomplete fallback would be a hidden
+    /// dependency a consumer could not discover from either parameter's name, and whether a UA prefers
+    /// its own autofill affordance over a <c>&lt;datalist&gt;</c> popup is UA-specific and has NOT been
+    /// verified here. The supported way to say what the field's purpose is remains
+    /// <see cref="Autocomplete"/> or <c>[Autocomplete]</c> on the model -- set the field's real token
+    /// (<c>"organization"</c>, <c>"address-level2"</c>, …), which is better for WCAG 1.3.5 than any
+    /// suppressor, or <c>"off"</c> if the datalist should be the only popup offered.
+    /// </para>
     /// </remarks>
     [Parameter] public IEnumerable<string>? Suggestions { get; set; }
 
     /// <summary>
-    /// <see cref="Suggestions"/>, or null when it must not render -- see <see cref="Suggestions"/>'s
-    /// remarks for the password suppression.
+    /// <see cref="Suggestions"/>, or null on a password field (see <see cref="EffectiveIsPassword"/>).
     /// </summary>
+    /// <remarks>
+    /// Keyed on the FIELD being a password, not on the <c>type</c> attribute currently rendered, so the
+    /// suppression holds in the revealed state too — where <c>type</c> has flipped to <c>text</c> and
+    /// <c>list</c> would apply. That is the intent, not an oversight: a secret is not a place to offer a
+    /// shared list of hints, and gating on the live <c>type</c> instead would blink a datalist into
+    /// existence the instant the user pressed the reveal toggle. In the masked state it would
+    /// additionally be dead markup — <c>list</c> does not apply to <c>type="password"</c> at all, per
+    /// the HTML spec's list of types the attribute is defined for.
+    /// </remarks>
     IEnumerable<string>? EffectiveSuggestions => EffectiveIsPassword ? null : Suggestions;
 
     /// <summary>

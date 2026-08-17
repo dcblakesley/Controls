@@ -248,10 +248,17 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// <summary>
     /// Open-vocabulary autofill hints, rendered as an HTML <c>&lt;datalist&gt;</c> wired to the input
     /// via <c>list=</c> -- same feature and contract as <see cref="EditString.Suggestions"/> (see its
-    /// remarks for the null-vs-empty distinction and why this differs from the closed-vocabulary Select
-    /// controls). <c>list</c> is valid on <c>type="number"</c>, and EditNumber has no password mode to
-    /// suppress it for.
+    /// remarks for the null-vs-empty distinction, the requirement that the sequence be stable and
+    /// repeatable across renders, and why this differs from the closed-vocabulary Select controls).
+    /// <c>list</c> is valid on <c>type="number"</c>, and EditNumber has no password mode to suppress it
+    /// for.
     /// </summary>
+    /// <remarks>
+    /// The rendered <c>&lt;option&gt;</c> values are strings the browser offers verbatim; a value the
+    /// native number input can't parse (a thousands separator, a localized decimal comma) simply
+    /// produces an unparseable entry if the user picks it. Format them the way the input round-trips —
+    /// InvariantCulture, matching <see cref="FormatValueAsString"/>.
+    /// </remarks>
     [Parameter] public IEnumerable<string>? Suggestions { get; set; }
 
     /// <summary> Backing store for <see cref="SuggestionsListId"/> -- see <see cref="EditString.SuggestionsListId"/>.</summary>
