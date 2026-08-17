@@ -294,11 +294,42 @@ public class FocusFirstFieldE2ETests : IAsyncLifetime
         // The settled end of the sequence, not just its current state: whatever order the overlay's
         // activation and this feature landed in, the LAST focus move of the open must be onto the
         // first field. Measured sequence is `open-modal >> ModalFirst` -- a single move into the
-        // dialog, because focusFirstField gets there first and activateModal's own guard then sees
-        // the panel already focused and stands down. The assertion is on the tail rather than the
-        // whole log so the other order (close X first, corrected a beat later) stays legal.
+        // dialog. The assertion is on the tail rather than the whole log so an implementation that
+        // corrects a beat later (close X first, then the field) stays legal here; the REOPEN test
+        // below is the one that pins the single move.
         var focusLog = await _page.EvaluateAsync<string[]>("() => window.__wssFocusLog");
         Assert.Equal("ModalFirst", focusLog[^1]);
+    }
+
+    [Fact]
+    public async Task Reopening_a_Modal_still_takes_one_move_straight_to_the_field()
+    {
+        // The first open and every REOPEN used to differ, and only the module cache decided it: on
+        // the first open wss-overlay.js is still being imported when the scope fires, so focus goes
+        // straight to the field; on a reopen the module is cached, activateModal ran first, and the
+        // sequence was `wss-modal-close >> ModalFirst` -- two moves, with a screen reader announcing
+        // the close button before the thing the user came for. activateModal now offers the open to
+        // an in-panel FocusFirstField scope before its own grab, which makes both opens identical.
+        await GotoAsync("modal");
+        await _page.Locator("#open-modal").ClickAsync();
+        await Expect(_page.Locator("input#ModalFirst")).ToBeFocusedAsync(new() { Timeout = 10_000 });
+
+        await _page.Locator(".wss-modal-close").ClickAsync();
+        await Expect(_page.Locator(".wss-modal")).Not.ToBeVisibleAsync(new() { Timeout = 10_000 });
+
+        // Record the REOPEN only -- the close and its focus restore are not what's under test.
+        await _page.EvaluateAsync(
+            "() => { window.__wssFocusLog = []; document.addEventListener('focusin', e =>"
+            + " window.__wssFocusLog.push(e.target.id || e.target.className || e.target.tagName)); }");
+
+        await _page.Locator("#open-modal").ClickAsync();
+        await Expect(_page.Locator("input#ModalFirst")).ToBeFocusedAsync(new() { Timeout = 10_000 });
+        await _page.WaitForTimeoutAsync(500);
+        await Expect(_page.Locator("input#ModalFirst")).ToBeFocusedAsync();
+
+        var focusLog = await _page.EvaluateAsync<string[]>("() => window.__wssFocusLog");
+        Assert.Equal("ModalFirst", focusLog[^1]);
+        Assert.DoesNotContain(focusLog, entry => entry.Contains("wss-modal-close"));
     }
 
     [Fact]

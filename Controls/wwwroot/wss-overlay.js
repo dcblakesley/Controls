@@ -821,6 +821,24 @@ export function activateModal(panel) {
     // guard that reads as "already focused inside the panel" and this whole block is skipped,
     // stranding initial focus on the panel instead of moving it to the first focusable child. A
     // genuinely pre-focused CHILD must still win (see above) -- only the panel itself is excluded.
+    // Before the guard below, offer the open to a FormDefaults scope inside the panel. A
+    // FocusFirstField scope renders a pair of empty <template> markers and fires its own
+    // WssEditControls.focusFirstField from OnAfterRender, and which of the two lands first was
+    // decided by the module cache: on a page's FIRST open this file is still being imported when the
+    // scope fires, so focus goes straight to the field; on every REOPEN the import is cached, this
+    // ran first, and the measured sequence became `close X, then the field` — two moves, with a
+    // screen reader announcing the close button before the thing the user came for. Asking the scope
+    // here makes the single-move order identical on every open.
+    //
+    // No new failure mode: this is a plain attempt, and the existing guard immediately below decides
+    // what happens next. If WssEditControls isn't loaded, if the scope has no focusable field, or if
+    // it declines, focus simply isn't inside the panel and the normal grab runs exactly as before.
+    // (The scope's own later call then finds a field already focused and stands down in its turn.)
+    const focusScope = panel.querySelector('template[id^="wss-focus-scope-"]');
+    if (focusScope && window.WssEditControls && typeof window.WssEditControls.focusFirstField === 'function') {
+        try { window.WssEditControls.focusFirstField(focusScope.id); } catch { /* never fatal to the open */ }
+    }
+
     const focusedInsidePanel = panel.contains(document.activeElement) && document.activeElement !== panel;
     if (!focusedInsidePanel) {
         const initial = focusables();
