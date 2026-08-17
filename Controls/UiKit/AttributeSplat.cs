@@ -84,12 +84,17 @@ internal static class AttributeSplat
             if (rest.ContainsKey(name)) { present = true; break; }
         if (!present) return rest;
 
+        // Case-insensitive, to match the presence check above: Blazor's CaptureUnmatchedValues
+        // dictionary (and thus `rest`, when it flows through unchanged) compares keys with
+        // OrdinalIgnoreCase, so `rest.ContainsKey(name)` finds a case-variant match like
+        // "onKeyDown" or "aria-Label". The removal loop must use the same comparer, or a
+        // case-variant key is detected as present here but never actually dropped below.
         var trimmed = new Dictionary<string, object>(rest.Count);
         foreach (var kv in rest)
         {
             var drop = false;
             foreach (var name in withheld)
-                if (string.Equals(name, kv.Key, StringComparison.Ordinal)) { drop = true; break; }
+                if (string.Equals(name, kv.Key, StringComparison.OrdinalIgnoreCase)) { drop = true; break; }
             if (!drop) trimmed[kv.Key] = kv.Value;
         }
         return trimmed.Count == 0 ? null : trimmed;

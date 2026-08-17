@@ -312,6 +312,27 @@ public class ConsumerEventChainingTests : BunitContext
     }
 
     [Fact]
+    public void Modal_runs_a_case_variant_splatted_consumer_onKeyDown_exactly_once()
+    {
+        // AttributeSplat.RestExcept withholds "onkeydown" from the splat case-insensitively (P3): a
+        // case-variant key like "onKeyDown" must still be pulled out and re-invoked through
+        // ConsumerEvent exactly once -- not zero (silently dropped by Blazor's own case-insensitive
+        // duplicate-attribute rule discarding a leftover splatted frame) and not twice.
+        var visible = true;
+        var keyDowns = 0;
+        var cut = Render<Modal>(p => p
+            .Add(m => m.Visible, true)
+            .Add(m => m.Title, "Confirm")
+            .Add(m => m.VisibleChanged, (bool v) => visible = v)
+            .AddUnmatched("onKeyDown", EventCallback.Factory.Create<KeyboardEventArgs>(this, () => keyDowns++)));
+
+        cut.Find(".wss-modal").KeyDown(new KeyboardEventArgs { Key = "Escape" });
+
+        Assert.False(visible);     // the library's own Escape-to-cancel ran...
+        Assert.Equal(1, keyDowns); // ...and so did the consumer's handler, exactly once.
+    }
+
+    [Fact]
     public void Modal_runs_a_splatted_consumer_onkeydown_even_with_Keyboard_false()
     {
         var visible = true;

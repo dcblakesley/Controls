@@ -172,6 +172,22 @@ public class A11ySelectTests : BunitContext
     }
 
     [Fact]
+    public void A_case_variant_aria_Label_is_also_lifted_off_the_wrapper()
+    {
+        // AttributeSplat.RestExcept's presence check (rest.ContainsKey) uses the same OrdinalIgnoreCase
+        // comparer as Blazor's own CaptureUnmatchedValues dictionary, so it found a case-variant key
+        // like "aria-Label" -- but the removal loop compared with plain Ordinal, so the key was
+        // detected as present and then never actually stripped: a duplicate "aria-Label" leaked onto
+        // the roleless wrapper alongside the copy correctly re-homed onto the combobox input.
+        var cut = Render<Select<string>>(p => p
+            .Add(s => s.Options, Opts("Red", "Green"))
+            .AddUnmatched("aria-Label", "Colour"));
+
+        Assert.Equal("Colour", cut.Find(InputSelector).GetAttribute("aria-label"));
+        Assert.False(cut.Find(".wss-select").HasAttribute("aria-label"));
+    }
+
+    [Fact]
     public void Lifting_aria_label_leaves_the_other_splatted_attributes_on_the_wrapper()
     {
         var cut = Render<Select<string>>(p => p
