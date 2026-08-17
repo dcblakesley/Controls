@@ -19,6 +19,12 @@ namespace Controls;
 ///     ...
 /// &lt;/EditForm&gt;
 /// </code>
+/// The ordering only actually BITES at <see cref="DebounceMilliseconds"/> 0, where the flush runs
+/// inside the notification itself and therefore inside the same handler chain: put the component
+/// first there and the gate reads a message store the validator has not touched yet, so the invalid
+/// value is saved. At any non-zero debounce the flush happens a debounce later — long after every
+/// <c>OnFieldChanged</c> handler has run — and the order is irrelevant. Write it after the validator
+/// regardless: it costs nothing and it is correct in both modes.
 /// </para>
 /// <para>
 /// <b>Why one subscription beats N callbacks.</b> Every control family in this library notifies the
@@ -77,6 +83,16 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
     /// <see cref="EditContext.Validate"/> — re-validating would light up every untouched field's error
     /// the moment the user typed in one of them.
     /// </summary>
+    /// <remarks>
+    /// A skipped save is never TERMINAL. Besides the next field change, this component also re-attempts
+    /// it on <see cref="EditContext.OnValidationStateChanged"/>, so messages cleared from OUTSIDE the
+    /// form — a server-side <see cref="ValidationMessageStore"/> clear followed by
+    /// <see cref="EditContext.NotifyValidationStateChanged"/>, which the
+    /// <see cref="FormOptions.RequiredResolver"/>/FluentValidation bridge relies on — release the
+    /// pending work without waiting for the user to touch another field. Without that a field that
+    /// simply stays invalid (a conditionally-required property the user cannot currently satisfy) would
+    /// gate off auto-save for the WHOLE form indefinitely.
+    /// </remarks>
     [Parameter] public bool SaveWhenInvalid { get; set; }
 
     /// <summary> What happens when a field changes while a save is still in flight. Default
@@ -91,13 +107,15 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
     [Parameter] public Func<FieldIdentifier, bool>? ShouldSave { get; set; }
 
     /// <summary>
-    /// Invoked with the exception when <see cref="OnSave"/> throws. When this is NOT wired the
-    /// exception is re-dispatched through <see cref="ComponentBase.DispatchExceptionAsync"/> instead,
-    /// i.e. it surfaces exactly as an exception thrown from a lifecycle method would — caught by an
-    /// enclosing <c>ErrorBoundary</c>, otherwise fatal to the circuit. Failures are never silently
-    /// swallowed; wiring this is how you opt into handling them yourself.
+    /// Invoked when <see cref="OnSave"/> throws, with the exception AND the fields the failed save was
+    /// carrying (see <see cref="FormAutoSaveFailureEventArgs"/>). When this is NOT wired the exception
+    /// is re-dispatched through <see cref="ComponentBase.DispatchExceptionAsync"/> instead, i.e. it
+    /// surfaces exactly as an exception thrown from a lifecycle method would — caught by an enclosing
+    /// <c>ErrorBoundary</c>, otherwise fatal to the circuit. Failures are never silently swallowed;
+    /// wiring this is how you opt into handling them yourself, and a handler that throws in turn is
+    /// itself re-dispatched rather than lost.
     /// </summary>
-    [Parameter] public EventCallback<Exception> OnSaveFailed { get; set; }
+    [Parameter] public EventCallback<FormAutoSaveFailureEventArgs> OnSaveFailed { get; set; }
 
     /// <summary>
     /// The clock the debounce runs on. Null (default) uses <see cref="System.TimeProvider.System"/>.
@@ -106,6 +124,13 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
     /// auto-saving form. It is the only parameter here that isn't closing a hazard from the volume
     /// analysis above, and it is the .NET-idiomatic seam for exactly this.
     /// </summary>
+    /// <remarks>
+    /// <b>Read ONCE</b>, when the debounce timer is first created (i.e. on the first accepted field
+    /// change at a non-zero <see cref="DebounceMilliseconds"/>). The one timer lives for the
+    /// component's lifetime and is re-armed rather than re-created, so swapping this parameter
+    /// afterwards has no effect — the debounce goes on running on the provider it started with. Supply
+    /// it once, before the form is interacted with.
+    /// </remarks>
     [Parameter] public TimeProvider? TimeProvider { get; set; }
 
     // Fully qualified: the parameter above shadows the type name inside this class.
@@ -115,6 +140,11 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
     // event, through the shared implementation. Created lazily: its handler is an instance method
     // group, which a field initializer can't take.
     FieldChangedSubscription? _subscription;
+
+    // The second subscription, and the reason it exists: a save skipped by the validity gate has to be
+    // RE-ATTEMPTED when validation state changes, or the skip is terminal (see SaveWhenInvalid's
+    // remarks). Same lazy creation, same re-point/detach discipline.
+    ValidationStateSubscription? _validationSubscription;
 
     // Fields seen since the last save that actually ran, de-duplicated, in first-seen order. A List
     // (not a HashSet) because the ORDER is part of the contract -- "what changed, in the order the
@@ -126,13 +156,23 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
     // a timer per character.
     ITimer? _debounceTimer;
 
-    // Single-threaded by construction: every mutation below happens on the renderer's dispatcher (the
-    // EditContext notification arrives on it, and the timer callback is marshalled onto it by
-    // InvokeAsync), so no lock is needed and none would help -- Blazor Server's circuit and WASM's
-    // single thread both serialize this.
+    // Single-threaded by construction, with ONE exception: every mutation below happens on the
+    // renderer's dispatcher (the EditContext notifications arrive on it, and the timer callback is
+    // marshalled onto it by InvokeAsync), so no lock is needed and none would help -- Blazor Server's
+    // circuit and WASM's single thread both serialize this. The exception is _disposed, which Dispose
+    // writes on the dispatcher and the timer callback READS on a thread-pool thread before marshalling
+    // (StartFlush): volatile, so that read can't be hoisted or served from a stale cache. FlushAsync
+    // re-checks it on the dispatcher anyway, so the volatile is belt-and-braces rather than the whole
+    // guarantee.
     bool _saving;
     bool _trailingQueued;
-    bool _disposed;
+    volatile bool _disposed;
+
+    // Set when the validity gate skips a save (and cleared the moment that skip is re-attempted).
+    // Scopes the OnValidationStateChanged handler to the one case it exists for: without it, every
+    // validation-state change on a form with pending work would try to flush, including the constant
+    // stream a DataAnnotationsValidator raises while the user types.
+    bool _validityGated;
 
     /// <inheritdoc/>
     protected override void OnParametersSet()
@@ -145,11 +185,23 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
         }
 
         _subscription ??= new FieldChangedSubscription(OnFieldChanged);
+        _validationSubscription ??= new ValidationStateSubscription(OnValidationStateChanged);
+        _validationSubscription.SyncTo(CurrentEditContext);
         if (_subscription.SyncTo(CurrentEditContext))
         {
             // A new context means a new model: the pending FieldIdentifiers name the OLD model's
-            // fields, and an in-flight debounce armed for it would save the wrong form. Both go.
+            // fields, and an in-flight debounce armed for it would save the wrong form. Both go, along
+            // with any gated-skip state, which belonged to the outgoing form's validity.
+            //
+            // Reachable in principle only: DataAnnotationsValidator and every InputBase-derived control
+            // THROW when their EditContext changes, so a real <EditForm> whose EditContext is swapped
+            // tears the subtree down instead of re-pointing it, and this component never sees the swap.
+            // The branch is kept because it is the correct behavior for the one shape that can reach it
+            // (a bare CascadingValue<EditContext> around nothing else, which is how it is tested) and
+            // because the alternative -- saving the previous model's fields into the new context -- is
+            // the worst possible failure mode.
             _pending.Clear();
+            _validityGated = false;
             _debounceTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         }
     }
@@ -174,14 +226,52 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
         if (!_pending.Contains(field))
             _pending.Add(field);
 
+        ArmOrFlush();
+    }
+
+    /// <summary>
+    /// Re-attempts a save the validity gate skipped, once the form is valid again. Deliberately narrow:
+    /// it does nothing unless a skip actually happened (<c>_validityGated</c>) and there is still
+    /// pending work, so the ordinary validation-state churn of typing costs one field read.
+    /// </summary>
+    /// <remarks>
+    /// It goes back through the DEBOUNCE rather than flushing on the spot, and that matters for the
+    /// common shape of "the form became valid": the user fixed the offending field, which means this
+    /// handler runs from the validator's own OnFieldChanged handler — BEFORE this component's, and
+    /// therefore before the field they just fixed has even joined <c>_pending</c>. Flushing here would
+    /// save the batch without it and then save again a debounce later. Re-arming instead lands both in
+    /// the one save the user expects. (At <see cref="DebounceMilliseconds"/> 0 there is no window to
+    /// re-arm, so it flushes, exactly as a field change does.)
+    /// <para>
+    /// Loop safety: the flag is cleared BEFORE the re-attempt, so a validation-state change raised
+    /// during the resulting flush can't re-trigger the same skip; a save IN FLIGHT is left alone
+    /// (<c>_saving</c>) because its own loop picks up whatever is pending when it finishes — and
+    /// because a consumer's OnSave writing to a ValidationMessageStore raises this event from inside
+    /// the save it would otherwise restart. A repeat skip simply sets the flag again.
+    /// </para>
+    /// </remarks>
+    void OnValidationStateChanged()
+    {
+        if (_disposed || !_validityGated || _saving || _pending.Count == 0) return;
+        if (!OnSave.HasDelegate) return;
+        if (!SaveWhenInvalid && CurrentEditContext?.GetValidationMessages().Any() == true) return;
+
+        _validityGated = false;
+        ArmOrFlush();
+    }
+
+    // The shared tail of "there is work to do": start (or push out) the trailing debounce, or flush
+    // immediately when debouncing is off. Re-arming an already-armed timer replaces its due time, which
+    // is what makes this trailing -- a burst of keystrokes keeps pushing the deadline out and only the
+    // pause fires it.
+    void ArmOrFlush()
+    {
         if (DebounceMilliseconds <= 0)
         {
             StartFlush();
             return;
         }
 
-        // Re-arming an already-armed timer replaces its due time, which is what makes this trailing:
-        // a burst of keystrokes keeps pushing the deadline out and only the pause fires it.
         _debounceTimer ??= EffectiveTimeProvider.CreateTimer(
             _ => StartFlush(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         _debounceTimer.Change(TimeSpan.FromMilliseconds(DebounceMilliseconds), Timeout.InfiniteTimeSpan);
@@ -194,7 +284,34 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
     void StartFlush()
     {
         if (_disposed) return;
-        _ = InvokeAsync(FlushAsync);
+        // Fire-and-forget by necessity -- nothing awaits a debounce -- but NOT discarded: an exception
+        // escaping the flush would otherwise die unobserved in the dropped task, which is exactly the
+        // silent swallowing this component's OnSaveFailed contract promises never happens.
+        _ = ObserveFlushAsync();
+    }
+
+    async Task ObserveFlushAsync()
+    {
+        try
+        {
+            await InvokeAsync(FlushAsync);
+        }
+        catch (Exception ex)
+        {
+            // A failing OnSave (and a failing OnSaveFailed) is already routed to the consumer inside
+            // FlushAsync, so anything arriving here escaped some other way -- a validator throwing
+            // behind GetValidationMessages, say. Same channel, one last time.
+            try
+            {
+                await DispatchExceptionAsync(ex);
+            }
+            catch
+            {
+                // The renderer itself refused it: the component is detached/disposed, and there is no
+                // channel left to surface anything through. Swallowing beats faulting a task nobody
+                // can observe.
+            }
+        }
     }
 
     async Task FlushAsync()
@@ -211,13 +328,21 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
 
         do
         {
-            _trailingQueued = false;
-
             // Read the CURRENT message store rather than re-validating (see SaveWhenInvalid). This is
             // why the component belongs after <DataAnnotationsValidator />: its OnFieldChanged handler
             // has to have validated the changed field before this runs.
+            //
+            // Checked BEFORE _trailingQueued is cleared, so a gated skip doesn't SPEND the queued
+            // trailing run: the queue survives to be picked up by whatever releases the gate.
             if (!SaveWhenInvalid && CurrentEditContext?.GetValidationMessages().Any() == true)
-                return; // _pending deliberately survives -- the next successful save reports it all
+            {
+                // _pending deliberately survives -- the next successful save reports it all -- and the
+                // flag makes the skip recoverable without a further field change (OnValidationStateChanged).
+                _validityGated = true;
+                return;
+            }
+
+            _trailingQueued = false;
 
             if (_pending.Count == 0) return;
             var changed = _pending.ToArray();
@@ -244,18 +369,61 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            if (OnSaveFailed.HasDelegate)
-                await OnSaveFailed.InvokeAsync(ex);
-            else
-                // Not swallowed: re-raised as if it had been thrown from a lifecycle method, so an
-                // ErrorBoundary catches it and an unguarded app still fails loudly. Without this the
-                // exception would die unobserved inside the discarded StartFlush task.
-                await DispatchExceptionAsync(ex);
+            // The fields this save was carrying were taken OUT of _pending before it started (a change
+            // arriving mid-save has to accumulate somewhere). A failed save therefore has to put them
+            // back or they are gone for good: the next save would report only what changed afterwards,
+            // and a consumer PATCHing by ChangedFields -- the entire reason that list exists -- would
+            // silently never persist them. This is also what SaveWhenInvalid's skip already promised in
+            // the neighbouring case.
+            RestorePending(changed);
+            await ReportFailureAsync(ex, changed);
+        }
+    }
+
+    // Puts a failed save's fields back at the FRONT of the pending set: they changed before anything
+    // that arrived while the save was in flight, and ChangedFields is documented as first-seen order.
+    // De-duplicating against what accumulated meanwhile, since the same field may well be in both.
+    void RestorePending(IReadOnlyList<FieldIdentifier> changed)
+    {
+        if (_disposed) return;
+        var arrivedDuringSave = _pending.ToArray(); // empty is Array.Empty<T>() -- no allocation
+        _pending.Clear();
+        // `changed` came out of _pending, so it is already de-duplicated.
+        _pending.AddRange(changed);
+        foreach (var field in arrivedDuringSave)
+            if (!_pending.Contains(field))
+                _pending.Add(field);
+    }
+
+    // The one place a save failure reaches the consumer. OnSaveFailed is invoked inside its own guard
+    // because a handler that throws would otherwise escape into the fire-and-forget flush task and
+    // vanish -- the exact silent swallowing this component's contract rules out.
+    async Task ReportFailureAsync(Exception ex, IReadOnlyList<FieldIdentifier> changed)
+    {
+        if (!OnSaveFailed.HasDelegate)
+        {
+            // Not swallowed: re-raised as if it had been thrown from a lifecycle method, so an
+            // ErrorBoundary catches it and an unguarded app still fails loudly.
+            await DispatchExceptionAsync(ex);
+            return;
+        }
+
+        try
+        {
+            await OnSaveFailed.InvokeAsync(new FormAutoSaveFailureEventArgs(CurrentEditContext!, ex, changed));
+        }
+        catch (Exception handlerEx)
+        {
+            // Both, and in that order: the handler's own failure is the immediate bug, and the save
+            // failure it was handling would otherwise be the one thing nobody ever sees.
+            await DispatchExceptionAsync(new AggregateException(
+                $"{nameof(FormAutoSave)}.{nameof(OnSaveFailed)} threw while handling a failed save.",
+                handlerEx, ex));
         }
     }
 
     /// <summary>
-    /// Detaches the one subscription and cancels any armed debounce. A pending save is deliberately
+    /// Detaches both subscriptions and cancels any armed debounce. A pending save is deliberately
     /// NOT flushed: the component is going away because its form is, and firing a persistence call
     /// into a torn-down page is worse than dropping the last few hundred milliseconds of typing.
     /// </summary>
@@ -263,6 +431,7 @@ public sealed class FormAutoSave : ComponentBase, IDisposable
     {
         _disposed = true;
         _subscription?.Detach();
+        _validationSubscription?.Detach();
         _debounceTimer?.Dispose();
         _debounceTimer = null;
         _pending.Clear();
@@ -295,5 +464,25 @@ public enum AutoSaveConcurrency
 /// The fields that changed since the last save that actually ran, de-duplicated and in first-seen
 /// order. Never empty. Note that a field changing does NOT imply its value differs from what was last
 /// persisted — the same value re-committed still counts as a change once it reaches this component.
+/// A previous save that FAILED contributes its fields here too, at the front (see
+/// <see cref="FormAutoSaveFailureEventArgs"/>).
 /// </param>
 public sealed record FormAutoSaveEventArgs(EditContext EditContext, IReadOnlyList<FieldIdentifier> ChangedFields);
+
+/// <summary> The payload <see cref="FormAutoSave.OnSaveFailed"/> receives. </summary>
+/// <param name="EditContext">The form's context — the same one the failed <see cref="FormAutoSaveEventArgs"/> carried.</param>
+/// <param name="Exception">What <see cref="FormAutoSave.OnSave"/> threw.</param>
+/// <param name="ChangedFields">
+/// The fields the failed save was carrying — de-duplicated, in first-seen order, never empty, and
+/// exactly what its <see cref="FormAutoSaveEventArgs.ChangedFields"/> held.
+/// <para>
+/// They are NOT lost: the component puts them back at the front of its pending set, so the next flush
+/// retries them ahead of anything that has changed since, and they reappear in that save's
+/// <see cref="FormAutoSaveEventArgs.ChangedFields"/>. A save that fails permanently therefore keeps
+/// them pending and re-attempts them on every subsequent flush — which is the right default for a
+/// transient outage, and the reason this list is handed to you: it is what a consumer needs to
+/// compensate (surface a "not saved" marker, write a local draft, stop retrying) when it is not.
+/// </para>
+/// </param>
+public sealed record FormAutoSaveFailureEventArgs(
+    EditContext EditContext, Exception Exception, IReadOnlyList<FieldIdentifier> ChangedFields);

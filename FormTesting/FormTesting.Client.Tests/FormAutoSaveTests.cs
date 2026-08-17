@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -69,11 +70,18 @@ public class FormAutoSaveTests : BunitContext
         /// WITHOUT depending on nothing having happened, which a negative assertion alone can't prove. </summary>
         public int TimerCount => _timers.Count;
 
+        /// <summary> Live timers with a due time set. The debounce timer is created once and re-armed,
+        /// so DISARMING it (an EditContext swap) leaves <see cref="TimerCount"/> unchanged — this is
+        /// what tells "the timer was disarmed" apart from "it fired and found nothing to do". </summary>
+        public int ArmedTimerCount => _timers.Count(t => t.IsArmed);
+
         internal void Forget(ManualTimer timer) => _timers.Remove(timer);
 
         internal sealed class ManualTimer(ManualTimeProvider owner, TimerCallback callback, object? state) : ITimer
         {
             DateTimeOffset? _dueAt;
+
+            public bool IsArmed => _dueAt is not null;
 
             public bool Change(TimeSpan dueTime, TimeSpan period)
             {
@@ -119,8 +127,9 @@ public class FormAutoSaveTests : BunitContext
     sealed class SaveRecord
     {
         public List<FormAutoSaveEventArgs> Calls { get; } = [];
-        public List<Exception> Failures { get; } = [];
+        public List<FormAutoSaveFailureEventArgs> Failures { get; } = [];
         public List<string[]> FieldNames => [.. Calls.Select(c => c.ChangedFields.Select(f => f.FieldName).ToArray())];
+        public List<string[]> FailedFieldNames => [.. Failures.Select(f => f.ChangedFields.Select(x => x.FieldName).ToArray())];
     }
 
     // <EditForm EditContext> -> DataAnnotationsValidator -> FormAutoSave -> the control(s) under test.
@@ -178,6 +187,16 @@ public class FormAutoSaveTests : BunitContext
         content.CloseComponent();
     }
 
+    static void EditNumberField(RenderTreeBuilder content, AutoSaveModel model, Expression<Func<int?>> field, object receiver)
+    {
+        content.OpenComponent<EditNumber<int?>>(20);
+        content.AddAttribute(21, "Value", model.Age);
+        content.AddAttribute(22, "ValueExpression", field);
+        content.AddAttribute(23, "ValueChanged",
+            EventCallback.Factory.Create<int?>(receiver, v => model.Age = v));
+        content.CloseComponent();
+    }
+
     static Task AdvanceAsync<T>(IRenderedComponent<T> cut, ManualTimeProvider clock, int ms = 500)
         where T : IComponent =>
         cut.InvokeAsync(() => clock.Advance(TimeSpan.FromMilliseconds(ms)));
@@ -199,17 +218,47 @@ public class FormAutoSaveTests : BunitContext
     }
 
     [Fact]
-    public void Renders_nothing_at_all()
+    public void Renders_nothing_at_all_the_forms_markup_is_byte_identical_with_and_without_it()
     {
+        // Asserting an empty <form> on a form with no fields would be true by construction. The real
+        // claim is that adding this component changes the DOM by NOTHING -- not even a comment/marker
+        // node -- so the comparison is against the same form rendered without it.
         var model = new AutoSaveModel { Name = "a", Age = 1 };
-        var editContext = new EditContext(model);
         var record = new SaveRecord();
         var clock = new ManualTimeProvider();
-        var cut = RenderForm(editContext, _ => { }, c => c.Values.AddRange(Standard(record, clock).Values));
+        Expression<Func<string>> field = () => model.Name;
 
-        // The validator and the auto-save both render nothing, so the form's markup is empty.
-        Assert.Equal(string.Empty, cut.Find("form").InnerHtml.Trim());
+        string Markup(bool withAutoSave) => Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", new EditContext(model));
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+            {
+                content.OpenComponent<DataAnnotationsValidator>(0);
+                content.CloseComponent();
+                if (withAutoSave)
+                {
+                    content.OpenComponent<FormAutoSave>(1);
+                    content.AddAttribute(2, "TimeProvider", clock);
+                    content.AddAttribute(3, "OnSave", EventCallback.Factory.Create<FormAutoSaveEventArgs>(
+                        this, args => record.Calls.Add(args)));
+                    content.CloseComponent();
+                }
+                EditStringField(content, model, field, this);
+            }));
+            b.CloseComponent();
+        }).Find("form").InnerHtml;
+
+        var withIt = Markup(true);
+        Assert.Contains("<input", withIt); // a real field rendered -- the comparison isn't vacuous
+        Assert.Equal(Normalize(Markup(false)), Normalize(withIt));
     }
+
+    // bUnit surfaces the renderer's own bookkeeping as blazor: attributes whose values are global
+    // counters/GUIDs (handler ids, element references) -- they differ between two renders of the SAME
+    // markup, so the comparison above is about the DOM, not about render bookkeeping.
+    static string Normalize(string html) =>
+        Regex.Replace(html, "(blazor:[a-zA-Z-]+=\")[^\"]*\"", "$1\"");
 
     // ───────────────────────────── debounce ─────────────────────────────
 
@@ -385,6 +434,9 @@ public class FormAutoSaveTests : BunitContext
         await AdvanceAsync(cut, clock);
 
         // One save, reporting the field that changed while the form was invalid -- nothing was lost.
+        // ONE is also the point: becoming valid re-attempts the skipped save through the debounce
+        // rather than on the spot, so the keystroke that fixed the field lands in the same save
+        // instead of a second one right behind it.
         Assert.Single(record.Calls);
         Assert.Equal(["Code"], record.FieldNames[0]);
         Assert.Equal("ok", model.Code);
@@ -430,6 +482,74 @@ public class FormAutoSaveTests : BunitContext
 
         Assert.Empty(record.Calls);
         Assert.Equal(30, model.Age);
+    }
+
+    // ─────────────────────── validity gate: a skip is never terminal ───────────────────────
+
+    [Fact]
+    public async Task A_skipped_save_is_re_attempted_when_the_messages_are_cleared_from_OUTSIDE_the_form()
+    {
+        // The jam this closes: the gate skips, and nothing re-attempts it until the user changes
+        // another FIELD. A server-side ValidationMessageStore clear + NotifyValidationStateChanged --
+        // which this library explicitly supports (RequiredResolver / FluentValidation) -- changes no
+        // field, so the pending work sat there forever. Worse, the message may belong to a property the
+        // user cannot currently fill, in which case auto-save is dead for the whole form.
+        var model = new AutoSaveModel { Age = 1 };
+        var editContext = new EditContext(model);
+        var record = new SaveRecord();
+        var clock = new ManualTimeProvider();
+        var store = new ValidationMessageStore(editContext);
+        Expression<Func<string>> field = () => model.Name;
+        var cut = RenderForm(editContext, content => EditStringField(content, model, field, this),
+            c => c.Values.AddRange(Standard(record, clock).Values));
+
+        await cut.InvokeAsync(() =>
+        {
+            store.Add(editContext.Field(nameof(AutoSaveModel.Age)), "the server rejected this");
+            editContext.NotifyValidationStateChanged();
+        });
+
+        cut.Find("input").Input("a");
+        await AdvanceAsync(cut, clock);
+        Assert.Empty(record.Calls); // gated -- Name is pending and unsaved
+
+        await cut.InvokeAsync(() =>
+        {
+            store.Clear();
+            editContext.NotifyValidationStateChanged();
+        });
+        await AdvanceAsync(cut, clock);
+
+        // EXACTLY once, carrying what was pending.
+        Assert.Single(record.Calls);
+        Assert.Equal(["Name"], record.FieldNames[0]);
+
+        // And it does not fire again: the re-attempt drained the pending set like any other save.
+        await cut.InvokeAsync(editContext.NotifyValidationStateChanged);
+        await AdvanceAsync(cut, clock);
+        Assert.Single(record.Calls);
+    }
+
+    [Fact]
+    public async Task A_validation_state_change_does_not_short_circuit_an_open_debounce_window()
+    {
+        // The re-attempt is scoped to a save the gate actually SKIPPED. Validation state changes
+        // constantly while typing (the validator raises one per keystroke), and reacting to those would
+        // turn the debounce into "save on the first keystroke".
+        var model = new AutoSaveModel { Age = 1 };
+        var editContext = new EditContext(model);
+        var record = new SaveRecord();
+        var clock = new ManualTimeProvider();
+        Expression<Func<string>> field = () => model.Name;
+        var cut = RenderForm(editContext, content => EditStringField(content, model, field, this),
+            c => c.Values.AddRange(Standard(record, clock).Values));
+
+        cut.Find("input").Input("a");
+        await cut.InvokeAsync(editContext.NotifyValidationStateChanged);
+        Assert.Empty(record.Calls); // still mid-window
+
+        await AdvanceAsync(cut, clock);
+        Assert.Single(record.Calls); // one save, when the window closed -- not two
     }
 
     // ───────────────────────────── ShouldSave filter ─────────────────────────────
@@ -555,33 +675,126 @@ public class FormAutoSaveTests : BunitContext
     // ───────────────────────────── failure handling ─────────────────────────────
 
     [Fact]
-    public async Task OnSaveFailed_receives_the_exception_and_saving_continues_afterwards()
+    public async Task OnSaveFailed_receives_the_exception_and_the_fields_and_saving_continues_afterwards()
     {
+        // TWO DIFFERENT fields on purpose. With one field for both saves this test cannot tell "the
+        // failed save's fields were carried forward" from "they were dropped and the second save simply
+        // reported its own field" -- which is exactly how a failed save silently losing everything it
+        // was carrying went unnoticed.
         var model = new AutoSaveModel { Age = 1 };
         var editContext = new EditContext(model);
         var record = new SaveRecord();
         var clock = new ManualTimeProvider();
         var shouldThrow = true;
-        Expression<Func<string>> field = () => model.Name;
-        var cut = RenderForm(editContext, content => EditStringField(content, model, field, this),
-            c => c.Values.AddRange(Standard(record, clock, _ =>
-                    shouldThrow ? throw new InvalidOperationException("save endpoint down") : Task.CompletedTask)
-                .Set("OnSaveFailed", EventCallback.Factory.Create<Exception>(this, ex => record.Failures.Add(ex)))
-                .Values));
+        Expression<Func<string>> nameField = () => model.Name;
+        Expression<Func<int?>> ageField = () => model.Age;
+        var cut = RenderForm(editContext, content =>
+        {
+            EditStringField(content, model, nameField, this);
+            EditNumberField(content, model, ageField, this);
+        }, c => c.Values.AddRange(Standard(record, clock, _ =>
+                shouldThrow ? throw new InvalidOperationException("save endpoint down") : Task.CompletedTask)
+            .Set("OnSaveFailed", EventCallback.Factory.Create<FormAutoSaveFailureEventArgs>(
+                this, args => record.Failures.Add(args)))
+            .Values));
 
-        cut.Find("input").Input("a");
+        cut.Find("#Age").Change("42");
         await AdvanceAsync(cut, clock);
 
         var failure = Assert.Single(record.Failures);
-        Assert.Equal("save endpoint down", failure.Message);
+        Assert.Equal("save endpoint down", failure.Exception.Message);
+        Assert.Same(editContext, failure.EditContext);
+        // The consumer is told WHICH fields the failed save was carrying, so it can compensate.
+        Assert.Equal(["Age"], record.FailedFieldNames[0]);
 
-        // The component is not stuck: a later change still saves (the in-flight flag was released).
+        // The component is not stuck: a later change still saves (the in-flight flag was released)...
         shouldThrow = false;
-        cut.Find("input").Input("ab");
+        cut.Find("#Name").Input("ab");
         await AdvanceAsync(cut, clock);
 
         Assert.Equal(2, record.Calls.Count);
         Assert.Single(record.Failures);
+        // ...and it carries the failed save's field along, FIRST, because it changed first. Without
+        // that, a consumer PATCHing by ChangedFields never persists Age at all.
+        Assert.Equal(["Age", "Name"], record.FieldNames[1]);
+    }
+
+    [Fact]
+    public async Task A_permanently_failing_save_keeps_re_attempting_its_fields_on_every_later_flush()
+    {
+        var model = new AutoSaveModel { Age = 1 };
+        var editContext = new EditContext(model);
+        var record = new SaveRecord();
+        var clock = new ManualTimeProvider();
+        Expression<Func<string>> nameField = () => model.Name;
+        Expression<Func<int?>> ageField = () => model.Age;
+        var cut = RenderForm(editContext, content =>
+        {
+            EditStringField(content, model, nameField, this);
+            EditNumberField(content, model, ageField, this);
+        }, c => c.Values.AddRange(Standard(record, clock, _ => throw new InvalidOperationException("still down"))
+            .Set("OnSaveFailed", EventCallback.Factory.Create<FormAutoSaveFailureEventArgs>(
+                this, args => record.Failures.Add(args)))
+            .Values));
+
+        cut.Find("#Age").Change("42");
+        await AdvanceAsync(cut, clock);
+        cut.Find("#Name").Input("ab");
+        await AdvanceAsync(cut, clock);
+
+        // Nothing accumulates twice and nothing falls out: each attempt carries everything still unsaved.
+        Assert.Equal(2, record.Calls.Count);
+        Assert.Equal(["Age"], record.FieldNames[0]);
+        Assert.Equal(["Age", "Name"], record.FieldNames[1]);
+        Assert.Equal(2, record.Failures.Count);
+        Assert.Equal(["Age", "Name"], record.FailedFieldNames[1]);
+    }
+
+    [Fact]
+    public async Task A_failing_TRAILING_run_keeps_its_fields_too()
+    {
+        // The coalesced trailing run is a second save inside the same flush loop -- it has to restore
+        // its fields on failure exactly as the leading one does.
+        var model = new AutoSaveModel { Age = 1 };
+        var editContext = new EditContext(model);
+        var record = new SaveRecord();
+        var clock = new ManualTimeProvider();
+        var gate = new TaskCompletionSource();
+        Expression<Func<string>> nameField = () => model.Name;
+        Expression<Func<int?>> ageField = () => model.Age;
+        var cut = RenderForm(editContext, content =>
+        {
+            EditStringField(content, model, nameField, this);
+            EditNumberField(content, model, ageField, this);
+        }, c => c.Values.AddRange(Standard(record, clock, _ => record.Calls.Count switch
+            {
+                1 => gate.Task,                                                  // the leading save blocks
+                2 => throw new InvalidOperationException("trailing failed"),     // the trailing one fails
+                _ => Task.CompletedTask
+            })
+            .Set("OnSaveFailed", EventCallback.Factory.Create<FormAutoSaveFailureEventArgs>(
+                this, args => record.Failures.Add(args)))
+            .Values));
+
+        cut.Find("#Name").Input("a");
+        await AdvanceAsync(cut, clock);
+        Assert.Single(record.Calls); // in flight
+
+        cut.Find("#Age").Change("42"); // queues the trailing run
+        await AdvanceAsync(cut, clock);
+
+        gate.SetResult();
+        await DrainAsync(cut);
+
+        Assert.Equal(2, record.Calls.Count);
+        Assert.Equal(["Age"], record.FieldNames[1]);
+        Assert.Equal(["Age"], record.FailedFieldNames[0]);
+
+        // Age is still pending, so the next flush retries it alongside whatever changed since.
+        cut.Find("#Name").Input("ab");
+        await AdvanceAsync(cut, clock);
+        Assert.Equal(3, record.Calls.Count);
+        Assert.Equal(["Age", "Name"], record.FieldNames[2]);
     }
 
     sealed class NullErrorBoundaryLogger : IErrorBoundaryLogger
@@ -636,6 +849,59 @@ public class FormAutoSaveTests : BunitContext
 
         Assert.Single(record.Calls);
         Assert.Equal("boom", cut.Find("p.boundary").TextContent);
+    }
+
+    [Fact]
+    public async Task A_throwing_OnSaveFailed_handler_is_itself_surfaced_not_swallowed()
+    {
+        // "Failures are never silently swallowed" has to hold for the failure HANDLER too: unguarded,
+        // its exception escaped into the fire-and-forget flush task and nothing anywhere saw it.
+        Services.AddSingleton<IErrorBoundaryLogger>(new NullErrorBoundaryLogger());
+        var model = new AutoSaveModel { Age = 1 };
+        var editContext = new EditContext(model);
+        var record = new SaveRecord();
+        var clock = new ManualTimeProvider();
+        Expression<Func<string>> field = () => model.Name;
+
+        var cut = Render(b =>
+        {
+            b.OpenComponent<ErrorBoundary>(0);
+            b.AddAttribute(1, "ChildContent", (RenderFragment)(eb =>
+            {
+                eb.OpenComponent<EditForm>(0);
+                eb.AddAttribute(1, "EditContext", editContext);
+                eb.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => content =>
+                {
+                    content.OpenComponent<FormAutoSave>(0);
+                    content.AddAttribute(1, "TimeProvider", clock);
+                    content.AddAttribute(2, "OnSave", EventCallback.Factory.Create<FormAutoSaveEventArgs>(
+                        this, args => { record.Calls.Add(args); throw new InvalidOperationException("save endpoint down"); }));
+                    content.AddAttribute(3, "OnSaveFailed", EventCallback.Factory.Create<FormAutoSaveFailureEventArgs>(
+                        this, _ => throw new NotSupportedException("handler boom")));
+                    content.CloseComponent();
+                    EditStringField(content, model, field, this);
+                }));
+                eb.CloseComponent();
+            }));
+            b.AddAttribute(2, "ErrorContent", (RenderFragment<Exception>)(ex => eb =>
+            {
+                eb.OpenElement(0, "p");
+                eb.AddAttribute(1, "class", "boundary");
+                eb.AddContent(2, ex.Message);
+                eb.CloseElement();
+            }));
+            b.CloseComponent();
+        });
+
+        cut.Find("input").Input("a");
+        await cut.InvokeAsync(() => clock.Advance(TimeSpan.FromMilliseconds(500)));
+        await cut.InvokeAsync(() => { });
+
+        // BOTH reach the boundary: the handler's own failure, and the save failure it was handling
+        // (which nobody else would ever see, since the one consumer channel for it just threw).
+        var text = cut.Find("p.boundary").TextContent;
+        Assert.Contains("handler boom", text);
+        Assert.Contains("save endpoint down", text);
     }
 
     // ───────────────────────────── lifetime ─────────────────────────────
@@ -699,13 +965,17 @@ public class FormAutoSaveTests : BunitContext
             .Add(c => c.ChildContent, child));
 
         contexts[0].NotifyFieldChanged(contexts[0].Field(nameof(AutoSaveModel.Name))); // pending on the FIRST model
+        Assert.Equal(1, clock.ArmedTimerCount);
 
         // Swap the context mid-window.
         cut.Render(ps => ps.Add(c => c.Value, contexts[1]).Add(c => c.ChildContent, child));
         Assert.Single(cut.FindComponents<FormAutoSave>()); // same instance, re-pointed -- not remounted
 
+        // BOTH halves, asserted separately -- "no save happened" alone would pass if only one of them
+        // worked. The armed debounce is disarmed (the timer object survives; its due time doesn't)...
+        Assert.Equal(0, clock.ArmedTimerCount);
         await AdvanceAsync(cut, clock);
-        Assert.Empty(record.Calls); // the old model's pending FieldIdentifier was dropped, not saved
+        Assert.Empty(record.Calls); // ...and the old model's pending FieldIdentifier was dropped, not saved
 
         // The old context is detached...
         contexts[0].NotifyFieldChanged(contexts[0].Field(nameof(AutoSaveModel.Name)));
@@ -717,6 +987,8 @@ public class FormAutoSaveTests : BunitContext
         await AdvanceAsync(cut, clock);
         var call = Assert.Single(record.Calls);
         Assert.Same(contexts[1], call.EditContext);
+        // ["Age"] and not ["Name", "Age"]: the positive proof that the outgoing model's pending field
+        // was CLEARED, rather than merely never having been flushed.
         Assert.Equal(["Age"], record.FieldNames[0]);
     }
 
