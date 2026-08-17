@@ -473,13 +473,54 @@ public partial class EditRange<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     // ----- Interaction -------------------------------------------------------
 
     /// <summary>
+    /// The track's own STATE attributes -- <c>aria-disabled</c>, <c>aria-required</c>,
+    /// <c>aria-invalid</c>, <c>aria-errormessage</c> -- folded into the merged <c>@attributes</c> splat
+    /// (<see cref="TrackAttributes"/>) rather than written as their own explicit attributes beside it.
+    /// Null when this control has no opinion on any of them, so nothing is emitted and the markup stays
+    /// byte-identical to writing no attributes.
+    /// </summary>
+    /// <remarks>
+    /// Not <see cref="EditControlBase{TValue}.EditorStateAttributes"/> reused as-is: a <c>&lt;div&gt;</c>
+    /// can't carry a native <c>disabled</c> attribute at all, so this control uses <c>aria-disabled</c>
+    /// in that slot instead (paired with <c>tabindex="-1"</c>, written unconditionally in the markup,
+    /// to actually remove it from the Tab order — <c>aria-disabled</c> alone changes no browser
+    /// behavior). The remaining three (<c>aria-required</c>/<c>aria-invalid</c>/<c>aria-errormessage</c>)
+    /// match the base exactly. Written as an explicit frame beside the splat (the control's original
+    /// shape), a null value here would DELETE a consumer's splatted same-named attribute outright
+    /// rather than decline to override it — see <see cref="EditControlBase{TValue}.EditorStateAttributes"/>'s
+    /// remarks for the mechanism.
+    /// </remarks>
+    IReadOnlyDictionary<string, object>? TrackStateAttributes
+    {
+        get
+        {
+            var isInvalid = IsInvalid;
+            if (!IsDisabled && _isRequired is null && !isInvalid) return null;
+
+            var state = new Dictionary<string, object>(4);
+            if (IsDisabled) state["aria-disabled"] = "true";
+            if (_isRequired is { } required) state["aria-required"] = required;
+            if (isInvalid)
+            {
+                state["aria-invalid"] = "true";
+                state["aria-errormessage"] = _errorMsgId;
+            }
+            return state;
+        }
+    }
+
+    /// <summary>
     /// The track's <c>@attributes</c> splat: the consumer's unmatched attributes minus the two events
     /// this same element also binds explicitly (<see cref="OnTrackClick"/>/<see cref="OnKeyDown"/>),
     /// which are chained from those handlers instead — a duplicate attribute name would delete the
-    /// consumer's outright. See <see cref="ConsumerEvent"/> for the ordering contract.
+    /// consumer's outright (see <see cref="ConsumerEvent"/> for the ordering contract) — with
+    /// <see cref="TrackStateAttributes"/> layered on top the same way <see cref="EditControlBase{TValue}.EditorStateAttributes"/>
+    /// rides every other control's editor splat.
     /// </summary>
     IReadOnlyDictionary<string, object>? TrackAttributes =>
-        AttributeSplat.RestExcept(AdditionalAttributes, "onclick", "onkeydown");
+        AttributeSplat.RestWith(
+            AttributeSplat.RestExcept(AdditionalAttributes, "onclick", "onkeydown"),
+            TrackStateAttributes);
 
     /// <summary>
     /// The no-JS click fallback. <see cref="MouseEventArgs.OffsetX"/> is relative to the target's

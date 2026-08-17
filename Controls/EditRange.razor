@@ -21,7 +21,13 @@
                    TrackClass and `style` the wrapper, so AttributeSplat.Rest withholds both). A null
                    splat emits no frames at all. onclick/onkeydown are withheld too and CHAINED
                    instead: they collide with this element's own two handlers below, and a duplicate
-                   attribute name would delete the consumer's outright (see ConsumerEvent). *@
+                   attribute name would delete the consumer's outright (see ConsumerEvent). The
+                   CONDITIONAL state attributes (aria-disabled/aria-required/aria-invalid/
+                   aria-errormessage) ride the merged dictionary (TrackAttributes, folding in
+                   TrackStateAttributes) rather than their own explicit attributes here -- an explicit
+                   frame wins outright over an earlier same-named one even when its own value is null,
+                   so writing them here would DELETE a consumer's splatted value rather than merely
+                   decline to override it. *@
                 <div @attributes="TrackAttributes"
                      @ref="_trackRef"
                      class="@TrackClass"
@@ -35,11 +41,7 @@
                      aria-valuemax=@ToCommitText(EffectiveMax)
                      aria-valuenow=@AriaValueNow
                      aria-valuetext=@AriaValueText
-                     aria-disabled=@(IsDisabled ? "true" : null)
-                     aria-required=@_isRequired
-                     aria-invalid=@(IsInvalid ? "true" : null)
                      aria-describedby=@_describedBy
-                     aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                      @onclick="OnTrackClick"
                      @onkeydown="OnKeyDown">
                     <span class="edit-range-rail"></span>
