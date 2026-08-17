@@ -455,9 +455,20 @@ public partial class DateRangePicker : PickerBase
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the root wrapper (<c>.wss-picker</c>) — never the dropdown panel, whose inline
     /// placement is JS-owned. <c>class</c> and <c>style</c> merge with the component's own; the
-    /// rest are splatted verbatim.
+    /// rest are splatted verbatim, except a same-named <c>onkeydown</c>, which is chained from this
+    /// component's own wrapper handler (see <see cref="WrapperAttributes"/>).
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>
+    /// The wrapper's <c>@attributes</c> splat: the consumer's unmatched attributes minus
+    /// <c>onkeydown</c>, which the same element binds explicitly
+    /// (<see cref="OnWrapperKeyDownAsync"/>) and which is therefore chained from that handler rather
+    /// than splatted — Blazor's last-wins duplicate-attribute rule would otherwise delete the
+    /// consumer's handler outright. See <see cref="ConsumerEvent"/> for the ordering contract.
+    /// </summary>
+    IReadOnlyDictionary<string, object>? WrapperAttributes =>
+        AttributeSplat.RestExcept(AdditionalAttributes, "onkeydown");
 
     // ----- State ------------------------------------------------------------
     // Shared JS-interop/overlay-lifecycle state (_wrapperRef, _panelRef, the two JsModule holders,
@@ -1562,7 +1573,17 @@ public partial class DateRangePicker : PickerBase
 
     // Escape closes (discarding any in-progress pick/edit); Enter commits whichever input is being
     // typed in (its native form-submit default is suppressed by initPicker when JS is available).
+    //
+    // A consumer's own splatted onkeydown is chained AFTER this component's handling, and
+    // unconditionally -- every key reaches them, not just the two this picker acts on. See
+    // WrapperAttributes.
     async Task OnWrapperKeyDownAsync(KeyboardEventArgs e)
+    {
+        await OnWrapperKeyDownCoreAsync(e);
+        await ConsumerEvent.InvokeAsync(AdditionalAttributes, "onkeydown", e);
+    }
+
+    async Task OnWrapperKeyDownCoreAsync(KeyboardEventArgs e)
     {
         switch (e.Key)
         {

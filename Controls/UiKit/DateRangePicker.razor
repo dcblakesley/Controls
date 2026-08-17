@@ -10,7 +10,10 @@
     <div class="wss-picker-backdrop" tabindex="-1" @onclick="CloseAsync"></div>
 }
 
-<div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+@* onkeydown is withheld from the splat and CHAINED from OnWrapperKeyDownAsync instead: it collides
+   with this element's own handler below, and a duplicate attribute name deletes the consumer's
+   outright rather than merging (see WrapperAttributes / ConsumerEvent). *@
+<div @attributes="WrapperAttributes"
      class="@WrapperClass @AttributeSplat.ConsumerClass(AdditionalAttributes)"
      style="@AttributeSplat.MergeStyle(WrapperStyle, AdditionalAttributes)"
      @ref="_wrapperRef"
