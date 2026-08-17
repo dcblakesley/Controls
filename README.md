@@ -1240,6 +1240,27 @@ A control that renders no editor (read-only mode) renders no editor-targeted att
 - **`aria-invalid` is framework-owned.** Blazor's own `InputBase<TValue>` inserts it when a field has validation messages and removes it when it doesn't, before any library code runs, so a hand-written `aria-invalid` on a valid field is dropped upstream. The controls additionally guarantee `aria-invalid="true"` on a genuinely invalid field regardless of what was splatted.
 - The other controls have not adopted this yet: on `EditTextArea`, `EditDateNative`, the selects and the radio groups, a splatted `disabled`/`aria-required`/`aria-errormessage` is still dropped when the control's own value is empty. Use the control's parameters there.
 
+### Your own event handlers (`@onkeydown`, `@onclick`, …)
+
+A DOM event handler written on a control is an unmatched attribute like any other, so it lands on the same field element everything else does and simply works:
+
+```razor
+<EditString @bind-Value="model.Search" @onkeydown="OnSearchKey" />
+```
+
+Some controls bind a handler of the **same name on that same element** — `EditRange`'s slider track owns `onclick`/`onkeydown`, the two pickers' wrappers own `onkeydown`, `Modal`/`Drawer`'s dialog panel owns `onkeydown` (and `Modal` also `onmousedown`), and the `Select` engine's wrapper owns `onclick`. There the two handlers are **chained**, not one discarded, with three guarantees:
+
+- **The control's own behavior runs first, then yours.** That is the order the wrapping-element workaround already gives you by ordinary bubbling (the inner element's handler fires before the ancestor's), so code written against the workaround keeps its ordering when you move the handler onto the control itself.
+- **Yours runs even when the control's own handler does nothing.** A disabled `EditRange` still reports keystrokes and clicks to you; it just doesn't step. So does a `Modal`/`Drawer` with `Keyboard="false"`, a disabled `Select`, a picker on a key it has no opinion about, and an `EditRange` whose track is being driven by the drag module.
+- **You are never cut off by the control's `stopPropagation`.** Because your handler is now on the same element, the pickers' and dialogs' "don't leak keys to the page" behavior no longer hides those keys from you the way it hid them from a wrapping element.
+
+`EditDate<T>`, `EditDateRange`, and `EditSelectSearch<TValue>` forward their whole splat to the inner picker/engine, so a handler written on the form control reaches the same chain.
+
+Two deliberate exceptions:
+
+- **The binding event stays the control's.** `oninput` on `EditString`/`EditTextArea`, `onchange` on `EditBool`, the selects and `EditNumber<T>` — these are how the control commits its value, so a splatted one is overridden rather than chained. Use `ValueChanged` / `@bind-Value:after` / the control's own callbacks instead.
+- **An open popup owns the keyboard.** `Select`/`EditSelectSearch` and `ColorPicker`/`EditColor` keep their keyboard handling on the inner search input / trigger, not the wrapper you splat onto — so there is no collision and nothing to chain, and a wrapper-level `@onkeydown` splats straight through. It hears keys while the popup is **closed**, and is deliberately cut off once the popup **opens** (that inner element stops propagation while open), because the popup's own arrow/Enter/Escape navigation must not be second-guessed. `EditMultiSelect<TValue>` puts its splat on its outer `.edit-control-wrapper` rather than the engine (as its whole list-control family does), so a handler written there sees only what the engine lets bubble out of itself — `onclick` in particular does not reach it. Where you need per-selection notification on any of these, use `ValueChanged`/`OnOpenChange` rather than a raw DOM handler.
+
 ## Accessibility
 
 WssBlazorControls is built with accessibility as a priority:
