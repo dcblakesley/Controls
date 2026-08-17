@@ -473,12 +473,31 @@ public partial class EditRange<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     // ----- Interaction -------------------------------------------------------
 
     /// <summary>
+    /// The track's <c>@attributes</c> splat: the consumer's unmatched attributes minus the two events
+    /// this same element also binds explicitly (<see cref="OnTrackClick"/>/<see cref="OnKeyDown"/>),
+    /// which are chained from those handlers instead — a duplicate attribute name would delete the
+    /// consumer's outright. See <see cref="ConsumerEvent"/> for the ordering contract.
+    /// </summary>
+    IReadOnlyDictionary<string, object>? TrackAttributes =>
+        AttributeSplat.RestExcept(AdditionalAttributes, "onclick", "onkeydown");
+
+    /// <summary>
     /// The no-JS click fallback. <see cref="MouseEventArgs.OffsetX"/> is relative to the target's
     /// padding box, and the handle is <c>pointer-events: none</c> in CSS precisely so the track is
     /// always that target. Inert once <c>wss-slider.js</c> is driving the track (see
     /// <see cref="_dragWired"/>), whose pointerdown already reported the same press.
     /// </summary>
-    void OnTrackClick(MouseEventArgs e)
+    /// <remarks>
+    /// Chains a consumer's own splatted <c>onclick</c> afterwards, unconditionally — including on the
+    /// <see cref="_dragWired"/> early return, where this control deliberately does nothing.
+    /// </remarks>
+    Task OnTrackClick(MouseEventArgs e)
+    {
+        OnTrackClickCore(e);
+        return ConsumerEvent.InvokeAsync(AdditionalAttributes, "onclick", e);
+    }
+
+    void OnTrackClickCore(MouseEventArgs e)
     {
         if (_dragWired) return;
         Commit(ValueAt(e.OffsetX / TrackWidth));
@@ -512,7 +531,17 @@ public partial class EditRange<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     /// PageUp/PageDown ten, Home/End jump to the bounds — everything clamped by
     /// <see cref="Commit"/>.
     /// </summary>
-    void OnKeyDown(KeyboardEventArgs e)
+    /// <remarks>
+    /// Chains a consumer's own splatted <c>onkeydown</c> afterwards, unconditionally — a disabled
+    /// slider suppresses only this control's own stepping, never the consumer's listener.
+    /// </remarks>
+    Task OnKeyDown(KeyboardEventArgs e)
+    {
+        OnKeyDownCore(e);
+        return ConsumerEvent.InvokeAsync(AdditionalAttributes, "onkeydown", e);
+    }
+
+    void OnKeyDownCore(KeyboardEventArgs e)
     {
         if (IsDisabled) return;
         switch (e.Key)
