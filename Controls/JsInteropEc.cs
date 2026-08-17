@@ -55,8 +55,15 @@ public static class JsInteropEc
     /// <param name="scopeId">The id of the scope's start marker; the end marker is <c>{scopeId}-end</c>.</param>
     /// <param name="formDefaults">The cascaded <see cref="Controls.FormDefaults"/> in scope, if any --
     /// see <see cref="FocusFirstInvalidField"/>.</param>
-    public static async Task FocusFirstField(IJSRuntime jsRuntime, string scopeId, FormDefaults? formDefaults = null) =>
-        await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.focusFirstField", scopeId);
+    /// <returns>
+    /// True when the scope is settled — a field was focused, or one already held focus. False when
+    /// there was nothing to aim at (marker missing, no focusable field in the scope) or JS was
+    /// unavailable, which the caller may treat as "try again on a later render batch": that is how
+    /// <see cref="Controls.FormDefaults.FocusFirstField"/> handles a form whose fields arrive
+    /// asynchronously.
+    /// </returns>
+    public static async Task<bool> FocusFirstField(IJSRuntime jsRuntime, string scopeId, FormDefaults? formDefaults = null) =>
+        await InvokeBestEffortBoolAsync(jsRuntime, formDefaults, "WssEditControls.focusFirstField", scopeId);
 
     /// <summary>
     /// Focuses the element with the given id, if present. Best-effort — a no-op when the id isn't
@@ -173,5 +180,39 @@ public static class JsInteropEc
             await jsRuntime.InvokeVoidAsync(identifier, args);
         }
         catch { /* still unavailable (import 404s, JS gone) -- never fatal */ }
+    }
+
+    // The same best-effort ladder as InvokeBestEffortAsync above, for the one helper that has an
+    // answer to bring back. Every failure yields FALSE, which callers must read as "no answer" rather
+    // than as a negative one: no JS at all (prerender, tests), a torn-down circuit and a failed
+    // re-import are all indistinguishable from "the DOM had nothing to offer yet" from here. A
+    // separate method rather than a generic one so nothing has to flow a
+    // [DynamicallyAccessedMembers] annotation for the JSON round-trip -- bool needs none.
+    static async Task<bool> InvokeBestEffortBoolAsync(
+        IJSRuntime jsRuntime, FormDefaults? formDefaults, string identifier, params object?[] args)
+    {
+        try
+        {
+            return await jsRuntime.InvokeAsync<bool>(identifier, args);
+        }
+        catch (JSDisconnectedException)
+        {
+            return false; // Circuit torn down -- the import+retry below would be pointless interop calls.
+        }
+        catch (JSException)
+        {
+            // Fall through to the one-time lazy import + retry below.
+        }
+        catch
+        {
+            return false; // JS interop not available at all (prerender / tests)
+        }
+
+        try
+        {
+            await jsRuntime.InvokeVoidAsync("import", JsModuleUrl.Resolve(formDefaults, "edit-controls.js"));
+            return await jsRuntime.InvokeAsync<bool>(identifier, args);
+        }
+        catch { return false; /* still unavailable (import 404s, JS gone) -- never fatal */ }
     }
 }

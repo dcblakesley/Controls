@@ -110,6 +110,16 @@ public partial class FormDefaults
     /// focuses. An enclosing scope that already fired at page load is not re-triggered by the open.
     /// </para>
     /// <para>
+    /// <b>An empty scope keeps looking, briefly.</b> When the scope contains no focusable field at
+    /// all on first render — the asynchronous form: the model loads in <c>OnInitializedAsync</c> and
+    /// the fields render behind an <c>@if</c> — the attempt is repeated on this component's next
+    /// render batches, up to <see cref="MaxFocusAttempts"/> in total, and stops permanently at the
+    /// first attempt that finds a candidate. A form that is present from the start is therefore
+    /// unaffected (it settles on attempt one), and a user who has already started typing is never
+    /// interrupted (a focused field counts as settled). For a strictly single attempt, put the
+    /// <see cref="FormDefaults"/> inside the <c>@if</c> so its own first render is the form's.
+    /// </para>
+    /// <para>
     /// <b>Accessibility.</b> Moving focus on open is helpful in a focused dialog or a search-first
     /// page and harmful on a long page where the form isn't the main content: it can drop a screen
     /// reader user past the heading and context they were about to hear, and on a touch device it
@@ -134,6 +144,27 @@ public partial class FormDefaults
     // because the markers must not appear/disappear under the diff on an unrelated parameter change.
     string? _focusScopeId;
 
+    /// <summary>
+    /// How many render batches an armed scope will look for a field in before giving up for good.
+    /// The first render is one of them.
+    /// </summary>
+    /// <remarks>
+    /// A cap, not a schedule: the retry exists for a scope that mounted BEFORE its fields did, and
+    /// it stops for good the moment any attempt finds a candidate (see
+    /// <see cref="OnAfterRenderAsync"/>). Ten is roughly an order of magnitude above the one-to-three
+    /// extra render batches the ordinary "spinner, then the form" shape produces, so it clears that
+    /// case comfortably; it is also low enough that a scope which never contains a field costs at
+    /// most ten <c>querySelectorAll</c> round-trips for its entire lifetime instead of one per render
+    /// forever, and low enough to bound how LATE a first field can arrive and still pull focus — a
+    /// form that only appears twenty renders in is a user-driven event, not a page load, and must not
+    /// move focus.
+    /// </remarks>
+    internal const int MaxFocusAttempts = 10;
+
+    // Counts down from MaxFocusAttempts while armed; zero means "done, never call again" -- set
+    // either by exhausting the attempts or by an attempt reporting the scope settled.
+    int _focusAttemptsLeft;
+
     // A Guid, not a counter: several FormDefaults can be armed on one page (an MFE root plus a dialog's
     // own), and the marker ids have to be unique document-wide with no shared mutable state to
     // coordinate through -- a static counter is exactly the process-wide state this component exists
@@ -141,18 +172,41 @@ public partial class FormDefaults
     protected override void OnInitialized()
     {
         if (EffectiveFocusFirstField == true)
+        {
             _focusScopeId = $"wss-focus-scope-{Guid.NewGuid():N}";
+            _focusAttemptsLeft = MaxFocusAttempts;
+        }
     }
 
     /// <summary>
-    /// Fires <see cref="FocusFirstField"/> exactly once, after this component's first render — by
-    /// which point the whole render batch (this component's children included) has been applied to
-    /// the DOM, so the query the JS side runs sees the finished form.
+    /// Fires <see cref="FocusFirstField"/> after this component's first render — by which point the
+    /// whole render batch (this component's children included) has been applied to the DOM, so the
+    /// query the JS side runs sees the finished form — and re-attempts on later render batches only
+    /// while the scope has produced nothing to focus at all.
     /// </summary>
+    /// <remarks>
+    /// The retry is what makes the common asynchronous form work: a scope that mounts immediately
+    /// while its fields arrive with the model (loaded in <c>OnInitializedAsync</c>, rendered behind an
+    /// <c>@if</c>) has an EMPTY scope on first render, and a single first-render attempt therefore
+    /// focused nothing, ever. Each attempt asks the DOM instead of guessing, and the first one that
+    /// finds any candidate settles the scope permanently — so a form that was there from the start
+    /// still fires exactly once, on first render, and nothing re-focuses on a later value or
+    /// validation change. "A field already has focus" also counts as settled, which is what keeps a
+    /// late arrival from yanking focus away from a user who has started typing. At most
+    /// <see cref="MaxFocusAttempts"/> attempts are ever made. For a deterministic single attempt,
+    /// put the <see cref="FormDefaults"/> INSIDE the <c>@if</c> that renders the form, so its first
+    /// render is the form's.
+    /// </remarks>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _focusScopeId is not null && JsRuntime is { } js)
-            await JsInteropEc.FocusFirstField(js, _focusScopeId, this);
+        if (_focusScopeId is null || _focusAttemptsLeft == 0) return;
+        if (JsRuntime is not { } js) return;
+
+        // Decremented BEFORE the await: OnAfterRenderAsync is not serialized against later render
+        // batches, so overlapping attempts must still consume the budget.
+        _focusAttemptsLeft--;
+        if (await JsInteropEc.FocusFirstField(js, _focusScopeId, this))
+            _focusAttemptsLeft = 0;
     }
 
     // The container itself, not IJSRuntime: [Inject] resolves during SetParametersAsync -- long

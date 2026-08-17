@@ -105,6 +105,47 @@ public class FocusFirstFieldE2ETests : IAsyncLifetime
         Assert.Equal(0, await _page.Locator("template[id^='wss-focus-scope-']").CountAsync());
     }
 
+    // ─────────────────── asynchronous forms: the bounded retry ───────────────────
+
+    [Fact]
+    public async Task A_form_whose_fields_arrive_later_still_gets_focused()
+    {
+        // The scope mounts empty and the fields arrive ~250ms later -- the ordinary "load the model
+        // in OnInitializedAsync, render the form when it arrives" page. A single first-render attempt
+        // found no candidate and there was never another, so this focused NOTHING, ever.
+        await GotoAsync("async");
+
+        // Proof the scope really was empty when it first rendered (otherwise this passes for the
+        // wrong reason): the placeholder is on screen and no field exists yet.
+        await Expect(_page.Locator("#async-loading")).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        Assert.Equal(0, await _page.Locator("input#AsyncFirst").CountAsync());
+
+        await Expect(_page.Locator("input#AsyncFirst")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        await Expect(_page.Locator("input#AsyncSecond")).Not.ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task A_late_arriving_form_does_not_pull_focus_off_a_field_the_user_is_using()
+    {
+        // The hazard the retry could have introduced. The "never take focus off a field that already
+        // has it" guard still applies to every attempt, so a user who clicked into something before
+        // the form arrived keeps their caret -- and the scope settles rather than trying again.
+        await GotoAsync("async");
+        await Expect(_page.Locator("#async-loading")).ToBeVisibleAsync(new() { Timeout = 15_000 });
+
+        // A field OUTSIDE the armed scope, focused while the scope is still empty.
+        await _page.EvaluateAsync(
+            "() => { const i = document.createElement('input'); i.id = 'outside-typing';"
+            + " document.body.appendChild(i); i.focus(); }");
+        await Expect(_page.Locator("input#outside-typing")).ToBeFocusedAsync();
+
+        await Expect(_page.Locator("input#AsyncFirst")).ToBeVisibleAsync(new() { Timeout = 15_000 });
+        await _page.WaitForTimeoutAsync(500);
+
+        await Expect(_page.Locator("input#outside-typing")).ToBeFocusedAsync();
+        await Expect(_page.Locator("input#AsyncFirst")).Not.ToBeFocusedAsync();
+    }
+
     // ───────────────────────────── the skip rules ─────────────────────────────
 
     [Fact]

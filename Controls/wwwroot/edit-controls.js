@@ -110,9 +110,19 @@
     //
     // Best-effort throughout: a missing marker (never rendered, torn down mid-call), an empty scope,
     // or an unfocusable target all end as a silent no-op rather than an error.
+    //
+    // RETURNS whether the scope is SETTLED -- true when a field was focused, and also when one
+    // already held focus (nothing left to do either way). False means "there was nothing to aim at
+    // yet": no marker, or no focusable field between the markers. The C# side retries a bounded
+    // number of times while it keeps getting false, which is what makes a form whose fields arrive
+    // asynchronously (the ubiquitous "load the model in OnInitializedAsync, render the form when it
+    // arrives" shape) focus at all -- before, the single first-render attempt found an empty scope
+    // and nothing was ever focused. Settling on the FIRST attempt that finds any candidate is
+    // deliberate: it keeps "once, on first render" intact for every form that is there from the
+    // start, and stops a late re-render pulling focus around a page the user is already using.
     ns.focusFirstField = function (scopeId) {
         const start = document.getElementById(scopeId);
-        if (!start) return;
+        if (!start) return false;
         const end = document.getElementById(scopeId + '-end');
 
         // Strictly between the two markers, so the scope is exactly what FormDefaults rendered --
@@ -124,7 +134,7 @@
 
         const candidates = Array.prototype.filter.call(
             document.querySelectorAll(WSS_FIELD), el => inScope(el) && isFocusableField(el));
-        if (candidates.length === 0) return;
+        if (candidates.length === 0) return false; // not settled -- the fields may still be coming
 
         // Never take focus off a field that already has it. This is the guard that makes the feature
         // composable rather than a focus war, and it settles three collisions at once:
@@ -143,7 +153,7 @@
         // An inert active element doesn't count -- that is the page behind an open dialog.
         const active = document.activeElement;
         if (active && typeof active.matches === 'function'
-            && active.matches(WSS_FIELD) && !active.closest('[inert]')) return;
+            && active.matches(WSS_FIELD) && !active.closest('[inert]')) return true; // settled by someone else
 
         let target = candidates[0];
         // Real radiogroup Tab semantics, matching focusGroupInput's preferChecked: the tab stop for a
@@ -157,6 +167,9 @@
         // error somewhere down the page) this runs at the top of a freshly rendered form, and
         // .focus()'s own minimal scrolling is all that is ever wanted.
         try { target.focus(); } catch { /* vanished between the query and here */ }
+        // Settled either way: the scope HAD a field, so there is nothing a later attempt could
+        // improve on -- a target that refused focus won't accept it on the next render batch either.
+        return true;
     };
 
     // Focus an element by id if it exists. Used by EditFile to keep keyboard focus on the file list

@@ -47,6 +47,27 @@ else if (Case == "skip")
         </EditForm>
     </FormDefaults>
 }
+else if (Case == "async")
+{
+    @* The ubiquitous asynchronous form: the scope mounts immediately, the fields arrive with the
+       model a quarter of a second later. Its scope is EMPTY on first render, which is precisely the
+       shape that used to focus nothing at all, ever -- the one attempt found no candidate and there
+       was never another. The FormDefaults is deliberately OUTSIDE the @if, since putting it inside
+       (so its own first render is the form's) is the deterministic alternative, not the bug. *@
+    <FormDefaults FocusFirstField="true">
+        @if (_asyncReady)
+        {
+            <EditForm Model="_model">
+                <EditString @bind-Value="_model.AsyncFirst" />
+                <EditString @bind-Value="_model.AsyncSecond" />
+            </EditForm>
+        }
+        else
+        {
+            <p id="async-loading">Loading...</p>
+        }
+    </FormDefaults>
+}
 else if (Case == "aria-disabled")
 {
     @* A disabled EditBool with AllowFocusWhenDisabled (the DEFAULT) renders aria-disabled="true" +
@@ -172,6 +193,19 @@ else if (Case == "drawer")
 
     bool _modalVisible;
     bool _drawerVisible;
+    bool _asyncReady;
+
+    // The "load the model, then render the form" shape, driven from OnAfterRender rather than
+    // OnInitializedAsync on purpose: the scope has to be MOUNTED and empty while the wait happens,
+    // which is the whole point of the case.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || Case != "async") return;
+
+        await Task.Delay(250);
+        _asyncReady = true;
+        StateHasChanged();
+    }
 
     class Model
     {
@@ -183,6 +217,8 @@ else if (Case == "drawer")
         public string? SkipReadOnly { get; set; } = "Read only";
         public string? SkipHidden { get; set; }
         public string? SkipTarget { get; set; }
+        public string? AsyncFirst { get; set; }
+        public string? AsyncSecond { get; set; }
         public bool DisabledFlag { get; set; }
         public string? AfterDisabledBool { get; set; }
         public string? NoSearchChoice { get; set; }
