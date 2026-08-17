@@ -50,7 +50,12 @@
     // NestedInput actually receiving a structurally different render — a bare <input> here vs. an
     // <input> wrapped in a styled <span> below — whenever EffectiveUseStyledCheckbox flips.
     // Splatted first so every explicit attribute below wins; `class` travels CssClass and `style` the
-    // wrapper, so AttributeSplat.Rest withholds both. A null splat emits no frames at all.
+    // wrapper, so AttributeSplat.Rest withholds both. A null splat emits no frames at all. The
+    // CONDITIONAL state attributes (aria-disabled/disabled/aria-required/aria-invalid/
+    // aria-errormessage) ride the merged dictionary (EditorAttributes, folding in
+    // CheckboxStateAttributes) rather than their own explicit attributes here -- an explicit frame
+    // wins outright over an earlier same-named one even when its own value is null, so writing them
+    // here would DELETE a consumer's splatted value rather than merely decline to override it.
     // aria-labelledby targets lbltext-{id} -- FormLabel's naming anchor (the span holding just the
     // label text) -- rather than relying on the implicit name a native <input> gets from wrapping
     // <label> text content. The checkbox sits INSIDE its own <label> (see FormLabel's NestedInput
@@ -60,7 +65,7 @@
     // "Description More information about Description" instead of just "Description". Unconditional:
     // FormLabel renders the anchor in all four of its branches (hidden label included), so the
     // reference never dangles.
-    RenderFragment CheckboxInput(string cssClass) => @<input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+    RenderFragment CheckboxInput(string cssClass) => @<input @attributes="EditorAttributes"
                                                 type="checkbox"
                                                 @ref="_editorRef"
                                                 value="@CurrentValue"
@@ -71,12 +76,7 @@
                                                 data-test-id=@_id
                                                 checked=@CurrentValue
                                                 tabindex="0"
-                                                aria-disabled=@((!ShowEditor || IsDisabled) ? "true" : null)
-                                                disabled=@((!ShowEditor || IsDisabled) && !AllowFocusWhenDisabled)
-                                                aria-required=@_isRequired
-                                                aria-invalid=@(IsInvalid ? "true" : null)
                                                 aria-describedby=@_describedBy
-                                                aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                                                 aria-labelledby=@($"lbltext-{_id}") />;
 
     RenderFragment CheckboxFragment => CheckboxInput($"edit-input {CssClass}");

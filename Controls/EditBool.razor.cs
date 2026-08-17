@@ -34,6 +34,86 @@ public partial class EditBool : EditControlBase<bool>
     protected override bool CanFocusWhenDisabled => AllowFocusWhenDisabled;
 
     /// <summary>
+    /// The checkbox's own STATE attributes -- <c>aria-disabled</c>, <c>disabled</c>,
+    /// <c>aria-required</c>, <c>aria-invalid</c>, <c>aria-errormessage</c> -- folded into the merged
+    /// <c>@attributes</c> splat (<see cref="EditorAttributes"/>) rather than written as their own
+    /// explicit attributes beside it. Null when this control has no opinion on any of them, so nothing
+    /// is emitted and the markup stays byte-identical to writing no attributes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Not a reuse of the base <see cref="EditControlBase{TValue}.EditorStateAttributes"/> — this
+    /// control's own <c>disabled</c>/<c>aria-disabled</c> pair has a different shape than every other
+    /// control's, because of <see cref="AllowFocusWhenDisabled"/> (default true, see its own remarks):
+    /// it withholds the native <c>disabled</c> attribute while the checkbox is non-operable (read-only
+    /// or <see cref="EditControlBase{TValue}.IsDisabled"/>) so the checkbox stays a real Tab stop (the
+    /// click is suppressed with <c>@onclick:preventDefault</c> instead) — the discoverable-but-
+    /// inoperable pattern. <c>aria-disabled="true"</c> is announced whenever the checkbox isn't
+    /// operable at all; the native <c>disabled</c> only joins that when
+    /// <see cref="AllowFocusWhenDisabled"/> is turned off, matching every other control's fully-native
+    /// disabled behavior.
+    /// </para>
+    /// <para>
+    /// Written as an explicit frame beside the splat (the control's original shape), a null/false value
+    /// here would DELETE a consumer's splatted same-named attribute outright rather than decline to
+    /// override it — see <see cref="EditControlBase{TValue}.EditorStateAttributes"/>'s remarks for the
+    /// mechanism (an explicit attribute frame written after a splat wins even when its own value is
+    /// null, because <c>RenderTreeBuilder</c> still calls <c>TrackAttributeName</c> for it).
+    /// </para>
+    /// <para>
+    /// <b>Whenever the checkbox is non-operable (<c>ariaDisabled</c> below), <c>disabled</c> is written
+    /// EXPLICITLY as a dictionary entry — <c>true</c> or <c>false</c> — never left absent.</b> This is
+    /// the one place this control deliberately differs from "omit the key when the value would be
+    /// false": <see cref="AllowFocusWhenDisabled"/>'s whole contract is that the checkbox stays a real
+    /// Tab stop while non-operable, which requires the native <c>disabled</c> attribute to be reliably
+    /// ABSENT in that state — and merely omitting the dictionary key would let a consumer's own splatted
+    /// <c>disabled="disabled"</c> quietly defeat that guarantee (the exact silent-erasure failure mode
+    /// this whole fix exists to close, just pointed the other direction). Storing an explicit
+    /// <c>false</c> here is safe and ordinary Blazor attribute rendering — a boolean <c>false</c> value
+    /// always omits the attribute, dictionary-sourced or not — and it deterministically overrides the
+    /// consumer's own entry the same way <c>true</c> does, because the merge that layers this
+    /// dictionary over the consumer's happens in plain C# (last write wins) before any
+    /// <c>RenderTreeBuilder</c> call runs; there is only ever one render-tree frame for the name, so
+    /// none of the duplicate-frame erasure this file is otherwise about can apply here. Only while the
+    /// checkbox is fully operable (<c>ariaDisabled</c> false) does this control have no opinion on
+    /// <c>disabled</c>/<c>aria-disabled</c> at all, and the keys are omitted so the consumer's own
+    /// splatted values survive untouched — the common case, and the one the erasure bug used to break.
+    /// </para>
+    /// </remarks>
+    IReadOnlyDictionary<string, object>? CheckboxStateAttributes
+    {
+        get
+        {
+            var isInvalid = IsInvalid;
+            var ariaDisabled = !ShowEditor || IsDisabled;
+            if (!ariaDisabled && _isRequired is null && !isInvalid) return null;
+
+            var state = new Dictionary<string, object>(5);
+            if (ariaDisabled)
+            {
+                state["aria-disabled"] = "true";
+                // Always written (true or false) while non-operable -- see the remarks above.
+                state["disabled"] = !AllowFocusWhenDisabled;
+            }
+            if (_isRequired is { } required) state["aria-required"] = required;
+            if (isInvalid)
+            {
+                state["aria-invalid"] = "true";
+                state["aria-errormessage"] = _errorMsgId;
+            }
+            return state;
+        }
+    }
+
+    /// <summary>
+    /// The checkbox's full <c>@attributes</c> splat: the consumer's unmatched attributes with
+    /// <see cref="CheckboxStateAttributes"/> layered on top (the control's own wins on collision, and
+    /// contributes nothing when it has no opinion — see that property's remarks).
+    /// </summary>
+    IReadOnlyDictionary<string, object>? EditorAttributes =>
+        AttributeSplat.RestWith(AdditionalAttributes, CheckboxStateAttributes);
+
+    /// <summary>
     /// Text shown by the read-only view when the value is true. Falls back to the bound property's
     /// <c>[BoolText]</c> when unset -- see <see cref="EffectiveTrueText"/>. Defaults to "Yes".
     /// </summary>
