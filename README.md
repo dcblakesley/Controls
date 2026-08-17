@@ -61,7 +61,8 @@ Install-Package WssBlazorControls
 ```
 
    Required by `JsInteropEc.FocusFirstInvalidField` (focus the first invalid field on a failed
-   submit). The UI-kit controls — including the `DatePicker` that now backs `EditDate` — load their
+   submit) and by [`FormDefaults.FocusFirstField`](#focusfirstfield) (focus the first field of a form
+   when it opens). The UI-kit controls — including the `DatePicker` that now backs `EditDate` — load their
    own JS modules (`wss-select.js`, `wss-picker.js`, `wss-color.js`, `wss-overlay.js`, ...) lazily; no extra
    `<script>` tags needed for them. `EditRange` does the same with `wss-slider.js` (its drag support). If the script tag isn't linked (e.g. a cross-origin
    micro-frontend whose host page doesn't serve `_content/WssBlazorControls/`), `JsInteropEc`'s
@@ -272,6 +273,32 @@ Resolution per setting (highest wins): the form's `FormOptions` instance value �
 `FormDefaults` also carries `AssetBase` (`string?`), which has no `FormOptions` counterpart: an absolute URL prefixed onto the RCL's lazy `wss-*.js` module imports (see the UI Kit section below), for a micro-frontend whose host page doesn't serve/proxy `_content/WssBlazorControls/*`. Unset (the default) keeps today's relative import path.
 
 `FormDefaults` also carries `UpdateOn` (`UpdateTrigger?`) — a per-form-tree default for the commit-timing parameter on `EditString`/`EditTextArea`/`EditNumber`/`EditDateNative`/`EditRadioString`/`EditRadioEnum`. Like `AssetBase`, it has no `FormOptions` counterpart: the chain is just the control's own `UpdateOn` → the nearest enclosing `FormDefaults.UpdateOn` (`FormDefaults.EffectiveUpdateOn` walks nested `FormDefaults` the same way the other settings do) → that control's built-in default. See [Commit timing](#commit-timing-updateon).
+
+##### `FocusFirstField`
+
+`FocusFirstField` (`bool?`, default off) focuses the **first form field rendered beneath the scope**, once, after the scope's first render — the form-level counterpart to a single control's [`FocusOnFirstRender`](#programmatic-focus-focusasync--focusonfirstrender). Set it once where the form is, instead of annotating whichever control happens to be written first:
+
+```razor
+<Modal @bind-Visible="_editing" Title="Edit customer">
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model" OnValidSubmit="SaveAsync">
+            <EditString @bind-Value="_model.Name" />
+            <EditString @bind-Value="_model.Email" />
+        </EditForm>
+    </FormDefaults>
+</Modal>
+```
+
+Like the other settings it has no `FormOptions` counterpart and no static: unset falls through to any enclosing `FormDefaults` (`EffectiveFocusFirstField`), and an unset chain simply means off. Nothing is ever focused unless a scope asks for it, and when it's off the component renders exactly what it rendered before this existed.
+
+- **"First" means first in the rendered DOM**, resolved in the browser, so it follows your markup — reordering fields moves the focus with them. It is not resolved from registration or construction order, which Blazor does not guarantee to match document order.
+- **Skipped**: disabled fields, `readonly` fields, anything with `tabindex="-1"`, anything inside an `inert` or `aria-hidden` subtree, and anything not actually rendered or visible (a [`HidingMode`](#hidingmode)-hidden control, a collapsed panel). Buttons and links aren't fields and are never chosen.
+- **An explicit `FocusOnFirstRender="true"` on a specific control wins.** The two arm in the same render cycle, and the scope declines to move focus when a field already holds it — so whichever lands first, the control you named ends up focused. The same guard stops a second scope on the page from stealing focus from the first, and stops any scope stealing it from the user.
+- **Once per instance, on first render** — not on re-render, and not again when a value or the validation state changes. Each `FormDefaults` that resolves `true` arms its own scope, which is what makes the dialog case above work: the scope inside a `Modal`/`Drawer` first renders as the dialog *opens*, so that is when it focuses. It cooperates with the overlay's own initial focus — see [Programmatic focus](#programmatic-focus-focusasync--focusonfirstrender).
+- **Needs `edit-controls.js`** (see [Quick Start](#quick-start)). Under prerender, static SSR, or with the script unreachable, focus simply doesn't move — no error.
+- While the feature is on, the scope renders two empty `<template>` elements (one before and one after its content) to delimit itself for the DOM query. They have no layout box, no accessibility presence and carry nothing but an `id` — but they are elements, so a stylesheet that counts children of whatever contains your `<FormDefaults>` (`:first-child`, `:nth-child`, `:only-child`) will see them.
+
+> **Accessibility: opt in per scope, not app-wide.** Moving focus on open is helpful in a focused dialog or a search-first page, and harmful on a long page where the form isn't the main content — it can drop a screen-reader user past the heading and context they were about to hear, and on a touch device it pops the soft keyboard over the content. That's exactly why this is off by default and scoped: put it on the dialog or the form, not reflexively on the app root.
 
 #### `EditDisplay` vs `ReadOnlyValue`
 Both render text in the `edit-readonly-value` style, but their use cases are different:
@@ -1119,7 +1146,7 @@ A native `readonly` attribute is **not** one of those states: a read-only `<inpu
 
 `EditBool` is the one disabled control that still takes focus, because its `AllowFocusWhenDisabled` (default `true`) deliberately keeps the checkbox in the tab order while disabled — the discoverable-but-inoperable pattern. The rule is "focus can go anywhere the user could `Tab` to"; set `AllowFocusWhenDisabled="false"` and it behaves like every other disabled control.
 
-**Inside a `Modal` or `Drawer` it just works.** Those gate their children on visibility, so a child's first render *is* the open, and the overlay's own "focus the first focusable element" runs in the same cycle. The overlay defers: it only takes initial focus when nothing inside the panel has it, so `FocusOnFirstRender="true"` (or your own `FocusAsync()`) on a field in the dialog wins over the close X.
+**Inside a `Modal` or `Drawer` it just works.** Those gate their children on visibility, so a child's first render *is* the open, and the overlay's own "focus the first focusable element" runs in the same cycle. The overlay defers: it only takes initial focus when nothing inside the panel has it, so `FocusOnFirstRender="true"` (or your own `FocusAsync()`) on a field in the dialog wins over the close X. [`FormDefaults.FocusFirstField`](#focusfirstfield) cooperates with both — it declines to move focus when a field already has it, so a control's own `FocusOnFirstRender` still wins, while the close X (a button, not a field) doesn't block it.
 
 The UI-kit components the picker/select-backed controls delegate to expose the same method, for use outside a form: **`Select<T>`**, **`DatePicker`**, **`DateRangePicker`**, and **`ColorPicker`**.
 
@@ -1128,6 +1155,8 @@ The UI-kit components the picker/select-backed controls delegate to expose the s
 ```razor
 <EditString @bind-Value="model.Query" FocusOnFirstRender="true" />
 ```
+
+To focus *the first field of a form* rather than one named control — so the focus follows your markup instead of being pinned to whichever control is written first — use [`FormDefaults.FocusFirstField`](#focusfirstfield) on the form (or the dialog) instead. An explicit `FocusOnFirstRender` here beats it.
 
 Setting it `true` later at runtime does not focus the control; that's a state change, and `FocusAsync()` is the call for it. The standard Blazor SSR caveat applies: focus is a DOM operation, so under static SSR — or during the prerender pass of an interactive render mode — nothing happens at prerender time and the focus lands on the first *interactive* render. If you need the browser to do it from server-rendered HTML alone, the native `autofocus` attribute splats through onto the editor like any other unmatched attribute — and the two are independent, so you can use either or both:
 
