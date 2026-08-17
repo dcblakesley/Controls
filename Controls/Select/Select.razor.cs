@@ -542,19 +542,14 @@ public partial class Select<TValue> : IAsyncDisposable
         }
     }
 
-    // AttributeSplat.Rest minus aria-label, which EffectiveInputLabel above re-homes onto the input.
-    // Returns Rest's own dictionary untouched whenever no aria-label was supplied (the common case),
-    // so the wrapper's splatted frames stay exactly what they were.
-    IReadOnlyDictionary<string, object>? SplatRest
-    {
-        get
-        {
-            var rest = AttributeSplat.Rest(AdditionalAttributes);
-            if (rest is null || !rest.ContainsKey("aria-label")) return rest;
-            var trimmed = rest.Where(kv => kv.Key != "aria-label").ToDictionary(kv => kv.Key, kv => kv.Value);
-            return trimmed.Count == 0 ? null : trimmed;
-        }
-    }
+    // AttributeSplat.Rest minus two keys the wrapper can't splat verbatim: aria-label, which
+    // EffectiveInputLabel above re-homes onto the combobox input, and onclick, which the wrapper also
+    // binds itself (OnWrapperClickAsync) and therefore CHAINS instead -- Blazor's last-wins duplicate
+    // attribute rule would delete a same-named splatted handler outright. Returns Rest's own
+    // dictionary untouched whenever neither was supplied (the common case), so the wrapper's splatted
+    // frames stay exactly what they were.
+    IReadOnlyDictionary<string, object>? SplatRest =>
+        AttributeSplat.RestExcept(AdditionalAttributes, "aria-label", "onclick");
 
     // Text of the persistent live region. Loading wins while it is on, so a pending server-driven
     // search says so instead of leaving the (roleless, silent) aria-busy wrapper to announce nothing;
@@ -788,7 +783,16 @@ public partial class Select<TValue> : IAsyncDisposable
 
     // ----- Interaction ------------------------------------------------------
 
-    async Task OnWrapperClickAsync()
+    // A consumer's own splatted onclick is chained AFTER this engine's open/close, and
+    // unconditionally -- Disabled suppresses only the engine's own toggle, never their listener.
+    // See SplatRest.
+    async Task OnWrapperClickAsync(MouseEventArgs e)
+    {
+        await OnWrapperClickCoreAsync();
+        await ConsumerEvent.InvokeAsync(AdditionalAttributes, "onclick", e);
+    }
+
+    async Task OnWrapperClickCoreAsync()
     {
         if (Disabled) return;
 

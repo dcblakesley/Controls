@@ -19,7 +19,13 @@
 @* AdditionalAttributes splatted first so every attribute written below wins. class/style are withheld
    by AttributeSplat.Rest and stay this component's own -- see the parameter's remarks for why the
    inline style in particular can't take a consumer's declarations. aria-label is withheld too (by
-   SplatRest) and re-homed onto the combobox input below, where it actually names something. *@
+   SplatRest) and re-homed onto the combobox input below, where it actually names something. So is
+   onclick, which collides with this element's own handler and is CHAINED from it instead -- a
+   duplicate attribute name would delete the consumer's outright (see SplatRest / ConsumerEvent).
+   onkeydown is NOT withheld and needs no chaining: this component's keyboard handling lives on the
+   inner search input, not here, so a consumer's wrapper-level onkeydown splats through and runs
+   normally -- deliberately cut off by that input's @onkeydown:stopPropagation once the popup is
+   open, because an open popup owns the keyboard. *@
 <div @attributes="SplatRest" class="@WrapperClass" style="@WidthStyle" tabindex="-1" @ref="_wrapperRef" @onclick="OnWrapperClickAsync" @onclick:stopPropagation aria-busy="@(Loading ? "true" : null)">
 
     @* One persistent live region, rendered from the very first pass with no content: an aria-live
