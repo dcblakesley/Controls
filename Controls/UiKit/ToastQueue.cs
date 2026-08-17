@@ -120,8 +120,15 @@ public sealed class ToastQueue<TItem> : IDisposable where TItem : IToastItem
         }
 
         var cts = new CancellationTokenSource();
+        // Read the token BEFORE publishing the source. The instant `cts` is in the dictionary another
+        // thread can claim it (Pause/Remove/Clear/Dispose all TryRemove), Cancel it and Dispose it --
+        // and CancellationTokenSource.Token throws ObjectDisposedException after that, out of THIS
+        // thread's Pause/Resume call. A token captured first stays usable: Cancel always precedes
+        // Dispose here, so the worst case is an already-cancelled token, which Task.Delay honors
+        // without ever touching the disposed source.
+        var token = cts.Token;
         _timers[item.Id] = cts;
-        _ = RemoveAfterAsync(item, cts.Token);
+        _ = RemoveAfterAsync(item, token);
     }
 
     private async Task RemoveAfterAsync(TItem item, CancellationToken token)
@@ -133,9 +140,13 @@ public sealed class ToastQueue<TItem> : IDisposable where TItem : IToastItem
             var ms = Math.Min(item.Duration * 1000, int.MaxValue - 1);
             await Task.Delay(TimeSpan.FromMilliseconds(ms), token);
         }
-        catch (TaskCanceledException)
+        catch (OperationCanceledException)
         {
-            return; // removed/cleared/disposed before the delay elapsed
+            return; // removed/cleared/disposed before the delay elapsed (TaskCanceledException derives from this)
+        }
+        catch (ObjectDisposedException)
+        {
+            return; // the source was claimed and disposed as this fire-and-forget task started
         }
 
         Remove(item.Id);
