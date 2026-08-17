@@ -102,6 +102,64 @@ else if (Case == "multi-select-no-search")
         </EditForm>
     </FormDefaults>
 }
+else if (Case == "css-hidden")
+{
+    @* Rendered, present in the DOM, and not visible -- which is what checkVisibility is for. The
+       "skip" case above can't reach this branch: HidingMode-hidden doesn't render the input at all,
+       so there is nothing in the DOM to test. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <div style="display:none">
+                <EditString @bind-Value="_model.DisplayNoneField" />
+            </div>
+            <div style="visibility:hidden">
+                <EditString @bind-Value="_model.VisibilityHiddenField" />
+            </div>
+            <EditString @bind-Value="_model.CssHiddenTarget" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "unfocusable")
+{
+    @* The three remaining skip rules, each in front of the field that should win: out of the Tab
+       order, and the two ancestor states that take a whole subtree out of play. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.NotTabbableField" tabindex="-1" />
+            <div inert>
+                <EditString @bind-Value="_model.InertField" />
+            </div>
+            <div aria-hidden="true">
+                <EditString @bind-Value="_model.AriaHiddenField" />
+            </div>
+            <EditString @bind-Value="_model.UnfocusableTarget" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "radio")
+{
+    @* Real radiogroup Tab semantics: a group with a selection has ONE tab stop, the checked radio --
+       not the first one. Priority starts at High, the THIRD option, so the two rules disagree. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditRadioEnum @bind-Value="_model.Priority" />
+            <EditString @bind-Value="_model.AfterRadio" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "two-forms-first-unusable")
+{
+    @* "First in the scope" genuinely crossing an EditForm boundary: form one's only field is
+       disabled, so the answer has to come from form two. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.FormOneDisabled" IsDisabled="true" />
+        </EditForm>
+        <EditForm Model="_other">
+            <EditString @bind-Value="_other.FormTwoTarget" />
+        </EditForm>
+    </FormDefaults>
+}
 else if (Case == "explicit")
 {
     @* Precedence: a named control beats "whichever is first". Both mechanisms fire in the same
@@ -202,10 +260,17 @@ else if (Case == "drawer")
     {
         if (!firstRender || Case != "async") return;
 
-        await Task.Delay(250);
+        // Long enough to still be pending when the e2e's navigation settles: Playwright's
+        // NetworkIdle wait alone costs half a second past the last request, and the test's premise is
+        // that it observes the EMPTY scope before the fields land.
+        await Task.Delay(1500);
         _asyncReady = true;
         StateHasChanged();
     }
+
+    // Same three-plus-one shape as FocusApi.razor's: the model starts on the THIRD member, so
+    // "focus the checked radio" and "focus the first radio" can't both be right.
+    public enum PriorityLevel { Low, Medium, High, Critical }
 
     class Model
     {
@@ -217,6 +282,16 @@ else if (Case == "drawer")
         public string? SkipReadOnly { get; set; } = "Read only";
         public string? SkipHidden { get; set; }
         public string? SkipTarget { get; set; }
+        public string? DisplayNoneField { get; set; }
+        public string? VisibilityHiddenField { get; set; }
+        public string? CssHiddenTarget { get; set; }
+        public string? NotTabbableField { get; set; }
+        public string? InertField { get; set; }
+        public string? AriaHiddenField { get; set; }
+        public string? UnfocusableTarget { get; set; }
+        public PriorityLevel? Priority { get; set; } = PriorityLevel.High;
+        public string? AfterRadio { get; set; }
+        public string? FormOneDisabled { get; set; }
         public string? AsyncFirst { get; set; }
         public string? AsyncSecond { get; set; }
         public bool DisabledFlag { get; set; }
@@ -241,6 +316,7 @@ else if (Case == "drawer")
     class OtherModel
     {
         public string? FormTwoField { get; set; }
+        public string? FormTwoTarget { get; set; }
         public string? ScopeBField { get; set; }
     }
 }

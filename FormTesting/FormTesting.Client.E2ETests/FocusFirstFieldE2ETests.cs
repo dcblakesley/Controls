@@ -163,6 +163,51 @@ public class FocusFirstFieldE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Skips_fields_that_are_in_the_DOM_but_not_visible()
+    {
+        // The checkVisibility branch, which nothing reached before: the "skip" case's hidden field is
+        // a HidingMode one, i.e. never rendered at all, so it proves only that a missing element
+        // can't be chosen. These two ARE in the DOM -- display:none and visibility:hidden -- and are
+        // the shape a collapsed panel or a toggled section actually has.
+        await GotoAsync("css-hidden");
+
+        await Expect(_page.Locator("input#CssHiddenTarget")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        // Both really are present; only their computed visibility disqualifies them.
+        Assert.Equal(1, await _page.Locator("input#DisplayNoneField").CountAsync());
+        Assert.Equal(1, await _page.Locator("input#VisibilityHiddenField").CountAsync());
+    }
+
+    [Fact]
+    public async Task Skips_tabindex_minus_one_and_inert_or_aria_hidden_subtrees()
+    {
+        // Three untested skip rules at once, each in front of the field that should win: a field
+        // deliberately out of the Tab order, and the two ancestor states that take a whole subtree
+        // out of play (an inert branch is the page behind an open dialog; aria-hidden is a decorative
+        // or duplicated region).
+        await GotoAsync("unfocusable");
+
+        await Expect(_page.Locator("input#UnfocusableTarget")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        await Expect(_page.Locator("input#NotTabbableField")).Not.ToBeFocusedAsync();
+        await Expect(_page.Locator("input#InertField")).Not.ToBeFocusedAsync();
+        await Expect(_page.Locator("input#AriaHiddenField")).Not.ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task A_radio_group_hands_focus_to_the_checked_option_not_the_first()
+    {
+        // preferChecked, the one branch of the resolver with no coverage. A radiogroup with a
+        // selection has ONE tab stop and it is the checked radio; the model starts on the third
+        // option, so "first candidate" and "checked" give different answers.
+        await GotoAsync("radio");
+
+        await Expect(_page.Locator("input[type=radio]:checked")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        var focused = await _page.EvaluateAsync<string?>(
+            "() => { const a = document.activeElement;"
+            + " return a && a.type === 'radio' && a.checked ? a.value : null; }");
+        Assert.Equal("High", focused);
+    }
+
+    [Fact]
     public async Task Skips_an_aria_disabled_checkbox_that_carries_no_disabled_attribute()
     {
         // EditBool + IsDisabled + AllowFocusWhenDisabled (the DEFAULT) renders aria-disabled="true",
@@ -173,9 +218,11 @@ public class FocusFirstFieldE2ETests : IAsyncLifetime
 
         await Expect(_page.Locator("input#AfterDisabledBool")).ToBeFocusedAsync(new() { Timeout = 15_000 });
         await Expect(_page.Locator("input#DisabledFlag")).Not.ToBeFocusedAsync();
-        // The premise of the test, pinned: no `disabled` attribute, so only aria-disabled can tell.
+        // The premise of the test, pinned: aria-disabled is the ONLY signal -- the DOM `disabled`
+        // property (which is all the resolver used to look at) is false. Asserted through the DOM
+        // rather than Playwright's IsDisabledAsync, which folds aria-disabled into its own answer.
         Assert.Equal("true", await _page.Locator("input#DisabledFlag").GetAttributeAsync("aria-disabled"));
-        Assert.False(await _page.Locator("input#DisabledFlag").IsDisabledAsync());
+        Assert.False(await _page.EvaluateAsync<bool>("() => document.getElementById('DisabledFlag').disabled"));
     }
 
     [Fact]
@@ -223,14 +270,28 @@ public class FocusFirstFieldE2ETests : IAsyncLifetime
     // ───────────────────────────── scoping ─────────────────────────────
 
     [Fact]
-    public async Task A_second_form_in_the_same_scope_does_not_steal_focus_from_the_first()
+    public async Task One_scope_spanning_two_forms_resolves_across_the_EditForm_boundary()
     {
+        // The scope is not per-EditForm: it is the markers, and "first" is document order inside
+        // them. Two forms, one armed scope, one fire -- and the answer comes from form one.
         await GotoAsync("two-forms");
 
         await Expect(_page.Locator("input#FormOneField")).ToBeFocusedAsync(new() { Timeout = 15_000 });
         await _page.WaitForTimeoutAsync(400);
         await Expect(_page.Locator("input#FormOneField")).ToBeFocusedAsync();
         await Expect(_page.Locator("input#FormTwoField")).Not.ToBeFocusedAsync();
+    }
+
+    [Fact]
+    public async Task Focus_crosses_into_the_second_form_when_the_first_has_no_usable_field()
+    {
+        // The case that makes the one above non-trivial: with form one's only field disabled, the
+        // resolver has to walk PAST an EditForm boundary to answer. A per-form implementation (or one
+        // that stopped at the first form it found) would focus nothing here.
+        await GotoAsync("two-forms-first-unusable");
+
+        await Expect(_page.Locator("input#FormTwoTarget")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        await Expect(_page.Locator("input#FormOneDisabled")).Not.ToBeFocusedAsync();
     }
 
     [Fact]
