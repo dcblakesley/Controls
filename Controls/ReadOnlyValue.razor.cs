@@ -30,11 +30,20 @@ public partial class ReadOnlyValue
 
     /// <summary>
     /// Optional <c>aria-describedby</c> token(s) for the rendered value (TXT-5) -- e.g. the field's own
-    /// description/tooltip/error-message ids, the same references its editor carries in edit mode. Null
-    /// by default. Wired by <see cref="CheckboxOptionList{TItem}"/> (both the empty-selection row and
-    /// each selected-option row) and <see cref="EditFile"/>'s empty-selection row --
-    /// <c>EditNumber</c>/<c>EditTextArea</c>/<c>EditString</c>'s plain read-only branch (which already
-    /// computes a <c>_describedBy</c> for their own editor) remain candidates to also start passing it.
+    /// description/tooltip/error-message ids, the same references its editor carries in edit mode.
+    /// Null by default, but EVERY call site in the library now passes its control's cached
+    /// <c>_describedBy</c>: a read-only field that omits it drops its description, its tooltip text and
+    /// its validation message from the value's announcement entirely, which is precisely the
+    /// information a reader has no other way to reach once the editor is gone. The elements those
+    /// tokens point at all render in read-only mode too (<c>FormLabel</c> and
+    /// <c>FieldValidationDisplay</c> are outside every <c>@if (ShowEditor)</c>), so nothing dangles.
+    /// <para>
+    /// Two tokens are deliberately EXCLUDED in read-only, by the callers rather than here, because the
+    /// elements only exist alongside an editor: <c>count-{id}</c> (gated by
+    /// <c>EditTextInputBase.HasCharacterCount</c>, which ANDs in <c>ShowEditor</c>) and
+    /// <c>EditDateNative</c>'s <c>format-{id}</c> typed-entry hint (which is why that control passes
+    /// <c>_describedBy</c>, not its own <c>EffectiveDescribedBy</c>).
+    /// </para>
     /// </summary>
     [Parameter] public string? AriaDescribedBy { get; set; }
 }

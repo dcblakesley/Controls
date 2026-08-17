@@ -89,7 +89,8 @@
                    rendered a dangling "Other: " whenever the free-text box was left empty. *@
                 <ReadOnlyValue Id=@_id
                                CssClass=@CssClass
-                               Text=@(IsOtherSelected && !string.IsNullOrEmpty(OtherValue) ? $"{Value?.GetName()}: {OtherValue}" : Value?.GetName()) />
+                               Text=@(IsOtherSelected && !string.IsNullOrEmpty(OtherValue) ? $"{Value?.GetName()}: {OtherValue}" : Value?.GetName())
+                               AriaDescribedBy=@_describedBy />
                 }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

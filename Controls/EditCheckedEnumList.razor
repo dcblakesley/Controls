@@ -12,11 +12,14 @@
            role="group" (unlike the radio fieldsets' radiogroup), so AT ignores them and checkers
            flag them. Required state lives on the legend star + validation message; invalid state
            on each checkbox (aria-invalid + aria-describedby). *@
+        @* aria-labelledby is UNCONDITIONAL, unlike the id/test-id/role beside it -- see the matching
+           remarks in EditCheckedStringList.razor (the read-only group's name otherwise falls back to
+           the <legend>, which folds in the LabelTooltip trigger's own accessible name). *@
         <fieldset class="edit-checkedList-fieldset"
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
                   role=@(ShowEditor ? "group" : null)
-                  aria-labelledby=@(ShowEditor ? $"lbltext-{_id}" : null)>
+                  aria-labelledby=@($"lbltext-{_id}")>
         <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label LabelContent=@LabelContent IsRequired=@IsRequiredResolved Description=@EffectiveDescription Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel IsRequiredTextIncluded="true" />
 
             <CheckboxOptionList TItem="TEnum"

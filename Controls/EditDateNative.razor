@@ -55,7 +55,13 @@
         }
         else
         {
-            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@GetDisplayValue() />
+            @* _describedBy, NOT EffectiveDescribedBy: the format-hint span it appends
+               (format-{id}) renders only inside the ShowEditor branch above, so referencing it
+               here would dangle -- and a typed-entry format hint has nothing to say about a
+               value the user cannot type into anyway. The error/description/tooltip elements
+               the plain chain points at all render unconditionally (FieldValidationDisplay
+               below, FormLabel above). *@
+            <ReadOnlyValue Id=@_id CssClass=@CssClass Text=@GetDisplayValue() AriaDescribedBy=@_describedBy />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

@@ -34,7 +34,8 @@
             {
                 <ReadOnlyValue Id=@_id
                               CssClass=@CssClass
-                              Text=@GetDisplayText(CurrentValue) />
+                              Text=@GetDisplayText(CurrentValue)
+                              AriaDescribedBy=@_describedBy />
             }
 
             <FieldValidationDisplay Id=@_id FieldIdentifier=_fieldIdentifier Attributes=_attributes Label=@Label />

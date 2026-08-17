@@ -89,7 +89,12 @@
         }
         else
         {
-            <ReadOnlyValue Id=@_id CssClass=@fieldCssClass Text=@GetDisplayValue() />
+            @* Start's chain (_describedBy), not End's: this single node carries _id and is named by
+               the Start-anchored lbltext-{_id}, and the description/tooltip elements are rendered once
+               for the whole control off that same id. The End field's OWN error-msg-{_endId} is not
+               referenced here -- see EditDateRange.razor.cs's EndAnchorId remarks for why one node
+               covers both fields, which is the open question this read-only shape still has. *@
+            <ReadOnlyValue Id=@_id CssClass=@fieldCssClass Text=@GetDisplayValue() AriaDescribedBy=@_describedBy />
         }
 
         <FieldValidationDisplay Id=@_id FieldIdentifier=_startFieldIdentifier Attributes=_attributes Label=@Label />

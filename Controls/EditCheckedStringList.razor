@@ -11,11 +11,21 @@
            role="group" (unlike the radio fieldsets' radiogroup), so AT ignores them and checkers
            flag them. Required state lives on the legend star + validation message; invalid state
            on each checkbox (aria-invalid + aria-describedby). *@
+        @* aria-labelledby is UNCONDITIONAL, unlike the id/test-id/role beside it. Those three are
+           edit-mode-only because read-only hands _id to the value node CheckboxOptionList renders (a
+           duplicate id, and a role="group" with no checkboxes in it). The NAME is different: a
+           <fieldset> maps to role="group" natively, so it is nameable in both modes -- and without the
+           explicit reference the group's name falls back to its <legend>, which also contains the
+           LabelTooltip's trigger button. Accessible-name computation folds that button's own name in,
+           so a tooltipped read-only list announced as "Colors More information about Colors". Pointing
+           at FormLabel's lbltext-{id} anchor (the span holding just the label text) is exactly what
+           that anchor exists for; FormLabel renders it in all four of its branches, hidden label
+           included, so the reference never dangles in either mode. *@
         <fieldset class="edit-checkedList-fieldset"
                   id=@(ShowEditor ? _id : null)
                   data-test-id=@(ShowEditor ? _id : null)
                   role=@(ShowEditor ? "group" : null)
-                  aria-labelledby=@(ShowEditor ? $"lbltext-{_id}" : null)>
+                  aria-labelledby=@($"lbltext-{_id}")>
             <FormLabel Id=@_id FieldIdentifier=@_fieldIdentifier Attributes=@_attributes Label=@Label LabelContent=@LabelContent IsRequired=@IsRequiredResolved Description=@EffectiveDescription Tooltip=@Tooltip IsLegend="true" IsLabelHidden=@ShouldHideLabel IsRequiredTextIncluded="true" />
 
             <CheckboxOptionList TItem="string"

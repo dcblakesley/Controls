@@ -50,10 +50,19 @@
                field actually shows the color instead of making the reader decode hex. Hand-rolled
                (not <ReadOnlyValue>) for the same reason EditFile's non-empty read-only view is: richer
                content than that component's single Text string, so it replicates ReadOnlyValue's own
-               id/aria contract directly -- same shape as EditString's .edit-masked-value wrapper. *@
+               id/aria contract directly -- same shape as EditString's .edit-masked-value wrapper.
+
+               role="group" legitimizes the aria-labelledby below: a bare <div> is role-generic, where
+               ARIA prohibits naming, so the reference was inert (axe-core reports it as
+               aria-prohibited-attr, and some assistive technology drops the name entirely rather than
+               announcing it). This row genuinely groups two pieces of one value -- the swatch and,
+               under ShowText, the hex string -- so `group` is both accurate and nameable. Same
+               treatment, for the same reason, as EditDisplay's read-only div and EditString's
+               .edit-masked-value row; see those markup files' remarks. *@
             <div class="edit-color-readonly-value @CssClass"
                  id=@_id
                  data-test-id=@_id
+                 role="group"
                  aria-labelledby="lbltext-@_id"
                  aria-describedby=@_describedBy>
                 <span class="wss-color-picker-swatch">
