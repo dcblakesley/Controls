@@ -11,17 +11,18 @@
 
         @if (ShowEditor)
         {
-            @* Splat first so every explicit attribute below wins. *@
-            <select @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+            @* Splat first so every explicit attribute below wins. The CONDITIONAL state attributes
+               (disabled/aria-required/aria-invalid/aria-errormessage) ride the merged dictionary
+               (EditControlBase.EditorStateAttributes) rather than their own explicit attributes here --
+               an explicit frame wins outright over an earlier same-named one even when its own value is
+               null, so writing them here would DELETE a consumer's splatted value rather than merely
+               decline to override it. *@
+            <select @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorStateAttributes)"
                     @bind=@CurrentValueAsString
                     @ref="_editorRef"
                     id=@_id
                     data-test-id=@_id
-                    disabled=@IsDisabled
                     class=@($"edit-input edit-select-select {CssClass}")
-                    aria-required=@_isRequired
-                    aria-invalid=@(IsInvalid ? "true" : null)
-                    aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                     aria-labelledby=@($"lbltext-{_id}")
                     aria-describedby=@_describedBy>
 
