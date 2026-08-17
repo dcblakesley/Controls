@@ -1,0 +1,79 @@
+@page "/consumer-events"
+@using Controls
+
+<h1>Consumer Events</h1>
+
+@* Test-only page (not part of the Controls.Demo gallery), same precedent as JsInteropFallback.razor
+   and FocusApi.razor. Every control here carries a CONSUMER event handler written the way a consuming
+   app writes one -- as an unmatched attribute the control splats onto its own field element -- on the
+   controls whose own handler sits on that same element and therefore has to CHAIN it rather than let
+   Blazor's last-wins duplicate-attribute rule discard it.
+
+   bUnit already proves the chaining (ConsumerEventChainingTests). What only a real browser can answer
+   is whether the consumer's handler and the JS-adjacent halves of these controls coexist: the
+   pickers' grid navigation and focus management, wss-slider.js owning the track's pointer gestures,
+   the modal's focus trap, and the select's JS-placed dropdown. Each counter below is rendered as its
+   own element so the e2e suite can read it after a real keypress or click. *@
+
+<EditForm Model="_model">
+    <EditDate @bind-Value="_model.Date" FirstDayOfWeek="DayOfWeek.Sunday" @onkeydown="() => _dateKeys++" />
+
+    <EditDateRange @bind-Start="_model.Start" @bind-End="_model.End" FirstDayOfWeek="DayOfWeek.Sunday"
+                   @onkeydown="() => _rangeKeys++" />
+
+    <EditRange @bind-Value="_model.Volume" Min="0" Max="100"
+               @onkeydown="() => _sliderKeys++" @onclick="() => _sliderClicks++" />
+</EditForm>
+
+@* The Select ENGINE directly (not a form wrapper): the wrapper-level onclick collision is the
+   engine's own, and EditSelectSearch/EditMultiSelect put their splat on their outer
+   .edit-control-wrapper instead, so they never reach it. *@
+<Select TValue="string" Options="_options" @bind-Value="_model.Choice" Width="240px"
+        @onclick="() => _selectClicks++" />
+
+<button type="button" id="open-modal" @onclick="() => _modalVisible = true">Open modal</button>
+<Modal @bind-Visible="_modalVisible" Title="Consumer events" HideFooter="true" @onkeydown="() => _modalKeys++">
+    <p id="modal-body-text">Press a key.</p>
+</Modal>
+
+<button type="button" id="open-drawer" @onclick="() => _drawerVisible = true">Open drawer</button>
+<Drawer @bind-Visible="_drawerVisible" Title="Consumer events" @onkeydown="() => _drawerKeys++">
+    <p id="drawer-body-text">Press a key.</p>
+</Drawer>
+
+<ul class="consumer-event-counters">
+    <li>Date keys: <span id="date-keys">@_dateKeys</span></li>
+    <li>Range keys: <span id="range-keys">@_rangeKeys</span></li>
+    <li>Slider keys: <span id="slider-keys">@_sliderKeys</span></li>
+    <li>Slider clicks: <span id="slider-clicks">@_sliderClicks</span></li>
+    <li>Select clicks: <span id="select-clicks">@_selectClicks</span></li>
+    <li>Modal keys: <span id="modal-keys">@_modalKeys</span></li>
+    <li>Drawer keys: <span id="drawer-keys">@_drawerKeys</span></li>
+</ul>
+
+@code {
+    readonly Model _model = new();
+    readonly List<SelectOption<string?>> _options = [new("alpha", "Alpha"), new("beta", "Beta")];
+
+    int _dateKeys;
+    int _rangeKeys;
+    int _sliderKeys;
+    int _sliderClicks;
+    int _selectClicks;
+    int _modalKeys;
+    int _drawerKeys;
+
+    bool _modalVisible;
+    bool _drawerVisible;
+
+    // Fixed dates so every grid cell the e2e suite navigates to is deterministic: Feb 2026 starts on
+    // a Sunday, so the 42-cell grid spans Feb 1 - Mar 14 and every February date renders exactly once.
+    class Model
+    {
+        public DateTime? Date { get; set; } = new DateTime(2026, 2, 10);
+        public DateTime? Start { get; set; } = new DateTime(2026, 2, 10);
+        public DateTime? End { get; set; } = new DateTime(2026, 2, 20);
+        public int Volume { get; set; } = 40;
+        public string? Choice { get; set; }
+    }
+}
