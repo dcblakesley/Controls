@@ -56,6 +56,36 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     [Parameter] public EventCallback<string?> OtherValueChanged { get; set; }
 
     /// <summary>
+    /// Compiler-populated by <c>@bind-OtherValue</c> alongside <see cref="OtherValue"/>/
+    /// <see cref="OtherValueChanged"/> — the accessor for the SECOND model property this control
+    /// binds. Supplying it is what makes the "Other" free-text box a first-class field: it gets a
+    /// <see cref="FieldIdentifier"/>, a <see cref="FormOptions"/> registration (so
+    /// <see cref="ValidationView"/> can link to it), and an <see cref="EditContext"/> notification on
+    /// every write.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Optional, and the notification is opt-in by binding.</b> Wiring
+    /// <see cref="OtherValue"/>/<see cref="OtherValueChanged"/> by hand (rather than through
+    /// <c>@bind-OtherValue</c>) leaves this null, and then the box behaves exactly as it always has:
+    /// it writes the model through the callback and raises no <c>OnFieldChanged</c>. That silence is
+    /// the bug this closes — an <c>OnFieldChanged</c>-driven auto-save (see <see cref="FormAutoSave"/>)
+    /// simply never heard the free text — but it is not worth throwing over, since a consumer may have
+    /// a deliberate reason to drive the pair manually.
+    /// </para>
+    /// <para>
+    /// <b>Binding it also enrolls the property in the validation summary.</b> That is the intended
+    /// consequence, not a side effect: an annotation on the OtherValue property (say
+    /// <c>[Required]</c> or <c>[StringLength]</c>) previously produced a message no
+    /// <see cref="ValidationView"/> could link to, because nothing had registered the field. It now
+    /// registers under the free-text box's own element id (<c>other-{id}</c>), so the summary link
+    /// lands on the input the message is about. <see cref="EditRadioString"/> needs none of this: its
+    /// Other text IS the bound value, so it already travels the normal <c>InputBase</c> path.
+    /// </para>
+    /// </remarks>
+    [Parameter] public Expression<Func<string?>>? OtherValueExpression { get; set; }
+
+    /// <summary>
     /// Overrides the "Other" free-text box's accessible name
     /// (<see cref="Controls.RadioOtherInput.AriaLabel"/>). Null (default) uses
     /// <see cref="Controls.RadioOtherInput.DefaultAriaLabel"/> ("Custom text value input") -- RAD-4:
@@ -83,11 +113,22 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     {
         base.OnInitialized();
         _cache.Initialize(Sort, HasOtherOption);
+        // Derived once, like the base's own _fieldIdentifier: @bind-OtherValue emits a fresh lambda
+        // instance every render, so a per-cycle re-derive would rebuild it on every keystroke for no
+        // gain. Null expression = the consumer wired the pair by hand; everything below stays off.
+        if (OtherValueExpression is not null)
+        {
+            _otherFieldIdentifier = FieldIdentifier.Create(OtherValueExpression);
+            _otherFieldBound = true;
+        }
     }
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
+        // AFTER base, which is where _id is re-resolved (EditControlInit.SyncResolvedId) -- the Other
+        // box's element id derives from it, so registering first would pin the stale one.
+        SyncOtherFieldRegistration();
         // The option list is cached, but the parameters that shape it may change at runtime —
         // previously a Sort/HasOtherOption change was silently ignored forever.
         _cache.Refresh(Sort, HasOtherOption);
@@ -133,6 +174,52 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     TEnum? _observedValue;
     string? _observedOtherValue;
 
+    // The SECOND bound field -- see OtherValueExpression. All three stay at their defaults (and every
+    // path below is a no-op) when the consumer wired OtherValue/OtherValueChanged by hand.
+    FieldIdentifier _otherFieldIdentifier;
+    bool _otherFieldBound;
+    string _otherFieldId = string.Empty;
+
+    // Keeps the Other box's FormOptions registration pointing at the element id it actually renders
+    // under, across a runtime Id/IdPrefix/group-name change -- the same job SyncResolvedId does for the
+    // control's own field, and the same "only when it changed" guard, since the answer is stable on the
+    // overwhelmingly common parameter cycle. RegisterField treats a repeat call from the same owner as
+    // "this field's id moved" and updates FieldIds in place.
+    void SyncOtherFieldRegistration()
+    {
+        if (!_otherFieldBound) return;
+        var id = $"other-{_id}";
+        if (string.Equals(id, _otherFieldId, StringComparison.Ordinal)) return;
+        _otherFieldId = id;
+        EditControlInit.RegisterField(FormOptions, _otherFieldIdentifier, id, this);
+    }
+
+    /// <summary>
+    /// Tells the <see cref="EditContext"/> that the OtherValue property just changed. Called AFTER
+    /// <see cref="OtherValueChanged"/> has run, never before: the validator reads the property live off
+    /// the model during <c>NotifyFieldChanged</c>, so notifying first would validate the stale
+    /// (pre-write) value and leave the error state one interaction behind — the same ordering
+    /// <c>EditControlListBase.SetValueAsync</c> documents.
+    /// </summary>
+    void NotifyOtherChanged()
+    {
+        if (_otherFieldBound)
+            EditContext?.NotifyFieldChanged(_otherFieldIdentifier);
+    }
+
+    /// <summary>
+    /// Drops the Other field's registration alongside the base's own — <see cref="FormOptions"/> is
+    /// per-form and long-lived, so an unpaired second registration leaves a dead
+    /// <see cref="FieldIdentifier"/> for <see cref="ValidationView"/> to link to and grows on every
+    /// mount/unmount cycle. No-op when the pair was wired by hand (nothing was ever registered).
+    /// </summary>
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && _otherFieldBound)
+            EditControlInit.UnregisterField(FormOptions, _otherFieldIdentifier, this);
+        base.Dispose(disposing);
+    }
+
     /// <summary>
     /// The text the "Other" box renders. While Other is selected that is simply
     /// <see cref="OtherValue"/> (the live model value); while it is not, the box is disabled and shows
@@ -167,12 +254,18 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
             {
                 _observedOtherValue = null;
                 await OtherValueChanged.InvokeAsync(null);
+                // These two branches write the OtherValue property just as surely as typing does --
+                // the switch away CLEARS it off the model, the switch back re-commits it -- so both
+                // notify. Leaving them silent would have reopened the same gap from the other side:
+                // an auto-save would persist the enum change while missing the free text going away.
+                NotifyOtherChanged();
             }
         }
         else if (!wasOther && isOther && string.IsNullOrEmpty(OtherValue) && !string.IsNullOrEmpty(_otherTextCache))
         {
             _observedOtherValue = _otherTextCache;
             await OtherValueChanged.InvokeAsync(_otherTextCache);
+            NotifyOtherChanged();
         }
     }
 
@@ -226,6 +319,10 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
             // back is not an external change.
             _observedOtherValue = value;
             await OtherValueChanged.InvokeAsync(value);
+            // The gap this closes: typing here used to write the model and raise NOTHING. Guarded by
+            // the same `OtherValue != value` test as the write itself, so re-committing identical text
+            // stays silent -- matching every other control's dedup.
+            NotifyOtherChanged();
         }
     }
 }

@@ -812,6 +812,23 @@ Two caveats for mixed estates:
 - Composes with `HasOther`/`HasOtherOption` (the Other button joins the row; its free-text input still renders as a normal `<input>` below, not inside the button row) and with `IsOptionDisabled` (a disabled option's button dims and refuses interaction, same as a disabled plain radio).
 - Default mode (`OptionType` unset) renders byte-identical markup to before — this is a fully opt-in mode, not gated behind `.edit-theme` (it carries its own styling, like `Select`/`EditDate`).
 
+#### The "Other" text box is a real field — bind it with `@bind-OtherValue`
+
+`EditRadioEnum<TEnum>` binds a **second** model property for its `HasOtherOption` free-text box, and that property is only wired into the `EditContext` when you bind it two-way:
+
+```razor
+<EditRadioEnum @bind-Value="model.Source"
+               HasOtherOption="true"
+               OtherPlaceholder="Please specify..."
+               @bind-OtherValue="model.SourceOther" />
+```
+
+`@bind-OtherValue` supplies the `OtherValueExpression` parameter, and from it the control derives a `FieldIdentifier`, registers the field under the box's own element id (`other-{id}`), and calls `NotifyFieldChanged` on every write — typing, the clear when you switch away from Other, and the re-commit when you switch back. Re-committing identical text stays silent, like every other control.
+
+- **Wiring `OtherValue` + `OtherValueChanged` separately** (rather than through `@bind-OtherValue`) leaves the expression null, and then the box behaves as it always has: it writes the model through your callback and raises no `OnFieldChanged`. The notification is opt-in by binding, not a hard requirement — but if you drive an auto-save (or anything else) off `OnFieldChanged`, the free text is invisible to it until you bind.
+- **Binding it also enrolls the property in the validation summary.** That's intended: a `[Required]`/`[StringLength]` on the OtherValue property previously produced a message `ValidationView` had no registered field to link to. The summary link now lands on the free-text `<input>` itself.
+- `EditRadioString` needs none of this — its Other text *is* the bound value, so it already travels the normal `InputBase` path.
+
 ### Checkbox List
 
 ```razor
