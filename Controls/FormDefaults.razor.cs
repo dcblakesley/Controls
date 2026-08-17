@@ -86,7 +86,11 @@ public partial class FormDefaults
     /// <b>Resolution of "first" is document order, decided in the browser</b> from the DOM between
     /// the two <c>&lt;template&gt;</c> markers this component renders while the feature is on (see
     /// <see cref="JsInteropEc.FocusFirstField"/>). Fields that can't or shouldn't take focus are
-    /// skipped: disabled, <c>readonly</c>, <c>tabindex="-1"</c>, anything inside an <c>inert</c> or
+    /// skipped: disabled (<c>aria-disabled="true"</c> included — a disabled <see cref="EditBool"/>
+    /// with <c>AllowFocusWhenDisabled</c> on renders no <c>disabled</c> attribute), <c>readonly</c>
+    /// (unless the widget declares <c>aria-readonly="false"</c>, as a non-searchable
+    /// <c>EditSelectSearch</c>/<c>EditMultiSelect</c> does — that <c>readonly</c> only blocks typing,
+    /// and the control is fully operable), <c>tabindex="-1"</c>, anything inside an <c>inert</c> or
     /// <c>aria-hidden</c> subtree, and anything not actually rendered/visible (a
     /// <see cref="HidingMode"/>-hidden control, a collapsed panel). Buttons and links are not fields
     /// and are never targets.

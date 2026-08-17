@@ -47,6 +47,40 @@ else if (Case == "skip")
         </EditForm>
     </FormDefaults>
 }
+else if (Case == "aria-disabled")
+{
+    @* A disabled EditBool with AllowFocusWhenDisabled (the DEFAULT) renders aria-disabled="true" +
+       tabindex="0" and NO `disabled` attribute -- deliberately, so a screen-reader user can still
+       reach and read it. That also means el.disabled alone cannot tell it is unusable, and the
+       checkbox was being chosen as "the first field". *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditBool @bind-Value="_model.DisabledFlag" IsDisabled="true" />
+            <EditString @bind-Value="_model.AfterDisabledBool" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "select-no-search")
+{
+    @* ShowSearch="false" renders the combobox `readonly` (a typing guard -- @oninput means "search"
+       there) together with an explicit aria-readonly="false", because arrows/Enter/Space/type-ahead
+       all still change the value. It is fully operable, so it IS the first field. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditSelectSearch @bind-Value="_model.NoSearchChoice" Options="_choices" ShowSearch="false" />
+            <EditString @bind-Value="_model.AfterSelect" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "multi-select-no-search")
+{
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditMultiSelect @bind-Value="_model.NoSearchTags" Options="_choices" ShowSearch="false" />
+            <EditString @bind-Value="_model.AfterMultiSelect" />
+        </EditForm>
+    </FormDefaults>
+}
 else if (Case == "explicit")
 {
     @* Precedence: a named control beats "whichever is first". Both mechanisms fire in the same
@@ -133,6 +167,9 @@ else if (Case == "drawer")
     readonly Model _model = new();
     readonly OtherModel _other = new();
 
+    // SelectOption<string?> to match the nullable bound properties (see FocusApi.razor's note).
+    readonly List<SelectOption<string?>> _choices = [new("alpha", "Alpha"), new("beta", "Beta")];
+
     bool _modalVisible;
     bool _drawerVisible;
 
@@ -146,6 +183,12 @@ else if (Case == "drawer")
         public string? SkipReadOnly { get; set; } = "Read only";
         public string? SkipHidden { get; set; }
         public string? SkipTarget { get; set; }
+        public bool DisabledFlag { get; set; }
+        public string? AfterDisabledBool { get; set; }
+        public string? NoSearchChoice { get; set; }
+        public string? AfterSelect { get; set; }
+        public List<string?> NoSearchTags { get; set; } = [];
+        public string? AfterMultiSelect { get; set; }
         public string? ExplicitFirst { get; set; }
         public string? ExplicitSecond { get; set; }
         public string? FormOneField { get; set; }

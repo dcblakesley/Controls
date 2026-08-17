@@ -121,6 +121,47 @@ public class FocusFirstFieldE2ETests : IAsyncLifetime
         Assert.Equal(0, await _page.Locator("input#SkipHidden").CountAsync());
     }
 
+    [Fact]
+    public async Task Skips_an_aria_disabled_checkbox_that_carries_no_disabled_attribute()
+    {
+        // EditBool + IsDisabled + AllowFocusWhenDisabled (the DEFAULT) renders aria-disabled="true",
+        // tabindex="0" and NO `disabled` attribute, so that a screen-reader user can still reach and
+        // read it. Testing el.disabled alone therefore saw a perfectly ordinary focusable checkbox
+        // and landed on it -- against the documented skip list, and on a control the user can't act on.
+        await GotoAsync("aria-disabled");
+
+        await Expect(_page.Locator("input#AfterDisabledBool")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        await Expect(_page.Locator("input#DisabledFlag")).Not.ToBeFocusedAsync();
+        // The premise of the test, pinned: no `disabled` attribute, so only aria-disabled can tell.
+        Assert.Equal("true", await _page.Locator("input#DisabledFlag").GetAttributeAsync("aria-disabled"));
+        Assert.False(await _page.Locator("input#DisabledFlag").IsDisabledAsync());
+    }
+
+    [Fact]
+    public async Task A_non_searchable_select_is_a_candidate_despite_its_readonly_attribute()
+    {
+        // ShowSearch="false" renders the combobox readonly purely as a typing guard, and says so with
+        // an explicit aria-readonly="false": arrows, Enter, Space and type-ahead all still change the
+        // value. Skipping it on `readOnly` alone stranded focus on the NEXT field, past a control the
+        // user could have used.
+        await GotoAsync("select-no-search");
+
+        await Expect(_page.Locator("input#NoSearchChoice")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        await Expect(_page.Locator("input#AfterSelect")).Not.ToBeFocusedAsync();
+        Assert.Equal("false", await _page.Locator("input#NoSearchChoice").GetAttributeAsync("aria-readonly"));
+    }
+
+    [Fact]
+    public async Task A_non_searchable_multi_select_is_a_candidate_too()
+    {
+        // Same engine, same combobox input -- pinned separately because EditMultiSelect declares its
+        // own ShowSearch pass-through and could drift from EditSelectSearch's.
+        await GotoAsync("multi-select-no-search");
+
+        await Expect(_page.Locator("input#NoSearchTags")).ToBeFocusedAsync(new() { Timeout = 15_000 });
+        await Expect(_page.Locator("input#AfterMultiSelect")).Not.ToBeFocusedAsync();
+    }
+
     // ───────────────── precedence: an explicit FocusOnFirstRender wins ─────────────────
 
     [Fact]

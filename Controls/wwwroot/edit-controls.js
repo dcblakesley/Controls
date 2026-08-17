@@ -71,7 +71,20 @@
     // disabled), an inert or aria-hidden ancestor, and not being rendered at all (display:none from a
     // HidingMode, a collapsed panel, an un-opened dropdown).
     const isFocusableField = function (el) {
-        if (el.disabled || el.readOnly) return false;
+        // aria-disabled counts as disabled, not just the host-language attribute: a disabled EditBool
+        // with AllowFocusWhenDisabled on (which is the DEFAULT) deliberately renders aria-disabled=
+        // "true" + tabindex="0" and NO `disabled` attribute, so a screen-reader user can still reach
+        // and read it. Testing el.disabled alone let exactly that checkbox be picked as "the first
+        // field", against the documented skip list.
+        if (el.disabled || el.getAttribute('aria-disabled') === 'true') return false;
+        // readonly skips -- UNLESS the widget explicitly declares aria-readonly="false", i.e. "the
+        // host-language attribute is not the whole truth about me". Select's non-searchable combobox
+        // is precisely that case: `readonly` there is only a typing guard (nothing else stops the
+        // browser putting characters into a box whose @oninput means "search"), while the arrows,
+        // Enter, Space and type-ahead all still change the value -- so it renders aria-readonly=
+        // "false" to say so, and it is fully operable. ShowSearch="false" is a first-class documented
+        // mode, and skipping it left focus on the field AFTER a perfectly usable select.
+        if (el.readOnly && el.getAttribute('aria-readonly') !== 'false') return false;
         if (el.getAttribute('tabindex') === '-1') return false;
         if (el.closest('[inert],[aria-hidden="true"]')) return false;
         // checkVisibility covers display:none, visibility:hidden/collapse and content-visibility in

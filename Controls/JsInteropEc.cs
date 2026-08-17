@@ -45,7 +45,8 @@ public static class JsInteropEc
     /// non-fixed cascading-value subscribers in construction order, not document order, so a C#-side
     /// answer would be wrong whenever a form's markup order and its component-construction order
     /// disagree. The DOM is the only source of truth for "first", and it is also the only place the
-    /// skip rules (disabled, readonly, <c>tabindex="-1"</c>, not rendered/visible, inert ancestor)
+    /// skip rules (disabled or <c>aria-disabled</c>, readonly without an explicit
+    /// <c>aria-readonly="false"</c>, <c>tabindex="-1"</c>, not rendered/visible, inert ancestor)
     /// can all be answered. Best-effort — a missing marker, an empty scope, a field that already has
     /// focus, or no JS at all (prerender / tests) each end as a silent no-op; see the class remarks
     /// for the missing-global (cross-origin MFE) fallback.
