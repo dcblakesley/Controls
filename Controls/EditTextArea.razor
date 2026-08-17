@@ -23,18 +23,23 @@
                             CountAccessibleText=@CountAccessibleText
                             CountLimitStatus=@CountLimitStatus
                             CountBelow="true">
-                @* One @attributes per element, so the consumer's unmatched attributes and this
-                   control's own oninput handler (live text + the AutoSize re-measure) are merged --
-                   the control's own win -- and the splat is FIRST, so every explicitly-written
-                   attribute below, including the ones @bind-value emits, wins over a consumer's.
-                   `class` travels CssClass and `style` the wrapper, so AttributeSplat withholds both;
-                   a null merge emits no frames at all. *@
-                <textarea @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorInputAttributes)"
+                @* One @attributes per element, so the consumer's unmatched attributes, this control's
+                   own oninput handler (live text + the AutoSize re-measure) and its state attributes
+                   (disabled/aria-*) are all merged into EditorAttributes -- the control's own win --
+                   and the splat is FIRST, so every explicitly-written attribute below, including the
+                   ones @bind-value emits, wins over a consumer's. `class` travels CssClass and `style`
+                   the wrapper, so AttributeSplat withholds both; a null merge emits no frames at all.
+
+                   The CONDITIONAL attributes ride the merged dictionary rather than being written
+                   explicitly below, deliberately -- see EditControlBase.EditorStateAttributes: an
+                   explicit frame wins outright over an earlier same-named one even when its own value
+                   is null, so writing them here would DELETE a consumer's splatted
+                   `disabled`/`aria-*` rather than merely decline to override it. *@
+                <textarea @attributes="EditorAttributes"
                           @bind-value=@CurrentValue
                           @bind-value:event="@UpdateEventName"
                           @bind-value:after="OnValueCommittedAsync"
                           @ref="_editorRef"
-                          disabled=@IsDisabled
                           id=@_id
                           data-test-id=@_id
                           class=@InputClass
@@ -42,10 +47,7 @@
                           maxlength=@EffectiveMaxLength
                           placeholder=@EffectivePlaceholder
                           aria-labelledby="lbltext-@_id"
-                          aria-required=@_isRequired
-                          aria-invalid=@(IsInvalid ? "true" : null)
-                          aria-describedby=@_describedBy
-                          aria-errormessage=@(IsInvalid ? _errorMsgId : null)></textarea>
+                          aria-describedby=@_describedBy></textarea>
             </EditInputShell>
         }
         else

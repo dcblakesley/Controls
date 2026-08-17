@@ -86,6 +86,22 @@ public partial class EditTextArea : EditTextInputBase
     /// </summary>
     bool ResolvedAutoSize => AutoSize ?? _attributes.Rows()?.AutoSize ?? false;
 
+    /// <summary>
+    /// The textarea's full <c>@attributes</c> splat: the consumer's unmatched attributes, this
+    /// control's own <c>oninput</c> handler when needed (<see cref="EditTextInputBase.EditorInputAttributes"/>),
+    /// and its state attributes (<see cref="EditControlBase{TValue}.EditorStateAttributes"/> --
+    /// <c>disabled</c>/<c>aria-required</c>/<c>aria-invalid</c>/<c>aria-errormessage</c>) -- merged via
+    /// chained <see cref="AttributeSplat.RestWith"/> calls, the same shape
+    /// <see cref="EditString.EditorAttributes"/> uses. See <see cref="EditControlBase{TValue}.EditorStateAttributes"/>'s
+    /// remarks for why the state set has to ride the merged dictionary rather than be written as its
+    /// own explicit attributes beside the splat: a null/false library value there would DELETE a
+    /// consumer's splatted same-named attribute outright, not merely decline to override it.
+    /// </summary>
+    IReadOnlyDictionary<string, object>? EditorAttributes =>
+        AttributeSplat.RestWith(
+            AttributeSplat.RestWith(AdditionalAttributes, EditorInputAttributes),
+            EditorStateAttributes);
+
     [Inject] IJSRuntime JS { get; set; } = default!;
 
     /// <summary>
