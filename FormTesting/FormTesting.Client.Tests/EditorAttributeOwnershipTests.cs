@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
@@ -7,8 +8,12 @@ using Microsoft.AspNetCore.Components.Rendering;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// Pins who owns each attribute on EditString's and EditNumber's inner <c>&lt;input&gt;</c> when the
-/// consumer splats an attribute of the same name. The rule, in one line:
+/// Pins who owns each attribute on every single-editor control's field element when the consumer
+/// splats an attribute of the same name. Started with EditString/EditNumber's inner
+/// <c>&lt;input&gt;</c> (commit 3d5ed90); extended here to EditTextArea's <c>&lt;textarea&gt;</c>,
+/// EditDateNative's <c>&lt;input&gt;</c>, the three <c>&lt;select&gt;</c> controls
+/// (EditSelect/EditSelectEnum/EditSelectString), EditBool's checkbox <c>&lt;input&gt;</c>, and
+/// EditRange's <c>role="slider"</c> <c>&lt;div&gt;</c> track. The rule, in one line:
 /// <b>the library wins the collision when it HAS an opinion; the consumer's value survives untouched
 /// when it does not</b> — with two deliberate exceptions: the attributes the library owns
 /// UNCONDITIONALLY (<c>type</c>, <c>id</c>, <c>class</c>, <c>aria-labelledby</c>,
@@ -33,6 +38,31 @@ namespace FormTesting.Client.Tests;
 /// <c>SuggestionsInputAttributes</c> for <c>list</c>), where contributing nothing really does mean
 /// contributing nothing. These tests are the contract; the erasure is invisible in a visual baseline
 /// and silent at runtime, so it needs pinning at this level.
+/// </para>
+/// <para>
+/// EditBool and EditRange each get their own, slightly different shape rather than reusing
+/// <see cref="EditControlBase{TValue}.EditorStateAttributes"/> as-is. EditBool's native
+/// <c>disabled</c>/<c>aria-disabled</c> pair depends on <c>AllowFocusWhenDisabled</c> (default true,
+/// which withholds the native attribute so the checkbox stays a Tab stop) — see
+/// <c>CheckboxStateAttributes</c>' remarks for why it writes an explicit <c>false</c> rather than
+/// omitting the key whenever the checkbox is non-operable, so a consumer's own splatted
+/// <c>disabled</c> can never silently defeat that opt-in. EditRange's field element is a
+/// <c>&lt;div role="slider"&gt;</c>, which can't carry a native <c>disabled</c> attribute at all, so it
+/// uses <c>aria-disabled</c> in that slot instead (see <c>TrackStateAttributes</c>).
+/// </para>
+/// <para>
+/// Not every control in the residual this file started from actually needed the fix. EditFile's
+/// <c>&lt;InputFile&gt;</c>, CheckboxOptionList's per-option checkboxes, and the four radio-group
+/// controls (EditRadio/EditRadioEnum/EditRadioString/EditBoolNullRadio, via the pre-existing
+/// <c>RadioAria.Fieldset</c> helper) were swept and found structurally immune: none of them ever
+/// splats the consumer's <c>AdditionalAttributes</c> onto the SAME element that carries the
+/// conditional state attributes (the consumer's splat lands on an outer wrapper, or — for
+/// CheckboxOptionList/the radio row components — isn't captured at all), so there is no duplicate
+/// same-named frame for the bug to occur on. Same reasoning rules out the <c>Select</c> engine
+/// (EditSelectSearch/EditMultiSelect) and the two picker-backed date controls (EditDate/EditDateRange):
+/// their inner combobox/text input's disabled/aria-* come from typed component PARAMETERS the parent
+/// control computes and passes down, never from a raw dictionary merged with the consumer's splat on
+/// that same element.
 /// </para>
 /// </remarks>
 public class EditorAttributeOwnershipTests : BunitContext
@@ -320,5 +350,568 @@ public class EditorAttributeOwnershipTests : BunitContext
             Splat(("type", "text")));
 
         Assert.Equal("number", cut.Find("input.edit-number-input").GetAttribute("type"));
+    }
+
+    // ═══════════════════════════════════ EditTextArea ═══════════════════════════════════
+
+    IRenderedComponent<ContainerFragment> RenderTextArea(
+        PersonModel model, bool required, Action<RenderTreeBuilder, int> splat, bool validate = false)
+    {
+        var editContext = new EditContext(model);
+        Expression<Func<string>> field = required ? () => model.Name : () => model.Username;
+        var cut = RenderForm(editContext, content =>
+        {
+            content.OpenComponent<EditTextArea>(0);
+            content.AddAttribute(1, "Value", required ? model.Name : model.Username);
+            content.AddAttribute(2, "ValueExpression", field);
+            splat(content, 3);
+            content.CloseComponent();
+        });
+        if (validate) cut.InvokeAsync(() => editContext.Validate());
+        return cut;
+    }
+
+    [Fact]
+    public void EditTextArea_keeps_a_consumer_splatted_disabled_while_the_library_is_not_disabled()
+    {
+        var cut = RenderTextArea(new PersonModel { Username = "abc" }, required: false,
+            Splat(("disabled", "disabled")));
+
+        Assert.True(cut.Find("textarea.edit-textarea-input").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void EditTextArea_library_disabled_wins_and_renders_once()
+    {
+        var cut = RenderTextArea(new PersonModel { Username = "abc" }, required: false, (b, seq) =>
+        {
+            b.AddAttribute(seq, "disabled", "disabled");
+            b.AddAttribute(seq + 1, "IsDisabled", true);
+        });
+
+        var textarea = cut.Find("textarea.edit-textarea-input");
+        Assert.True(textarea.HasAttribute("disabled"));
+        Assert.Single(textarea.Attributes, a => a.Name == "disabled");
+    }
+
+    [Fact]
+    public void EditTextArea_keeps_a_consumer_splatted_aria_required_on_an_optional_field()
+    {
+        var cut = RenderTextArea(new PersonModel { Username = "abc" }, required: false,
+            Splat(("aria-required", "true")));
+
+        Assert.Equal("true", cut.Find("textarea.edit-textarea-input").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditTextArea_library_aria_required_wins_on_a_required_field()
+    {
+        var cut = RenderTextArea(new PersonModel { Name = "Alice" }, required: true,
+            Splat(("aria-required", "false")));
+
+        Assert.Equal("true", cut.Find("textarea.edit-textarea-input").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditTextArea_keeps_a_consumer_splatted_aria_errormessage_while_the_field_is_valid()
+    {
+        var cut = RenderTextArea(new PersonModel { Name = "Alice" }, required: true,
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        Assert.Equal("my-own-error", cut.Find("textarea.edit-textarea-input").GetAttribute("aria-errormessage"));
+    }
+
+    [Fact]
+    public void EditTextArea_library_aria_errormessage_wins_once_the_field_is_invalid()
+    {
+        var cut = RenderTextArea(new PersonModel { Name = "" }, required: true, // [Required] fails
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        var textarea = cut.Find("textarea.edit-textarea-input");
+        Assert.Equal("error-msg-Name", textarea.GetAttribute("aria-errormessage"));
+        Assert.Equal("true", textarea.GetAttribute("aria-invalid"));
+    }
+
+    // ═══════════════════════════════════ EditDateNative ═══════════════════════════════════
+
+    class DateOwnershipModel
+    {
+        [Required] public DateTime? Required { get; set; }
+        public DateTime? Optional { get; set; }
+    }
+
+    IRenderedComponent<ContainerFragment> RenderDateNative(
+        DateOwnershipModel model, bool required, Action<RenderTreeBuilder, int> splat, bool validate = false)
+    {
+        var editContext = new EditContext(model);
+        Expression<Func<DateTime?>> field = required ? () => model.Required : () => model.Optional;
+        var cut = RenderForm(editContext, content =>
+        {
+            content.OpenComponent<EditDateNative<DateTime?>>(0);
+            content.AddAttribute(1, "Value", required ? model.Required : model.Optional);
+            content.AddAttribute(2, "ValueExpression", field);
+            splat(content, 3);
+            content.CloseComponent();
+        });
+        if (validate) cut.InvokeAsync(() => editContext.Validate());
+        return cut;
+    }
+
+    [Fact]
+    public void EditDateNative_keeps_a_consumer_splatted_disabled_while_the_library_is_not_disabled()
+    {
+        var cut = RenderDateNative(new DateOwnershipModel(), required: false,
+            Splat(("disabled", "disabled")));
+
+        Assert.True(cut.Find("input.edit-date-input").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void EditDateNative_library_disabled_wins_and_renders_once()
+    {
+        var cut = RenderDateNative(new DateOwnershipModel(), required: false, (b, seq) =>
+        {
+            b.AddAttribute(seq, "disabled", "disabled");
+            b.AddAttribute(seq + 1, "IsDisabled", true);
+        });
+
+        var input = cut.Find("input.edit-date-input");
+        Assert.True(input.HasAttribute("disabled"));
+        Assert.Single(input.Attributes, a => a.Name == "disabled");
+    }
+
+    [Fact]
+    public void EditDateNative_keeps_a_consumer_splatted_aria_required_on_an_optional_field()
+    {
+        var cut = RenderDateNative(new DateOwnershipModel(), required: false,
+            Splat(("aria-required", "true")));
+
+        Assert.Equal("true", cut.Find("input.edit-date-input").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditDateNative_library_aria_required_wins_on_a_required_field()
+    {
+        var cut = RenderDateNative(new DateOwnershipModel { Required = new DateTime(1990, 1, 1) }, required: true,
+            Splat(("aria-required", "false")));
+
+        Assert.Equal("true", cut.Find("input.edit-date-input").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditDateNative_keeps_a_consumer_splatted_aria_errormessage_while_the_field_is_valid()
+    {
+        var cut = RenderDateNative(new DateOwnershipModel { Required = new DateTime(1990, 1, 1) }, required: true,
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        Assert.Equal("my-own-error", cut.Find("input.edit-date-input").GetAttribute("aria-errormessage"));
+    }
+
+    [Fact]
+    public void EditDateNative_library_aria_errormessage_wins_once_the_field_is_invalid()
+    {
+        var cut = RenderDateNative(new DateOwnershipModel(), required: true, // Required is null -> [Required] fails
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        var input = cut.Find("input.edit-date-input");
+        Assert.Equal("error-msg-Required", input.GetAttribute("aria-errormessage"));
+        Assert.Equal("true", input.GetAttribute("aria-invalid"));
+    }
+
+    // ═══════════════════════════════════ EditSelect / EditSelectString (string) ═══════════════════════════════════
+
+    static RenderFragment OneOption() => cb =>
+    {
+        cb.OpenElement(0, "option");
+        cb.AddAttribute(1, "value", "a");
+        cb.AddContent(2, "A");
+        cb.CloseElement();
+    };
+
+    IRenderedComponent<ContainerFragment> RenderSelect(
+        PersonModel model, bool required, Action<RenderTreeBuilder, int> splat, bool validate = false)
+    {
+        var editContext = new EditContext(model);
+        Expression<Func<string>> field = required ? () => model.Name : () => model.Username;
+        var cut = RenderForm(editContext, content =>
+        {
+            content.OpenComponent<EditSelect<string>>(0);
+            content.AddAttribute(1, "Value", required ? model.Name : model.Username);
+            content.AddAttribute(2, "ValueExpression", field);
+            content.AddAttribute(3, "ChildContent", OneOption());
+            splat(content, 4);
+            content.CloseComponent();
+        });
+        if (validate) cut.InvokeAsync(() => editContext.Validate());
+        return cut;
+    }
+
+    [Fact]
+    public void EditSelect_keeps_a_consumer_splatted_disabled_while_the_library_is_not_disabled()
+    {
+        var cut = RenderSelect(new PersonModel { Username = "abc" }, required: false,
+            Splat(("disabled", "disabled")));
+
+        Assert.True(cut.Find("select.edit-select-select").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void EditSelect_keeps_a_consumer_splatted_aria_required_on_an_optional_field()
+    {
+        var cut = RenderSelect(new PersonModel { Username = "abc" }, required: false,
+            Splat(("aria-required", "true")));
+
+        Assert.Equal("true", cut.Find("select.edit-select-select").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditSelect_library_aria_errormessage_wins_once_the_field_is_invalid()
+    {
+        var cut = RenderSelect(new PersonModel { Name = "" }, required: true, // [Required] fails
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        var select = cut.Find("select.edit-select-select");
+        Assert.Equal("error-msg-Name", select.GetAttribute("aria-errormessage"));
+        Assert.Equal("true", select.GetAttribute("aria-invalid"));
+    }
+
+    IRenderedComponent<ContainerFragment> RenderSelectString(
+        PersonModel model, bool required, Action<RenderTreeBuilder, int> splat, bool validate = false)
+    {
+        var editContext = new EditContext(model);
+        Expression<Func<string>> field = required ? () => model.Name : () => model.Username;
+        var cut = RenderForm(editContext, content =>
+        {
+            content.OpenComponent<EditSelectString<string>>(0);
+            content.AddAttribute(1, "Value", required ? model.Name : model.Username);
+            content.AddAttribute(2, "ValueExpression", field);
+            content.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            splat(content, 4);
+            content.CloseComponent();
+        });
+        if (validate) cut.InvokeAsync(() => editContext.Validate());
+        return cut;
+    }
+
+    [Fact]
+    public void EditSelectString_keeps_a_consumer_splatted_disabled_while_the_library_is_not_disabled()
+    {
+        var cut = RenderSelectString(new PersonModel { Username = "abc" }, required: false,
+            Splat(("disabled", "disabled")));
+
+        Assert.True(cut.Find("select.edit-select-select").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void EditSelectString_keeps_a_consumer_splatted_aria_required_on_an_optional_field()
+    {
+        var cut = RenderSelectString(new PersonModel { Username = "abc" }, required: false,
+            Splat(("aria-required", "true")));
+
+        Assert.Equal("true", cut.Find("select.edit-select-select").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditSelectString_library_aria_errormessage_wins_once_the_field_is_invalid()
+    {
+        var cut = RenderSelectString(new PersonModel { Name = "" }, required: true, // [Required] fails
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        var select = cut.Find("select.edit-select-select");
+        Assert.Equal("error-msg-Name", select.GetAttribute("aria-errormessage"));
+        Assert.Equal("true", select.GetAttribute("aria-invalid"));
+    }
+
+    // ═══════════════════════════════════ EditSelectEnum ═══════════════════════════════════
+
+    class PriorityOwnershipModel
+    {
+        [Required] public Priority? Required { get; set; }
+        public Priority? Optional { get; set; }
+    }
+
+    IRenderedComponent<ContainerFragment> RenderSelectEnum(
+        PriorityOwnershipModel model, bool required, Action<RenderTreeBuilder, int> splat, bool validate = false)
+    {
+        var editContext = new EditContext(model);
+        Expression<Func<Priority?>> field = required ? () => model.Required : () => model.Optional;
+        var cut = RenderForm(editContext, content =>
+        {
+            content.OpenComponent<EditSelectEnum<Priority?>>(0);
+            content.AddAttribute(1, "Value", required ? model.Required : model.Optional);
+            content.AddAttribute(2, "ValueExpression", field);
+            splat(content, 3);
+            content.CloseComponent();
+        });
+        if (validate) cut.InvokeAsync(() => editContext.Validate());
+        return cut;
+    }
+
+    [Fact]
+    public void EditSelectEnum_keeps_a_consumer_splatted_disabled_while_the_library_is_not_disabled()
+    {
+        var cut = RenderSelectEnum(new PriorityOwnershipModel { Optional = Priority.Low }, required: false,
+            Splat(("disabled", "disabled")));
+
+        Assert.True(cut.Find("select.edit-select-select").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void EditSelectEnum_library_disabled_wins_and_renders_once()
+    {
+        var cut = RenderSelectEnum(new PriorityOwnershipModel { Optional = Priority.Low }, required: false, (b, seq) =>
+        {
+            b.AddAttribute(seq, "disabled", "disabled");
+            b.AddAttribute(seq + 1, "IsDisabled", true);
+        });
+
+        var select = cut.Find("select.edit-select-select");
+        Assert.True(select.HasAttribute("disabled"));
+        Assert.Single(select.Attributes, a => a.Name == "disabled");
+    }
+
+    [Fact]
+    public void EditSelectEnum_keeps_a_consumer_splatted_aria_required_on_an_optional_field()
+    {
+        var cut = RenderSelectEnum(new PriorityOwnershipModel { Optional = Priority.Low }, required: false,
+            Splat(("aria-required", "true")));
+
+        Assert.Equal("true", cut.Find("select.edit-select-select").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditSelectEnum_library_aria_required_wins_on_a_required_field()
+    {
+        var cut = RenderSelectEnum(new PriorityOwnershipModel { Required = Priority.Low }, required: true,
+            Splat(("aria-required", "false")));
+
+        Assert.Equal("true", cut.Find("select.edit-select-select").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditSelectEnum_keeps_a_consumer_splatted_aria_errormessage_while_the_field_is_valid()
+    {
+        var cut = RenderSelectEnum(new PriorityOwnershipModel { Required = Priority.Low }, required: true,
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        Assert.Equal("my-own-error", cut.Find("select.edit-select-select").GetAttribute("aria-errormessage"));
+    }
+
+    [Fact]
+    public void EditSelectEnum_library_aria_errormessage_wins_once_the_field_is_invalid()
+    {
+        var cut = RenderSelectEnum(new PriorityOwnershipModel(), required: true, // Required is null -> fails
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        var select = cut.Find("select.edit-select-select");
+        Assert.Equal("error-msg-Required", select.GetAttribute("aria-errormessage"));
+        Assert.Equal("true", select.GetAttribute("aria-invalid"));
+    }
+
+    // ═══════════════════════════════════ EditRange ═══════════════════════════════════
+    // A <div role="slider"> can't carry a native `disabled` attribute -- aria-disabled is its
+    // state-attribute analog (see TrackStateAttributes' remarks).
+
+    class RangeOwnershipModel
+    {
+        [Required] public int? Required { get; set; }
+        public int? Optional { get; set; }
+    }
+
+    IRenderedComponent<ContainerFragment> RenderRangeOwnership(
+        RangeOwnershipModel model, bool required, Action<RenderTreeBuilder, int> splat, bool validate = false)
+    {
+        var editContext = new EditContext(model);
+        Expression<Func<int?>> field = required ? () => model.Required : () => model.Optional;
+        var cut = RenderForm(editContext, content =>
+        {
+            content.OpenComponent<EditRange<int?>>(0);
+            content.AddAttribute(1, "Value", required ? model.Required : model.Optional);
+            content.AddAttribute(2, "ValueExpression", field);
+            content.AddAttribute(3, "Min", 0m);
+            content.AddAttribute(4, "Max", 100m);
+            splat(content, 5);
+            content.CloseComponent();
+        });
+        if (validate) cut.InvokeAsync(() => editContext.Validate());
+        return cut;
+    }
+
+    [Fact]
+    public void EditRange_keeps_a_consumer_splatted_aria_disabled_while_the_library_is_not_disabled()
+    {
+        var cut = RenderRangeOwnership(new RangeOwnershipModel { Optional = 5 }, required: false,
+            Splat(("aria-disabled", "true")));
+
+        Assert.Equal("true", cut.Find(".edit-range-track").GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void EditRange_library_aria_disabled_wins_and_renders_once_when_actually_disabled()
+    {
+        var cut = RenderRangeOwnership(new RangeOwnershipModel { Optional = 5 }, required: false, (b, seq) =>
+        {
+            b.AddAttribute(seq, "aria-disabled", "false");
+            b.AddAttribute(seq + 1, "IsDisabled", true);
+        });
+
+        var track = cut.Find(".edit-range-track");
+        Assert.Equal("true", track.GetAttribute("aria-disabled"));
+        Assert.Single(track.Attributes, a => a.Name == "aria-disabled");
+    }
+
+    [Fact]
+    public void EditRange_keeps_a_consumer_splatted_aria_required_on_an_optional_field()
+    {
+        var cut = RenderRangeOwnership(new RangeOwnershipModel { Optional = 5 }, required: false,
+            Splat(("aria-required", "true")));
+
+        Assert.Equal("true", cut.Find(".edit-range-track").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditRange_library_aria_required_wins_on_a_required_field()
+    {
+        var cut = RenderRangeOwnership(new RangeOwnershipModel { Required = 5 }, required: true,
+            Splat(("aria-required", "false")));
+
+        Assert.Equal("true", cut.Find(".edit-range-track").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditRange_keeps_a_consumer_splatted_aria_errormessage_while_the_field_is_valid()
+    {
+        var cut = RenderRangeOwnership(new RangeOwnershipModel { Required = 5 }, required: true,
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        Assert.Equal("my-own-error", cut.Find(".edit-range-track").GetAttribute("aria-errormessage"));
+    }
+
+    [Fact]
+    public void EditRange_library_aria_errormessage_wins_once_the_field_is_invalid()
+    {
+        var cut = RenderRangeOwnership(new RangeOwnershipModel(), required: true, // Required is null -> fails
+            Splat(("aria-errormessage", "my-own-error")), validate: true);
+
+        var track = cut.Find(".edit-range-track");
+        Assert.Equal("error-msg-Required", track.GetAttribute("aria-errormessage"));
+        Assert.Equal("true", track.GetAttribute("aria-invalid"));
+    }
+
+    // ═══════════════════════════════════ EditBool ═══════════════════════════════════
+    // EditBool's disabled/aria-disabled pair has its own shape (AllowFocusWhenDisabled) rather than
+    // reusing EditorStateAttributes -- see CheckboxStateAttributes' remarks. [Required] on a
+    // non-nullable bool never actually fails DataAnnotations validation, so the invalid-state tests
+    // push a message through a ValidationMessageStore directly instead of relying on Validate().
+
+    class BoolOwnershipModel
+    {
+        [Required] public bool Required { get; set; }
+        public bool Optional { get; set; }
+    }
+
+    (IRenderedComponent<ContainerFragment> Cut, EditContext EditContext) RenderBool(
+        BoolOwnershipModel model, bool required, Action<RenderTreeBuilder, int> splat,
+        bool disabled = false, bool? allowFocusWhenDisabled = null)
+    {
+        var editContext = new EditContext(model);
+        Expression<Func<bool>> field = required ? () => model.Required : () => model.Optional;
+        var cut = RenderForm(editContext, content =>
+        {
+            content.OpenComponent<EditBool>(0);
+            content.AddAttribute(1, "Value", required ? model.Required : model.Optional);
+            content.AddAttribute(2, "ValueExpression", field);
+            var seq = 3;
+            if (disabled) content.AddAttribute(seq++, "IsDisabled", true);
+            if (allowFocusWhenDisabled is { } afwd) content.AddAttribute(seq++, "AllowFocusWhenDisabled", afwd);
+            splat(content, seq);
+            content.CloseComponent();
+        });
+        return (cut, editContext);
+    }
+
+    [Fact]
+    public void EditBool_keeps_a_consumer_splatted_disabled_and_aria_disabled_while_enabled()
+    {
+        // The sharp case, same as every other control: an enabled checkbox must not erase a consumer's
+        // own disabled/aria-disabled wiring.
+        var (cut, _) = RenderBool(new BoolOwnershipModel(), required: false,
+            Splat(("disabled", "disabled"), ("aria-disabled", "true")));
+
+        var input = cut.Find("input[type=checkbox]");
+        Assert.True(input.HasAttribute("disabled"));
+        Assert.Equal("true", input.GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void EditBool_library_aria_disabled_wins_but_native_disabled_stays_absent_under_the_default_AllowFocusWhenDisabled()
+    {
+        // AllowFocusWhenDisabled defaults true: the checkbox stays a real Tab stop while disabled, so
+        // the native `disabled` attribute must be reliably ABSENT here -- even though the consumer
+        // splatted one -- or the whole point of the opt-in silently breaks.
+        var (cut, _) = RenderBool(new BoolOwnershipModel(), required: false,
+            Splat(("disabled", "disabled"), ("aria-disabled", "false")), disabled: true);
+
+        var input = cut.Find("input[type=checkbox]");
+        Assert.False(input.HasAttribute("disabled"));
+        Assert.Equal("true", input.GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public void EditBool_AllowFocusWhenDisabled_false_lets_the_library_own_native_disabled_too()
+    {
+        // Turning the opt-in off puts EditBool back to every other control's fully-native behavior --
+        // the library's own `disabled=true` wins over the consumer's splatted value.
+        var (cut, _) = RenderBool(new BoolOwnershipModel(), required: false,
+            Splat(("disabled", "false")), disabled: true, allowFocusWhenDisabled: false);
+
+        Assert.True(cut.Find("input[type=checkbox]").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public void EditBool_keeps_a_consumer_splatted_aria_required_on_an_optional_field()
+    {
+        var (cut, _) = RenderBool(new BoolOwnershipModel(), required: false,
+            Splat(("aria-required", "true")));
+
+        Assert.Equal("true", cut.Find("input[type=checkbox]").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditBool_library_aria_required_wins_on_a_required_field()
+    {
+        var (cut, _) = RenderBool(new BoolOwnershipModel(), required: true,
+            Splat(("aria-required", "false")));
+
+        Assert.Equal("true", cut.Find("input[type=checkbox]").GetAttribute("aria-required"));
+    }
+
+    [Fact]
+    public void EditBool_keeps_a_consumer_splatted_aria_errormessage_while_the_field_is_valid()
+    {
+        var (cut, _) = RenderBool(new BoolOwnershipModel(), required: false,
+            Splat(("aria-errormessage", "my-own-error")));
+
+        Assert.Equal("my-own-error", cut.Find("input[type=checkbox]").GetAttribute("aria-errormessage"));
+    }
+
+    [Fact]
+    public void EditBool_library_aria_errormessage_wins_once_the_field_is_invalid()
+    {
+        var model = new BoolOwnershipModel();
+        var (cut, editContext) = RenderBool(model, required: false,
+            Splat(("aria-errormessage", "my-own-error")));
+
+        var store = new ValidationMessageStore(editContext);
+        var fi = editContext.Field(nameof(BoolOwnershipModel.Optional));
+        cut.InvokeAsync(() =>
+        {
+            store.Add(fi, "Boom");
+            editContext.NotifyValidationStateChanged();
+        });
+
+        var input = cut.Find("input[type=checkbox]");
+        Assert.Equal("error-msg-Optional", input.GetAttribute("aria-errormessage"));
+        Assert.Equal("true", input.GetAttribute("aria-invalid"));
     }
 }
