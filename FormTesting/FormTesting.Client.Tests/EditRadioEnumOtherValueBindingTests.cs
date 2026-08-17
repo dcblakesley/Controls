@@ -249,6 +249,157 @@ public class EditRadioEnumOtherValueBindingTests : BunitContext
         Assert.Contains(links, a => a.GetAttribute("href") == $"#{OtherBoxId}");
     }
 
+    // ─────────────────── the registration tracks what actually RENDERS ───────────────────
+
+    /// <summary>
+    /// One <see cref="FormOptions"/> instance across re-renders, with the two conditions that decide
+    /// whether the free-text box renders driven by parameters — the registration has to follow both at
+    /// runtime, not just answer correctly on the first render.
+    /// </summary>
+    sealed class RegistrationHost : ComponentBase
+    {
+        public FormOptions Options { get; } = new();
+
+        [Parameter] public ReasonModel Model { get; set; } = default!;
+        [Parameter] public EditContext Context { get; set; } = default!;
+        [Parameter] public bool HasOther { get; set; } = true;
+        [Parameter] public bool EditMode { get; set; } = true;
+
+        protected override void OnParametersSet() => Options.IsEditMode = EditMode;
+
+        protected override void BuildRenderTree(RenderTreeBuilder b)
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", Context);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => formContent =>
+            {
+                formContent.OpenComponent<CascadingValue<FormOptions>>(0);
+                formContent.AddAttribute(1, "Value", Options);
+                formContent.AddAttribute(2, "ChildContent", (RenderFragment)(content =>
+                {
+                    content.OpenComponent<EditRadioEnum<Priority?>>(0);
+                    content.AddAttribute(1, "Value", Model.Priority);
+                    content.AddAttribute(2, "ValueExpression", (Expression<Func<Priority?>>)(() => Model.Priority));
+                    content.AddAttribute(3, "ValueChanged",
+                        EventCallback.Factory.Create<Priority?>(this, v => Model.Priority = v));
+                    content.AddAttribute(4, "HasOtherOption", HasOther);
+                    content.AddAttribute(5, "OtherValue", Model.Reason);
+                    content.AddAttribute(6, "OtherValueChanged",
+                        EventCallback.Factory.Create<string?>(this, v => Model.Reason = v));
+                    content.AddAttribute(7, "OtherValueExpression", (Expression<Func<string?>>)(() => Model.Reason));
+                    content.CloseComponent();
+                }));
+                formContent.CloseComponent();
+            }));
+            b.CloseComponent();
+        }
+    }
+
+    // The id FormOptions currently links the Reason field to, or null when it isn't registered at all.
+    // Looked up by walking FieldIdentifiers rather than constructing a key: a default FieldIdentifier
+    // (what FirstOrDefault would hand back for "absent") throws from its own GetHashCode.
+    static string? RegisteredReasonId(FormOptions options)
+    {
+        foreach (var field in options.FieldIdentifiers)
+            if (field.FieldName == nameof(ReasonModel.Reason))
+                return options.FieldIds.GetValueOrDefault(field);
+        return null;
+    }
+
+    [Fact]
+    public void With_HasOtherOption_off_the_OtherValue_field_is_not_registered_at_all()
+    {
+        // The box renders inside `@if (HasOtherOption ...)`, so registering regardless pointed
+        // ValidationView's summary link at `other-Priority` while ZERO elements carried that id.
+        var model = new ReasonModel { Priority = Priority.Critical };
+        var cut = Render<RegistrationHost>(ps => ps
+            .Add(c => c.Model, model)
+            .Add(c => c.Context, new EditContext(model))
+            .Add(c => c.HasOther, false));
+
+        Assert.Null(RegisteredReasonId(cut.Instance.Options));
+        Assert.Empty(cut.FindAll($"#{OtherBoxId}"));
+    }
+
+    [Fact]
+    public void In_read_only_mode_the_OtherValue_field_anchors_on_the_element_that_still_renders()
+    {
+        // Not dropped, MOVED -- the read-only view shows the "Other: text" form under the control's own
+        // id, which is the element the message is about. Same treatment the primary field gets, and the
+        // same thing EditDateRange does for its End field.
+        var model = new ReasonModel { Priority = Priority.Critical, Reason = "bespoke" };
+        var cut = Render<RegistrationHost>(ps => ps
+            .Add(c => c.Model, model)
+            .Add(c => c.Context, new EditContext(model))
+            .Add(c => c.EditMode, false));
+
+        Assert.Equal("Priority", RegisteredReasonId(cut.Instance.Options));
+        Assert.Empty(cut.FindAll($"#{OtherBoxId}"));
+        Assert.NotNull(cut.Find("#Priority")); // the id it now points at really renders
+    }
+
+    [Fact]
+    public void The_registration_follows_a_runtime_HasOtherOption_flip_in_both_directions()
+    {
+        var model = new ReasonModel { Priority = Priority.Critical };
+        var editContext = new EditContext(model);
+        var cut = Render<RegistrationHost>(ps => ps
+            .Add(c => c.Model, model)
+            .Add(c => c.Context, editContext));
+        Assert.Equal(OtherBoxId, RegisteredReasonId(cut.Instance.Options));
+
+        cut.Render(ps => ps.Add(c => c.Model, model).Add(c => c.Context, editContext).Add(c => c.HasOther, false));
+        Assert.Null(RegisteredReasonId(cut.Instance.Options));
+
+        cut.Render(ps => ps.Add(c => c.Model, model).Add(c => c.Context, editContext).Add(c => c.HasOther, true));
+        Assert.Equal(OtherBoxId, RegisteredReasonId(cut.Instance.Options));
+        Assert.NotNull(cut.Find($"#{OtherBoxId}"));
+    }
+
+    [Fact]
+    public void The_registration_follows_a_runtime_edit_read_only_flip_in_both_directions()
+    {
+        var model = new ReasonModel { Priority = Priority.Critical, Reason = "bespoke" };
+        var editContext = new EditContext(model);
+        var cut = Render<RegistrationHost>(ps => ps
+            .Add(c => c.Model, model)
+            .Add(c => c.Context, editContext));
+        Assert.Equal(OtherBoxId, RegisteredReasonId(cut.Instance.Options));
+
+        cut.Render(ps => ps.Add(c => c.Model, model).Add(c => c.Context, editContext).Add(c => c.EditMode, false));
+        Assert.Equal("Priority", RegisteredReasonId(cut.Instance.Options));
+
+        cut.Render(ps => ps.Add(c => c.Model, model).Add(c => c.Context, editContext).Add(c => c.EditMode, true));
+        Assert.Equal(OtherBoxId, RegisteredReasonId(cut.Instance.Options));
+        Assert.NotNull(cut.Find($"#{OtherBoxId}"));
+    }
+
+    // ─────────────────── ordering: the model is written BEFORE the notification ───────────────────
+
+    [Fact]
+    public void The_notification_follows_the_model_write_and_never_precedes_it()
+    {
+        // Load-bearing, and previously unpinned: a validator reads the property live off the model
+        // during NotifyFieldChanged, so notifying first would validate the STALE value and leave the
+        // error state one interaction behind.
+        var model = new ReasonModel { Priority = Priority.Critical };
+        var editContext = new EditContext(model);
+        var seenWhenNotified = new List<string?>();
+        editContext.OnFieldChanged += (_, e) =>
+        {
+            if (e.FieldIdentifier.FieldName == nameof(ReasonModel.Reason))
+                seenWhenNotified.Add(model.Reason);
+        };
+        var cut = RenderRadioEnum(model, editContext, bindOther: true);
+
+        cut.Find($"#{OtherBoxId}").Input("bespoke");
+        Assert.Equal(["bespoke"], seenWhenNotified); // typing: the NEW text was already on the model
+
+        var radios = cut.FindAll("input[type=radio]");
+        radios[0].Change(radios[0].GetAttribute("value")); // switch away: clears the model first
+        Assert.Equal(["bespoke", null], seenWhenNotified);
+    }
+
     [Fact]
     public async Task Disposal_drops_the_OtherValue_registration_too()
     {

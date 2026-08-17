@@ -82,6 +82,19 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// lands on the input the message is about. <see cref="EditRadioString"/> needs none of this: its
     /// Other text IS the bound value, so it already travels the normal <c>InputBase</c> path.
     /// </para>
+    /// <para>
+    /// <b>Careful with a plain <see cref="RequiredAttribute"/> on that property.</b> Enrolment is not
+    /// the only consequence — the notification means the validator now runs against the OtherValue
+    /// property on every write, INCLUDING the null this control writes when the user switches away from
+    /// the Other option. A <c>[Required]</c> OtherValue therefore reports "required" for as long as a
+    /// non-Other option is selected, which is a real error message on a field the user cannot fill, and
+    /// with <see cref="FormAutoSave"/>'s default <c>SaveWhenInvalid="false"</c> it gates the form's
+    /// auto-save (that skip is re-attempted when validation state changes, so it is recoverable, but it
+    /// does not clear itself). The property is CONDITIONALLY required — required only while Other is
+    /// selected — so express that: a custom <c>RequiredIf</c>-style attribute, an
+    /// <see cref="IValidatableObject"/> on the model, a FluentValidation <c>When</c> rule, or the
+    /// form-level <see cref="FormOptions.RequiredResolver"/> for the star/<c>aria-required</c> half.
+    /// </para>
     /// </remarks>
     [Parameter] public Expression<Func<string?>>? OtherValueExpression { get; set; }
 
@@ -126,14 +139,15 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
-        // AFTER base, which is where _id is re-resolved (EditControlInit.SyncResolvedId) -- the Other
-        // box's element id derives from it, so registering first would pin the stale one.
-        SyncOtherFieldRegistration();
         // The option list is cached, but the parameters that shape it may change at runtime —
         // previously a Sort/HasOtherOption change was silently ignored forever.
         _cache.Refresh(Sort, HasOtherOption);
         // Runs after Refresh so the ids track a reordered/resized option list. Cheap: ToId memoizes.
         _optionIds = EnumHelpers.ToUniqueIds(_cache.Options);
+        // AFTER base (which is where _id is re-resolved by EditControlInit.SyncResolvedId -- the Other
+        // box's element id derives from it, so registering first would pin the stale one) and after the
+        // cache Refresh above, whose option list the anchor's own conditions read.
+        SyncOtherFieldRegistration();
 
         // Did the bound pair move behind this control's back? Every self-write records what it wrote
         // (see _observedValue), so anything still differing here came from OUTSIDE -- a parent
@@ -175,21 +189,63 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     string? _observedOtherValue;
 
     // The SECOND bound field -- see OtherValueExpression. All three stay at their defaults (and every
-    // path below is a no-op) when the consumer wired OtherValue/OtherValueChanged by hand.
+    // path below is a no-op) when the consumer wired OtherValue/OtherValueChanged by hand. The id is
+    // null while nothing is registered -- which is also "no element currently represents this field",
+    // see OtherAnchorId.
     FieldIdentifier _otherFieldIdentifier;
     bool _otherFieldBound;
-    string _otherFieldId = string.Empty;
+    string? _otherFieldId;
+
+    /// <summary>
+    /// The element id the OtherValue field's <see cref="FormOptions"/> registration should point at
+    /// right now, or null when NOTHING this control renders represents that property.
+    /// </summary>
+    /// <remarks>
+    /// The registration is what <see cref="ValidationView"/> turns into <c>href="#id"</c>, so it has to
+    /// track what actually renders — the free-text box exists only inside <c>@if (ShowEditor)</c> and
+    /// <c>@if (HasOtherOption ...)</c>, and both are runtime-variable (a <see cref="FormOptions"/>
+    /// edit/read-only flip, a toggled <see cref="HasOtherOption"/>). Registering unconditionally left
+    /// the summary linking to <c>other-{id}</c> when zero elements carried it.
+    /// <para>
+    /// Read-only does NOT drop the field, it MOVES it onto the read-only element (the same thing
+    /// <see cref="EditDateRange"/> does for its End field): <c>ReadOnlyValue</c> renders the "Other:
+    /// text" form under the control's own <c>_id</c>, so that element is what the message is about, and
+    /// this matches the primary field surviving read-only for exactly that reason.
+    /// </para>
+    /// <para>
+    /// Not gated on <c>ShouldShowComponent()</c>: a HidingMode-hidden control renders no element for
+    /// EITHER of its fields, and the primary registration (owned by the base) stays put through that
+    /// too — one behavior for both fields beats a second, subtly different one here.
+    /// </para>
+    /// </remarks>
+    string? OtherAnchorId =>
+        !HasOtherOption || _cache.Options is not { Count: > 0 } ? null
+        : ShowEditor ? $"other-{_id}"
+        : _id;
 
     // Keeps the Other box's FormOptions registration pointing at the element id it actually renders
-    // under, across a runtime Id/IdPrefix/group-name change -- the same job SyncResolvedId does for the
-    // control's own field, and the same "only when it changed" guard, since the answer is stable on the
-    // overwhelmingly common parameter cycle. RegisterField treats a repeat call from the same owner as
-    // "this field's id moved" and updates FieldIds in place.
+    // under, across a runtime Id/IdPrefix/group-name change AND across the conditions that decide
+    // whether it renders at all -- the same job SyncResolvedId does for the control's own field, and the
+    // same "only when it changed" guard, since the answer is stable on the overwhelmingly common
+    // parameter cycle. RegisterField treats a repeat call from the same owner as "this field's id moved"
+    // and updates FieldIds in place, so a MOVE never unregisters first (that would briefly drop a field
+    // another control may be sharing).
     void SyncOtherFieldRegistration()
     {
         if (!_otherFieldBound) return;
-        var id = $"other-{_id}";
+        var id = OtherAnchorId;
         if (string.Equals(id, _otherFieldId, StringComparison.Ordinal)) return;
+
+        if (id is null)
+        {
+            // Nothing renders for this field any more (HasOtherOption turned off): drop it rather than
+            // leave a summary link pointing at an element that no longer exists. A later flip back
+            // re-registers -- RegisterField re-adds the FieldIdentifier it removed.
+            EditControlInit.UnregisterField(FormOptions, _otherFieldIdentifier, this);
+            _otherFieldId = null;
+            return;
+        }
+
         _otherFieldId = id;
         EditControlInit.RegisterField(FormOptions, _otherFieldIdentifier, id, this);
     }
@@ -211,11 +267,13 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// Drops the Other field's registration alongside the base's own — <see cref="FormOptions"/> is
     /// per-form and long-lived, so an unpaired second registration leaves a dead
     /// <see cref="FieldIdentifier"/> for <see cref="ValidationView"/> to link to and grows on every
-    /// mount/unmount cycle. No-op when the pair was wired by hand (nothing was ever registered).
+    /// mount/unmount cycle. No-op when the pair was wired by hand, and equally when the free-text box
+    /// never rendered (see <see cref="OtherAnchorId"/>) — unregistering a field this control never
+    /// registered would drop another control's entry for the same property.
     /// </summary>
     protected override void Dispose(bool disposing)
     {
-        if (disposing && _otherFieldBound)
+        if (disposing && _otherFieldId is not null)
             EditControlInit.UnregisterField(FormOptions, _otherFieldIdentifier, this);
         base.Dispose(disposing);
     }
