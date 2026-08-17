@@ -562,7 +562,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     async Task OnEditorFocusIn(FocusEventArgs e)
     {
         _editorFocused = true;
-        await InvokeConsumerHandlerAsync(_consumerOnFocus, e);
+        await ConsumerEvent.InvokeAsync(_consumerOnFocus, e);
     }
 
     // No explicit re-render call needed: Blazor already re-renders after any bound event handler runs,
@@ -572,32 +572,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     async Task OnEditorFocusOut(FocusEventArgs e)
     {
         _editorFocused = false;
-        await InvokeConsumerHandlerAsync(_consumerOnBlur, e);
-    }
-
-    // Type-pattern dispatch rather than reflection, so this stays trim/AOT-clean (Controls.csproj sets
-    // IsAotCompatible). Covers the shapes Blazor actually hands through a splatted attribute
-    // dictionary; anything else is ignored rather than throwing, since a stray value here must never
-    // break the control's own focus tracking.
-    static Task InvokeConsumerHandlerAsync(object? handler, FocusEventArgs e)
-    {
-        switch (handler)
-        {
-            case EventCallback<FocusEventArgs> typedCallback:
-                return typedCallback.InvokeAsync(e);
-            case EventCallback untypedCallback:
-                return untypedCallback.InvokeAsync(e);
-            case Func<FocusEventArgs, Task> asyncHandler:
-                return asyncHandler(e);
-            case Action<FocusEventArgs> syncHandler:
-                syncHandler(e);
-                return Task.CompletedTask;
-            case Action bareHandler:
-                bareHandler();
-                return Task.CompletedTask;
-            default:
-                return Task.CompletedTask;
-        }
+        await ConsumerEvent.InvokeAsync(_consumerOnBlur, e);
     }
 
     // The dictionary WithFocusTracking returned last time, held so a re-entrant parameter cycle can be
