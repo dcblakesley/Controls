@@ -255,6 +255,7 @@ Two rules to follow:
 - **`ReadOnlyValue`** - Read-only value presentation
 - **`EditDisplay`** - Static label+value pair (no model binding)
 - **`FormDefaults`** - Render-tree-scoped defaults for the controls (see below)
+- **`FormAutoSave`** - One-component auto-save for a whole form, replacing per-field `@bind-Value:after` (see below)
 
 #### `FormDefaults`
 
@@ -299,6 +300,52 @@ Like the other settings it has no `FormOptions` counterpart and no static: unset
 - While the feature is on, the scope renders two empty `<template>` elements (one before and one after its content) to delimit itself for the DOM query. They have no layout box, no accessibility presence and carry nothing but an `id` — but they are elements, so a stylesheet that counts children of whatever contains your `<FormDefaults>` (`:first-child`, `:nth-child`, `:only-child`) will see them.
 
 > **Accessibility: opt in per scope, not app-wide.** Moving focus on open is helpful in a focused dialog or a search-first page, and harmful on a long page where the form isn't the main content — it can drop a screen-reader user past the heading and context they were about to hear, and on a touch device it pops the soft keyboard over the content. That's exactly why this is off by default and scoped: put it on the dialog or the form, not reflexively on the app root.
+
+#### `FormAutoSave`
+
+Auto-saving forms usually end up with `@bind-Value:after="SaveAsync"` on every single field. `FormAutoSave` replaces all of them with one component inside the form — it subscribes once to the `EditContext`, which every control in this library already notifies:
+
+```razor
+<EditForm Model="_model">
+    <DataAnnotationsValidator />
+    <FormAutoSave OnSave="SaveAsync" />
+
+    <EditString @bind-Value="_model.Name" />
+    <EditNumber @bind-Value="_model.Age" />
+    <EditSelectEnum @bind-Value="_model.Priority" />
+</EditForm>
+
+@code {
+    async Task SaveAsync(FormAutoSaveEventArgs e)
+    {
+        // e.ChangedFields names what changed since the last save, de-duplicated, in first-seen order.
+        await Http.PutAsJsonAsync("api/draft", _model);
+    }
+}
+```
+
+| Parameter | Type | Default | What it does |
+|---|---|---|---|
+| `OnSave` | `EventCallback<FormAutoSaveEventArgs>` | *(required)* | Your save. Awaited — the next save waits per `Concurrency`. |
+| `DebounceMilliseconds` | `int` | `500` | Trailing debounce: each change pushes the deadline out, so a burst produces one save. `0` fires per notification. |
+| `SaveWhenInvalid` | `bool` | `false` | Whether to save while the form has outstanding validation messages. |
+| `Concurrency` | `AutoSaveConcurrency` | `CoalesceTrailing` | `CoalesceTrailing` queues **at most one** further run when changes arrive during a save; `Concurrent` starts the save immediately regardless. |
+| `ShouldSave` | `Func<FieldIdentifier, bool>?` | `null` | Per-field filter. A rejected field neither arms the debounce nor joins `ChangedFields`. |
+| `OnSaveFailed` | `EventCallback<Exception>` | *(unset)* | Handles an exception from `OnSave`. When **not** wired, the exception is re-dispatched as if thrown from a lifecycle method — an enclosing `ErrorBoundary` catches it; failures are never silently swallowed. |
+| `TimeProvider` | `TimeProvider?` | `null` | The clock the debounce runs on. Supply a fake one to test your form's auto-save without sleeping. |
+
+`FormAutoSaveEventArgs` is `(EditContext EditContext, IReadOnlyList<FieldIdentifier> ChangedFields)`. `ChangedFields` is never empty. Note that a field *changing* doesn't mean its value differs from what was last persisted — re-committing the same value still counts.
+
+Four things worth knowing before you wire it up:
+
+- **Put it after `<DataAnnotationsValidator />`.** `EditContext.OnFieldChanged` handlers run in subscription order, and the `SaveWhenInvalid="false"` gate reads the context's *current* validation messages (it deliberately does not call `Validate()`, which would light up every untouched field's error the moment the user typed in one). The validator has to have subscribed — and therefore validated the changed field — first. A skipped save keeps its pending fields, so once the form is valid again the next save still reports everything that changed in the meantime.
+- **Pair it with `<FormDefaults UpdateOn="UpdateTrigger.Change">` if you want commit-on-blur.** `EditString`/`EditTextArea` default to `UpdateTrigger.Input`, i.e. one notification per keystroke. The debounce collapses those into one save, but the notifications still happen; `UpdateTrigger.Change` stops them at the source. See [Commit timing](#commit-timing-updateon).
+- **`EditRange` and `EditColor` drags emit many commits** — roughly one per animation frame while a handle moves. That is exactly what the debounce absorbs; don't set `DebounceMilliseconds="0"` on a form containing either. (Radio groups notify twice per click and `EditDateRange` once per endpoint, both likewise invisible after the debounce and the `ChangedFields` de-duplication.)
+- **On Blazor Server, per-keystroke saving is a network round trip per character.** Keep the debounce, and prefer `UpdateTrigger.Change` for text. `DebounceMilliseconds="0"` is an opt-in for WASM/local-draft scenarios, not a starting point.
+
+A parse failure (typing `abc` into an `EditNumber`, a bad date into `EditDate`) deliberately raises `OnFieldChanged` while the model still holds the **old** value and the field is now invalid — `InputBase`'s own convention, which these controls mirror. The default `SaveWhenInvalid="false"` is what keeps that from re-saving stale data.
+
+`FormAutoSave` renders nothing and disposes its subscription with the form. It also sees changes a per-field `:after` cannot: `EditFile`'s remove button, for one, mutates the bound list without any field setter running.
 
 #### `EditDisplay` vs `ReadOnlyValue`
 Both render text in the `edit-readonly-value` style, but their use cases are different:
