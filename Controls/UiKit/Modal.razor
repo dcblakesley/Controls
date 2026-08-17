@@ -7,12 +7,17 @@
        target chain, so without it a mask tap never reaches @onclick (mask-close dead on touch). The
        JS focus trap preventDefaults outside mousedown, so the wrap can't actually steal focus. *@
     <div class="wss-modal-wrap @(Centered ? "wss-modal-wrap-centered" : null)" tabindex="-1" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
-        <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+        @* onkeydown/onmousedown are withheld from the splat and CHAINED from the two handlers below:
+           they collide with this element's own, and a duplicate attribute name deletes the consumer's
+           outright rather than merging (see PanelAttributes / ConsumerEvent). onmouseup/onclick carry
+           only a :stopPropagation directive here — no handler, so no collision, and a splatted one
+           still runs (and still stops at the panel). *@
+        <div @attributes="PanelAttributes"
              class="wss-modal @AttributeSplat.ConsumerClass(AdditionalAttributes)"
              style="@AttributeSplat.MergeStyle($"width:{Width}", AdditionalAttributes)" role="dialog" aria-modal="true"
              aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel ?? "Dialog")" tabindex="-1"
              @ref="_panelRef" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="true"
-             @onmousedown="OnPanelMouseDown" @onmousedown:stopPropagation="true"
+             @onmousedown="OnPanelMouseDownAsync" @onmousedown:stopPropagation="true"
              @onmouseup:stopPropagation="true" @onclick:stopPropagation="true">
             @if (HasTitle || Closable)
             {
@@ -91,9 +96,20 @@
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the dialog panel (<c>.wss-modal</c>) — not the mask wrapper, whose inline z-index
     /// is JS-owned. <c>class</c> and <c>style</c> merge with the component's own; the rest are
-    /// splatted verbatim.
+    /// splatted verbatim, except a same-named <c>onkeydown</c>/<c>onmousedown</c>, which are chained
+    /// from this component's own handlers (see <see cref="PanelAttributes"/>).
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>
+    /// The panel's <c>@attributes</c> splat: the consumer's unmatched attributes minus the two events
+    /// the same element binds explicitly (<see cref="OnKeyDownAsync"/>,
+    /// <see cref="OnPanelMouseDownAsync"/>), which are chained from those handlers rather than
+    /// splatted — Blazor's last-wins duplicate-attribute rule would otherwise delete the consumer's
+    /// handlers outright. See <see cref="ConsumerEvent"/> for the ordering contract.
+    /// </summary>
+    IReadOnlyDictionary<string, object>? PanelAttributes =>
+        AttributeSplat.RestExcept(AdditionalAttributes, "onkeydown", "onmousedown");
 
     readonly string _titleId = $"wss-modal-title-{Guid.NewGuid():N}";
 
@@ -131,6 +147,13 @@
 
     // A fresh press inside the panel starts a new gesture that can't close — and also clears a STALE
     // mask-down flag from a press that released outside the window (which fires no click to reset it).
+    // A consumer's own splatted onmousedown is chained afterwards (see PanelAttributes).
+    Task OnPanelMouseDownAsync(MouseEventArgs e)
+    {
+        OnPanelMouseDown();
+        return ConsumerEvent.InvokeAsync(AdditionalAttributes, "onmousedown", e);
+    }
+
     void OnPanelMouseDown() { _maskMouseDown = false; _maskMouseUp = false; }
 
     async Task OnMaskClickAsync()
@@ -140,8 +163,12 @@
         if (MaskClosable && closeOnMask) await CancelAsync();
     }
 
+    // The consumer's own splatted onkeydown runs after this component's Escape handling, and
+    // unconditionally: every key reaches them, and Keyboard="false" suppresses only the close, never
+    // their listener. See PanelAttributes.
     async Task OnKeyDownAsync(KeyboardEventArgs e)
     {
         if (e.Key == "Escape" && Keyboard) await CancelAsync();
+        await ConsumerEvent.InvokeAsync(AdditionalAttributes, "onkeydown", e);
     }
 }

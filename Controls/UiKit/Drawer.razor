@@ -7,7 +7,10 @@
         @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap on a focusable/
            interactive target chain — without it a mask tap never reaches @onclick on touch. *@
         <div class="wss-drawer-mask" tabindex="-1" @onclick="OnMaskClickAsync"></div>
-        <div @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+        @* onkeydown is withheld from the splat and CHAINED from OnKeyDownAsync below: it collides with
+           this element's own handler, and a duplicate attribute name deletes the consumer's outright
+           rather than merging (see PanelAttributes / ConsumerEvent). *@
+        <div @attributes="PanelAttributes"
              class="wss-drawer wss-drawer-@PlacementName @AttributeSplat.ConsumerClass(AdditionalAttributes)"
              style="@AttributeSplat.MergeStyle(SizeStyle, AdditionalAttributes)" role="dialog" aria-modal="true"
              aria-labelledby="@(HasTitle ? _titleId : null)" aria-label="@(HasTitle ? null : AriaLabel ?? "Drawer")" tabindex="-1"
@@ -86,9 +89,20 @@
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the drawer panel (<c>.wss-drawer</c>) — not <c>.wss-drawer-root</c>, whose inline
     /// z-index is JS-owned. <c>class</c> and <c>style</c> merge with the component's own; the rest
-    /// are splatted verbatim.
+    /// are splatted verbatim, except a same-named <c>onkeydown</c>, which is chained from this
+    /// component's own handler (see <see cref="PanelAttributes"/>).
     /// </summary>
     [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    /// <summary>
+    /// The panel's <c>@attributes</c> splat: the consumer's unmatched attributes minus
+    /// <c>onkeydown</c>, which the same element binds explicitly (<see cref="OnKeyDownAsync"/>) and
+    /// which is therefore chained from that handler rather than splatted — Blazor's last-wins
+    /// duplicate-attribute rule would otherwise delete the consumer's handler outright. See
+    /// <see cref="ConsumerEvent"/> for the ordering contract.
+    /// </summary>
+    IReadOnlyDictionary<string, object>? PanelAttributes =>
+        AttributeSplat.RestExcept(AdditionalAttributes, "onkeydown");
 
     readonly string _titleId = $"wss-drawer-title-{Guid.NewGuid():N}";
 
@@ -113,8 +127,12 @@
         if (MaskClosable) await CloseAsync();
     }
 
+    // The consumer's own splatted onkeydown runs after this component's Escape handling, and
+    // unconditionally: every key reaches them, and Keyboard="false" suppresses only the close, never
+    // their listener. See PanelAttributes.
     async Task OnKeyDownAsync(KeyboardEventArgs e)
     {
         if (e.Key == "Escape" && Keyboard) await CloseAsync();
+        await ConsumerEvent.InvokeAsync(AdditionalAttributes, "onkeydown", e);
     }
 }
