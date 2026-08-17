@@ -1,0 +1,167 @@
+@page "/focus-first-field"
+@using Controls
+@using Microsoft.AspNetCore.Components.Forms
+
+<h1>Focus First Field</h1>
+
+@* Test-only page (not part of the Controls.Demo gallery), same precedent as FocusApi.razor and
+   JsInteropFallback.razor. FormDefaults.FocusFirstField resolves "first" in JavaScript from the
+   rendered DOM, so bUnit can only prove the interop call was issued with the right scope id --
+   FocusFirstFieldTests does that part. Only a real browser can answer the question that matters:
+   which element is document.activeElement afterwards? FocusFirstFieldE2ETests drives this page.
+
+   One case renders at a time (?case=...), so every field id below is unique document-wide and each
+   assertion targets an id rather than a position. The default case is "off": a bare visit must focus
+   nothing at all, which is also the byte-identical-when-unset baseline. *@
+
+@if (Case is null or "off")
+{
+    @* FormDefaults present and doing its normal job, but FocusFirstField unset -- no markers, no
+       interop call, no focus. The <template> markers must be absent from this render entirely. *@
+    <FormDefaults UseStyledCheckbox="false">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.OffFirst" />
+            <EditString @bind-Value="_model.OffSecond" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "plain")
+{
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.PlainFirst" />
+            <EditString @bind-Value="_model.PlainSecond" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "skip")
+{
+    @* Every skip rule in front of the one field that should win, so "the first field" and "the first
+       field the user could actually type in" disagree three times over. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.SkipDisabled" IsDisabled="true" />
+            <EditString @bind-Value="_model.SkipReadOnly" readonly="readonly" />
+            <EditString @bind-Value="_model.SkipHidden" IsHidden="true" />
+            <EditString @bind-Value="_model.SkipTarget" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "explicit")
+{
+    @* Precedence: a named control beats "whichever is first". Both mechanisms fire in the same
+       render cycle, so this is the race the JS-side guard exists to settle. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.ExplicitFirst" />
+            <EditString @bind-Value="_model.ExplicitSecond" FocusOnFirstRender="true" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "two-forms")
+{
+    @* Two forms under ONE scope: one fire, and it lands in the first form. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.FormOneField" />
+        </EditForm>
+        <EditForm Model="_other">
+            <EditString @bind-Value="_other.FormTwoField" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "sibling-scopes")
+{
+    @* Two independently armed scopes. Both fire; the guard means the one that resolves first keeps
+       focus rather than the last one silently winning. *@
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_model">
+            <EditString @bind-Value="_model.ScopeAField" />
+        </EditForm>
+    </FormDefaults>
+    <FormDefaults FocusFirstField="true">
+        <EditForm Model="_other">
+            <EditString @bind-Value="_other.ScopeBField" />
+        </EditForm>
+    </FormDefaults>
+}
+else if (Case == "bounded")
+{
+    @* The scope is delimited at BOTH ends: an armed FormDefaults with no field of its own must not
+       reach past its closing marker to the field written after it in the same parent. *@
+    <FormDefaults FocusFirstField="true">
+        <p>No fields in this scope.</p>
+    </FormDefaults>
+    <EditForm Model="_model">
+        <EditString @bind-Value="_model.OutsideField" />
+    </EditForm>
+}
+else if (Case == "modal")
+{
+    <button type="button" id="open-modal" @onclick="() => _modalVisible = true">Open modal</button>
+    @* Modal gates its children on @if (Visible), so the FormDefaults inside it FIRST renders as the
+       dialog opens -- the same cycle in which wss-overlay.js's activateModal takes its own initial
+       focus. The two interact by design: activateModal skips its grab when something in the panel is
+       already focused, and this feature skips its own when a field already has focus, so whichever
+       order they land in, focus ends on the first field and stays there. *@
+    <Modal @bind-Visible="_modalVisible" Title="Modal form" HideFooter="true">
+        <FormDefaults FocusFirstField="true">
+            <EditForm Model="_model">
+                <EditString @bind-Value="_model.ModalFirst" />
+                <EditString @bind-Value="_model.ModalSecond" />
+            </EditForm>
+        </FormDefaults>
+    </Modal>
+}
+else if (Case == "drawer")
+{
+    <button type="button" id="open-drawer" @onclick="() => _drawerVisible = true">Open drawer</button>
+    <Drawer @bind-Visible="_drawerVisible" Title="Drawer form">
+        <FormDefaults FocusFirstField="true">
+            <EditForm Model="_model">
+                <EditString @bind-Value="_model.DrawerFirst" />
+                <EditString @bind-Value="_model.DrawerSecond" />
+            </EditForm>
+        </FormDefaults>
+    </Drawer>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "case")]
+    public string? Case { get; set; }
+
+    readonly Model _model = new();
+    readonly OtherModel _other = new();
+
+    bool _modalVisible;
+    bool _drawerVisible;
+
+    class Model
+    {
+        public string? OffFirst { get; set; }
+        public string? OffSecond { get; set; }
+        public string? PlainFirst { get; set; }
+        public string? PlainSecond { get; set; }
+        public string? SkipDisabled { get; set; }
+        public string? SkipReadOnly { get; set; } = "Read only";
+        public string? SkipHidden { get; set; }
+        public string? SkipTarget { get; set; }
+        public string? ExplicitFirst { get; set; }
+        public string? ExplicitSecond { get; set; }
+        public string? FormOneField { get; set; }
+        public string? ScopeAField { get; set; }
+        public string? OutsideField { get; set; }
+        public string? ModalFirst { get; set; }
+        public string? ModalSecond { get; set; }
+        public string? DrawerFirst { get; set; }
+        public string? DrawerSecond { get; set; }
+    }
+
+    // A second model so the second EditForm on the page binds its own instance, exactly as a real
+    // page with two independent forms would.
+    class OtherModel
+    {
+        public string? FormTwoField { get; set; }
+        public string? ScopeBField { get; set; }
+    }
+}
