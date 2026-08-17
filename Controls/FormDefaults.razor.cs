@@ -147,14 +147,24 @@ public partial class FormDefaults
     /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && _focusScopeId is not null)
-            await JsInteropEc.FocusFirstField(JsRuntime, _focusScopeId, this);
+        if (firstRender && _focusScopeId is not null && JsRuntime is { } js)
+            await JsInteropEc.FocusFirstField(js, _focusScopeId, this);
     }
 
-    // Only the FocusFirstField path uses this. Resolved unconditionally because [Inject] is not
-    // conditional, which is harmless: IJSRuntime is registered by every Blazor host (including the
-    // static-SSR one, whose implementation throws on use -- and every call here is best-effort).
-    [Inject] IJSRuntime JsRuntime { get; set; } = default!;
+    // The container itself, not IJSRuntime: [Inject] resolves during SetParametersAsync -- long
+    // before anything asks whether the (default-OFF) FocusFirstField feature is even on -- and it
+    // THROWS when the service is missing, so injecting IJSRuntime directly made merely having a
+    // <FormDefaults> anywhere in a tree a hard IJSRuntime requirement. True enough of Blazor HOSTS,
+    // false of renderers: Microsoft.AspNetCore.Components.Web.HtmlRenderer over a minimal service
+    // provider (email templates, PDF pipelines, static HTML export) registers no IJSRuntime, and the
+    // whole tree threw InvalidOperationException there. IServiceProvider is always resolvable (the
+    // container registers itself), so this keeps the DI contract identical to what it was before the
+    // feature existed. See FormDefaultsHtmlRendererTests.
+    [Inject] IServiceProvider Services { get; set; } = default!;
+
+    // Optional, resolved at call time: no JS runtime simply means no focus move, the same graceful
+    // degradation the rest of the interop already has (see JsInteropEc's best-effort contract).
+    IJSRuntime? JsRuntime => Services.GetService(typeof(IJSRuntime)) as IJSRuntime;
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }
