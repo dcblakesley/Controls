@@ -40,6 +40,23 @@
             {
                 @EditorFragment
             }
+            @* Invisible sibling of whichever editor shape rendered above -- NEVER inside the stepper
+               group, which is a locked three-slot flex row (down button, editor, up button). A closed
+               <datalist> has no box per spec, so today a fourth child there would be invisible anyway;
+               it takes exactly one consumer stylesheet or datalist polyfill that makes it displayable
+               to turn that into a visible fourth flex item wedged into the group. Same reasoning as
+               EditString.razor's placement remark: the datalist belongs beside the editor's layout, not
+               inside it. Gated on SuggestionsListId so no dead markup renders when Suggestions is
+               unset. *@
+            @if (SuggestionsListId is not null)
+            {
+                <datalist id="@SuggestionsListId">
+                    @foreach (var suggestion in Suggestions!)
+                    {
+                        <option value="@suggestion"></option>
+                    }
+                </datalist>
+            }
         }
         else
         {
@@ -69,16 +86,11 @@
     // C#) rather than its own explicit attribute here -- see EditorAttributes' remarks: an explicit
     // frame wins outright over an earlier same-named one even when its own value is null, which would
     // erase a consumer's splatted `list` the instant Suggestions is unset.
-    // Wrapped in <text> (rather than a bare @<EditInputShell>) so the datalist below can render as its
-    // sibling -- an inline markup block can only have one top-level element otherwise. See
-    // EditString.razor's identical placement remark: a closed <datalist> has no box per spec, so it
-    // belongs next to the shell, not inside the Prefix/Suffix layout it owns.
-    RenderFragment EditorFragment => @<text>
-    <EditInputShell IsInvalid=@IsInvalid
-                    IsDisabled=@IsDisabled
-                    WrapperClass=@(EditInputShell.SizeClass(Size))
-                    Prefix=@Prefix
-                    Suffix=@Suffix>
+    RenderFragment EditorFragment => @<EditInputShell IsInvalid=@IsInvalid
+                                                      IsDisabled=@IsDisabled
+                                                      WrapperClass=@(EditInputShell.SizeClass(Size))
+                                                      Prefix=@Prefix
+                                                      Suffix=@Suffix>
         <input @attributes="EditorAttributes"
                type="number"
                @ref="_editorRef"
@@ -97,15 +109,5 @@
                aria-invalid=@(IsInvalid ? "true" : null)
                aria-describedby=@_describedBy
                aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
-    </EditInputShell>
-    @if (SuggestionsListId is not null)
-    {
-        <datalist id="@SuggestionsListId">
-            @foreach (var suggestion in Suggestions!)
-            {
-                <option value="@suggestion"></option>
-            }
-        </datalist>
-    }
-    </text>;
+    </EditInputShell>;
 }

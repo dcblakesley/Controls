@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using Bunit.Rendering;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 
@@ -93,26 +94,56 @@ public class EditNumberSuggestionsTests : BunitContext
         }
     }
 
-    [Fact]
-    public void Suggestions_drop_in_cleanly_alongside_the_stepper_markup()
+    IRenderedComponent<ContainerFragment> RenderWithSuggestions(PersonModel model, bool showStepper)
     {
-        // ShowStepper wraps EditorFragment in a button group -- the datalist still has to land as the
-        // shell's sibling, not get lost inside the stepper's div.
-        var model = new PersonModel { Price = 30m };
         Expression<Func<decimal?>> field = () => model.Price;
-        var cut = Render(WithForm(model, b =>
+        return Render(WithForm(model, b =>
         {
             b.OpenComponent<EditNumber<decimal?>>(0);
             b.AddAttribute(1, "Value", model.Price);
             b.AddAttribute(2, "ValueExpression", field);
             b.AddAttribute(3, "Suggestions", new List<string> { "9.99" });
-            b.AddAttribute(4, "ShowStepper", true);
+            if (showStepper) b.AddAttribute(4, "ShowStepper", true);
             b.CloseComponent();
         }));
+    }
 
-        var input = cut.Find("input.edit-number-input");
+    [Fact]
+    public void The_datalist_is_the_editors_sibling_in_default_mode()
+    {
+        // Baseline for the stepper case below: the datalist sits in the control wrapper, beside the
+        // shell -- not inside the shell's own Prefix/Suffix/icon layout.
+        var cut = RenderWithSuggestions(new PersonModel { Price = 30m }, showStepper: false);
+
         var datalist = cut.Find("datalist");
-        Assert.Equal(datalist.Id, input.GetAttribute("list"));
-        Assert.NotEmpty(cut.FindAll(".edit-number-step"));
+        Assert.Equal(datalist.Id, cut.Find("input.edit-number-input").GetAttribute("list"));
+        Assert.Contains("edit-control-wrapper", datalist.ParentElement!.ClassList);
+        Assert.Empty(cut.Find(".edit-input-with-icon").QuerySelectorAll("datalist"));
+    }
+
+    [Fact]
+    public void The_datalist_lands_OUTSIDE_the_stepper_group_not_as_a_fourth_child_of_it()
+    {
+        // ShowStepper wraps EditorFragment in a button group whose three slots -- down button, editor,
+        // up button -- are a locked flex row. The datalist has to land as that GROUP's sibling. It used
+        // to render between the editor and the up button: invisible today only because every UA
+        // stylesheet carries `datalist { display: none }`, so one consumer rule or datalist polyfill
+        // that makes it displayable would wedge a visible fourth flex item into the group. The previous
+        // version of this test stated exactly that invariant in its comment and then asserted only id
+        // wiring, so it passed while the code did the forbidden thing.
+        var cut = RenderWithSuggestions(new PersonModel { Price = 30m }, showStepper: true);
+
+        var group = cut.Find(".edit-number-stepper");
+        var datalist = cut.Find("datalist");
+
+        Assert.Empty(group.QuerySelectorAll("datalist"));
+        Assert.Same(group.ParentElement, datalist.ParentElement);
+        Assert.Equal(
+            new[] { "BUTTON", "DIV", "BUTTON" },
+            group.Children.Select(c => c.TagName).ToArray());
+
+        // ...and the wiring still works from out there.
+        Assert.Equal(datalist.Id, cut.Find("input.edit-number-input").GetAttribute("list"));
+        Assert.Equal(2, cut.FindAll(".edit-number-step").Count);
     }
 }
