@@ -8,9 +8,11 @@ namespace FormTesting.Client.Tests;
 /// EditNumber gets the same <c>Suggestions</c> datalist wiring as EditString (see
 /// <see cref="EditStringSuggestionsTests"/> for the full contract this mirrors) -- <c>list</c> is valid
 /// HTML on <c>type="number"</c>, and it drops in cleanly alongside the stepper's button-group markup
-/// since the datalist renders as the shell's sibling either way. This file only pins that the wiring
-/// exists on EditNumber too; the null/empty/encoding/uniqueness semantics are EditString's tests to
-/// avoid duplicating coverage of shared, byte-identical logic.
+/// since the datalist renders as the shell's sibling either way. This file pins that the wiring exists
+/// on EditNumber too, plus the two things EditNumber implements in its OWN code rather than sharing --
+/// the per-instance datalist id and the placement of the datalist relative to the stepper group. The
+/// null/empty/encoding semantics stay EditString's tests, to avoid duplicating coverage of logic that
+/// really is byte-identical.
 /// </summary>
 public class EditNumberSuggestionsTests : BunitContext
 {
@@ -30,7 +32,8 @@ public class EditNumberSuggestionsTests : BunitContext
 
         var input = cut.Find("input.edit-number-input");
         var datalist = cut.Find("datalist");
-        Assert.Equal("dl-Price", datalist.Id);
+        // Per-instance dl-{guid}, never derived from the field name -- see EditString.SuggestionsListId.
+        Assert.StartsWith("dl-", datalist.Id);
         Assert.Equal(datalist.Id, input.GetAttribute("list"));
         Assert.Equal(
             new[] { "9.99", "19.99", "29.99" },
@@ -53,6 +56,41 @@ public class EditNumberSuggestionsTests : BunitContext
         var input = cut.Find("input.edit-number-input");
         Assert.False(input.HasAttribute("list"));
         Assert.Empty(cut.FindAll("datalist"));
+    }
+
+    [Fact]
+    public void Instances_bound_to_the_SAME_property_get_distinct_datalists_each_resolving_to_its_own()
+    {
+        // EditNumber carries its own copy of the id mechanism, so it needs its own copy of the test --
+        // see EditStringSuggestionsTests for the full rationale (a row list binding one property name
+        // otherwise emitted one shared datalist id and showed every row the FIRST row's suggestions).
+        var rows = new[] { new PersonModel { Price = 1m }, new PersonModel { Price = 2m } };
+        var cut = Render(WithForm(rows, b =>
+        {
+            var seq = 0;
+            for (var i = 0; i < rows.Length; i++)
+            {
+                var row = rows[i];
+                Expression<Func<decimal?>> field = () => row.Price;
+                b.OpenComponent<EditNumber<decimal?>>(seq++);
+                b.AddAttribute(seq++, "Value", row.Price);
+                b.AddAttribute(seq++, "ValueExpression", field);
+                b.AddAttribute(seq++, "Suggestions", new List<string> { $"row{i}" });
+                b.CloseComponent();
+            }
+        }));
+
+        var inputs = cut.FindAll("input.edit-number-input");
+        Assert.Equal(2, inputs.Count);
+        Assert.Single(inputs.Select(i => i.Id).Distinct()); // the element ids really do collide
+
+        for (var i = 0; i < rows.Length; i++)
+        {
+            var target = Assert.Single(cut.FindAll($"datalist#{inputs[i].GetAttribute("list")}"));
+            Assert.Equal(
+                new[] { $"row{i}" },
+                target.QuerySelectorAll("option").Select(o => o.GetAttribute("value")).ToArray());
+        }
     }
 
     [Fact]

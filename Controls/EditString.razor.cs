@@ -138,12 +138,51 @@ public partial class EditString : EditTextInputBase
     IEnumerable<string>? EffectiveSuggestions => EffectiveIsPassword ? null : Suggestions;
 
     /// <summary>
-    /// The id of the <c>&lt;datalist&gt;</c> this control renders (and the input's <c>list=</c> points
-    /// at), or null when none should render -- see <see cref="EffectiveSuggestions"/>. Named
-    /// <c>dl-{id}</c>, following the established <c>count-{id}</c>/<c>desc-{id}</c>/<c>lbl-{id}</c>
-    /// id-shape convention.
+    /// Backing store for <see cref="SuggestionsListId"/> — generated on first use and never again, so
+    /// the id is fixed for this component INSTANCE's lifetime.
     /// </summary>
-    string? SuggestionsListId => EffectiveSuggestions is not null ? $"dl-{_id}" : null;
+    string? _suggestionsListId;
+
+    /// <summary>
+    /// The id of the <c>&lt;datalist&gt;</c> this control renders (and the input's <c>list=</c> points
+    /// at), or null when none should render -- see <see cref="EffectiveSuggestions"/>. A fresh
+    /// <c>dl-{guid}</c> per component instance, NOT derived from <c>_id</c>.
+    /// </summary>
+    /// <remarks>
+    /// This is the one id in the library that deliberately breaks the
+    /// <c>count-{id}</c>/<c>desc-{id}</c>/<c>lbl-{id}</c> shape, because it is the one id no human, no
+    /// <c>label[for]</c> and no ARIA reference ever names: it exists solely to wire this input's
+    /// <c>list=</c> to this control's own <c>&lt;datalist&gt;</c>. Being readable buys nothing; being
+    /// unique buys correctness.
+    /// <para>
+    /// <c>dl-{_id}</c> did not have that uniqueness. With no explicit <c>Id</c>/<c>IdPrefix</c>, the
+    /// resolved element id IS the bound property's name, so the ordinary list shape --
+    /// <c>@foreach (var row in Rows) { &lt;EditString @bind-Value="row.Name" Suggestions="..." /&gt; }</c>
+    /// -- emitted <c>id="dl-Name"</c> once per row. Every row built the CORRECT datalist, but a browser
+    /// resolves <c>list=</c> through <c>getElementById</c>, which returns the FIRST match in document
+    /// order: every row displayed row 0's suggestions while its own sat unreachable in the DOM. The
+    /// element-id collision behind it is pre-existing (the inputs collide too -- an accessibility defect
+    /// with <c>IdPrefix</c> as its documented escape hatch), but a collision that shows the wrong data
+    /// silently is a different class of problem from one that shows a duplicate id, so this feature is
+    /// made correct by construction rather than by documenting the escape hatch.
+    /// </para>
+    /// <para>
+    /// A GUID rather than a counter, and this is the framework's own answer to the identical problem:
+    /// <c>InputRadioGroup</c> generates its default <c>name</c> as a per-instance
+    /// <c>Guid.NewGuid().ToString("N")</c> for exactly the same reason (a grouping token that only has
+    /// to be unique, never read). It needs no process-wide mutable state -- which matters here, since
+    /// consumers are typically MFEs sharing one Blazor Server process, where a static counter is shared
+    /// across every circuit and every app on the page (see CLAUDE.md's MFE design constraint). Server
+    /// prerender and client hydration produce different values, which is harmless: <c>list=</c> and the
+    /// <c>&lt;datalist&gt;</c> are emitted by the same instance in the same render, so the pair can never
+    /// be half-updated. Lazily initialized, so the overwhelmingly common <see cref="Suggestions"/>-unset
+    /// EditString allocates nothing; cached, so the id is stable across this instance's re-renders (a
+    /// per-render id would rewrite both attributes on every keystroke) and survives
+    /// <see cref="Suggestions"/> being toggled off and back on.
+    /// </para>
+    /// </remarks>
+    string? SuggestionsListId =>
+        EffectiveSuggestions is not null ? _suggestionsListId ??= $"dl-{Guid.NewGuid():N}" : null;
 
     /// <summary>
     /// The <c>list</c> attribute contribution, folded into the merged <c>@attributes</c> dictionary

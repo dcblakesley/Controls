@@ -28,6 +28,13 @@ public class EditStringSuggestionsTests : BunitContext
         public string? Other { get; set; }
     }
 
+    // One row of the list case below: several instances of the SAME property name, which is what
+    // makes AttributesHelper.GetId resolve one shared element id across all of them.
+    class RowModel
+    {
+        public string? Name { get; set; }
+    }
+
     IRenderedComponent<ContainerFragment> RenderOne(SuggestionsModel model,
         IEnumerable<string>? suggestions, bool isPassword = false) =>
         Render(WithForm(model, b =>
@@ -50,9 +57,10 @@ public class EditStringSuggestionsTests : BunitContext
         var input = cut.Find("input.edit-string-input");
         var datalist = cut.Find("datalist");
 
-        // The generated id (dl-{id}, matching the count-{id}/desc-{id}/lbl-{id} shape) is what list=
-        // actually points at -- not just "some id", the SAME one.
-        Assert.Equal("dl-Text", datalist.Id);
+        // The generated id is what list= actually points at -- not just "some id", the SAME one. The
+        // id itself is a per-instance dl-{guid} (see SuggestionsListId), never derived from the field
+        // name, so only its prefix is pinned here; the uniqueness contract has its own test below.
+        Assert.StartsWith("dl-", datalist.Id);
         Assert.Equal(datalist.Id, input.GetAttribute("list"));
         Assert.Equal(
             new[] { "Apple", "Banana", "Cherry" },
@@ -102,9 +110,9 @@ public class EditStringSuggestionsTests : BunitContext
         var cut = RenderOne(model, suggestions: []);
 
         var input = cut.Find("input.edit-string-input");
-        Assert.Equal("dl-Text", input.GetAttribute("list"));
         var datalist = cut.Find("datalist");
-        Assert.Equal("dl-Text", datalist.Id);
+        Assert.StartsWith("dl-", datalist.Id);
+        Assert.Equal(datalist.Id, input.GetAttribute("list"));
         Assert.Empty(datalist.QuerySelectorAll("option"));
     }
 
@@ -121,8 +129,12 @@ public class EditStringSuggestionsTests : BunitContext
     }
 
     [Fact]
-    public void Two_instances_on_one_page_get_distinct_datalist_ids_correctly_cross_wired()
+    public void Two_instances_bound_to_DIFFERENT_properties_get_distinct_datalist_ids_correctly_cross_wired()
     {
+        // Note the name: distinctness here would hold even under a field-name-derived id, because the
+        // two properties differ. The load-bearing uniqueness case -- several instances of the SAME
+        // property -- is the list test further down; this one only covers cross-wiring of the option
+        // sets.
         var model = new SuggestionsModel { Text = "hi", Other = "there" };
         Expression<Func<string?>> textField = () => model.Text;
         Expression<Func<string?>> otherField = () => model.Other;
@@ -149,8 +161,6 @@ public class EditStringSuggestionsTests : BunitContext
         var ids = datalists.Select(d => d.Id).ToList();
         Assert.Equal(ids.Count, ids.Distinct().Count());
 
-        Assert.Equal("dl-Text", inputs[0].GetAttribute("list"));
-        Assert.Equal("dl-Other", inputs[1].GetAttribute("list"));
         Assert.Equal(inputs[0].GetAttribute("list"), datalists[0].Id);
         Assert.Equal(inputs[1].GetAttribute("list"), datalists[1].Id);
 
@@ -161,6 +171,70 @@ public class EditStringSuggestionsTests : BunitContext
         Assert.Equal(
             new[] { "Carol", "Dave" },
             datalists[1].QuerySelectorAll("option").Select(o => o.GetAttribute("value")).ToArray());
+    }
+
+    [Fact]
+    public void Instances_bound_to_the_SAME_property_get_distinct_datalists_each_resolving_to_its_own()
+    {
+        // The list case, and the one the old two-instance test could not see: three rows all binding a
+        // property named `Name`, so AttributesHelper.GetId resolves the SAME element id for every one
+        // of them (the pre-existing id collision this test does NOT fix -- IdPrefix is the documented
+        // escape hatch for that). A datalist id DERIVED from that element id inherits the collision,
+        // and a browser resolves `list=` by getElementById -- first match in document order -- so rows
+        // 1..N would all display ROW 0's suggestions while their own correct datalists sat unreachable
+        // in the DOM. Silently wrong data, not a visible failure, which is why the id has to be unique
+        // per component INSTANCE rather than per bound property.
+        var rows = new[] { new RowModel(), new RowModel(), new RowModel() };
+        var cut = Render(WithForm(rows, b =>
+        {
+            var seq = 0;
+            for (var i = 0; i < rows.Length; i++)
+            {
+                var row = rows[i];
+                Expression<Func<string?>> field = () => row.Name;
+                b.OpenComponent<EditString>(seq++);
+                b.AddAttribute(seq++, "Value", row.Name);
+                b.AddAttribute(seq++, "ValueExpression", field);
+                b.AddAttribute(seq++, "Suggestions", new List<string> { $"row{i}-A", $"row{i}-B" });
+                b.CloseComponent();
+            }
+        }));
+
+        var inputs = cut.FindAll("input.edit-string-input");
+        Assert.Equal(3, inputs.Count);
+        Assert.Equal(3, cut.FindAll("datalist").Count);
+
+        // Precondition of the bug: every input really does share one element id.
+        Assert.Single(inputs.Select(i => i.Id).Distinct());
+
+        var listIds = inputs.Select(i => i.GetAttribute("list")!).ToList();
+        Assert.Equal(3, listIds.Distinct().Count());
+
+        for (var i = 0; i < rows.Length; i++)
+        {
+            // Single() is the getElementById simulation: exactly one element carries this id, so
+            // "the browser's first match" and "this row's own datalist" are provably the same node.
+            var target = Assert.Single(cut.FindAll($"datalist#{listIds[i]}"));
+            Assert.Equal(
+                new[] { $"row{i}-A", $"row{i}-B" },
+                target.QuerySelectorAll("option").Select(o => o.GetAttribute("value")).ToArray());
+        }
+    }
+
+    [Fact]
+    public void The_datalist_id_is_stable_across_re_renders_of_the_same_instance()
+    {
+        // Uniqueness alone isn't enough: the id has to be generated ONCE per instance, not per render.
+        // A per-render value would still pair correctly (both halves are emitted in one render) but
+        // would rewrite two DOM attributes on every keystroke, and anything holding the id would drift.
+        var model = new SuggestionsModel { Text = "hi" };
+        var cut = RenderOne(model, ["Apple", "Banana"]);
+        var first = cut.Find("datalist").Id;
+
+        cut.Find("input.edit-string-input").Input("hi there");
+
+        Assert.Equal(first, cut.Find("datalist").Id);
+        Assert.Equal(first, cut.Find("input.edit-string-input").GetAttribute("list"));
     }
 
     [Fact]

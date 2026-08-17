@@ -254,12 +254,19 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
     /// </summary>
     [Parameter] public IEnumerable<string>? Suggestions { get; set; }
 
+    /// <summary> Backing store for <see cref="SuggestionsListId"/> -- see <see cref="EditString.SuggestionsListId"/>.</summary>
+    string? _suggestionsListId;
+
     /// <summary>
     /// The id of the <c>&lt;datalist&gt;</c> this control renders (and the input's <c>list=</c> points
-    /// at), or null when <see cref="Suggestions"/> is unset. Named <c>dl-{id}</c>, matching
-    /// <see cref="EditString.SuggestionsListId"/>'s id shape.
+    /// at), or null when <see cref="Suggestions"/> is unset. A fresh <c>dl-{guid}</c> per component
+    /// instance, matching <see cref="EditString.SuggestionsListId"/> -- see its remarks for why this one
+    /// id is deliberately not derived from the control's element id (a list of rows bound to the same
+    /// property would otherwise emit one shared datalist id and show every row the FIRST row's
+    /// suggestions).
     /// </summary>
-    string? SuggestionsListId => Suggestions is not null ? $"dl-{_id}" : null;
+    string? SuggestionsListId =>
+        Suggestions is not null ? _suggestionsListId ??= $"dl-{Guid.NewGuid():N}" : null;
 
     /// <summary>
     /// The input's full <c>@attributes</c> splat: the consumer's unmatched attributes with the
