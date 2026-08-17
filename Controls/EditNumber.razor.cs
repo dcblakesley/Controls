@@ -269,15 +269,26 @@ public partial class EditNumber<[DynamicallyAccessedMembers(DynamicallyAccessedM
         Suggestions is not null ? _suggestionsListId ??= $"dl-{Guid.NewGuid():N}" : null;
 
     /// <summary>
-    /// The input's full <c>@attributes</c> splat: the consumer's unmatched attributes with the
-    /// <c>list</c> contribution layered on top -- see <see cref="EditString.EditorAttributes"/>'s
-    /// remarks for why <c>list</c> must be folded into this dictionary rather than written as its own
-    /// explicit attribute (a null explicit frame there would erase a consumer's splatted <c>list</c>
-    /// outright the instant <see cref="Suggestions"/> is unset, not merely omit itself).
+    /// The <c>list</c> attribute contribution -- see <see cref="EditString.SuggestionsInputAttributes"/>.
+    /// </summary>
+    IReadOnlyDictionary<string, object>? SuggestionsInputAttributes =>
+        SuggestionsListId is { } id ? new Dictionary<string, object>(1) { ["list"] = id } : null;
+
+    /// <summary>
+    /// The input's full <c>@attributes</c> splat: the consumer's unmatched attributes with this
+    /// control's own state attributes (<see cref="EditControlBase{TValue}.EditorStateAttributes"/> --
+    /// <c>disabled</c>/<c>aria-required</c>/<c>aria-invalid</c>/<c>aria-errormessage</c>) and the
+    /// <c>list</c> contribution (<see cref="SuggestionsInputAttributes"/>) layered on top -- see
+    /// <see cref="EditString.EditorAttributes"/>'s and
+    /// <see cref="EditControlBase{TValue}.EditorStateAttributes"/>'s remarks for why every CONDITIONAL
+    /// attribute must be folded into this dictionary rather than written as its own explicit attribute
+    /// (a null explicit frame erases a consumer's splatted same-named attribute outright, not merely
+    /// omitting itself).
     /// </summary>
     IReadOnlyDictionary<string, object>? EditorAttributes =>
-        AttributeSplat.RestWith(AdditionalAttributes,
-            SuggestionsListId is { } id ? new Dictionary<string, object>(1) { ["list"] = id } : null);
+        AttributeSplat.RestWith(
+            AttributeSplat.RestWith(AdditionalAttributes, EditorStateAttributes),
+            SuggestionsInputAttributes);
 
     /// <summary>
     /// Optional format string for displaying the number in read-only mode (e.g., "N2" for 2 decimal

@@ -214,6 +214,75 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     protected bool IsInvalid => EditContext is not null && EditContext.GetValidationMessages(FieldIdentifier).Any();
 
     /// <summary>
+    /// The editor element's own STATE attributes — <c>disabled</c>, <c>aria-required</c>,
+    /// <c>aria-invalid</c>, <c>aria-errormessage</c> — as a dictionary to fold into that element's
+    /// single <c>@attributes</c> splat (via <see cref="AttributeSplat.RestWith"/>), carrying only the
+    /// ones this control currently has an opinion about. Null when it has none, so nothing is emitted
+    /// at all and the markup stays byte-identical to writing no attributes.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// These have to ride the merged dictionary rather than be written as explicit attributes beside
+    /// the splat, and that is not a style choice. In Blazor an explicit attribute frame written AFTER a
+    /// splat wins outright over any earlier same-named frame — <em>including when its own value is null
+    /// or <c>false</c></em>. <c>RenderTreeBuilder</c> still calls <c>TrackAttributeName</c> for the
+    /// null/false case, and <c>ProcessDuplicateAttributes</c> then deletes the earlier frame; the
+    /// net effect is that the attribute is omitted ENTIRELY. So
+    /// <c>aria-invalid=@(IsInvalid ? "true" : null)</c> beside a splat does not merely decline to
+    /// override a consumer's splatted <c>aria-invalid</c> while the field is valid — it silently
+    /// deletes it. The same shape deleted a consumer's splatted <c>disabled</c> on every enabled
+    /// control, which is a correctness hazard rather than a cosmetic one: the consumer asked for a
+    /// non-editable field and got an editable one, with nothing anywhere to say why.
+    /// </para>
+    /// <para>
+    /// Folding them in makes the contract exactly what the class remarks above claim: the library wins
+    /// the collision when it HAS an opinion (it is the <c>own</c> side of
+    /// <see cref="AttributeSplat.RestWith"/>, which overwrites), and the consumer's value survives
+    /// untouched when it does not. <c>list</c> (EditString/EditNumber's <c>Suggestions</c>) already
+    /// rides the same dictionary for the same reason. Attributes the library writes UNCONDITIONALLY
+    /// (<c>id</c>, <c>class</c>, <c>type</c>, <c>aria-labelledby</c>, <c>aria-describedby</c>) stay
+    /// explicit: they never have a null state, so there is no erasure to avoid, and their being
+    /// library-owned outright is deliberate.
+    /// </para>
+    /// <para>
+    /// Opt-in per control's markup rather than automatic — a control adopts it by dropping the four
+    /// explicit attributes and merging this in. <see cref="EditString"/> and <see cref="EditNumber{T}"/>
+    /// do; the remaining single-editor controls still write them explicitly and carry the same erasure
+    /// behavior.
+    /// </para>
+    /// <para>
+    /// <c>aria-invalid</c> is the one entry here the library does not fully own, and the reason is
+    /// upstream: <see cref="InputBase{TValue}"/>'s own
+    /// <c>UpdateAdditionalValidationAttributes()</c> edits <c>AdditionalAttributes</c> before any of
+    /// this runs — it inserts <c>aria-invalid="true"</c> once the field has validation messages and
+    /// REMOVES the key outright when it has none, so an <c>Input*</c> component can't announce a valid
+    /// field as invalid. A consumer's splatted <c>aria-invalid</c> on a valid field is therefore
+    /// dropped by the framework whatever this class does. The contribution below is still made, and
+    /// deliberately: the framework declines to overwrite a consumer's existing value ("do not
+    /// overwrite the attribute value"), which would let a splatted <c>aria-invalid="false"</c> survive
+    /// an actual validation failure — the one outcome that must not be reachable.
+    /// </para>
+    /// </remarks>
+    protected IReadOnlyDictionary<string, object>? EditorStateAttributes
+    {
+        get
+        {
+            var isInvalid = IsInvalid;
+            if (!IsDisabled && _isRequired is null && !isInvalid) return null;
+
+            var state = new Dictionary<string, object>(4);
+            if (IsDisabled) state["disabled"] = true;
+            if (_isRequired is { } required) state["aria-required"] = required;
+            if (isInvalid)
+            {
+                state["aria-invalid"] = "true";
+                state["aria-errormessage"] = _errorMsgId;
+            }
+            return state;
+        }
+    }
+
+    /// <summary>
     /// This control's name for diagnostics — <c>EditNumber</c>, not the CLR's <c>EditNumber`1</c>.
     /// </summary>
     /// <remarks>

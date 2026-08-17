@@ -80,12 +80,15 @@
     // Razor comment inside an attribute list compiles into a literal attribute name and breaks
     // setAttribute.)
     //
-    // Splat first so every explicit attribute below wins (inputmode/readonly/spellcheck/data-*/aria-*
-    // are the point; `class` travels CssClass and `style` the wrapper, so AttributeSplat.Rest
-    // withholds both). A null splat emits no frames at all. `list` rides EditorAttributes (merged in
-    // C#) rather than its own explicit attribute here -- see EditorAttributes' remarks: an explicit
-    // frame wins outright over an earlier same-named one even when its own value is null, which would
-    // erase a consumer's splatted `list` the instant Suggestions is unset.
+    // Splat first so every explicit attribute below wins (inputmode/readonly/spellcheck/data-* are the
+    // point; `class` travels CssClass and `style` the wrapper, so AttributeSplat.Rest withholds both).
+    // A null splat emits no frames at all. The CONDITIONAL attributes -- `list` and the
+    // disabled/aria-required/aria-invalid/aria-errormessage state set -- ride EditorAttributes (merged
+    // in C#) rather than their own explicit attributes here; see EditorAttributes' and
+    // EditControlBase.EditorStateAttributes' remarks: an explicit frame wins outright over an earlier
+    // same-named one even when its own value is null, so writing them here would DELETE a consumer's
+    // splatted value rather than merely decline to override it. What stays explicit below is
+    // unconditional (`type="number"` is library-owned outright) or emitted by @bind-value.
     RenderFragment EditorFragment => @<EditInputShell IsInvalid=@IsInvalid
                                                       IsDisabled=@IsDisabled
                                                       WrapperClass=@(EditInputShell.SizeClass(Size))
@@ -94,7 +97,6 @@
         <input @attributes="EditorAttributes"
                type="number"
                @ref="_editorRef"
-               disabled=@IsDisabled
                id=@_id
                data-test-id=@_id
                step=@EffectiveStep
@@ -105,9 +107,6 @@
                @bind-value:event="@UpdateEventName"
                class=@InputClass
                aria-labelledby="lbltext-@_id"
-               aria-required=@_isRequired
-               aria-invalid=@(IsInvalid ? "true" : null)
-               aria-describedby=@_describedBy
-               aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
+               aria-describedby=@_describedBy />
     </EditInputShell>;
 }

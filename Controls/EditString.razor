@@ -29,21 +29,25 @@
                             OnTogglePassword=@TogglePasswordVisibility
                             ShowPasswordButtonLabel=@EffectiveShowPasswordButtonLabel>
                 @* One @attributes per element, so the consumer's unmatched attributes, this control's
-                   own oninput handler, and its `list` contribution are all merged into EditorAttributes
-                   (the control's own win) -- and the splat is FIRST, so every explicitly-written
-                   attribute below, including the ones @bind-value emits, wins over a consumer's. `class`
-                   travels CssClass and `style` the wrapper, so AttributeSplat withholds both; a null
-                   merge emits no frames at all. `list` rides the merged dictionary rather than its own
-                   explicit attribute below deliberately -- see EditorAttributes'/
-                   SuggestionsInputAttributes' remarks: an explicit frame wins outright over an earlier
-                   same-named one even when its own value is null, which would erase a consumer's
-                   splatted `list` the instant Suggestions is unset. *@
+                   own oninput handler, its state attributes (disabled/aria-*) and its `list`
+                   contribution are all merged into EditorAttributes (the control's own win) -- and the
+                   splat is FIRST, so every explicitly-written attribute below, including the ones
+                   @bind-value emits, wins over a consumer's. `class` travels CssClass and `style` the
+                   wrapper, so AttributeSplat withholds both; a null merge emits no frames at all.
+
+                   The CONDITIONAL attributes ride the merged dictionary rather than being written
+                   explicitly below, deliberately -- see EditControlBase.EditorStateAttributes and
+                   SuggestionsInputAttributes: an explicit frame wins outright over an earlier
+                   same-named one even when its own value is null, so writing them here would DELETE a
+                   consumer's splatted `list`/`disabled`/`aria-*` rather than merely decline to override
+                   it. Everything still written explicitly below is either unconditional (the library
+                   owns it outright, `type` included -- see EffectiveIsPassword) or emitted by
+                   @bind-value. *@
                 <input @attributes="EditorAttributes"
                        @bind-value="CurrentValue"
                        @bind-value:event="@UpdateEventName"
                        @bind-value:after="OnValueCommittedAsync"
                        @ref="_editorRef"
-                       disabled=@IsDisabled
                        id=@_id
                        data-test-id=@_id
                        class=@InputClass
@@ -51,10 +55,7 @@
                        maxlength=@EffectiveMaxLength
                        type=@(EffectiveIsPassword ? (_passwordRevealed ? "text" : "password") : null)
                        aria-labelledby="lbltext-@_id"
-                       aria-invalid=@(IsInvalid ? "true" : null)
-                       aria-required=@_isRequired
                        aria-describedby=@_describedBy
-                       aria-errormessage=@(IsInvalid ? _errorMsgId : null)
                        autocomplete=@EffectiveAutocomplete />
             </EditInputShell>
             @* Invisible sibling, deliberately NOT inside the shell: a closed <datalist> has no box per

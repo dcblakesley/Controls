@@ -548,8 +548,15 @@ public class OptionIdUniquenessAndSplatTests : BunitContext
         // which is exactly what bUnit's htmlizer is standing in for here. Valueless and unstyled, so it
         // moves no visual baseline and matches no selector -- but it does belong in this pin, and
         // EditString/EditTextArea have carried the same one since their clear button shipped.
+        //
+        // `aria-required` LEADS the list rather than sitting between aria-labelledby and
+        // aria-describedby: it is one of the control's conditional state attributes, which ride the
+        // merged @attributes dictionary (EditControlBase.EditorStateAttributes) instead of being
+        // written explicitly, so that a null/false library value can't delete a consumer's splatted
+        // same-named attribute. The splat is emitted first, hence the position. Ordering is inert in
+        // HTML; it is pinned here only so a future move announces itself.
         Assert.Equal(
-            "type|id|data-test-id|min|max|class|aria-labelledby|aria-required|aria-describedby|value|blazor:onchange|blazor:elementreference",
+            "aria-required|type|id|data-test-id|min|max|class|aria-labelledby|aria-describedby|value|blazor:onchange|blazor:elementreference",
             string.Join("|", input.Attributes.Select(a => a.Name)));
     }
 

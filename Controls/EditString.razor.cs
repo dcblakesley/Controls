@@ -211,14 +211,27 @@ public partial class EditString : EditTextInputBase
     /// <summary>
     /// The input's full <c>@attributes</c> splat: the consumer's unmatched attributes, this control's
     /// own <c>oninput</c> handler when needed (<see cref="EditTextInputBase.EditorInputAttributes"/>),
-    /// and the <c>list</c> contribution (<see cref="SuggestionsInputAttributes"/>) -- merged via two
-    /// chained <see cref="AttributeSplat.RestWith"/> calls in that precedence order (its first parameter
+    /// its state attributes (<see cref="EditControlBase{TValue}.EditorStateAttributes"/> --
+    /// <c>disabled</c>/<c>aria-required</c>/<c>aria-invalid</c>/<c>aria-errormessage</c>) and the
+    /// <c>list</c> contribution (<see cref="SuggestionsInputAttributes"/>) -- merged via chained
+    /// <see cref="AttributeSplat.RestWith"/> calls in that precedence order (its first parameter
     /// re-applies <see cref="AttributeSplat.Rest"/>, a no-op on a dictionary that never carried
     /// class/style, so nesting the calls is safe). One dictionary, because Razor allows only one
     /// <c>@attributes</c> per element.
     /// </summary>
+    /// <remarks>
+    /// The three "own" contributions never collide with each other, so their relative order is
+    /// immaterial; what matters is that all of them sit on the <c>own</c> side, where they overwrite a
+    /// consumer's same-named attribute but contribute nothing when the control has no opinion. The
+    /// chain also allocates nothing in the common case -- <see cref="AttributeSplat.RestWith"/> returns
+    /// an input unchanged (or null) whenever the other side is empty.
+    /// </remarks>
     IReadOnlyDictionary<string, object>? EditorAttributes =>
-        AttributeSplat.RestWith(AttributeSplat.RestWith(AdditionalAttributes, EditorInputAttributes), SuggestionsInputAttributes);
+        AttributeSplat.RestWith(
+            AttributeSplat.RestWith(
+                AttributeSplat.RestWith(AdditionalAttributes, EditorInputAttributes),
+                EditorStateAttributes),
+            SuggestionsInputAttributes);
 
     /// <summary>
     /// Marks the field as a secret. In edit mode it renders as <c>type="password"</c> with a show/hide
