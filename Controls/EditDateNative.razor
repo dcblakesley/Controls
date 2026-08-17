@@ -15,7 +15,12 @@
             <EditInputShell IsInvalid=@IsInvalid
                             IsDisabled=@IsDisabled
                             WrapperClass=@(EditInputShell.SizeClass(Size))>
-                @* Splat first so every explicit attribute below wins.
+                @* Splat first so every explicit attribute below wins. The CONDITIONAL state attributes
+                   (disabled/aria-required/aria-invalid/aria-errormessage) ride the merged dictionary
+                   (EditControlBase.EditorStateAttributes) rather than their own explicit attributes
+                   here -- an explicit frame wins outright over an earlier same-named one even when its
+                   own value is null, so writing them here would DELETE a consumer's splatted value
+                   rather than merely decline to override it.
 
                    aria-labelledby points at FormLabel's lbltext-{id} naming anchor rather than
                    relying on the label[for] association alone: the <label> also contains the tooltip
@@ -23,7 +28,7 @@
                    label[for] path ("Birth Date More information about Birth Date"). The anchor holds
                    the label text only. It never dangles -- FormLabel renders it in every mode,
                    visually hidden alongside a hidden label. *@
-                <input @attributes="AttributeSplat.Rest(AdditionalAttributes)"
+                <input @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorStateAttributes)"
                        type=@HtmlInputType
                        @ref="_editorRef"
                        @bind-value=@CurrentValueAsString
@@ -34,12 +39,8 @@
                        data-test-id=@_id
                        min=@MinAttribute
                        max=@MaxAttribute
-                       disabled=@IsDisabled
                        aria-labelledby="lbltext-@_id"
-                       aria-required=@_isRequired
-                       aria-invalid=@(IsInvalid ? "true" : null)
-                       aria-describedby=@EffectiveDescribedBy
-                       aria-errormessage=@(IsInvalid ? _errorMsgId : null) />
+                       aria-describedby=@EffectiveDescribedBy />
             </EditInputShell>
 
             @* Type="Month"'s typed-entry format, for AT only (see FormatHintLabel's remarks for why
