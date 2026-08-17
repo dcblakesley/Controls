@@ -50,6 +50,102 @@
         }
     };
 
+    // ─────────────────────── FormDefaults.FocusFirstField ───────────────────────
+
+    // What counts as "a form field" for the initial-focus feature below. Deliberately NARROWER than
+    // wss-overlay.js's WSS_FOCUSABLE (which is "anything Tab can reach", buttons and links included):
+    // this feature exists to land the user in the first thing they can TYPE IN, and a heading the
+    // router focused, a Skip link, or a dialog's close X must never be mistaken for that. The three
+    // non-<input> entries are the library's own field elements that aren't native form controls:
+    // EditRange's role="slider" track, EditColor's trigger button (its whole widget IS that button --
+    // the popover only exists while open), and any consumer contenteditable. type=hidden is excluded
+    // because two controls use hidden inputs purely as a drag/interop channel (EditRange's
+    // .edit-range-signal, ColorPicker's .wss-color-picker-signal) and they are not focusable anyway.
+    const WSS_FIELD =
+        'input:not([type=hidden]),textarea,select,[role=slider],button.wss-color-picker-trigger,'
+        + '[contenteditable=""],[contenteditable="true"]';
+
+    // A field the user could actually be put into right now. Mirrors focusGroupInput's "skip disabled
+    // options" rule and extends it with the states only the DOM can answer for: readonly (a legal Tab
+    // stop, but nothing to type), tabindex="-1" (deliberately out of the Tab order -- EditRange while
+    // disabled), an inert or aria-hidden ancestor, and not being rendered at all (display:none from a
+    // HidingMode, a collapsed panel, an un-opened dropdown).
+    const isFocusableField = function (el) {
+        if (el.disabled || el.readOnly) return false;
+        if (el.getAttribute('tabindex') === '-1') return false;
+        if (el.closest('[inert],[aria-hidden="true"]')) return false;
+        // checkVisibility covers display:none, visibility:hidden/collapse and content-visibility in
+        // one call; opacity is deliberately NOT checked -- an opacity:0 input (EditFile's drop-zone
+        // file input, a styled checkbox) is still focusable and still the right target. The fallback
+        // is the classic "has a box or a client rect" test for browsers without checkVisibility.
+        if (typeof el.checkVisibility === 'function')
+            return el.checkVisibility({ checkVisibilityCSS: true, visibilityProperty: true, contentVisibilityAuto: true });
+        return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+    };
+
+    // Focus the first form field inside one FormDefaults scope, when that scope has FocusFirstField
+    // on. The scope is delimited by the two empty <template> markers FormDefaults renders around its
+    // ChildContent -- and ONLY when the feature is switched on, so a default-off render tree is
+    // byte-identical to before. <template> is used because it has no layout box, no accessibility
+    // presence, and no content of its own.
+    //
+    // "First" is resolved HERE, from the rendered DOM, and not from anything C# knows: Blazor notifies
+    // non-fixed cascading-value subscribers in CONSTRUCTION order rather than document order, so a
+    // registry of fields built on the C# side would confidently return the wrong "first" as soon as a
+    // form's markup order and its component-construction order disagreed. document.querySelectorAll
+    // returns document order by definition, which is the order the user's Tab key sees.
+    //
+    // Best-effort throughout: a missing marker (never rendered, torn down mid-call), an empty scope,
+    // or an unfocusable target all end as a silent no-op rather than an error.
+    ns.focusFirstField = function (scopeId) {
+        const start = document.getElementById(scopeId);
+        if (!start) return;
+        const end = document.getElementById(scopeId + '-end');
+
+        // Strictly between the two markers, so the scope is exactly what FormDefaults rendered --
+        // siblings written after </FormDefaults> in the same parent are NOT candidates. A missing end
+        // marker (mid-render teardown) degrades to "everything after the start marker".
+        const inScope = el =>
+            (start.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+            && (!end || (end.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_PRECEDING) !== 0);
+
+        const candidates = Array.prototype.filter.call(
+            document.querySelectorAll(WSS_FIELD), el => inScope(el) && isFocusableField(el));
+        if (candidates.length === 0) return;
+
+        // Never take focus off a field that already has it. This is the guard that makes the feature
+        // composable rather than a focus war, and it settles three collisions at once:
+        //   * A control's own FocusOnFirstRender (or a consumer FocusAsync()) inside this scope --
+        //     an explicit, specific request beats "the first one", exactly as wss-overlay.js's
+        //     activateModal already defers to it. Whichever of the two runs first, the explicit one
+        //     ends up holding focus: if it ran first this returns, and if it ran second it simply
+        //     overwrites what this did.
+        //   * A second armed scope elsewhere on the page (two forms, two MFE roots) -- the one that
+        //     resolves first keeps focus instead of the last one winning by accident.
+        //   * The user, who may already have clicked into a field before a lazily-rendered scope
+        //     mounts.
+        // Buttons and links deliberately do NOT block: the case this feature exists for is a form in
+        // a dialog, where wss-overlay's activateModal may have already parked focus on the close X,
+        // and a router's focus-on-navigate heading (which gets tabindex="-1") must not block it either.
+        // An inert active element doesn't count -- that is the page behind an open dialog.
+        const active = document.activeElement;
+        if (active && typeof active.matches === 'function'
+            && active.matches(WSS_FIELD) && !active.closest('[inert]')) return;
+
+        let target = candidates[0];
+        // Real radiogroup Tab semantics, matching focusGroupInput's preferChecked: the tab stop for a
+        // group with a selection is the CHECKED radio, not the first one.
+        if (target.type === 'radio' && target.name) {
+            const checked = candidates.find(el => el.type === 'radio' && el.name === target.name && el.checked);
+            if (checked) target = checked;
+        }
+
+        // No scrollIntoView and no select(): unlike focusFirstInvalidField (which is repairing an
+        // error somewhere down the page) this runs at the top of a freshly rendered form, and
+        // .focus()'s own minimal scrolling is all that is ever wanted.
+        try { target.focus(); } catch { /* vanished between the query and here */ }
+    };
+
     // Focus an element by id if it exists. Used by EditFile to keep keyboard focus on the file list
     // after a file is removed (its delete button vanishes, otherwise focus falls back to <body>).
     ns.focusById = function (id) {

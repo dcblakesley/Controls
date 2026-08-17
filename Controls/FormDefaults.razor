@@ -1,1 +1,16 @@
+@* Two empty <template> markers delimit this scope for WssEditControls.focusFirstField, and they are
+   rendered ONLY while FocusFirstField resolves true -- the default-off render tree is byte-identical
+   to what this component emitted before the feature existed. <template> is the least intrusive
+   element available: the UA stylesheet gives it display:none (no layout box, no flex/grid item), it
+   has no accessibility presence, and its content model is inert. It is still an ELEMENT, so a
+   consumer stylesheet that counts children of whatever contains <FormDefaults> (:first-child,
+   :nth-child, :only-child) sees two more of them -- which is the trade the opt-in buys. *@
+@if (_focusScopeId is not null)
+{
+    <template id="@_focusScopeId"></template>
+}
 <CascadingValue TValue="FormDefaults" Value="this" IsFixed="true">@ChildContent</CascadingValue>
+@if (_focusScopeId is not null)
+{
+    <template id="@(_focusScopeId + FocusScopeEndSuffix)"></template>
+}

@@ -33,6 +33,31 @@ public static class JsInteropEc
     }
 
     /// <summary>
+    /// Moves focus to the first form field inside one <see cref="Controls.FormDefaults"/> scope —
+    /// the engine behind <see cref="Controls.FormDefaults.FocusFirstField"/>, which is the only
+    /// caller. <paramref name="scopeId"/> names the pair of empty <c>&lt;template&gt;</c> markers
+    /// that component renders around its <c>ChildContent</c> while the feature is on
+    /// (<c>{scopeId}</c> and <c>{scopeId}-end</c>), and the JS side resolves "first" from the DOM
+    /// between them, in document order.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately resolved in JS rather than from any C# registry of fields: Blazor notifies
+    /// non-fixed cascading-value subscribers in construction order, not document order, so a C#-side
+    /// answer would be wrong whenever a form's markup order and its component-construction order
+    /// disagree. The DOM is the only source of truth for "first", and it is also the only place the
+    /// skip rules (disabled, readonly, <c>tabindex="-1"</c>, not rendered/visible, inert ancestor)
+    /// can all be answered. Best-effort — a missing marker, an empty scope, a field that already has
+    /// focus, or no JS at all (prerender / tests) each end as a silent no-op; see the class remarks
+    /// for the missing-global (cross-origin MFE) fallback.
+    /// </remarks>
+    /// <param name="jsRuntime">The JS runtime to invoke through.</param>
+    /// <param name="scopeId">The id of the scope's start marker; the end marker is <c>{scopeId}-end</c>.</param>
+    /// <param name="formDefaults">The cascaded <see cref="Controls.FormDefaults"/> in scope, if any --
+    /// see <see cref="FocusFirstInvalidField"/>.</param>
+    public static async Task FocusFirstField(IJSRuntime jsRuntime, string scopeId, FormDefaults? formDefaults = null) =>
+        await InvokeBestEffortAsync(jsRuntime, formDefaults, "WssEditControls.focusFirstField", scopeId);
+
+    /// <summary>
     /// Focuses the element with the given id, if present. Best-effort — a no-op when the id isn't
     /// found or JS is unavailable (prerender / tests); see the class remarks for the missing-global
     /// (cross-origin MFE) fallback.
