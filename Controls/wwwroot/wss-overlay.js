@@ -815,7 +815,14 @@ export function activateModal(panel) {
     // thing", so defer to it. Nothing changes for the ordinary case: on open, focus is still on the
     // trigger (or <body>), both outside the panel, so this grabs it exactly as before. Nested modals
     // are unaffected too -- the outer panel's focus is not inside THIS panel.
-    if (!panel.contains(document.activeElement)) {
+    // Node.contains(x) returns true for x === the node itself, and the panel carries a tabindex for
+    // the focus trap above, so it is itself a legal focus target -- e.g. a consumer that focuses the
+    // panel element directly, or a prior activation that left focus there. Without the `!== panel`
+    // guard that reads as "already focused inside the panel" and this whole block is skipped,
+    // stranding initial focus on the panel instead of moving it to the first focusable child. A
+    // genuinely pre-focused CHILD must still win (see above) -- only the panel itself is excluded.
+    const focusedInsidePanel = panel.contains(document.activeElement) && document.activeElement !== panel;
+    if (!focusedInsidePanel) {
         const initial = focusables();
         try { (initial[0] || panel).focus(); } catch { /* element not focusable yet */ }
     }
