@@ -28,10 +28,29 @@ namespace Controls.Helpers;
 /// <para>
 /// Type-pattern dispatch rather than reflection, so this stays trim/AOT-clean
 /// (<c>Controls.csproj</c> sets <c>IsAotCompatible</c>). It covers the shapes Blazor actually accepts
-/// through a splatted attribute dictionary — the Razor compiler emits a typed
-/// <see cref="EventCallback{TValue}"/> for <c>@onkeydown="H"</c> written on a component, and the
-/// renderer additionally honors bare delegates — and anything else is ignored rather than throwing,
-/// since a stray value here must never break the component's own behavior.
+/// through a splatted attribute dictionary — the Razor compiler emits <see cref="EventCallback{TValue}"/>
+/// (typed to the handler method's own parameter type, which need not match the DOM event's usual args
+/// type — e.g. a method typed <c>EventArgs</c> bound to <c>onkeydown</c> compiles to
+/// <see cref="EventCallback{TValue}">EventCallback&lt;EventArgs&gt;</see>, not
+/// <c>EventCallback&lt;KeyboardEventArgs&gt;</c>) or an untyped <see cref="EventCallback"/> for
+/// <c>@onkeydown="H"</c> written on a component, and the renderer additionally honors bare delegates —
+/// <see cref="Action{T}"/>, <see cref="Action"/>, <see cref="Func{TArgs, TResult}">Func&lt;TArgs,
+/// Task&gt;</see>, and <see cref="Func{TResult}">Func&lt;Task&gt;</see>. Anything else is ignored rather
+/// than throwing, since a stray value here must never break the component's own behavior.
+/// </para>
+/// <para>
+/// Two shapes are deliberately absent as their own <c>case</c>: <c>Action&lt;object&gt;</c> and
+/// <c>Func&lt;object, Task&gt;</c> already invoke today, matched by the <c>Action&lt;TArgs&gt;</c> and
+/// <c>Func&lt;TArgs, Task&gt;</c> cases respectively — <c>Action</c>/<c>Func</c>'s parameter position is
+/// contravariant (<c>in T</c>), so a delegate instance typed to accept <c>object</c> (or any
+/// supertype of the method's <c>TArgs</c>) already satisfies a pattern typed to
+/// <c>TArgs</c>. Adding an explicit case for either is not just redundant, the compiler
+/// rejects it outright (CS8120, unreachable pattern). A closed <c>EventCallback&lt;TOther&gt;</c> for
+/// some <c>TArgs</c>-unrelated <c>TOther</c> other than <see cref="EventArgs"/> itself
+/// has no such escape hatch: <c>EventCallback&lt;T&gt;</c> isn't variant, and its
+/// <c>AsUntyped()</c> escape hatch is <see langword="internal"/> to
+/// <c>Microsoft.AspNetCore.Components</c> — inaccessible here and not reachable via reflection without
+/// giving up trim-safety, so it stays unhandled (falls to <c>default</c>, a no-op).
 /// </para>
 /// </remarks>
 internal static class ConsumerEvent
@@ -58,10 +77,14 @@ internal static class ConsumerEvent
         {
             case EventCallback<TArgs> typedCallback:
                 return typedCallback.InvokeAsync(args);
+            case EventCallback<EventArgs> baseTypedCallback:
+                return baseTypedCallback.InvokeAsync(args);
             case EventCallback untypedCallback:
                 return untypedCallback.InvokeAsync(args);
             case Func<TArgs, Task> asyncHandler:
                 return asyncHandler(args);
+            case Func<Task> asyncNoArgsHandler:
+                return asyncNoArgsHandler();
             case Action<TArgs> syncHandler:
                 syncHandler(args);
                 return Task.CompletedTask;

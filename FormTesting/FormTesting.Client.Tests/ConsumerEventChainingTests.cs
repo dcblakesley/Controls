@@ -83,6 +83,41 @@ public class ConsumerEventChainingTests : BunitContext
     }
 
     [Fact]
+    public void EditRange_runs_a_splatted_consumer_onkeydown_shaped_as_EventCallbackOfEventArgs()
+    {
+        // A consumer handler method typed `EventArgs` (rather than the onkeydown-specific
+        // `KeyboardEventArgs`) compiles to EventCallback<EventArgs>, a DIFFERENT closed generic type
+        // than the EventCallback<KeyboardEventArgs> the exact-match case matches -- ConsumerEvent must
+        // still dispatch it (P2).
+        var model = new RangeModel();
+        var keyDowns = 0;
+        var cut = RenderRange(model, (b, seq) =>
+            b.AddAttribute(seq, "onkeydown", EventCallback.Factory.Create<EventArgs>(this, () => keyDowns++)));
+
+        Track(cut).KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        Assert.Equal(41, model.Volume);
+        Assert.Equal(1, keyDowns);
+    }
+
+    [Fact]
+    public void EditRange_runs_a_splatted_consumer_onkeydown_shaped_as_bare_FuncOfTask()
+    {
+        // A bare `Func<Task>` (no parameters) is a legal CaptureUnmatchedValues entry -- e.g. a
+        // consumer building AdditionalAttributes by hand rather than through `@onkeydown="..."`
+        // markup -- and ConsumerEvent must dispatch it too (P2).
+        var model = new RangeModel();
+        var keyDowns = 0;
+        Func<Task> handler = () => { keyDowns++; return Task.CompletedTask; };
+        var cut = RenderRange(model, (b, seq) => b.AddAttribute(seq, "onkeydown", handler));
+
+        Track(cut).KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
+
+        Assert.Equal(41, model.Volume);
+        Assert.Equal(1, keyDowns);
+    }
+
+    [Fact]
     public void EditRange_runs_a_splatted_consumer_onkeydown_even_while_disabled()
     {
         // OnKeyDown early-returns on IsDisabled. Only the STEPPING is suppressed: a consumer
