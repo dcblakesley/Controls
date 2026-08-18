@@ -90,11 +90,13 @@ public class A11yListsFileTests : BunitContext
     }
 
     [Fact]
-    public void Read_only_checked_list_fieldset_carries_no_aria_labelledby()
+    public void Read_only_checked_list_fieldset_still_carries_aria_labelledby()
     {
-        // Same convention as the radio groups' RadioAria.Fieldset: in read-only mode the id/role/
-        // aria-labelledby trio are all omitted, and the fieldset is named by its own <legend> content
-        // (native fieldset/legend semantics) instead.
+        // Unlike the id/data-test-id/role trio (edit-mode-only: read-only hands _id to the value node
+        // CheckboxOptionList renders instead), aria-labelledby is UNCONDITIONAL. A <fieldset> maps to
+        // role="group" natively in both modes, so without the explicit reference the group's name falls
+        // back to its <legend> -- which also holds the LabelTooltip trigger's own accessible name,
+        // folding "More information about Tags" into a tooltipped read-only list's announced name.
         var model = new PersonModel { Tags = ["a"] };
         Expression<Func<List<string>>> field = () => model.Tags;
         var cut = Render(WithForm(model, b =>
@@ -107,7 +109,7 @@ public class A11yListsFileTests : BunitContext
             b.CloseComponent();
         }));
 
-        Assert.False(cut.Find("fieldset.edit-checkedList-fieldset").HasAttribute("aria-labelledby"));
+        Assert.Equal("lbltext-Tags", cut.Find("fieldset.edit-checkedList-fieldset").GetAttribute("aria-labelledby"));
     }
 
     // ----- TXT-5 / point (c): ReadOnlyValue.AriaDescribedBy wired at the checked-list/EditFile call sites --
