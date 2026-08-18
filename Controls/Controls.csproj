@@ -9,7 +9,7 @@
          then `nuget push nupkg/...`, which never reads the bin/Release package anyway. -->
     <Title>Blazor Controls</Title>
     <PackageId>WssBlazorControls</PackageId>
-	  <AssemblyVersion>10.8.2</AssemblyVersion>
+	  <AssemblyVersion>10.8.3</AssemblyVersion>
 	  <FileVersion>$(AssemblyVersion)</FileVersion>
 	  <Version>$(AssemblyVersion)</Version>
 
@@ -52,11 +52,26 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
     <PackageReleaseNotes>
-10.8.2 -- an additive, non-breaking release: a new slider control and a stepper mode for the existing numeric input.
+10.8.3 -- an additive, non-breaking release: two new form-level helpers, focus on every control, two new field parameters, a two-way-bindable EditRadioEnum "Other" field, and two attribute-handling contracts widened to cover every control that can use them.
 
 NEW
-- EditRange&lt;T&gt;: an AntDesign-style horizontal slider bound via @bind-Value to any numeric type -- rail, filled track, round handle, optional marks/dots, and a value tooltip. Min/Max resolve param -&gt; [MinValue]/[MaxValue]/[Range] -&gt; 0/100; Step resolves param -&gt; [Step] -&gt; 1. Marks render clickable labeled points; SnapToMarks restricts the value to them; Dots draws step/mark dots (capped at 100); Included (default true) fills the track and styles the active mark. ShowTooltip (default true) shows a value bubble on hover/focus/drag, formatted via TooltipFormat (falls back to [DisplayFormat]) which also drives aria-valuetext and the read-only text. role="slider" track with full keyboard support (arrows/Home/End/PageUp/PageDown); pointer drag via the new lazily-imported wss-slider.js, with a no-JS click fallback and a 24px hit area. Forced-colors and reduced-motion supported. Deliberately excludes vertical/reverse orientation, dual-handle range mode, and an always-open tooltip.
-- EditNumber&lt;T&gt; gains ShowStepper (bool, default false): renders a minus/plus button pair around the input, stepping by the effective Step (param -&gt; model [Step] -&gt; 1), clamped to EffectiveMin/EffectiveMax; buttons auto-disable at the bounds and when the control is disabled. Native spinners hide while the mode is on. DecreaseButtonLabel/IncreaseButtonLabel override the accessible names (default "Decrease {label}"/"Increase {label}"). Buttons are not tab stops -- keyboard users step via the input's native arrows -- and there is no press-and-hold auto-repeat. Off by default; the stepper-off DOM is byte-identical to 10.8.1.
+- FormAutoSave: one component replacing per-field @bind-Value:after wiring for a whole form. Subscribes once to the EditContext, debounces changes (DebounceMilliseconds, default 500ms trailing) into one OnSave call carrying the changed fields. SaveWhenInvalid/Concurrency/ShouldSave/TimeProvider round out the configuration. OnSaveFailed hands back the fields a failed save was carrying -- they return to the front of the pending set and retry on the next flush instead of being lost; unwired, the exception re-dispatches for an ErrorBoundary.
+- FormDefaults.FocusFirstField (bool?, default off): focuses a form's first rendered field once, after the scope's first render -- the form-level counterpart to the new FocusOnFirstRender below. Skips disabled/readonly/hidden fields, yields to an explicit FocusOnFirstRender on a specific control, retries up to 10 render batches for async-loaded forms, and needs no IJSRuntime registration to safely no-op.
+- Public FocusAsync() and FocusOnFirstRender (bool, default false) on every Edit* control -- programmatic and declarative focus of whichever element a Tab into the control would land on. Never focuses a disabled/read-only/hidden control. Named FocusOnFirstRender, not AutoFocus, so a native autofocus attribute still splats through untouched.
+- Suggestions (IEnumerable&lt;string&gt;?) on EditString/EditNumber: renders an open-vocabulary &lt;datalist&gt; hint, distinct from a Select control's closed vocabulary.
+- LabelContent (RenderFragment?) on every control: rich-markup label content (icon plus text, etc.) in place of a plain Label string.
+- EditRadioEnum&lt;TEnum&gt;: bind the "Other" free-text box two-way with @bind-OtherValue -- gives it a real FieldIdentifier, EditContext registration, and validation-summary participation.
+
+CHANGED
+- Event-handler chaining: a splatted onclick/onkeydown/onmousedown on EditRange, both date pickers, Modal/Drawer, and Select now chains with the control's own same-named handler instead of one discarding the other.
+- The null-attribute-erasure fix (a splatted attribute surviving when the control has no opinion on it) now covers EditTextArea, EditDateNative, the EditSelect family, EditBool, and EditRange -- previously only EditString/EditNumber had it.
+
+FIXED
+- Every control's read-only rendered value now carries aria-describedby (description/tooltip/error text), previously reachable only in edit mode.
+- EditCheckedEnumList/EditCheckedStringList's read-only fieldset and EditColor's read-only row are now correctly nameable to assistive tech.
+- ToastQueue: an intermittent ObjectDisposedException race in Pause/Resume/Remove/Clear.
+- FormDefaults no longer requires an IJSRuntime registration, fixing a crash under HtmlRenderer/out-of-band rendering (email templates, PDF export).
+- AttributeSplat.RestExcept: a case-variant withheld attribute (e.g. aria-Label) is now actually removed instead of leaking a duplicate.
 
 Full changelog: https://github.com/dcblakesley/Controls#changelog
     </PackageReleaseNotes>
