@@ -273,6 +273,35 @@ Resolution per setting (highest wins): the form's `FormOptions` instance value �
 
 `FormDefaults` also carries `AssetBase` (`string?`), which has no `FormOptions` counterpart: an absolute URL prefixed onto the RCL's lazy `wss-*.js` module imports (see the UI Kit section below), for a micro-frontend whose host page doesn't serve/proxy `_content/WssBlazorControls/*`. Unset (the default) keeps today's relative import path.
 
+`FormOptions.IdPrefix` (`string?`) and its `FormDefaults.IdPrefix` counterpart prefix **every**
+control's resolved element id in the form/tree, for disambiguating two instances of the same form
+on one page (the same modal opened from two different rows, or the same MFE root composed onto a
+page twice). Resolution is `FormOptions.IdPrefix` → the cascaded `FormDefaults.EffectiveIdPrefix`;
+like `AssetBase`/`UpdateOn` there is no process-wide static, so an unset chain simply means no
+form-wide prefix and byte-identical ids to before.
+
+It **composes with, rather than replaces**, the two id knobs that already existed — a control's own
+`IdPrefix` and a cascaded `FormGroupOptions.Name`. Whichever are set all contribute, joined with
+`-`, outermost first:
+
+```
+{FormOptions.IdPrefix}-{control's IdPrefix}-{FormGroupOptions.Name}-{fieldName}
+```
+
+```razor
+<CascadingValue Value="@(new FormOptions { IdPrefix = "app2" })">
+    <EditForm Model="_model">
+        <EditString @bind-Value="_model.Address" IdPrefix="modal" />  @* id: app2-modal-Address *@
+    </EditForm>
+</CascadingValue>
+```
+
+An **empty string** at any of the three layers is treated as unset — no stray leading hyphen, and an
+empty `FormOptions.IdPrefix` (the shape an unset consumer variable arrives as) still falls through to
+`FormDefaults` rather than blocking it. Reach for `FormOptions.IdPrefix` when the whole *form* can
+appear twice; reach for `FormGroupOptions.Name` to namespace a *section* within one form. The label's
+`for`, the ARIA references, and the `ValidationView` summary links all follow the composed id.
+
 `FormDefaults` also carries `UpdateOn` (`UpdateTrigger?`) — a per-form-tree default for the commit-timing parameter on `EditString`/`EditTextArea`/`EditNumber`/`EditDateNative`/`EditRadioString`/`EditRadioEnum`. Like `AssetBase`, it has no `FormOptions` counterpart: the chain is just the control's own `UpdateOn` → the nearest enclosing `FormDefaults.UpdateOn` (`FormDefaults.EffectiveUpdateOn` walks nested `FormDefaults` the same way the other settings do) → that control's built-in default. See [Commit timing](#commit-timing-updateon).
 
 ##### `FocusFirstField`
@@ -704,7 +733,7 @@ The `Table`'s built-in pager (`PageSize`) is **in-memory** — it materializes t
 
 All form controls implement the `IEditControl` interface and provide:
 
-- **Identity Management**: `Id`, `IdPrefix` for unique identification
+- **Identity Management**: `Id`, `IdPrefix` for unique identification, composing with a cascaded `FormGroupOptions.Name` and a form-wide `FormOptions.IdPrefix`/`FormDefaults.IdPrefix` — see [`FormDefaults`](#formdefaults)
 - **Display Control**: `IsEditMode`, `IsDisabled`, `IsHidden`
 - **Labeling**: auto-generated from the property name, `[DisplayName]` for constant labels, or the `Label` parameter for dynamic text — see [Labeling: how to choose](#labeling-how-to-choose). `Description` is plain text (HTML-encoded when rendered).
 - **Placeholders** (where the control renders one): the control's own `Placeholder` parameter → the bound property's `[Placeholder]`/`[Display(Prompt)]` → the control's built-in default — see [Model-declared placeholders](#model-declared-placeholders-placeholder)
@@ -1423,6 +1452,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.8.4
+
+A small additive, non-breaking release: one new form-level setting for disambiguating duplicate forms on a page.
+
+**New**
+- **`FormOptions.IdPrefix`** (`string?`, default null) and its render-tree-scoped counterpart **`FormDefaults.IdPrefix`** — a **form-wide** prefix on every control's resolved element id, for the case a per-control `IdPrefix` doesn't cover: the *same form* rendered twice on one page (a modal opened from two different rows), or the same MFE root composed onto a host page more than once, where every field id collides and the label `for`, the ARIA references and the `ValidationView` links all resolve to the wrong instance. It **composes with, rather than replaces**, the two knobs that already existed — whichever of `FormOptions.IdPrefix`, a control's own `IdPrefix`, and a cascaded `FormGroupOptions.Name` are set all prefix the id together, outermost first: `{FormOptions.IdPrefix}-{IdPrefix}-{FormGroupOptions.Name}-{fieldName}`. Resolution is the form's `FormOptions.IdPrefix` → the nearest enclosing `FormDefaults.EffectiveIdPrefix` (chaining through nested `FormDefaults` like the other settings); like `AssetBase`/`UpdateOn` there is **no process-wide static default**, so an unset chain means no form-wide prefix and byte-identical ids to 10.8.3. An empty string is treated as unset at every layer — no stray leading hyphen, and an empty `FormOptions.IdPrefix` still falls through to `FormDefaults` instead of blocking it. Applies to `EditDisplay` and `EditDateRange` (both id segments) along with the bound controls, and re-resolves at runtime like `Id`/`IdPrefix` have since 10.7.0. See [`FormDefaults`](#formdefaults).
+
+**Fixed**
+- **A stale `IEditControl.IdPrefix` doc comment** that described a form-wide `FormOptions` counterpart as though it already existed. It does now.
 
 ### 10.8.3
 

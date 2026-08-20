@@ -106,6 +106,14 @@ public class EditControlInitTests
     }
 
     [Fact]
+    public void ResolveIdPrefix_treats_an_empty_FormOptions_IdPrefix_as_unset_and_still_falls_back()
+    {
+        var formDefaults = new FormDefaults { IdPrefix = "from-defaults" };
+        Assert.Equal("from-defaults", EditControlInit.ResolveIdPrefix(new FormOptions { IdPrefix = "" }, formDefaults));
+        Assert.Null(EditControlInit.ResolveIdPrefix(new FormOptions { IdPrefix = "" }, formDefaults: null));
+    }
+
+    [Fact]
     public void ResolveIdPrefix_returns_null_when_neither_is_set()
     {
         Assert.Null(EditControlInit.ResolveIdPrefix(new FormOptions(), formDefaults: null));

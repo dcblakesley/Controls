@@ -98,8 +98,15 @@ public static class EditControlInit
     /// the cascaded <see cref="FormOptions.IdPrefix"/>, falling back to any enclosing
     /// <see cref="FormDefaults"/>'s <see cref="FormDefaults.EffectiveIdPrefix"/>.
     /// </summary>
+    /// <remarks>
+    /// An empty (not null) <see cref="FormOptions.IdPrefix"/> — the shape a consumer's unset string
+    /// variable arrives as — is treated as unset, same as everywhere else this composes (see
+    /// <see cref="AttributesHelper.GetId(string?, FormGroupOptions?, string?, string?, string)"/>'s
+    /// empty-string guards): a plain <c>??</c> would otherwise let a stray empty string silently block
+    /// the <see cref="FormDefaults"/> fallback instead of falling through to it.
+    /// </remarks>
     public static string? ResolveIdPrefix(FormOptions? formOptions, FormDefaults? formDefaults) =>
-        formOptions?.IdPrefix ?? formDefaults?.EffectiveIdPrefix;
+        !string.IsNullOrEmpty(formOptions?.IdPrefix) ? formOptions!.IdPrefix : formDefaults?.EffectiveIdPrefix;
 
     /// <summary>
     /// Returns <paramref name="expression"/>, or throws the standard "this control needs a two-way
