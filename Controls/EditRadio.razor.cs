@@ -119,7 +119,7 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
         // than relying on FieldValidationDisplay) is what makes the field survive HidingMode so links
         // from the validation summary always work. Paired with the Dispose override below — see
         // EditControlInit.RegisterField's remarks.
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(accessor, this, FormOptions, FormGroupOptions);
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(accessor, this, FormOptions, FormGroupOptions, FormDefaults);
         RefreshAriaState();
     }
 
@@ -131,7 +131,7 @@ public partial class EditRadio<[DynamicallyAccessedMembers(DynamicallyAccessedMe
     {
         base.OnParametersSet();
         if (_attributes is not null)
-            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, _fieldIdentifier);
+            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, FormDefaults, _fieldIdentifier);
         RefreshAriaState();
     }
 

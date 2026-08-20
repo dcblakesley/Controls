@@ -26,11 +26,12 @@ public static class EditControlInit
         Expression<Func<T>> field,
         string? id,
         FormGroupOptions? formGroupOptions,
-        string? idPrefix)
+        string? idPrefix,
+        string? formIdPrefix)
     {
         var fieldIdentifier = FieldIdentifier.Create(field);
         var attributes = AttributesHelper.GetExpressionCustomAttributes(field);
-        var resolvedId = AttributesHelper.GetId(id, formGroupOptions, idPrefix, fieldIdentifier);
+        var resolvedId = AttributesHelper.GetId(id, formGroupOptions, idPrefix, formIdPrefix, fieldIdentifier);
         return (resolvedId, attributes, fieldIdentifier);
     }
 
@@ -47,9 +48,10 @@ public static class EditControlInit
     /// inheritance chain — the standing reason this helper class exists at all).
     /// </remarks>
     public static (string Id, List<Attribute> Attributes, FieldIdentifier FieldIdentifier) InitAndRegister<T>(
-        Expression<Func<T>> field, IEditControl control, FormOptions? formOptions, FormGroupOptions? formGroupOptions)
+        Expression<Func<T>> field, IEditControl control, FormOptions? formOptions, FormGroupOptions? formGroupOptions,
+        FormDefaults? formDefaults)
     {
-        var state = Init(field, control.Id, formGroupOptions, control.IdPrefix);
+        var state = Init(field, control.Id, formGroupOptions, control.IdPrefix, ResolveIdPrefix(formOptions, formDefaults));
         RegisterField(formOptions, state.FieldIdentifier, state.Id, control);
         return state;
     }
@@ -79,15 +81,25 @@ public static class EditControlInit
     /// </para>
     /// </remarks>
     public static bool SyncResolvedId(ref string id, IEditControl control, FormOptions? formOptions,
-        FormGroupOptions? formGroupOptions, FieldIdentifier fieldIdentifier)
+        FormGroupOptions? formGroupOptions, FormDefaults? formDefaults, FieldIdentifier fieldIdentifier)
     {
-        var resolved = AttributesHelper.GetId(control.Id, formGroupOptions, control.IdPrefix, fieldIdentifier);
+        var resolved = AttributesHelper.GetId(control.Id, formGroupOptions, control.IdPrefix,
+            ResolveIdPrefix(formOptions, formDefaults), fieldIdentifier);
         if (string.Equals(resolved, id, StringComparison.Ordinal))
             return false;
         id = resolved;
         RegisterField(formOptions, fieldIdentifier, resolved, control);
         return true;
     }
+
+    /// <summary>
+    /// Resolves the form-wide id prefix composed onto every control's id (see
+    /// <see cref="AttributesHelper.GetId(string?, FormGroupOptions?, string?, string?, FieldIdentifier)"/>):
+    /// the cascaded <see cref="FormOptions.IdPrefix"/>, falling back to any enclosing
+    /// <see cref="FormDefaults"/>'s <see cref="FormDefaults.EffectiveIdPrefix"/>.
+    /// </summary>
+    public static string? ResolveIdPrefix(FormOptions? formOptions, FormDefaults? formDefaults) =>
+        formOptions?.IdPrefix ?? formDefaults?.EffectiveIdPrefix;
 
     /// <summary>
     /// Returns <paramref name="expression"/>, or throws the standard "this control needs a two-way

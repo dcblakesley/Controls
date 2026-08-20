@@ -15,7 +15,7 @@ public class AttributesHelperTests
     public void GetId_uses_explicit_id_when_provided()
     {
         var fid = FieldOf(() => _model.Name);
-        var id = AttributesHelper.GetId("custom-id", null, null, fid);
+        var id = AttributesHelper.GetId("custom-id", null, null, null, fid);
         Assert.Equal("custom-id", id);
     }
 
@@ -23,7 +23,7 @@ public class AttributesHelperTests
     public void GetId_falls_back_to_field_name_with_spaces_stripped()
     {
         var fid = FieldOf(() => _model.Name);
-        var id = AttributesHelper.GetId(null, null, null, fid);
+        var id = AttributesHelper.GetId(null, null, null, null, fid);
         Assert.Equal("Name", id);
     }
 
@@ -31,7 +31,7 @@ public class AttributesHelperTests
     public void GetId_prefixes_with_FormGroupOptions_name()
     {
         var fid = FieldOf(() => _model.Name);
-        var id = AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, null, fid);
+        var id = AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, null, null, fid);
         Assert.Equal("billing-Name", id);
     }
 
@@ -39,26 +39,37 @@ public class AttributesHelperTests
     public void GetId_layers_idPrefix_on_top_of_group_name()
     {
         var fid = FieldOf(() => _model.Name);
-        var id = AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, "form1", fid);
+        var id = AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, "form1", null, fid);
         Assert.Equal("form1-billing-Name", id);
+    }
+
+    [Fact]
+    public void GetId_layers_formIdPrefix_outermost_of_all_three()
+    {
+        // FormOptions.IdPrefix (or its FormDefaults fallback) is the form-wide layer, so it composes
+        // as the OUTERMOST (leftmost) segment, wrapping the group name and per-control idPrefix
+        // rather than being wrapped by them.
+        var fid = FieldOf(() => _model.Name);
+        var id = AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, "form1", "app2", fid);
+        Assert.Equal("app2-form1-billing-Name", id);
     }
 
     [Fact]
     public void GetId_explicit_id_wins_over_prefixes()
     {
         var fid = FieldOf(() => _model.Name);
-        var id = AttributesHelper.GetId("explicit", new FormGroupOptions { Name = "billing" }, "form1", fid);
+        var id = AttributesHelper.GetId("explicit", new FormGroupOptions { Name = "billing" }, "form1", "app2", fid);
         Assert.Equal("explicit", id);
     }
 
     [Fact]
-    public void GetId_ignores_an_empty_idPrefix()
+    public void GetId_ignores_an_empty_idPrefix_or_formIdPrefix()
     {
-        // An empty (not null) IdPrefix — the shape a consumer's unset string variable arrives as —
+        // An empty (not null) prefix — the shape a consumer's unset string variable arrives as —
         // must not contribute a separator, the same way an empty FormGroupOptions name doesn't.
         var fid = FieldOf(() => _model.Name);
-        Assert.Equal("Name", AttributesHelper.GetId(null, null, "", fid));
-        Assert.Equal("billing-Name", AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, "", fid));
+        Assert.Equal("Name", AttributesHelper.GetId(null, null, "", "", fid));
+        Assert.Equal("billing-Name", AttributesHelper.GetId(null, new FormGroupOptions { Name = "billing" }, "", "", fid));
     }
 
     [Fact]

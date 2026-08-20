@@ -167,6 +167,16 @@ public class FormOptions
     /// own. <b>Process-wide</b> — on Blazor Server this is shared by every circuit/user, so set it at
     /// startup only; for per-app or per-MFE defaults use <see cref="FormDefaults"/> instead. </summary>
     public static bool DefaultUseStyledCheckbox { get; set; } = false;
+
+    /// <summary> Prefixed onto every control's resolved element id in this form — the form-wide
+    /// counterpart to the per-control <see cref="IEditControl.IdPrefix"/>, for disambiguating multiple
+    /// instances of the same form rendered on one page (e.g. a modal form opened twice). Composes with,
+    /// rather than replaces, a per-control <c>IdPrefix</c> and a cascaded
+    /// <see cref="FormGroupOptions.Name"/> — all that are set prefix the id together. When null, falls
+    /// back to any cascaded <see cref="FormDefaults"/>'s <see cref="FormDefaults.EffectiveIdPrefix"/>;
+    /// unlike the bool settings above there is no process-wide static default — an unset chain simply
+    /// means no form-wide prefix. </summary>
+    public string? IdPrefix { get; set; }
 }
 
 /// <summary> 

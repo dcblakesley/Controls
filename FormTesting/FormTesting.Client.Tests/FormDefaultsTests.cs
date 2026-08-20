@@ -239,4 +239,105 @@ public class FormDefaultsTests : BunitContext
         var inner = cut.FindComponent<FormDefaults>();
         Assert.Equal("https://mfe.example.com", inner.Instance.EffectiveAssetBase);
     }
+
+    // IdPrefix has no FormOptions static default either (see AssetBase above), so the pure chain is
+    // verified the same way, plus end-to-end against a rendered field's actual id below.
+    IRenderedComponent<FormDefaults> RenderNestedIdPrefix(string? outer, string? inner) =>
+        Render<FormDefaults>(p => p
+            .Add(o => o.IdPrefix, outer)
+            .Add(o => o.ChildContent, (RenderFragment)(b =>
+            {
+                b.OpenComponent<FormDefaults>(0);
+                b.AddAttribute(1, nameof(FormDefaults.IdPrefix), inner);
+                b.CloseComponent();
+            })));
+
+    [Fact]
+    public void An_unset_inner_IdPrefix_falls_through_to_the_outer_FormDefaults()
+    {
+        var cut = RenderNestedIdPrefix(outer: "app1", inner: null);
+
+        var inner = cut.FindComponent<FormDefaults>();
+        Assert.Equal("app1", inner.Instance.EffectiveIdPrefix);
+    }
+
+    [Fact]
+    public void An_inner_IdPrefix_wins_over_the_outer_FormDefaults()
+    {
+        var cut = RenderNestedIdPrefix(outer: "app1", inner: "modal2");
+
+        var inner = cut.FindComponent<FormDefaults>();
+        Assert.Equal("modal2", inner.Instance.EffectiveIdPrefix);
+    }
+
+    // End-to-end: EditForm -> FormDefaults(IdPrefix) -> [CascadingValue<FormOptions>(IdPrefix)] -> EditString(Name).
+    IRenderedComponent<ContainerFragment> RenderNameFieldWithIdPrefix(EditContext editContext, PersonModel model,
+        string? formDefaultsIdPrefix, string? formOptionsIdPrefix)
+    {
+        Expression<Func<string>> field = () => model.Name;
+        RenderFragment control = b =>
+        {
+            b.OpenComponent<EditString>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.CloseComponent();
+        };
+        RenderFragment withFormOptions = b =>
+        {
+            b.OpenComponent<CascadingValue<FormOptions>>(0);
+            b.AddAttribute(1, "Value", new FormOptions { IdPrefix = formOptionsIdPrefix });
+            b.AddAttribute(2, "ChildContent", control);
+            b.CloseComponent();
+        };
+        RenderFragment withDefaults = b =>
+        {
+            b.OpenComponent<FormDefaults>(0);
+            b.AddAttribute(1, nameof(FormDefaults.IdPrefix), formDefaultsIdPrefix);
+            b.AddAttribute(2, "ChildContent", withFormOptions);
+            b.CloseComponent();
+        };
+        return Render(b =>
+        {
+            b.OpenComponent<EditForm>(0);
+            b.AddAttribute(1, "EditContext", editContext);
+            b.AddAttribute(2, "ChildContent", (RenderFragment<EditContext>)(_ => formContent =>
+            {
+                formContent.OpenRegion(1);
+                withDefaults(formContent);
+                formContent.CloseRegion();
+            }));
+            b.CloseComponent();
+        });
+    }
+
+    [Fact]
+    public void FormOptions_IdPrefix_prefixes_the_rendered_controls_id()
+    {
+        var model = new PersonModel();
+        var editContext = new EditContext(model);
+        var cut = RenderNameFieldWithIdPrefix(editContext, model, formDefaultsIdPrefix: null, formOptionsIdPrefix: "app2");
+
+        Assert.Equal("app2-Name", cut.Find("input").GetAttribute("id"));
+    }
+
+    [Fact]
+    public void FormDefaults_IdPrefix_is_used_when_FormOptions_leaves_it_unset()
+    {
+        var model = new PersonModel();
+        var editContext = new EditContext(model);
+        var cut = RenderNameFieldWithIdPrefix(editContext, model, formDefaultsIdPrefix: "app2", formOptionsIdPrefix: null);
+
+        Assert.Equal("app2-Name", cut.Find("input").GetAttribute("id"));
+    }
+
+    [Fact]
+    public void FormOptions_IdPrefix_wins_over_FormDefaults_IdPrefix()
+    {
+        var model = new PersonModel();
+        var editContext = new EditContext(model);
+        var cut = RenderNameFieldWithIdPrefix(
+            editContext, model, formDefaultsIdPrefix: "from-defaults", formOptionsIdPrefix: "from-options");
+
+        Assert.Equal("from-options-Name", cut.Find("input").GetAttribute("id"));
+    }
 }

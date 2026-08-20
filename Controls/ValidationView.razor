@@ -17,7 +17,7 @@
         {
             @foreach (var z in CurrentEditContext.GetValidationMessages(v))
             {
-                <a class="validation-summary-message" href="#@(FormOptions.FieldIds.TryGetValue(v, out var fid) ? fid : AttributesHelper.GetId(null, FormGroupOptions, null, v))">@GetSummaryMessage(v, z)</a>
+                <a class="validation-summary-message" href="#@(FormOptions.FieldIds.TryGetValue(v, out var fid) ? fid : AttributesHelper.GetId(null, FormGroupOptions, null, EditControlInit.ResolveIdPrefix(FormOptions, FormDefaults), v))">@GetSummaryMessage(v, z)</a>
             }
         }
     }
@@ -28,6 +28,7 @@
 {
     [CascadingParameter] public FormOptions? FormOptions { get; set; }
     [CascadingParameter] public FormGroupOptions? FormGroupOptions { get; set; }
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
 
     // The same subscribe/re-point/detach sequence the edit controls use, through the one shared
     // implementation (EditControlParametersBase drives it too). Created lazily: its handler is an

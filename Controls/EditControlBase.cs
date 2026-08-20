@@ -324,7 +324,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
     {
         // Resolve + register in one call, shared with the list base and EditRadio — the registration
         // is paired with the Dispose override below (see EditControlInit.RegisterField's remarks).
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions);
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions, FormDefaults);
         _stateInitialized = true;
         RefreshAriaState();
     }
@@ -341,7 +341,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         // Gated on _stateInitialized only so a control whose init threw (missing @bind-Value) can't
         // resolve an id against a default FieldIdentifier — the same guard Dispose uses.
         if (_stateInitialized)
-            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, _fieldIdentifier);
+            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, FormDefaults, _fieldIdentifier);
         RefreshAriaState();
 
         // TXT-1: only these two modes can unmount a focused editor mid-edit (see ShouldShowComponent)

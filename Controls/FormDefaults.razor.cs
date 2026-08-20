@@ -47,6 +47,17 @@ public partial class FormDefaults
     /// <see cref="FormDefaults"/> instances. Null only when no instance in the chain sets it. </summary>
     public bool? EffectiveUseStyledCheckbox => UseStyledCheckbox ?? Outer?.EffectiveUseStyledCheckbox;
 
+    /// <summary> Default for <see cref="FormOptions.IdPrefix"/> when the form doesn't set it — a
+    /// root-level prefix for every control id underneath, e.g. per-MFE-instance disambiguation when the
+    /// same MFE root is composed onto a page more than once. Null falls through to any enclosing
+    /// <see cref="FormDefaults"/>; there is no <see cref="FormOptions"/> static default, so an unset
+    /// chain simply means no form-wide prefix. </summary>
+    [Parameter] public string? IdPrefix { get; set; }
+
+    /// <summary> <see cref="IdPrefix"/> resolved through the chain of enclosing <see cref="FormDefaults"/>
+    /// instances. Null only when no instance in the chain sets it. </summary>
+    public string? EffectiveIdPrefix => IdPrefix ?? Outer?.EffectiveIdPrefix;
+
     /// <summary> Base URL prefixed onto the RCL's lazy <c>wss-*.js</c> module imports when set, so a
     /// render tree whose host page origin differs from the one serving <c>WssBlazorControls</c>'s
     /// static assets (e.g. a micro-frontend embedded into a host that doesn't serve/proxy them)

@@ -15,7 +15,10 @@ public interface IEditControl
     /// ex. If you have a control that allows you to enter multiple people,
     /// it would default to having duplicate IDs. <br/>
     /// </summary>
-    /// <remarks>This is also available within <seealso cref="FormOptions"/> for applying it to a group of controls at the same time. </remarks>
+    /// <remarks>Composes with — rather than is replaced by — a cascaded group-scoped
+    /// <seealso cref="FormGroupOptions.Name"/> and a form-wide <seealso cref="FormOptions.IdPrefix"/>
+    /// (which falls back to any cascaded <seealso cref="FormDefaults"/>): whichever of the three are set
+    /// all prefix the resolved id together.</remarks>
     string? IdPrefix { get; set; }
 
     /// <summary>

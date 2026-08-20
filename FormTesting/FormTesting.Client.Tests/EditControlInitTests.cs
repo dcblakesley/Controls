@@ -11,7 +11,7 @@ public class EditControlInitTests
     public void Init_returns_id_attributes_and_field_identifier()
     {
         var (id, attributes, fid) = EditControlInit.Init(
-            () => _model.Name, id: null, formGroupOptions: null, idPrefix: null);
+            () => _model.Name, id: null, formGroupOptions: null, idPrefix: null, formIdPrefix: null);
 
         Assert.Equal("Name", id);
         Assert.NotNull(attributes);
@@ -23,8 +23,16 @@ public class EditControlInitTests
     public void Init_uses_explicit_id_when_provided()
     {
         var (id, _, _) = EditControlInit.Init(
-            () => _model.Name, id: "my-id", formGroupOptions: null, idPrefix: null);
+            () => _model.Name, id: "my-id", formGroupOptions: null, idPrefix: null, formIdPrefix: null);
         Assert.Equal("my-id", id);
+    }
+
+    [Fact]
+    public void Init_layers_formIdPrefix_onto_the_resolved_id()
+    {
+        var (id, _, _) = EditControlInit.Init(
+            () => _model.Name, id: null, formGroupOptions: null, idPrefix: null, formIdPrefix: "app2");
+        Assert.Equal("app2-Name", id);
     }
 
     // --- The shared init/aria entry points the three control bases call ---
@@ -56,7 +64,7 @@ public class EditControlInitTests
         var formOptions = new FormOptions();
 
         var (id, attributes, fid) = EditControlInit.InitAndRegister(
-            () => _model.Name, control, formOptions, formGroupOptions: null);
+            () => _model.Name, control, formOptions, formGroupOptions: null, formDefaults: null);
 
         Assert.Equal("modal-Name", id);
         Assert.NotNull(attributes);
@@ -67,6 +75,41 @@ public class EditControlInitTests
         // Registered with the control as owner, so its own unregister releases it.
         formOptions.UnregisterField(fid, control);
         Assert.DoesNotContain(fid, formOptions.FieldIdentifiers);
+    }
+
+    [Fact]
+    public void InitAndRegister_layers_FormOptions_IdPrefix_outermost_of_the_per_control_one()
+    {
+        var control = new FakeControl { IdPrefix = "modal" };
+        var formOptions = new FormOptions { IdPrefix = "app2" };
+
+        var (id, _, _) = EditControlInit.InitAndRegister(
+            () => _model.Name, control, formOptions, formGroupOptions: null, formDefaults: null);
+
+        Assert.Equal("app2-modal-Name", id);
+        Assert.Equal("app2-modal-Name", formOptions.FieldIds[FieldIdentifier.Create(() => _model.Name)]);
+    }
+
+    [Fact]
+    public void ResolveIdPrefix_prefers_FormOptions_over_FormDefaults()
+    {
+        var formOptions = new FormOptions { IdPrefix = "from-options" };
+        var formDefaults = new FormDefaults { IdPrefix = "from-defaults" };
+        Assert.Equal("from-options", EditControlInit.ResolveIdPrefix(formOptions, formDefaults));
+    }
+
+    [Fact]
+    public void ResolveIdPrefix_falls_back_to_FormDefaults_when_FormOptions_IdPrefix_is_unset()
+    {
+        var formDefaults = new FormDefaults { IdPrefix = "from-defaults" };
+        Assert.Equal("from-defaults", EditControlInit.ResolveIdPrefix(new FormOptions(), formDefaults));
+    }
+
+    [Fact]
+    public void ResolveIdPrefix_returns_null_when_neither_is_set()
+    {
+        Assert.Null(EditControlInit.ResolveIdPrefix(new FormOptions(), formDefaults: null));
+        Assert.Null(EditControlInit.ResolveIdPrefix(null, null));
     }
 
     [Fact]
@@ -109,7 +152,7 @@ public class EditControlInitTests
 
     (List<Attribute> Attributes, FieldIdentifier Fid) InitFor<T>(Expression<Func<T>> field)
     {
-        var (_, attributes, fid) = EditControlInit.Init(field, null, null, null);
+        var (_, attributes, fid) = EditControlInit.Init(field, null, null, null, null);
         return (attributes, fid);
     }
 

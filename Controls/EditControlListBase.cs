@@ -140,7 +140,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     {
         // Resolve + register in one call, shared with the scalar base and EditRadio — the registration
         // is paired with Dispose below (see EditControlInit.RegisterField's remarks).
-        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions);
+        (_id, _attributes, _fieldIdentifier) = EditControlInit.InitAndRegister(field, this, FormOptions, FormGroupOptions, FormDefaults);
         _fieldIdentifierFactory = () => FieldIdentifier.Create(field);
         _stateInitialized = true;
         RefreshAriaState();
@@ -262,7 +262,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
         // from is the same on either side of a model swap, so resolving it against the outgoing
         // FieldIdentifier is safe. See EditControlInit.SyncResolvedId.
         if (_stateInitialized)
-            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, _fieldIdentifier);
+            EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, FormDefaults, _fieldIdentifier);
 
         // A false return means the same EditContext is still cascading, so the cached FieldIdentifier
         // is still live and there's nothing to re-register. A true one means the context changed,

@@ -52,6 +52,6 @@ public partial class EditDisplay : EditControlParametersBase
     readonly string _fallbackId = $"ed-{Guid.NewGuid():N}";
 
     protected override void OnParametersSet() =>
-        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix,
+        _id = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, EditControlInit.ResolveIdPrefix(FormOptions, FormDefaults),
             !string.IsNullOrEmpty(Label) ? Label.ToId() : _fallbackId);
 }

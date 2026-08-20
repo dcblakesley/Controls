@@ -543,7 +543,8 @@ public partial class EditDateRange : IDisposable
         var endExpression = EditControlInit.RequireBinding(
             EndExpression, this, "@bind-End", nameof(EndExpression));
 
-        (_id, _attributes, _startFieldIdentifier) = EditControlInit.Init(startExpression, Id, FormGroupOptions, IdPrefix);
+        (_id, _attributes, _startFieldIdentifier) = EditControlInit.Init(
+            startExpression, Id, FormGroupOptions, IdPrefix, EditControlInit.ResolveIdPrefix(FormOptions, FormDefaults));
         _startFieldIdentifierFactory = () => FieldIdentifier.Create(startExpression);
 
         _endAttributes = AttributesHelper.GetExpressionCustomAttributes(endExpression);
@@ -626,7 +627,8 @@ public partial class EditDateRange : IDisposable
     void SyncResolvedIds()
     {
         if (_attributes is null) return;
-        var resolvedId = AttributesHelper.GetId(Id, FormGroupOptions, IdPrefix, _startFieldIdentifier);
+        var resolvedId = AttributesHelper.GetId(
+            Id, FormGroupOptions, IdPrefix, EditControlInit.ResolveIdPrefix(FormOptions, FormDefaults), _startFieldIdentifier);
         if (string.Equals(resolvedId, _id, StringComparison.Ordinal)) return;
 
         _id = resolvedId;

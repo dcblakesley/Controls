@@ -306,18 +306,19 @@ public static class AttributesHelper
     public static long? Positive(long? value) => value is null || value <= 0 ? null : value;
 
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
-        FieldIdentifier fieldIdentifier) =>
-        GetId(id, formGroupOptions, idPrefix, fieldIdentifier.FieldName);
+        string? formIdPrefix, FieldIdentifier fieldIdentifier) =>
+        GetId(id, formGroupOptions, idPrefix, formIdPrefix, fieldIdentifier.FieldName);
 
     /// <summary>
     /// The id composition every edit control shares, over an arbitrary <paramref name="baseName"/>:
-    /// an explicit <paramref name="id"/> wins verbatim, else the group name and
-    /// <paramref name="idPrefix"/> prefix the base name and spaces are stripped. Bound controls pass
-    /// the <see cref="FieldIdentifier"/> overload; the unbound <c>EditDisplay</c> (no field) passes
-    /// its Label-derived name instead.
+    /// an explicit <paramref name="id"/> wins verbatim, else the group name, <paramref name="idPrefix"/>
+    /// and <paramref name="formIdPrefix"/> (see <see cref="FormOptions.IdPrefix"/> — the outermost,
+    /// form-wide layer, via <see cref="EditControlInit.ResolveIdPrefix"/>) prefix the base name and
+    /// spaces are stripped. Bound controls pass the <see cref="FieldIdentifier"/> overload; the unbound
+    /// <c>EditDisplay</c> (no field) passes its Label-derived name instead.
     /// </summary>
     public static string GetId(string? id, FormGroupOptions? formGroupOptions, string? idPrefix,
-        string baseName)
+        string? formIdPrefix, string baseName)
     {
         // Explicit id always wins.
         if (!string.IsNullOrEmpty(id))
@@ -328,6 +329,11 @@ public static class AttributesHelper
 
         if (!string.IsNullOrEmpty(idPrefix))
             baseName = idPrefix + "-" + baseName;
+
+        // Applied last so it ends up the outermost (leftmost) segment — the broadest scope wraps the
+        // narrower per-control/group ones instead of being wrapped by them.
+        if (!string.IsNullOrEmpty(formIdPrefix))
+            baseName = formIdPrefix + "-" + baseName;
 
         return baseName.Replace(" ", "");
     }
