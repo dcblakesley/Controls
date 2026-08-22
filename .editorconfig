@@ -1,0 +1,6 @@
+root = true
+
+# Razor markup: one attribute per line once a tag wraps, so multi-attribute elements
+# stay reviewable in diffs instead of ReSharper collapsing them back onto one line.
+[*.razor]
+resharper_html_attribute_style = on_different_lines
