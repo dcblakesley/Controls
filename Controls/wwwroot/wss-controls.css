@@ -2752,6 +2752,97 @@
     opacity: 0.85;
 }
 
+/* Text kind (Column.FilterText): a search box in place of the option list. The panel's 160px floor
+   is right for a short option list but cramps a text box to a handful of characters, so the Text
+   panel alone gets a wider floor via a modifier -- the Options panel keeps its exact footprint. */
+.wss-table-filter-dropdown-text {
+    min-width: 200px;
+}
+
+/* The box's gutter inside the panel (the footer supplies its own), and the containing block for
+   the clear button overlaid on the box's end edge. */
+.wss-table-filter-text {
+    position: relative;
+    padding: 8px;
+}
+
+/* The kit's input look at the compact (24px) control height -- same tokens as .wss-search-input
+   and .wss-pagination-jumper-input, plus the Select's focus glow so a keyboard user Tabbing through
+   the panel gets the same indicator every other kit input gives. Focus/hover colors derive at this
+   usage site (color-mix over --wss-color-primary), never at :root -- see the theming contract in
+   the README. Logical padding: the clear button sits at inset-inline-end and the padding has to
+   reserve room on that same side under dir="rtl". */
+.wss-table-filter-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: var(--wss-control-height-sm);
+    margin: 0;
+    padding-block: 0;
+    padding-inline: 8px 28px;
+    color: var(--wss-color-text);
+    font-size: var(--wss-font-size);
+    font-family: inherit;
+    line-height: 1.5;
+    background: var(--wss-color-bg);
+    border: 1px solid var(--wss-color-border);
+    border-radius: var(--wss-radius);
+    outline: none;
+    appearance: none;
+    transition: border-color 0.3s var(--wss-ease-standard), box-shadow 0.3s var(--wss-ease-standard);
+}
+
+.wss-table-filter-input::placeholder {
+    color: var(--wss-color-placeholder);
+}
+
+/* type="search" brings WebKit/Blink's own clear "x", which would sit beside the kit's clear button
+   and clear the field without ever reaching Blazor's binding -- same treatment (and reason) as
+   .wss-search-input::-webkit-search-cancel-button. */
+.wss-table-filter-input::-webkit-search-cancel-button {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.wss-table-filter-input:hover {
+    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+}
+
+.wss-table-filter-input:focus {
+    border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
+}
+
+/* Clears the STAGED text only (OK still applies) -- rendered only while there is text to clear.
+   Centered on the box's end edge, inside the wrapper's 8px gutter; the 20px hit box sits within the
+   24px input so it never widens the panel. Secondary (not disabled) text color for the same 3:1
+   reason .wss-table-filter-trigger gives. Focus ring: grouped with the kit's other small controls
+   in the :focus-visible block near the end of this file. */
+.wss-table-filter-input-clear {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    transform: translateY(-50%);
+    color: var(--wss-color-text-secondary);
+    font-size: 12px;
+    line-height: 1;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.wss-table-filter-input-clear:hover {
+    color: var(--wss-color-text);
+}
+
 /* Table.ScrollY: the AntD scroll.y equivalent -- a bounded, vertically scrolling body with a
    sticky header. Deliberately scoped to .wss-table-wrapper's own scrolling only -- a header that
    stays fixed while the whole PAGE scrolls (viewport-level sticky) is out of scope. max-height
@@ -4543,6 +4634,7 @@
 .wss-table-filter-radio:focus-visible,
 .wss-table-filter-reset:focus-visible,
 .wss-table-filter-ok:focus-visible,
+.wss-table-filter-input-clear:focus-visible,
 .wss-tabs-tab:focus-visible,
 .wss-tabs-panel:focus-visible,
 .wss-search-btn:focus-visible,
@@ -4696,6 +4788,8 @@
     .wss-search-input,
     .wss-search-btn,
     .wss-search-clear,
+    .wss-table-filter-input,
+    .wss-table-filter-input-clear,
     [data-tooltip]::before,
     [data-tooltip]::after {
         transition: none;

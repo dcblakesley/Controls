@@ -8,33 +8,64 @@
    Options kind in Dropdown placement is the checkbox/radio list that used to live inline in
    TableColumnFilter -- byte-identical DOM, no wrapper element of its own. Renders nothing for a
    kind/placement it has no editor for, so the surrounding panel still gets its footer. *@
-@if (Placement == TableFilterPlacement.Dropdown && Column.Filter is OptionsFilterState<TItem> options)
+@if (Placement == TableFilterPlacement.Dropdown)
 {
-    <ul class="wss-table-filter-list">
-        @foreach (var opt in options.Options)
-        {
-            <li class="wss-table-filter-item">
-                <label class="wss-table-filter-option-label">
-                    @if (options.Multiple)
-                    {
-                        <input type="checkbox"
-                               class="wss-table-filter-checkbox"
-                               checked="@options.IsPending(opt.Value)"
-                               @onchange="@(e => options.TogglePending(opt.Value, e.Value is true))" />
-                    }
-                    else
-                    {
-                        <input type="radio"
-                               class="wss-table-filter-radio"
-                               name="@_radioGroupName"
-                               checked="@options.IsPending(opt.Value)"
-                               @onchange="@(() => options.SelectPending(opt.Value))" />
-                    }
-                    <span>@opt.Text</span>
-                </label>
-            </li>
-        }
-    </ul>
+    @if (Column.Filter is OptionsFilterState<TItem> options)
+    {
+        <ul class="wss-table-filter-list">
+            @foreach (var opt in options.Options)
+            {
+                <li class="wss-table-filter-item">
+                    <label class="wss-table-filter-option-label">
+                        @if (options.Multiple)
+                        {
+                            <input type="checkbox"
+                                   class="wss-table-filter-checkbox"
+                                   checked="@options.IsPending(opt.Value)"
+                                   @onchange="@(e => options.TogglePending(opt.Value, e.Value is true))" />
+                        }
+                        else
+                        {
+                            <input type="radio"
+                                   class="wss-table-filter-radio"
+                                   name="@_radioGroupName"
+                                   checked="@options.IsPending(opt.Value)"
+                                   @onchange="@(() => options.SelectPending(opt.Value))" />
+                        }
+                        <span>@opt.Text</span>
+                    </label>
+                </li>
+            }
+        </ul>
+    }
+    else if (Column.Filter is TextFilterState<TItem> text)
+    {
+        @* Text kind: a search box bound to the PENDING text on every keystroke (Enter is the OK
+           button's keyboard twin; the panel's own Escape handling is one level up and still fires,
+           since keydown bubbles). Named after the column's filter exactly as the trigger and the
+           dialog are, so a screen-reader user hears which column they are typing a filter for. The
+           wrapper gives the box its gutter inside the panel and anchors the clear button, which
+           clears the STAGED text only -- OK (or Enter) is still what applies. *@
+        <div class="wss-table-filter-text">
+            <input type="search"
+                   class="wss-table-filter-input"
+                   @ref="_inputRef"
+                   autocomplete="off"
+                   aria-label="@Table.FilterAccessibleName(Column)"
+                   value="@text.PendingText"
+                   @oninput="@(e => text.PendingText = e.Value as string)"
+                   @onkeydown="OnTextKeyDown" />
+            @if (!string.IsNullOrEmpty(text.PendingText))
+            {
+                <button type="button"
+                        class="wss-table-filter-input-clear"
+                        aria-label="@Table.FilterClearLabel"
+                        @onclick="@(() => ClearPendingTextAsync(text))">
+                    @EditIcons.ClearCircle
+                </button>
+            }
+        </div>
+    }
 }
 
 @code {
@@ -56,4 +87,36 @@
     // name each time, and two open editors (never, today -- Table allows one open dropdown) could
     // not steal each other's checked state.
     readonly string _radioGroupName = $"wss-table-filter-{Guid.NewGuid():N}";
+
+    ElementReference _inputRef;
+
+    /// <summary>
+    /// Moves focus into this editor's own text box, if it has one (the Text kind), and reports
+    /// whether it did -- the panel that hosts it focuses itself instead when this returns false, so
+    /// opening a dropdown puts the caret where the user is about to type without the panel having
+    /// to know which kinds have an input. Keyed off the column's current kind, not the element
+    /// reference: the host keeps a reference to this component across opens, and a reference left
+    /// over from a previous kind must not be trusted.
+    /// </summary>
+    internal async ValueTask<bool> TryFocusAsync()
+    {
+        if (Placement != TableFilterPlacement.Dropdown || Column.Filter is not TextFilterState<TItem>) return false;
+        try { await _inputRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+        return true;
+    }
+
+    // Enter applies, exactly as the OK button does (Dropdown placement only: this whole editor is
+    // rendered inside that branch). Every other key just edits the staged text via @oninput.
+    async Task OnTextKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Table.ApplyColumnFilterAsync(Column);
+    }
+
+    // The clear button removes itself from the DOM the moment the text is empty, which would drop
+    // focus to <body>; hand it back to the input so the user can keep typing.
+    async Task ClearPendingTextAsync(TextFilterState<TItem> text)
+    {
+        text.PendingText = null;
+        try { await _inputRef.FocusAsync(); } catch { /* not focusable (prerender/tests) */ }
+    }
 }

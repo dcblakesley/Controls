@@ -66,7 +66,7 @@ internal abstract class ColumnFilterState<TItem>
 }
 
 /// <summary>
-/// Shared shape of the string-keyed kinds (<see cref="TableFilterKind.Options"/> and, later,
+/// Shared shape of the string-keyed kinds (<see cref="TableFilterKind.Options"/> and
 /// <see cref="TableFilterKind.Custom"/>): a set of selected keys, narrowed by a per-key predicate
 /// with AntD's OR-within-a-column semantics -- a row passes when the predicate accepts it for ANY
 /// applied key (the Table ANDs each column's verdict together).
@@ -83,6 +83,12 @@ internal abstract class KeyedFilterState<TItem> : ColumnFilterState<TItem>
     protected KeyedFilterState(Func<TItem, string, bool> onFilter) => OnFilter = onFilter;
 
     protected void SetOnFilter(Func<TItem, string, bool> onFilter) => OnFilter = onFilter;
+
+    /// <summary>The one ordering both serialized views share: <see cref="AppliedValues"/> (the
+    /// <see cref="Table{TItem}.OnFilterChanged"/> payload) and <see cref="PendingValues"/> (what a
+    /// custom dropdown template reads back through <see cref="TableFilterContext{TItem}.SelectedValues"/>).
+    /// Insertion order here; the kinds with an option list override with option order.</summary>
+    protected virtual IReadOnlyList<string> Order(HashSet<string> keys) => keys.ToList();
 
     public override bool IsActive => Applied.Count > 0;
 
@@ -114,8 +120,11 @@ internal abstract class KeyedFilterState<TItem> : ColumnFilterState<TItem>
         return changed;
     }
 
-    /// <summary>Insertion order; <see cref="OptionsFilterState{TItem}"/> overrides with option order.</summary>
-    public override IReadOnlyList<string> AppliedValues => Applied.ToList();
+    public override IReadOnlyList<string> AppliedValues => Order(Applied);
+
+    /// <summary>The PENDING keys, in the same order <see cref="AppliedValues"/> uses -- what a custom
+    /// dropdown template sees as its current selection while the panel is open.</summary>
+    public IReadOnlyList<string> PendingValues => Order(Pending);
 
     public override bool TryRestore(IReadOnlyList<string> values)
     {
@@ -165,7 +174,7 @@ internal sealed class OptionsFilterState<TItem> : KeyedFilterState<TItem>
 {
     public override TableFilterKind Kind => TableFilterKind.Options;
 
-    /// <summary>The options the editor renders and <see cref="AppliedValues"/> orders by. Always the
+    /// <summary>The options the editor renders and <see cref="ColumnFilterState{TItem}.AppliedValues"/> orders by. Always the
     /// column's own defensive snapshot, never the consumer's list instance -- see
     /// <c>Column._lastFilterOptions</c> for why.</summary>
     public IReadOnlyList<TableFilterOption> Options { get; private set; }
@@ -189,9 +198,10 @@ internal sealed class OptionsFilterState<TItem> : KeyedFilterState<TItem>
         SetOnFilter(onFilter);
     }
 
-    /// <summary>The applied keys in <see cref="Options"/>' declared order.</summary>
-    public override IReadOnlyList<string> AppliedValues =>
-        Options.Where(o => Applied.Contains(o.Value)).Select(o => o.Value).ToList();
+    /// <summary>The keys in <see cref="Options"/>' declared order (every applied key has an option:
+    /// <see cref="Accepts"/> and <see cref="Prune"/> guarantee it).</summary>
+    protected override IReadOnlyList<string> Order(HashSet<string> keys) =>
+        Options.Where(o => keys.Contains(o.Value)).Select(o => o.Value).ToList();
 
     protected override bool Accepts(string value) => Options.Any(o => o.Value == value);
 
@@ -200,7 +210,7 @@ internal sealed class OptionsFilterState<TItem> : KeyedFilterState<TItem>
     /// whether an APPLIED key was dropped. Called by the column after an options change (data-derived
     /// options usually swap with the data). Without it an orphaned key kept excluding every row: an
     /// empty table, a dropdown with nothing ticked to explain it (OK a no-op, only Reset recovering),
-    /// and a consumer's own summary reporting no filter, since <see cref="AppliedValues"/> already
+    /// and a consumer's own summary reporting no filter, since <see cref="ColumnFilterState{TItem}.AppliedValues"/> already
     /// intersects with the options. Pending is pruned too: it is what an open dropdown would commit,
     /// and a key with no option cannot be un-ticked. Silent here -- the column decides whether the
     /// Table hears about it (<see cref="Table{TItem}.NotifyColumnFilterPruned"/>).
@@ -214,4 +224,150 @@ internal sealed class OptionsFilterState<TItem> : KeyedFilterState<TItem>
         Pending.RemoveWhere(v => !available.Contains(v));
         return appliedPruned;
     }
+}
+
+/// <summary>
+/// <see cref="TableFilterKind.Custom"/>: the consumer's own <see cref="Column{TItem}.FilterDropdown"/>
+/// template owns the panel and stages string keys through a <see cref="TableFilterContext{TItem}"/>;
+/// rows are narrowed through <see cref="Column{TItem}.OnFilter"/> exactly as for Options. No option
+/// list constrains the keys (<see cref="KeyedFilterState{TItem}.Accepts"/> stays "anything" -- the
+/// template's key space is its own), so nothing is ever pruned; <see cref="Options"/> is carried
+/// only to hand the column's <see cref="Column{TItem}.FilterOptions"/> to the template (AntD passes
+/// <c>filters</c> into <c>filterDropdown</c> the same way) and to order the serialized keys by it
+/// when it exists.
+/// </summary>
+internal sealed class CustomFilterState<TItem> : KeyedFilterState<TItem>
+{
+    // With no OnFilter the template can still stage and confirm keys (state, highlight and
+    // OnFilterChanged all work -- a consumer filtering server-side wants exactly that) and the
+    // predicate excludes nothing.
+    static readonly Func<TItem, string, bool> AcceptAll = (_, _) => true;
+
+    public override TableFilterKind Kind => TableFilterKind.Custom;
+
+    /// <summary>The column's <see cref="Column{TItem}.FilterOptions"/> snapshot, or null -- surfaced
+    /// to the template as <see cref="TableFilterContext{TItem}.Options"/>.</summary>
+    public IReadOnlyList<TableFilterOption>? Options { get; private set; }
+
+    public CustomFilterState(IReadOnlyList<TableFilterOption>? options, Func<TItem, string, bool>? onFilter)
+        : base(onFilter ?? AcceptAll) => Options = options;
+
+    /// <summary>Refresh from the column's current parameters, every parameter pass while the kind is
+    /// unchanged.</summary>
+    public void Update(IReadOnlyList<TableFilterOption>? options, Func<TItem, string, bool>? onFilter)
+    {
+        Options = options;
+        SetOnFilter(onFilter ?? AcceptAll);
+    }
+
+    /// <summary>Option order for the keys that have an option, then any other key in insertion order
+    /// (the template is free to stage keys outside the list); plain insertion order with no options.</summary>
+    protected override IReadOnlyList<string> Order(HashSet<string> keys)
+    {
+        if (Options is null || Options.Count == 0) return base.Order(keys);
+        var ordered = Options.Where(o => keys.Contains(o.Value)).Select(o => o.Value).ToList();
+        if (ordered.Count < keys.Count)
+        {
+            var listed = new HashSet<string>(ordered, StringComparer.Ordinal);
+            ordered.AddRange(keys.Where(k => !listed.Contains(k)));
+        }
+        return ordered;
+    }
+}
+
+/// <summary>
+/// <see cref="TableFilterKind.Text"/>: one typed string (<see cref="Column{TItem}.FilterText"/> supplies
+/// the row accessor, <see cref="Column{TItem}.TextFilterMatch"/> the comparison), matched
+/// case-insensitively (<see cref="StringComparison.OrdinalIgnoreCase"/>). The APPLIED text is always
+/// normalized -- trimmed, and null when nothing but whitespace was typed, which is the inactive state.
+/// The PENDING text is kept exactly as typed: the editor binds to it on every keystroke, and
+/// trimming it live would eat the space a user just typed before the next word.
+/// </summary>
+internal sealed class TextFilterState<TItem> : ColumnFilterState<TItem>
+{
+    string? _applied;
+
+    public override TableFilterKind Kind => TableFilterKind.Text;
+
+    /// <summary>The row accessor (<see cref="Column{TItem}.FilterText"/>); a null result never matches.</summary>
+    public Func<TItem, string?> Accessor { get; private set; }
+
+    /// <summary>How the applied text is compared against a row's (<see cref="Column{TItem}.TextFilterMatch"/>).</summary>
+    public TextFilterMatch Match { get; private set; }
+
+    /// <summary>The staged text, as typed (untrimmed, may be null). What the editor binds to.</summary>
+    public string? PendingText { get; set; }
+
+    public TextFilterState(Func<TItem, string?> accessor, TextFilterMatch match)
+    {
+        Accessor = accessor;
+        Match = match;
+    }
+
+    /// <summary>Refresh from the column's current parameters, every parameter pass while the kind is
+    /// unchanged. The applied text survives; the column re-derives rows when the match mode changed.</summary>
+    public void Update(Func<TItem, string?> accessor, TextFilterMatch match)
+    {
+        Accessor = accessor;
+        Match = match;
+    }
+
+    static string? Normalize(string? text) =>
+        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
+    public override bool IsActive => _applied is not null;
+
+    // Ordinal, not ignore-case: "abc" and "ABC" narrow identically, but they are different payloads
+    // for OnFilterChanged, and the payload is what "the applied selection changed" is judged by.
+    public override bool HasPendingChange => !string.Equals(Normalize(PendingText), _applied, StringComparison.Ordinal);
+
+    public override bool PassesFilter(TItem item)
+    {
+        var text = Accessor(item);
+        if (text is null) return false;
+        return Match switch
+        {
+            TextFilterMatch.StartsWith => text.StartsWith(_applied!, StringComparison.OrdinalIgnoreCase),
+            TextFilterMatch.Equals => string.Equals(text, _applied, StringComparison.OrdinalIgnoreCase),
+            _ => text.Contains(_applied!, StringComparison.OrdinalIgnoreCase)
+        };
+    }
+
+    public override bool Commit()
+    {
+        var next = Normalize(PendingText);
+        var changed = !string.Equals(next, _applied, StringComparison.Ordinal);
+        _applied = next;
+        return changed;
+    }
+
+    public override void Discard() => PendingText = _applied;
+
+    public override bool Clear()
+    {
+        var changed = _applied is not null;
+        _applied = null;
+        PendingText = null;
+        return changed;
+    }
+
+    public override IReadOnlyList<string> AppliedValues => _applied is null ? [] : [_applied];
+
+    /// <summary>The first value (if any) becomes the pending text; every string is interpretable, so
+    /// this always succeeds.</summary>
+    public override bool TryRestore(IReadOnlyList<string> values)
+    {
+        PendingText = values.Count > 0 ? values[0] : null;
+        return true;
+    }
+
+    public override string? Describe(Table<TItem> table) =>
+        _applied is null
+            ? null
+            : Match switch
+            {
+                TextFilterMatch.StartsWith => $"starts with \"{_applied}\"",
+                TextFilterMatch.Equals => $"equals \"{_applied}\"",
+                _ => $"contains \"{_applied}\""
+            };
 }

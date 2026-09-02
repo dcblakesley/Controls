@@ -45,16 +45,19 @@ public class Column<TItem> : ComponentBase, IDisposable
 
     /// <summary>
     /// Filter dropdown options for this column (AntD 4.x's <c>filters</c>); null (default) renders
-    /// no filter UI. Must be paired with <see cref="OnFilter"/> to actually filter rows — see
-    /// <see cref="CanFilter"/>.
+    /// no filter UI. Paired with <see cref="OnFilter"/> it declares the Options kind — a checkbox or
+    /// radio list — see <see cref="CanFilter"/>. Under a <see cref="FilterDropdown"/> template it is
+    /// instead handed to the template as <see cref="TableFilterContext{TItem}.Options"/>.
     /// </summary>
     [Parameter] public IReadOnlyList<TableFilterOption>? FilterOptions { get; set; }
 
     /// <summary>
-    /// Row-inclusion predicate given one currently-selected filter value. A row passes this
+    /// Row-inclusion predicate given one currently-selected filter value (key). A row passes this
     /// column's filter when this returns true for ANY selected value (AntD's OR-within-a-column
     /// semantics; the Table ANDs each filterable column's result together). Required (with
-    /// <see cref="FilterOptions"/>) for the column to render filter UI — see <see cref="CanFilter"/>.
+    /// <see cref="FilterOptions"/>) for the Options kind — see <see cref="CanFilter"/>. The
+    /// <see cref="FilterDropdown"/> (Custom) kind narrows rows through it too, and without it merely
+    /// stops excluding rows. Not consulted by <see cref="FilterText"/>.
     /// </summary>
     [Parameter] public Func<TItem, string, bool>? OnFilter { get; set; }
 
@@ -65,9 +68,54 @@ public class Column<TItem> : ComponentBase, IDisposable
     /// </summary>
     [Parameter] public bool FilterMultiple { get; set; } = true;
 
+    /// <summary>
+    /// Enables a free-text filter over this accessor (kind <see cref="TableFilterKind.Text"/>): the
+    /// dropdown holds a search box, and a row passes when the accessor's text matches the applied
+    /// text per <see cref="TextFilterMatch"/> — case-insensitive; a null accessor result never
+    /// matches; whitespace-only input filters nothing. Ignored while <see cref="FilterDropdown"/> or
+    /// <see cref="FilterOptions"/>+<see cref="OnFilter"/> is set (those kinds win — see
+    /// <see cref="CanFilter"/>). The <see cref="Table{TItem}.OnFilterChanged"/> payload is the single
+    /// trimmed text, or empty when cleared.
+    /// </summary>
+    [Parameter] public Func<TItem, string?>? FilterText { get; set; }
+
+    /// <summary>How a <see cref="FilterText"/> filter compares the typed text with a row's:
+    /// <see cref="Controls.TextFilterMatch.Contains"/> (default), <c>StartsWith</c> or <c>Equals</c>,
+    /// all ordinal-ignore-case. Changing it while a text filter is applied re-derives the rows.</summary>
+    [Parameter] public TextFilterMatch TextFilterMatch { get; set; } = TextFilterMatch.Contains;
+
+    /// <summary>
+    /// AntD's <c>filterDropdown</c>: a template that renders the WHOLE dropdown panel in place of the
+    /// built-in option list and OK/Reset footer (kind <see cref="TableFilterKind.Custom"/>; wins over
+    /// every other filter parameter). The template receives a <see cref="TableFilterContext{TItem}"/>
+    /// to stage string keys, commit, clear and close. Rows are narrowed through <see cref="OnFilter"/>
+    /// with the same OR-within-a-column semantics as Options; with no <see cref="OnFilter"/> the
+    /// funnel, the applied state and <see cref="Table{TItem}.OnFilterChanged"/> all still work and no
+    /// row is excluded — the shape for filtering server-side. <see cref="FilterOptions"/>, if set, is
+    /// handed to the template as <see cref="TableFilterContext{TItem}.Options"/>.
+    /// </summary>
+    [Parameter] public RenderFragment<TableFilterContext<TItem>>? FilterDropdown { get; set; }
+
+    /// <summary>AntD's <c>filterIcon</c>: replaces the funnel glyph inside the filter trigger button;
+    /// the context is whether a filter is currently applied. The button itself — its classes,
+    /// accessible name and behaviour — is unchanged. Null (default) keeps the funnel.</summary>
+    [Parameter] public RenderFragment<bool>? FilterIcon { get; set; }
+
+    /// <summary>AntD's <c>onFilterDropdownOpenChange</c>: raised with true when this column's filter
+    /// dropdown opens and false when it closes — once per actual transition, whatever caused it (the
+    /// funnel, OK, Reset, Escape, an outside click, another column's dropdown opening, or the column
+    /// ceasing to offer a filter).</summary>
+    [Parameter] public EventCallback<bool> OnFilterDropdownOpenChange { get; set; }
+
+    /// <summary>AntD's <c>filterOnClose</c>: when true, dismissing the dropdown (an outside click,
+    /// Escape, or clicking the funnel again) COMMITS the staged edits exactly as OK would, instead of
+    /// discarding them. Default false — only OK applies.</summary>
+    [Parameter] public bool FilterOnClose { get; set; }
+
     /// <summary>Whether the Table should render a filter control on this column's header — true once
-    /// the column's parameters declare a filter (see <see cref="DeriveFilterKind"/>: so far, both
-    /// <see cref="FilterOptions"/> and <see cref="OnFilter"/> must be supplied).</summary>
+    /// the column's parameters declare a filter kind (see <see cref="DeriveFilterKind"/>, first match
+    /// wins: <see cref="FilterDropdown"/>; <see cref="FilterOptions"/> with <see cref="OnFilter"/>;
+    /// <see cref="FilterText"/>).</summary>
     public bool CanFilter => Filter is not null;
 
     /// <summary>
@@ -94,6 +142,24 @@ public class Column<TItem> : ComponentBase, IDisposable
     /// excludes a row.</summary>
     internal bool PassesFilter(TItem item) => Filter is null || !Filter.IsActive || Filter.PassesFilter(item);
 
+    /// <summary>
+    /// The one place the dropdown's open flag flips. Returns the consumer's
+    /// <see cref="OnFilterDropdownOpenChange"/> invocation (already completed when nothing changed or
+    /// nobody listens), so every path that opens or closes the dropdown — the funnel, OK, Reset,
+    /// Escape, an outside click, another column's dropdown opening, the column ceasing to offer a
+    /// filter — raises exactly one notification per actual transition, and a caller with an await
+    /// point can observe it. Synchronous callers discard the task (the same fire-and-forget the Table
+    /// already applies to <see cref="Table{TItem}.OnFilterChanged"/> where no await point exists).
+    /// </summary>
+    internal Task SetFilterOpen(bool open) => SetFilterOpen(Filter, open);
+
+    Task SetFilterOpen(ColumnFilterState<TItem>? filter, bool open)
+    {
+        if (filter is null || filter.IsOpen == open) return Task.CompletedTask;
+        filter.IsOpen = open;
+        return OnFilterDropdownOpenChange.HasDelegate ? OnFilterDropdownOpenChange.InvokeAsync(open) : Task.CompletedTask;
+    }
+
     // Snapshot of everything the Table renders from this column, so a parameter change on an
     // ALREADY-registered column can be told apart from the same parameters arriving again (a
     // RenderFragment/Func parameter is a new instance every pass, so this method can't be skipped and
@@ -104,7 +170,12 @@ public class Column<TItem> : ComponentBase, IDisposable
     bool _lastEllipsis;
     bool _lastCanSort;
     bool _lastCanFilter;
+    // The kind, not just CanFilter: Options -> Custom (a FilterDropdown template arriving) or
+    // Options -> Text (FilterOptions leaving while FilterText stays) keeps CanFilter true and swaps the
+    // whole panel, which only a Table re-render can show.
+    TableFilterKind? _lastFilterKind;
     bool _lastFilterMultiple;
+    bool _lastHasFilterIcon;
     // A COPY of the options as they were last seen, never the consumer's own list instance. Holding
     // the reference made OptionsEqual's ReferenceEquals fast path compare the list to itself, so a
     // consumer keeping one List<TableFilterOption> field and refilling it in place (Clear()+AddRange,
@@ -115,9 +186,12 @@ public class Column<TItem> : ComponentBase, IDisposable
     IReadOnlyList<TableFilterOption>? _lastFilterOptions;
 
     // The delegates the Table's own derived state (_filtered / _sorted) is computed FROM, tracked by
-    // method identity -- see DelegateChanged.
+    // method identity -- see DelegateChanged. TextFilterMatch rides along: it is not a delegate, but
+    // it changes which rows an applied text filter admits just as a swapped FilterText does.
     Delegate? _lastOnFilter;
     Delegate? _lastSortBy;
+    Delegate? _lastFilterText;
+    TextFilterMatch _lastTextFilterMatch;
 
     // Re-register on every render so the Table re-collects its columns in document order each pass.
     // This makes conditionally-rendered columns (@if) drop and re-appear in their declared position
@@ -161,18 +235,23 @@ public class Column<TItem> : ComponentBase, IDisposable
         else if (displayChanged) Table?.NotifyColumnChanged();
     }
 
-    // Which filter kind this column's parameters declare, or null for none. First match wins; the
-    // Table renders no filter UI for null. One kind so far -- further kinds slot in here as more arms
-    // without touching SyncFilterState below.
+    // Which filter kind this column's parameters declare, or null for none. First match wins (a
+    // FilterDropdown template owns the panel outright, so it beats the built-in editors; the keyed
+    // Options kind beats Text because its OnFilter is the more specific declaration); the Table
+    // renders no filter UI for null. Further kinds slot in here as more arms plus a case each in
+    // SyncFilterState below.
     TableFilterKind? DeriveFilterKind() =>
-        FilterOptions is { Count: > 0 } && OnFilter is not null ? TableFilterKind.Options : null;
+        FilterDropdown is not null ? TableFilterKind.Custom
+        : FilterOptions is { Count: > 0 } && OnFilter is not null ? TableFilterKind.Options
+        : FilterText is not null ? TableFilterKind.Text
+        : null;
 
     // Keeps Filter in step with the declared kind, every parameter pass. Same kind as last pass: the
     // SAME instance is kept -- the applied selection lives in it -- and only its inputs (options,
-    // multiple, predicate) are refreshed, pruning applied values the new options no longer offer.
-    // Different kind, including to or from none: the old state goes and a fresh one is built (or
-    // none). A different kind has a different value shape, and no kind has nothing selectable, so
-    // nothing carries over.
+    // multiple, predicate, accessor, match mode) are refreshed, pruning applied values the new options
+    // no longer offer. Different kind, including to or from none: the old state goes and a fresh one
+    // is built (or none). A different kind has a different value shape, and no kind has nothing
+    // selectable, so nothing carries over.
     //
     // Dropping the state is also what closes a dropdown whose column stopped offering a filter: the
     // funnel button AND the panel leave the header with it, so an open flag must not survive. Two
@@ -193,18 +272,30 @@ public class Column<TItem> : ComponentBase, IDisposable
         var kind = DeriveFilterKind();
         if (kind == Filter?.Kind)
         {
-            if (Filter is OptionsFilterState<TItem> options)
+            switch (Filter)
             {
-                options.Update(_lastFilterOptions!, FilterMultiple, OnFilter!);
-                return optionsChanged && options.Prune();
+                case OptionsFilterState<TItem> options:
+                    options.Update(_lastFilterOptions!, FilterMultiple, OnFilter!);
+                    return optionsChanged && options.Prune();
+                case CustomFilterState<TItem> custom:
+                    custom.Update(_lastFilterOptions, OnFilter);
+                    return false;
+                case TextFilterState<TItem> text:
+                    text.Update(FilterText!, TextFilterMatch);
+                    return false;
             }
             return false;
         }
 
         var wasActive = Filter is { IsActive: true };
+        // A dropdown open on the state being dropped closes with it, and the column's listener hears
+        // that close like any other (a no-op on a closed or absent state).
+        _ = SetFilterOpen(Filter, false);
         Filter = kind switch
         {
             TableFilterKind.Options => new OptionsFilterState<TItem>(_lastFilterOptions!, FilterMultiple, OnFilter!),
+            TableFilterKind.Custom => new CustomFilterState<TItem>(_lastFilterOptions, OnFilter),
+            TableFilterKind.Text => new TextFilterState<TItem>(FilterText!, TextFilterMatch),
             _ => null
         };
         return wasActive;
@@ -231,12 +322,17 @@ public class Column<TItem> : ComponentBase, IDisposable
     // _filtered list in place, and swapping SortBy while a sort is active leaves _sorted in place, both
     // indefinitely.
     private protected virtual bool RowStateChanged() =>
-        DelegateChanged(_lastOnFilter, OnFilter) || DelegateChanged(_lastSortBy, SortBy);
+        DelegateChanged(_lastOnFilter, OnFilter)
+        || DelegateChanged(_lastSortBy, SortBy)
+        || DelegateChanged(_lastFilterText, FilterText)
+        || _lastTextFilterMatch != TextFilterMatch;
 
     private protected virtual void CaptureRowState()
     {
         _lastOnFilter = OnFilter;
         _lastSortBy = SortBy;
+        _lastFilterText = FilterText;
+        _lastTextFilterMatch = TextFilterMatch;
     }
 
     // Everything the Table's markup reads off a column, by value. ChildContent is deliberately not
@@ -249,9 +345,12 @@ public class Column<TItem> : ComponentBase, IDisposable
         || _lastEllipsis != Ellipsis
         || _lastCanSort != CanSort
         || _lastCanFilter != CanFilter
-        || _lastFilterMultiple != FilterMultiple;
+        || _lastFilterKind != Filter?.Kind
+        || _lastFilterMultiple != FilterMultiple
+        || _lastHasFilterIcon != (FilterIcon is not null);
     // FilterOptions is deliberately NOT compared here: OnParametersSet already runs that comparison
-    // once (it needs the result for the prune too) and ORs it in.
+    // once (it needs the result for the prune too) and ORs it in. FilterDropdown/FilterIcon are
+    // templates invoked live at render time (like ChildContent), so only their presence is tracked.
 
     private protected virtual void CaptureDisplayState()
     {
@@ -260,7 +359,9 @@ public class Column<TItem> : ComponentBase, IDisposable
         _lastEllipsis = Ellipsis;
         _lastCanSort = CanSort;
         _lastCanFilter = CanFilter;
+        _lastFilterKind = Filter?.Kind;
         _lastFilterMultiple = FilterMultiple;
+        _lastHasFilterIcon = FilterIcon is not null;
         // _lastFilterOptions is captured in OnParametersSet instead, as a defensive copy and only
         // when it changed -- see the field.
     }

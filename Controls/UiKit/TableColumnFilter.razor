@@ -3,13 +3,13 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
-@* Column filtering (Column.FilterOptions/OnFilter): a funnel-icon button in the header cell that
-   opens a checkbox/radio dropdown. Outside-click-to-close is a full-screen invisible backdrop --
-   the same JS-free pattern Popover/Select already use -- so open/close/apply/reset all work with
-   no JS runtime at all (server prerender, unit tests). JS is opt-in and only ever used to escape a
-   ScrollY wrapper's overflow clip and keep the escaped dropdown tracking its trigger across page
-   scroll/resize while it stays open (see OnAfterRenderAsync), and to move focus into/out of the
-   panel. *@
+@* Column filtering (Column.FilterOptions/OnFilter, FilterText, FilterDropdown): a funnel-icon button
+   in the header cell that opens a dropdown panel. Outside-click-to-close is a full-screen invisible
+   backdrop -- the same JS-free pattern Popover/Select already use -- so open/close/apply/reset all
+   work with no JS runtime at all (server prerender, unit tests). JS is opt-in and only ever used to
+   escape a ScrollY wrapper's overflow clip and keep the escaped dropdown tracking its trigger across
+   page scroll/resize while it stays open (see OnAfterRenderAsync), and to move focus into/out of
+   the panel. *@
 @if (Column.Filter is { } filter)
 {
     @* aria-haspopup="dialog" matches what this button actually opens (the panel below is a
@@ -20,25 +20,44 @@
             aria-label="@FilterAriaLabel" aria-haspopup="dialog" aria-expanded="@(filter.IsOpen ? "true" : "false")"
             disabled="@Disabled"
             @onclick="ToggleOpen" @onclick:stopPropagation="true">
-        @FilterIcon
+        @if (Column.FilterIcon is { } icon)
+        {
+            @icon(filter.IsActive)
+        }
+        else
+        {
+            @DefaultFilterIcon
+        }
     </button>
     @if (filter.IsOpen)
     {
         @* tabindex="-1": see .wss-select-backdrop -- iOS-class WebKit only synthesizes a click from a
            tap on a focusable/interactive target chain, so a bare div would never receive the tap. *@
         <div class="wss-table-filter-backdrop" tabindex="-1" @onclick="Close"></div>
-        <div class="wss-table-filter-dropdown" @ref="_panelRef" role="dialog" aria-label="@FilterAriaLabel"
+        <div class="@DropdownClass(filter)" @ref="_panelRef" role="dialog" aria-label="@FilterAriaLabel"
              tabindex="-1" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="true" @onclick:stopPropagation="true">
-            @* The kind-specific editor (checkbox/radio list for Options) edits the column's PENDING
-               state; the footer below is what commits (OK) or clears (Reset) it. *@
-            <TableFilterEditor TItem="TItem"
-                               Column="Column"
-                               Table="Table"
-                               Placement="TableFilterPlacement.Dropdown" />
-            <div class="wss-table-filter-footer">
-                <button type="button" class="wss-table-filter-reset" @onclick="Reset">@ResetLabel</button>
-                <button type="button" class="wss-table-filter-ok" @onclick="Apply">@OkLabel</button>
-            </div>
+            @if (Column.FilterDropdown is { } template && filter is CustomFilterState<TItem> custom)
+            {
+                @* AntD filterDropdown: the consumer owns the ENTIRE panel -- no built-in list, no
+                   footer -- and drives it through the context (stage / confirm / reset / close). A fresh
+                   context per render is cheap and keeps SelectedValues reading live pending state. *@
+                @template(new TableFilterContext<TItem>(Table, Column, custom))
+            }
+            else
+            {
+                @* The kind-specific editor (checkbox/radio list for Options, a search box for Text)
+                   edits the column's PENDING state; the footer below is what commits (OK) or clears
+                   (Reset) it. *@
+                <TableFilterEditor TItem="TItem"
+                                   @ref="_editor"
+                                   Column="Column"
+                                   Table="Table"
+                                   Placement="TableFilterPlacement.Dropdown" />
+                <div class="wss-table-filter-footer">
+                    <button type="button" class="wss-table-filter-reset" @onclick="Reset">@ResetLabel</button>
+                    <button type="button" class="wss-table-filter-ok" @onclick="Apply">@OkLabel</button>
+                </div>
+            }
         </div>
     }
 }
@@ -90,6 +109,10 @@
 
     ElementReference _buttonRef;
     ElementReference _panelRef;
+    // The built-in editor inside the panel, for the open-focus hand-off (see OnAfterRenderAsync).
+    // Null while a FilterDropdown template owns the panel; stale (a disposed instance) between opens,
+    // which is why the focus path re-checks the column's current kind rather than trusting the ref.
+    TableFilterEditor<TItem>? _editor;
     // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
     // (a null return, which reads the same as the import throwing did). JsHandle owns
     // activateFixedDropdown's returned handle: the sequence token (this file used to re-check "still
@@ -107,53 +130,55 @@
     // markup above rendered: OnAfterRenderAsync still runs for the one render in which a column has
     // just lost its filter (Column.Filter null) before the Table's re-render removes this component.
     bool IsOpen => Column.IsFilterOpen;
-    bool IsActive => Column.Filter is { IsActive: true };
 
     // AntD "FilterFilled" -- a solid funnel. Recolored (not reshaped) for the active state, the same
     // technique the sort carets already use (.wss-table-sorter-up/-down + wss-table-sorter-active).
-    static readonly MarkupString FilterIcon = new(
+    // Column.FilterIcon replaces this glyph only -- the button around it is the same either way.
+    static readonly MarkupString DefaultFilterIcon = new(
         "<svg viewBox=\"64 64 896 896\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"M880.1 154H143.9c-24.5 0-39.8 26.7-27.5 48L349 597.4V838c0 17.7 14.2 32 31.8 32h262.4c17.6 0 31.8-14.3 31.8-32V597.4L907.7 202c12.2-21.3-3.1-48-27.6-48z\"/></svg>");
 
-    // Mirrors Column.SortButtonLabel's title-less fallback -- a headerless column's filter button
-    // still needs an accessible name, from FilterLabel (forwarded from Table.FilterLabel) rather
-    // than a hardcoded literal, so a localized table doesn't announce this one button in English.
-    //
-    // The applied/unapplied fork is the same pair one level up: an applied filter is otherwise
-    // signalled only by recoloring the funnel glyph, which no screen reader (and no user who can't
-    // distinguish the two blues) can perceive. Both the trigger and the panel below read this, so
-    // the open dialog reports the state it is about to edit.
-    string FilterAriaLabel =>
-        IsActive
-            ? (string.IsNullOrEmpty(Column.HeaderText)
-                ? FilterAppliedLabel
-                : string.Format(FilterAppliedButtonLabelFormat, Column.HeaderText))
-            : (string.IsNullOrEmpty(Column.HeaderText)
-                ? FilterLabel
-                : string.Format(FilterButtonLabelFormat, Column.HeaderText));
+    // Both the trigger and the panel read this, so the open dialog reports the state it is about to
+    // edit. Computed on the Table (which also names the Text editor's search box from it) -- one
+    // implementation of the applied/unapplied, headed/headerless fork.
+    string FilterAriaLabel => Table.FilterAccessibleName(Column);
 
-    void ToggleOpen()
+    // A separate whole-string per kind (not a conditional appended to the literal) so the Options
+    // panel's class attribute stays byte-identical to before the Text kind existed.
+    static string DropdownClass(ColumnFilterState<TItem> filter) =>
+        filter.Kind == TableFilterKind.Text
+            ? "wss-table-filter-dropdown wss-table-filter-dropdown-text"
+            : "wss-table-filter-dropdown";
+
+    async Task ToggleOpen()
     {
         // A disabled <button> cannot be clicked in a browser; this guards the programmatic paths
         // (tests, a synthetic dispatch) so "inert while Loading" holds there too.
         if (Disabled) return;
         if (IsOpen)
         {
-            Close();
+            await Close();
             return;
         }
         Table.OpenColumnFilter(Column);
         _pendingFocus = true;
     }
 
-    void Close() => Table.CloseColumnFilter(Column);
+    // Every dismissal (backdrop click, Escape, funnel re-click) -- AntD's filterOnClose turns each of
+    // them into an OK; the default discards the staged edits (they are re-staged from applied on the
+    // next open, see Table.OpenColumnFilter).
+    async Task Close()
+    {
+        if (Column.FilterOnClose) await Table.ApplyColumnFilterAsync(Column);
+        else Table.CloseColumnFilter(Column);
+    }
 
     async Task Apply() => await Table.ApplyColumnFilterAsync(Column);
 
     async Task Reset() => await Table.ResetColumnFilterAsync(Column);
 
-    void OnKeyDown(KeyboardEventArgs e)
+    async Task OnKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Escape") Close();
+        if (e.Key == "Escape") await Close();
     }
 
     // Focus management (mirrors Popover): move focus into the panel once it opens, and back to the
@@ -170,7 +195,13 @@
             if (_pendingFocus)
             {
                 _pendingFocus = false;
-                try { await _panelRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+                // An editor with a text box of its own (the Text kind) takes focus directly -- the
+                // user opened the dropdown to type. Otherwise (Options, or a consumer template that
+                // does its own focusing) the dialog itself does, as before.
+                if (_editor is null || !await _editor.TryFocusAsync())
+                {
+                    try { await _panelRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+                }
             }
 
             if (Table.ScrollY is not null && !_fixedPositioned)

@@ -618,15 +618,19 @@
     [Parameter] public string ScrollRegionLabel { get; set; } = "Table content";
 
     /// <summary>
-    /// Raised with the column and its new selected values (empty when cleared) on any of three
-    /// triggers: a column's filter is applied (OK), cleared (Reset), or a column that was actively
-    /// narrowing rows drops out of the rendered set (e.g. an <c>@@if</c> hiding it) — its filter is
-    /// force-cleared along with it, so the same "now empty" payload fires rather than leaving a
-    /// consumer's own filter summary silently stale. The uncontrolled equivalent of AntD's
+    /// Raised with the column and its new applied values (empty when cleared) on any of three
+    /// triggers: a column's filter is applied (OK, or a custom template's <c>ConfirmAsync</c>),
+    /// cleared (Reset), or a column that was actively narrowing rows drops out of the rendered set
+    /// (e.g. an <c>@@if</c> hiding it) — its filter is force-cleared along with it, so the same "now
+    /// empty" payload fires rather than leaving a consumer's own filter summary silently stale. The
+    /// payload's shape follows the column's kind: the selected keys for <see cref="Column{TItem}.FilterOptions"/>
+    /// and <see cref="Column{TItem}.FilterDropdown"/> columns, the single trimmed text for a
+    /// <see cref="Column{TItem}.FilterText"/> column. The uncontrolled equivalent of AntD's
     /// <c>onFilter</c>/<c>filteredValue</c> callback pair; there is no fully-controlled
-    /// <c>filteredValue</c> parameter (see <see cref="Column{TItem}.FilterOptions"/>). Not raised
-    /// while a dropdown is merely open, on an outside-click/Escape discard, or on a no-op OK/Reset
-    /// (the applied selection is unchanged — e.g. clicking OK with nothing ticked).
+    /// <c>filteredValue</c> parameter. Not raised while a dropdown is merely open, on an
+    /// outside-click/Escape discard (unless <see cref="Column{TItem}.FilterOnClose"/> turns that into
+    /// a commit), or on a no-op OK/Reset (the applied selection is unchanged — e.g. clicking OK with
+    /// nothing ticked).
     /// </summary>
     [Parameter] public EventCallback<(Column<TItem> Column, IReadOnlyList<string> SelectedValues)> OnFilterChanged { get; set; }
 
@@ -654,6 +658,10 @@
     /// <summary>Accessible-name fallback for a column's filter button when the column has no header
     /// text to name it. Override to localize.</summary>
     [Parameter] public string FilterLabel { get; set; } = "Filter";
+
+    /// <summary>Accessible name of the clear button inside a <see cref="Column{TItem}.FilterText"/>
+    /// column's search box (shown while it holds text). Override to localize.</summary>
+    [Parameter] public string FilterClearLabel { get; set; } = "Clear";
 
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
@@ -1117,7 +1125,7 @@
                 foreach (var gone in previousColumns)
                 {
                     if (_columns.Contains(gone) || gone.Filter is not { } filter) continue;
-                    filter.IsOpen = false;
+                    _ = gone.SetFilterOpen(false); // fire-and-forget: mid-render, see below
                     if (filter.Clear()) filterCleared.Add(gone);
                 }
 
@@ -1512,18 +1520,22 @@
     // Every entry point below is a no-op for a column with no filter state: TableColumnFilter only
     // renders while Column.CanFilter, so the guard covers a programmatic call, not a real UI path.
 
+    // Every open/close below goes through Column.SetFilterOpen, which flips the flag and raises the
+    // column's OnFilterDropdownOpenChange once per actual transition. The synchronous entry points
+    // (funnel click, backdrop, Escape) discard that task; the async ones (OK/Reset) await it.
+
     internal void OpenColumnFilter(Column<TItem> column)
     {
         if (column.Filter is not { } filter) return;
 
         foreach (var c in _columns)
-            if (!ReferenceEquals(c, column) && c.Filter is { } other) other.IsOpen = false;
+            if (!ReferenceEquals(c, column)) _ = c.SetFilterOpen(false);
 
         // Stage the dropdown from the last APPLIED selection, not whatever was left staged by a
         // previous open-then-cancel (outside click/Escape never copies pending back into applied, so
         // a stale pending set would otherwise resurface here) -- that is what Discard does.
         filter.Discard();
-        filter.IsOpen = true;
+        _ = column.SetFilterOpen(true);
 
         // TableColumnFilter is a child component: mutating a column's filter state directly doesn't
         // cause Table's own <thead> render (a sibling of every OTHER column's TableColumnFilter
@@ -1534,7 +1546,7 @@
 
     internal void CloseColumnFilter(Column<TItem> column)
     {
-        if (column.Filter is { } filter) filter.IsOpen = false;
+        _ = column.SetFilterOpen(false);
         StateHasChanged();
     }
 
@@ -1544,15 +1556,33 @@
     // steal focus back, leaving the newly opened panel unable to see Escape.
     internal bool AnyColumnFilterOpen => _columns.Any(c => c.IsFilterOpen);
 
+    // The filter trigger's (and its open dialog's) accessible name. Mirrors Column.SortButtonLabel's
+    // title-less fallback -- a headerless column's filter button still needs a name, from FilterLabel
+    // rather than a hardcoded literal, so a localized table doesn't announce this one button in
+    // English. The applied/unapplied fork: an applied filter is otherwise signalled only by
+    // recoloring the funnel glyph, which no screen reader (and no user who can't distinguish the two
+    // blues) can perceive. Computed here, once, for everything that names itself after the column's
+    // filter: TableColumnFilter's trigger and dialog, and the Text kind's search box in
+    // TableFilterEditor.
+    internal string FilterAccessibleName(Column<TItem> column) =>
+        column.Filter is { IsActive: true }
+            ? (string.IsNullOrEmpty(column.HeaderText)
+                ? FilterAppliedLabel
+                : string.Format(FilterAppliedButtonLabelFormat, column.HeaderText))
+            : (string.IsNullOrEmpty(column.HeaderText)
+                ? FilterLabel
+                : string.Format(FilterButtonLabelFormat, column.HeaderText));
+
     // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline. Commit
     // reports whether the applied selection actually changed (it compares BEFORE overwriting) -- a
     // no-op OK (e.g. clicking it with nothing ticked, or re-ticking back to the exact set that was
     // already applied) must not reset the page or fire a spurious "it changed" notification.
-    internal async Task ApplyColumnFilterAsync(Column<TItem> column)
+    // closeDropdown = false is a custom template's ConfirmAsync(false): apply and keep editing.
+    internal async Task ApplyColumnFilterAsync(Column<TItem> column, bool closeDropdown = true)
     {
         if (column.Filter is not { } filter) return;
         var changed = filter.Commit();
-        filter.IsOpen = false;
+        if (closeDropdown) await column.SetFilterOpen(false);
         await RecomputeAfterFilterChangeAsync(column, changed);
     }
 
@@ -1563,7 +1593,7 @@
     {
         if (column.Filter is not { } filter) return;
         var changed = filter.Clear();
-        filter.IsOpen = false;
+        await column.SetFilterOpen(false);
         await RecomputeAfterFilterChangeAsync(column, changed);
     }
 
