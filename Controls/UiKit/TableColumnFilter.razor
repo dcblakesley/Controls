@@ -165,10 +165,12 @@
 
     // Every dismissal (backdrop click, Escape, funnel re-click) -- AntD's filterOnClose turns each of
     // them into an OK; the default discards the staged edits (they are re-staged from applied on the
-    // next open, see Table.OpenColumnFilter).
+    // next open, see Table.OpenColumnFilter). Never for the Custom kind: with a FilterDropdown
+    // template the consumer owns confirm (AntD ignores filterOnClose when filterDropdown is set), and
+    // a dismissal silently committing whatever the template had staged would bypass it.
     async Task Close()
     {
-        if (Column.FilterOnClose) await Table.ApplyColumnFilterAsync(Column);
+        if (Column.FilterOnClose && Column.Filter?.Kind != TableFilterKind.Custom) await Table.ApplyColumnFilterAsync(Column);
         else Table.CloseColumnFilter(Column);
     }
 

@@ -1,13 +1,20 @@
 @namespace Controls
 @typeparam TItem
+@implements IAsyncDisposable
 
 @* The editor for one column's filter, rendered from the column's Filter state (Column.Filter):
    one component per filter kind and placement, so a kind's editor exists exactly once whether it
    sits inside TableColumnFilter's dropdown panel (Placement = Dropdown: edits PENDING only, the
-   panel's own OK/Reset commit or clear) or, later, in a header filter row (Placement = Row). The
-   Options kind in Dropdown placement is the checkbox/radio list that used to live inline in
+   panel's own OK/Reset commit or clear) or in the header filter row (Placement = Row: edits PENDING
+   and commits it as it goes -- a selection at once, typed text after Table.FilterDebounceMilliseconds
+   of quiet). Every commit, in either placement, is Table.ApplyColumnFilterAsync, so the row editors
+   get the same "real change only" page reset and OnFilterChanged rule the OK button has.
+
+   The Options kind in Dropdown placement is the checkbox/radio list that used to live inline in
    TableColumnFilter -- byte-identical DOM, no wrapper element of its own. Renders nothing for a
-   kind/placement it has no editor for, so the surrounding panel still gets its footer. *@
+   kind/placement it has no editor for, so the surrounding panel still gets its footer. Adding a kind
+   means one branch in each placement below (Row branches must call CommitRowAsync -- directly for
+   a discrete pick, via the debounce for free typing). *@
 @if (Placement == TableFilterPlacement.Dropdown)
 {
     @if (Column.Filter is OptionsFilterState<TItem> options)
@@ -67,6 +74,65 @@
         </div>
     }
 }
+else
+{
+    @* Row placement. One wrapper for every kind: the flex/width contract the filter-row cell's CSS
+       relies on (.wss-table-filter-editor), and the containing block for the Text kind's clear
+       button. Everything renders natively disabled while the Table is Loading -- the same inertness
+       contract the funnel button has, since the mask covers this row too. *@
+    <div class="wss-table-filter-editor">
+        @if (Column.Filter is OptionsFilterState<TItem> options)
+        {
+            @* The kit's own Select stands in for the dropdown's checkbox/radio list: Multiple mirrors
+               FilterMultiple, its selection IS the pending set (PendingValues out, TryRestore in), and
+               every change commits on the spot -- there is no OK in this placement. Options are mapped
+               once per options snapshot, see SelectOptionsFor. *@
+            <Select TValue="string"
+                    Mode="@(options.Multiple ? SelectMode.Multiple : SelectMode.Single)"
+                    Options="@SelectOptionsFor(options)"
+                    Value="@SinglePendingValue(options)"
+                    ValueChanged="@(v => OnRowSingleSelectionChangedAsync(options, v))"
+                    Values="@(options.Multiple ? options.PendingValues : null)"
+                    ValuesChanged="@(vs => OnRowSelectionChangedAsync(options, vs))"
+                    AllowClear="true"
+                    Size="SelectSize.Small"
+                    InputLabel="@Table.FilterRowLabel(Column)"
+                    Disabled="@Table.Loading" />
+        }
+        else if (Column.Filter is TextFilterState<TItem> text)
+        {
+            @* The same search box + clear button as the dropdown, minus the panel gutter wrapper.
+               Typing updates PENDING and arms the debounce; Enter and the clear button commit at
+               once (cancelling any debounce in flight). *@
+            <input type="search"
+                   class="wss-table-filter-input"
+                   @ref="_inputRef"
+                   autocomplete="off"
+                   aria-label="@Table.FilterRowLabel(Column)"
+                   value="@text.PendingText"
+                   disabled="@Table.Loading"
+                   @oninput="@(e => OnRowTextInputAsync(text, e))"
+                   @onkeydown="OnTextKeyDown" />
+            @if (!string.IsNullOrEmpty(text.PendingText))
+            {
+                <button type="button"
+                        class="wss-table-filter-input-clear"
+                        aria-label="@Table.FilterClearLabel"
+                        disabled="@Table.Loading"
+                        @onclick="@(() => ClearPendingTextAsync(text))">
+                    @EditIcons.ClearCircle
+                </button>
+            }
+        }
+        else if (Column.Filter is CustomFilterState<TItem> custom && Column.FilterDropdown is { } template)
+        {
+            @* The consumer's template renders in the cell with the same context the dropdown hands
+               it: SetSelectedValues stages, ConfirmAsync applies (closeDropdown is moot here), and
+               Close/IsOpen are inert -- nothing is ever open in this placement. *@
+            @template(new TableFilterContext<TItem>(Table, Column, custom))
+        }
+    </div>
+}
 
 @code {
     /// <summary>The column whose filter this edits. Required; its <c>Filter</c> state decides the
@@ -90,6 +156,33 @@
 
     ElementReference _inputRef;
 
+    // Row placement, Text kind: the in-flight debounce (null between keystrokes). Owned and cancelled
+    // here so a commit can never land after this editor left the tree -- the column may have been
+    // removed, or the placement switched back to Dropdown, in the meantime.
+    CancellationTokenSource? _debounceCts;
+    bool _disposed;
+
+    // Select treats Options as immutable-by-reference (a new instance costs it an O(n) lookup and
+    // filter rebuild), so the TableFilterOption -> SelectOption mapping is cached against the column's
+    // own options snapshot, which is itself only replaced when the options actually changed.
+    IReadOnlyList<TableFilterOption>? _selectOptionsSource;
+    List<SelectOption<string>> _selectOptions = [];
+
+    IEnumerable<SelectOption<string>> SelectOptionsFor(OptionsFilterState<TItem> options)
+    {
+        if (!ReferenceEquals(options.Options, _selectOptionsSource))
+        {
+            _selectOptionsSource = options.Options;
+            _selectOptions = options.Options.Select(o => new SelectOption<string>(o.Value, o.Text)).ToList();
+        }
+        return _selectOptions;
+    }
+
+    // Single-mode Select value: the one pending key, or Select's own "nothing selected" default
+    // (null -- Select<string>.Value is declared non-nullable but defaults to default!, exactly this).
+    static string SinglePendingValue(KeyedFilterState<TItem> keyed) =>
+        keyed.PendingValues is [var first, ..] ? first : null!;
+
     /// <summary>
     /// Moves focus into this editor's own text box, if it has one (the Text kind), and reports
     /// whether it did -- the panel that hosts it focuses itself instead when this returns false, so
@@ -105,18 +198,88 @@
         return true;
     }
 
-    // Enter applies, exactly as the OK button does (Dropdown placement only: this whole editor is
-    // rendered inside that branch). Every other key just edits the staged text via @oninput.
+    // Enter applies, exactly as the OK button does. In the dropdown that also closes the panel; in
+    // the row there is nothing to close, and any debounce still counting down is superseded (it
+    // would otherwise re-commit the same text a moment later -- harmless, but a wasted recompute).
+    // Every other key just edits the staged text via @oninput.
     async Task OnTextKeyDown(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter") await Table.ApplyColumnFilterAsync(Column);
+        if (e.Key != "Enter") return;
+        CancelDebounce();
+        await Table.ApplyColumnFilterAsync(Column, closeDropdown: Placement == TableFilterPlacement.Dropdown);
     }
 
     // The clear button removes itself from the DOM the moment the text is empty, which would drop
-    // focus to <body>; hand it back to the input so the user can keep typing.
+    // focus to <body>; hand it back to the input so the user can keep typing. Dropdown: the STAGED
+    // text only (OK still applies). Row: applied at once, like every other row edit.
     async Task ClearPendingTextAsync(TextFilterState<TItem> text)
     {
+        CancelDebounce();
         text.PendingText = null;
+        if (Placement == TableFilterPlacement.Row) await CommitRowAsync();
         try { await _inputRef.FocusAsync(); } catch { /* not focusable (prerender/tests) */ }
+    }
+
+    // ----- Row placement: auto-commit -----
+
+    // The one commit call every Row editor makes. closeDropdown: false only for the sake of a custom
+    // template that happens to be open in another column -- nothing this editor owns is ever open.
+    Task CommitRowAsync() => Table.ApplyColumnFilterAsync(Column, closeDropdown: false);
+
+    // Options kind (Select): the new selection replaces the pending set and commits immediately.
+    async Task OnRowSelectionChangedAsync(KeyedFilterState<TItem> keyed, IEnumerable<string>? values)
+    {
+        keyed.TryRestore(values as IReadOnlyList<string> ?? values?.ToList() ?? []);
+        await CommitRowAsync();
+    }
+
+    Task OnRowSingleSelectionChangedAsync(KeyedFilterState<TItem> keyed, string? value) =>
+        OnRowSelectionChangedAsync(keyed, value is null ? [] : [value]);
+
+    // Text kind: pending follows every keystroke (so the box never fights the user), but the commit
+    // waits for Table.FilterDebounceMilliseconds of quiet -- each keystroke cancels the previous
+    // countdown and starts its own, so only the last one lands. 0 commits synchronously per input.
+    // The same CTS + Task.Delay shape Select uses for its search debounce.
+    async Task OnRowTextInputAsync(TextFilterState<TItem> text, ChangeEventArgs e)
+    {
+        text.PendingText = e.Value as string;
+
+        var delay = Table.FilterDebounceMilliseconds;
+        if (delay <= 0)
+        {
+            await CommitRowAsync();
+            return;
+        }
+
+        CancelDebounce();
+        var cts = _debounceCts = new CancellationTokenSource();
+        var token = cts.Token;
+        try
+        {
+            await Task.Delay(delay, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // superseded by a newer keystroke, flushed by Enter/clear, or disposed
+        }
+        // The delay can complete in the same tick a cancel/dispose arrives; a stale continuation must
+        // not commit against a column this editor no longer represents.
+        if (token.IsCancellationRequested || _disposed) return;
+
+        await InvokeAsync(CommitRowAsync);
+    }
+
+    void CancelDebounce()
+    {
+        _debounceCts?.Cancel();
+        _debounceCts?.Dispose();
+        _debounceCts = null;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        CancelDebounce();
+        return ValueTask.CompletedTask;
     }
 }

@@ -109,7 +109,10 @@ public class Column<TItem> : ComponentBase, IDisposable
 
     /// <summary>AntD's <c>filterOnClose</c>: when true, dismissing the dropdown (an outside click,
     /// Escape, or clicking the funnel again) COMMITS the staged edits exactly as OK would, instead of
-    /// discarding them. Default false — only OK applies.</summary>
+    /// discarding them. Default false — only OK applies. Ignored for a <see cref="FilterDropdown"/>
+    /// column (as AntD ignores it under <c>filterDropdown</c>): the template owns confirm, so a
+    /// dismissal there always discards. Not consulted under
+    /// <see cref="TableFilterPlacement.Row"/>, where nothing opens or closes.</summary>
     [Parameter] public bool FilterOnClose { get; set; }
 
     /// <summary>Whether the Table should render a filter control on this column's header — true once

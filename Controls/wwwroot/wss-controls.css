@@ -2197,8 +2197,9 @@
 }
 
 /* Thin vertical separator between header cells (AntD trait); never after the
-   expand/selection columns or the last header cell. */
-.wss-table-thead .wss-table-cell:not(:last-child):not(.wss-table-selection-cell):not(.wss-table-expand-cell)::before {
+   expand/selection columns or the last header cell, and never in the filter row (Table
+   .FilterPlacement = Row, further down): its editors already draw their own boxes. */
+.wss-table-thead .wss-table-cell:not(:last-child):not(.wss-table-selection-cell):not(.wss-table-expand-cell):not(.wss-table-filter-row-cell)::before {
     position: absolute;
     top: 50%;
     inset-inline-end: 0;
@@ -2843,6 +2844,51 @@
     color: var(--wss-color-text);
 }
 
+/* Filter row (Table.FilterPlacement = Row): a second <tr> in <thead> with one always-visible editor
+   per filterable column. Its cells are thead cells (header background, borders under Bordered) but
+   hold controls rather than titles, so the header-cell typography is undone: white-space: nowrap
+   would stop a Select's tags from wrapping and font-weight: 500 would bleed into the editors.
+   Half the vertical padding of the size tier's plain cell, same horizontal, so the 24px editors sit
+   in a row about the height of a header row rather than doubling the thead. Scoped under
+   .wss-table-thead to outrank the `.wss-table-thead .wss-table-cell` rule it overrides. */
+.wss-table-thead .wss-table-filter-row-cell {
+    padding: 8px 16px;
+    font-weight: normal;
+    white-space: normal;
+    background: var(--wss-color-thead-bg);
+}
+
+.wss-table-middle .wss-table-thead .wss-table-filter-row-cell {
+    padding: 6px 8px;
+}
+
+.wss-table-small .wss-table-thead .wss-table-filter-row-cell {
+    padding: 4px 8px;
+}
+
+/* The wrapper TableFilterEditor renders around every row-placement editor: a flex row whose one
+   child fills the cell (a Select is inline-block with a 120px floor by default, the search box is a
+   block), min-width: 0 so a narrow column can shrink it rather than overflow. position: relative is
+   the containing block for the Text kind's clear button, which the dropdown's .wss-table-filter-text
+   wrapper provides there. */
+.wss-table-filter-editor {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.wss-table-filter-editor > :not(.wss-table-filter-input-clear) {
+    width: 100%;
+}
+
+/* The dropdown's 12px offset assumed its wrapper's 8px gutter; here the box is the wrapper's full
+   width, so 4px keeps the button the same 4px inside the box's end edge (within the 28px the input
+   reserves for it). */
+.wss-table-filter-editor > .wss-table-filter-input-clear {
+    inset-inline-end: 4px;
+}
+
 /* Table.ScrollY: the AntD scroll.y equivalent -- a bounded, vertically scrolling body with a
    sticky header. Deliberately scoped to .wss-table-wrapper's own scrolling only -- a header that
    stays fixed while the whole PAGE scrolls (viewport-level sticky) is out of scope. max-height
@@ -2887,6 +2933,30 @@
    partly unusable, just not masked. */
 .wss-table-wrapper-scroll-y .wss-table-thead .wss-table-cell-filter-open {
     z-index: 3;
+}
+
+/* ScrollY + the filter row (Table.FilterPlacement = Row, .wss-table-has-filter-row on the <table>):
+   the sticky element moves from each header CELL to the <thead>. Two header rows have to pin as one
+   block, and per-cell sticky cannot do that: every cell's top: 0 is the same offset, so the filter
+   row's cells would slide up over the title row's the moment the body scrolled, and giving the second
+   row its own top would mean measuring the first row's height in JS. A sticky <thead> pins both rows
+   at their natural offsets with no measurement (every current engine supports sticky on thead). The
+   plain thead cells' sticky rule above is therefore undone here -- back to the position: relative the
+   base header-cell rule sets (still the ::before separator's anchor) and, as important, z-index: auto:
+   a rank on each cell would make each one its own stacking context, and a Select dropdown opened from
+   one filter cell would then paint UNDER the very next cell. The thead's own z-index: 1 keeps the
+   whole header above body-row backgrounds and below .wss-table-loading-mask's 2, exactly as the
+   per-cell rank did; the .wss-table-cell-filter-open promotion above has no counterpart here because
+   Row placement has no funnel dropdown to keep out from under the mask. */
+.wss-table-wrapper-scroll-y .wss-table-has-filter-row .wss-table-thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.wss-table-wrapper-scroll-y .wss-table-has-filter-row .wss-table-thead .wss-table-cell {
+    position: relative;
+    z-index: auto;
 }
 
 /* ============================================================================

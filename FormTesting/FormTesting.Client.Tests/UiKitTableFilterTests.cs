@@ -1,6 +1,8 @@
 using System.Reflection;
+using AngleSharp.Dom;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace FormTesting.Client.Tests;
 
@@ -582,7 +584,8 @@ public class UiKitTableFilterTests : BunitContext
     static RenderFragment CustomColumn(
         Func<Person, string, bool>? onFilter,
         Action<TableFilterContext<Person>> capture,
-        IReadOnlyList<TableFilterOption>? options = null) => builder =>
+        IReadOnlyList<TableFilterOption>? options = null,
+        bool filterOnClose = false) => builder =>
     {
         builder.OpenComponent<PropertyColumn<Person, string>>(0);
         builder.AddAttribute(1, "Title", "Name");
@@ -597,6 +600,7 @@ public class UiKitTableFilterTests : BunitContext
             b.AddContent(2, string.Join(",", ctx.SelectedValues));
             b.CloseElement();
         }));
+        builder.AddAttribute(6, "FilterOnClose", filterOnClose);
         builder.CloseComponent();
     };
 
@@ -950,5 +954,620 @@ public class UiKitTableFilterTests : BunitContext
         cut.Find(".wss-table-filter-backdrop").Click();
         Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
         Assert.Null(raised);
+    }
+
+    [Fact]
+    public async Task FilterOnClose_is_ignored_for_a_Custom_column_so_a_dismissal_still_discards()
+    {
+        // AntD ignores filterOnClose under filterDropdown: the template owns confirm, and a backdrop
+        // click must not commit whatever it had staged behind its back.
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        TableFilterContext<Person>? latest = null;
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
+            .Add(t => t.ChildContent, CustomColumn(NameEquals, ctx => latest = ctx, filterOnClose: true)));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        await cut.InvokeAsync(() => latest!.SetSelectedValues(["Bob"]));
+        cut.Find(".wss-table-filter-backdrop").Click();
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.Null(raised);
+    }
+
+    // =====================================================================================
+    // Row placement (Table.FilterPlacement = Row)
+    // =====================================================================================
+
+    // A column with every filter-relevant knob exposed, so one builder covers the sortable /
+    // headerless / Options / Text permutations the row tests need.
+    static RenderFragment Col<TProp>(
+        string? title,
+        Func<Person, TProp> property,
+        bool sortable = false,
+        IReadOnlyList<TableFilterOption>? options = null,
+        Func<Person, string, bool>? onFilter = null,
+        Func<Person, string?>? filterText = null,
+        bool filterMultiple = true) => builder =>
+    {
+        builder.OpenComponent<PropertyColumn<Person, TProp>>(0);
+        builder.AddAttribute(1, "Title", title);
+        builder.AddAttribute(2, "Property", property);
+        builder.AddAttribute(3, "Sortable", sortable);
+        builder.AddAttribute(4, "FilterOptions", options);
+        builder.AddAttribute(5, "OnFilter", onFilter);
+        builder.AddAttribute(6, "FilterText", filterText);
+        builder.AddAttribute(7, "FilterMultiple", filterMultiple);
+        builder.CloseComponent();
+    };
+
+    // Each part in its own region (AddContent), so their sequence numbers cannot collide.
+    static RenderFragment Columns(params RenderFragment[] parts) => builder =>
+    {
+        for (var i = 0; i < parts.Length; i++) builder.AddContent(i, parts[i]);
+    };
+
+    static IReadOnlyList<TableFilterOption> AgeOptions() => [new("Old", "old"), new("Young", "young")];
+    static Func<Person, string, bool> AgeBand => (x, v) => v == "old" ? x.Age > 25 : x.Age <= 25;
+
+    // Name column only (default), or every column's first cell -- RenderedNames assumes one column.
+    static string[] FirstCellNames(IRenderedComponent<Table<Person>> cut) =>
+        cut.FindAll("tbody .wss-table-row:not(.wss-table-placeholder)")
+            .Select(tr => tr.QuerySelector("td")!.TextContent.Trim()).ToArray();
+
+    IRenderedComponent<Table<Person>> RenderRowPlacement(
+        RenderFragment columns,
+        Action<ComponentParameterCollectionBuilder<Table<Person>>>? configure = null) =>
+        Render<Table<Person>>(p =>
+        {
+            p.Add(t => t.DataSource, People());
+            p.Add(t => t.FilterPlacement, TableFilterPlacement.Row);
+            p.Add(t => t.ChildContent, columns);
+            configure?.Invoke(p);
+        });
+
+    static IElement RowTextInput(IRenderedComponent<Table<Person>> cut) =>
+        cut.Find(".wss-table-filter-row input.wss-table-filter-input");
+
+    // Find + dispatch on the renderer's dispatcher, so no render can slip in between them: the row
+    // editor's @oninput lambda gets a fresh handler id on every render, and a Find on one line with
+    // the dispatch on the next raced a pending render under the parallel full-suite run (bUnit's
+    // UnknownEventHandlerIdException). The returned task is the handler's own -- it stays pending
+    // while a debounce counts down.
+    static Task TypeInRowAsync(IRenderedComponent<Table<Person>> cut, string text) =>
+        cut.InvokeAsync(() => RowTextInput(cut).InputAsync(new ChangeEventArgs { Value = text }));
+
+    static Task PressEnterInRowAsync(IRenderedComponent<Table<Person>> cut) =>
+        cut.InvokeAsync(() => RowTextInput(cut).KeyDownAsync(new KeyboardEventArgs { Key = "Enter" }));
+
+    [Fact]
+    public void Row_placement_renders_a_filter_row_with_one_cell_per_column_and_no_funnels()
+    {
+        // Name: sortable + Options; Age: Text, not sortable; Note: nothing. Every header <th> must take
+        // its plain non-filterable shape (the sortable one its exact single-button DOM), the editors
+        // move to the second row, and the unfilterable column still gets a (blank) cell.
+        var cut = RenderRowPlacement(Columns(
+            Col("Name", x => x.Name, sortable: true, options: NameOptions(), onFilter: NameEquals),
+            Col("Age", x => x.Age, filterText: ByAge),
+            Col("Note", x => "-")));
+
+        Assert.Contains("wss-table-has-filter-row", cut.Find("table.wss-table").ClassList);
+        Assert.Empty(cut.FindAll(".wss-table-filter-trigger"));
+        Assert.Empty(cut.FindAll(".wss-table-header-inner"));
+
+        var rows = cut.FindAll("thead tr");
+        Assert.Equal(2, rows.Count);
+        Assert.Equal("wss-table-filter-row", rows[1].ClassName);
+
+        var headers = rows[0].QuerySelectorAll("th");
+        Assert.Equal(3, headers.Length);
+        var sortButton = Assert.Single(headers[0].Children);
+        Assert.Equal("wss-table-sort-trigger", sortButton.ClassName); // no header-inner wrapper, no funnel
+        Assert.Single(headers[1].ChildNodes);                          // bare text-only header cell
+        Assert.Equal("Age", headers[1].TextContent);
+
+        var cells = rows[1].QuerySelectorAll("td");
+        Assert.Equal(3, cells.Length);
+        Assert.All(cells, td => Assert.Equal("wss-table-cell wss-table-filter-row-cell", td.ClassName));
+        Assert.NotNull(cells[0].QuerySelector(".wss-table-filter-editor > .wss-select"));
+        Assert.NotNull(cells[1].QuerySelector(".wss-table-filter-editor > input.wss-table-filter-input"));
+        Assert.Empty(cells[2].Children);
+        Assert.Empty(cells[1].QuerySelectorAll(".wss-table-filter-text")); // the dropdown's gutter wrapper stays there
+
+        var editors = cut.FindComponents<TableFilterEditor<Person>>();
+        Assert.Equal(2, editors.Count);
+        Assert.All(editors, e => Assert.Equal(TableFilterPlacement.Row, e.Instance.Placement));
+
+        // Named per column with the row format; the Select through its combobox input.
+        Assert.Equal("Filter by Name", cells[0].QuerySelector("input.wss-select-selection-search-input")!.GetAttribute("aria-label"));
+        Assert.Equal("Filter by Age", cells[1].QuerySelector("input")!.GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Row_placement_adds_blank_leading_cells_for_the_expand_and_selection_columns()
+    {
+        var cut = RenderRowPlacement(
+            Columns(Col("Name", x => x.Name, options: NameOptions(), onFilter: NameEquals), Col("Age", x => x.Age)),
+            p => p.Add(t => t.Selectable, true)
+                  .Add(t => t.RowDetail, (Person x) => b => b.AddContent(0, x.Name)));
+
+        var headerCount = cut.FindAll("thead tr:first-child th").Count;
+        var cells = cut.FindAll("thead tr.wss-table-filter-row td");
+        Assert.Equal(4, headerCount);
+        Assert.Equal(4, cells.Count);
+        Assert.Empty(cells[0].Children); // expand
+        Assert.Empty(cells[1].Children); // selection
+        Assert.NotNull(cells[2].QuerySelector(".wss-table-filter-editor"));
+        Assert.Empty(cells[3].Children);
+    }
+
+    [Fact]
+    public void Dropdown_placement_renders_no_filter_row_and_the_funnel_header_is_unchanged()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.ChildContent, Col("Name", x => x.Name, sortable: true, options: NameOptions(), onFilter: NameEquals)));
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-row"));
+        Assert.Empty(cut.FindAll(".wss-table-filter-row-cell"));
+        Assert.DoesNotContain("wss-table-has-filter-row", cut.Find("table.wss-table").ClassList);
+        Assert.Single(cut.FindAll("thead tr"));
+        Assert.Single(cut.FindAll(".wss-table-filter-trigger"));
+        Assert.Single(cut.FindAll("thead th > .wss-table-header-inner"));
+        Assert.Empty(cut.FindComponents<TableFilterEditor<Person>>()); // only rendered while a dropdown is open
+    }
+
+    [Fact]
+    public void FilterRowLabelFormat_names_the_row_editors_and_a_headerless_column_falls_back_to_FilterLabel()
+    {
+        var cut = RenderRowPlacement(
+            Columns(Col("Name", x => x.Name, filterText: ByName), Col<string>(null, x => x.Name, filterText: ByName)),
+            p => p.Add(t => t.FilterRowLabelFormat, "Filtrar por {0}").Add(t => t.FilterLabel, "Filtrar"));
+
+        var inputs = cut.FindAll(".wss-table-filter-row input.wss-table-filter-input");
+        Assert.Equal("Filtrar por Name", inputs[0].GetAttribute("aria-label"));
+        Assert.Equal("Filtrar", inputs[1].GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Options_row_editor_is_a_multiple_Select_that_narrows_on_pick_and_clears_on_AllowClear()
+    {
+        var raised = new List<IReadOnlyList<string>>();
+        var cut = RenderRowPlacement(
+            Col("Name", x => x.Name, options: NameOptions(), onFilter: NameEquals),
+            p => p.Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        var select = cut.Find(".wss-table-filter-row .wss-select");
+        Assert.Contains("wss-select-multiple", select.ClassList);
+        Assert.Contains("wss-select-sm", select.ClassList);
+
+        select.Click(); // open
+        cut.FindAll(".wss-select-item-option").First(o => o.TextContent.Contains("Bob")).Click();
+
+        Assert.Equal(["Bob"], RenderedNames(cut)); // committed on the spot -- no OK in this placement
+        Assert.Equal([["Bob"]], raised);
+        Assert.True(Get<bool>(FilterOf(cut)!, "IsActive"));
+
+        cut.FindAll(".wss-select-item-option").First(o => o.TextContent.Contains("Carol")).Click();
+        Assert.Equal(["Bob", "Carol"], RenderedNames(cut));
+        Assert.Equal(["Bob", "Carol"], raised[^1]);
+
+        cut.Find(".wss-table-filter-row button.wss-select-clear").Click();
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.Empty(raised[^1]);
+        Assert.Equal(3, raised.Count);
+    }
+
+    [Fact]
+    public void Options_row_editor_with_FilterMultiple_false_is_a_single_Select_where_a_pick_replaces()
+    {
+        var cut = RenderRowPlacement(Col("Name", x => x.Name, options: NameOptions(), onFilter: NameEquals, filterMultiple: false));
+
+        var select = cut.Find(".wss-table-filter-row .wss-select");
+        Assert.Contains("wss-select-single", select.ClassList);
+
+        select.Click();
+        cut.FindAll(".wss-select-item-option").First(o => o.TextContent.Contains("Bob")).Click();
+        Assert.Equal(["Bob"], RenderedNames(cut));
+
+        cut.Find(".wss-table-filter-row .wss-select").Click();
+        cut.FindAll(".wss-select-item-option").First(o => o.TextContent.Contains("Carol")).Click();
+        Assert.Equal(["Carol"], RenderedNames(cut));
+        Assert.Equal(["Carol"], Get<IReadOnlyList<string>>(FilterOf(cut)!, "AppliedValues"));
+    }
+
+    [Fact]
+    public async Task Text_row_editor_with_a_zero_debounce_narrows_on_every_input()
+    {
+        var raised = new List<IReadOnlyList<string>>();
+        var cut = RenderRowPlacement(
+            Col("Name", x => x.Name, filterText: ByName),
+            p => p.Add(t => t.FilterDebounceMilliseconds, 0)
+                  .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        await TypeInRowAsync(cut, "o");
+        Assert.Equal(["Bob", "Carol"], RenderedNames(cut));
+        await TypeInRowAsync(cut, "ob");
+        Assert.Equal(["Bob"], RenderedNames(cut));
+        Assert.Equal([["o"], ["ob"]], raised);
+        Assert.Single(cut.FindAll(".wss-table-filter-row .wss-table-filter-input-clear"));
+    }
+
+    [Fact]
+    public async Task Text_row_editor_Enter_commits_at_once_while_a_debounce_is_still_counting_down()
+    {
+        var raised = new List<IReadOnlyList<string>>();
+        var cut = RenderRowPlacement(
+            Col("Name", x => x.Name, filterText: ByName),
+            p => p.Add(t => t.FilterDebounceMilliseconds, 5000)
+                  .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        var pending = TypeInRowAsync(cut, "bob");
+        Assert.False(pending.IsCompleted);                          // the debounce is in flight
+        cut.WaitForAssertion(() => Assert.Equal("bob", RowTextInput(cut).GetAttribute("value"))); // staged
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut)); // pending only
+        Assert.Empty(raised);
+
+        await PressEnterInRowAsync(cut);
+
+        Assert.Equal(["Bob"], RenderedNames(cut));
+        Assert.Equal([["bob"]], raised);
+        await pending; // cancelled, and it must not commit a second time
+        Assert.Single(raised);
+    }
+
+    [Fact]
+    public async Task Text_row_editor_clear_button_clears_and_commits_at_once()
+    {
+        var raised = new List<IReadOnlyList<string>>();
+        var cut = RenderRowPlacement(
+            Col("Name", x => x.Name, filterText: ByName),
+            p => p.Add(t => t.FilterDebounceMilliseconds, 5000)
+                  .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        var pending = TypeInRowAsync(cut, "bob");
+        await PressEnterInRowAsync(cut);
+        await pending;
+        Assert.Equal(["Bob"], RenderedNames(cut));
+
+        Assert.Equal("Clear", cut.Find(".wss-table-filter-row .wss-table-filter-input-clear").GetAttribute("aria-label"));
+        await cut.InvokeAsync(() => cut.Find(".wss-table-filter-row .wss-table-filter-input-clear").ClickAsync(new MouseEventArgs()));
+
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.Empty(cut.FindAll(".wss-table-filter-row .wss-table-filter-input-clear"));
+        Assert.False(RowTextInput(cut).HasAttribute("value"));
+        Assert.Equal([["bob"], []], raised);
+    }
+
+    [Fact]
+    public async Task Text_row_editor_debounce_coalesces_a_burst_of_keystrokes_into_one_commit()
+    {
+        // The window is deliberately wide: the three dispatches below are back-to-back synchronous
+        // calls, but the suite runs classes in parallel, and a 30ms window once let the first
+        // keystroke's countdown expire before the second was dispatched on a loaded machine.
+        var raised = new List<IReadOnlyList<string>>();
+        var cut = RenderRowPlacement(
+            Col("Name", x => x.Name, filterText: ByName),
+            p => p.Add(t => t.FilterDebounceMilliseconds, 500)
+                  .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        var t1 = TypeInRowAsync(cut, "b");
+        var t2 = TypeInRowAsync(cut, "bo");
+        var t3 = TypeInRowAsync(cut, "bob");
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut)); // nothing committed yet
+        Assert.Empty(raised);
+        await Task.WhenAll(t1, t2, t3);
+
+        cut.WaitForAssertion(() => Assert.Equal(["Bob"], RenderedNames(cut)), TimeSpan.FromSeconds(5));
+        Assert.Equal([["bob"]], raised); // the first two keystrokes never committed
+    }
+
+    [Fact]
+    public async Task Disposing_the_row_editor_mid_debounce_neither_throws_nor_applies()
+    {
+        var raised = new List<IReadOnlyList<string>>();
+        var cut = RenderRowPlacement(
+            Col("Name", x => x.Name, filterText: ByName),
+            p => p.Add(t => t.FilterDebounceMilliseconds, 50)
+                  .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        var pending = TypeInRowAsync(cut, "bob");
+        Assert.False(pending.IsCompleted);
+
+        // Switching back to Dropdown removes the filter row, disposing the editor with its countdown.
+        cut.Render(p => p.Add(t => t.FilterPlacement, TableFilterPlacement.Dropdown));
+        Assert.Empty(cut.FindAll(".wss-table-filter-row"));
+        Assert.Single(cut.FindAll(".wss-table-filter-trigger"));
+
+        await pending;              // cancelled, not faulted
+        await Task.Delay(150);      // well past the original deadline
+
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.Empty(raised);
+        Assert.False(Get<bool>(FilterOf(cut)!, "IsActive"));
+    }
+
+    [Fact]
+    public async Task Loading_disables_every_row_editor()
+    {
+        var cut = RenderRowPlacement(
+            Columns(
+                Col("Name", x => x.Name, options: NameOptions(), onFilter: NameEquals),
+                Col("Age", x => x.Age, filterText: ByAge)),
+            p => p.Add(t => t.FilterDebounceMilliseconds, 0));
+
+        await TypeInRowAsync(cut, "3"); // so the clear button is rendered too
+        Assert.Equal(["Alice"], FirstCellNames(cut));
+        Assert.False(RowTextInput(cut).HasAttribute("disabled"));
+        Assert.DoesNotContain("wss-select-disabled", cut.Find(".wss-table-filter-row .wss-select").ClassList);
+
+        cut.Render(p => p.Add(t => t.Loading, true));
+
+        Assert.True(RowTextInput(cut).HasAttribute("disabled"));
+        Assert.True(cut.Find(".wss-table-filter-row .wss-table-filter-input-clear").HasAttribute("disabled"));
+        var select = cut.Find(".wss-table-filter-row .wss-select");
+        Assert.Contains("wss-select-disabled", select.ClassList);
+        Assert.True(select.QuerySelector("input")!.HasAttribute("disabled"));
+        Assert.Equal(["Alice"], FirstCellNames(cut)); // the applied filter itself is untouched
+
+        cut.Render(p => p.Add(t => t.Loading, false));
+        Assert.False(RowTextInput(cut).HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task Custom_template_renders_in_the_row_cell_and_ConfirmAsync_narrows()
+    {
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        TableFilterContext<Person>? latest = null;
+        var cut = RenderRowPlacement(
+            CustomColumn(NameEquals, ctx => latest = ctx, NameOptions()),
+            p => p.Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v)));
+
+        var cell = cut.Find(".wss-table-filter-row-cell");
+        Assert.NotNull(cell.QuerySelector(".wss-table-filter-editor > .custom-panel"));
+        Assert.Empty(cut.FindAll(".wss-table-filter-trigger"));
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.False(latest!.IsOpen);
+        Assert.Equal(["Alice", "Bob", "Carol"], latest.Options!.Select(o => o.Value));
+
+        await cut.InvokeAsync(() => latest!.SetSelectedValues(["Bob"]));
+        Assert.Equal("Bob", cut.Find(".custom-panel").TextContent); // staged, template re-rendered
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+
+        await cut.InvokeAsync(() => latest!.ConfirmAsync());
+        Assert.Equal(["Bob"], RenderedNames(cut));
+        Assert.Equal(["Bob"], raised!.Value.Values);
+
+        // Close is inert here -- nothing is open, and the template stays put.
+        await cut.InvokeAsync(() => latest!.Close());
+        Assert.NotNull(cut.Find(".wss-table-filter-row-cell .custom-panel"));
+        Assert.Equal(["Bob"], RenderedNames(cut));
+
+        await cut.InvokeAsync(() => latest!.ResetAsync());
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.Empty(raised.Value.Values);
+    }
+
+    // =====================================================================================
+    // ClearFiltersAsync / OnFiltersChanged / result announcement
+    // =====================================================================================
+
+    // Name + Age Options columns with both events logged into one list, so relative order is visible:
+    // "Name:Alice" / "Age:" for the per-column event, "all:2" for the aggregate.
+    (IRenderedComponent<Table<Person>> Cut, List<string> Log, List<IReadOnlyList<TableColumnFilterSnapshot<Person>>> Snapshots) RenderTwoFilterable(TableFilterPlacement placement = TableFilterPlacement.Dropdown)
+    {
+        var log = new List<string>();
+        var snapshots = new List<IReadOnlyList<TableColumnFilterSnapshot<Person>>>();
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.FilterPlacement, placement)
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this,
+                v => log.Add($"{v.Item1.HeaderText}:{string.Join("+", v.Item2)}")))
+            .Add(t => t.OnFiltersChanged, EventCallback.Factory.Create<IReadOnlyList<TableColumnFilterSnapshot<Person>>>(this,
+                s => { log.Add($"all:{s.Count}"); snapshots.Add(s); }))
+            .Add(t => t.ChildContent, Columns(
+                Col("Name", x => x.Name, options: NameOptions(), onFilter: NameEquals),
+                Col("Age", x => x.Age, options: AgeOptions(), onFilter: AgeBand))));
+        return (cut, log, snapshots);
+    }
+
+    static void ApplyViaDropdown(IRenderedComponent<Table<Person>> cut, int column, string optionText)
+    {
+        cut.FindAll(".wss-table-filter-trigger")[column].Click();
+        cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Contains(optionText)).QuerySelector("input")!.Change(true);
+        cut.Find(".wss-table-filter-ok").Click();
+    }
+
+    [Fact]
+    public void OnFiltersChanged_follows_every_OnFilterChanged_with_the_active_columns_in_column_order()
+    {
+        var (cut, log, snapshots) = RenderTwoFilterable();
+
+        ApplyViaDropdown(cut, 1, "Old"); // Age first: Alice(30), Carol(40)
+        Assert.Equal(["Age:old", "all:1"], log);
+
+        ApplyViaDropdown(cut, 0, "Alice");
+        Assert.Equal(["Age:old", "all:1", "Name:Alice", "all:2"], log);
+        Assert.Equal(["Alice"], FirstCellNames(cut));
+
+        var latest = snapshots[^1];
+        Assert.Equal(2, latest.Count);
+        Assert.Equal("Name", latest[0].Column.HeaderText); // column order, not apply order
+        Assert.Equal(TableFilterKind.Options, latest[0].Kind);
+        Assert.Equal(["Alice"], latest[0].Values);
+        Assert.Equal("1 selected", latest[0].Description);
+        Assert.Equal("Age", latest[1].Column.HeaderText);
+        Assert.Equal(["old"], latest[1].Values);
+
+        // A no-op OK raises neither.
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(4, log.Count);
+
+        // Reset drops Name out of the aggregate.
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        cut.Find(".wss-table-filter-reset").Click();
+        Assert.Equal(["Name:", "all:1"], log.Skip(4));
+        Assert.Equal("Age", Assert.Single(snapshots[^1]).Column.HeaderText);
+    }
+
+    [Fact]
+    public void OnFiltersChanged_also_follows_a_forced_clear_when_a_filtered_column_leaves_the_table()
+    {
+        var log = new List<string>();
+        RenderFragment columns(bool withAge) => Columns(
+            Col("Name", x => x.Name, options: NameOptions(), onFilter: NameEquals),
+            withAge ? Col("Age", x => x.Age, options: AgeOptions(), onFilter: AgeBand) : (b => { }));
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => log.Add($"{v.Item1.HeaderText}:{string.Join("+", v.Item2)}")))
+            .Add(t => t.OnFiltersChanged, EventCallback.Factory.Create<IReadOnlyList<TableColumnFilterSnapshot<Person>>>(this, s => log.Add($"all:{s.Count}")))
+            .Add(t => t.ChildContent, columns(true)));
+        ApplyViaDropdown(cut, 0, "Alice");
+        ApplyViaDropdown(cut, 1, "Old");
+        log.Clear();
+
+        cut.Render(p => p.Add(t => t.ChildContent, columns(false)));
+
+        Assert.Equal(["Age:", "all:1"], log); // Name is still active, Age is gone
+        Assert.Equal(["Alice"], FirstCellNames(cut));
+    }
+
+    [Fact]
+    public async Task ClearFiltersAsync_clears_every_active_column_then_raises_per_column_and_once_in_aggregate()
+    {
+        var (cut, log, snapshots) = RenderTwoFilterable();
+        ApplyViaDropdown(cut, 0, "Bob");
+        ApplyViaDropdown(cut, 1, "Young");
+        Assert.Equal(["Bob"], FirstCellNames(cut));
+        log.Clear();
+
+        await cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync());
+
+        Assert.Equal(["Name:", "Age:", "all:0"], log); // per column in column order, then ONE aggregate
+        Assert.Empty(snapshots[^1]);
+        Assert.Equal(["Alice", "Bob", "Carol"], FirstCellNames(cut));
+        Assert.Empty(cut.FindAll(".wss-table-filter-active"));
+
+        // Nothing left to clear: a second call raises nothing at all.
+        await cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync());
+        Assert.Equal(3, log.Count);
+    }
+
+    [Fact]
+    public async Task ClearFiltersAsync_resets_to_page_1_and_discards_a_merely_staged_selection_without_raising()
+    {
+        var (cut, log, _) = RenderTwoFilterable();
+        cut.Render(p => p.Add(t => t.PageSize, 1));
+        cut.FindAll(".wss-pagination-item")[^1].Click(); // page 3 of 3
+        ApplyViaDropdown(cut, 1, "Old");                 // Alice, Carol -> page resets to 1 anyway
+        cut.FindAll(".wss-pagination-item")[^1].Click(); // page 2 of 2: Carol
+        Assert.Equal(["Carol"], FirstCellNames(cut));
+        log.Clear();
+
+        // Stage (don't apply) something on Name and leave its dropdown open.
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Contains("Bob")).QuerySelector("input")!.Change(true);
+        Assert.Single(cut.FindAll(".wss-table-filter-dropdown"));
+
+        await cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync());
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown")); // the open dropdown closed
+        Assert.Equal(["Alice"], FirstCellNames(cut));            // page 1 of the unfiltered set
+        Assert.Equal(["Age:", "all:0"], log);                    // Name never applied anything, so it is silent
+
+        // The staged Bob did not survive: reopening shows nothing ticked.
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        Assert.All(cut.FindAll(".wss-table-filter-checkbox"), cb => Assert.False(cb.HasAttribute("checked")));
+    }
+
+    [Fact]
+    public void ClearFiltersAsync_is_a_no_op_with_nothing_applied_or_staged()
+    {
+        var (cut, log, snapshots) = RenderTwoFilterable();
+
+        cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync()).GetAwaiter().GetResult();
+
+        Assert.Empty(log);
+        Assert.Empty(snapshots);
+        Assert.Equal(["Alice", "Bob", "Carol"], FirstCellNames(cut));
+    }
+
+    static string StatusText(IRenderedComponent<Table<Person>> cut) =>
+        cut.Find("div.wss-sr-only[role='status']").TextContent.Trim();
+
+    static void UncheckOption(IRenderedComponent<Table<Person>> cut, string text) =>
+        cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Contains(text))
+            .QuerySelector("input")!.Change(false);
+
+    [Fact]
+    public void The_status_region_announces_the_matching_row_count_after_a_narrowing_filter()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.ChildContent, NameColumn(NameOptions(), NameEquals)));
+        Assert.Equal(string.Empty, StatusText(cut)); // nothing announced until a filter actually changes
+
+        ApplyFilter(cut, "Alice", "Carol");
+        Assert.Equal("2 matching rows", StatusText(cut));
+
+        // A no-op OK changes nothing, so the text (and therefore the announcement) stays as it was.
+        cut.Find(".wss-table-filter-trigger").Click();
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal("2 matching rows", StatusText(cut));
+
+        // Un-ticking everything is a real change too, and the full count is what it leaves.
+        cut.Find(".wss-table-filter-trigger").Click();
+        UncheckOption(cut, "Alice");
+        UncheckOption(cut, "Carol");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+        Assert.Equal("3 matching rows", StatusText(cut));
+
+        // Loading wins over the count, and a DataSource swap forgets it.
+        cut.Render(p => p.Add(t => t.Loading, true));
+        Assert.Equal("Loading", StatusText(cut));
+        cut.Render(p => p.Add(t => t.Loading, false).Add(t => t.DataSource, People()));
+        Assert.Equal(string.Empty, StatusText(cut));
+    }
+
+    [Fact]
+    public void FilterResultAnnouncementFormat_is_overridable_and_the_empty_state_still_wins()
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.FilterResultAnnouncementFormat, "{0} Treffer")
+            .Add(t => t.EmptyText, "Nichts")
+            .Add(t => t.ChildContent, TextColumn(ByName)));
+
+        OpenAndType(cut, "o");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal("2 Treffer", StatusText(cut));
+
+        OpenAndType(cut, "zzz");
+        cut.Find(".wss-table-filter-ok").Click();
+        AssertNoDataRows(cut);
+        Assert.Equal("Nichts", StatusText(cut));
+    }
+
+    [Fact]
+    public async Task Row_placement_commits_announce_the_count_and_raise_the_aggregate_too()
+    {
+        var (cut, log, _) = RenderTwoFilterable(TableFilterPlacement.Row);
+
+        cut.FindAll(".wss-table-filter-row .wss-select")[1].Click();
+        cut.FindAll(".wss-select-item-option").First(o => o.TextContent.Contains("Young")).Click();
+
+        Assert.Equal(["Bob"], FirstCellNames(cut));
+        Assert.Equal(["Age:young", "all:1"], log);
+        Assert.Equal("1 matching rows", cut.FindAll("div.wss-sr-only[role='status']")[0].TextContent.Trim()); // the Table's region, not a Select's
+
+        await cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync());
+        Assert.Equal(["Age:young", "all:1", "Age:", "all:0"], log);
+        Assert.Equal(["Alice", "Bob", "Carol"], FirstCellNames(cut));
+        // The Select mirrors the cleared pending set on the next render.
+        Assert.Empty(cut.FindAll(".wss-table-filter-row .wss-select-selection-item"));
     }
 }

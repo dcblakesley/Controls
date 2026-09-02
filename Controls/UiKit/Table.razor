@@ -60,7 +60,7 @@
      aria-label="@(ScrollY is not null ? ScrollRegionAriaLabel : null)">
     @* aria-label only when there is no <caption>: a caption already names the table, and a second
        name would override the one the sighted user can read. *@
-    <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName @(AnyColumnEllipsis ? "wss-table-fixed" : null)"
+    <table class="wss-table @(Bordered ? "wss-table-bordered" : null) wss-table-@SizeName @(AnyColumnEllipsis ? "wss-table-fixed" : null) @(HasFilterRow ? "wss-table-has-filter-row" : null)"
            aria-label="@(string.IsNullOrEmpty(Caption) ? AriaLabel : null)">
         @if (!string.IsNullOrEmpty(Caption))
         {
@@ -103,10 +103,11 @@
                         <th scope="col" @key="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.IsFilterOpen ? "wss-table-cell-filter-open" : null)" aria-sort="@AriaSortFor(col)">
                             @if (col.TitleContent is null)
                             {
-                                @* col.CanFilter forks into its own branch (rather than always wrapping in
+                                @* ShowsFunnel forks into its own branch (rather than always wrapping in
                                    wss-table-header-inner) so the overwhelmingly common non-filterable case keeps
-                                   the exact original single-<button> DOM -- an existing bUnit test pins that shape. *@
-                                @if (col.CanFilter)
+                                   the exact original single-<button> DOM -- an existing bUnit test pins that shape.
+                                   Row placement takes the same branch: its editors live in the filter row below. *@
+                                @if (ShowsFunnel(col))
                                 {
                                     <div class="wss-table-header-inner">
                                         @SortTrigger(col, iconOnly: false)
@@ -131,7 +132,7 @@
                                 <div class="wss-table-sort-header">
                                     <div class="wss-table-sort-content" @onclick="@(() => ToggleSort(col))">@col.HeaderFor()</div>
                                     @SortTrigger(col, iconOnly: true)
-                                    @if (col.CanFilter)
+                                    @if (ShowsFunnel(col))
                                     {
                                         @ColumnFilter(col)
                                     }
@@ -141,7 +142,7 @@
                     }
                     else
                     {
-                        @if (col.CanFilter)
+                        @if (ShowsFunnel(col))
                         {
                             <th scope="col" @key="col" class="wss-table-cell @(col.IsFilterOpen ? "wss-table-cell-filter-open" : null)">
                                 <div class="wss-table-header-inner">
@@ -157,6 +158,37 @@
                     }
                 }
             </tr>
+            @if (HasFilterRow)
+            {
+                @* FilterPlacement.Row: a second header row holding one always-visible editor per
+                   filterable column (TableFilterEditor in Row placement applies as it edits -- no
+                   funnel, no OK). Blank leading cells keep the expand/selection columns aligned; an
+                   unfilterable column gets an empty cell so the row still spans the table. @key on the
+                   data cells for the same reason the <th>s above carry one: a reordered/removed column
+                   must take its editor (and any in-flight debounce) with it, not hand it to a neighbour. *@
+                <tr class="wss-table-filter-row">
+                    @if (HasRowDetail)
+                    {
+                        <td class="wss-table-cell wss-table-filter-row-cell"></td>
+                    }
+                    @if (Selectable)
+                    {
+                        <td class="wss-table-cell wss-table-filter-row-cell"></td>
+                    }
+                    @foreach (var col in _columns)
+                    {
+                        <td class="wss-table-cell wss-table-filter-row-cell" @key="col">
+                            @if (col.CanFilter)
+                            {
+                                <TableFilterEditor TItem="TItem"
+                                                   Column="col"
+                                                   Table="this"
+                                                   Placement="TableFilterPlacement.Row" />
+                            }
+                        </td>
+                    }
+                </tr>
+            }
         </thead>
         <tbody class="wss-table-tbody">
             @if (_pageItems.Count == 0)
@@ -619,8 +651,9 @@
 
     /// <summary>
     /// Raised with the column and its new applied values (empty when cleared) on any of three
-    /// triggers: a column's filter is applied (OK, or a custom template's <c>ConfirmAsync</c>),
-    /// cleared (Reset), or a column that was actively narrowing rows drops out of the rendered set
+    /// triggers: a column's filter is applied (OK, a custom template's <c>ConfirmAsync</c>, or a
+    /// <see cref="TableFilterPlacement.Row"/> editor's own edit), cleared (Reset, or
+    /// <see cref="ClearFiltersAsync"/>), or a column that was actively narrowing rows drops out of the rendered set
     /// (e.g. an <c>@@if</c> hiding it) — its filter is force-cleared along with it, so the same "now
     /// empty" payload fires rather than leaving a consumer's own filter summary silently stale. The
     /// payload's shape follows the column's kind: the selected keys for <see cref="Column{TItem}.FilterOptions"/>
@@ -633,6 +666,53 @@
     /// nothing ticked).
     /// </summary>
     [Parameter] public EventCallback<(Column<TItem> Column, IReadOnlyList<string> SelectedValues)> OnFilterChanged { get; set; }
+
+    /// <summary>
+    /// The aggregate counterpart of <see cref="OnFilterChanged"/>: raised with a
+    /// <see cref="TableColumnFilterSnapshot{TItem}"/> for every column whose filter is currently
+    /// ACTIVE (narrowing rows), in column order, immediately after each <see cref="OnFilterChanged"/>
+    /// raise -- so on exactly the same triggers and under the same "real change only" rule -- and
+    /// once after <see cref="ClearFiltersAsync"/> when it cleared anything. An empty list means no
+    /// filter is applied. For a consumer that renders one "active filters" summary (chips, a
+    /// clear-all bar, a query-string mirror) this is the single event to handle.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<TableColumnFilterSnapshot<TItem>>> OnFiltersChanged { get; set; }
+
+    /// <summary>
+    /// Where the column filter editors render. <see cref="TableFilterPlacement.Dropdown"/> (default,
+    /// AntD's shape): a funnel button in each filterable header cell opens a panel whose edits are
+    /// staged until OK. <see cref="TableFilterPlacement.Row"/>: a second header row
+    /// (<c>tr.wss-table-filter-row</c>) holds one always-visible editor per filterable column -- a
+    /// <see cref="Select{TValue}"/> for <see cref="Column{TItem}.FilterOptions"/>, a search box for
+    /// <see cref="Column{TItem}.FilterText"/>, the <see cref="Column{TItem}.FilterDropdown"/> template
+    /// itself for a custom filter -- and edits apply as they are made (text debounced by
+    /// <see cref="FilterDebounceMilliseconds"/>, selections at once). No funnel buttons render, and
+    /// under <see cref="ScrollY"/> both header rows pin together. Every other filter behaviour
+    /// (<see cref="OnFilterChanged"/>, the filter/sort/page pipeline, Loading inertness) is the same.
+    /// </summary>
+    [Parameter] public TableFilterPlacement FilterPlacement { get; set; } = TableFilterPlacement.Dropdown;
+
+    /// <summary>
+    /// <see cref="TableFilterPlacement.Row"/> only: how long typing in a text filter pauses before the
+    /// text is applied (each keystroke restarts the wait), in milliseconds. Default 300. <c>0</c>
+    /// applies on every keystroke. Enter and the clear button always apply at once. Selection-based
+    /// editors never debounce.
+    /// </summary>
+    [Parameter] public int FilterDebounceMilliseconds { get; set; } = 300;
+
+    /// <summary>Accessible-name format for a <see cref="TableFilterPlacement.Row"/> editor; <c>{0}</c>
+    /// is the column's header text. A headerless column uses <see cref="FilterLabel"/> outright, the
+    /// same fallback the funnel button takes. Override to localize.</summary>
+    [Parameter] public string FilterRowLabelFormat { get; set; } = "Filter by {0}";
+
+    /// <summary>
+    /// Announced by the table's live region after a filter change that leaves at least one row;
+    /// <c>{0}</c> is the number of matching rows. When the change leaves no rows the region
+    /// announces <see cref="EmptyText"/> instead (and <see cref="LoadingLabel"/> still wins while
+    /// <see cref="Loading"/>). Forgotten when <see cref="DataSource"/> is reassigned. Override to
+    /// localize.
+    /// </summary>
+    [Parameter] public string FilterResultAnnouncementFormat { get; set; } = "{0} matching rows";
 
     /// <summary>Accessible-name format for a column's filter button; <c>{0}</c> is the column's
     /// header text (falls back to <see cref="FilterLabel"/> for a headerless column). Override to localize.</summary>
@@ -772,7 +852,18 @@
     // What the persistent role="status" region carries (empty the rest of the time -- see its markup
     // for why the region itself is never conditional). Loading wins: while the mask is up the row
     // set underneath is stale by definition, so "No data" would be reporting on data being replaced.
-    string? StatusAnnouncement => Loading ? LoadingLabel : _pageItems.Count == 0 ? EmptyText : null;
+    // Then the empty state, then the matching-row count a filter change left behind (null until the
+    // first real filter change, and again after a DataSource swap).
+    string? StatusAnnouncement =>
+        Loading ? LoadingLabel
+        : _pageItems.Count == 0 ? EmptyText
+        : _filterResultAnnouncement;
+
+    // FilterResultAnnouncementFormat filled in for the last REAL filter change (see
+    // RecomputeAfterFilterChange). Kept as a field, not derived at render time: a live region announces
+    // when its text changes, so a count re-derived on every render would re-announce on a sort or a
+    // page turn, which is not a filter result.
+    string? _filterResultAnnouncement;
 
     bool HasPager => IsPaged && _items.Count > 0;
     bool ShowTopPager => HasPager && PagerPosition is PagerPosition.Top or PagerPosition.Both;
@@ -972,6 +1063,9 @@
         {
             _items = DataSource?.ToList() ?? new List<TItem>();
             _lastDataSource = DataSource;
+            // The last filter result was measured against the old data; announcing it again over the
+            // new rows would be wrong, and staying silent is what a plain data refresh did before.
+            _filterResultAnnouncement = null;
 
             // Drop selected rows that no longer exist in the new data, so an uncontrolled table
             // doesn't keep ghost references and emit them in the next SelectedItemsChanged payload
@@ -1151,9 +1245,7 @@
                 // OnParametersSet below: StartCollectingColumns runs synchronously mid-render (from
                 // the @{ } block at the top of this file), so there's no `await` point available
                 // here -- EventCallback.InvokeAsync is safe to not await.
-                if (filterCleared.Count > 0 && OnFilterChanged.HasDelegate)
-                    foreach (var col in filterCleared)
-                        _ = OnFilterChanged.InvokeAsync((col, (IReadOnlyList<string>)Array.Empty<string>()));
+                if (filterCleared.Count > 0) _ = RaiseFilterChangedAsync(filterCleared);
             }
         }
         _collecting = new List<Column<TItem>>();
@@ -1317,7 +1409,7 @@
         // synchronous OnParametersSet, so there is no await point. It cannot loop: the column has
         // already captured the new options snapshot, so the re-render this causes finds nothing left
         // to prune, and the prune only reports when it actually removed an applied value.
-        if (OnFilterChanged.HasDelegate) _ = OnFilterChanged.InvokeAsync((column, column.AppliedFilterValues));
+        _ = RaiseFilterChangedAsync(column);
     }
 
     internal void Unregister(Column<TItem> column)
@@ -1563,15 +1655,29 @@
     // recoloring the funnel glyph, which no screen reader (and no user who can't distinguish the two
     // blues) can perceive. Computed here, once, for everything that names itself after the column's
     // filter: TableColumnFilter's trigger and dialog, and the Text kind's search box in
-    // TableFilterEditor.
+    // TableFilterEditor's Dropdown placement.
     internal string FilterAccessibleName(Column<TItem> column) =>
         column.Filter is { IsActive: true }
-            ? (string.IsNullOrEmpty(column.HeaderText)
-                ? FilterAppliedLabel
-                : string.Format(FilterAppliedButtonLabelFormat, column.HeaderText))
-            : (string.IsNullOrEmpty(column.HeaderText)
-                ? FilterLabel
-                : string.Format(FilterButtonLabelFormat, column.HeaderText));
+            ? NameFromHeader(column, FilterAppliedButtonLabelFormat, FilterAppliedLabel)
+            : NameFromHeader(column, FilterButtonLabelFormat, FilterLabel);
+
+    // The accessible name of a Row-placement editor (the Select's combobox, the Text kind's search
+    // box). No applied/unapplied fork here: the editor's own visible state already says what is
+    // applied, where the funnel only had a recolored glyph.
+    internal string FilterRowLabel(Column<TItem> column) =>
+        NameFromHeader(column, FilterRowLabelFormat, FilterLabel);
+
+    // The one implementation of "the header text formatted into `format`, or the bare `fallback` for
+    // a headerless column" that every filter name above is built from.
+    static string NameFromHeader(Column<TItem> column, string format, string fallback) =>
+        string.IsNullOrEmpty(column.HeaderText) ? fallback : string.Format(format, column.HeaderText);
+
+    // Whether this column's header carries the funnel button: filterable AND Dropdown placement. Under
+    // Row placement the editors live in the filter row instead, so every header keeps its plain
+    // non-filterable shape -- the sortable header's exact single-button DOM included.
+    bool ShowsFunnel(Column<TItem> col) => col.CanFilter && FilterPlacement == TableFilterPlacement.Dropdown;
+
+    bool HasFilterRow => FilterPlacement == TableFilterPlacement.Row;
 
     // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline. Commit
     // reports whether the applied selection actually changed (it compares BEFORE overwriting) -- a
@@ -1597,21 +1703,81 @@
         await RecomputeAfterFilterChangeAsync(column, changed);
     }
 
-    // Shared tail of OK/Reset (and, with an already-computed `changed`, the filtered-column-removal
-    // path in StartCollectingColumns below): AntD resets to page 1 only when the applied selection
-    // actually changed (mirrors ToggleSort's own reset) -- a no-op OK/Reset must not strand the user
-    // off whatever page they were reading. Re-derives filtered -> sorted -> paged either way (this is
-    // what keeps RebuildPageItems's guard correct with no separate tracked field for filter state --
-    // see that guard's own comment) and raises OnFilterChanged only when something actually changed,
-    // so a consumer's own filter-summary state never gets a spurious "it changed" notification.
+    // Shared tail of OK/Reset and of every Row-placement auto-commit (all of them arrive through
+    // ApplyColumnFilterAsync): re-derive, then notify only when something actually changed, so a
+    // consumer's own filter-summary state never gets a spurious "it changed" notification.
     async Task RecomputeAfterFilterChangeAsync(Column<TItem> column, bool changed)
+    {
+        RecomputeAfterFilterChange(changed);
+        if (changed) await RaiseFilterChangedAsync(column);
+    }
+
+    // The synchronous half, shared with ClearFiltersAsync: AntD resets to page 1 only when the applied
+    // selection actually changed (mirrors ToggleSort's own reset) -- a no-op OK/Reset must not strand
+    // the user off whatever page they were reading. Re-derives filtered -> sorted -> paged either way
+    // (this is what keeps RebuildPageItems's guard correct with no separate tracked field for filter
+    // state -- see that guard's own comment). A real change also records the matching-row count for
+    // the live region; when it left no rows, StatusAnnouncement's EmptyText arm wins over it.
+    void RecomputeAfterFilterChange(bool changed)
     {
         if (changed) _page = 1;
         ApplyFilters();
         ApplySort();
         RebuildPageItems();
+        if (changed) _filterResultAnnouncement = string.Format(FilterResultAnnouncementFormat, _filtered.Count);
         StateHasChanged();
-        if (changed && OnFilterChanged.HasDelegate)
-            await OnFilterChanged.InvokeAsync((column, column.AppliedFilterValues));
+    }
+
+    /// <summary>
+    /// Clears every column's filter -- applied and staged alike, closing any open dropdown -- and
+    /// re-derives the rows, the same path as pressing Reset on each column in turn. When at least one
+    /// applied selection actually changed: the page resets to 1, <see cref="OnFilterChanged"/> is
+    /// raised once per cleared column (empty payload, column order), then <see cref="OnFiltersChanged"/>
+    /// once with the (now empty) active set. With nothing applied it raises nothing -- the same
+    /// "real change only" rule every other filter trigger follows.
+    /// </summary>
+    public async Task ClearFiltersAsync()
+    {
+        var cleared = new List<Column<TItem>>();
+        foreach (var col in _columns)
+        {
+            if (col.Filter is not { } filter || (!filter.IsActive && !filter.HasPendingChange)) continue;
+            await col.SetFilterOpen(false);
+            // FilterResetToDefault (a later phase) will restore the column's DefaultFilterValues here instead.
+            if (filter.Clear()) cleared.Add(col);
+        }
+        if (cleared.Count == 0) return;
+        RecomputeAfterFilterChange(changed: true);
+        await RaiseFilterChangedAsync(cleared);
+    }
+
+    // The ONE place OnFilterChanged is raised, and therefore the one place OnFiltersChanged follows
+    // it: every per-column notification (OK/Reset/row commit, a column leaving the table, a prune, a
+    // kind dropping to none, ClearFiltersAsync) is followed by the aggregate snapshot of whatever is
+    // still active, so the two events cannot drift apart. Each column's payload is its own applied
+    // values -- empty for a column that was just cleared or removed.
+    Task RaiseFilterChangedAsync(Column<TItem> column) => RaiseFilterChangedAsync([column]);
+
+    async Task RaiseFilterChangedAsync(IReadOnlyList<Column<TItem>> changed)
+    {
+        if (OnFilterChanged.HasDelegate)
+        {
+            foreach (var col in changed)
+                await OnFilterChanged.InvokeAsync((col, col.AppliedFilterValues));
+        }
+        if (OnFiltersChanged.HasDelegate)
+            await OnFiltersChanged.InvokeAsync(ActiveFilterSnapshots());
+    }
+
+    // Every ACTIVE column's applied state, in rendered column order -- the OnFiltersChanged payload.
+    IReadOnlyList<TableColumnFilterSnapshot<TItem>> ActiveFilterSnapshots()
+    {
+        var snapshots = new List<TableColumnFilterSnapshot<TItem>>();
+        foreach (var col in _columns)
+        {
+            if (col.Filter is not { IsActive: true } filter) continue;
+            snapshots.Add(new TableColumnFilterSnapshot<TItem>(col, filter.Kind, filter.AppliedValues, filter.Describe(this) ?? string.Empty));
+        }
+        return snapshots;
     }
 }
