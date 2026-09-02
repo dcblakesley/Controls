@@ -48,6 +48,9 @@ public class Column<TItem> : ComponentBase, IDisposable
     /// no filter UI. Paired with <see cref="OnFilter"/> it declares the Options kind — a checkbox or
     /// radio list — see <see cref="CanFilter"/>. Under a <see cref="FilterDropdown"/> template it is
     /// instead handed to the template as <see cref="TableFilterContext{TItem}.Options"/>.
+    /// <para>This list is also the Options kind's key space: a <see cref="DefaultFilterValues"/>
+    /// entry with no matching option is dropped, and an applied value an updated list no longer
+    /// offers is pruned (raising <see cref="Table{TItem}.OnFilterChanged"/> with the survivors).</para>
     /// </summary>
     [Parameter] public IReadOnlyList<TableFilterOption>? FilterOptions { get; set; }
 
@@ -115,6 +118,61 @@ public class Column<TItem> : ComponentBase, IDisposable
     /// <see cref="TableFilterPlacement.Row"/>, where nothing opens or closes.</summary>
     [Parameter] public bool FilterOnClose { get; set; }
 
+    /// <summary>
+    /// AntD's <c>filterSearch</c>: puts a search box above this column's filter dropdown option list,
+    /// narrowing the rendered options to the ones whose <see cref="TableFilterOption.Text"/> contains
+    /// what is typed (ordinal-ignore-case). <see cref="TableFilterKind.Options"/> columns in
+    /// <see cref="TableFilterPlacement.Dropdown"/> placement only — a
+    /// <see cref="TableFilterPlacement.Row"/> editor is a <see cref="Select{TValue}"/>, which brings
+    /// its own search. Default false.
+    /// <para>The query is panel-local UI state, not filter state: it starts empty on every open, and
+    /// hiding an option leaves whatever it had staged alone, so OK still commits the whole staged set
+    /// (including ticks the current query hides). The placeholder/accessible name comes from
+    /// <see cref="Table{TItem}.FilterSearchPlaceholder"/> and the no-match row from
+    /// <see cref="Table{TItem}.FilterEmptyText"/>.</para>
+    /// </summary>
+    [Parameter] public bool FilterSearch { get; set; }
+
+    /// <summary>
+    /// Adds a "select all" checkbox row at the top of this column's filter dropdown option list,
+    /// labelled <see cref="Table{TItem}.FilterCheckAllLabel"/>. Multi-select
+    /// <see cref="TableFilterKind.Options"/> columns (<see cref="FilterMultiple"/>) in
+    /// <see cref="TableFilterPlacement.Dropdown"/> placement only. Default false.
+    /// <para>It toggles exactly the options currently VISIBLE, so an active <see cref="FilterSearch"/>
+    /// query scopes it to what the user can see; it renders checked when all of them are staged,
+    /// unchecked when none, and in the native "mixed" state when some (which needs one JS round trip,
+    /// like the table's own select-all — with no JS runtime it simply reads checked/unchecked). It is
+    /// not rendered while a search query hides every option: there is nothing to select.</para>
+    /// </summary>
+    [Parameter] public bool FilterCheckAll { get; set; }
+
+    /// <summary>
+    /// AntD's <c>defaultFilteredValue</c>: the filter this column starts out with, in the same
+    /// serialized shape <see cref="Table{TItem}.OnFilterChanged"/> publishes (Options/Custom: the
+    /// selected keys; Text: the single text; NumberRange/DateRange: <c>[min, max]</c> with <c>""</c>
+    /// for an unset bound; Bool: <c>["true"]</c>/<c>["false"]</c>). Works for every kind.
+    /// <para>Applied ONCE, on the first parameter pass that actually produces a filter state, and
+    /// never again — not on a later parameter pass, not on a kind change, and not after the user
+    /// clears it. It raises no <see cref="Table{TItem}.OnFilterChanged"/> or
+    /// <see cref="Table{TItem}.OnFiltersChanged"/>: it is the consumer's own initial state, not a
+    /// change to report back to them. Values this kind cannot interpret are dropped (an Options key
+    /// with no matching <see cref="FilterOptions"/> entry, an unparseable bound), leaving whatever
+    /// survives applied.</para>
+    /// <para>Uncontrolled, like every other filter parameter: changing it afterwards does nothing.
+    /// Set <see cref="FilterResetToDefault"/> to make Reset return here instead of clearing.</para>
+    /// </summary>
+    [Parameter] public IEnumerable<string>? DefaultFilterValues { get; set; }
+
+    /// <summary>
+    /// AntD's <c>filterResetToDefaultFilteredValue</c>: with <see cref="DefaultFilterValues"/> set,
+    /// the dropdown's Reset button and <see cref="Table{TItem}.ClearFiltersAsync"/> restore that
+    /// default instead of clearing this column. Default false (Reset clears). Ignored with no
+    /// <see cref="DefaultFilterValues"/>.
+    /// <para>The "real change only" rule is unchanged: resetting a column that is already at its
+    /// default applies nothing, so it neither resets the page nor raises an event.</para>
+    /// </summary>
+    [Parameter] public bool FilterResetToDefault { get; set; }
+
     /// <summary>Whether the Table should render a filter control on this column's header — true once
     /// the column's parameters declare a filter kind (see <see cref="ExplicitFilterKind"/>, first
     /// match wins: <see cref="FilterDropdown"/>; <see cref="FilterOptions"/> with
@@ -146,6 +204,27 @@ public class Column<TItem> : ComponentBase, IDisposable
     /// whenever the column has no filter or nothing is applied, so an untouched column never
     /// excludes a row.</summary>
     internal bool PassesFilter(TItem item) => Filter is null || !Filter.IsActive || Filter.PassesFilter(item);
+
+    /// <summary>Whether Reset (and <see cref="Table{TItem}.ClearFiltersAsync"/>) should put this
+    /// column back to <see cref="DefaultFilterValues"/> rather than clear it — both parameters have to
+    /// be set for there to be a default to return to.</summary>
+    internal bool HasFilterDefault => FilterResetToDefault && DefaultFilterValues is not null;
+
+    /// <summary>
+    /// Stages <see cref="DefaultFilterValues"/> and applies it, reporting whether the APPLIED state
+    /// actually changed — the same measure <c>Commit</c>/<c>Clear</c> report, so returning to a
+    /// default already in force stays the no-op the Table's "real change only" rule expects. One
+    /// implementation for the default's two users: the once-only initial application
+    /// (<see cref="ApplyInitialFilterDefault"/>) and <see cref="FilterResetToDefault"/>'s Reset.
+    /// A list this kind cannot interpret at all falls back to clearing, so Reset always ends
+    /// somewhere definite instead of leaving the previous selection applied.
+    /// </summary>
+    internal bool RestoreFilterDefault()
+    {
+        if (Filter is not { } filter) return false;
+        var values = DefaultFilterValues as IReadOnlyList<string> ?? DefaultFilterValues?.ToArray() ?? [];
+        return filter.TryRestore(values) ? filter.Commit() : filter.Clear();
+    }
 
     /// <summary>
     /// The one place the dropdown's open flag flips. Returns the consumer's
@@ -181,6 +260,10 @@ public class Column<TItem> : ComponentBase, IDisposable
     TableFilterKind? _lastFilterKind;
     bool _lastFilterMultiple;
     bool _lastHasFilterIcon;
+    // The two dropdown extras: both add (or remove) markup inside a panel the TABLE renders, so a
+    // runtime flip needs the same corrective render every other display parameter gets.
+    bool _lastFilterSearch;
+    bool _lastFilterCheckAll;
     // A COPY of the options as they were last seen, never the consumer's own list instance. Holding
     // the reference made OptionsEqual's ReferenceEquals fast path compare the list to itself, so a
     // consumer keeping one List<TableFilterOption> field and refilling it in place (Clear()+AddRange,
@@ -234,6 +317,15 @@ public class Column<TItem> : ComponentBase, IDisposable
         _initialized = true;
 
         Table?.Register(this);
+        // DefaultFilterValues just turned this column's filter on. The Table's ApplyFilters for this
+        // pass ran before this column existed to it, so only it can ask for the re-derive -- and it
+        // has to ask AFTER Register, since the Table defers the work to the pass that promotes this
+        // column into the set ApplyFilters walks. Silent by contract (see DefaultFilterValues).
+        if (_filterDefaultNeedsRecompute)
+        {
+            _filterDefaultNeedsRecompute = false;
+            Table?.NotifyColumnFilterDefaultApplied();
+        }
         // The prune path already re-derives everything a row-state change needs, so it subsumes it.
         if (filterPruned) Table?.NotifyColumnFilterPruned(this);
         else if (rowStateChanged) Table?.RecomputeColumnDerivedState();
@@ -345,7 +437,23 @@ public class Column<TItem> : ComponentBase, IDisposable
             TableFilterKind.Text => new TextFilterState<TItem>(FilterText!, TextFilterMatch),
             _ => kind is { } derived ? CreateDerivedFilterState(derived) : null
         };
+        ApplyInitialFilterDefault();
         return wasActive;
+    }
+
+    // Whether DefaultFilterValues has had its one chance, and whether that chance actually applied
+    // something the Table has yet to narrow rows by. The flag is set the first time a state EXISTS to
+    // hold the default -- a column that only becomes filterable on a later pass still gets it once --
+    // and never cleared, so a kind change afterwards starts genuinely empty (AntD's
+    // defaultFilteredValue is an initial value, not a value the component keeps re-asserting).
+    bool _filterDefaultApplied;
+    bool _filterDefaultNeedsRecompute;
+
+    void ApplyInitialFilterDefault()
+    {
+        if (Filter is null || _filterDefaultApplied || DefaultFilterValues is null) return;
+        _filterDefaultApplied = true;
+        _filterDefaultNeedsRecompute = RestoreFilterDefault();
     }
 
     // Whether a delegate parameter now points at DIFFERENT CODE than the one previously captured.
@@ -394,7 +502,9 @@ public class Column<TItem> : ComponentBase, IDisposable
         || _lastCanFilter != CanFilter
         || _lastFilterKind != Filter?.Kind
         || _lastFilterMultiple != FilterMultiple
-        || _lastHasFilterIcon != (FilterIcon is not null);
+        || _lastHasFilterIcon != (FilterIcon is not null)
+        || _lastFilterSearch != FilterSearch
+        || _lastFilterCheckAll != FilterCheckAll;
     // FilterOptions is deliberately NOT compared here: OnParametersSet already runs that comparison
     // once (it needs the result for the prune too) and ORs it in. FilterDropdown/FilterIcon are
     // templates invoked live at render time (like ChildContent), so only their presence is tracked.
@@ -409,6 +519,8 @@ public class Column<TItem> : ComponentBase, IDisposable
         _lastFilterKind = Filter?.Kind;
         _lastFilterMultiple = FilterMultiple;
         _lastHasFilterIcon = FilterIcon is not null;
+        _lastFilterSearch = FilterSearch;
+        _lastFilterCheckAll = FilterCheckAll;
         // _lastFilterOptions is captured in OnParametersSet instead, as a defensive copy and only
         // when it changed -- see the field.
     }

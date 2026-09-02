@@ -1,6 +1,7 @@
 @namespace Controls
 @typeparam TItem
 @implements IAsyncDisposable
+@inject IJSRuntime JS
 
 @* The editor for one column's filter, rendered from the column's Filter state (Column.Filter):
    one component per filter kind and placement, so a kind's editor exists exactly once whether it
@@ -11,16 +12,54 @@
    get the same "real change only" page reset and OnFilterChanged rule the OK button has.
 
    The Options kind in Dropdown placement is the checkbox/radio list that used to live inline in
-   TableColumnFilter -- byte-identical DOM, no wrapper element of its own. Renders nothing for a
-   kind/placement it has no editor for, so the surrounding panel still gets its footer. Adding a kind
-   means one branch in each placement below (Row branches must call CommitRowAsync -- directly for
-   a discrete pick, via the debounce for free typing). *@
+   TableColumnFilter -- byte-identical DOM, no wrapper element of its own, unless the column opted
+   into one of the two extras (Column.FilterSearch's box above the list, Column.FilterCheckAll's row
+   inside it). Renders nothing for a kind/placement it has no editor for, so the surrounding panel
+   still gets its footer. Adding a kind means one branch in each placement below (Row branches must
+   call CommitRowAsync -- directly for a discrete pick, via the debounce for free typing). *@
 @if (Placement == TableFilterPlacement.Dropdown)
 {
     @if (Column.Filter is OptionsFilterState<TItem> options)
     {
+        var visible = VisibleOptions(options);
+        if (ShowSearch)
+        {
+            @* Column.FilterSearch: narrows the list below as it is typed into, and nothing else --
+               the query is this component's own UI state, so it starts empty on every open (the
+               panel, and therefore this component, is created fresh each time) and never touches
+               what is staged. Placeholder AND aria-label from the same string: a placeholder is not
+               an accessible name, and this box has no visible label of its own. *@
+            <div class="wss-table-filter-search">
+                <input type="search"
+                       class="wss-table-filter-input"
+                       @ref="_searchRef"
+                       autocomplete="off"
+                       placeholder="@Table.FilterSearchPlaceholder"
+                       aria-label="@Table.FilterSearchPlaceholder"
+                       value="@_searchQuery"
+                       @oninput="@(e => _searchQuery = e.Value as string ?? "")" />
+            </div>
+        }
         <ul class="wss-table-filter-list">
-            @foreach (var opt in options.Options)
+            @if (ShowCheckAll(options) && visible.Count > 0)
+            {
+                @* Column.FilterCheckAll: an option row in every respect but what it toggles -- the
+                   VISIBLE options, so it means "all of these" rather than "all of them" under a
+                   search query. Its mixed state is a DOM property only, mirrored from
+                   OnAfterRenderAsync. Not rendered with nothing visible: there is nothing to select,
+                   and the empty row below says so instead. *@
+                <li class="wss-table-filter-checkall">
+                    <label class="wss-table-filter-option-label">
+                        <input type="checkbox"
+                               class="wss-table-filter-checkbox"
+                               @ref="_checkAllRef"
+                               checked="@(CheckAllState(options, visible) is true)"
+                               @onchange="@(e => ToggleCheckAll(options, visible, e.Value is true))" />
+                        <span>@Table.FilterCheckAllLabel</span>
+                    </label>
+                </li>
+            }
+            @foreach (var opt in visible)
             {
                 <li class="wss-table-filter-item">
                     <label class="wss-table-filter-option-label">
@@ -42,6 +81,12 @@
                         <span>@opt.Text</span>
                     </label>
                 </li>
+            }
+            @if (ShowSearch && visible.Count == 0)
+            {
+                @* Only ever under a search box: a column whose options list is simply empty renders
+                   the same empty <ul> it always has. *@
+                <li class="wss-table-filter-empty">@Table.FilterEmptyText</li>
             }
         </ul>
     }
@@ -183,12 +228,16 @@ else
     /// header filter row (applies as it edits). Default Dropdown.</summary>
     [Parameter] public TableFilterPlacement Placement { get; set; } = TableFilterPlacement.Dropdown;
 
+    [CascadingParameter] FormDefaults? FormDefaults { get; set; }
+
     // One radio group per editor instance: the dropdown is re-created on every open, so a fresh
     // name each time, and two open editors (never, today -- Table allows one open dropdown) could
     // not steal each other's checked state.
     readonly string _radioGroupName = $"wss-table-filter-{Guid.NewGuid():N}";
 
     ElementReference _inputRef;
+    ElementReference _searchRef;
+    ElementReference _checkAllRef;
     // The kit components the DateRange/Bool editors render, for the open-focus hand-off below (they
     // own their own input, so an ElementReference of ours would have nothing to point at).
     DateRangePicker? _datePicker;
@@ -200,6 +249,18 @@ else
     // removed, or the placement switched back to Dropdown, in the meantime.
     CancellationTokenSource? _debounceCts;
     bool _disposed;
+
+    // Column.FilterSearch's query. Deliberately a plain field on THIS component and not part of the
+    // filter state: TableColumnFilter renders the panel (and therefore this editor) only while the
+    // dropdown is open, so the field is born empty on every open -- which is the specified "reset on
+    // every open" with nothing to reset.
+    string _searchQuery = "";
+
+    // Column.FilterCheckAll's mixed state needs the same JS mirror the table's own select-all uses
+    // (indeterminate is a DOM property with no HTML attribute), so this editor imports the same
+    // module and degrades the same way: no JS runtime, no mixed glyph, a plain checked/unchecked box.
+    readonly JsModule _module = new("wss-table.js");
+    bool? _lastCheckAllIndeterminate;
 
     // Select treats Options as immutable-by-reference (a new instance costs it an O(n) lookup and
     // filter rebuild), so the TableFilterOption -> SelectOption mapping is cached against the column's
@@ -251,6 +312,11 @@ else
         if (Placement != TableFilterPlacement.Dropdown) return false;
         switch (Column.Filter)
         {
+            // A search box is the reason the user opened THIS dropdown, exactly as the Text kind's is
+            // -- without it the Options panel has no text entry and the dialog focuses itself.
+            case OptionsFilterState<TItem> when ShowSearch:
+                try { await _searchRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+                return true;
             case TextFilterState<TItem>:
             case NumberRangeFilterState<TItem>:
                 try { await _inputRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
@@ -265,6 +331,78 @@ else
                 return true;
             default:
                 return false;
+        }
+    }
+
+    // ----- Options kind, Dropdown placement: FilterSearch / FilterCheckAll -----
+
+    // Both extras are Dropdown-only by design: a Row-placement Options editor is a Select, which has
+    // its own search box and its own "clear" and would gain nothing from a second one.
+    bool ShowSearch =>
+        Placement == TableFilterPlacement.Dropdown && Column.FilterSearch
+        && Column.Filter is OptionsFilterState<TItem>;
+
+    // Multiple only -- with radios there is no "all" to select (AntD's own select-all is likewise a
+    // multiple-selection affordance).
+    bool ShowCheckAll(OptionsFilterState<TItem> options) =>
+        Placement == TableFilterPlacement.Dropdown && Column.FilterCheckAll && options.Multiple;
+
+    // The options the list is currently rendering: all of them, or -- with something typed into the
+    // search box -- the ones whose TEXT contains it, OrdinalIgnoreCase (the comparison every other
+    // text match in the filter stack uses). The full list is handed back by reference when there is
+    // no query, so the untouched case allocates nothing.
+    IReadOnlyList<TableFilterOption> VisibleOptions(OptionsFilterState<TItem> options) =>
+        ShowSearch && !string.IsNullOrEmpty(_searchQuery)
+            ? options.Options.Where(o => o.Text.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList()
+            : options.Options;
+
+    // The check-all box's tri-state over the VISIBLE options: true = every one staged, false = none,
+    // null = some, which is the native "mixed" state (see OnAfterRenderAsync).
+    static bool? CheckAllState(OptionsFilterState<TItem> options, IReadOnlyList<TableFilterOption> visible)
+    {
+        var staged = 0;
+        foreach (var o in visible)
+        {
+            if (options.IsPending(o.Value)) staged++;
+        }
+        return staged == 0 ? false : staged == visible.Count ? true : null;
+    }
+
+    // Stages (or un-stages) exactly what is on screen. Options a search query hides keep whatever they
+    // had -- OK commits the union, so ticking "all" under one query and then another does what it says.
+    static void ToggleCheckAll(OptionsFilterState<TItem> options, IReadOnlyList<TableFilterOption> visible, bool on)
+    {
+        foreach (var o in visible) options.TogglePending(o.Value, on);
+    }
+
+    // The mixed-state mirror, same shape (and same module function) as Table's own header select-all:
+    // only when it actually changed, and silently doing nothing when there is no JS runtime -- the box
+    // then reads checked or unchecked, which is what a screen reader hears too.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_disposed) return;
+        // No row rendered (wrong kind/placement, single-select, or a query hiding everything) means
+        // no element to mirror onto -- and a freshly created one comes back indeterminate == false,
+        // so forget the mirror rather than short-circuiting against a value from a box that is gone.
+        if (Column.Filter is not OptionsFilterState<TItem> options || !ShowCheckAll(options)
+            || VisibleOptions(options) is not { Count: > 0 } visible)
+        {
+            _lastCheckAllIndeterminate = null;
+            return;
+        }
+
+        var mixed = CheckAllState(options, visible) is null;
+        if (_lastCheckAllIndeterminate == mixed) return;
+        var module = await _module.GetAsync(JS, FormDefaults);
+        if (module is null) return;
+        try
+        {
+            await module.InvokeVoidAsync("setIndeterminate", _checkAllRef, mixed);
+            _lastCheckAllIndeterminate = mixed;
+        }
+        catch
+        {
+            // Element gone / circuit dropped mid-call -- same fallback, and a later render retries.
         }
     }
 
@@ -461,10 +599,10 @@ else
         _debounceCts = null;
     }
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _disposed = true;
         CancelDebounce();
-        return ValueTask.CompletedTask;
+        await _module.DisposeAsync();
     }
 }

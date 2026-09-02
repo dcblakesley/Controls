@@ -66,19 +66,6 @@
     /// <summary>The column this control filters. Required.</summary>
     [Parameter, EditorRequired] public Column<TItem> Column { get; set; } = default!;
 
-    /// <summary>Accessible-name format for the filter button; <c>{0}</c> is the column's header
-    /// text. Forwarded from <see cref="Table{TItem}.FilterButtonLabelFormat"/>.</summary>
-    [Parameter] public string FilterButtonLabelFormat { get; set; } = "Filter {0}";
-
-    /// <summary>Accessible-name format used instead of <see cref="FilterButtonLabelFormat"/> while
-    /// this column has a filter applied. Forwarded from
-    /// <see cref="Table{TItem}.FilterAppliedButtonLabelFormat"/>.</summary>
-    [Parameter] public string FilterAppliedButtonLabelFormat { get; set; } = "Filter {0} (filter applied)";
-
-    /// <summary>Accessible name for a headerless column's filter button while a filter is applied.
-    /// Forwarded from <see cref="Table{TItem}.FilterAppliedLabel"/>.</summary>
-    [Parameter] public string FilterAppliedLabel { get; set; } = "Filter (filter applied)";
-
     /// <summary>
     /// Renders the funnel button natively <c>disabled</c> (the Table forwards its own
     /// <see cref="Table{TItem}.Loading"/>), so a masked table is inert to the keyboard as well as to
@@ -95,9 +82,11 @@
     /// <see cref="Table{TItem}.FilterOkLabel"/>.</summary>
     [Parameter] public string OkLabel { get; set; } = "OK";
 
-    /// <summary>Accessible-name fallback for the filter button when the column has no header text
-    /// to name it. Forwarded from <see cref="Table{TItem}.FilterLabel"/>.</summary>
-    [Parameter] public string FilterLabel { get; set; } = "Filter";
+    // Every OTHER label this panel (and the editor inside it) needs is read straight off Table --
+    // FilterAccessibleName for the trigger/dialog name, FilterSearchPlaceholder/FilterEmptyText/
+    // FilterCheckAllLabel for the extras, the min/max/bool wording for the typed editors. These two
+    // stay parameters only because the footer buttons they name are rendered HERE; forwarding the
+    // rest one at a time is what the Table parameter exists to avoid.
 
     // Explicit parameter, not [CascadingParameter]: Table's own `<CascadingValue Value="this">`
     // wraps only its ChildContent (where Column<TItem> instances self-register) -- the <thead>

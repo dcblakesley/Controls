@@ -341,15 +341,14 @@
             </span>
         </button>;
 
-    // The filter control, with the six forwarded label parameters, on each of the three header shapes.
+    // The filter control, with the two forwarded footer labels, on each of the three header shapes.
+    // Everything else it (and the editor inside it) needs to name itself is read off this Table
+    // directly through the Table parameter -- see FilterAccessibleName.
     // Disabled tracks Loading so the funnel is inert to the keyboard the same way the mask makes it
     // inert to the pointer (an ALREADY-open dropdown stays fully operable -- see TableColumnFilter.Disabled).
     RenderFragment ColumnFilter(Column<TItem> col) =>
         @<TableColumnFilter TItem="TItem" Column="col" Table="this"
-                            FilterButtonLabelFormat="@FilterButtonLabelFormat"
-                            FilterAppliedButtonLabelFormat="@FilterAppliedButtonLabelFormat"
-                            FilterAppliedLabel="@FilterAppliedLabel"
-                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel" FilterLabel="@FilterLabel"
+                            ResetLabel="@FilterResetLabel" OkLabel="@FilterOkLabel"
                             Disabled="Loading" />;
 
     // Selection checkboxes: the styled variant is the same <input> plus a wrapper and one extra
@@ -664,6 +663,11 @@
     /// outside-click/Escape discard (unless <see cref="Column{TItem}.FilterOnClose"/> turns that into
     /// a commit), or on a no-op OK/Reset (the applied selection is unchanged — e.g. clicking OK with
     /// nothing ticked).
+    /// <para>Defaults and reset-to-default: <see cref="Column{TItem}.DefaultFilterValues"/> is applied
+    /// silently (it is the consumer's own initial state, so it raises nothing — read it back from the
+    /// same parameter). Under <see cref="Column{TItem}.FilterResetToDefault"/> a Reset raises with the
+    /// DEFAULT as its payload rather than an empty one, and a Reset on a column already sitting at its
+    /// default raises nothing at all, by the same "real change only" rule.</para>
     /// </summary>
     [Parameter] public EventCallback<(Column<TItem> Column, IReadOnlyList<string> SelectedValues)> OnFilterChanged { get; set; }
 
@@ -675,6 +679,10 @@
     /// once after <see cref="ClearFiltersAsync"/> when it cleared anything. An empty list means no
     /// filter is applied. For a consumer that renders one "active filters" summary (chips, a
     /// clear-all bar, a query-string mirror) this is the single event to handle.
+    /// <para>It follows <see cref="OnFilterChanged"/> exactly, so it is likewise silent for
+    /// <see cref="Column{TItem}.DefaultFilterValues"/> — a table whose columns start out filtered
+    /// raises nothing on first render. After a <see cref="ClearFiltersAsync"/> any column with
+    /// <see cref="Column{TItem}.FilterResetToDefault"/> is still listed here, at its default.</para>
     /// </summary>
     [Parameter] public EventCallback<IReadOnlyList<TableColumnFilterSnapshot<TItem>>> OnFiltersChanged { get; set; }
 
@@ -763,6 +771,40 @@
     /// <summary>Label of a <see cref="TableFilterKind.Bool"/> editor's <c>false</c> option — see
     /// <see cref="FilterBoolTrueText"/>. Override to localize.</summary>
     [Parameter] public string FilterBoolFalseText { get; set; } = "No";
+
+    /// <summary>Placeholder <em>and</em> accessible name of the search box a
+    /// <see cref="Column{TItem}.FilterSearch"/> column puts above its dropdown option list (a
+    /// placeholder is not an accessible name, and that box has no visible label of its own). Override
+    /// to localize.</summary>
+    [Parameter] public string FilterSearchPlaceholder { get; set; } = "Search in filters";
+
+    /// <summary>Shown in place of the options when a <see cref="Column{TItem}.FilterSearch"/> query
+    /// matches none of them. Override to localize.</summary>
+    [Parameter] public string FilterEmptyText { get; set; } = "No matches";
+
+    /// <summary>Label of the "select all" row a <see cref="Column{TItem}.FilterCheckAll"/> column puts
+    /// at the top of its dropdown option list. Override to localize.</summary>
+    [Parameter] public string FilterCheckAllLabel { get; set; } = "Select all";
+
+    /// <summary>
+    /// Whether the applied column filters actually narrow the rendered rows. True (default): this
+    /// Table filters <see cref="DataSource"/> itself. False: <see cref="DataSource"/> renders whole
+    /// and the filter UI becomes a pure input device for filtering somewhere else (a server query) —
+    /// every column's applied state, the funnel's applied highlight and accessible name, each kind's
+    /// <c>Describe</c> summary, the page reset, <see cref="OnFilterChanged"/> and
+    /// <see cref="OnFiltersChanged"/> all behave exactly as they do client-side. Handle the events,
+    /// fetch, and reassign <see cref="DataSource"/> with the server's page.
+    /// <para>Two things are deliberately skipped while this is false: the narrowing itself, and the
+    /// <see cref="FilterResultAnnouncementFormat"/> announcement — its count would be describing rows
+    /// the server has not returned yet. The empty-state announcement (<see cref="EmptyText"/>) and
+    /// <see cref="LoadingLabel"/> are unaffected.</para>
+    /// <para><see cref="PropertyColumn{TItem,TProp}.FilterValuesFromData"/> still derives its options
+    /// from whatever <see cref="DataSource"/> currently holds, so with a single server page it offers
+    /// only the values on that page and prunes an applied value the next page happens not to contain
+    /// — it is not meaningful here. Declare explicit <see cref="Column{TItem}.FilterOptions"/>
+    /// instead.</para>
+    /// </summary>
+    [Parameter] public bool ClientSideFiltering { get; set; } = true;
 
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
@@ -907,9 +949,12 @@
     // list every call) — that's what lets RebuildPageItems's existing _sorted reference-equality
     // guard (below) catch a real filter change with no separate tracked field: see the guard's own
     // comment for why.
+    // ClientSideFiltering = false short-circuits the narrowing and ONLY the narrowing: the applied
+    // state, the funnel highlight, the page reset and both events are all upstream of here, so a
+    // consumer filtering server-side keeps every one of them (see that parameter's own doc).
     void ApplyFilters()
     {
-        _filtered = _columns.Any(c => c.Filter is { IsActive: true })
+        _filtered = ClientSideFiltering && _columns.Any(c => c.Filter is { IsActive: true })
             ? _items.Where(item => _columns.All(c => c.PassesFilter(item))).ToList()
             : _items;
     }
@@ -1282,6 +1327,20 @@
                 // here -- EventCallback.InvokeAsync is safe to not await.
                 if (filterCleared.Count > 0) _ = RaiseFilterChangedAsync(filterCleared);
             }
+
+            // A column applied its DefaultFilterValues during its own first parameter pass, which ran
+            // while this table was rendering -- AFTER that pass's ApplyFilters and BEFORE the column
+            // was promoted into _columns, so nothing has narrowed the rows by it yet. The promotion
+            // above has now run, so re-derive here, one pass later, before the body renders: the same
+            // pipeline the prune path runs, minus its notification (a default is the consumer's own
+            // initial state, not a change to report) and minus the page reset (page 1 already).
+            if (_pendingFilterDefaults)
+            {
+                _pendingFilterDefaults = false;
+                ApplyFilters();
+                ApplySort();
+                RebuildPageItems();
+            }
         }
         _collecting = new List<Column<TItem>>();
     }
@@ -1419,6 +1478,28 @@
     /// <see cref="Column{TItem}.OnParametersSet"/>).
     /// </summary>
     internal void NotifyColumnChanged() => StateHasChanged();
+
+    // Set by a column that has just applied its Column.DefaultFilterValues; consumed by the next
+    // StartCollectingColumns (see there for why it cannot be acted on immediately). A flag rather
+    // than the column itself: several columns can carry defaults, and the recompute is table-wide
+    // regardless of how many asked for it.
+    bool _pendingFilterDefaults;
+
+    /// <summary>
+    /// A column applied its <see cref="Column{TItem}.DefaultFilterValues"/>. Requests the row
+    /// re-derive that makes it visible on the FIRST render, deferred to the pass that promotes the
+    /// column into the rendered set. Deliberately raises nothing: a default is the consumer's own
+    /// initial state, not a change for <see cref="OnFilterChanged"/> to report back to them --
+    /// which is the one thing that distinguishes it from <see cref="NotifyColumnFilterPruned"/>.
+    /// </summary>
+    internal void NotifyColumnFilterDefaultApplied()
+    {
+        _pendingFilterDefaults = true;
+        // Register already queues a render for a column the rendered set doesn't hold yet (which a
+        // column on its first parameter pass always is), so this is belt-and-braces -- but the flag
+        // is only ever consumed from a render, so it must not depend on someone else queuing one.
+        StateHasChanged();
+    }
 
     /// <summary>
     /// Re-derives filtered -&gt; sorted -&gt; paged and re-renders, for a column-driven change the
@@ -1739,11 +1820,19 @@
     // no-op by the same "changed" measure as OK above -- Clear reports it the same way.
     internal async Task ResetColumnFilterAsync(Column<TItem> column)
     {
-        if (column.Filter is not { } filter) return;
-        var changed = filter.Clear();
+        if (column.Filter is null) return;
+        var changed = ResetOrDefault(column);
         await column.SetFilterOpen(false);
         await RecomputeAfterFilterChangeAsync(column, changed);
     }
+
+    // What "reset this column" means, in one place for both callers (the dropdown's Reset button
+    // above and ClearFiltersAsync below) so the two cannot drift: back to the column's
+    // DefaultFilterValues under Column.FilterResetToDefault, empty otherwise. Reports whether the
+    // APPLIED state actually changed either way, which is what keeps a reset onto a default already
+    // in force as much of a no-op (no page reset, no event) as a Reset with nothing applied.
+    static bool ResetOrDefault(Column<TItem> column) =>
+        column.HasFilterDefault ? column.RestoreFilterDefault() : column.Filter!.Clear();
 
     // Shared tail of OK/Reset and of every Row-placement auto-commit (all of them arrive through
     // ApplyColumnFilterAsync): re-derive, then notify only when something actually changed, so a
@@ -1760,13 +1849,21 @@
     // (this is what keeps RebuildPageItems's guard correct with no separate tracked field for filter
     // state -- see that guard's own comment). A real change also records the matching-row count for
     // the live region; when it left no rows, StatusAnnouncement's EmptyText arm wins over it.
+    //
+    // Under ClientSideFiltering = false there is no count to announce -- _filtered is the whole
+    // DataSource, so the number would be "every row the server sent for the PREVIOUS query", which is
+    // worse than silence. Cleared rather than left alone so a table switched to server-side mid-life
+    // doesn't keep announcing a stale client-side count.
     void RecomputeAfterFilterChange(bool changed)
     {
         if (changed) _page = 1;
         ApplyFilters();
         ApplySort();
         RebuildPageItems();
-        if (changed) _filterResultAnnouncement = string.Format(FilterResultAnnouncementFormat, _filtered.Count);
+        if (changed)
+            _filterResultAnnouncement = ClientSideFiltering
+                ? string.Format(FilterResultAnnouncementFormat, _filtered.Count)
+                : null;
         StateHasChanged();
     }
 
@@ -1774,19 +1871,25 @@
     /// Clears every column's filter -- applied and staged alike, closing any open dropdown -- and
     /// re-derives the rows, the same path as pressing Reset on each column in turn. When at least one
     /// applied selection actually changed: the page resets to 1, <see cref="OnFilterChanged"/> is
-    /// raised once per cleared column (empty payload, column order), then <see cref="OnFiltersChanged"/>
-    /// once with the (now empty) active set. With nothing applied it raises nothing -- the same
-    /// "real change only" rule every other filter trigger follows.
+    /// raised once per changed column (its new payload, column order), then
+    /// <see cref="OnFiltersChanged"/> once with whatever is still active. With nothing to change it
+    /// raises nothing -- the same "real change only" rule every other filter trigger follows.
+    /// <para>"Clear" follows each column's own Reset semantics: a column with
+    /// <see cref="Column{TItem}.FilterResetToDefault"/> goes back to its
+    /// <see cref="Column{TItem}.DefaultFilterValues"/> rather than empty, so it stays active
+    /// afterwards (and contributes its default as its payload) while the rest empty out.</para>
     /// </summary>
     public async Task ClearFiltersAsync()
     {
         var cleared = new List<Column<TItem>>();
         foreach (var col in _columns)
         {
-            if (col.Filter is not { } filter || (!filter.IsActive && !filter.HasPendingChange)) continue;
+            if (col.Filter is not { } filter) continue;
+            // A column with a default is always visited, active or not: "clear" means "back to the
+            // default" there, which a column the user had emptied still has to be moved to.
+            if (!col.HasFilterDefault && !filter.IsActive && !filter.HasPendingChange) continue;
             await col.SetFilterOpen(false);
-            // FilterResetToDefault (a later phase) will restore the column's DefaultFilterValues here instead.
-            if (filter.Clear()) cleared.Add(col);
+            if (ResetOrDefault(col)) cleared.Add(col);
         }
         if (cleared.Count == 0) return;
         RecomputeAfterFilterChange(changed: true);

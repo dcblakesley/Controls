@@ -2713,6 +2713,32 @@
     flex: none;
 }
 
+/* Column.FilterSearch: the query box above the option list. The panel itself is unpadded (the list
+   and the footer supply their own), so this is the same 8px gutter .wss-table-filter-text gives the
+   Text kind's box, closed off with the split line the footer draws from the other end. */
+.wss-table-filter-search {
+    padding: 8px;
+    border-bottom: 1px solid var(--wss-color-split);
+}
+
+/* The list with every option hidden by that query. Padded like an option row
+   (.wss-table-filter-option-label) so the panel keeps its rhythm as the query narrows, and secondary
+   text because it is a status, not something to pick. */
+.wss-table-filter-empty {
+    padding: 5px 12px;
+    color: var(--wss-color-text-secondary);
+    font-size: var(--wss-font-size);
+    text-align: center;
+}
+
+/* Column.FilterCheckAll: an option row in every visual respect -- its label element carries
+   .wss-table-filter-option-label itself, so the padding/hover/checkbox alignment are literally the
+   same rule and cannot drift -- plus a split line separating it from the options it toggles. */
+.wss-table-filter-checkall {
+    padding: 0;
+    border-bottom: 1px solid var(--wss-color-split);
+}
+
 .wss-table-filter-footer {
     display: flex;
     align-items: center;
