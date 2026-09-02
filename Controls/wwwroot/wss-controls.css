@@ -2760,11 +2760,43 @@
     min-width: 200px;
 }
 
+/* The typed kinds (NumberRange / DateRange / Bool) need more room than the option list's 160px
+   floor, and -- unlike a list -- their editors open popups of their own (a picker panel, a select
+   dropdown) that the panel's own scrollport would clip to a 264px strip. One modifier for all three:
+   the floor a two-bound row or a date range needs is the same, and none of the three has a list long
+   enough to want the panel's scroll. */
+.wss-table-filter-dropdown-wide {
+    min-width: 240px;
+    max-height: none;
+    overflow: visible;
+}
+
 /* The box's gutter inside the panel (the footer supplies its own), and the containing block for
-   the clear button overlaid on the box's end edge. */
+   the clear button overlaid on the box's end edge. .wss-table-filter-pane is the same gutter for
+   the typed kinds, which have no clear button of their own to anchor. */
+.wss-table-filter-text,
+.wss-table-filter-pane {
+    padding: 8px;
+}
+
 .wss-table-filter-text {
     position: relative;
-    padding: 8px;
+}
+
+/* NumberRange: the two bounds share the row evenly. flex-basis 0 (not auto) so an <input>'s default
+   intrinsic width can't hand one box more than the other, and min-width: 0 to beat the min-content
+   floor a flex item gets, which is what lets a narrow filter-row cell shrink them instead of
+   overflowing. Symmetric padding: the 28px the text box reserves is for its clear button, which a
+   number box has none of -- and the spinners already claim that side. */
+.wss-table-filter-range {
+    display: flex;
+    gap: 8px;
+}
+
+.wss-table-filter-range > .wss-table-filter-input {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 8px;
 }
 
 /* The kit's input look at the compact (24px) control height -- same tokens as .wss-search-input

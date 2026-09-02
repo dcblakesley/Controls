@@ -743,6 +743,27 @@
     /// column's search box (shown while it holds text). Override to localize.</summary>
     [Parameter] public string FilterClearLabel { get; set; } = "Clear";
 
+    /// <summary>Name of the lower-bound input in a <see cref="TableFilterKind.NumberRange"/> editor.
+    /// Combined with the column's own filter name ("Filter by Age: Minimum") so two range columns in
+    /// one table don't both announce the same thing. Override to localize.</summary>
+    [Parameter] public string FilterMinLabel { get; set; } = "Minimum";
+
+    /// <summary>Name of the upper-bound input in a <see cref="TableFilterKind.NumberRange"/> editor —
+    /// see <see cref="FilterMinLabel"/>. Override to localize.</summary>
+    [Parameter] public string FilterMaxLabel { get; set; } = "Maximum";
+
+    /// <summary>Placeholder of a <see cref="TableFilterKind.Bool"/> editor's select — its
+    /// "nothing selected", which excludes no row. Override to localize.</summary>
+    [Parameter] public string FilterBoolAnyText { get; set; } = "All";
+
+    /// <summary>Label of a <see cref="TableFilterKind.Bool"/> editor's <c>true</c> option, and the
+    /// wording its <c>Describe</c> summary uses. Override to localize.</summary>
+    [Parameter] public string FilterBoolTrueText { get; set; } = "Yes";
+
+    /// <summary>Label of a <see cref="TableFilterKind.Bool"/> editor's <c>false</c> option — see
+    /// <see cref="FilterBoolTrueText"/>. Override to localize.</summary>
+    [Parameter] public string FilterBoolFalseText { get; set; } = "No";
+
     /// <summary>
     /// Unmatched attributes (e.g. a consumer's <c>class</c>, <c>style</c>, or <c>data-*</c>),
     /// applied to the root <c>div.wss-table-root</c> element. <c>class</c> and <c>style</c> merge
@@ -759,6 +780,13 @@
 
     object KeyFor(TItem item) => RowKey?.Invoke(item) ?? (object?)item ?? NullKey;
     List<TItem> _items = new();      // original DataSource order — the source of truth
+
+    /// <summary>The table's current rows in DataSource order, unfiltered and unsorted — what a column
+    /// deriving its filter options FROM the data reads (see
+    /// <see cref="Column{TItem}.OnTableDataChanged"/>). Kept read-only: this IS the source of truth
+    /// the whole pipeline is derived from.</summary>
+    internal IReadOnlyList<TItem> Items => _items;
+
     List<TItem> _filtered = new();   // _items narrowed by every filterable column's applied selection (or _items itself when none)
     List<TItem> _sorted = new();     // _filtered reordered by the active sort (or _filtered itself when unsorted)
     List<TItem> _pageItems = new();
@@ -1087,6 +1115,13 @@
                 _expanded.RemoveWhere(k => !present.Contains(k));
             }
 
+            // Hand every live column the new rows BEFORE re-deriving: a column whose filter options
+            // come from the data (PropertyColumn.FilterValuesFromData) rebuilds them here, and the
+            // filter below has to run against the pruned selection, not the pre-swap one. _liveColumns
+            // rather than _columns so a column declared but not yet promoted is included too; a column
+            // that doesn't derive anything from the data ignores the call.
+            foreach (var col in _liveColumns) col.OnTableDataChanged(_items);
+
             // Re-derive the filtered/sorted view from the new data (column references are stable,
             // so both the active filter selections and the active sort persist across a DataSource
             // swap, same treatment).
@@ -1358,7 +1393,14 @@
 
     internal void Register(Column<TItem> column)
     {
-        if (!_liveColumns.Contains(column)) _liveColumns.Add(column);
+        if (!_liveColumns.Contains(column))
+        {
+            _liveColumns.Add(column);
+            // A column declared AFTER the data arrived (the first render, or an @if that brought one
+            // back) never saw the DataSource-swap branch above, so it gets the rows here instead —
+            // otherwise a FilterValuesFromData column would offer no options until the next swap.
+            column.OnTableDataChanged(_items);
+        }
         if (_collecting is null || _collecting.Contains(column)) return;
         _collecting.Add(column);
         // A column not already in the rendered set means it changed — re-render so the freshly

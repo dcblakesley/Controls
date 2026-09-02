@@ -143,11 +143,16 @@
     string FilterAriaLabel => Table.FilterAccessibleName(Column);
 
     // A separate whole-string per kind (not a conditional appended to the literal) so the Options
-    // panel's class attribute stays byte-identical to before the Text kind existed.
-    static string DropdownClass(ColumnFilterState<TItem> filter) =>
-        filter.Kind == TableFilterKind.Text
-            ? "wss-table-filter-dropdown wss-table-filter-dropdown-text"
-            : "wss-table-filter-dropdown";
+    // panel's class attribute stays byte-identical to before the other kinds existed. The Text
+    // modifier only widens the panel; the typed kinds additionally need it to stop scrolling and
+    // clipping, since their editors open popups of their own inside it (see the CSS).
+    static string DropdownClass(ColumnFilterState<TItem> filter) => filter.Kind switch
+    {
+        TableFilterKind.Text => "wss-table-filter-dropdown wss-table-filter-dropdown-text",
+        TableFilterKind.NumberRange or TableFilterKind.DateRange or TableFilterKind.Bool
+            => "wss-table-filter-dropdown wss-table-filter-dropdown-wide",
+        _ => "wss-table-filter-dropdown"
+    };
 
     async Task ToggleOpen()
     {

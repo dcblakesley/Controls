@@ -116,9 +116,11 @@ public class Column<TItem> : ComponentBase, IDisposable
     [Parameter] public bool FilterOnClose { get; set; }
 
     /// <summary>Whether the Table should render a filter control on this column's header — true once
-    /// the column's parameters declare a filter kind (see <see cref="DeriveFilterKind"/>, first match
-    /// wins: <see cref="FilterDropdown"/>; <see cref="FilterOptions"/> with <see cref="OnFilter"/>;
-    /// <see cref="FilterText"/>).</summary>
+    /// the column's parameters declare a filter kind (see <see cref="ExplicitFilterKind"/>, first
+    /// match wins: <see cref="FilterDropdown"/>; <see cref="FilterOptions"/> with
+    /// <see cref="OnFilter"/>; <see cref="FilterText"/>), or a derived column type infers one from
+    /// its own (<see cref="DerivedFilterKind"/> — see
+    /// <see cref="PropertyColumn{TItem,TProp}.Filterable"/>).</summary>
     public bool CanFilter => Filter is not null;
 
     /// <summary>
@@ -238,16 +240,52 @@ public class Column<TItem> : ComponentBase, IDisposable
         else if (displayChanged) Table?.NotifyColumnChanged();
     }
 
-    // Which filter kind this column's parameters declare, or null for none. First match wins (a
+    // The kinds THIS class's own parameters declare outright, or null for none. First match wins (a
     // FilterDropdown template owns the panel outright, so it beats the built-in editors; the keyed
-    // Options kind beats Text because its OnFilter is the more specific declaration); the Table
-    // renders no filter UI for null. Further kinds slot in here as more arms plus a case each in
-    // SyncFilterState below.
-    TableFilterKind? DeriveFilterKind() =>
+    // Options kind beats Text because its OnFilter is the more specific declaration). Further
+    // explicitly-declared kinds slot in here as more arms plus a case each in SyncFilterState below.
+    //
+    // Kept separate from the derived kinds because SyncFilterState has to know which route built the
+    // state: only an explicit declaration carries the FilterOptions/OnFilter/FilterText inputs its
+    // switches refresh from.
+    TableFilterKind? ExplicitFilterKind =>
         FilterDropdown is not null ? TableFilterKind.Custom
         : FilterOptions is { Count: > 0 } && OnFilter is not null ? TableFilterKind.Options
         : FilterText is not null ? TableFilterKind.Text
         : null;
+
+    /// <summary>
+    /// The filter kind a derived column type infers from its OWN parameters, consulted only when
+    /// none of the explicit ones is declared — so an explicit <see cref="FilterOptions"/>+
+    /// <see cref="OnFilter"/>, <see cref="FilterText"/> or <see cref="FilterDropdown"/> always wins,
+    /// exactly as <see cref="SortBy"/> wins over <c>PropertyColumn.Sortable</c>. Null on the base;
+    /// see <see cref="PropertyColumn{TItem,TProp}.Filterable"/>.
+    /// </summary>
+    private protected virtual TableFilterKind? DerivedFilterKind => null;
+
+    /// <summary>
+    /// Builds the state for a <see cref="DerivedFilterKind"/>. A hook rather than another arm of
+    /// SyncFilterState's switch because the typed kinds need a row accessor only the derived column
+    /// can produce — <c>PropertyColumn</c>'s <c>TProp</c> is invisible from here. Null for a kind
+    /// this column type does not build.
+    /// </summary>
+    private protected virtual ColumnFilterState<TItem>? CreateDerivedFilterState(TableFilterKind kind) => null;
+
+    /// <summary>
+    /// Refreshes a state built by <see cref="CreateDerivedFilterState"/> from the current parameters,
+    /// every pass while the kind is unchanged (the counterpart of the <c>Update</c> calls in
+    /// SyncFilterState's switch). Returns whether an APPLIED value was pruned, the same contract
+    /// SyncFilterState itself reports.
+    /// </summary>
+    private protected virtual bool UpdateDerivedFilterState(ColumnFilterState<TItem> state) => false;
+
+    /// <summary>
+    /// The table's rows changed — a <see cref="Table{TItem}.DataSource"/> swap, or this column
+    /// registering with a table whose data already arrived. A no-op here; a column whose filter
+    /// options are derived FROM the data overrides it to re-derive them (see
+    /// <see cref="PropertyColumn{TItem,TProp}.FilterValuesFromData"/>).
+    /// </summary>
+    internal virtual void OnTableDataChanged(IReadOnlyList<TItem> items) { }
 
     // Keeps Filter in step with the declared kind, every parameter pass. Same kind as last pass: the
     // SAME instance is kept -- the applied selection lives in it -- and only its inputs (options,
@@ -272,9 +310,15 @@ public class Column<TItem> : ComponentBase, IDisposable
     // stop showing them. A fresh state has nothing to lose, so the first pass always returns false.
     bool SyncFilterState(bool optionsChanged)
     {
-        var kind = DeriveFilterKind();
+        var explicitKind = ExplicitFilterKind;
+        var kind = explicitKind ?? DerivedFilterKind;
         if (kind == Filter?.Kind)
         {
+            // A kind that now comes from the DERIVED declaration is refreshed by the column that
+            // declared it. Options is the one kind both routes produce, so a column handing its
+            // explicit FilterOptions over to Filterable/FilterValuesFromData (or back) keeps the same
+            // state object, and with it the applied selection.
+            if (explicitKind is null) return UpdateDerivedFilterState(Filter!);
             switch (Filter)
             {
                 case OptionsFilterState<TItem> options:
@@ -294,12 +338,12 @@ public class Column<TItem> : ComponentBase, IDisposable
         // A dropdown open on the state being dropped closes with it, and the column's listener hears
         // that close like any other (a no-op on a closed or absent state).
         _ = SetFilterOpen(Filter, false);
-        Filter = kind switch
+        Filter = explicitKind switch
         {
             TableFilterKind.Options => new OptionsFilterState<TItem>(_lastFilterOptions!, FilterMultiple, OnFilter!),
             TableFilterKind.Custom => new CustomFilterState<TItem>(_lastFilterOptions, OnFilter),
             TableFilterKind.Text => new TextFilterState<TItem>(FilterText!, TextFilterMatch),
-            _ => null
+            _ => kind is { } derived ? CreateDerivedFilterState(derived) : null
         };
         return wasActive;
     }
@@ -374,7 +418,7 @@ public class Column<TItem> : ComponentBase, IDisposable
     // single pass -- which, with the corrective render above, is an infinite render loop. `a` is always
     // this column's own private snapshot, so the ReferenceEquals below now only short-circuits the
     // both-null case; it can never make a mutated-in-place list compare equal to itself.
-    static bool OptionsEqual(IReadOnlyList<TableFilterOption>? a, IReadOnlyList<TableFilterOption>? b)
+    private protected static bool OptionsEqual(IReadOnlyList<TableFilterOption>? a, IReadOnlyList<TableFilterOption>? b)
     {
         if (ReferenceEquals(a, b)) return true;
         if (a is null || b is null || a.Count != b.Count) return false;

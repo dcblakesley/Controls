@@ -61,7 +61,7 @@
                    aria-label="@Table.FilterAccessibleName(Column)"
                    value="@text.PendingText"
                    @oninput="@(e => text.PendingText = e.Value as string)"
-                   @onkeydown="OnTextKeyDown" />
+                   @onkeydown="OnEditorKeyDown" />
             @if (!string.IsNullOrEmpty(text.PendingText))
             {
                 <button type="button"
@@ -71,6 +71,26 @@
                     @EditIcons.ClearCircle
                 </button>
             }
+        </div>
+    }
+    else if (Column.Filter is NumberRangeFilterState<TItem> range)
+    {
+        @* The typed kinds are one control rather than a list, so they get the same padded slot the
+           Text box does -- the panel itself stays unpadded for the option list and the footer. *@
+        <div class="wss-table-filter-pane">
+            @NumberRangeInputs(range)
+        </div>
+    }
+    else if (Column.Filter is DateRangeFilterState<TItem> dates)
+    {
+        <div class="wss-table-filter-pane">
+            @DateRangeEditor(dates)
+        </div>
+    }
+    else if (Column.Filter is BoolFilterState<TItem> flag)
+    {
+        <div class="wss-table-filter-pane">
+            @BoolEditor(flag)
         </div>
     }
 }
@@ -112,7 +132,7 @@ else
                    value="@text.PendingText"
                    disabled="@Table.Loading"
                    @oninput="@(e => OnRowTextInputAsync(text, e))"
-                   @onkeydown="OnTextKeyDown" />
+                   @onkeydown="OnEditorKeyDown" />
             @if (!string.IsNullOrEmpty(text.PendingText))
             {
                 <button type="button"
@@ -123,6 +143,20 @@ else
                     @EditIcons.ClearCircle
                 </button>
             }
+        }
+        else if (Column.Filter is NumberRangeFilterState<TItem> range)
+        {
+            @* Identical markup to the dropdown's, minus that placement's padded slot -- the row cell
+               supplies the gutter. Typing arms the shared debounce; Enter flushes it. *@
+            @NumberRangeInputs(range)
+        }
+        else if (Column.Filter is DateRangeFilterState<TItem> dates)
+        {
+            @DateRangeEditor(dates)
+        }
+        else if (Column.Filter is BoolFilterState<TItem> flag)
+        {
+            @BoolEditor(flag)
         }
         else if (Column.Filter is CustomFilterState<TItem> custom && Column.FilterDropdown is { } template)
         {
@@ -155,8 +189,13 @@ else
     readonly string _radioGroupName = $"wss-table-filter-{Guid.NewGuid():N}";
 
     ElementReference _inputRef;
+    // The kit components the DateRange/Bool editors render, for the open-focus hand-off below (they
+    // own their own input, so an ElementReference of ours would have nothing to point at).
+    DateRangePicker? _datePicker;
+    Select<string>? _boolSelect;
 
-    // Row placement, Text kind: the in-flight debounce (null between keystrokes). Owned and cancelled
+    // Row placement, free typing (Text and the two NumberRange boxes): the in-flight debounce (null
+    // between keystrokes). Owned and cancelled
     // here so a commit can never land after this editor left the tree -- the column may have been
     // removed, or the placement switched back to Dropdown, in the meantime.
     CancellationTokenSource? _debounceCts;
@@ -183,26 +222,136 @@ else
     static string SinglePendingValue(KeyedFilterState<TItem> keyed) =>
         keyed.PendingValues is [var first, ..] ? first : null!;
 
+    // The accessible name of whatever this editor renders, from the Table's own label rules: the
+    // applied/unapplied dropdown name inside a panel, the row format in a filter-row cell. One lookup
+    // for every kind, so a new editor names itself by construction.
+    string EditorLabel => Placement == TableFilterPlacement.Row
+        ? Table.FilterRowLabel(Column)
+        : Table.FilterAccessibleName(Column);
+
+    // A sub-control's name, qualified by the column's: two range columns in one table would otherwise
+    // both announce a bare "Minimum" with nothing to tell them apart.
+    string BoundLabel(string bound) => $"{EditorLabel}: {bound}";
+
+    // Loading makes the ROW editors inert (the mask covers that row), and only them: a dropdown that
+    // was already open when loading started keeps working, exactly as TableColumnFilter.Disabled
+    // scopes the same rule to the funnel and not the panel.
+    bool RowDisabled => Placement == TableFilterPlacement.Row && Table.Loading;
+
     /// <summary>
-    /// Moves focus into this editor's own text box, if it has one (the Text kind), and reports
-    /// whether it did -- the panel that hosts it focuses itself instead when this returns false, so
-    /// opening a dropdown puts the caret where the user is about to type without the panel having
-    /// to know which kinds have an input. Keyed off the column's current kind, not the element
-    /// reference: the host keeps a reference to this component across opens, and a reference left
-    /// over from a previous kind must not be trusted.
+    /// Moves focus into whatever this editor's own primary control is -- the text box, the first
+    /// range bound, the picker, the select -- and reports whether it did, so the panel that hosts it
+    /// focuses itself instead when this returns false (the Options list and a consumer template do
+    /// their own). Keyed off the column's current kind, not the element reference: the host keeps a
+    /// reference to this component across opens, and a reference left over from a previous kind must
+    /// not be trusted.
     /// </summary>
     internal async ValueTask<bool> TryFocusAsync()
     {
-        if (Placement != TableFilterPlacement.Dropdown || Column.Filter is not TextFilterState<TItem>) return false;
-        try { await _inputRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
-        return true;
+        if (Placement != TableFilterPlacement.Dropdown) return false;
+        switch (Column.Filter)
+        {
+            case TextFilterState<TItem>:
+            case NumberRangeFilterState<TItem>:
+                try { await _inputRef.FocusAsync(); } catch { /* not focusable yet (prerender/tests) */ }
+                return true;
+            case DateRangeFilterState<TItem> when _datePicker is not null:
+                // Note this opens the picker's own panel in a browser (it opens on input focus) --
+                // which is what a user who just opened a date filter is asking for.
+                try { await _datePicker.FocusAsync(); } catch { /* not focusable yet */ }
+                return true;
+            case BoolFilterState<TItem> when _boolSelect is not null:
+                try { await _boolSelect.FocusAsync(); } catch { /* not focusable yet */ }
+                return true;
+            default:
+                return false;
+        }
     }
+
+    // ----- Editors shared by both placements -----
+
+    // NumberRange: two native number inputs side by side. type="number" gives the platform's own
+    // numeric keypad and spinners; inputmode="decimal" is what actually picks the decimal keypad on
+    // iOS. Each box binds its own PENDING bound and leaves parsing to the state -- a half-typed "1e"
+    // is simply not a bound yet, so the rows never flicker mid-number. The min box carries the
+    // @ref because TryFocusAsync lands there.
+    RenderFragment NumberRangeInputs(NumberRangeFilterState<TItem> range) =>
+        @<div class="wss-table-filter-range">
+            <input type="number"
+                   inputmode="decimal"
+                   class="wss-table-filter-input"
+                   @ref="_inputRef"
+                   autocomplete="off"
+                   aria-label="@BoundLabel(Table.FilterMinLabel)"
+                   value="@range.MinText"
+                   disabled="@RowDisabled"
+                   @oninput="@(e => OnNumberInputAsync(range, true, e))"
+                   @onkeydown="OnEditorKeyDown" />
+            <input type="number"
+                   inputmode="decimal"
+                   class="wss-table-filter-input"
+                   autocomplete="off"
+                   aria-label="@BoundLabel(Table.FilterMaxLabel)"
+                   value="@range.MaxText"
+                   disabled="@RowDisabled"
+                   @oninput="@(e => OnNumberInputAsync(range, false, e))"
+                   @onkeydown="OnEditorKeyDown" />
+        </div>;
+
+    // DateRange: the kit's own range picker, named as one field through its group label. Either
+    // endpoint changing is a discrete pick, so the row placement commits on the spot -- no debounce
+    // (the picker's own text entry only raises these once it parses).
+    RenderFragment DateRangeEditor(DateRangeFilterState<TItem> dates) =>
+        @<DateRangePicker @ref="_datePicker"
+                          Start="@dates.Start"
+                          StartChanged="@(v => OnDateChangedAsync(dates, true, v))"
+                          End="@dates.End"
+                          EndChanged="@(v => OnDateChangedAsync(dates, false, v))"
+                          Size="SelectSize.Small"
+                          AllowClear="true"
+                          Disabled="@RowDisabled"
+                          GroupLabel="@EditorLabel" />;
+
+    // Bool: a single Select over the two literal keys the state serializes ("true"/"false"), with
+    // AllowClear + the placeholder standing in for "any" -- there is no third option to select, since
+    // "no filter" is the absence of one.
+    RenderFragment BoolEditor(BoolFilterState<TItem> flag) =>
+        @<Select TValue="string"
+                 @ref="_boolSelect"
+                 Options="@BoolOptions()"
+                 Value="@BoolSelectValue(flag)"
+                 ValueChanged="@(v => OnBoolChangedAsync(flag, v))"
+                 AllowClear="true"
+                 Placeholder="@Table.FilterBoolAnyText"
+                 Size="SelectSize.Small"
+                 InputLabel="@EditorLabel"
+                 Disabled="@RowDisabled" />;
+
+    // Same reference-stability contract as SelectOptionsFor: rebuilt only when the Table's own
+    // wording changes, so Select isn't handed a fresh Options instance on every render.
+    List<SelectOption<string>> _boolOptions = [];
+    (string True, string False)? _boolOptionsLabels;
+
+    IEnumerable<SelectOption<string>> BoolOptions()
+    {
+        if (_boolOptionsLabels != (Table.FilterBoolTrueText, Table.FilterBoolFalseText))
+        {
+            _boolOptionsLabels = (Table.FilterBoolTrueText, Table.FilterBoolFalseText);
+            _boolOptions = [new("true", Table.FilterBoolTrueText), new("false", Table.FilterBoolFalseText)];
+        }
+        return _boolOptions;
+    }
+
+    // Select's "nothing selected" is null (Value is declared non-nullable but defaults to default!),
+    // which is exactly the state's own "any".
+    static string BoolSelectValue(BoolFilterState<TItem> flag) =>
+        flag.PendingValue is { } value ? (value ? "true" : "false") : null!;
 
     // Enter applies, exactly as the OK button does. In the dropdown that also closes the panel; in
     // the row there is nothing to close, and any debounce still counting down is superseded (it
-    // would otherwise re-commit the same text a moment later -- harmless, but a wasted recompute).
-    // Every other key just edits the staged text via @oninput.
-    async Task OnTextKeyDown(KeyboardEventArgs e)
+    // would otherwise re-commit the same value a moment later -- harmless, but a wasted recompute).
+    // Every other key just edits the staged value via @oninput.
+    async Task OnEditorKeyDown(KeyboardEventArgs e)
     {
         if (e.Key != "Enter") return;
         CancelDebounce();
@@ -236,14 +385,50 @@ else
     Task OnRowSingleSelectionChangedAsync(KeyedFilterState<TItem> keyed, string? value) =>
         OnRowSelectionChangedAsync(keyed, value is null ? [] : [value]);
 
-    // Text kind: pending follows every keystroke (so the box never fights the user), but the commit
-    // waits for Table.FilterDebounceMilliseconds of quiet -- each keystroke cancels the previous
-    // countdown and starts its own, so only the last one lands. 0 commits synchronously per input.
-    // The same CTS + Task.Delay shape Select uses for its search debounce.
+    // DateRange: either endpoint is a discrete pick, so the row placement applies it at once (the
+    // dropdown just stages it for OK, like every other kind).
+    async Task OnDateChangedAsync(DateRangeFilterState<TItem> dates, bool isStart, DateTime? value)
+    {
+        if (isStart) dates.Start = value;
+        else dates.End = value;
+        if (Placement == TableFilterPlacement.Row) await CommitRowAsync();
+    }
+
+    // Bool: the select's two literal keys map straight back onto the state's tri-state; clearing
+    // (AllowClear) hands back null, which is "any".
+    async Task OnBoolChangedAsync(BoolFilterState<TItem> flag, string? value)
+    {
+        flag.PendingValue = value switch { "true" => true, "false" => false, _ => (bool?)null };
+        if (Placement == TableFilterPlacement.Row) await CommitRowAsync();
+    }
+
+    // Text kind: pending follows every keystroke (so the box never fights the user); the commit is
+    // debounced -- see ScheduleRowCommitAsync.
     async Task OnRowTextInputAsync(TextFilterState<TItem> text, ChangeEventArgs e)
     {
         text.PendingText = e.Value as string;
+        await ScheduleRowCommitAsync();
+    }
 
+    // NumberRange: same shape as the text box, one bound at a time. Free typing, so it debounces too
+    // -- and the state ignores a bound that isn't a number yet, so an in-progress "-" or "1e" commits
+    // as "no bound" rather than emptying the table.
+    async Task OnNumberInputAsync(NumberRangeFilterState<TItem> range, bool isMin, ChangeEventArgs e)
+    {
+        var text = e.Value as string;
+        if (isMin) range.MinText = text;
+        else range.MaxText = text;
+        if (Placement == TableFilterPlacement.Row) await ScheduleRowCommitAsync();
+    }
+
+    // The one debounce every freely-typed row editor shares (Text, and each NumberRange bound): the
+    // caller writes its own pending value first, then the commit waits for
+    // Table.FilterDebounceMilliseconds of quiet -- each keystroke cancels the previous countdown and
+    // starts its own, so only the last one lands, whichever box it came from (one CTS per editor, so
+    // typing a max supersedes a min still counting down and the pair commits once). 0 commits
+    // synchronously per input. The same CTS + Task.Delay shape Select uses for its search debounce.
+    async Task ScheduleRowCommitAsync()
+    {
         var delay = Table.FilterDebounceMilliseconds;
         if (delay <= 0)
         {

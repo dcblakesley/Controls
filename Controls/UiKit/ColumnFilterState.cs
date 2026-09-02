@@ -371,3 +371,354 @@ internal sealed class TextFilterState<TItem> : ColumnFilterState<TItem>
                 _ => $"contains \"{_applied}\""
             };
 }
+
+/// <summary>
+/// The property-type-free face of <see cref="TableFilterKind.NumberRange"/>: the two staged bound
+/// texts, which is all the editor needs. The editor component is generic in <c>TItem</c> only (it
+/// renders whatever kind a column declares), so it cannot name the closed
+/// <see cref="NumberRangeFilterState{TItem,TProp}"/> the column built -- everything that depends on
+/// the column's own property type (parsing and comparison) stays down there.
+/// </summary>
+internal abstract class NumberRangeFilterState<TItem> : ColumnFilterState<TItem>
+{
+    public sealed override TableFilterKind Kind => TableFilterKind.NumberRange;
+
+    /// <summary>The staged lower bound, exactly as typed (untrimmed, may be null or unparseable).
+    /// What the min input binds to; only <see cref="ColumnFilterState{TItem}.Commit"/> decides whether
+    /// it becomes an applied bound.</summary>
+    public string? MinText { get; set; }
+
+    /// <summary>The staged upper bound -- see <see cref="MinText"/>.</summary>
+    public string? MaxText { get; set; }
+}
+
+/// <summary>
+/// <see cref="TableFilterKind.NumberRange"/>: an inclusive lower/upper bound pair over a numeric
+/// column (<see cref="PropertyColumn{TItem,TProp}.Filterable"/> derives it from
+/// <typeparamref name="TProp"/>). Either bound may be left out; a bound whose text is blank -- or is
+/// not a <typeparamref name="TProp"/> value at all, which is what a half-typed "1e" is -- is simply
+/// not applied, so the box behaves as empty until it becomes a number rather than excluding every
+/// row while the user types.
+/// </summary>
+/// <remarks>
+/// Parsing is invariant on purpose, in both directions: <c>&lt;input type="number"&gt;</c> hands
+/// Blazor invariant text whatever the user's locale is, and the same strings are what
+/// <see cref="ColumnFilterState{TItem}.AppliedValues"/> publishes and
+/// <see cref="ColumnFilterState{TItem}.TryRestore"/> reads back -- a culture-sensitive round trip
+/// would make a persisted filter mean different numbers to different users. Ordering is
+/// <see cref="Comparer{T}.Default"/>, so a nullable <typeparamref name="TProp"/> orders by its
+/// underlying type; a row whose value is null is excluded outright the moment either bound is set
+/// (it has nothing to compare), the same treatment <see cref="TextFilterState{TItem}"/> gives a null
+/// accessor result.
+/// </remarks>
+internal sealed class NumberRangeFilterState<TItem, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TProp>
+    : NumberRangeFilterState<TItem>
+{
+    // The APPLIED bounds in both forms: the normalized TEXT is the serialized state (AppliedValues,
+    // the pending comparison, Describe) and doubles as the "is this bound set?" flag, while the
+    // parsed value is what PassesFilter compares. An unparseable bound never reaches either -- see
+    // Commit -- so the two can't disagree.
+    string? _appliedMin;
+    string? _appliedMax;
+    TProp? _min;
+    TProp? _max;
+
+    /// <summary>The row accessor (<c>PropertyColumn.Property</c>); a null result never matches while
+    /// a bound is set.</summary>
+    public Func<TItem, TProp> Accessor { get; private set; }
+
+    public NumberRangeFilterState(Func<TItem, TProp> accessor) => Accessor = accessor;
+
+    /// <summary>Refresh from the column's current parameters, every parameter pass while the kind is
+    /// unchanged. The applied bounds survive; a swapped accessor re-derives the rows through the
+    /// column's own row-state comparison.</summary>
+    public void Update(Func<TItem, TProp> accessor) => Accessor = accessor;
+
+    static string? Normalize(string? text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+
+    static bool TryParse(string? text, out TProp value)
+    {
+        if (text is not null && BindConverter.TryConvertTo<TProp>(text, CultureInfo.InvariantCulture, out var parsed))
+        {
+            value = parsed;
+            return true;
+        }
+        value = default!;
+        return false;
+    }
+
+    // What Commit would apply for one box: the trimmed text when it is a number, null otherwise.
+    static string? AppliedForm(string? text)
+    {
+        var normalized = Normalize(text);
+        return TryParse(normalized, out _) ? normalized : null;
+    }
+
+    public override bool IsActive => _appliedMin is not null || _appliedMax is not null;
+
+    // Ordinal on the applied FORM, not the raw text: retyping "10" over "10 " is not a change, and
+    // neither is typing garbage into an empty box (both apply nothing), which is what keeps a
+    // row-placement debounce from recomputing the table on every keystroke of a number being typed.
+    public override bool HasPendingChange =>
+        !string.Equals(AppliedForm(MinText), _appliedMin, StringComparison.Ordinal)
+        || !string.Equals(AppliedForm(MaxText), _appliedMax, StringComparison.Ordinal);
+
+    public override bool PassesFilter(TItem item)
+    {
+        var value = Accessor(item);
+        if (value is null) return false;
+        var comparer = Comparer<TProp>.Default;
+        if (_appliedMin is not null && comparer.Compare(value, _min!) < 0) return false;
+        if (_appliedMax is not null && comparer.Compare(value, _max!) > 0) return false;
+        return true;
+    }
+
+    public override bool Commit()
+    {
+        var minText = Normalize(MinText);
+        var maxText = Normalize(MaxText);
+        if (!TryParse(minText, out var min)) minText = null;
+        if (!TryParse(maxText, out var max)) maxText = null;
+
+        // Compare BEFORE overwriting, exactly as the keyed kinds do: a no-op OK must report false so
+        // the Table neither resets the page nor notifies.
+        var changed = !string.Equals(minText, _appliedMin, StringComparison.Ordinal)
+                      || !string.Equals(maxText, _appliedMax, StringComparison.Ordinal);
+        _appliedMin = minText;
+        _appliedMax = maxText;
+        _min = min;
+        _max = max;
+        return changed;
+    }
+
+    public override void Discard()
+    {
+        MinText = _appliedMin;
+        MaxText = _appliedMax;
+    }
+
+    public override bool Clear()
+    {
+        var changed = IsActive;
+        _appliedMin = null;
+        _appliedMax = null;
+        _min = default;
+        _max = default;
+        MinText = null;
+        MaxText = null;
+        return changed;
+    }
+
+    /// <summary>Both bounds, in order, with <c>""</c> standing in for one that is not set -- and an
+    /// empty list when neither is, so "no filter" is one shape across every kind.</summary>
+    public override IReadOnlyList<string> AppliedValues =>
+        IsActive ? [_appliedMin ?? "", _appliedMax ?? ""] : [];
+
+    /// <summary>Accepts the shape <see cref="AppliedValues"/> produces, plus its degenerate forms:
+    /// nothing (clear both), one entry (a lower bound only). Anything longer is not a range.</summary>
+    public override bool TryRestore(IReadOnlyList<string> values)
+    {
+        if (values.Count > 2) return false;
+        MinText = values.Count > 0 ? Normalize(values[0]) : null;
+        MaxText = values.Count > 1 ? Normalize(values[1]) : null;
+        return true;
+    }
+
+    public override string? Describe(Table<TItem> table) =>
+        (_appliedMin, _appliedMax) switch
+        {
+            (null, null) => null,
+            (not null, not null) => $"{_appliedMin} – {_appliedMax}",
+            (not null, null) => $"≥ {_appliedMin}",
+            _ => $"≤ {_appliedMax}"
+        };
+}
+
+/// <summary>
+/// <see cref="TableFilterKind.DateRange"/>: an inclusive start/end pair over a date column
+/// (<see cref="PropertyColumn{TItem,TProp}.Filterable"/> derives it for <see cref="DateTime"/>,
+/// <see cref="DateOnly"/> and <see cref="DateTimeOffset"/>, converting each to a
+/// <see cref="DateTime"/> accessor). Either endpoint may be left out; a row whose value is null is
+/// excluded the moment either is set.
+/// </summary>
+/// <remarks>
+/// Comparison is at DAY granularity, which is the granularity the picker offers: the start is
+/// compared against the start of its day and the end against the start of the day AFTER it, so a row
+/// stamped 14:30 on the end day is inside the range rather than a whole day short of it. The
+/// serialized form is round-trip (<c>"o"</c>) rather than a short date, so
+/// <see cref="ColumnFilterState{TItem}.AppliedValues"/> can be persisted and handed back to
+/// <see cref="ColumnFilterState{TItem}.TryRestore"/> without a culture in the middle.
+/// </remarks>
+internal sealed class DateRangeFilterState<TItem> : ColumnFilterState<TItem>
+{
+    DateTime? _appliedStart;
+    DateTime? _appliedEnd;
+
+    public override TableFilterKind Kind => TableFilterKind.DateRange;
+
+    /// <summary>The row accessor; a null result never matches while an endpoint is set.</summary>
+    public Func<TItem, DateTime?> Accessor { get; private set; }
+
+    /// <summary>The staged start of the range -- what the picker's start input binds to.</summary>
+    public DateTime? Start { get; set; }
+
+    /// <summary>The staged end of the range -- what the picker's end input binds to.</summary>
+    public DateTime? End { get; set; }
+
+    public DateRangeFilterState(Func<TItem, DateTime?> accessor) => Accessor = accessor;
+
+    /// <summary>Refresh from the column's current parameters, every parameter pass while the kind is
+    /// unchanged.</summary>
+    public void Update(Func<TItem, DateTime?> accessor) => Accessor = accessor;
+
+    public override bool IsActive => _appliedStart is not null || _appliedEnd is not null;
+
+    public override bool HasPendingChange => Start != _appliedStart || End != _appliedEnd;
+
+    public override bool PassesFilter(TItem item)
+    {
+        var value = Accessor(item);
+        if (value is null) return false;
+        if (_appliedStart is { } start && value.Value < start.Date) return false;
+        if (_appliedEnd is { } end && value.Value >= end.Date.AddDays(1)) return false;
+        return true;
+    }
+
+    public override bool Commit()
+    {
+        var changed = Start != _appliedStart || End != _appliedEnd;
+        _appliedStart = Start;
+        _appliedEnd = End;
+        return changed;
+    }
+
+    public override void Discard()
+    {
+        Start = _appliedStart;
+        End = _appliedEnd;
+    }
+
+    public override bool Clear()
+    {
+        var changed = IsActive;
+        _appliedStart = null;
+        _appliedEnd = null;
+        Start = null;
+        End = null;
+        return changed;
+    }
+
+    public override IReadOnlyList<string> AppliedValues =>
+        IsActive ? [Serialize(_appliedStart), Serialize(_appliedEnd)] : [];
+
+    static string Serialize(DateTime? value) => value?.ToString("o", CultureInfo.InvariantCulture) ?? "";
+
+    /// <summary>Accepts the shape <see cref="AppliedValues"/> produces (round-trip strings, <c>""</c>
+    /// for an unset endpoint) plus its degenerate forms; false when an entry is present but is not a
+    /// date, so a caller can tell a malformed restore from an empty one.</summary>
+    public override bool TryRestore(IReadOnlyList<string> values)
+    {
+        if (values.Count > 2) return false;
+        if (!TryParse(values.Count > 0 ? values[0] : null, out var start)) return false;
+        if (!TryParse(values.Count > 1 ? values[1] : null, out var end)) return false;
+        Start = start;
+        End = end;
+        return true;
+    }
+
+    // RoundtripKind so a "Z"/offset-bearing "o" string comes back as the same instant and Kind it
+    // went out as, instead of being shifted into local time by the default AdjustToUniversal-less
+    // parse.
+    static bool TryParse(string? text, out DateTime? value)
+    {
+        value = null;
+        if (string.IsNullOrEmpty(text)) return true;
+        if (!DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed)) return false;
+        value = parsed;
+        return true;
+    }
+
+    // Short dates in the CURRENT culture: unlike AppliedValues this is human-facing text (a
+    // consumer's filter summary), so it follows the reader, not the wire format.
+    public override string? Describe(Table<TItem> table) =>
+        (_appliedStart, _appliedEnd) switch
+        {
+            (null, null) => null,
+            ({ } s, { } e) => $"{Short(s)} – {Short(e)}",
+            ({ } s, null) => $"≥ {Short(s)}",
+            (_, { } e) => $"≤ {Short(e)}"
+        };
+
+    static string Short(DateTime value) => value.ToString("d", CultureInfo.CurrentCulture);
+}
+
+/// <summary>
+/// <see cref="TableFilterKind.Bool"/>: a three-state pick over a boolean column
+/// (<see cref="PropertyColumn{TItem,TProp}.Filterable"/> derives it for <c>bool</c>/<c>bool?</c>) --
+/// true, false, or nothing selected, which is the inactive state. A nullable column's null rows pass
+/// only while nothing is selected: neither "true" nor "false" describes them.
+/// </summary>
+internal sealed class BoolFilterState<TItem> : ColumnFilterState<TItem>
+{
+    bool? _applied;
+
+    public override TableFilterKind Kind => TableFilterKind.Bool;
+
+    /// <summary>The row accessor; a null result matches neither selection.</summary>
+    public Func<TItem, bool?> Accessor { get; private set; }
+
+    /// <summary>The staged pick -- what the editor's select binds to; null is "any".</summary>
+    public bool? PendingValue { get; set; }
+
+    public BoolFilterState(Func<TItem, bool?> accessor) => Accessor = accessor;
+
+    /// <summary>Refresh from the column's current parameters, every parameter pass while the kind is
+    /// unchanged.</summary>
+    public void Update(Func<TItem, bool?> accessor) => Accessor = accessor;
+
+    public override bool IsActive => _applied is not null;
+
+    public override bool HasPendingChange => PendingValue != _applied;
+
+    public override bool PassesFilter(TItem item) => Accessor(item) == _applied;
+
+    public override bool Commit()
+    {
+        var changed = PendingValue != _applied;
+        _applied = PendingValue;
+        return changed;
+    }
+
+    public override void Discard() => PendingValue = _applied;
+
+    public override bool Clear()
+    {
+        var changed = _applied is not null;
+        _applied = null;
+        PendingValue = null;
+        return changed;
+    }
+
+    public override IReadOnlyList<string> AppliedValues => _applied is null ? [] : [_applied.Value ? "true" : "false"];
+
+    /// <summary>Accepts <c>["true"]</c>/<c>["false"]</c> (either casing --
+    /// <see cref="bool.TryParse(string, out bool)"/> is what reads them), an empty list or a single
+    /// empty string for "any"; false for anything else.</summary>
+    public override bool TryRestore(IReadOnlyList<string> values)
+    {
+        if (values.Count > 1) return false;
+        if (values.Count == 0 || string.IsNullOrEmpty(values[0]))
+        {
+            PendingValue = null;
+            return true;
+        }
+        if (!bool.TryParse(values[0], out var parsed)) return false;
+        PendingValue = parsed;
+        return true;
+    }
+
+    /// <summary>The Table's own true/false wording (<see cref="Table{TItem}.FilterBoolTrueText"/>),
+    /// so a localized editor and a consumer's filter summary read the same.</summary>
+    public override string? Describe(Table<TItem> table) =>
+        _applied is null ? null : _applied.Value ? table.FilterBoolTrueText : table.FilterBoolFalseText;
+}
