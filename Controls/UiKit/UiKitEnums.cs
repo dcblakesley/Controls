@@ -69,6 +69,53 @@ public enum SortDirection
     Descending
 }
 
+/// <summary>
+/// Which kind of filter a <see cref="Table{TItem}"/> column offers — derived from the column's
+/// parameters, never set directly. Decides the editor the column renders and the shape of its
+/// serialized values (see <see cref="Table{TItem}.OnFilterChanged"/>'s payload).
+/// </summary>
+public enum TableFilterKind
+{
+    /// <summary>A fixed list of <see cref="TableFilterOption"/>s (<see cref="Column{TItem}.FilterOptions"/>
+    /// + <see cref="Column{TItem}.OnFilter"/>): a checkbox list, or radios under
+    /// <see cref="Column{TItem}.FilterMultiple"/> = false. Values are the selected option keys.</summary>
+    Options,
+    /// <summary>A consumer-supplied dropdown template (AntD's <c>filterDropdown</c>); values are the
+    /// string keys the template selects, narrowed through <see cref="Column{TItem}.OnFilter"/>.</summary>
+    Custom,
+    /// <summary>Free-text match over a string accessor; a single trimmed value.</summary>
+    Text,
+    /// <summary>Inclusive numeric range; two values (min, max), either may be empty.</summary>
+    NumberRange,
+    /// <summary>Inclusive date range at day granularity; two round-trip (<c>"o"</c>) values.</summary>
+    DateRange,
+    /// <summary>Tri-state boolean (any / true / false); one value, <c>"true"</c> or <c>"false"</c>.</summary>
+    Bool
+}
+
+/// <summary>Where a <see cref="Table{TItem}"/> renders its column filter editors.</summary>
+public enum TableFilterPlacement
+{
+    /// <summary>AntD's default: a funnel button in each filterable header cell opens a dropdown
+    /// panel whose edits are staged until OK (Reset clears; outside click / Escape discards).</summary>
+    Dropdown,
+    /// <summary>A dedicated filter row under the header, one always-visible editor per filterable
+    /// column; edits apply as they are made (text/number inputs debounced). No funnel buttons.</summary>
+    Row
+}
+
+/// <summary>How a <see cref="TableFilterKind.Text"/> column filter compares the typed text against a
+/// row's value. Every mode is case-insensitive (<see cref="StringComparison.OrdinalIgnoreCase"/>).</summary>
+public enum TextFilterMatch
+{
+    /// <summary>The row's text contains the typed text anywhere (the default).</summary>
+    Contains,
+    /// <summary>The row's text begins with the typed text.</summary>
+    StartsWith,
+    /// <summary>The row's text equals the typed text.</summary>
+    Equals
+}
+
 /// <summary>What a <see cref="DatePicker"/> selects: a day, a month, a date+time, a time, a year,
 /// a quarter, or a week.</summary>
 public enum DatePickerMode

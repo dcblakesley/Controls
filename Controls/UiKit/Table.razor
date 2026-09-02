@@ -100,7 +100,7 @@
                 {
                     @if (col.CanSort)
                     {
-                        <th scope="col" @key="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.FilterOpen ? "wss-table-cell-filter-open" : null)" aria-sort="@AriaSortFor(col)">
+                        <th scope="col" @key="col" class="wss-table-cell wss-table-cell-sortable @(IsSortActive(col) ? "wss-table-cell-sort-active" : null) @(col.IsFilterOpen ? "wss-table-cell-filter-open" : null)" aria-sort="@AriaSortFor(col)">
                             @if (col.TitleContent is null)
                             {
                                 @* col.CanFilter forks into its own branch (rather than always wrapping in
@@ -143,7 +143,7 @@
                     {
                         @if (col.CanFilter)
                         {
-                            <th scope="col" @key="col" class="wss-table-cell @(col.FilterOpen ? "wss-table-cell-filter-open" : null)">
+                            <th scope="col" @key="col" class="wss-table-cell @(col.IsFilterOpen ? "wss-table-cell-filter-open" : null)">
                                 <div class="wss-table-header-inner">
                                     <span class="wss-table-header-text">@col.HeaderFor()</span>
                                     @ColumnFilter(col)
@@ -782,7 +782,7 @@
     // comment for why.
     void ApplyFilters()
     {
-        _filtered = _columns.Any(c => c.CanFilter && c.FilterApplied.Count > 0)
+        _filtered = _columns.Any(c => c.Filter is { IsActive: true })
             ? _items.Where(item => _columns.All(c => c.PassesFilter(item))).ToList()
             : _items;
     }
@@ -834,8 +834,8 @@
         // every parent re-render defeats the whole point of this guard (see
         // Parent_rerender_with_unchanged_data_does_not_rewalk_rows), so the two extra fields are
         // cheaper than losing that contract.
-        // Column filter state (Column.FilterApplied) deliberately does NOT get its own tracked field
-        // here, unlike IsRowSelectable/SelectionMode above -- and that's a considered choice, not an
+        // Column filter state (Column.Filter's applied selection) deliberately does NOT get its own
+        // tracked field here, unlike IsRowSelectable/SelectionMode above -- a considered choice, not an
         // oversight (this exact staleness class -- a new kind of state the guard doesn't know about
         // -- has bitten twice already). IsRowSelectable/SelectionMode are plain Parameters: a parent
         // can change them on any re-render, entirely independent of _sorted, so RebuildPageItems
@@ -1107,21 +1107,18 @@
                 // must not keep narrowing the row set for a filter the user can no longer see or
                 // clear -- clear its state (same treatment the active-sort-column-removed case
                 // below already gets) and fall into the recompute. A column that was actively
-                // NARROWING rows (FilterApplied non-empty) also needs OnFilterChanged raised with an
-                // empty payload once it's gone -- this is the third way a consumer's applied filter
-                // can go away (alongside OK and Reset, see RecomputeAfterFilterChangeAsync), and
-                // skipping it used to leave a consumer's own filter-summary display showing a value
-                // that no longer narrows anything.
+                // NARROWING rows (Filter.IsActive) also needs OnFilterChanged raised with an empty
+                // payload once it's gone -- this is the third way a consumer's applied filter can go
+                // away (alongside OK and Reset, see RecomputeAfterFilterChangeAsync), and skipping
+                // it used to leave a consumer's own filter-summary display showing a value that no
+                // longer narrows anything. Clear() reports whether the APPLIED selection changed,
+                // which is exactly the "was narrowing" test.
                 var filterCleared = new List<Column<TItem>>();
                 foreach (var gone in previousColumns)
                 {
-                    if (_columns.Contains(gone)) continue;
-                    if (gone.FilterApplied.Count == 0 && gone.FilterPending.Count == 0 && !gone.FilterOpen) continue;
-                    var hadAppliedFilter = gone.FilterApplied.Count > 0;
-                    gone.FilterApplied.Clear();
-                    gone.FilterPending.Clear();
-                    gone.FilterOpen = false;
-                    if (hadAppliedFilter) filterCleared.Add(gone);
+                    if (_columns.Contains(gone) || gone.Filter is not { } filter) continue;
+                    filter.IsOpen = false;
+                    if (filter.Clear()) filterCleared.Add(gone);
                 }
 
                 // If the column driving the active sort is gone, drop the sort so the indicator and
@@ -1512,27 +1509,32 @@
     // ----- Column filtering (TableColumnFilter calls these -- only one dropdown open at a time,
     // matching AntD: opening a column's filter closes any other column's still-open one). -----
 
+    // Every entry point below is a no-op for a column with no filter state: TableColumnFilter only
+    // renders while Column.CanFilter, so the guard covers a programmatic call, not a real UI path.
+
     internal void OpenColumnFilter(Column<TItem> column)
     {
+        if (column.Filter is not { } filter) return;
+
         foreach (var c in _columns)
-            if (!ReferenceEquals(c, column)) c.FilterOpen = false;
+            if (!ReferenceEquals(c, column) && c.Filter is { } other) other.IsOpen = false;
 
-        // Stage the dropdown from the last APPLIED selection, not whatever was left over in
-        // FilterPending from a previous open-then-discard (outside click/Escape never copies
-        // Pending back into Applied, so a stale Pending would otherwise resurface here).
-        column.FilterPending.Clear();
-        foreach (var v in column.FilterApplied) column.FilterPending.Add(v);
-        column.FilterOpen = true;
+        // Stage the dropdown from the last APPLIED selection, not whatever was left staged by a
+        // previous open-then-cancel (outside click/Escape never copies pending back into applied, so
+        // a stale pending set would otherwise resurface here) -- that is what Discard does.
+        filter.Discard();
+        filter.IsOpen = true;
 
-        // TableColumnFilter is a child component: mutating Column fields directly doesn't cause
-        // Table's own <thead> render (a sibling of every OTHER column's TableColumnFilter instance)
-        // to refresh on its own -- this closes those siblings' dropdowns visibly, not just in state.
+        // TableColumnFilter is a child component: mutating a column's filter state directly doesn't
+        // cause Table's own <thead> render (a sibling of every OTHER column's TableColumnFilter
+        // instance) to refresh on its own -- this closes those siblings' dropdowns visibly, not just
+        // in state.
         StateHasChanged();
     }
 
     internal void CloseColumnFilter(Column<TItem> column)
     {
-        column.FilterOpen = false;
+        if (column.Filter is { } filter) filter.IsOpen = false;
         StateHasChanged();
     }
 
@@ -1540,30 +1542,28 @@
     // when the close was caused by ANOTHER column's filter opening (OpenColumnFilter above closes the
     // previous one), that column's panel has already focused itself and a late restore here would
     // steal focus back, leaving the newly opened panel unable to see Escape.
-    internal bool AnyColumnFilterOpen => _columns.Any(c => c.FilterOpen);
+    internal bool AnyColumnFilterOpen => _columns.Any(c => c.IsFilterOpen);
 
-    // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline. "changed"
-    // compares the about-to-be-overwritten Applied set against Pending BEFORE overwriting it -- a
+    // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline. Commit
+    // reports whether the applied selection actually changed (it compares BEFORE overwriting) -- a
     // no-op OK (e.g. clicking it with nothing ticked, or re-ticking back to the exact set that was
     // already applied) must not reset the page or fire a spurious "it changed" notification.
     internal async Task ApplyColumnFilterAsync(Column<TItem> column)
     {
-        var changed = !column.FilterApplied.SetEquals(column.FilterPending);
-        column.FilterApplied.Clear();
-        foreach (var v in column.FilterPending) column.FilterApplied.Add(v);
-        column.FilterOpen = false;
+        if (column.Filter is not { } filter) return;
+        var changed = filter.Commit();
+        filter.IsOpen = false;
         await RecomputeAfterFilterChangeAsync(column, changed);
     }
 
     // Reset: clear both the staged and applied selection immediately (no OK needed) and re-run the
     // pipeline the same way. A Reset on a column with no applied filter (nothing to clear) is a
-    // no-op by the same "changed" measure as OK above.
+    // no-op by the same "changed" measure as OK above -- Clear reports it the same way.
     internal async Task ResetColumnFilterAsync(Column<TItem> column)
     {
-        var changed = column.FilterApplied.Count > 0;
-        column.FilterPending.Clear();
-        column.FilterApplied.Clear();
-        column.FilterOpen = false;
+        if (column.Filter is not { } filter) return;
+        var changed = filter.Clear();
+        filter.IsOpen = false;
         await RecomputeAfterFilterChangeAsync(column, changed);
     }
 

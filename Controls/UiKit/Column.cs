@@ -65,32 +65,34 @@ public class Column<TItem> : ComponentBase, IDisposable
     /// </summary>
     [Parameter] public bool FilterMultiple { get; set; } = true;
 
-    /// <summary>Whether the Table should render a filter control on this column's header — both
-    /// <see cref="FilterOptions"/> and <see cref="OnFilter"/> must be supplied.</summary>
-    public bool CanFilter => FilterOptions is { Count: > 0 } && OnFilter is not null;
+    /// <summary>Whether the Table should render a filter control on this column's header — true once
+    /// the column's parameters declare a filter (see <see cref="DeriveFilterKind"/>: so far, both
+    /// <see cref="FilterOptions"/> and <see cref="OnFilter"/> must be supplied).</summary>
+    public bool CanFilter => Filter is not null;
 
-    // Uncontrolled filter state, scoped to this column instance (there is no fully-controlled
-    // `filteredValue` equivalent — see Table.OnFilterChanged for how a consumer observes it
-    // instead). FilterApplied is what actually narrows the rows (read by Table.ApplyFilters/
-    // PassesFilter below); FilterPending is the open dropdown's staged, not-yet-applied working
-    // set — copied from FilterApplied every time the dropdown opens and discarded (never copied
-    // back) on an outside click or Escape, so only OK commits it (Reset clears both immediately).
-    internal readonly HashSet<string> FilterApplied = new();
-    internal readonly HashSet<string> FilterPending = new();
-    internal bool FilterOpen;
+    /// <summary>
+    /// This column's filter state — the applied selection (what actually narrows the rows), the open
+    /// dropdown's staged edits, and the open flag — or null while the column offers no filter. Built
+    /// by <see cref="OnParametersSet"/> from the declared parameters and kept (the SAME instance)
+    /// for as long as the derived <see cref="TableFilterKind"/> is unchanged, so the applied
+    /// selection survives parameter passes and re-renders. Uncontrolled: there is no
+    /// fully-controlled <c>filteredValue</c> equivalent — see
+    /// <see cref="Table{TItem}.OnFilterChanged"/> for how a consumer observes it instead.
+    /// </summary>
+    internal ColumnFilterState<TItem>? Filter { get; private set; }
 
-    /// <summary>The currently-applied filter selection, in <see cref="FilterOptions"/>' declared
-    /// order — used for the <see cref="Table{TItem}.OnFilterChanged"/> payload.</summary>
-    internal IReadOnlyList<string> AppliedFilterValues =>
-        FilterOptions is null
-            ? Array.Empty<string>()
-            : FilterOptions.Where(o => FilterApplied.Contains(o.Value)).Select(o => o.Value).ToList();
+    /// <summary>Whether this column's filter dropdown is open (never while it has no filter).</summary>
+    internal bool IsFilterOpen => Filter is { IsOpen: true };
 
-    /// <summary>Whether <paramref name="item"/> passes this column's currently-applied filter (OR
-    /// across the selected values); true whenever the column isn't filterable or nothing is
-    /// selected, so an untouched column never excludes a row.</summary>
-    internal bool PassesFilter(TItem item) =>
-        !CanFilter || FilterApplied.Count == 0 || FilterApplied.Any(v => OnFilter!(item, v));
+    /// <summary>The currently-applied selection in its serialized form (Options kind: the selected
+    /// keys in <see cref="FilterOptions"/>' declared order) — the
+    /// <see cref="Table{TItem}.OnFilterChanged"/> payload. Empty when the column has no filter.</summary>
+    internal IReadOnlyList<string> AppliedFilterValues => Filter?.AppliedValues ?? Array.Empty<string>();
+
+    /// <summary>Whether <paramref name="item"/> passes this column's currently-applied filter; true
+    /// whenever the column has no filter or nothing is applied, so an untouched column never
+    /// excludes a row.</summary>
+    internal bool PassesFilter(TItem item) => Filter is null || !Filter.IsActive || Filter.PassesFilter(item);
 
     // Snapshot of everything the Table renders from this column, so a parameter change on an
     // ALREADY-registered column can be told apart from the same parameters arriving again (a
@@ -107,7 +109,9 @@ public class Column<TItem> : ComponentBase, IDisposable
     // the reference made OptionsEqual's ReferenceEquals fast path compare the list to itself, so a
     // consumer keeping one List<TableFilterOption> field and refilling it in place (Clear()+AddRange,
     // RemoveAll -- the ordinary pattern for data-derived options) always compared "equal" and the
-    // prune below never ran, which is the exact failure the by-value comparison was written for.
+    // prune (see SyncFilterState) never ran, which is the exact failure the by-value comparison was
+    // written for. The same copy is what the filter state renders and orders by (OptionsFilterState
+    // .Options), so there is one snapshot, not two.
     IReadOnlyList<TableFilterOption>? _lastFilterOptions;
 
     // The delegates the Table's own derived state (_filtered / _sorted) is computed FROM, tracked by
@@ -130,31 +134,22 @@ public class Column<TItem> : ComponentBase, IDisposable
     // ChildContent/Property delegate and lands right back here.
     protected override void OnParametersSet()
     {
-        // One comparison per pass, shared by all three consumers below. The snapshot copy is taken
-        // only when the options actually changed, so the steady state costs one walk of a short list
-        // and no allocation -- the same order of work the old reference-then-value compare did for
-        // the inline-list case, which is the common one.
+        // One comparison per pass, shared by the display snapshot, the filter-state sync and the
+        // prune below. The snapshot copy is taken only when the options actually changed, so the
+        // steady state costs one walk of a short list and no allocation -- the same order of work the
+        // old reference-then-value compare did for the inline-list case, which is the common one.
         var optionsChanged = !OptionsEqual(_lastFilterOptions, FilterOptions);
+        if (optionsChanged) _lastFilterOptions = FilterOptions?.ToArray();
+
+        // Build, drop or refresh the filter state BEFORE the display comparison: CanFilter reads it,
+        // and a column gaining or losing its filter is exactly the transition that comparison has to
+        // see. Applied values the new FilterOptions no longer offers are pruned in here too.
+        var filterPruned = SyncFilterState(optionsChanged);
         var displayChanged = _initialized && (optionsChanged || DisplayStateChanged());
-        // Applied filter values that the new FilterOptions no longer offers are pruned -- see
-        // PruneAppliedFilter.
-        var filterPruned = _initialized && optionsChanged && PruneAppliedFilter();
         // A swapped row-affecting delegate needs more than a re-render: the Table caches _filtered
         // and _sorted, neither of which is re-derived by a bare StateHasChanged -- see RowStateChanged.
         var rowStateChanged = _initialized && RowStateChanged();
 
-        // A column that stops offering a filter takes its funnel button AND its dropdown out of the
-        // header with it, so an open dropdown must not stay "open" in state. Two things read this
-        // flag and both broke: Table.AnyColumnFilterOpen stayed permanently true, which made every
-        // OTHER column's filter skip its focus restore on close and drop focus to <body> for the
-        // table's lifetime; and if options later came back, the dropdown reappeared already open --
-        // full-screen invisible backdrop and all -- with no user interaction, swallowing the next
-        // click. Keyed off CanFilter rather than the prune below, which only runs when the OPTIONS
-        // changed and returns early when nothing was selected (opening a dropdown and ticking
-        // nothing is exactly the case that left it stuck).
-        if (!CanFilter) FilterOpen = false;
-
-        if (optionsChanged) _lastFilterOptions = FilterOptions?.ToArray();
         CaptureDisplayState();
         CaptureRowState();
         _initialized = true;
@@ -164,6 +159,55 @@ public class Column<TItem> : ComponentBase, IDisposable
         if (filterPruned) Table?.NotifyColumnFilterPruned(this);
         else if (rowStateChanged) Table?.RecomputeColumnDerivedState();
         else if (displayChanged) Table?.NotifyColumnChanged();
+    }
+
+    // Which filter kind this column's parameters declare, or null for none. First match wins; the
+    // Table renders no filter UI for null. One kind so far -- further kinds slot in here as more arms
+    // without touching SyncFilterState below.
+    TableFilterKind? DeriveFilterKind() =>
+        FilterOptions is { Count: > 0 } && OnFilter is not null ? TableFilterKind.Options : null;
+
+    // Keeps Filter in step with the declared kind, every parameter pass. Same kind as last pass: the
+    // SAME instance is kept -- the applied selection lives in it -- and only its inputs (options,
+    // multiple, predicate) are refreshed, pruning applied values the new options no longer offer.
+    // Different kind, including to or from none: the old state goes and a fresh one is built (or
+    // none). A different kind has a different value shape, and no kind has nothing selectable, so
+    // nothing carries over.
+    //
+    // Dropping the state is also what closes a dropdown whose column stopped offering a filter: the
+    // funnel button AND the panel leave the header with it, so an open flag must not survive. Two
+    // things read that flag and both broke when it did: Table.AnyColumnFilterOpen stayed permanently
+    // true, which made every OTHER column's filter skip its focus restore on close and drop focus to
+    // <body> for the table's lifetime; and if options later came back, the dropdown reappeared
+    // already open -- full-screen invisible backdrop and all -- with no user interaction, swallowing
+    // the next click. Keyed off the kind rather than the prune, which only runs when the OPTIONS
+    // changed and does nothing when nothing was selected (opening a dropdown and ticking nothing is
+    // exactly the case that left it stuck).
+    //
+    // Returns whether an APPLIED value was lost -- to a prune, or to the state being dropped while it
+    // was narrowing rows. Either is a prune the Table has to hear about (NotifyColumnFilterPruned):
+    // rows the lost values were excluding have to come back, and the consumer's own summary has to
+    // stop showing them. A fresh state has nothing to lose, so the first pass always returns false.
+    bool SyncFilterState(bool optionsChanged)
+    {
+        var kind = DeriveFilterKind();
+        if (kind == Filter?.Kind)
+        {
+            if (Filter is OptionsFilterState<TItem> options)
+            {
+                options.Update(_lastFilterOptions!, FilterMultiple, OnFilter!);
+                return optionsChanged && options.Prune();
+            }
+            return false;
+        }
+
+        var wasActive = Filter is { IsActive: true };
+        Filter = kind switch
+        {
+            TableFilterKind.Options => new OptionsFilterState<TItem>(_lastFilterOptions!, FilterMultiple, OnFilter!),
+            _ => null
+        };
+        return wasActive;
     }
 
     // Whether a delegate parameter now points at DIFFERENT CODE than the one previously captured.
@@ -235,34 +279,6 @@ public class Column<TItem> : ComponentBase, IDisposable
             if (a[i].Value != b[i].Value || a[i].Text != b[i].Text) return false;
         }
         return true;
-    }
-
-    // A swapped FilterOptions (data-derived options usually swap with the data) can drop a value the
-    // user already applied. PassesFilter reads FilterApplied raw, so an orphaned value kept excluding
-    // every row -- an empty table, a dropdown with nothing ticked to explain it (OK a no-op, only
-    // Reset recovering), and a consumer's own summary reporting no filter, since AppliedFilterValues
-    // already intersects with the current options. Prune to match those same semantics: silently, and
-    // WITHOUT raising OnFilterChanged (that event reports user intent -- OK, Reset, or a filtered
-    // column leaving the table -- not the consumer's own parameter change, which it would be hearing
-    // back from itself mid-render). Pending is pruned too: it's what an open dropdown would commit,
-    // and a value with no option can't be un-ticked.
-    bool PruneAppliedFilter()
-    {
-        if (FilterApplied.Count == 0 && FilterPending.Count == 0) return false;
-
-        if (FilterOptions is null)
-        {
-            // The column stopped offering a filter entirely -- nothing is selectable any more.
-            var hadApplied = FilterApplied.Count > 0;
-            FilterApplied.Clear();
-            FilterPending.Clear();
-            return hadApplied;
-        }
-
-        var available = new HashSet<string>(FilterOptions.Select(o => o.Value), StringComparer.Ordinal);
-        var appliedPruned = FilterApplied.RemoveWhere(v => !available.Contains(v)) > 0;
-        FilterPending.RemoveWhere(v => !available.Contains(v));
-        return appliedPruned;
     }
 
     public virtual string? HeaderText => Title;

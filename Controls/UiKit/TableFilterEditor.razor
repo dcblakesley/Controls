@@ -1,0 +1,59 @@
+@namespace Controls
+@typeparam TItem
+
+@* The editor for one column's filter, rendered from the column's Filter state (Column.Filter):
+   one component per filter kind and placement, so a kind's editor exists exactly once whether it
+   sits inside TableColumnFilter's dropdown panel (Placement = Dropdown: edits PENDING only, the
+   panel's own OK/Reset commit or clear) or, later, in a header filter row (Placement = Row). The
+   Options kind in Dropdown placement is the checkbox/radio list that used to live inline in
+   TableColumnFilter -- byte-identical DOM, no wrapper element of its own. Renders nothing for a
+   kind/placement it has no editor for, so the surrounding panel still gets its footer. *@
+@if (Placement == TableFilterPlacement.Dropdown && Column.Filter is OptionsFilterState<TItem> options)
+{
+    <ul class="wss-table-filter-list">
+        @foreach (var opt in options.Options)
+        {
+            <li class="wss-table-filter-item">
+                <label class="wss-table-filter-option-label">
+                    @if (options.Multiple)
+                    {
+                        <input type="checkbox"
+                               class="wss-table-filter-checkbox"
+                               checked="@options.IsPending(opt.Value)"
+                               @onchange="@(e => options.TogglePending(opt.Value, e.Value is true))" />
+                    }
+                    else
+                    {
+                        <input type="radio"
+                               class="wss-table-filter-radio"
+                               name="@_radioGroupName"
+                               checked="@options.IsPending(opt.Value)"
+                               @onchange="@(() => options.SelectPending(opt.Value))" />
+                    }
+                    <span>@opt.Text</span>
+                </label>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    /// <summary>The column whose filter this edits. Required; its <c>Filter</c> state decides the
+    /// editor kind.</summary>
+    [Parameter, EditorRequired] public Column<TItem> Column { get; set; } = default!;
+
+    /// <summary>The owning table -- the source of every label an editor needs (read directly, not
+    /// forwarded parameter-by-parameter). Required. An explicit parameter for the same reason
+    /// <see cref="TableColumnFilter{TItem}.Table"/> is: this component renders outside the Table's
+    /// <c>CascadingValue</c>, which wraps only its column-declaring ChildContent.</summary>
+    [Parameter, EditorRequired] public Table<TItem> Table { get; set; } = default!;
+
+    /// <summary>Whether this editor sits in a dropdown panel (stages edits for the panel's OK) or a
+    /// header filter row (applies as it edits). Default Dropdown.</summary>
+    [Parameter] public TableFilterPlacement Placement { get; set; } = TableFilterPlacement.Dropdown;
+
+    // One radio group per editor instance: the dropdown is re-created on every open, so a fresh
+    // name each time, and two open editors (never, today -- Table allows one open dropdown) could
+    // not steal each other's checked state.
+    readonly string _radioGroupName = $"wss-table-filter-{Guid.NewGuid():N}";
+}

@@ -2787,9 +2787,9 @@
    siblings, never directly against an ancestor's unrelated sibling (the classic z-index-nesting
    gotcha: https://philipwalton.com/articles/what-no-one-told-you-about-z-index/). The only fix is
    promoting the CELL ITSELF above the mask -- scoped to whichever column's filter is actually open
-   (Column.FilterOpen; Table.OpenColumnFilter guarantees at most one at a time), so every other
+   (Column.IsFilterOpen; Table.OpenColumnFilter guarantees at most one at a time), so every other
    sticky header cell keeps the plain rank of 1. This is pure CSS/markup (Table.razor toggles the
-   class from Column.FilterOpen, already tracked in C# with no JS) -- it also happens to fix the
+   class from Column.IsFilterOpen, already tracked in C# with no JS) -- it also happens to fix the
    no-JS fallback (CSS position: absolute) for this SAME masking issue, though the separate
    overflow-clip escape that fallback doesn't get still needs JS (see .wss-table-filter-dropdown's
    own comment) -- so a no-JS + ScrollY + Loading dropdown that's tall enough to clip may still be

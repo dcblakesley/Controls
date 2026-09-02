@@ -10,47 +10,31 @@
    ScrollY wrapper's overflow clip and keep the escaped dropdown tracking its trigger across page
    scroll/resize while it stays open (see OnAfterRenderAsync), and to move focus into/out of the
    panel. *@
-@if (Column.CanFilter)
+@if (Column.Filter is { } filter)
 {
     @* aria-haspopup="dialog" matches what this button actually opens (the panel below is a
        role="dialog"), and matches every other popup trigger in the kit -- DatePicker/DateRangePicker
        declare it statically, Popover/Popconfirm get it from wss-overlay.js. *@
     <button type="button" @ref="_buttonRef"
-            class="wss-table-filter-trigger @(Column.FilterApplied.Count > 0 ? "wss-table-filter-active" : null)"
-            aria-label="@FilterAriaLabel" aria-haspopup="dialog" aria-expanded="@(Column.FilterOpen ? "true" : "false")"
+            class="wss-table-filter-trigger @(filter.IsActive ? "wss-table-filter-active" : null)"
+            aria-label="@FilterAriaLabel" aria-haspopup="dialog" aria-expanded="@(filter.IsOpen ? "true" : "false")"
             disabled="@Disabled"
             @onclick="ToggleOpen" @onclick:stopPropagation="true">
         @FilterIcon
     </button>
-    @if (Column.FilterOpen)
+    @if (filter.IsOpen)
     {
         @* tabindex="-1": see .wss-select-backdrop -- iOS-class WebKit only synthesizes a click from a
            tap on a focusable/interactive target chain, so a bare div would never receive the tap. *@
         <div class="wss-table-filter-backdrop" tabindex="-1" @onclick="Close"></div>
         <div class="wss-table-filter-dropdown" @ref="_panelRef" role="dialog" aria-label="@FilterAriaLabel"
              tabindex="-1" @onkeydown="OnKeyDown" @onkeydown:stopPropagation="true" @onclick:stopPropagation="true">
-            <ul class="wss-table-filter-list">
-                @foreach (var opt in Column.FilterOptions!)
-                {
-                    <li class="wss-table-filter-item">
-                        <label class="wss-table-filter-option-label">
-                            @if (Column.FilterMultiple)
-                            {
-                                <input type="checkbox" class="wss-table-filter-checkbox"
-                                       checked="@Column.FilterPending.Contains(opt.Value)"
-                                       @onchange="@(e => ToggleValue(opt.Value, e.Value is true))" />
-                            }
-                            else
-                            {
-                                <input type="radio" class="wss-table-filter-radio" name="@_radioGroupName"
-                                       checked="@Column.FilterPending.Contains(opt.Value)"
-                                       @onchange="@(() => SelectSingle(opt.Value))" />
-                            }
-                            <span>@opt.Text</span>
-                        </label>
-                    </li>
-                }
-            </ul>
+            @* The kind-specific editor (checkbox/radio list for Options) edits the column's PENDING
+               state; the footer below is what commits (OK) or clears (Reset) it. *@
+            <TableFilterEditor TItem="TItem"
+                               Column="Column"
+                               Table="Table"
+                               Placement="TableFilterPlacement.Dropdown" />
             <div class="wss-table-filter-footer">
                 <button type="button" class="wss-table-filter-reset" @onclick="Reset">@ResetLabel</button>
                 <button type="button" class="wss-table-filter-ok" @onclick="Apply">@OkLabel</button>
@@ -118,7 +102,12 @@
     bool _wasOpen;
     bool _fixedPositioned;
     bool _disposed;
-    readonly string _radioGroupName = $"wss-table-filter-{Guid.NewGuid():N}";
+
+    // Null-safe reads of the column's filter state for the code paths that run whether or not the
+    // markup above rendered: OnAfterRenderAsync still runs for the one render in which a column has
+    // just lost its filter (Column.Filter null) before the Table's re-render removes this component.
+    bool IsOpen => Column.IsFilterOpen;
+    bool IsActive => Column.Filter is { IsActive: true };
 
     // AntD "FilterFilled" -- a solid funnel. Recolored (not reshaped) for the active state, the same
     // technique the sort carets already use (.wss-table-sorter-up/-down + wss-table-sorter-active).
@@ -134,7 +123,7 @@
     // distinguish the two blues) can perceive. Both the trigger and the panel below read this, so
     // the open dialog reports the state it is about to edit.
     string FilterAriaLabel =>
-        Column.FilterApplied.Count > 0
+        IsActive
             ? (string.IsNullOrEmpty(Column.HeaderText)
                 ? FilterAppliedLabel
                 : string.Format(FilterAppliedButtonLabelFormat, Column.HeaderText))
@@ -147,7 +136,7 @@
         // A disabled <button> cannot be clicked in a browser; this guards the programmatic paths
         // (tests, a synthetic dispatch) so "inert while Loading" holds there too.
         if (Disabled) return;
-        if (Column.FilterOpen)
+        if (IsOpen)
         {
             Close();
             return;
@@ -157,18 +146,6 @@
     }
 
     void Close() => Table.CloseColumnFilter(Column);
-
-    void ToggleValue(string value, bool on)
-    {
-        if (on) Column.FilterPending.Add(value);
-        else Column.FilterPending.Remove(value);
-    }
-
-    void SelectSingle(string value)
-    {
-        Column.FilterPending.Clear();
-        Column.FilterPending.Add(value);
-    }
 
     async Task Apply() => await Table.ApplyColumnFilterAsync(Column);
 
@@ -187,7 +164,7 @@
     {
         if (_disposed) return;
 
-        if (Column.FilterOpen)
+        if (IsOpen)
         {
             _wasOpen = true;
             if (_pendingFocus)
@@ -213,7 +190,7 @@
                 // clip under a ScrollY wrapper's overflow -- the documented no-JS fallback), and
                 // leaving _fixedPositioned false lets a later render retry while still open.
                 _fixedPositioned = await _scrollHandle.ActivateAsync(
-                    module, "activateFixedDropdown", [_buttonRef, _panelRef, 4], () => Column.FilterOpen);
+                    module, "activateFixedDropdown", [_buttonRef, _panelRef, 4], () => IsOpen);
             }
         }
         else if (_wasOpen)
