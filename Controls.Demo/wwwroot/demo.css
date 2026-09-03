@@ -145,3 +145,29 @@
     --wss-select-pill-color: #1c4a3f;
     --wss-color-bg-selected: #d9e8e2;
 }
+
+/* Column.FilterDropdown demo: with a template set, the consumer owns the WHOLE dropdown panel --
+   there is no built-in list or OK/Reset footer to inherit padding from -- so the demo supplies its
+   own gutter and button row. Prefixed (and scoped to the gallery) like everything else here: this is
+   demo chrome, not a library class a consumer would style. */
+.wss-demo-gallery .wss-demo-filter-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    min-width: 180px;
+}
+
+.wss-demo-gallery .wss-demo-filter-panel-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+/* Column.FilterIcon demo: a text glyph in place of the funnel, sized to the button's 12px icon slot
+   so swapping it doesn't resize the trigger. */
+.wss-demo-gallery .wss-demo-filter-icon {
+    font-size: 12px;
+    line-height: 1;
+    font-weight: 600;
+}

@@ -764,6 +764,217 @@
     </section>
 
     <section class="demo-section">
+        <h3>Table — text and custom filters (FilterText / FilterDropdown)</h3>
+        <p style="margin:0; color:#666;">
+            <code>FilterText</code> gives a column a free-text dropdown over an accessor (Name, the
+            default <code>Contains</code> match); <code>TextFilterMatch</code> switches the comparison
+            (Code uses <code>StartsWith</code>, so "AX" matches but "X-1" doesn't). Enter applies the
+            staged text, and the clear button empties it without applying.
+            <code>FilterDropdown</code> hands the WHOLE panel to the consumer (Quantity): the template
+            stages keys with <code>SetSelectedValues</code>, applies with <code>ConfirmAsync</code> and
+            clears with <code>ResetAsync</code> -- AntD's <code>filterDropdown</code> shape.
+            <code>FilterIcon</code> replaces the funnel glyph with one that reports the applied state,
+            and <code>OnFilterDropdownOpenChange</code> reports every open/close.
+            <code>OnFiltersChanged</code> publishes one aggregate snapshot of every active column,
+            each with a ready-made <code>Description</code>.
+        </p>
+        <Table TItem="Widget"
+               DataSource="_widgetRows"
+               OnFiltersChanged="@(s => _widgetFilterSummary = DescribeFilters(s))">
+            <ChildContent>
+                <PropertyColumn TItem="Widget"
+                                TProp="string"
+                                Title="Name"
+                                Property="@(w => w.Name)"
+                                FilterText="@(w => w.Name)" />
+                <PropertyColumn TItem="Widget"
+                                TProp="string"
+                                Title="Code"
+                                Property="@(w => w.Code)"
+                                FilterText="@(w => w.Code)"
+                                TextFilterMatch="TextFilterMatch.StartsWith" />
+                <PropertyColumn TItem="Widget"
+                                TProp="int"
+                                Title="Quantity"
+                                Property="@(w => w.Quantity)"
+                                OnFilter="@((Widget w, string v) => int.TryParse(v, out var min) && w.Quantity >= min)"
+                                OnFilterDropdownOpenChange="@(open => _widgetCustomOpen = open)">
+                    <FilterIcon Context="applied">
+                        <span class="wss-demo-filter-icon"
+                              data-test-id="widget-filter-icon"
+                              data-applied="@(applied ? "true" : "false")">@(applied ? "≥" : "#")</span>
+                    </FilterIcon>
+                    <FilterDropdown Context="ctx">
+                        <div class="wss-demo-filter-panel">
+                            <input type="search"
+                                   class="wss-table-filter-input"
+                                   data-test-id="widget-custom-input"
+                                   autocomplete="off"
+                                   aria-label="Minimum quantity"
+                                   value="@(ctx.SelectedValues.Count > 0 ? ctx.SelectedValues[0] : "")"
+                                   @oninput="@(e => StageMinQuantity(ctx, e.Value as string))" />
+                            <div class="wss-demo-filter-panel-footer">
+                                <button type="button"
+                                        class="wss-dialog-btn wss-dialog-btn-sm"
+                                        data-test-id="widget-custom-reset"
+                                        @onclick="@(() => ctx.ResetAsync())">Reset</button>
+                                <button type="button"
+                                        class="wss-dialog-btn wss-dialog-btn-sm"
+                                        data-test-id="widget-custom-apply"
+                                        @onclick="@(() => ctx.ConfirmAsync())">Filter</button>
+                            </div>
+                        </div>
+                    </FilterDropdown>
+                </PropertyColumn>
+            </ChildContent>
+        </Table>
+        <p data-test-id="filter-summary-1">@_widgetFilterSummary</p>
+        <p data-test-id="widget-dropdown-open">Quantity panel open: @(_widgetCustomOpen ? "true" : "false")</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — filter row (FilterPlacement.Row) with type-derived editors</h3>
+        <p style="margin:0; color:#666;">
+            <code>FilterPlacement="TableFilterPlacement.Row"</code> drops the funnels and puts one
+            always-visible editor per filterable column into a second header row, applying as the user
+            edits -- freely typed boxes after <code>FilterDebounceMilliseconds</code> (150 here) of
+            quiet, discrete picks at once. <code>PropertyColumn.Filterable</code> derives the editor
+            from the property type the way <code>Sortable</code> derives its comparison: string to a
+            text box, a numeric to an inclusive min/max pair, a date to a
+            <code>DateRangePicker</code>, a bool to a yes/no select, an enum to its member list
+            (labelled by <code>[EnumDisplayName]</code>/<code>[Display]</code>).
+            <code>FilterValuesFromData</code> builds Supplier's options from the distinct values
+            actually present in <code>DataSource</code>. Every editor is named
+            "<code>Filter by {header}</code>" (<code>FilterRowLabelFormat</code>), and
+            <code>ClearFiltersAsync()</code> clears the lot in one call.
+        </p>
+        <button class="wss-dialog-btn"
+                data-test-id="filter-row-clear"
+                @onclick="ClearFilterRowAsync">Clear filters</button>
+        <Table @ref="_filterRowTable"
+               TItem="Product"
+               DataSource="_products"
+               Size="TableSize.Small"
+               FilterPlacement="TableFilterPlacement.Row"
+               FilterDebounceMilliseconds="150"
+               OnFiltersChanged="@(s => _filterRowSummary = DescribeFilters(s))">
+            <ChildContent>
+                <PropertyColumn TItem="Product"
+                                TProp="string"
+                                Title="Name"
+                                Property="@(p => p.Name)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="decimal"
+                                Title="Price"
+                                Property="@(p => p.Price)"
+                                Format="C2"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="DateTime"
+                                Title="Added"
+                                Property="@(p => p.Added)"
+                                Format="d"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="bool"
+                                Title="In stock"
+                                Property="@(p => p.InStock)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="ProductCategory"
+                                Title="Category"
+                                Property="@(p => p.Category)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="string"
+                                Title="Supplier"
+                                Property="@(p => p.Supplier)"
+                                FilterValuesFromData="true" />
+            </ChildContent>
+        </Table>
+        <p data-test-id="filter-summary-2">@_filterRowSummary</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — filter row under ScrollY</h3>
+        <p style="margin:0; color:#666;">
+            The same rows under <code>ScrollY</code>: the whole <code>&lt;thead&gt;</code> pins as one
+            block (both the title row and the editors stay put while the body scrolls beneath them),
+            which is why the sticky positioning moves from each header cell to the
+            <code>&lt;thead&gt;</code> whenever the table carries
+            <code>wss-table-has-filter-row</code>. The editors here open popups of their own -- a
+            <code>Select</code> list and a date panel -- from inside a wrapper that clips its
+            overflow.
+        </p>
+        <Table TItem="Product"
+               DataSource="_products"
+               Size="TableSize.Small"
+               ScrollY="200px"
+               FilterPlacement="TableFilterPlacement.Row">
+            <ChildContent>
+                <PropertyColumn TItem="Product"
+                                TProp="string"
+                                Title="Item"
+                                Property="@(p => p.Name)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="ProductCategory"
+                                Title="Group"
+                                Property="@(p => p.Category)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="DateTime"
+                                Title="Listed"
+                                Property="@(p => p.Added)"
+                                Format="d"
+                                Filterable="true" />
+            </ChildContent>
+        </Table>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — dropdown extras (FilterSearch, FilterCheckAll, DefaultFilterValues)</h3>
+        <p style="margin:0; color:#666;">
+            <code>FilterSearch</code> puts a search box above a long option list (Region, 12 options)
+            and shows <code>FilterEmptyText</code> when nothing matches; <code>FilterCheckAll</code>
+            adds a "Select all" row that toggles exactly the options the query leaves visible and
+            renders mixed when only some are ticked. <code>DefaultFilterValues</code> starts Status
+            filtered to Open without raising a change event, and
+            <code>FilterResetToDefault</code> makes <code>Reset</code> return there instead of
+            clearing. <code>FilterOnClose</code> (Tier) turns dismissing the panel -- an outside
+            click or Escape -- into an <code>OK</code>.
+        </p>
+        <Table TItem="Ticket" DataSource="_tickets">
+            <ChildContent>
+                <PropertyColumn TItem="Ticket"
+                                TProp="string"
+                                Title="Region"
+                                Property="@(t => t.Region)"
+                                FilterOptions="_regionFilterOptions"
+                                OnFilter="@((Ticket t, string v) => t.Region == v)"
+                                FilterSearch="true"
+                                FilterCheckAll="true" />
+                <PropertyColumn TItem="Ticket"
+                                TProp="string"
+                                Title="Status"
+                                Property="@(t => t.Status)"
+                                FilterOptions="_statusFilterOptions"
+                                OnFilter="@((Ticket t, string v) => t.Status == v)"
+                                DefaultFilterValues="_statusDefaultFilterValues"
+                                FilterResetToDefault="true" />
+                <PropertyColumn TItem="Ticket"
+                                TProp="string"
+                                Title="Tier"
+                                Property="@(t => t.Tier)"
+                                FilterOptions="_tierFilterOptions"
+                                OnFilter="@((Ticket t, string v) => t.Tier == v)"
+                                FilterOnClose="true" />
+            </ChildContent>
+        </Table>
+    </section>
+
+    <section class="demo-section">
         <h3>Table — Sortable + Filterable header in a narrow fixed-width column</h3>
         <p style="margin:0; color:#666;">
             Regression coverage for a header that combines a sort trigger AND a filter button in a
@@ -1187,5 +1398,126 @@
     ];
     bool _scrollYLoadingDemo;
 
+    // --- Table: text + custom filters (FilterText / FilterDropdown) demo ---
+    readonly List<Widget> _widgetRows =
+    [
+        new(1, "Alpha gasket", "AX-100", 12),
+        new(2, "Alpha sprocket", "BX-110", 40),
+        new(3, "Bravo gasket", "AX-200", 8),
+        new(4, "Bravo flange", "CX-210", 55),
+        new(5, "Charlie flange", "BX-300", 21),
+        new(6, "Delta sprocket", "CX-310", 3),
+    ];
+    string _widgetFilterSummary = "(no filters)";
+    bool _widgetCustomOpen;
+
+    // The custom panel stages ONE string key (AntD's selectedKeys are strings for every kind of
+    // filterDropdown) -- or none at all, which is what "this column filters nothing" looks like for
+    // every keyed kind, so an emptied box behaves exactly like Reset once confirmed.
+    static void StageMinQuantity(TableFilterContext<Widget> ctx, string? text)
+    {
+        IReadOnlyList<string> staged = string.IsNullOrWhiteSpace(text) ? [] : [text.Trim()];
+        ctx.SetSelectedValues(staged);
+    }
+
+    // One formatter for both OnFiltersChanged summaries below: the aggregate snapshot already carries
+    // a human-readable Description per active column, so a consumer's own "active filters" line is a
+    // join rather than a per-kind switch of its own.
+    static string DescribeFilters<T>(IReadOnlyList<TableColumnFilterSnapshot<T>> snapshots) =>
+        snapshots.Count == 0
+            ? "(no filters)"
+            : string.Join("; ", snapshots.Select(s => $"{s.Column.HeaderText}: {s.Description}"));
+
+    // --- Table: filter row (FilterPlacement.Row) + filter row under ScrollY demos ---
+    static readonly string[] ProductBaseNames = ["Mixer", "Blender", "Slicer", "Griddle", "Fryer"];
+    static readonly string[] ProductSuppliers = ["Acme Supply", "Bay State Foods", "Cascade Equipment"];
+
+    readonly List<Product> _products = Enumerable.Range(1, 30)
+        .Select(i => new Product(
+            i,
+            $"{ProductBaseNames[(i - 1) % ProductBaseNames.Length]} {i:00}",
+            5m * i,
+            new DateTime(2026, 1, 1).AddDays(7 * i),
+            i % 3 != 0,
+            (ProductCategory)((i - 1) % 4),
+            ProductSuppliers[(i - 1) % ProductSuppliers.Length]))
+        .ToList();
+
+    Table<Product>? _filterRowTable;
+    string _filterRowSummary = "(no filters)";
+
+    async Task ClearFilterRowAsync()
+    {
+        if (_filterRowTable is not null) await _filterRowTable.ClearFiltersAsync();
+    }
+
+    // --- Table: dropdown extras (FilterSearch / FilterCheckAll / DefaultFilterValues) demo ---
+    readonly List<Ticket> _tickets =
+    [
+        new(1, "Atlanta", "Open", "Gold"),
+        new(2, "Boston", "Open", "Silver"),
+        new(3, "Chicago", "Closed", "Bronze"),
+        new(4, "Denver", "Open", "Bronze"),
+        new(5, "Detroit", "Pending", "Gold"),
+        new(6, "Houston", "Open", "Gold"),
+        new(7, "Miami", "Closed", "Silver"),
+        new(8, "Newark", "Pending", "Bronze"),
+        new(9, "Omaha", "Open", "Silver"),
+        new(10, "Phoenix", "Closed", "Gold"),
+        new(11, "Portland", "Open", "Bronze"),
+        new(12, "Seattle", "Pending", "Silver"),
+    ];
+    static readonly List<TableFilterOption> _regionFilterOptions =
+    [
+        new("Atlanta", "Atlanta"),
+        new("Boston", "Boston"),
+        new("Chicago", "Chicago"),
+        new("Denver", "Denver"),
+        new("Detroit", "Detroit"),
+        new("Houston", "Houston"),
+        new("Miami", "Miami"),
+        new("Newark", "Newark"),
+        new("Omaha", "Omaha"),
+        new("Phoenix", "Phoenix"),
+        new("Portland", "Portland"),
+        new("Seattle", "Seattle"),
+    ];
+    static readonly List<TableFilterOption> _statusFilterOptions =
+    [
+        new("Open", "Open"),
+        new("Closed", "Closed"),
+        new("Pending", "Pending"),
+    ];
+    static readonly string[] _statusDefaultFilterValues = ["Open"];
+    static readonly List<TableFilterOption> _tierFilterOptions =
+    [
+        new("Gold", "Gold"),
+        new("Silver", "Silver"),
+        new("Bronze", "Bronze"),
+    ];
+
     public record Row(int Id, string Name, decimal Price);
+
+    public record Widget(int Id, string Name, string Code, int Quantity);
+
+    public record Product(
+        int Id,
+        string Name,
+        decimal Price,
+        DateTime Added,
+        bool InStock,
+        ProductCategory Category,
+        string Supplier);
+
+    public record Ticket(int Id, string Region, string Status, string Tier);
+
+    // Two of the four members carry an explicit label, so PropertyColumn.Filterable's derived option
+    // list shows off both attribute routes (and the camel-case auto-split for the two that don't).
+    public enum ProductCategory
+    {
+        [EnumDisplayName("Kitchen & bar")] Kitchen,
+        [Display(Name = "Front of house")] FrontOfHouse,
+        Refrigeration,
+        Smallwares,
+    }
 }

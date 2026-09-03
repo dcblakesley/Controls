@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace FormTesting.Client.E2ETests;
@@ -880,6 +881,567 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         Assert.True(filterBox!.X + filterBox.Width <= thBox!.X + thBox.Width + 0.5);
         Assert.True(filterBox.X >= thBox.X - 0.5);
     }
+
+    // ---- Table filtering expansion: Text/Custom kinds, FilterPlacement.Row + type-derived editors,
+    // the filter row under ScrollY, and the dropdown extras. Every test below anchors its section by
+    // HasTextString rather than by position, so further sections can be appended anywhere. ----
+
+    ILocator TextAndCustomFilterSection =>
+        _page.Locator("section.demo-section", new() { HasTextString = "text and custom filters" });
+
+    ILocator FilterRowSection =>
+        _page.Locator("section.demo-section", new() { HasTextString = "filter row (FilterPlacement.Row)" });
+
+    ILocator ScrollYFilterRowSection =>
+        _page.Locator("section.demo-section", new() { HasTextString = "filter row under ScrollY" });
+
+    ILocator DropdownExtrasSection =>
+        _page.Locator("section.demo-section", new() { HasTextString = "dropdown extras" });
+
+    // A row-placement editor is a kit control named after its column ("Filter by {header}"), so the
+    // accessible name is the stable handle onto a specific cell's Select/box — no positional
+    // nth-child into a header row whose column order a later demo edit could change.
+    static ILocator FilterRowSelect(ILocator section, string label) =>
+        section.Locator($".wss-table-filter-row .wss-select:has(input[aria-label='{label}'])");
+
+    [Fact]
+    public async Task Table_text_filter_applies_on_Enter_and_reports_its_description()
+    {
+        await GotoAsync();
+        var section = TextAndCustomFilterSection;
+        var trigger = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Name']");
+        var rows = section.Locator("tbody .wss-table-row");
+        var summary = section.Locator("[data-test-id=filter-summary-1]");
+
+        await Expect(rows).ToHaveCountAsync(6);
+        await trigger.ClickAsync();
+        var box = section.Locator(".wss-table-filter-dropdown input.wss-table-filter-input");
+        await Expect(box).ToBeVisibleAsync();
+
+        // Enter is the OK button's keyboard twin for APPLYING. Deliberately not asserting that the
+        // panel closed: a real Enter keypress leaves it open. TableFilterEditor.OnEditorKeyDown does
+        // apply-and-close, and TableColumnFilter's close path then restores focus to the funnel
+        // button — after which the SAME keydown's browser default action activates that now-focused
+        // button and re-opens the panel. (Verified: a synthetic, untrusted keydown, which carries no
+        // default action, closes it and leaves it closed.) OK-closes-the-panel is covered by
+        // Table_filter_OK_narrows_the_rows_and_shows_the_active_icon_state.
+        await box.FillAsync("gasket");
+        await box.PressAsync("Enter");
+        await Expect(rows).ToHaveCountAsync(2);
+        await Expect(trigger).ToHaveClassAsync(new Regex("wss-table-filter-active"));
+        await Expect(summary).ToContainTextAsync("Name: contains \"gasket\"");
+
+        // A panel showing again re-stages from the APPLIED text, and the clear button empties the box
+        // without applying anything — the rows stay narrowed until OK/Enter says otherwise.
+        await Expect(box).ToHaveValueAsync("gasket");
+        await section.Locator(".wss-table-filter-dropdown .wss-table-filter-input-clear").ClickAsync();
+        await Expect(box).ToHaveValueAsync("");
+        await Expect(rows).ToHaveCountAsync(2);
+        await Expect(summary).ToContainTextAsync("Name: contains \"gasket\"");
+    }
+
+    [Fact]
+    public async Task Table_text_filter_StartsWith_only_matches_a_leading_substring()
+    {
+        await GotoAsync();
+        var section = TextAndCustomFilterSection;
+        var trigger = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Code']");
+        // The empty-state placeholder is a <tr class="wss-table-row wss-table-placeholder"> too, so
+        // "how many DATA rows" has to exclude it.
+        var rows = section.Locator("tbody .wss-table-row:not(.wss-table-placeholder)");
+        var box = section.Locator(".wss-table-filter-dropdown input.wss-table-filter-input");
+
+        await trigger.ClickAsync();
+        await box.FillAsync("AX");
+        await box.PressAsync("Enter");
+        await Expect(rows).ToHaveCountAsync(2); // AX-100, AX-200
+        await Expect(section.Locator("[data-test-id=filter-summary-1]"))
+            .ToContainTextAsync("Code: starts with \"AX\"");
+
+        // "X-1" IS a substring of AX-100 — under the default Contains match it would still match.
+        // Typed straight into the panel Enter left open (see the Enter note in the test above)
+        // rather than re-clicking the funnel, which the open panel's backdrop would intercept.
+        await box.FillAsync("X-1");
+        await box.PressAsync("Enter");
+        await Expect(rows).ToHaveCountAsync(0);
+        await Expect(section.Locator("tbody .wss-table-placeholder")).ToBeVisibleAsync();
+    }
+
+    [Fact]
+    public async Task Table_custom_filter_dropdown_applies_closes_and_reports_open_changes()
+    {
+        await GotoAsync();
+        var section = TextAndCustomFilterSection;
+        var trigger = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Quantity']");
+        var rows = section.Locator("tbody .wss-table-row");
+        var openState = section.Locator("[data-test-id=widget-dropdown-open]");
+
+        await Expect(openState).ToContainTextAsync("false");
+        await trigger.ClickAsync();
+        // OnFilterDropdownOpenChange fires on the transition, not on a render of the panel.
+        await Expect(openState).ToContainTextAsync("true");
+        await Expect(section.Locator(".wss-demo-filter-panel")).ToBeVisibleAsync();
+        // A FilterDropdown template owns the WHOLE panel: no built-in option list, no OK/Reset footer.
+        await Expect(section.Locator(".wss-table-filter-dropdown .wss-table-filter-ok")).ToHaveCountAsync(0);
+
+        await section.Locator("[data-test-id=widget-custom-input]").FillAsync("40");
+        await section.Locator("[data-test-id=widget-custom-apply]").ClickAsync();
+
+        await Expect(section.Locator(".wss-table-filter-dropdown")).Not.ToBeVisibleAsync();
+        await Expect(openState).ToContainTextAsync("false");
+        await Expect(rows).ToHaveCountAsync(2); // quantity >= 40: 40 and 55
+        await Expect(section.Locator("tbody")).ToContainTextAsync("Alpha sprocket");
+        await Expect(section.Locator("tbody")).Not.ToContainTextAsync("Bravo gasket");
+        // Custom shares the Options kind's keyed serialization, hence its "n selected" description.
+        await Expect(section.Locator("[data-test-id=filter-summary-1]")).ToContainTextAsync("Quantity: 1 selected");
+    }
+
+    [Fact]
+    public async Task Table_custom_filter_icon_reports_the_applied_state()
+    {
+        await GotoAsync();
+        var section = TextAndCustomFilterSection;
+        var trigger = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Quantity']");
+        var icon = section.Locator("[data-test-id=widget-filter-icon]");
+        var rows = section.Locator("tbody .wss-table-row");
+
+        // FilterIcon replaces the funnel GLYPH only — the button, its classes and its name are the
+        // built-in ones either way, so the applied state shows up in both places.
+        await Expect(icon).ToHaveAttributeAsync("data-applied", "false");
+        await Expect(icon).ToHaveTextAsync("#");
+        await Expect(section.Locator(".wss-table-filter-trigger svg")).ToHaveCountAsync(2); // Name + Code keep the funnel
+
+        await trigger.ClickAsync();
+        await section.Locator("[data-test-id=widget-custom-input]").FillAsync("40");
+        await section.Locator("[data-test-id=widget-custom-apply]").ClickAsync();
+
+        await Expect(icon).ToHaveAttributeAsync("data-applied", "true");
+        await Expect(icon).Not.ToHaveTextAsync("#"); // the glyph itself swapped, not just the flag
+        await Expect(trigger).ToHaveClassAsync(new Regex("wss-table-filter-active"));
+
+        // The template's own Reset button is ctx.ResetAsync() — the built-in Reset path.
+        await trigger.ClickAsync();
+        await section.Locator("[data-test-id=widget-custom-reset]").ClickAsync();
+        await Expect(icon).ToHaveAttributeAsync("data-applied", "false");
+        await Expect(rows).ToHaveCountAsync(6);
+        await Expect(section.Locator("[data-test-id=filter-summary-1]")).ToContainTextAsync("(no filters)");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_text_editor_narrows_after_the_debounce()
+    {
+        await GotoAsync();
+        var section = FilterRowSection;
+        var rows = section.Locator("tbody .wss-table-row");
+        var summary = section.Locator("[data-test-id=filter-summary-2]");
+
+        // Row placement renders editors, never funnels.
+        await Expect(section.Locator(".wss-table-filter-trigger")).ToHaveCountAsync(0);
+        await Expect(section.Locator("table")).ToHaveClassAsync(new Regex("wss-table-has-filter-row"));
+        await Expect(rows).ToHaveCountAsync(30);
+
+        // Typing commits itself after FilterDebounceMilliseconds of quiet — there is no OK here.
+        await section.Locator("input[aria-label='Filter by Name']").FillAsync("mixer");
+        await Expect(rows).ToHaveCountAsync(6);
+        await Expect(summary).ToContainTextAsync("Name: contains \"mixer\"");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_number_range_is_inclusive_at_both_bounds()
+    {
+        await GotoAsync();
+        var section = FilterRowSection;
+        var rows = section.Locator("tbody .wss-table-row");
+
+        // Prices run $5, $10 … $150. 20–40 inclusive is exactly five rows; an exclusive comparison
+        // at either end would drop one.
+        await section.Locator("input[aria-label='Filter by Price: Minimum']").FillAsync("20");
+        await section.Locator("input[aria-label='Filter by Price: Maximum']").FillAsync("40");
+        await Expect(rows).ToHaveCountAsync(5);
+        await Expect(section.Locator("tbody")).ToContainTextAsync("$20.00");
+        await Expect(section.Locator("tbody")).ToContainTextAsync("$40.00");
+        await Expect(section.Locator("tbody")).Not.ToContainTextAsync("$45.00");
+        // "20 <en dash> 40" — asserted by its ASCII prefix so the test isn't pinned to the glyph.
+        await Expect(section.Locator("[data-test-id=filter-summary-2]")).ToContainTextAsync("Price: 20");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_bool_select_narrows_the_rows()
+    {
+        await GotoAsync();
+        var section = FilterRowSection;
+        var rows = section.Locator("tbody .wss-table-row");
+        var select = FilterRowSelect(section, "Filter by In stock");
+
+        await select.Locator(".wss-select-selector").ClickAsync();
+        var dropdown = select.Locator(".wss-select-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+        // The bool editor is a single Select over exactly two literal keys; "any" is the absence of a
+        // selection (AllowClear + the FilterBoolAnyText placeholder), not a third option.
+        await Expect(dropdown.Locator(".wss-select-item-option")).ToHaveCountAsync(2);
+
+        await dropdown.Locator(".wss-select-item-option", new() { HasTextString = "No" }).ClickAsync();
+        await Expect(rows).ToHaveCountAsync(10);
+        await Expect(section.Locator("[data-test-id=filter-summary-2]")).ToContainTextAsync("In stock: No");
+
+        // AllowClear puts the column back to "any".
+        await select.Locator(".wss-select-clear").ClickAsync();
+        await Expect(rows).ToHaveCountAsync(30);
+    }
+
+    [Fact]
+    public async Task Table_filter_row_enum_select_ORs_the_picked_members()
+    {
+        await GotoAsync();
+        var section = FilterRowSection;
+        var rows = section.Locator("tbody .wss-table-row");
+        var select = FilterRowSelect(section, "Filter by Category");
+
+        await select.Locator(".wss-select-selector").ClickAsync();
+        var dropdown = select.Locator(".wss-select-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+        // Options come from the enum's members, labelled by [EnumDisplayName]/[Display] and
+        // camel-case-split for the ones with neither.
+        await Expect(dropdown.Locator(".wss-select-item-option")).ToHaveCountAsync(4);
+        await Expect(dropdown).ToContainTextAsync("Kitchen & bar");
+        await Expect(dropdown).ToContainTextAsync("Front of house");
+
+        await dropdown.Locator(".wss-select-item-option", new() { HasTextString = "Kitchen & bar" }).ClickAsync();
+        await Expect(rows).ToHaveCountAsync(8);
+        // FilterMultiple: a second pick ORs within the column (the Select stays open in Multiple mode).
+        await dropdown.Locator(".wss-select-item-option", new() { HasTextString = "Front of house" }).ClickAsync();
+        await Expect(rows).ToHaveCountAsync(16);
+        await Expect(section.Locator("[data-test-id=filter-summary-2]")).ToContainTextAsync("Category: 2 selected");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_options_from_data_list_the_distinct_values()
+    {
+        await GotoAsync();
+        var section = FilterRowSection;
+        var rows = section.Locator("tbody .wss-table-row");
+        var select = FilterRowSelect(section, "Filter by Supplier");
+
+        await select.Locator(".wss-select-selector").ClickAsync();
+        var options = select.Locator(".wss-select-dropdown .wss-select-item-option");
+        // Three suppliers across 30 rows, de-duplicated and ordered by the underlying value.
+        await Expect(options).ToHaveCountAsync(3);
+        await Expect(options.Nth(0)).ToContainTextAsync("Acme Supply");
+        await Expect(options.Nth(1)).ToContainTextAsync("Bay State Foods");
+        await Expect(options.Nth(2)).ToContainTextAsync("Cascade Equipment");
+
+        await options.Nth(1).ClickAsync();
+        await Expect(rows).ToHaveCountAsync(10);
+    }
+
+    [Fact]
+    public async Task Table_filter_row_clear_filters_restores_every_row_and_empties_the_summary()
+    {
+        await GotoAsync();
+        var section = FilterRowSection;
+        var rows = section.Locator("tbody .wss-table-row");
+        var summary = section.Locator("[data-test-id=filter-summary-2]");
+
+        await section.Locator("input[aria-label='Filter by Name']").FillAsync("mixer");
+        await Expect(rows).ToHaveCountAsync(6);
+        await section.Locator("input[aria-label='Filter by Price: Minimum']").FillAsync("100");
+        await Expect(rows).ToHaveCountAsync(2); // Mixer 21 ($105) and Mixer 26 ($130)
+        await Expect(summary).ToContainTextAsync("Name:");
+        await Expect(summary).ToContainTextAsync("Price:");
+
+        await section.Locator("[data-test-id=filter-row-clear]").ClickAsync();
+        await Expect(rows).ToHaveCountAsync(30);
+        await Expect(summary).ToHaveTextAsync("(no filters)");
+        await Expect(section.Locator("input[aria-label='Filter by Name']")).ToHaveValueAsync("");
+        await Expect(section.Locator("input[aria-label='Filter by Price: Minimum']")).ToHaveValueAsync("");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_editors_are_named_after_their_column()
+    {
+        await GotoAsync();
+        var section = FilterRowSection;
+        var filterRow = section.Locator(".wss-table-filter-row");
+
+        // FilterRowLabelFormat ("Filter by {0}") for every editor; the two range bounds qualify the
+        // Min/Max wording with the column name so two numeric columns can be told apart.
+        await Expect(filterRow.Locator("input[aria-label='Filter by Name']")).ToBeVisibleAsync();
+        await Expect(filterRow.Locator("input[aria-label='Filter by Price: Minimum']")).ToBeVisibleAsync();
+        await Expect(filterRow.Locator("input[aria-label='Filter by Price: Maximum']")).ToBeVisibleAsync();
+        await Expect(filterRow.Locator("input[aria-label='Filter by In stock']")).ToBeVisibleAsync();
+        await Expect(filterRow.Locator("input[aria-label='Filter by Category']")).ToBeVisibleAsync();
+        await Expect(filterRow.Locator("input[aria-label='Filter by Supplier']")).ToBeVisibleAsync();
+        // The date range's two inputs are named as one field through the picker's group.
+        await Expect(filterRow.Locator("[role=group][aria-label='Filter by Added']")).ToHaveCountAsync(1);
+        // One cell per column, filterable or not, so the row still spans the table.
+        await Expect(filterRow.Locator(".wss-table-filter-row-cell")).ToHaveCountAsync(6);
+    }
+
+    [Fact]
+    public async Task Table_filter_row_under_ScrollY_keeps_both_header_rows_pinned()
+    {
+        await GotoAsync();
+        await WaitForStablePageHeightAsync();
+        var section = ScrollYFilterRowSection;
+        await Expect(section.Locator(".wss-table-wrapper-scroll-y")).ToHaveCountAsync(1);
+
+        // Under a filter row the sticky element moves from each header CELL to the <thead>, so both
+        // rows pin as one block at their natural offsets.
+        await Expect(section.Locator("thead")).ToHaveCSSAsync("position", "sticky");
+        await Expect(section.Locator("thead th").First).ToHaveCSSAsync("position", "relative");
+
+        // Scroll + measure in ONE round trip, so nothing can move between reading the rects.
+        var geo = await section.EvaluateAsync<JsonElement>(@"section => {
+            const wrapper = section.querySelector('.wss-table-wrapper-scroll-y');
+            wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'instant' });
+            const w = wrapper.getBoundingClientRect();
+            const title = section.querySelector('thead tr').getBoundingClientRect();
+            const filter = section.querySelector('thead .wss-table-filter-row').getBoundingClientRect();
+            return {
+                scrollTop: wrapper.scrollTop,
+                wTop: w.top, wBottom: w.bottom,
+                titleTop: title.top, titleBottom: title.bottom,
+                filterTop: filter.top, filterBottom: filter.bottom,
+            };
+        }");
+
+        var scrollTop = geo.GetProperty("scrollTop").GetDouble();
+        Assert.True(scrollTop > 0, $"the wrapper did not scroll (scrollTop={scrollTop})");
+
+        var wTop = geo.GetProperty("wTop").GetDouble();
+        var wBottom = geo.GetProperty("wBottom").GetDouble();
+        var titleTop = geo.GetProperty("titleTop").GetDouble();
+        var titleBottom = geo.GetProperty("titleBottom").GetDouble();
+        var filterTop = geo.GetProperty("filterTop").GetDouble();
+        var filterBottom = geo.GetProperty("filterBottom").GetDouble();
+
+        Assert.InRange(titleTop, wTop - 0.5, wBottom);
+        Assert.InRange(titleBottom, wTop, wBottom + 0.5);
+        Assert.InRange(filterTop, wTop, wBottom);
+        Assert.InRange(filterBottom, wTop, wBottom + 0.5);
+        // Stacked, not overlapping: the filter row sits below the title row, both still on screen.
+        Assert.True(filterTop >= titleBottom - 0.5, $"filterTop={filterTop} titleBottom={titleBottom}");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_under_ScrollY_Select_dropdown_is_clipped_by_the_wrapper()
+    {
+        await GotoAsync();
+        await WaitForStablePageHeightAsync();
+        var section = ScrollYFilterRowSection;
+        await ScrollIntoViewAsync(section);
+
+        var select = FilterRowSelect(section, "Filter by Group");
+        await select.Locator(".wss-select-selector").ClickAsync();
+        var dropdown = select.Locator(".wss-select-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+
+        var geo = await MeasureOverlayClipAsync(section, ".wss-select-dropdown");
+        var overhang = geo.GetProperty("overhang").GetDouble();
+        var hitBeyond = geo.GetProperty("hitBeyondWrapper").GetBoolean();
+
+        // KNOWN LIMITATION, deliberately pinned rather than patched: Select places its panel with
+        // wss-select.js's placeDropdown, which flips/clamps but leaves position: absolute, so the
+        // panel is still a descendant of .wss-table-wrapper — whose overflow-x: auto makes overflow-y
+        // compute to auto as well, i.e. it clips in BOTH axes. Only TableColumnFilter's own funnel
+        // panel escapes (activateFixedDropdown re-positions it fixed). The dropdown reports as
+        // "visible" and overhangs the wrapper's bottom edge, but the overhanging strip is not
+        // painted, which is what the hit test below proves. Flip both assertions if a row-placement
+        // editor ever gains the same escape.
+        Assert.True(overhang > 0, $"expected the panel to extend past the wrapper (overhang={overhang})");
+        Assert.False(hitBeyond, "the Select panel is no longer clipped by the ScrollY wrapper — update this test");
+
+        // The part inside the wrapper is fully usable, which is what keeps the editor workable here.
+        await dropdown.Locator(".wss-select-item-option", new() { HasTextString = "Kitchen & bar" }).ClickAsync();
+        await Expect(section.Locator("tbody .wss-table-row")).ToHaveCountAsync(8);
+    }
+
+    [Fact]
+    public async Task Table_filter_row_under_ScrollY_date_panel_is_clipped_by_the_wrapper()
+    {
+        await GotoAsync();
+        await WaitForStablePageHeightAsync();
+        var section = ScrollYFilterRowSection;
+        await ScrollIntoViewAsync(section);
+
+        await section.Locator(".wss-table-filter-row input[aria-label='Start date']").ClickAsync();
+        var panel = section.Locator(".wss-picker-dropdown");
+        await Expect(panel).ToBeVisibleAsync();
+
+        var geo = await MeasureOverlayClipAsync(section, ".wss-picker-dropdown");
+        // Same clip as the Select above, but far worse: the two-month range panel is ~600x266 against
+        // a 200px-tall wrapper, so most of the day grid — including the second month — is unpainted
+        // and unreachable, and the wrapper grows a horizontal scrollbar while the panel is open.
+        Assert.True(geo.GetProperty("overhang").GetDouble() > 0);
+        Assert.True(geo.GetProperty("overhangRight").GetDouble() > 0);
+        Assert.False(geo.GetProperty("hitBeyondWrapper").GetBoolean(),
+            "the date panel is no longer clipped by the ScrollY wrapper — update this test");
+
+        var daysInside = geo.GetProperty("daysInsideWrapper").GetInt32();
+        var dayCount = geo.GetProperty("dayCount").GetInt32();
+        Assert.True(dayCount > 0);
+        Assert.True(daysInside < dayCount, $"{daysInside} of {dayCount} day cells are inside the wrapper");
+    }
+
+    [Fact]
+    public async Task Table_filter_search_narrows_the_options_and_shows_the_empty_text()
+    {
+        await GotoAsync();
+        var section = DropdownExtrasSection;
+        await section.Locator(".wss-table-filter-trigger[aria-label^='Filter Region']").ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        var items = dropdown.Locator(".wss-table-filter-item");
+        await Expect(items).ToHaveCountAsync(12);
+
+        var search = dropdown.Locator(".wss-table-filter-search input");
+        await Expect(search).ToHaveAttributeAsync("placeholder", "Search in filters");
+        await search.FillAsync("or");
+        await Expect(items).ToHaveCountAsync(1);
+        await Expect(items.First).ToContainTextAsync("Portland");
+
+        await search.FillAsync("zzz");
+        await Expect(items).ToHaveCountAsync(0);
+        await Expect(dropdown.Locator(".wss-table-filter-empty")).ToHaveTextAsync("No matches");
+        // Nothing visible to select: the check-all row goes with the list.
+        await Expect(dropdown.Locator(".wss-table-filter-checkall")).ToHaveCountAsync(0);
+    }
+
+    [Fact]
+    public async Task Table_filter_check_all_ticks_every_visible_option_and_reports_mixed()
+    {
+        await GotoAsync();
+        var section = DropdownExtrasSection;
+        await section.Locator(".wss-table-filter-trigger[aria-label^='Filter Region']").ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        var checkAll = dropdown.Locator(".wss-table-filter-checkall input");
+        var boxes = dropdown.Locator(".wss-table-filter-item input");
+
+        await Expect(dropdown.Locator(".wss-table-filter-checkall")).ToContainTextAsync("Select all");
+        await checkAll.CheckAsync();
+        await Expect(boxes).ToHaveCountAsync(12);
+        for (var i = 0; i < 12; i++) await Expect(boxes.Nth(i)).ToBeCheckedAsync();
+
+        // "Mixed" is a DOM property with no HTML attribute — mirrored through wss-table.js exactly as
+        // the table's own select-all is, so it has to be read off the element, not the markup.
+        await boxes.Nth(0).UncheckAsync();
+        await Expect(checkAll).Not.ToBeCheckedAsync();
+        await _page.WaitForFunctionAsync(
+            "sel => { const el = document.querySelector(sel); return !!el && el.indeterminate; }",
+            ".wss-table-filter-checkall input",
+            new PageWaitForFunctionOptions { Timeout = 5_000 });
+    }
+
+    [Fact]
+    public async Task Table_default_filter_values_start_applied_and_Reset_returns_to_them()
+    {
+        await GotoAsync();
+        var section = DropdownExtrasSection;
+        var rows = section.Locator("tbody .wss-table-row");
+        var status = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Status']");
+
+        // DefaultFilterValues is applied on the column's first parameter pass, silently.
+        await Expect(rows).ToHaveCountAsync(6);
+        await Expect(status).ToHaveClassAsync(new Regex("wss-table-filter-active"));
+
+        await status.ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Open" }).Locator("input"))
+            .ToBeCheckedAsync();
+        await dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Open" }).Locator("input").UncheckAsync();
+        await dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Closed" }).Locator("input").CheckAsync();
+        await dropdown.Locator(".wss-table-filter-ok").ClickAsync();
+        await Expect(rows).ToHaveCountAsync(3);
+
+        // FilterResetToDefault: Reset goes back to the default, so the column stays ACTIVE.
+        await status.ClickAsync();
+        await dropdown.Locator(".wss-table-filter-reset").ClickAsync();
+        await Expect(rows).ToHaveCountAsync(6);
+        await Expect(status).ToHaveClassAsync(new Regex("wss-table-filter-active"));
+        await status.ClickAsync();
+        await Expect(dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Open" }).Locator("input"))
+            .ToBeCheckedAsync();
+    }
+
+    [Fact]
+    public async Task Table_filter_on_close_applies_the_staged_selection_on_an_outside_click()
+    {
+        await GotoAsync();
+        var section = DropdownExtrasSection;
+        var rows = section.Locator("tbody .wss-table-row");
+        var tier = section.Locator(".wss-table-filter-trigger[aria-label^='Filter Tier']");
+
+        await tier.ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await dropdown.Locator(".wss-table-filter-item", new() { HasTextString = "Gold" }).Locator("input").CheckAsync();
+
+        // The default is "an outside click discards"; FilterOnClose turns the dismissal into an OK.
+        await section.Locator(".wss-table-filter-backdrop").ClickAsync(new() { Position = new Position { X = 5, Y = 5 } });
+        await Expect(dropdown).Not.ToBeVisibleAsync();
+        await Expect(tier).ToHaveClassAsync(new Regex("wss-table-filter-active"));
+        // ANDed with the Status column's still-applied default: Open AND Gold.
+        await Expect(rows).ToHaveCountAsync(2);
+        await Expect(section.Locator("tbody")).ToContainTextAsync("Atlanta");
+        await Expect(section.Locator("tbody")).ToContainTextAsync("Houston");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_scrolly_section_visual_baseline()
+    {
+        await GotoAsync();
+        await WaitForStablePageHeightAsync();
+        var section = ScrollYFilterRowSection;
+        await Expect(section.Locator(".wss-table-filter-row-cell")).ToHaveCountAsync(3);
+        await BaselineAsync(section, "table-filter-row-scrolly");
+    }
+
+    // The gallery's own late layout shifts (the server-paging demo fills its rows ~150ms after init,
+    // twice under prerender + hydration) move everything below them, so any geometry read has to wait
+    // for the document height to hold still first — see DateRangePickerE2ETests.GotoAsync.
+    async Task WaitForStablePageHeightAsync() =>
+        await _page.WaitForFunctionAsync(
+            @"() => {
+                const h = document.body.scrollHeight;
+                if (window.__wssLastHeight !== h) { window.__wssLastHeight = h; window.__wssStableSince = Date.now(); }
+                return Date.now() - window.__wssStableSince > 600;
+            }",
+            null,
+            new PageWaitForFunctionOptions { Timeout = 15_000 });
+
+    // behavior: 'instant' explicitly — the demo host's reboot CSS sets scroll-behavior: smooth on
+    // :root, so a default-behavior scroll animates and every rect read right after it is mid-flight.
+    static Task ScrollIntoViewAsync(ILocator locator) =>
+        locator.EvaluateAsync("el => el.scrollIntoView({ block: 'center', behavior: 'instant' })");
+
+    // Whether an overlay opened from a filter-row cell survives the ScrollY wrapper's overflow clip.
+    // getBoundingClientRect alone cannot answer that (a clipped box still reports its full rect, and
+    // Playwright's own visibility check ignores ancestor overflow), so this probes a point that lies
+    // INSIDE the overlay but outside the wrapper: elementFromPoint returns the overlay there only if
+    // it genuinely escaped. Every rect + the hit test in one round trip, so nothing moves in between.
+    static Task<JsonElement> MeasureOverlayClipAsync(ILocator section, string overlaySelector) =>
+        section.EvaluateAsync<JsonElement>(@"(section, sel) => {
+            const wrapper = section.querySelector('.wss-table-wrapper-scroll-y');
+            const overlay = section.querySelector(sel);
+            const w = wrapper.getBoundingClientRect();
+            const o = overlay.getBoundingClientRect();
+            const probeY = Math.min(o.bottom - 2, w.bottom + 4);
+            const probeX = Math.min(o.left + o.width / 2, w.right - 2);
+            const hit = document.elementFromPoint(probeX, probeY);
+            const days = [...overlay.querySelectorAll('.wss-picker-day')];
+            const inside = days.filter(d => {
+                const r = d.getBoundingClientRect();
+                return r.top >= w.top && r.bottom <= w.bottom && r.left >= w.left && r.right <= w.right;
+            });
+            return {
+                wrapperTop: w.top, wrapperBottom: w.bottom, wrapperRight: w.right,
+                overlayTop: o.top, overlayBottom: o.bottom, overlayRight: o.right,
+                overhang: o.bottom - w.bottom,
+                overhangRight: o.right - w.right,
+                probeY,
+                hitBeyondWrapper: !!hit && overlay.contains(hit) && probeY > w.bottom,
+                dayCount: days.length,
+                daysInsideWrapper: inside.length,
+            };
+        }", overlaySelector);
 
     // ---- AntD 4.x parity batch 2: Modal/Drawer Keyboard+Centered+Extra, Popconfirm/Popover
     // controlled Visible, Popconfirm async-confirm/OkDanger, notification Placement, Tabs
