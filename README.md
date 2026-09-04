@@ -1463,6 +1463,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.5
+
+Additive, non-breaking: `Table` column filtering gains more filter kinds, row-placed editors, and a server-side mode; `data-tooltip` restyled to match `LabelTooltip`.
+
+**New**
+- **`Table` filtering**: `Column.FilterText`/`TextFilterMatch` (search box), `Column.FilterDropdown` (your own panel via `TableFilterContext`), `Column.FilterIcon`, `OnFilterDropdownOpenChange`, `FilterOnClose`.
+- **`PropertyColumn.Filterable`/`FilterValuesFromData`** — derive a filter from the property type (or from `DataSource`'s distinct values) instead of declaring one by hand.
+- **`Table.FilterPlacement = TableFilterPlacement.Row`** — always-visible per-column editors in a second header row, instead of funnel dropdowns.
+- **`Table.OnFiltersChanged`/`ClearFiltersAsync()`** — the every-column counterpart to `OnFilterChanged`. Dropdown extras: `FilterSearch`, `FilterCheckAll`, `DefaultFilterValues`/`FilterResetToDefault`.
+- **`Table.ClientSideFiltering = false`** — keeps the filter UI/events, stops the built-in row narrowing, for server-side filtering.
+
+**Changed**
+- **`data-tooltip`** now matches `LabelTooltip`'s dark chip (`#262626`/white, 6px radius) instead of a lighter bordered card, via the shared `--color-tooltip-bg`/`--color-tooltip-text` tokens. See [Hover tooltips](#hover-tooltips-data-tooltip).
+
+See [Table parity features](#table-parity-features-tabletitem) for the filtering details, including two known rough edges.
+
 ### 10.8.4
 
 A small additive, non-breaking release: one new form-level setting for disambiguating duplicate forms on a page.
