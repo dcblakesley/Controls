@@ -1260,9 +1260,11 @@
  * Convention: set data-tooltip="..." on any element for a hover/focus tooltip — never the native
  * title attribute, so every tooltip in the app gets this styling. Pure CSS (::before arrow, ::after
  * body); pair with the optional wss-tooltip.js for auto-placement (see its header comment) — CSS
- * alone still works, just always opening below the element. Distinct from LabelTooltip
+ * alone still works, just always opening below the element. Functionally distinct from LabelTooltip
  * (.edit-tooltip-* in edit-controls.css), which is a form-label help-icon popover, not a
- * general-purpose hover tooltip.
+ * general-purpose hover tooltip — but visually the same dark chip via the shared
+ * --color-tooltip-bg/--color-tooltip-text tokens (see .edit-tooltip-content and
+ * .edit-range-tooltip), so a user sees one consistent tooltip style everywhere.
  * ============================================================================ */
 
 [data-tooltip] {
@@ -1277,14 +1279,15 @@
     --wss-tooltip-gap: var(--wss-tooltip-gap-tight);
 }
 
-/* ── Arrow (::before) ── */
+/* ── Arrow (::before) ──
+   No border of its own (unlike a light popover arrow) -- it's a solid chip of the same dark
+   background as the body, same recipe as .edit-tooltip-content::before. */
 [data-tooltip]::before {
     content: '';
     position: absolute;
     width: 10px;
     height: 10px;
-    background: var(--wss-color-bg);
-    border: 1px solid var(--wss-color-border);
+    background: var(--color-tooltip-bg, #262626);
     pointer-events: none;
     opacity: 0;
     display: none;
@@ -1303,8 +1306,9 @@
    under the traveling pointer; edit-controls.css's .edit-tooltip-container bridge documents the same
    hazard (it can afford a separate strip -- it has a spare pseudo-element).
    Four declarations here exist only to make that work:
-     - border: 0 plus background-clip: padding-box, so the transparent gap border is never painted;
-       the visible 1px ring moves into box-shadow as an inset ring on the padding box instead.
+     - border: 0 plus background-clip: padding-box, so the transparent gap border never paints --
+       without it the dark chip's background would bleed into the (transparent-bordered) hit-box
+       bridge, turning the invisible gap into a visible dark rectangle.
      - padding absorbs the 1px each removed border used to contribute, so the painted rectangle,
        interior spacing and centering stay identical to the pre-bridge bubble.
      - box-sizing: content-box pins max-width to the TEXT box. The gap border is layout scaffolding,
@@ -1318,13 +1322,18 @@
     content: attr(data-tooltip);
     position: absolute;
     box-sizing: content-box;
-    padding: calc(0.35rem + 1px) calc(0.6rem + 1px);
-    border-radius: var(--wss-radius);
-    background: var(--wss-color-bg);
+    /* Target padding is LabelTooltip's 6px/8px; the +1px absorbs the border removed below (see the
+       comment above this rule), so the painted rectangle still lands on 6px/8px. */
+    padding: calc(6px + 1px) calc(8px + 1px);
+    /* Hardcoded to match .edit-tooltip-content's chip radius/type scale exactly, rather than the
+       kit's own --wss-radius/--wss-font-size-sm (2px/12px) used elsewhere in the UI kit -- this is
+       the one place the two stylesheets deliberately share a look instead of each keeping its own. */
+    border-radius: 6px;
+    background: var(--color-tooltip-bg, #262626);
     background-clip: padding-box;
-    color: var(--wss-color-text);
-    font-size: var(--wss-font-size-sm);
-    font-weight: 500;
+    color: var(--color-tooltip-text, #fff);
+    font-size: 14px;
+    font-weight: 400;
     /* Short tooltips stay one tight line (max-content); sentence-length ones wrap at the cap
        instead of running as a single 800px line that clips at the viewport edge. */
     white-space: normal;
@@ -1338,8 +1347,8 @@
     display: none;
     z-index: var(--wss-tooltip-z-index);
     border: 0;
-    box-shadow: inset 0 0 0 1px var(--wss-color-border), var(--wss-shadow);
-    line-height: 1.25;
+    box-shadow: var(--wss-shadow);
+    line-height: 1.5;
     transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete;
 }
 
