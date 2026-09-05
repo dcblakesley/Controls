@@ -713,6 +713,23 @@ public class UiKitTableFilterExtrasTests : BunitContext
         Assert.Empty(log);
     }
 
+    [Fact]
+    public void Flipping_ClientSideFiltering_at_runtime_re_derives_the_rows()
+    {
+        var cut = RenderTable(NameOptionsCol());
+        cut.Find(".wss-table-filter-trigger").Click();
+        TickOption(cut, "Bob");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Bob"], RowNames(cut));
+
+        cut.Render(p => p.Add(t => t.ClientSideFiltering, false));
+        Assert.Equal(["Alice", "Bob", "Carol", "Dave"], RowNames(cut));
+        Assert.Equal(["Bob"], AppliedValues(cut)); // the applied state is untouched either way
+
+        cut.Render(p => p.Add(t => t.ClientSideFiltering, true));
+        Assert.Equal(["Bob"], RowNames(cut));
+    }
+
     // =====================================================================================
     // Cleanup: the dead forwarded labels are gone
     // =====================================================================================

@@ -843,6 +843,9 @@
     int _pageSize;
     int _lastPageSizeParam = -1; // sentinel so the very first OnParametersSet always syncs
 
+    // Seeded with the parameter's own default, so only a real flip re-derives (see OnParametersSet).
+    bool _lastClientSideFiltering = true;
+
     Column<TItem>? _sortColumn;
     SortDirection _sortDirection = SortDirection.None;
     ElementReference _selectAllRef;
@@ -1183,6 +1186,16 @@
             // Re-derive the filtered/sorted view from the new data (column references are stable,
             // so both the active filter selections and the active sort persist across a DataSource
             // swap, same treatment).
+            ApplyFilters();
+            ApplySort();
+        }
+
+        // ApplyFilters reads ClientSideFiltering, but only a DataSource swap (above) or an explicit
+        // filter change re-runs it -- a runtime flip would otherwise leave the previous narrowing (or
+        // the previous whole set) on screen until the user touched a filter.
+        if (ClientSideFiltering != _lastClientSideFiltering)
+        {
+            _lastClientSideFiltering = ClientSideFiltering;
             ApplyFilters();
             ApplySort();
         }
