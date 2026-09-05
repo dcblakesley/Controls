@@ -15,6 +15,9 @@
                 <div>Some popover content.</div>
             </Content>
         </Popover>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_popoverExample</code></pre>
     </section>
 
     <section class="demo-section">
@@ -45,6 +48,9 @@
         <Popconfirm Title="Delete this item?" Disabled="true">
             <button type="button" class="wss-dialog-btn" data-test-id="disabled-popconfirm-child">Delete (disabled)</button>
         </Popconfirm>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_popoverSwapExample</code></pre>
     </section>
 
 </div>
@@ -52,6 +58,36 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _popoverExample = @"<Popover Title=""Popover title"">
+    <ChildContent>
+        <button>Click me</button>
+    </ChildContent>
+    <Content>
+        <div>Some popover content.</div>
+    </Content>
+</Popover>";
+
+    readonly string _popoverSwapExample = @"<Popover Title=""Swapped trigger"">
+    <ChildContent>
+        @if (_triggerBusy)
+        {
+            <span>Loading…</span>
+        }
+        else
+        {
+            <button type=""button"">Open popover</button>
+        }
+    </ChildContent>
+    <Content>
+        <div>Swapped-trigger popover content.</div>
+    </Content>
+</Popover>
+
+@* A disabled Popconfirm marks its trigger child inert *@
+<Popconfirm Title=""Delete this item?"" Disabled=""true"">
+    <button type=""button"">Delete (disabled)</button>
+</Popconfirm>";
 
     // Swapped-trigger demo: flips the Popover's ChildContent between a non-focusable <span> and a
     // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.

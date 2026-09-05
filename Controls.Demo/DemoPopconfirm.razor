@@ -22,6 +22,9 @@
             <button class="wss-dialog-btn" data-test-id="async-confirm-trigger">Delete (async)</button>
         </Popconfirm>
         <p data-test-id="async-confirm-result">Async result: @_asyncConfirmResult</p>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_popconfirmExample</code></pre>
     </section>
 
     <section class="demo-section">
@@ -49,6 +52,9 @@
                 <Content><div>Popover body.</div></Content>
             </Popover>
         </div>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_controlledVisibleExample</code></pre>
     </section>
 
 </div>
@@ -56,6 +62,34 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _popconfirmExample = @"<Popconfirm Title=""Delete this item?"" OnConfirm=""@(() => _confirmResult = ""confirmed"")""
+            OnCancel=""@(() => _confirmResult = ""cancelled"")"">
+    <button>Delete</button>
+</Popconfirm>
+
+@* OkDanger styles OK as danger; an async OnConfirm keeps the popup open, disabled with a
+   spinner, until it resolves *@
+<Popconfirm Title=""Permanently delete this record?"" OkDanger=""true"" OkText=""Delete""
+            OnConfirm=""SimulateAsyncConfirmAsync"">
+    <button>Delete (async)</button>
+</Popconfirm>
+
+async Task SimulateAsyncConfirmAsync()
+{
+    await Task.Delay(1000);
+    _asyncConfirmResult = ""deleted"";
+}";
+
+    readonly string _controlledVisibleExample = @"<button @onclick=""@(() => _popconfirmVisible = !_popconfirmVisible)"">Toggle Popconfirm</button>
+<Popconfirm Title=""Controlled from outside"" @bind-Visible=""_popconfirmVisible"">
+    <button>Trigger</button>
+</Popconfirm>
+
+<Popover Title=""Controlled from outside"" @bind-Visible=""_popoverVisible"">
+    <ChildContent><button>Trigger</button></ChildContent>
+    <Content><div>Popover body.</div></Content>
+</Popover>";
 
     string _confirmResult = "(none)";
 
