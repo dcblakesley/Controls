@@ -469,10 +469,8 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     {
         await GotoAsync();
         await _page.Locator("button", new() { HasTextString = "Notification" }).ClickAsync();
-        // .First: the Placement demo section's second WasmNotificationContainer (bottom-left) reads
-        // the same static service, so this same toast also renders there.
-        await Expect(_page.Locator(".wss-notification").First).ToBeVisibleAsync();
-        await Expect(_page.Locator(".wss-notification-message").First).ToContainTextAsync("Notification");
+        await Expect(_page.Locator(".wss-notification")).ToBeVisibleAsync();
+        await Expect(_page.Locator(".wss-notification-message")).ToContainTextAsync("Notification");
     }
 
     // ---- AntD 4.x parity batch: Pagination + Table ----

@@ -11,20 +11,20 @@
         {
             <div style="display:flex; gap:1rem; flex-wrap:wrap;">
                 <button class="wss-dialog-btn" @onclick="@(() => WasmMessageService.Success("Saved!"))">Message</button>
-                <button class="wss-dialog-btn" @onclick="@(() => WasmNotificationService.Info("Notification", "With a description."))">Notification</button>
+                <button class="wss-dialog-btn" @onclick="@(() => { _notificationPlacement = NotificationPlacement.TopRight; WasmNotificationService.Info("Notification", "With a description."); })">Notification</button>
             </div>
 
             <p style="margin:0; color:#666;">
-                <code>Placement</code> is set on the CONTAINER (not the service) — a second
-                <code>WasmNotificationContainer</code> here, anchored bottom-left. Both containers
-                render the same static service's items (so a notification appears in both corners at
-                once here); a real app would typically use one container per placement it needs.
+                <code>Placement</code> is set on the CONTAINER (not the service), so a single
+                container shows every notification wherever it's anchored — this demo moves its one
+                container's <code>Placement</code> before adding, rather than mounting a second
+                container against the same static service (which would duplicate every notification
+                into both corners).
             </p>
             <button class="wss-dialog-btn" data-test-id="bottom-left-notification-btn"
-                    @onclick="@(() => WasmNotificationService.Warning("Bottom-left", "Anchored via Placement.", 4))">
+                    @onclick="@(() => { _notificationPlacement = NotificationPlacement.BottomLeft; WasmNotificationService.Warning("Bottom-left", "Anchored via Placement.", 4); })">
                 Show it bottom-left
             </button>
-            <WasmNotificationContainer Placement="NotificationPlacement.BottomLeft" />
         }
         else
         {
@@ -53,7 +53,7 @@
 @if (StaticToastsSupported)
 {
     <WasmMessageContainer />
-    <WasmNotificationContainer />
+    <WasmNotificationContainer Placement="_notificationPlacement" />
 }
 
 @code {
@@ -65,9 +65,8 @@
 <button @onclick=""@(() => WasmNotificationService.Info(""Notification"", ""With a description.""))"">Notification</button>
 
 <WasmMessageContainer />
-<WasmNotificationContainer />
-
-@* Placement is set on the CONTAINER, not the service: add one container per corner you need *@
+@* Placement is set on the CONTAINER, not the service: every notification renders wherever this
+   one container is anchored *@
 <WasmNotificationContainer Placement=""NotificationPlacement.BottomLeft"" />
 
 @* Blazor Server: register the scoped services (builder.Services.AddWssControlsToasts()), inject
@@ -77,6 +76,8 @@
 
 <MessageContainer />
 <NotificationContainer />";
+
+    NotificationPlacement _notificationPlacement = NotificationPlacement.TopRight;
 
     // WasmMessageContainer/WasmNotificationContainer throw on the Blazor Server renderer, where their
     // process-static state is shared by every circuit. This gallery ships in a published package, so
