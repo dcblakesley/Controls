@@ -2104,7 +2104,7 @@
     /* Deliberately above the Modal/Drawer static baseline -- see .wss-popover's own comment above. */
     z-index: 1030;
     min-width: 150px;
-    max-width: 280px;
+    max-width: 500px;
     padding: 0;
     background: var(--wss-color-bg);
     border-radius: var(--wss-radius);
