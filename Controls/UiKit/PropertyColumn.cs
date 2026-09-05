@@ -233,9 +233,14 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
     IReadOnlyList<TableFilterOption>? _dataOptions;
     string? _dataOptionsFormat;
 
+    // FilterValuesFromData declares no kind until the data actually yields an option: with none
+    // (DataSource null/empty, or every value null) the funnel would open an empty panel, and a
+    // DefaultFilterValues would spend its one shot against an empty key space and be lost. Staying
+    // null defers both to the pass where options exist -- Property is a delegate parameter, so the
+    // column re-runs OnParametersSet on every Table render and cannot miss it.
     private protected override TableFilterKind? DerivedFilterKind =>
         Property is null ? null
-        : FilterValuesFromData ? TableFilterKind.Options
+        : FilterValuesFromData ? (DerivedOptions.Count > 0 ? TableFilterKind.Options : null)
         : Filterable ? TPropFilterKind
         : null;
 

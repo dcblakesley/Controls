@@ -483,6 +483,32 @@ public class UiKitTableFilterExtrasTests : BunitContext
         Assert.Equal(["25", "40"], AppliedValues(cut, 1));
     }
 
+    [Theory]
+    [InlineData(true)]  // DataSource null on the first render...
+    [InlineData(false)] // ...and the empty-list flavour of the same thing
+    public void DefaultFilterValues_waits_for_a_data_derived_columns_options_to_exist(bool startNull)
+    {
+        // The derived option list IS the kind's key space, so a default validated against an empty one
+        // would be dropped and its one shot spent. The column offers no filter until the data yields
+        // an option; the default lands on that pass instead, still silently.
+        var log = new List<string>();
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, (IEnumerable<Person>?)(startNull ? null : new List<Person>()))
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(
+                this, v => log.Add($"{v.Item1.HeaderText}:{string.Join("+", v.Item2)}")))
+            .Add(t => t.OnFiltersChanged, EventCallback.Factory.Create<IReadOnlyList<TableColumnFilterSnapshot<Person>>>(
+                this, s => log.Add($"all:{s.Count}")))
+            .Add(t => t.ChildContent, Columns(NameCol(), Col("Age", x => x.Age, valuesFromData: true, defaults: ["25", "40"]))));
+        Assert.Empty(cut.FindAll(".wss-table-filter-trigger"));
+
+        cut.Render(p => p.Add(t => t.DataSource, People()));
+
+        Assert.Equal(["Bob", "Carol"], RowNames(cut));
+        Assert.Equal(["25", "40"], AppliedValues(cut, 1));
+        Assert.Contains("wss-table-filter-active", cut.Find(".wss-table-filter-trigger").ClassList);
+        Assert.Empty(log);
+    }
+
     [Fact]
     public void DefaultFilterValues_is_applied_once_and_never_re_asserted()
     {

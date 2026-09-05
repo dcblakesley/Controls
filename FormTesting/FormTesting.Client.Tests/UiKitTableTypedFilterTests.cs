@@ -707,6 +707,22 @@ public class UiKitTableTypedFilterTests : BunitContext
     }
 
     [Fact]
+    public void FilterValuesFromData_offers_no_filter_until_the_data_yields_an_option()
+    {
+        // A funnel that opens an empty panel is worse than no funnel: there is nothing to select, and
+        // nothing a DefaultFilterValues could validate against either.
+        var cut = RenderTable(Columns(NameCol(), Col("Category", x => x.Category, valuesFromData: true)), data: []);
+        Assert.Empty(cut.FindAll(".wss-table-filter-trigger"));
+        Assert.False(cut.FindComponents<PropertyColumn<Product, string>>()[1].Instance.CanFilter);
+
+        cut.Render(p => p.Add(t => t.DataSource, Products()));
+
+        Assert.True(cut.FindComponents<PropertyColumn<Product, string>>()[1].Instance.CanFilter);
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        Assert.Equal(["a", "b"], cut.FindAll(".wss-table-filter-item").Select(li => li.TextContent.Trim()));
+    }
+
+    [Fact]
     public void A_FilterValuesFromData_column_declared_after_the_data_still_gets_its_options()
     {
         // The DataSource-swap branch only reaches columns already registered; a column brought in by
