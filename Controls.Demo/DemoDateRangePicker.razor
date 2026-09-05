@@ -129,6 +129,12 @@
         <p data-test-id="range-disabled-result">
             Selected: @(_rangeDisabledStart?.ToString("yyyy-MM-dd") ?? "—") → @(_rangeDisabledEnd?.ToString("yyyy-MM-dd") ?? "—")
         </p>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_dateRangePickerExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_dateRangePickerModel</code></pre>
     </section>
 
 </div>
@@ -136,6 +142,36 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _dateRangePickerExample = @"<DateRangePicker @bind-Start=""_rangeStart"" @bind-End=""_rangeEnd""
+                 Presets=""_rangePresets"" Min=""@(new DateTime(2017, 1, 1))""
+                 FirstDayOfWeek=""DayOfWeek.Sunday"" />
+
+@* Mode swaps both linked panels; Start/End stay DateTime? in every mode *@
+<DateRangePicker @bind-Start=""_rangeMonthStart"" @bind-End=""_rangeMonthEnd"" Mode=""DatePickerMode.Month"" />
+<DateRangePicker @bind-Start=""_rangeYearStart"" @bind-End=""_rangeYearEnd"" Mode=""DatePickerMode.Year"" />
+<DateRangePicker @bind-Start=""_rangeWeekStart"" @bind-End=""_rangeWeekEnd"" Mode=""DatePickerMode.Week"" />
+<DateRangePicker @bind-Start=""_rangeQuarterStart"" @bind-End=""_rangeQuarterEnd"" Mode=""DatePickerMode.Quarter"" />
+<DateRangePicker @bind-Start=""_rangeDateTimeStart"" @bind-End=""_rangeDateTimeEnd""
+                 Mode=""DatePickerMode.DateTime"" Use12Hours=""false"" ShowSeconds=""true""
+                 DefaultViewDate=""@(new DateTime(2026, 2, 10))"" />
+<DateRangePicker @bind-Start=""_rangeTimeStart"" @bind-End=""_rangeTimeEnd""
+                 Mode=""DatePickerMode.Time"" Use12Hours=""true"" MinuteStep=""15"" ShowSeconds=""false"" />
+
+@* DisabledDate rejects a cell/commit; ExtraFooter renders below the calendar in every mode *@
+<DateRangePicker @bind-Start=""_rangeDisabledStart"" @bind-End=""_rangeDisabledEnd"" DisabledDate=""IsWeekend"">
+    <ExtraFooter>Weekdays only — weekends are disabled.</ExtraFooter>
+</DateRangePicker>";
+
+    readonly string _dateRangePickerModel = @"static bool IsWeekend(DateTime date) =>
+    date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+
+static readonly DateRangePreset[] _presets =
+[
+    new(""This Week"", static () => (weekStart, DateTime.Today)),
+    new(""This Month"", static () => (monthStart, DateTime.Today)),
+    // ...resolved at click time
+];";
 
     // --- DateRangePicker demo ---
     // Pinned initial range: the e2e visual baseline screenshots the open panel, so the displayed

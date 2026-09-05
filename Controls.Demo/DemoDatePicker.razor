@@ -111,6 +111,12 @@
         <p data-test-id="twelve-hour-result">
             Selected: @(_twelveHourValue?.ToString("HH:mm") ?? "—")
         </p>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_datePickerExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_datePickerModel</code></pre>
     </section>
 
 </div>
@@ -118,6 +124,30 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _datePickerExample = @"<DatePicker @bind-Value=""_singleDate""
+            Min=""@(new DateTime(2017, 1, 1))"" FirstDayOfWeek=""DayOfWeek.Sunday"" />
+
+@* Mode swaps the panel; Value stays DateTime? in every mode *@
+<DatePicker @bind-Value=""_monthValue"" Mode=""DatePickerMode.Month"" />
+<DatePicker @bind-Value=""_timeValue"" Mode=""DatePickerMode.Time"" />
+<DatePicker @bind-Value=""_dateTimeValue"" Mode=""DatePickerMode.DateTime"" />
+<DatePicker @bind-Value=""_yearValue"" Mode=""DatePickerMode.Year"" />
+<DatePicker @bind-Value=""_quarterValue"" Mode=""DatePickerMode.Quarter"" />
+<DatePicker @bind-Value=""_weekValue"" Mode=""DatePickerMode.Week"" FirstDayOfWeek=""DayOfWeek.Sunday"" />
+
+@* Presets sidebar (resolved at click time) + ShowToday footer link *@
+<DatePicker @bind-Value=""_presetsValue"" Presets=""_datePresets"" ShowToday=""true"" />
+
+@* Use12Hours + MinuteStep + ShowSeconds=false, Time mode *@
+<DatePicker @bind-Value=""_twelveHourValue"" Mode=""DatePickerMode.Time""
+            Use12Hours=""true"" MinuteStep=""15"" ShowSeconds=""false"" />";
+
+    readonly string _datePickerModel = @"static readonly DatePickerPreset[] _presets =
+[
+    new(""Today"", static () => DateTime.Today),
+    new(""Next Monday"", static () => /* ... */),
+];";
 
     // --- DatePicker demo --- (pinned for the same baseline-determinism reason)
     DateTime? _singleDate = new DateTime(2026, 2, 14);

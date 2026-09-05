@@ -41,6 +41,12 @@
             </Select>
         </div>
         <p data-test-id="pill-result">Shipments filter: @_shipmentFilter</p>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_selectPillExample</code></pre>
+
+        <h3>CSS</h3>
+        <pre class="code-block code-block-css"><code>@_selectPillCss</code></pre>
     </section>
 
 </div>
@@ -48,6 +54,23 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _selectPillExample = @"<Select TValue=""string"" @bind-Value=""_shipmentFilter"" Options=""_shipmentOptions""
+        Variant=""SelectVariant.Pill"" ShowSearch=""false"" AllowClear=""false""
+        InputLabel=""Shipment filter"">
+    <Prefix>
+        <svg width=""1.25em"" height=""1.25em"" viewBox=""0 0 24 24"" fill=""none"" stroke=""currentColor""
+             stroke-width=""2"" aria-hidden=""true"">
+            <rect x=""1"" y=""3"" width=""15"" height=""13""></rect>
+            <polygon points=""16 8 20 8 23 11 23 16 16 16 16 8""></polygon>
+        </svg>
+    </Prefix>
+</Select>";
+
+    readonly string _selectPillCss = @".wss-demo-pill-filters {
+    --wss-select-pill-color: #1c4a3f;
+    --wss-color-bg-selected: #d9e8e2;
+}";
 
     // --- Pill-select demo ---
     string _shipmentFilter = "all";

@@ -42,6 +42,12 @@
             <code>Disabled</code> makes the trigger inert — the popup can't be opened at all.
         </p>
         <ColorPicker @bind-Value="_colorDisabled" Id="demo-color-disabled" Disabled="true" ShowText="true" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_colorPickerExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_colorPickerModel</code></pre>
     </section>
 
 </div>
@@ -49,6 +55,22 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _colorPickerExample = @"<ColorPicker @bind-Value=""_colorValue"" ShowText=""true"" />
+
+@* ShowAlpha=false drops the alpha slider and strips the channel from the value *@
+<ColorPicker @bind-Value=""_colorNoAlpha"" ShowAlpha=""false"" ShowText=""true"" />
+
+@* AllowClear adds a clear affordance that raises null; Presets adds a labeled swatch row *@
+<ColorPicker @bind-Value=""_colorClearable"" AllowClear=""true"" ShowText=""true"" Presets=""_colorPresets"" />
+
+@* Disabled makes the trigger inert -- the popup can't be opened *@
+<ColorPicker @bind-Value=""_colorDisabled"" Disabled=""true"" ShowText=""true"" />";
+
+    readonly string _colorPickerModel = @"static readonly IReadOnlyList<string> _presets =
+[
+    ""#f5222d"", ""#fa8c16"", ""#fadb14"", ""#52c41a"", ""#1890ff"", ""#722ed1"", ""rgba(0, 0, 0, 0.35)""
+];";
 
     // --- ColorPicker demo. Pinned values (no DateTime.Now-style drift) so the e2e baselines are
     // deterministic, same reasoning as the two pickers' own demo values.
