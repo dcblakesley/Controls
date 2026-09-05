@@ -1818,7 +1818,9 @@
     // non-filterable shape -- the sortable header's exact single-button DOM included.
     bool ShowsFunnel(Column<TItem> col) => col.CanFilter && FilterPlacement == TableFilterPlacement.Dropdown;
 
-    bool HasFilterRow => FilterPlacement == TableFilterPlacement.Row;
+    // Also "is there anything to put in it": Row placement over columns that declare no filter would
+    // otherwise render an empty second header row (and the class that styles it) for nothing.
+    bool HasFilterRow => FilterPlacement == TableFilterPlacement.Row && _columns.Any(c => c.CanFilter);
 
     // OK: commit the dropdown's staged selection and re-run the filter/sort/page pipeline. Commit
     // reports whether the applied selection actually changed (it compares BEFORE overwriting) -- a

@@ -744,6 +744,21 @@ public class UiKitTableFilterExtrasTests : BunitContext
         Assert.Equal(["Bob"], RowNames(cut));
     }
 
+    [Fact]
+    public void Row_placement_renders_no_filter_row_while_no_column_is_filterable()
+    {
+        RenderFragment columns(bool filterable) => Columns(NameCol(), Col("Age", x => x.Age, filterable: filterable));
+        var cut = RenderTable(columns(false), p => p.Add(t => t.FilterPlacement, TableFilterPlacement.Row));
+
+        Assert.Empty(cut.FindAll("tr.wss-table-filter-row"));
+        Assert.DoesNotContain("wss-table-has-filter-row", cut.Find("table.wss-table").ClassList);
+
+        cut.Render(p => p.Add(t => t.ChildContent, columns(true)));
+
+        Assert.Single(cut.FindAll("tr.wss-table-filter-row"));
+        Assert.Contains("wss-table-has-filter-row", cut.Find("table.wss-table").ClassList);
+    }
+
     // =====================================================================================
     // Cleanup: the dead forwarded labels are gone
     // =====================================================================================
