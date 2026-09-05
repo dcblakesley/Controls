@@ -975,6 +975,46 @@
     </section>
 
     <section class="demo-section">
+        <h3>Table — filters inside an EditForm (Enter must not submit)</h3>
+        <p style="margin:0; color:#666;">
+            A filter editor's text, search and number boxes are plain <code>&lt;input&gt;</code>s, so
+            Enter in one would implicitly submit an enclosing <code>&lt;EditForm&gt;</code> on top of
+            applying the filter. The library suppresses that one default (<code>wss-table.js</code>),
+            in both placements, and leaves the form's own submit button alone.
+        </p>
+        <EditForm Model="_filterFormModel" OnValidSubmit="@(() => _filterFormSubmits++)">
+            <div data-test-id="form-dropdown-table">
+                <Table TItem="Widget" DataSource="_widgetRows" Size="TableSize.Small">
+                    <ChildContent>
+                        <PropertyColumn TItem="Widget" TProp="string" Title="Name" Property="@(w => w.Name)"
+                                        FilterText="@(w => w.Name)" />
+                        <PropertyColumn TItem="Widget" TProp="string" Title="Code" Property="@(w => w.Code)"
+                                        FilterOptions="_formCodeFilterOptions"
+                                        OnFilter="@((Widget w, string v) => w.Code == v)"
+                                        FilterSearch="true" />
+                    </ChildContent>
+                </Table>
+            </div>
+            <div data-test-id="form-row-table">
+                <Table TItem="Widget"
+                       DataSource="_widgetRows"
+                       Size="TableSize.Small"
+                       FilterPlacement="TableFilterPlacement.Row"
+                       FilterDebounceMilliseconds="150">
+                    <ChildContent>
+                        <PropertyColumn TItem="Widget" TProp="string" Title="Name" Property="@(w => w.Name)"
+                                        FilterText="@(w => w.Name)" />
+                        <PropertyColumn TItem="Widget" TProp="int" Title="Quantity" Property="@(w => w.Quantity)"
+                                        Filterable="true" />
+                    </ChildContent>
+                </Table>
+            </div>
+            <button type="submit" class="wss-dialog-btn" data-test-id="filter-form-submit">Submit</button>
+        </EditForm>
+        <p data-test-id="filter-form-submits">Submits: @_filterFormSubmits</p>
+    </section>
+
+    <section class="demo-section">
         <h3>Table — short dropdown-filter table (typed kinds, no ScrollY)</h3>
         <p style="margin:0; color:#666;">
             <code>Filterable</code> in the default Dropdown placement: a date column opens a
@@ -1392,6 +1432,19 @@
         _filterChangedMessage = e.SelectedValues.Count == 0
             ? $"{e.Column.HeaderText}: cleared"
             : $"{e.Column.HeaderText}: {string.Join(", ", e.SelectedValues)}";
+
+    // --- Table: filters inside an EditForm demo ---
+    readonly object _filterFormModel = new();
+    int _filterFormSubmits;
+    static readonly List<TableFilterOption> _formCodeFilterOptions =
+    [
+        new("AX-100", "AX-100"),
+        new("AX-200", "AX-200"),
+        new("BX-110", "BX-110"),
+        new("BX-300", "BX-300"),
+        new("CX-210", "CX-210"),
+        new("CX-310", "CX-310"),
+    ];
 
     // --- Table: short dropdown-filter table (typed kinds, no ScrollY) demo ---
     readonly List<ShortRow> _shortRows =

@@ -925,6 +925,9 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     ILocator ShortDropdownFilterSection =>
         _page.Locator("section.demo-section", new() { HasTextString = "short dropdown-filter table" });
 
+    ILocator FilterFormSection =>
+        _page.Locator("section.demo-section", new() { HasTextString = "filters inside an EditForm" });
+
     // A row-placement editor is a kit control named after its column ("Filter by {header}"), so the
     // accessible name is the stable handle onto a specific cell's Select/box — no positional
     // nth-child into a header row whose column order a later demo edit could change.
@@ -945,21 +948,21 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         var box = section.Locator(".wss-table-filter-dropdown input.wss-table-filter-input");
         await Expect(box).ToBeVisibleAsync();
 
-        // Enter is the OK button's keyboard twin for APPLYING. Deliberately not asserting that the
-        // panel closed: a real Enter keypress leaves it open. TableFilterEditor.OnEditorKeyDown does
-        // apply-and-close, and TableColumnFilter's close path then restores focus to the funnel
-        // button — after which the SAME keydown's browser default action activates that now-focused
-        // button and re-opens the panel. (Verified: a synthetic, untrusted keydown, which carries no
-        // default action, closes it and leaves it closed.) OK-closes-the-panel is covered by
-        // Table_filter_OK_narrows_the_rows_and_shows_the_active_icon_state.
+        // Enter is the OK button's keyboard twin: it applies AND closes. It used to bounce straight
+        // back open — the close path focuses the funnel, and Blink activates a focused button from
+        // the Enter KEYPRESS, which the same keydown was still going to produce. wss-table.js's
+        // suppressEnterSubmit (added for the enclosing-EditForm case) cancels that keypress too.
         await box.FillAsync("gasket");
+        await WaitForEnterSuppressionAsync(".wss-table-filter-dropdown input.wss-table-filter-input");
         await box.PressAsync("Enter");
         await Expect(rows).ToHaveCountAsync(2);
+        await Expect(section.Locator(".wss-table-filter-dropdown")).Not.ToBeVisibleAsync();
         await Expect(trigger).ToHaveClassAsync(new Regex("wss-table-filter-active"));
         await Expect(summary).ToContainTextAsync("Name: contains \"gasket\"");
 
         // A panel showing again re-stages from the APPLIED text, and the clear button empties the box
         // without applying anything — the rows stay narrowed until OK/Enter says otherwise.
+        await trigger.ClickAsync();
         await Expect(box).ToHaveValueAsync("gasket");
         await section.Locator(".wss-table-filter-dropdown .wss-table-filter-input-clear").ClickAsync();
         await Expect(box).ToHaveValueAsync("");
@@ -980,14 +983,15 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
 
         await trigger.ClickAsync();
         await box.FillAsync("AX");
+        await WaitForEnterSuppressionAsync(".wss-table-filter-dropdown input.wss-table-filter-input");
         await box.PressAsync("Enter");
         await Expect(rows).ToHaveCountAsync(2); // AX-100, AX-200
         await Expect(section.Locator("[data-test-id=filter-summary-1]"))
             .ToContainTextAsync("Code: starts with \"AX\"");
 
         // "X-1" IS a substring of AX-100 — under the default Contains match it would still match.
-        // Typed straight into the panel Enter left open (see the Enter note in the test above)
-        // rather than re-clicking the funnel, which the open panel's backdrop would intercept.
+        // Enter closed the panel (see the Enter note in the test above), so re-open it first.
+        await trigger.ClickAsync();
         await box.FillAsync("X-1");
         await box.PressAsync("Enter");
         await Expect(rows).ToHaveCountAsync(0);
@@ -1409,6 +1413,92 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await Expect(rows).ToHaveCountAsync(2);
         await Expect(section.Locator("tbody")).ToContainTextAsync("Atlanta");
         await Expect(section.Locator("tbody")).ToContainTextAsync("Houston");
+    }
+
+    // ---- Enter in a filter editor's raw <input> applies the filter and nothing else: Blazor has no
+    // per-key preventDefault, so without wss-table.js's suppressEnterSubmit it would also implicitly
+    // submit an enclosing <EditForm>. The submit counter staying 0 is the assertion. ----
+
+    // suppressEnterSubmit is attached from a lazily-imported module, so typing the instant a panel
+    // opens can outrun the first import (the same race every JS-dependent behavior in the kit has,
+    // and the reason each one has a no-JS fallback). Wait for the listener before pressing Enter.
+    Task WaitForEnterSuppressionAsync(string selector) =>
+        _page.WaitForFunctionAsync(
+            "sel => { const el = document.querySelector(sel); return !!el && el.__wssEnterSubmitWired === true; }",
+            selector,
+            new PageWaitForFunctionOptions { Timeout = 10_000 });
+
+    [Fact]
+    public async Task Table_dropdown_filter_Enter_applies_without_submitting_the_form()
+    {
+        await GotoAsync();
+        var section = FilterFormSection;
+        var submits = section.Locator("[data-test-id=filter-form-submits]");
+        var rows = section.Locator("[data-test-id=form-dropdown-table] tbody .wss-table-row");
+        await Expect(submits).ToHaveTextAsync("Submits: 0");
+        await Expect(rows).ToHaveCountAsync(6);
+
+        // The text box: Enter applies (the rows narrow) without the form seeing a submit.
+        await section.Locator("[data-test-id=form-dropdown-table] .wss-table-filter-trigger[aria-label^='Filter Name']")
+            .ClickAsync();
+        var box = section.Locator(".wss-table-filter-dropdown input.wss-table-filter-input");
+        await box.FillAsync("gasket");
+        await WaitForEnterSuppressionAsync(".wss-table-filter-dropdown input.wss-table-filter-input");
+        await box.PressAsync("Enter");
+        await Expect(rows).ToHaveCountAsync(2);
+        await Expect(submits).ToHaveTextAsync("Submits: 0");
+
+        // The FilterSearch box: no keydown handler of its own, so Enter there does nothing at all --
+        // it must still not submit, and the query it narrowed the list with must survive.
+        await section.Locator("[data-test-id=form-dropdown-table] .wss-table-filter-trigger[aria-label^='Filter Code']")
+            .ClickAsync();
+        var search = section.Locator(".wss-table-filter-dropdown .wss-table-filter-search input");
+        await search.FillAsync("AX");
+        await Expect(section.Locator(".wss-table-filter-dropdown .wss-table-filter-item")).ToHaveCountAsync(2);
+        await WaitForEnterSuppressionAsync(".wss-table-filter-search input");
+        await search.PressAsync("Enter");
+        await Expect(submits).ToHaveTextAsync("Submits: 0");
+        await Expect(section.Locator(".wss-table-filter-dropdown .wss-table-filter-item")).ToHaveCountAsync(2);
+
+        // ...and the form still submits normally when its own button is pressed.
+        await _page.Keyboard.PressAsync("Escape");
+        await section.Locator("[data-test-id=filter-form-submit]").ClickAsync();
+        await Expect(submits).ToHaveTextAsync("Submits: 1");
+    }
+
+    [Fact]
+    public async Task Table_filter_row_Enter_applies_without_submitting_the_form()
+    {
+        await GotoAsync();
+        var section = FilterFormSection;
+        var submits = section.Locator("[data-test-id=filter-form-submits]");
+        var rowTable = section.Locator("[data-test-id=form-row-table]");
+        var rows = rowTable.Locator("tbody .wss-table-row");
+        await Expect(submits).ToHaveTextAsync("Submits: 0");
+        await Expect(rows).ToHaveCountAsync(6);
+
+        var text = rowTable.Locator("input[aria-label='Filter by Name']");
+        await WaitForEnterSuppressionAsync("[data-test-id=form-row-table] input[aria-label='Filter by Name']");
+        await text.FillAsync("gasket");
+        await text.PressAsync("Enter"); // flushes the debounce instead of waiting it out
+        await Expect(rows).ToHaveCountAsync(2);
+        await Expect(submits).ToHaveTextAsync("Submits: 0");
+
+        // Both NumberRange bounds -- the max box is the one that had no element reference at all
+        // before this fix, so it is the one that would still have submitted.
+        await text.FillAsync("");
+        var min = rowTable.Locator("input[aria-label='Filter by Quantity: Minimum']");
+        var max = rowTable.Locator("input[aria-label='Filter by Quantity: Maximum']");
+        await min.FillAsync("10");
+        await min.PressAsync("Enter");
+        await WaitForEnterSuppressionAsync("[data-test-id=form-row-table] input[aria-label='Filter by Quantity: Maximum']");
+        await max.FillAsync("45");
+        await max.PressAsync("Enter");
+        await Expect(rows).ToHaveCountAsync(3); // quantities 12, 40, 21
+        await Expect(submits).ToHaveTextAsync("Submits: 0");
+
+        await section.Locator("[data-test-id=filter-form-submit]").ClickAsync();
+        await Expect(submits).ToHaveTextAsync("Submits: 1");
     }
 
     // ---- The fixed-position escape is no longer gated on Table.ScrollY. .wss-table-wrapper sets

@@ -238,6 +238,7 @@ else
     readonly string _radioGroupName = $"wss-table-filter-{Guid.NewGuid():N}";
 
     ElementReference _inputRef;
+    ElementReference _maxRef;
     ElementReference _searchRef;
     ElementReference _checkAllRef;
     // The kit components the DateRange/Bool editors render, for the open-focus hand-off below (they
@@ -377,12 +378,57 @@ else
         foreach (var o in visible) options.TogglePending(o.Value, on);
     }
 
-    // The mixed-state mirror, same shape (and same module function) as Table's own header select-all:
-    // only when it actually changed, and silently doing nothing when there is no JS runtime -- the box
-    // then reads checked or unchecked, which is what a screen reader hears too.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_disposed) return;
+        await SuppressEnterSubmitAsync();
+        await MirrorCheckAllIndeterminateAsync();
+    }
+
+    // Every raw <input> above applies its filter from OnEditorKeyDown, but Blazor has no per-key
+    // preventDefault, so inside an <EditForm> Enter would ALSO implicitly submit the form. Only JS can
+    // stop that (wss-table.js's suppressEnterSubmit); with no JS runtime the filter still applies and
+    // the form still submits with it. Ids of the elements already wired -- an ElementReference's id
+    // lives as long as its element, so a re-render costs nothing and a replaced element (a kind
+    // switch, a first render that had no box yet) wires itself on its next pass.
+    readonly HashSet<string> _enterSuppressed = [];
+
+    async Task SuppressEnterSubmitAsync()
+    {
+        // Only what the CURRENT markup rendered: a leftover reference from a previous kind points at
+        // a detached element the interop call could not resolve. Options in Row placement is a Select,
+        // and the DateRange/Bool editors are kit components -- all three suppress their own Enter.
+        List<ElementReference> refs = Column.Filter switch
+        {
+            OptionsFilterState<TItem> when ShowSearch => [_searchRef],
+            TextFilterState<TItem> => [_inputRef],
+            NumberRangeFilterState<TItem> => [_inputRef, _maxRef],
+            _ => [],
+        };
+
+        IJSObjectReference? module = null;
+        foreach (var element in refs)
+        {
+            if (string.IsNullOrEmpty(element.Id) || !_enterSuppressed.Add(element.Id)) continue;
+            module ??= await _module.GetAsync(JS, FormDefaults);
+            if (module is null) return;
+            try
+            {
+                await module.InvokeVoidAsync("suppressEnterSubmit", element);
+            }
+            catch
+            {
+                // Element gone / circuit dropped mid-call -- retry on the next render.
+                _enterSuppressed.Remove(element.Id);
+            }
+        }
+    }
+
+    // The mixed-state mirror, same shape (and same module function) as Table's own header select-all:
+    // only when it actually changed, and silently doing nothing when there is no JS runtime -- the box
+    // then reads checked or unchecked, which is what a screen reader hears too.
+    async Task MirrorCheckAllIndeterminateAsync()
+    {
         // No row rendered (wrong kind/placement, single-select, or a query hiding everything) means
         // no element to mirror onto -- and a freshly created one comes back indeterminate == false,
         // so forget the mirror rather than short-circuiting against a value from a box that is gone.
@@ -430,6 +476,7 @@ else
             <input type="number"
                    inputmode="decimal"
                    class="wss-table-filter-input"
+                   @ref="_maxRef"
                    autocomplete="off"
                    aria-label="@BoundLabel(Table.FilterMaxLabel)"
                    value="@range.MaxText"
