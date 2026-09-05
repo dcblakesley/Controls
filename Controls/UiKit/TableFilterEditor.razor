@@ -161,6 +161,8 @@ else
                     ValuesChanged="@(vs => OnRowSelectionChangedAsync(options, vs))"
                     AllowClear="true"
                     Size="SelectSize.Small"
+                    Placeholder="@Table.FilterSelectPlaceholder"
+                    EmptyText="@Table.FilterEmptyText"
                     InputLabel="@Table.FilterRowLabel(Column)"
                     Disabled="@Table.Loading" />
         }
@@ -448,6 +450,8 @@ else
                           Size="SelectSize.Small"
                           AllowClear="true"
                           Disabled="@RowDisabled"
+                          StartInputLabel="@Table.FilterDateStartLabel"
+                          EndInputLabel="@Table.FilterDateEndLabel"
                           GroupLabel="@EditorLabel" />;
 
     // Bool: a single Select over the two literal keys the state serializes ("true"/"false"), with

@@ -897,6 +897,42 @@ public class UiKitTableTypedFilterTests : BunitContext
     }
 
     [Fact]
+    public void The_row_select_and_date_editor_labels_come_from_the_Table()
+    {
+        var cut = RenderRow(
+            Columns(
+                NameCol(),
+                Col("Status", x => x.Status, filterable: true),
+                Col("Added", x => x.Added, filterable: true)),
+            p => p
+                .Add(t => t.FilterSelectPlaceholder, "Alle")
+                .Add(t => t.FilterEmptyText, "Keine Treffer")
+                .Add(t => t.FilterDateStartLabel, "Von")
+                .Add(t => t.FilterDateEndLabel, "Bis"));
+
+        var cells = cut.FindAll("thead tr.wss-table-filter-row td");
+        Assert.Equal("Alle", cells[1].QuerySelector(".wss-select-selection-placeholder")!.TextContent.Trim());
+        Assert.Equal("Von", cells[2].QuerySelector(".wss-picker-input-start")!.GetAttribute("aria-label"));
+        Assert.Equal("Bis", cells[2].QuerySelector(".wss-picker-input-end")!.GetAttribute("aria-label"));
+
+        cut.Find("thead tr.wss-table-filter-row td:nth-child(2) .wss-select").Click();
+        cut.Find("thead tr.wss-table-filter-row td:nth-child(2) .wss-select input").Input("zzz");
+        Assert.Equal("Keine Treffer", cut.Find(".wss-select-item-empty").TextContent.Trim());
+    }
+
+    [Fact]
+    public void The_dropdown_date_editor_takes_the_same_endpoint_labels()
+    {
+        var cut = RenderTable(Columns(NameCol(), Col("Added", x => x.Added, filterable: true)),
+            p => p.Add(t => t.FilterDateStartLabel, "Von").Add(t => t.FilterDateEndLabel, "Bis"));
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+
+        Assert.Equal("Von", cut.Find(".wss-table-filter-dropdown .wss-picker-input-start").GetAttribute("aria-label"));
+        Assert.Equal("Bis", cut.Find(".wss-table-filter-dropdown .wss-picker-input-end").GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void Loading_disables_every_typed_row_editor()
     {
         var cut = RenderRow(Columns(

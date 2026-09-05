@@ -764,6 +764,19 @@
     /// "nothing selected", which excludes no row. Override to localize.</summary>
     [Parameter] public string FilterBoolAnyText { get; set; } = "All";
 
+    /// <summary>Placeholder of an <see cref="TableFilterKind.Options"/> column's
+    /// <see cref="TableFilterPlacement.Row"/> select — its "nothing selected", which excludes no row.
+    /// Override to localize.</summary>
+    [Parameter] public string FilterSelectPlaceholder { get; set; } = "All";
+
+    /// <summary>Accessible name of the start input in a <see cref="TableFilterKind.DateRange"/>
+    /// editor, in either placement. Override to localize.</summary>
+    [Parameter] public string FilterDateStartLabel { get; set; } = "Start date";
+
+    /// <summary>Accessible name of the end input in a <see cref="TableFilterKind.DateRange"/> editor —
+    /// see <see cref="FilterDateStartLabel"/>. Override to localize.</summary>
+    [Parameter] public string FilterDateEndLabel { get; set; } = "End date";
+
     /// <summary>Label of a <see cref="TableFilterKind.Bool"/> editor's <c>true</c> option, and the
     /// wording its <c>Describe</c> summary uses. Override to localize.</summary>
     [Parameter] public string FilterBoolTrueText { get; set; } = "Yes";
