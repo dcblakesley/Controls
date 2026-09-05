@@ -101,6 +101,21 @@ public class DemoShellE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Returning_to_the_form_controls_tab_lands_on_the_default_view()
+    {
+        await GotoAsync("/?view=String");
+        await UiKitTab.ClickAsync();
+        await FormsTab.ClickAsync();
+
+        // The round trip drops `view`, so the URL has to describe what is rendered: the default
+        // view, not the EditString demo the deep link opened on.
+        await Expect(FormsTab).ToHaveAttributeAsync("aria-selected", "true");
+        await Expect(_page.GetByRole(AriaRole.Button, new() { Name = "Horizontal", Exact = true })).ToBeVisibleAsync();
+        await Expect(_page.Locator("h1", new() { HasTextString = "EditString Demo" })).ToHaveCountAsync(0);
+        Assert.DoesNotContain("view=", _page.Url);
+    }
+
+    [Fact]
     public async Task Standalone_gallery_route_still_renders_every_section()
     {
         await GotoAsync("/uikit");

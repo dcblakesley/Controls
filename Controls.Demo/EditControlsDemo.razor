@@ -5,12 +5,14 @@
    as Tab child content: .wss-tabs sets font-size/line-height for the strip, and a pane nested inside
    it inherits both -- which re-rendered every form demo at 14px and moved their visual baselines. *@
 <div class="wss-demo-page">
-    <Tabs ActiveKey="@_activeTab" ActiveKeyChanged="GoToTab" Id="demo-shell-tabs" TablistLabel="Demo sections">
+    <Tabs ActiveKey="@_activeTab" ActiveKeyChanged="GoToTab" Id="@TabsId" TablistLabel="Demo sections">
         <Tab Key="@FormsTabKey" Title="Form Controls" />
         <Tab Key="@UiKitTabKey" Title="UI Kit" />
     </Tabs>
 
-    <div class="wss-demo-tab-pane">
+    @* The panes are siblings of the strip (see above), so the tabpanel wiring the Tab buttons would
+       have supplied for their own content has to be declared here. *@
+    <div class="wss-demo-tab-pane" role="tabpanel" tabindex="0" aria-labelledby="@($"{TabsId}-tab-{_activeTab}")">
         @if (_activeTab == UiKitTabKey)
         {
             <div class="wss-demo-row">
@@ -97,7 +99,7 @@
 
                 <div class="wss-demo-col">
 
-                    <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="_form">
+                    <EditForm Model=_allControlsModel FormName="AllControlsForm">
                         <ObjectGraphDataAnnotationsValidator />
 
                         @if (_currentView is not (CurrentView.Comparison or CurrentView.FormLabel))

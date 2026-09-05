@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Routing;
 
 namespace Controls.Demo;
@@ -8,6 +7,9 @@ public partial class EditControlsDemo : IDisposable
 {
     internal const string FormsTabKey = "forms";
     internal const string UiKitTabKey = "uikit";
+
+    // Roots the strip's ARIA ids, which the sibling pane's aria-labelledby has to rebuild by hand.
+    internal const string TabsId = "demo-shell-tabs";
 
     [Inject] NavigationManager NavigationManager { get; set; } = default!;
 
@@ -23,7 +25,6 @@ public partial class EditControlsDemo : IDisposable
     UiKitView _uiKitView = UiKitView.All;
 
     readonly DemoModelForEditControls _allControlsModel = new();
-    EditForm _form = default!; // Set by @ref during Render
 
     public FormOptions FormOptions { get; set; } =
         new() { IsEditMode = true, Hiding = HidingMode.None };
@@ -41,16 +42,20 @@ public partial class EditControlsDemo : IDisposable
     {
         _activeTab = string.Equals(TabParam, UiKitTabKey, StringComparison.OrdinalIgnoreCase) ? UiKitTabKey : FormsTabKey;
 
-        if (!string.IsNullOrEmpty(ViewParam))
+        if (string.IsNullOrEmpty(ViewParam))
         {
-            if (_activeTab == UiKitTabKey)
-            {
-                if (Enum.TryParse<UiKitView>(ViewParam, true, out var uiKitView)) _uiKitView = uiKitView;
-            }
-            else if (Enum.TryParse<CurrentView>(ViewParam, true, out var view))
-            {
-                _currentView = view;
-            }
+            // No `view` means the default view, so a tab switch (which drops the parameter) can't
+            // leave the outgoing tab's selection showing.
+            _currentView = CurrentView.AllControls;
+            _uiKitView = UiKitView.All;
+        }
+        else if (_activeTab == UiKitTabKey)
+        {
+            if (Enum.TryParse<UiKitView>(ViewParam, true, out var uiKitView)) _uiKitView = uiKitView;
+        }
+        else if (Enum.TryParse<CurrentView>(ViewParam, true, out var view))
+        {
+            _currentView = view;
         }
         // CommonFeatures' "required-star Demo" section, FormLabel's "Required Star" section, and
         // Comparison's live example all exist to show the star; every other view keeps it
@@ -64,11 +69,14 @@ public partial class EditControlsDemo : IDisposable
         StateHasChanged();
     }
 
-    public void ChangeView(CurrentView view)
-    {
-        var uri = NavigationManager.GetUriWithQueryParameter("view", view.ToString());
-        NavigationManager.NavigateTo(uri);
-    }
+    /// <summary> Navigates to a form-control view from outside the shell. Clears `tab` too: `view` is
+    /// parsed against the open tab's enum, so it would not resolve from the UI-kit tab. </summary>
+    public void ChangeView(CurrentView view) =>
+        NavigationManager.NavigateTo(NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["tab"] = null,
+            ["view"] = view.ToString(),
+        }));
 
     public void Dispose() => NavigationManager.LocationChanged -= HandleLocationChanged;
 
