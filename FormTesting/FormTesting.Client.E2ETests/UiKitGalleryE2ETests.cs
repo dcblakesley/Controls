@@ -1604,6 +1604,18 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await WaitForStablePageHeightAsync();
         var section = ScrollYFilterRowSection;
         await Expect(section.Locator(".wss-table-filter-row-cell")).ToHaveCountAsync(3);
+
+        // Captured SCROLLED to the bottom: at rest this section looks like any other filter row, and
+        // the whole point of it is that the sticky <thead> keeps both header rows pinned once the
+        // body has moved under them.
+        // behavior: 'instant' lands synchronously, so the read-back in the same call is authoritative.
+        var atBottom = await section.EvaluateAsync<bool>(@"section => {
+            const w = section.querySelector('.wss-table-wrapper-scroll-y');
+            w.scrollTo({ top: w.scrollHeight, behavior: 'instant' });
+            return w.scrollTop >= w.scrollHeight - w.clientHeight - 1;
+        }");
+        Assert.True(atBottom, "the ScrollY wrapper did not scroll to the bottom");
+
         await BaselineAsync(section, "table-filter-row-scrolly");
     }
 
