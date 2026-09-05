@@ -24,6 +24,9 @@ public class EditRangeE2ETests(AppFixture app, BrowserFixture browser) : DemoPag
     // through real pointer events -- the only way to exercise wss-slider.js's drag path.
     async Task DragAsync(ILocator track, double fromFraction, double toFraction)
     {
+        // Mouse coordinates are viewport-relative and Mouse.MoveAsync does no scrolling of its own,
+        // so a track below the fold would be dragged at coordinates that never touch it.
+        await track.ScrollIntoViewIfNeededAsync();
         var box = await track.BoundingBoxAsync();
         Assert.NotNull(box);
         var y = box.Y + box.Height / 2;

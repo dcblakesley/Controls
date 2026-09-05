@@ -1,128 +1,210 @@
-﻿@using Controls
+@using Controls
 @using Microsoft.AspNetCore.Components.Forms
 
-<FormDefaults UpdateOn="UpdateTrigger.Input">
-<div class="wss-demo-page wss-demo-row">
-    <!-- Sidebar -->
-    <div class="wss-demo-col" style="gap: 4px">
-        @foreach (var view in Enum.GetValues<CurrentView>())
+@* A bare filter strip (content-less Tabs) with the panes rendered as siblings below it, rather than
+   as Tab child content: .wss-tabs sets font-size/line-height for the strip, and a pane nested inside
+   it inherits both -- which re-rendered every form demo at 14px and moved their visual baselines. *@
+<div class="wss-demo-page">
+    <Tabs ActiveKey="@_activeTab" ActiveKeyChanged="GoToTab" Id="demo-shell-tabs" TablistLabel="Demo sections">
+        <Tab Key="@FormsTabKey" Title="Form Controls" />
+        <Tab Key="@UiKitTabKey" Title="UI Kit" />
+    </Tabs>
+
+    <div class="wss-demo-tab-pane">
+        @if (_activeTab == UiKitTabKey)
         {
-            <button class=@(_currentView == view ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(()=>GoToView(view))>
-                @(view)
-            </button>
+            <div class="wss-demo-row">
+                <!-- Sidebar -->
+                <div class="wss-demo-col" style="gap: 4px">
+                    @foreach (var view in Enum.GetValues<UiKitView>())
+                    {
+                        <button class=@(_uiKitView == view ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(()=>GoToUiKitView(view))>
+                            @(view)
+                        </button>
+                    }
+                </div>
+
+                @* No FormDefaults/FormOptions here: the UI kit is not a form, and /uikit hosts the
+                   same components with neither wrapper. *@
+                <div class="wss-demo-col">
+                    @switch (_uiKitView)
+                    {
+                        case UiKitView.Alert:
+                            <DemoAlert />
+                            break;
+                        case UiKitView.Skeleton:
+                            <DemoSkeleton />
+                            break;
+                        case UiKitView.Popover:
+                            <DemoPopover />
+                            break;
+                        case UiKitView.Pagination:
+                            <DemoPagination />
+                            break;
+                        case UiKitView.ModalDrawer:
+                            <DemoModalDrawer />
+                            break;
+                        case UiKitView.Popconfirm:
+                            <DemoPopconfirm />
+                            break;
+                        case UiKitView.Table:
+                            <DemoTable />
+                            break;
+                        case UiKitView.Toasts:
+                            <DemoToasts />
+                            break;
+                        case UiKitView.Tabs:
+                            <DemoTabs />
+                            break;
+                        case UiKitView.SearchInput:
+                            <DemoSearchInput />
+                            break;
+                        case UiKitView.SelectPill:
+                            <DemoSelectPill />
+                            break;
+                        case UiKitView.DateRangePicker:
+                            <DemoDateRangePicker />
+                            break;
+                        case UiKitView.DatePicker:
+                            <DemoDatePicker />
+                            break;
+                        case UiKitView.ColorPicker:
+                            <DemoColorPicker />
+                            break;
+                        case UiKitView.Tooltip:
+                            <DemoTooltip />
+                            break;
+                        default:
+                            <UiKitGallery />
+                            break;
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <FormDefaults UpdateOn="UpdateTrigger.Input">
+            <div class="wss-demo-row">
+                <!-- Sidebar -->
+                <div class="wss-demo-col" style="gap: 4px">
+                    @foreach (var view in Enum.GetValues<CurrentView>())
+                    {
+                        <button class=@(_currentView == view ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(()=>GoToView(view))>
+                            @(view)
+                        </button>
+                    }
+                </div>
+
+                <div class="wss-demo-col">
+
+                    <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="_form">
+                        <ObjectGraphDataAnnotationsValidator />
+
+                        @if (_currentView is not (CurrentView.Comparison or CurrentView.FormLabel))
+                        {
+                            <!-- Actions -->
+                            <fieldset style="padding-bottom: 1rem">
+                                <legend class="wss-demo-heading">Actions and FormOptions</legend>
+
+                                <div class="wss-demo-row wss-demo-wrap">
+                                    <button class=@(FormOptions.ShowBoundValues ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
+                                    <button class=@(FormOptions.IsEditMode ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
+                                    <EditSelectEnum @bind-Value=@FormOptions.Hiding />
+                                </div>
+                            </fieldset>
+                        }
+                    </EditForm>
+
+                    <CascadingValue Value=@FormOptions>
+                        <!-- All Controls -->
+                        @switch (_currentView)
+                        {
+                            case CurrentView.AllControls:
+                                <DemoAllControls />
+                                break;
+                            case CurrentView.CommonFeatures:
+                                <DemoFormLabel />
+                                break;
+                            case CurrentView.FormLabel:
+                                <DemoFormLabelStandalone />
+                                break;
+                            case CurrentView.Comparison:
+                                <DemoComparison />
+                                break;
+                            case CurrentView.BoolNullRadio:
+                                <DemoEditBoolNullRadio />
+                                break;
+                            case CurrentView.Bool:
+                                <DemoEditBool />
+                                break;
+                            case CurrentView.CheckedStringList:
+                                <DemoEditCheckedStringList />
+                                break;
+                            case CurrentView.CheckedEnumList:
+                                <DemoEditCheckedEnumList />
+                                break;
+                            case CurrentView.Color:
+                                <DemoEditColor />
+                                break;
+                            case CurrentView.Date:
+                                <DemoEditDate />
+                                break;
+                            case CurrentView.DateNative:
+                                <DemoEditDateNative />
+                                break;
+                            case CurrentView.DateRange:
+                                <DemoEditDateRange />
+                                break;
+                            case CurrentView.Number:
+                                <DemoEditNumber />
+                                break;
+                            case CurrentView.Radio:
+                                <DemoEditRadio />
+                                break;
+                            case CurrentView.RadioEnum:
+                                <DemoEditRadioEnum />
+                                break;
+                            case CurrentView.RadioString:
+                                <DemoEditRadioString />
+                                break;
+                            case CurrentView.Range:
+                                <DemoEditRange />
+                                break;
+                            case CurrentView.Select:
+                                <DemoEditSelect />
+                                break;
+                            case CurrentView.SelectEnum:
+                                <DemoEditSelectEnum />
+                                break;
+                            case CurrentView.SelectString:
+                                <DemoEditSelectString />
+                                break;
+                            case CurrentView.SelectSearch:
+                                <DemoEditSelectSearch />
+                                break;
+                            case CurrentView.MultiSelect:
+                                <DemoEditMultiSelect />
+                                break;
+                            case CurrentView.String:
+                                <DemoEditString />
+                                break;
+                            case CurrentView.TextArea:
+                                <DemoEditTextArea />
+                                break;
+                            case CurrentView.File:
+                                <DemoEditFile />
+                                break;
+                            case CurrentView.Theme:
+                                <DemoEditTheme />
+                                break;
+                            default:
+                                <p>Select a control demo from the sidebar</p>
+                                break;
+                        }
+                    </CascadingValue>
+                </div>
+            </div>
+            </FormDefaults>
         }
     </div>
-
-    <div class="wss-demo-col">
-
-        <EditForm Model=_allControlsModel FormName="AllControlsForm" @ref="_form">
-            <ObjectGraphDataAnnotationsValidator />
-
-            @if (_currentView is not (CurrentView.Comparison or CurrentView.UiKit or CurrentView.FormLabel))
-            {
-                <!-- Actions -->
-                <fieldset style="padding-bottom: 1rem">
-                    <legend class="wss-demo-heading">Actions and FormOptions</legend>
-
-                    <div class="wss-demo-row wss-demo-wrap">
-                        <button class=@(FormOptions.ShowBoundValues ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => FormOptions.ShowBoundValues = !FormOptions.ShowBoundValues) type="button">Display bound values</button>
-                        <button class=@(FormOptions.IsEditMode ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => FormOptions.IsEditMode = !FormOptions.IsEditMode) type="button">Edit Mode</button>
-                        <EditSelectEnum @bind-Value=@FormOptions.Hiding />
-                    </div>
-                </fieldset>
-            }
-        </EditForm>
-
-        <CascadingValue Value=@FormOptions>
-            <!-- All Controls -->
-            @switch (_currentView)
-            {
-                case CurrentView.AllControls:
-                    <DemoAllControls />
-                    break;
-                case CurrentView.UiKit:
-                    <UiKitGallery />
-                    break;
-                case CurrentView.CommonFeatures:
-                    <DemoFormLabel />
-                    break;
-                case CurrentView.FormLabel:
-                    <DemoFormLabelStandalone />
-                    break;
-                case CurrentView.Comparison:
-                    <DemoComparison />
-                    break;
-                case CurrentView.BoolNullRadio:
-                    <DemoEditBoolNullRadio />
-                    break;
-                case CurrentView.Bool:
-                    <DemoEditBool />
-                    break;
-                case CurrentView.CheckedStringList:
-                    <DemoEditCheckedStringList />
-                    break;
-                case CurrentView.CheckedEnumList:
-                    <DemoEditCheckedEnumList />
-                    break;
-                case CurrentView.Color:
-                    <DemoEditColor />
-                    break;
-                case CurrentView.Date:
-                    <DemoEditDate />
-                    break;
-                case CurrentView.DateNative:
-                    <DemoEditDateNative />
-                    break;
-                case CurrentView.DateRange:
-                    <DemoEditDateRange />
-                    break;
-                case CurrentView.Number:
-                    <DemoEditNumber />
-                    break;
-                case CurrentView.Radio:
-                    <DemoEditRadio />
-                    break;
-                case CurrentView.RadioEnum:
-                    <DemoEditRadioEnum />
-                    break;
-                case CurrentView.RadioString:
-                    <DemoEditRadioString />
-                    break;
-                case CurrentView.Range:
-                    <DemoEditRange />
-                    break;
-                case CurrentView.Select:
-                    <DemoEditSelect />
-                    break;
-                case CurrentView.SelectEnum:
-                    <DemoEditSelectEnum />
-                    break;
-                case CurrentView.SelectString:
-                    <DemoEditSelectString />
-                    break;
-                case CurrentView.SelectSearch:
-                    <DemoEditSelectSearch />
-                    break;
-                case CurrentView.MultiSelect:
-                    <DemoEditMultiSelect />
-                    break;
-                case CurrentView.String:
-                    <DemoEditString />
-                    break;
-                case CurrentView.TextArea:
-                    <DemoEditTextArea />
-                    break;
-                case CurrentView.File:
-                    <DemoEditFile />
-                    break;
-                case CurrentView.Theme:
-                    <DemoEditTheme />
-                    break;
-                default:
-                    <p>Select a control demo from the sidebar</p>
-                    break;
-            }
-        </CascadingValue>
-    </div>
 </div>
-</FormDefaults>

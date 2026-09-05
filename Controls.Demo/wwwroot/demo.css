@@ -97,6 +97,12 @@
     background: grey;
 }
 
+/* Holds the active top-level demo pane below EditControlsDemo's tab strip. A sibling of the strip,
+   not a child: see the comment at the top of EditControlsDemo.razor. */
+.wss-demo-tab-pane {
+    padding-top: 16px;
+}
+
 .demo-section {
     margin-bottom: 1rem;
     padding: 1rem;

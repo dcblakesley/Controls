@@ -15,8 +15,9 @@ public class ComparisonE2ETests(AppFixture app, BrowserFixture browser) : PageTe
     {
         await NavigateAsync();
 
-        // Default selection is the last tab (React + Ant Design + Accessibility).
-        var selected = Page.Locator("[role=tab][aria-selected='true']");
+        // Default selection is the last tab (React + Ant Design + Accessibility). Scoped to this
+        // demo's own tablist -- the demo host's shell renders a tab strip of its own.
+        var selected = Page.Locator(".comparison-tabs [role=tab][aria-selected='true']");
         await Expect(selected).ToHaveIdAsync("tab-reactfullparity");
 
         await selected.FocusAsync();
