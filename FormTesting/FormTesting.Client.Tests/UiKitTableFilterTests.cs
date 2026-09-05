@@ -1484,11 +1484,11 @@ public class UiKitTableFilterTests : BunitContext
     }
 
     [Fact]
-    public void ClearFiltersAsync_is_a_no_op_with_nothing_applied_or_staged()
+    public async Task ClearFiltersAsync_is_a_no_op_with_nothing_applied_or_staged()
     {
         var (cut, log, snapshots) = RenderTwoFilterable();
 
-        cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync()).GetAwaiter().GetResult();
+        await cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync());
 
         Assert.Empty(log);
         Assert.Empty(snapshots);
