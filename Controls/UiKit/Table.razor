@@ -1882,16 +1882,31 @@
     public async Task ClearFiltersAsync()
     {
         var cleared = new List<Column<TItem>>();
+        // Whether anything the DOM shows moved -- an open flag, or a staged selection -- when no
+        // APPLIED selection did. RecomputeAfterFilterChange (the cleared path) re-renders on its own.
+        var touched = false;
         foreach (var col in _columns)
         {
             if (col.Filter is not { } filter) continue;
+            // Closing comes before the guard below and is unconditional: a dropdown left open on a
+            // column with nothing applied and nothing staged is still open, and still owes its
+            // OnFilterDropdownOpenChange(false).
+            if (filter.IsOpen)
+            {
+                await col.SetFilterOpen(false);
+                touched = true;
+            }
             // A column with a default is always visited, active or not: "clear" means "back to the
             // default" there, which a column the user had emptied still has to be moved to.
             if (!col.HasFilterDefault && !filter.IsActive && !filter.HasPendingChange) continue;
-            await col.SetFilterOpen(false);
+            touched |= filter.HasPendingChange;
             if (ResetOrDefault(col)) cleared.Add(col);
         }
-        if (cleared.Count == 0) return;
+        if (cleared.Count == 0)
+        {
+            if (touched) StateHasChanged();
+            return;
+        }
         RecomputeAfterFilterChange(changed: true);
         await RaiseFilterChangedAsync(cleared);
     }

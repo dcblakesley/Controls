@@ -1495,6 +1495,60 @@ public class UiKitTableFilterTests : BunitContext
         Assert.Equal(["Alice", "Bob", "Carol"], FirstCellNames(cut));
     }
 
+    [Fact]
+    public async Task ClearFiltersAsync_closes_an_untouched_open_dropdown_too()
+    {
+        // Name has nothing applied and nothing staged, so the "nothing to clear here" guard used to
+        // step over it -- leaving its panel open, and its OnFilterDropdownOpenChange owed a false,
+        // while the rest of the table cleared.
+        var nameLog = new List<bool>();
+        var ageLog = new List<bool>();
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.ChildContent, TwoLoggingColumns(nameLog, ageLog, this)));
+        cut.FindAll(".wss-table-filter-trigger")[1].Click();
+        CheckOption(cut, "Old");
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Alice", "Carol"], FirstCellNames(cut));
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        Assert.Equal([true], nameLog);
+
+        await cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync());
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.Equal([true, false], nameLog);
+        Assert.Equal([true, false], ageLog);
+        Assert.Equal(["Alice", "Bob", "Carol"], FirstCellNames(cut));
+    }
+
+    [Fact]
+    public async Task ClearFiltersAsync_renders_the_discard_when_only_staged_state_changed()
+    {
+        // Nothing was ever applied, so nothing is raised and the pipeline is untouched -- but the open
+        // panel and its tick are gone from the DOM all the same, which needs a render of its own.
+        (Column<Person> Column, IReadOnlyList<string> Values)? raised = null;
+        var aggregates = 0;
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, People())
+            .Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Person>, IReadOnlyList<string>)>(this, v => raised = v))
+            .Add(t => t.OnFiltersChanged, EventCallback.Factory.Create<IReadOnlyList<TableColumnFilterSnapshot<Person>>>(this, _ => aggregates++))
+            .Add(t => t.ChildContent, NameColumn(NameOptions(), NameEquals)));
+        cut.Find(".wss-table-filter-trigger").Click();
+        CheckOption(cut, "Bob");
+        Assert.Single(cut.FindAll(".wss-table-filter-dropdown"));
+
+        await cut.InvokeAsync(() => cut.Instance.ClearFiltersAsync());
+
+        Assert.Empty(cut.FindAll(".wss-table-filter-dropdown"));
+        Assert.Null(raised);
+        Assert.Equal(0, aggregates);
+        Assert.Equal(["Alice", "Bob", "Carol"], RenderedNames(cut));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        Assert.All(cut.FindAll(".wss-table-filter-checkbox"), cb => Assert.False(cb.HasAttribute("checked")));
+    }
+
     static string StatusText(IRenderedComponent<Table<Person>> cut) =>
         cut.Find("div.wss-sr-only[role='status']").TextContent.Trim();
 
