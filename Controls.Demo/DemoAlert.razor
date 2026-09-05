@@ -16,6 +16,9 @@
         <Alert Message="With an action slot" Closable="true">
             <Action><button class="wss-dialog-btn wss-dialog-btn-sm" data-test-id="alert-action-btn">Undo</button></Action>
         </Alert>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_alertExample</code></pre>
     </section>
 
 </div>
@@ -23,4 +26,17 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _alertExample = @"<Alert Type=""AlertType.Success"" Message=""Success — saved."" />
+<Alert Type=""AlertType.Error"" Message=""Error — something failed."" Closable=""true"" />
+
+<Alert Type=""AlertType.Info"" Message=""With description""
+       Description=""A longer explanation under the message."" />
+
+@* Banner: full-width, no border or radius, warning severity unless Type says otherwise *@
+<Alert Banner=""true"" Message=""Banner mode"" />
+
+<Alert Message=""With an action slot"" Closable=""true"">
+    <Action><button class=""wss-dialog-btn wss-dialog-btn-sm"">Undo</button></Action>
+</Alert>";
 }

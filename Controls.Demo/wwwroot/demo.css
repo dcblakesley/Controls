@@ -145,6 +145,12 @@
     margin: 0;
 }
 
+/* .code-block's negative margin cancels the form demos' 1rem section gap; the gallery's is 0.75rem,
+   so the base value would pull a Markup block 4px up over its own heading. */
+.wss-demo-gallery .demo-section > .code-block {
+    margin-top: -12px;
+}
+
 /* Pill-select demo theme (the Clark Connect filter look): one scoped token recolors the whole
    trigger; the selected-row tint follows the same palette. Was ".pill-filters". */
 .wss-demo-gallery .wss-demo-pill-filters {
