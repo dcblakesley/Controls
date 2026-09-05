@@ -792,7 +792,8 @@
     [Parameter] public string FilterSearchPlaceholder { get; set; } = "Search in filters";
 
     /// <summary>Shown in place of the options when a <see cref="Column{TItem}.FilterSearch"/> query
-    /// matches none of them. Override to localize.</summary>
+    /// matches none of them, and as the no-match text of the <see cref="TableFilterPlacement.Row"/>
+    /// Options <c>Select</c>. Override to localize.</summary>
     [Parameter] public string FilterEmptyText { get; set; } = "No matches";
 
     /// <summary>Label of the "select all" row a <see cref="Column{TItem}.FilterCheckAll"/> column puts

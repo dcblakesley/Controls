@@ -67,6 +67,11 @@ CHANGED
 - TableColumnFilter&lt;TItem&gt; lost its own FilterButtonLabelFormat/FilterAppliedButtonLabelFormat/FilterAppliedLabel/FilterLabel parameters -- the accessible name now comes from Table's parameters of the same names. Only affects code that instantiates TableColumnFilter directly.
 - PropertyColumn&lt;TItem,TProp&gt; now annotates TProp with [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]. Concrete TProp="..." markup is unaffected; a consumer generic forwarding its own unannotated TProp into PropertyColumn needs the same annotation to avoid IL2091 under trim analysis.
 
+FIXED (all pre-existing, from the 10.6.7/10.7.0 column filtering -- not regressions in this release)
+- Under ScrollY, the fixed-positioned filter dropdown stretched to the viewport's right edge -- the stylesheet's right: 0 anchor was never cleared.
+- The filter dropdown was clipped by .wss-table-wrapper on a table short enough with no ScrollY; it escapes on every open now, not only under ScrollY.
+- A runtime Column.FilterMultiple true -&gt; false flip left the earlier multi-key selection applied (two checked radios in one group); it trims to the first key.
+
 Full changelog: https://github.com/dcblakesley/Controls#changelog
     </PackageReleaseNotes>
     <Authors>dcblakesley</Authors>
