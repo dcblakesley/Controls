@@ -1,0 +1,66 @@
+@if (Standalone)
+{
+    <h1>Toasts Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>Toasts (static services — not Blazor Server)</h3>
+        @if (StaticToastsSupported)
+        {
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <button class="wss-dialog-btn" @onclick="@(() => WasmMessageService.Success("Saved!"))">Message</button>
+                <button class="wss-dialog-btn" @onclick="@(() => WasmNotificationService.Info("Notification", "With a description."))">Notification</button>
+            </div>
+
+            <p style="margin:0; color:#666;">
+                <code>Placement</code> is set on the CONTAINER (not the service) — a second
+                <code>WasmNotificationContainer</code> here, anchored bottom-left. Both containers
+                render the same static service's items (so a notification appears in both corners at
+                once here); a real app would typically use one container per placement it needs.
+            </p>
+            <button class="wss-dialog-btn" data-test-id="bottom-left-notification-btn"
+                    @onclick="@(() => WasmNotificationService.Warning("Bottom-left", "Anchored via Placement.", 4))">
+                Show it bottom-left
+            </button>
+            <WasmNotificationContainer Placement="NotificationPlacement.BottomLeft" />
+        }
+        else
+        {
+            <p style="margin:0; color:#666;" data-test-id="static-toasts-unavailable">
+                This gallery is running on the Blazor <strong>Server</strong> renderer.
+                <code>WasmMessageService</code>/<code>WasmNotificationService</code> keep their state
+                in process-wide statics, which one Server process shares across every circuit, so the
+                containers deliberately refuse to render here rather than leak one user's toasts onto
+                another's screen. Register the scoped services with
+                <code>builder.Services.AddWssControlsToasts()</code>, inject
+                <code>IMessageService</code>/<code>INotificationService</code>, and use
+                <code>&lt;MessageContainer /&gt;</code>/<code>&lt;NotificationContainer /&gt;</code>
+                instead. Everything else on this page works the same either way.
+            </p>
+        }
+    </section>
+
+</div>
+
+@* Static-state toast hosts. WssBlazorControls.Demo is a published package, so <UiKitGallery /> can be
+   dropped onto a Blazor Server page -- where these two throw by design (see WasmToastHost). Gated so
+   the rest of the gallery still renders there instead of the whole page dying with them. *@
+@if (StaticToastsSupported)
+{
+    <WasmMessageContainer />
+    <WasmNotificationContainer />
+}
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    // WasmMessageContainer/WasmNotificationContainer throw on the Blazor Server renderer, where their
+    // process-static state is shared by every circuit. This gallery ships in a published package, so
+    // it has to survive being dropped on a Server page: gate the toast demo on the same condition the
+    // containers themselves check and show an explanation in its place. Every other host -- WebAssembly,
+    // WebView (Blazor Hybrid), and the static prerender pass -- gets the real containers.
+    bool StaticToastsSupported => RendererInfo.Name != "Server";
+}

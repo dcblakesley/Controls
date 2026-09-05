@@ -1,0 +1,149 @@
+@if (Standalone)
+{
+    <h1>DatePicker Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>DatePicker (single date)</h3>
+        <p style="margin:0; color:#666;">
+            The single-date sibling of the range picker: one field with a calendar suffix, one
+            month panel with month/year quick-select headers. Picking a day (or typing a date and
+            pressing Enter) commits and closes. The initial value is pinned to Feb 2026 so the e2e
+            visual baseline is deterministic; <code>FirstDayOfWeek</code> is pinned for the same reason.
+        </p>
+        <DatePicker @bind-Value="_singleDate"
+                    Min="@(new DateTime(2017, 1, 1))"
+                    FirstDayOfWeek="DayOfWeek.Sunday"
+                    Id="demo-date"
+                    Width="300px" />
+        <p data-test-id="date-result">
+            Selected: @(_singleDate?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Mode</code> swaps what the panel offers — the bound <code>Value</code> stays
+            <code>DateTime?</code> in every mode. <code>Month</code> replaces the day calendar with a
+            year header + 3x4 month grid; <code>Time</code> drops the calendar for hour/minute/second
+            selects over an OK button; <code>DateTime</code> keeps the day calendar and appends that
+            same time row below it. Initial values are pinned for the same baseline-determinism reason.
+        </p>
+        <DatePicker @bind-Value="_monthValue"
+                    Mode="DatePickerMode.Month"
+                    Id="demo-month"
+                    Width="200px" />
+        <p data-test-id="month-result">
+            Selected: @(_monthValue?.ToString("yyyy-MM") ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_timeValue"
+                    Mode="DatePickerMode.Time"
+                    Id="demo-time"
+                    Width="200px" />
+        <p data-test-id="time-result">
+            Selected: @(_timeValue?.ToString("HH:mm:ss") ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_dateTimeValue"
+                    Mode="DatePickerMode.DateTime"
+                    Id="demo-datetime"
+                    Width="260px" />
+        <p data-test-id="datetime-result">
+            Selected: @(_dateTimeValue?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Year</code>/<code>Quarter</code>/<code>Week</code> round out <code>Mode</code>'s
+            remaining granularities — initial values stay in the Feb 2026 family for the same
+            baseline-determinism reason as the demos above.
+        </p>
+        <DatePicker @bind-Value="_yearValue"
+                    Mode="DatePickerMode.Year"
+                    Id="demo-year"
+                    Width="160px" />
+        <p data-test-id="year-result">
+            Selected: @(_yearValue?.Year.ToString() ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_quarterValue"
+                    Mode="DatePickerMode.Quarter"
+                    Id="demo-quarter"
+                    Width="200px" />
+        <p data-test-id="quarter-result">
+            Selected: @(_quarterValue?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <DatePicker @bind-Value="_weekValue"
+                    Mode="DatePickerMode.Week"
+                    FirstDayOfWeek="DayOfWeek.Sunday"
+                    Id="demo-week"
+                    Width="220px" />
+        <p data-test-id="week-result">
+            Selected: @(_weekValue?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Presets</code> adds a shortcut sidebar (resolved at click time, same contract as
+            <code>DateRangePicker.Presets</code> above) and <code>ShowToday</code> adds a footer
+            link — both commit a value and close the panel.
+        </p>
+        <DatePicker @bind-Value="_presetsValue"
+                    Presets="_datePresets"
+                    ShowToday="true"
+                    Id="demo-presets"
+                    Width="300px" />
+        <p data-test-id="presets-result">
+            Selected: @(_presetsValue?.ToString("yyyy-MM-dd") ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Use12Hours</code> + <code>MinuteStep</code> + <code>ShowSeconds="false"</code>
+            together on a <code>Time</code> mode picker.
+        </p>
+        <DatePicker @bind-Value="_twelveHourValue"
+                    Mode="DatePickerMode.Time"
+                    Use12Hours="true"
+                    MinuteStep="15"
+                    ShowSeconds="false"
+                    Id="demo-12h"
+                    Width="200px" />
+        <p data-test-id="twelve-hour-result">
+            Selected: @(_twelveHourValue?.ToString("HH:mm") ?? "—")
+        </p>
+    </section>
+
+</div>
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    // --- DatePicker demo --- (pinned for the same baseline-determinism reason)
+    DateTime? _singleDate = new DateTime(2026, 2, 14);
+
+    // --- DatePicker Mode demos (Month/Time/DateTime) --- pinned for the same reason.
+    DateTime? _monthValue = new DateTime(2026, 2, 1);
+    DateTime? _timeValue = new DateTime(2026, 2, 14, 9, 30, 15);
+    DateTime? _dateTimeValue = new DateTime(2026, 2, 14, 9, 30, 15);
+
+    // --- DatePicker Mode demos (Year/Quarter/Week) + footer/12-hour demos --- pinned for the same
+    // reason (all fall in the Feb 2026 family already established above).
+    DateTime? _yearValue = new DateTime(2026, 2, 14);
+    DateTime? _quarterValue = new DateTime(2026, 2, 14);
+    DateTime? _weekValue = new DateTime(2026, 2, 14);
+    DateTime? _presetsValue = new DateTime(2026, 2, 14);
+    DateTime? _twelveHourValue = new DateTime(2026, 2, 14, 14, 30, 0);
+
+    // Resolved at click time (DateTime.Today), same contract as DateRangePicker's own presets.
+    static readonly DatePickerPreset[] _datePresets =
+    [
+        new("Today", static () => DateTime.Today),
+        new("Next Monday", static () =>
+        {
+            var today = DateTime.Today;
+            var daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+            return today.AddDays(daysUntilMonday == 0 ? 7 : daysUntilMonday);
+        }),
+    ];
+}

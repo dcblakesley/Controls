@@ -1,0 +1,76 @@
+@if (Standalone)
+{
+    <h1>Tabs Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>Tabs + SearchInput (filter strip)</h3>
+        <p style="margin:0; color:#666;">
+            The Vendor PO Management subheader pattern: labeled pill search fields
+            (<code>SearchInput</code> — Enter or the button raises <code>OnSearch</code>) above an
+            underline <code>Tabs</code> strip whose tabs carry bordered count chips. These tabs are
+            a bare filter strip (no pane content); give a <code>Tab</code> child content to render
+            the active pane below the strip.
+        </p>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+            <SearchInput @bind-Value="_poSearch" AddonLabel="POs" OnSearch="@(v => _lastSearch = $"POs: {v}")"
+                         Id="demo-search-pos" Width="240px" />
+            <SearchInput @bind-Value="_skuSearch" AddonLabel="SKUs" OnSearch="@(v => _lastSearch = $"SKUs: {v}")"
+                         Id="demo-search-skus" Width="240px" Loading="@_skuSearchLoading" />
+            <button class="wss-dialog-btn" type="button" data-test-id="toggle-sku-search-loading"
+                    @onclick="@(() => _skuSearchLoading = !_skuSearchLoading)">
+                Toggle SKU search Loading
+            </button>
+        </div>
+        <Tabs @bind-ActiveKey="_activeTab" Id="demo-tabs" TablistLabel="Shipment filters">
+            <Tab Key="overdue" Title="Overdue" Count="12" />
+            <Tab Key="missing" Title="Missing Estimations" Count="12" />
+            <Tab Key="other" Title="Other Active" Count="5" />
+        </Tabs>
+        <p data-test-id="tabs-result">Active: @_activeTab · Last search: @_lastSearch</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Tabs — TabBarExtraContent, Centered, Card type</h3>
+        <p style="margin:0; color:#666;">
+            <code>TabBarExtraContent</code> adds a right-aligned strip slot; <code>Centered</code>
+            centers the tab buttons; <code>Type="TabsType.Card"</code> switches to AntD's boxed
+            card-style tabs (CSS-only — keyboard/ARIA unchanged).
+        </p>
+        <label style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+            <input type="checkbox" data-test-id="toggle-priority-tab" @bind="_showPriorityTab" />
+            Insert a "Priority" tab before Tab 1 (exercises conditional insertion -- Tab 1/2/3's own
+            parameters never change on this toggle, so nothing but the render-tree diff can place
+            the newcomer, which is why each Tab renders its own nav button).
+        </label>
+        <Tabs @bind-ActiveKey="_cardTab" Id="demo-tabs-card" Type="TabsType.Card" Centered="true">
+            <TabBarExtraContent><button class="wss-dialog-btn wss-dialog-btn-sm" data-test-id="tabs-extra-btn">+ Add</button></TabBarExtraContent>
+            <ChildContent>
+                @if (_showPriorityTab)
+                {
+                    <Tab Key="priority" Title="Priority"><p>Pane priority.</p></Tab>
+                }
+                <Tab Key="one" Title="Tab 1"><p>Pane one.</p></Tab>
+                <Tab Key="two" Title="Tab 2"><p>Pane two.</p></Tab>
+                <Tab Key="three" Title="Tab 3"><p>Pane three.</p></Tab>
+            </ChildContent>
+        </Tabs>
+    </section>
+
+</div>
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    // --- Tabs + SearchInput demo ---
+    string? _activeTab = "missing";
+    string? _cardTab = "one";
+    bool _showPriorityTab;
+    string? _poSearch;
+    string? _skuSearch;
+    string _lastSearch = "—";
+    bool _skuSearchLoading;
+}

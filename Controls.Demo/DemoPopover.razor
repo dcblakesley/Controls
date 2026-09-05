@@ -1,0 +1,59 @@
+@if (Standalone)
+{
+    <h1>Popover Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>Popover</h3>
+        <Popover Title="Popover title">
+            <ChildContent>
+                <button class="wss-dialog-btn">Click me</button>
+            </ChildContent>
+            <Content>
+                <div>Some popover content.</div>
+            </Content>
+        </Popover>
+    </section>
+
+    <section class="demo-section">
+        <h3>Popover — swapped trigger child</h3>
+        <p style="margin:0; color:#666;">
+            The trigger child is re-created across renders (a common busy/idle swap). The popup ARIA
+            must follow the live child, and a disabled Popconfirm's button child must be marked inert.
+        </p>
+        <button class="wss-dialog-btn" data-test-id="swap-toggle" @onclick="@(() => _triggerBusy = !_triggerBusy)">
+            Toggle trigger (@(_triggerBusy ? "loading" : "ready"))
+        </button>
+        <Popover Title="Swapped trigger">
+            <ChildContent>
+                @if (_triggerBusy)
+                {
+                    <span data-test-id="swap-trigger-child">Loading…</span>
+                }
+                else
+                {
+                    <button type="button" class="wss-dialog-btn" data-test-id="swap-trigger-child">Open popover</button>
+                }
+            </ChildContent>
+            <Content>
+                <div data-test-id="swap-popover-content">Swapped-trigger popover content.</div>
+            </Content>
+        </Popover>
+
+        <Popconfirm Title="Delete this item?" Disabled="true">
+            <button type="button" class="wss-dialog-btn" data-test-id="disabled-popconfirm-child">Delete (disabled)</button>
+        </Popconfirm>
+    </section>
+
+</div>
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    // Swapped-trigger demo: flips the Popover's ChildContent between a non-focusable <span> and a
+    // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.
+    bool _triggerBusy;
+}

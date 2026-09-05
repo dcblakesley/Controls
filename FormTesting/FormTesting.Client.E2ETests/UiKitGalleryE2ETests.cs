@@ -152,7 +152,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         var popover = _page.Locator(".wss-popover");
         await Expect(popover).ToBeVisibleAsync();
         await Expect(_page.Locator(".wss-popover-content")).ToContainTextAsync("popover content");
-        await AssertAnchoredAboveAsync(".wss-popover-trigger", ".wss-popover");
+        await AssertAnchoredAboveAsync(_page.Locator(".wss-popover-trigger").First, ".wss-popover");
     }
 
     [Fact]
@@ -189,14 +189,17 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     public async Task Popconfirm_anchors_to_trigger_then_confirms()
     {
         await GotoAsync();
-        // .First: the swapped-trigger demo section adds a second (disabled) Popconfirm to the page.
-        await _page.Locator(".wss-popconfirm-trigger").First.ClickAsync();
+        // Section-scoped: the Popover demo above this one carries a disabled Popconfirm, and this
+        // section's own second trigger is the async one -- .First within the section is "Delete".
+        var trigger = _page.Locator("section.demo-section", new() { HasTextString = "Last action:" })
+            .Locator(".wss-popconfirm-trigger").First;
+        await trigger.ClickAsync();
         var pop = _page.Locator(".wss-popconfirm");
         await Expect(pop).ToBeVisibleAsync();
 
         // Regression guard for the flex/grid stretch bug (left:50% on a full-width wrap): the panel
         // must be centred over the trigger and sit just above it, not drift to the section centre.
-        await AssertAnchoredAboveAsync(".wss-popconfirm-trigger", ".wss-popconfirm");
+        await AssertAnchoredAboveAsync(trigger, ".wss-popconfirm");
 
         // The primary button confirms, closes the popover, and records the result.
         await _page.Locator(".wss-popconfirm-buttons .wss-dialog-btn-primary").ClickAsync();
@@ -1916,15 +1919,16 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     // Asserts an overlay panel is centred over its trigger and sits just above it (Top placement).
     // A precise geometric guard for anchoring — more reliable than a screenshot for an absolutely
     // -positioned overlay that can overflow the viewport when the trigger is near an edge.
-    async Task AssertAnchoredAboveAsync(string triggerSelector, string panelSelector)
+    async Task AssertAnchoredAboveAsync(ILocator trigger, string panelSelector)
     {
         var panel = _page.Locator(panelSelector);
         // Edge-aware positioning: auto-wait for the JS flip/shift to settle and assert the panel
         // is fully within the viewport (Ratio = 1 ⇒ no part overflows the edge).
         await Expect(panel).ToBeInViewportAsync(new() { Ratio = 1 });
 
-        // .First: trigger selectors can match the swapped-trigger demo section's second instance too.
-        var t = await _page.Locator(triggerSelector).First.BoundingBoxAsync();
+        // The trigger comes in already narrowed: several demo sections render triggers of the same
+        // class, so the caller picks the one its panel actually belongs to.
+        var t = await trigger.BoundingBoxAsync();
         var p = await panel.BoundingBoxAsync();
         Assert.NotNull(t);
         Assert.NotNull(p);

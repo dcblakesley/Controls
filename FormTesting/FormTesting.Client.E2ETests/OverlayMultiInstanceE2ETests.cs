@@ -116,6 +116,12 @@ public class OverlayMultiInstanceE2ETests : IAsyncLifetime
         await _page.Locator("button", new() { HasTextString = "Open Modal" }).ClickAsync();
         var panel = _page.Locator(".wss-modal[role=dialog]");
         await Expect(panel).ToBeVisibleAsync();
+        // Escape below is only instance 1's to handle once ITS trap is registered and focus is inside
+        // its panel; until then instance 2's trap is still topmost and swallows the key. The panel is
+        // visible one render before that interop lands, so wait for the trap (same wait as the sibling
+        // test below) rather than racing it.
+        await _page.WaitForFunctionAsync(
+            "() => { const d = document.querySelector('.wss-modal[role=dialog]'); return !!d && d.contains(document.activeElement); }");
         Assert.Equal("hidden", await BodyOverflowAsync());
 
         // Instance 1 closes -- instance 2's lock is still outstanding, so the page must stay locked

@@ -1,0 +1,63 @@
+@if (Standalone)
+{
+    <h1>ColorPicker Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>ColorPicker</h3>
+        <p style="margin:0; color:#666;">
+            The raw picker behind <code>EditColor</code>: a swatch trigger over a transparency
+            checkerboard opening a saturation/brightness area, a hue slider, an alpha slider, and a
+            HEX/RGB input row. It binds a plain <code>string</code> and emits normalized lowercase
+            hex — <code>#rrggbb</code>, or <code>#rrggbbaa</code> when the color is translucent. The
+            handles drag with the pointer, and every track is a <code>role="slider"</code> the arrow
+            keys step (Shift or PageUp/PageDown for a larger step). Initial values are pinned so the
+            e2e visual baselines are deterministic.
+        </p>
+        <ColorPicker @bind-Value="_colorValue" Id="demo-color" ShowText="true" />
+        <p data-test-id="color-result">
+            Selected: @(_colorValue ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>ShowAlpha="false"</code> drops the alpha slider and strips the channel from the
+            value; <code>AllowClear</code> adds a clear affordance that raises <code>null</code>; and
+            <code>Presets</code> adds a labeled swatch row (any form the picker accepts works as a
+            preset entry — the last one below is <code>rgba()</code>).
+        </p>
+        <ColorPicker @bind-Value="_colorNoAlpha" Id="demo-color-opaque" ShowAlpha="false" ShowText="true" />
+        <p data-test-id="color-opaque-result">
+            Selected: @(_colorNoAlpha ?? "—")
+        </p>
+
+        <ColorPicker @bind-Value="_colorClearable" Id="demo-color-clear"
+                     AllowClear="true" ShowText="true" Presets="_colorPresets" />
+        <p data-test-id="color-clear-result">
+            Selected: @(_colorClearable ?? "—")
+        </p>
+
+        <p style="margin:0; color:#666;">
+            <code>Disabled</code> makes the trigger inert — the popup can't be opened at all.
+        </p>
+        <ColorPicker @bind-Value="_colorDisabled" Id="demo-color-disabled" Disabled="true" ShowText="true" />
+    </section>
+
+</div>
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    // --- ColorPicker demo. Pinned values (no DateTime.Now-style drift) so the e2e baselines are
+    // deterministic, same reasoning as the two pickers' own demo values.
+    string? _colorValue = "#1890ff";
+    string? _colorNoAlpha = "#52c41a";
+    string? _colorClearable = "rgba(114, 46, 209, 0.6)";
+    string? _colorDisabled = "#8c8c8c";
+    static readonly IReadOnlyList<string> _colorPresets =
+    [
+        "#f5222d", "#fa8c16", "#fadb14", "#52c41a", "#1890ff", "#722ed1", "rgba(0, 0, 0, 0.35)"
+    ];
+}

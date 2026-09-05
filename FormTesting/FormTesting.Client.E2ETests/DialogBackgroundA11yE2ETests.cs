@@ -250,8 +250,10 @@ public class DialogBackgroundA11yE2ETests : IAsyncLifetime
     {
         await GotoAsync();
 
-        // .First: the swapped-trigger demo section adds a second (disabled) Popconfirm to the page.
-        var trigger = _page.Locator(".wss-popconfirm-trigger button").First;
+        // Section-scoped: the Popover demo above this one carries a disabled Popconfirm, and this
+        // section's own second trigger is the async one -- .First within the section is "Delete".
+        var trigger = _page.Locator("section.demo-section", new() { HasTextString = "Last action:" })
+            .Locator(".wss-popconfirm-trigger button").First;
         await trigger.ClickAsync();
         var panel = _page.Locator(".wss-popconfirm");
         await PageTestBase.WaitForOpenAndPositionedAsync(panel);

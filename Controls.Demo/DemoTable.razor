@@ -1,0 +1,769 @@
+@if (Standalone)
+{
+    <h1>Table Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>Table (selectable, sortable, paged, styled checkboxes)</h3>
+        <p style="margin:0; color:#666;">
+            Antd-style custom-drawn checkboxes for header/row selection (<code>UseStyledCheckbox</code>),
+            including the indeterminate "mixed" glyph when only some rows on the page are selected
+            (preselected below). Settable per-<code>Table</code> or globally via a cascaded
+            <code>FormDefaults</code> (or the process-wide <code>FormOptions.DefaultUseStyledCheckbox</code>
+            static).
+        </p>
+        <Table TItem="Row" DataSource="_rows" Selectable="true" UseStyledCheckbox="true" PageSize="5" PagerAlign="PagerAlign.Center"
+               SelectedItems="_selectedRows" SelectedItemsChanged="@(s => _selectedRows = s.ToList())">
+            <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" Sortable="true" />
+            <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" Sortable="true" />
+            <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" Sortable="true" />
+            <ActionColumn TItem="Row" Title="Action">
+                <button class="wss-dialog-btn wss-dialog-btn-sm">Edit</button>
+            </ActionColumn>
+        </Table>
+        <p>Selected: @_selectedRows.Count</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — expandable rows + header info tooltip</h3>
+        <p style="margin:0; color:#666;">
+            <code>RowDetail</code> adds a leading chevron column; clicking it reveals the template
+            as a full-width row (here a nested selectable child <code>Table</code>, the Vendor PO
+            pattern). <code>Column.TitleContent</code> replaces the plain title — here composing a
+            <code>LabelTooltip</code> info icon into the header.
+        </p>
+        <Table TItem="PoRow" DataSource="_poRows" RowKey="@(r => r.Number)">
+            <ChildContent>
+                <PropertyColumn TItem="PoRow" TProp="string" Title="PO #" Property="@(r => r.Number)" />
+                <Column TItem="PoRow" Title="ESD">
+                    <TitleContent>
+                        ESD <LabelTooltip Id="esd-info" Tooltip="Estimated ship date for the full PO." />
+                    </TitleContent>
+                    <ChildContent Context="r">@(r.Esd?.ToString("MM/dd/yyyy") ?? "--")</ChildContent>
+                </Column>
+                <PropertyColumn TItem="PoRow" TProp="string" Title="Tracking Number" Property="@(r => r.Tracking)" />
+            </ChildContent>
+            <RowDetail Context="r">
+                <Table TItem="SkuRow" DataSource="r.Skus" Selectable="true" UseStyledCheckbox="true">
+                    <PropertyColumn TItem="SkuRow" TProp="string" Title="SKU" Property="@(s => s.Sku)" />
+                    <PropertyColumn TItem="SkuRow" TProp="string" Title="Description" Property="@(s => s.Description)" />
+                    <PropertyColumn TItem="SkuRow" TProp="int" Title="Quantity" Property="@(s => s.Quantity)" />
+                </Table>
+            </RowDetail>
+        </Table>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — server-side paging (compose pattern)</h3>
+        <p style="margin:0; color:#666;">
+            The Table renders only the current page (no built-in <code>PageSize</code>); a standalone
+            <code>Pagination</code> you drive fetches each page. The 150&nbsp;ms delay below stands in
+            for a server round-trip.
+        </p>
+        <Table TItem="Row" DataSource="_serverRows">
+            <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" />
+            <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+            <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" />
+        </Table>
+        <div style="display:flex; justify-content:flex-end;">
+            <Pagination Total="_serverTotal" PageSize="ServerPageSize" Current="_serverPage" CurrentChanged="LoadServerPageAsync" />
+        </div>
+        <p>Server has @_serverTotal rows; showing page @_serverPage.</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — Loading overlay, disabled rows, single-select</h3>
+        <p style="margin:0; color:#666;">
+            <code>Loading</code> shows a translucent mask + spinner over the body (rows stay rendered
+            beneath it, <code>aria-busy</code> on the wrapper). <code>IsRowSelectable</code> disables
+            row 2's control and excludes it from the header select-all math.
+            <code>SelectionMode.Single</code> renders radio-semantics selection instead of checkboxes
+            -- the header cell is empty (no "select all" for an exclusive choice).
+        </p>
+        <button class="wss-dialog-btn" data-test-id="toggle-table-loading" @onclick="@(() => _tableLoadingDemo = !_tableLoadingDemo)">
+            Toggle Loading (@(_tableLoadingDemo ? "on" : "off"))
+        </button>
+        <Table TItem="Row" DataSource="_singleSelectRows" Selectable="true" SelectionMode="SelectionMode.Single"
+               IsRowSelectable="@(r => r.Id != 2)" Loading="_tableLoadingDemo"
+               SelectedItems="_singleSelected" SelectedItemsChanged="@(s => _singleSelected = s.ToList())">
+            <PropertyColumn TItem="Row" TProp="int" Title="Id" Property="@(r => r.Id)" />
+            <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+        </Table>
+        <p data-test-id="single-select-result">Selected: @(_singleSelected.Count == 0 ? "(none)" : _singleSelected[0].Name)</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — OnRowClick, ExpandRowByClick, controlled expansion</h3>
+        <p style="margin:0; color:#666;">
+            <code>ExpandRowByClick</code> toggles a row's <code>RowDetail</code> on a whole-row click
+            (clicks on the chevron/checkbox/action cells stop propagation, so they don't double-fire);
+            <code>OnRowClick</code> always fires independently. <code>ExpandedRowKeys</code>/
+            <code>ExpandedRowKeysChanged</code> makes expansion parent-controlled.
+        </p>
+        <Table TItem="Row" DataSource="_clickRows" RowKey="@(r => r.Id)" ExpandRowByClick="true"
+               OnRowClick="@(r => _lastRowClicked = r.Name)"
+               ExpandedRowKeys="_clickExpandedKeys" ExpandedRowKeysChanged="@(k => _clickExpandedKeys = k.ToList())">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+            </ChildContent>
+            <RowDetail Context="r">
+                <p data-test-id="row-detail">Detail for @r.Name</p>
+            </RowDetail>
+        </Table>
+        <p data-test-id="row-click-result">Last row clicked: @_lastRowClicked</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — Ellipsis, EmptyContent, FooterContent</h3>
+        <p style="margin:0; color:#666;">
+            <code>Ellipsis</code> truncates long text with a hover <code>title</code>
+            (<code>PropertyColumn</code> only) -- the table switches to <code>table-layout: fixed</code>
+            only while a column requests it. <code>FooterContent</code> renders a consumer-supplied
+            summary row in a <code>&lt;tfoot&gt;</code>, unaffected by paging/sorting.
+            <code>EmptyContent</code> replaces <code>EmptyText</code> with richer markup when there
+            are no rows.
+        </p>
+        <div style="max-width: 320px;">
+            <Table TItem="Row" DataSource="_ellipsisRows">
+                <ChildContent>
+                    <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" Ellipsis="true" />
+                    <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" />
+                </ChildContent>
+                <FooterContent>
+                    <tr>
+                        <td class="wss-table-cell">Total</td>
+                        <td class="wss-table-cell" data-test-id="ellipsis-footer-total">@_ellipsisRows.Sum(r => r.Price).ToString("C2")</td>
+                    </tr>
+                </FooterContent>
+            </Table>
+        </div>
+
+        <Table TItem="Row" DataSource="@(new List<Row>())">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+            </ChildContent>
+            <EmptyContent><em data-test-id="empty-content">No rows match your filter.</em></EmptyContent>
+        </Table>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — column filtering (FilterOptions/OnFilter)</h3>
+        <p style="margin:0; color:#666;">
+            The funnel icon opens a checkbox dropdown: checking multiple values in one column is an
+            OR (Name matches ANY checked value), and two filterable columns AND together (Name AND
+            Price). <code>OK</code> applies and closes; <code>Reset</code> clears that column
+            immediately; clicking outside the dropdown discards any pending checkbox changes without
+            applying them. <code>OnFilterChanged</code> observes every apply/reset. The Name column
+            is also <code>Sortable</code> -- the sort trigger and the filter button share one header
+            cell.
+        </p>
+        <Table TItem="Row" DataSource="_filterDemoRows" OnFilterChanged="OnDemoFilterChanged">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" Sortable="true"
+                                FilterOptions="_nameFilterOptions" OnFilter="@((Row r, string v) => r.Name == v)" />
+                <Column TItem="Row" Title="Price" FilterOptions="_priceFilterOptions"
+                        OnFilter="@((Row r, string v) => v == "low" ? r.Price < 20 : r.Price >= 20)">
+                    @context.Price.ToString("C2")
+                </Column>
+            </ChildContent>
+        </Table>
+        <p data-test-id="filter-demo-result">@_filterChangedMessage</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — text and custom filters (FilterText / FilterDropdown)</h3>
+        <p style="margin:0; color:#666;">
+            <code>FilterText</code> gives a column a free-text dropdown over an accessor (Name, the
+            default <code>Contains</code> match); <code>TextFilterMatch</code> switches the comparison
+            (Code uses <code>StartsWith</code>, so "AX" matches but "X-1" doesn't). Enter applies the
+            staged text, and the clear button empties it without applying.
+            <code>FilterDropdown</code> hands the WHOLE panel to the consumer (Quantity): the template
+            stages keys with <code>SetSelectedValues</code>, applies with <code>ConfirmAsync</code> and
+            clears with <code>ResetAsync</code> -- AntD's <code>filterDropdown</code> shape.
+            <code>FilterIcon</code> replaces the funnel glyph with one that reports the applied state,
+            and <code>OnFilterDropdownOpenChange</code> reports every open/close.
+            <code>OnFiltersChanged</code> publishes one aggregate snapshot of every active column,
+            each with a ready-made <code>Description</code>.
+        </p>
+        <Table TItem="Widget"
+               DataSource="_widgetRows"
+               OnFiltersChanged="@(s => _widgetFilterSummary = DescribeFilters(s))">
+            <ChildContent>
+                <PropertyColumn TItem="Widget"
+                                TProp="string"
+                                Title="Name"
+                                Property="@(w => w.Name)"
+                                FilterText="@(w => w.Name)" />
+                <PropertyColumn TItem="Widget"
+                                TProp="string"
+                                Title="Code"
+                                Property="@(w => w.Code)"
+                                FilterText="@(w => w.Code)"
+                                TextFilterMatch="TextFilterMatch.StartsWith" />
+                <PropertyColumn TItem="Widget"
+                                TProp="int"
+                                Title="Quantity"
+                                Property="@(w => w.Quantity)"
+                                OnFilter="@((Widget w, string v) => int.TryParse(v, out var min) && w.Quantity >= min)"
+                                OnFilterDropdownOpenChange="@(open => _widgetCustomOpen = open)">
+                    <FilterIcon Context="applied">
+                        <span class="wss-demo-filter-icon"
+                              data-test-id="widget-filter-icon"
+                              data-applied="@(applied ? "true" : "false")">@(applied ? "≥" : "#")</span>
+                    </FilterIcon>
+                    <FilterDropdown Context="ctx">
+                        <div class="wss-demo-filter-panel">
+                            <input type="search"
+                                   class="wss-table-filter-input"
+                                   data-test-id="widget-custom-input"
+                                   autocomplete="off"
+                                   aria-label="Minimum quantity"
+                                   value="@(ctx.SelectedValues.Count > 0 ? ctx.SelectedValues[0] : "")"
+                                   @oninput="@(e => StageMinQuantity(ctx, e.Value as string))" />
+                            <div class="wss-demo-filter-panel-footer">
+                                <button type="button"
+                                        class="wss-dialog-btn wss-dialog-btn-sm"
+                                        data-test-id="widget-custom-reset"
+                                        @onclick="@(() => ctx.ResetAsync())">Reset</button>
+                                <button type="button"
+                                        class="wss-dialog-btn wss-dialog-btn-sm"
+                                        data-test-id="widget-custom-apply"
+                                        @onclick="@(() => ctx.ConfirmAsync())">Filter</button>
+                            </div>
+                        </div>
+                    </FilterDropdown>
+                </PropertyColumn>
+            </ChildContent>
+        </Table>
+        <p data-test-id="filter-summary-1">@_widgetFilterSummary</p>
+        <p data-test-id="widget-dropdown-open">Quantity panel open: @(_widgetCustomOpen ? "true" : "false")</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — filter row (FilterPlacement.Row) with type-derived editors</h3>
+        <p style="margin:0; color:#666;">
+            <code>FilterPlacement="TableFilterPlacement.Row"</code> drops the funnels and puts one
+            always-visible editor per filterable column into a second header row, applying as the user
+            edits -- freely typed boxes after <code>FilterDebounceMilliseconds</code> (150 here) of
+            quiet, discrete picks at once. <code>PropertyColumn.Filterable</code> derives the editor
+            from the property type the way <code>Sortable</code> derives its comparison: string to a
+            text box, a numeric to an inclusive min/max pair, a date to a
+            <code>DateRangePicker</code>, a bool to a yes/no select, an enum to its member list
+            (labelled by <code>[EnumDisplayName]</code>/<code>[Display]</code>).
+            <code>FilterValuesFromData</code> builds Supplier's options from the distinct values
+            actually present in <code>DataSource</code>. Every editor is named
+            "<code>Filter by {header}</code>" (<code>FilterRowLabelFormat</code>), and
+            <code>ClearFiltersAsync()</code> clears the lot in one call.
+        </p>
+        <button class="wss-dialog-btn"
+                data-test-id="filter-row-clear"
+                @onclick="ClearFilterRowAsync">Clear filters</button>
+        <Table @ref="_filterRowTable"
+               TItem="Product"
+               DataSource="_products"
+               Size="TableSize.Small"
+               FilterPlacement="TableFilterPlacement.Row"
+               FilterDebounceMilliseconds="150"
+               OnFiltersChanged="@(s => _filterRowSummary = DescribeFilters(s))">
+            <ChildContent>
+                <PropertyColumn TItem="Product"
+                                TProp="string"
+                                Title="Name"
+                                Property="@(p => p.Name)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="decimal"
+                                Title="Price"
+                                Property="@(p => p.Price)"
+                                Format="C2"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="DateTime"
+                                Title="Added"
+                                Property="@(p => p.Added)"
+                                Format="d"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="bool"
+                                Title="In stock"
+                                Property="@(p => p.InStock)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="ProductCategory"
+                                Title="Category"
+                                Property="@(p => p.Category)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="string"
+                                Title="Supplier"
+                                Property="@(p => p.Supplier)"
+                                FilterValuesFromData="true" />
+            </ChildContent>
+        </Table>
+        <p data-test-id="filter-summary-2">@_filterRowSummary</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — filter row under ScrollY</h3>
+        <p style="margin:0; color:#666;">
+            The same rows under <code>ScrollY</code>: the whole <code>&lt;thead&gt;</code> pins as one
+            block (both the title row and the editors stay put while the body scrolls beneath them),
+            which is why the sticky positioning moves from each header cell to the
+            <code>&lt;thead&gt;</code> whenever the table carries
+            <code>wss-table-has-filter-row</code>. The editors here open popups of their own -- a
+            <code>Select</code> list and a date panel -- from inside a wrapper that clips its
+            overflow.
+        </p>
+        <Table TItem="Product"
+               DataSource="_products"
+               Size="TableSize.Small"
+               ScrollY="200px"
+               FilterPlacement="TableFilterPlacement.Row">
+            <ChildContent>
+                <PropertyColumn TItem="Product"
+                                TProp="string"
+                                Title="Item"
+                                Property="@(p => p.Name)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="ProductCategory"
+                                Title="Group"
+                                Property="@(p => p.Category)"
+                                Filterable="true" />
+                <PropertyColumn TItem="Product"
+                                TProp="DateTime"
+                                Title="Listed"
+                                Property="@(p => p.Added)"
+                                Format="d"
+                                Filterable="true" />
+            </ChildContent>
+        </Table>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — dropdown extras (FilterSearch, FilterCheckAll, DefaultFilterValues)</h3>
+        <p style="margin:0; color:#666;">
+            <code>FilterSearch</code> puts a search box above a long option list (Region, 12 options)
+            and shows <code>FilterEmptyText</code> when nothing matches; <code>FilterCheckAll</code>
+            adds a "Select all" row that toggles exactly the options the query leaves visible and
+            renders mixed when only some are ticked. <code>DefaultFilterValues</code> starts Status
+            filtered to Open without raising a change event, and
+            <code>FilterResetToDefault</code> makes <code>Reset</code> return there instead of
+            clearing. <code>FilterOnClose</code> (Tier) turns dismissing the panel -- an outside
+            click or Escape -- into an <code>OK</code>.
+        </p>
+        <Table TItem="Ticket" DataSource="_tickets">
+            <ChildContent>
+                <PropertyColumn TItem="Ticket"
+                                TProp="string"
+                                Title="Region"
+                                Property="@(t => t.Region)"
+                                FilterOptions="_regionFilterOptions"
+                                OnFilter="@((Ticket t, string v) => t.Region == v)"
+                                FilterSearch="true"
+                                FilterCheckAll="true" />
+                <PropertyColumn TItem="Ticket"
+                                TProp="string"
+                                Title="Status"
+                                Property="@(t => t.Status)"
+                                FilterOptions="_statusFilterOptions"
+                                OnFilter="@((Ticket t, string v) => t.Status == v)"
+                                DefaultFilterValues="_statusDefaultFilterValues"
+                                FilterResetToDefault="true" />
+                <PropertyColumn TItem="Ticket"
+                                TProp="string"
+                                Title="Tier"
+                                Property="@(t => t.Tier)"
+                                FilterOptions="_tierFilterOptions"
+                                OnFilter="@((Ticket t, string v) => t.Tier == v)"
+                                FilterOnClose="true" />
+            </ChildContent>
+        </Table>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — filters inside an EditForm (Enter must not submit)</h3>
+        <p style="margin:0; color:#666;">
+            A filter editor's text, search and number boxes are plain <code>&lt;input&gt;</code>s, so
+            Enter in one would implicitly submit an enclosing <code>&lt;EditForm&gt;</code> on top of
+            applying the filter. The library suppresses that one default (<code>wss-table.js</code>),
+            in both placements, and leaves the form's own submit button alone.
+        </p>
+        <EditForm Model="_filterFormModel" OnValidSubmit="@(() => _filterFormSubmits++)">
+            <div data-test-id="form-dropdown-table">
+                <Table TItem="Widget" DataSource="_widgetRows" Size="TableSize.Small">
+                    <ChildContent>
+                        <PropertyColumn TItem="Widget" TProp="string" Title="Name" Property="@(w => w.Name)"
+                                        FilterText="@(w => w.Name)" />
+                        <PropertyColumn TItem="Widget" TProp="string" Title="Code" Property="@(w => w.Code)"
+                                        FilterOptions="_formCodeFilterOptions"
+                                        OnFilter="@((Widget w, string v) => w.Code == v)"
+                                        FilterSearch="true" />
+                    </ChildContent>
+                </Table>
+            </div>
+            <div data-test-id="form-row-table">
+                <Table TItem="Widget"
+                       DataSource="_widgetRows"
+                       Size="TableSize.Small"
+                       FilterPlacement="TableFilterPlacement.Row"
+                       FilterDebounceMilliseconds="150">
+                    <ChildContent>
+                        <PropertyColumn TItem="Widget" TProp="string" Title="Name" Property="@(w => w.Name)"
+                                        FilterText="@(w => w.Name)" />
+                        <PropertyColumn TItem="Widget" TProp="int" Title="Quantity" Property="@(w => w.Quantity)"
+                                        Filterable="true" />
+                    </ChildContent>
+                </Table>
+            </div>
+            <button type="submit" class="wss-dialog-btn" data-test-id="filter-form-submit">Submit</button>
+        </EditForm>
+        <p data-test-id="filter-form-submits">Submits: @_filterFormSubmits</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — short dropdown-filter table (typed kinds, no ScrollY)</h3>
+        <p style="margin:0; color:#666;">
+            <code>Filterable</code> in the default Dropdown placement: a date column opens a
+            <code>DateRangePicker</code> panel, a numeric column a min/max pair, a bool column a
+            yes/no select — each popup far taller than these three rows.
+            <code>.wss-table-wrapper</code>'s <code>overflow-x: auto</code> makes
+            <code>overflow-y</code> compute to <code>auto</code> too, so the panel escapes the
+            wrapper's clip with fixed positioning (JS) here as well, not only under
+            <code>ScrollY</code>.
+        </p>
+        <Table TItem="ShortRow" DataSource="_shortRows" Size="TableSize.Small">
+            <ChildContent>
+                <PropertyColumn TItem="ShortRow" TProp="string" Title="Item" Property="@(r => r.Name)" />
+                <PropertyColumn TItem="ShortRow" TProp="DateTime" Title="Due" Property="@(r => r.Due)"
+                                Format="d" Filterable="true" />
+                <PropertyColumn TItem="ShortRow" TProp="int" Title="Count" Property="@(r => r.Count)"
+                                Filterable="true" />
+                <PropertyColumn TItem="ShortRow" TProp="bool" Title="Active" Property="@(r => r.Active)"
+                                Filterable="true" />
+            </ChildContent>
+        </Table>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — Sortable + Filterable header in a narrow fixed-width column</h3>
+        <p style="margin:0; color:#666;">
+            Regression coverage for a header that combines a sort trigger AND a filter button in a
+            column narrow enough to squeeze both (<code>table-layout: fixed</code>, forced here by
+            <code>Ellipsis</code>) -- the sort label truncates with an ellipsis instead of pushing
+            the filter button out of the header cell.
+        </p>
+        <div style="max-width: 180px;">
+            <Table TItem="Row" DataSource="_narrowSortFilterRows">
+                <ChildContent>
+                    <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)"
+                                    Sortable="true" Ellipsis="true"
+                                    FilterOptions="_nameFilterOptions" OnFilter="@((Row r, string v) => r.Name == v)" />
+                </ChildContent>
+            </Table>
+        </div>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — keyboard/pointer parity for a control inside a plain column</h3>
+        <p style="margin:0; color:#666;">
+            A <code>&lt;button&gt;</code> a consumer drops into an ordinary <code>Column</code> (not
+            <code>ActionColumn</code>, which stops row-click propagation for the whole cell) still
+            activates the row when clicked -- that is the pointer behavior, and Enter on the same
+            button has to match it exactly. The browser synthesizes a click from Enter, so the cell's
+            own keydown is stopped at the <code>&lt;td&gt;</code>: both counters below advance by one
+            per activation, whichever input device produced it.
+        </p>
+        <Table TItem="Row" DataSource="_parityRows" RowKey="@(r => r.Id)"
+               OnRowClick="@(_ => _parityRowActivations++)">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)" />
+                <Column TItem="Row" Title="Action">
+                    <button type="button" class="wss-dialog-btn wss-dialog-btn-sm"
+                            data-test-id="parity-cell-button" @onclick="@(() => _parityButtonClicks++)">
+                        Edit @context.Name
+                    </button>
+                </Column>
+            </ChildContent>
+        </Table>
+        <p data-test-id="parity-row-activations">Row activations: @_parityRowActivations</p>
+        <p data-test-id="parity-button-clicks">Button clicks: @_parityButtonClicks</p>
+    </section>
+
+    <section class="demo-section">
+        <h3>Table — ScrollY (sticky header)</h3>
+        <p style="margin:0; color:#666;">
+            <code>ScrollY</code> bounds the table body to a fixed height with its own vertical
+            scrollbar and a sticky header (AntD's <code>scroll.y</code> equivalent) -- the header
+            cells stay pinned in place while the rows scroll beneath them. The Name column's filter
+            dropdown here (6 options) is taller than the scrolled area, so it escapes the wrapper's
+            overflow clip via fixed positioning (JS) instead of the default CSS-anchored placement,
+            and keeps tracking its trigger if the page itself scrolls. <code>Loading</code> is wired
+            up too, to cover the sticky-header-vs-mask stacking fix: opening the filter while Loading
+            is on must not leave its OK button hidden under the mask.
+        </p>
+        <button class="wss-dialog-btn" data-test-id="toggle-scrolly-loading" @onclick="@(() => _scrollYLoadingDemo = !_scrollYLoadingDemo)">
+            Toggle Loading (@(_scrollYLoadingDemo ? "on" : "off"))
+        </button>
+        <Table TItem="Row" DataSource="_scrollYRows" ScrollY="160px" Loading="_scrollYLoadingDemo">
+            <ChildContent>
+                <PropertyColumn TItem="Row" TProp="string" Title="Name" Property="@(r => r.Name)"
+                                FilterOptions="_scrollYFilterOptions" OnFilter="@((Row r, string v) => r.Name == v)" />
+                <PropertyColumn TItem="Row" TProp="decimal" Title="Price" Property="@(r => r.Price)" Format="C2" />
+            </ChildContent>
+        </Table>
+    </section>
+
+</div>
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly List<Row> _rows = Enumerable.Range(1, 13)
+        .Select(i => new Row(i, $"Item {i}", i * 4.5m))
+        .ToList();
+
+    // Preselected (below, in OnInitializedAsync) so the styled-checkbox Table demo starts in the
+    // indeterminate ("mixed") state — a field initializer can't reference the _rows field above.
+    List<Row> _selectedRows = new();
+
+    // --- Expandable-table demo (the Vendor PO Management pattern) ---
+    static readonly List<PoRow> _poRows =
+    [
+        new("8999000", null, "--",
+        [
+            new("150005", "Stainless lid to reduce boil-overs", 1),
+            new("150006", "Heat-resistant, non-slip handle", 6),
+        ]),
+        new("8999002", new DateTime(2026, 1, 4), "L01892155231421",
+        [
+            new("150007", "Fine-mist bottle for even oil coating", 1),
+        ]),
+        new("8999005", new DateTime(2026, 1, 4), "--", []),
+    ];
+
+    // --- Server-side paging demo (compose pattern) ---
+    // Stand-in for a server-side table; a real app would query a DB/API in LoadServerPageAsync.
+    const int ServerPageSize = 10;
+    readonly List<Row> _serverBackingStore = Enumerable.Range(1, 47)
+        .Select(i => new Row(i, $"Row {i}", i * 2.5m))
+        .ToList();
+
+    List<Row> _serverRows = new();
+    int _serverTotal;
+    int _serverPage = 1;
+
+    protected override Task OnInitializedAsync()
+    {
+        _selectedRows.Add(_rows[0]);
+        return LoadServerPageAsync(1);
+    }
+
+    // Mimics a paged endpoint: returns just the requested page plus the overall row count.
+    async Task LoadServerPageAsync(int page)
+    {
+        _serverPage = page;
+        await Task.Delay(150); // simulate a server round-trip
+        _serverRows = _serverBackingStore
+            .Skip((page - 1) * ServerPageSize)
+            .Take(ServerPageSize)
+            .ToList(); // a new reference so the Table re-copies its DataSource
+        _serverTotal = _serverBackingStore.Count;
+    }
+
+    // --- Table: Loading / IsRowSelectable / SelectionMode.Single demo ---
+    bool _tableLoadingDemo;
+    readonly List<Row> _singleSelectRows =
+    [
+        new(1, "Alpha", 10m),
+        new(2, "Bravo (not selectable)", 20m),
+        new(3, "Charlie", 30m),
+    ];
+    List<Row> _singleSelected = new();
+
+    // --- Table: OnRowClick / ExpandRowByClick / controlled expansion demo ---
+    readonly List<Row> _clickRows =
+    [
+        new(1, "First", 5m),
+        new(2, "Second", 15m),
+    ];
+    string _lastRowClicked = "(none)";
+    List<object> _clickExpandedKeys = new();
+
+    // --- Table: Ellipsis / EmptyContent / FooterContent demo ---
+    readonly List<Row> _ellipsisRows =
+    [
+        new(1, "A very long item name that should truncate with an ellipsis", 12.5m),
+        new(2, "Short", 7.25m),
+    ];
+
+    // --- Table: column filtering (FilterOptions/OnFilter) demo ---
+    readonly List<Row> _filterDemoRows = Enumerable.Range(1, 10).Select(i => new Row(i, $"Item {i}", i * 5m)).ToList();
+    static readonly List<TableFilterOption> _nameFilterOptions =
+    [
+        new("Item 2", "Item 2"),
+        new("Item 5", "Item 5"),
+        new("Item 8", "Item 8"),
+    ];
+    static readonly List<TableFilterOption> _priceFilterOptions =
+    [
+        new("Under $20", "low"),
+        new("$20 and over", "high"),
+    ];
+    string _filterChangedMessage = "(no filter applied yet)";
+    void OnDemoFilterChanged((Column<Row> Column, IReadOnlyList<string> SelectedValues) e) =>
+        _filterChangedMessage = e.SelectedValues.Count == 0
+            ? $"{e.Column.HeaderText}: cleared"
+            : $"{e.Column.HeaderText}: {string.Join(", ", e.SelectedValues)}";
+
+    // --- Table: filters inside an EditForm demo ---
+    readonly object _filterFormModel = new();
+    int _filterFormSubmits;
+    static readonly List<TableFilterOption> _formCodeFilterOptions =
+    [
+        new("AX-100", "AX-100"),
+        new("AX-200", "AX-200"),
+        new("BX-110", "BX-110"),
+        new("BX-300", "BX-300"),
+        new("CX-210", "CX-210"),
+        new("CX-310", "CX-310"),
+    ];
+
+    // --- Table: short dropdown-filter table (typed kinds, no ScrollY) demo ---
+    readonly List<ShortRow> _shortRows =
+    [
+        new(1, "Anvil", new DateTime(2026, 3, 4), 3, true),
+        new(2, "Bellows", new DateTime(2026, 5, 19), 12, false),
+        new(3, "Crucible", new DateTime(2026, 8, 27), 40, true),
+    ];
+
+    // --- Table: Sortable + Filterable header in a narrow fixed-width column demo ---
+    readonly List<Row> _narrowSortFilterRows =
+    [
+        new(1, "A rather long item name", 12.5m),
+        new(2, "Short", 7.25m),
+    ];
+
+    // --- Table: keyboard/pointer parity for a control inside a plain column demo ---
+    readonly List<Row> _parityRows =
+    [
+        new(1, "First", 5m),
+        new(2, "Second", 15m),
+    ];
+    int _parityRowActivations;
+    int _parityButtonClicks;
+
+    // --- Table: ScrollY (sticky header) demo ---
+    readonly List<Row> _scrollYRows = Enumerable.Range(1, 30).Select(i => new Row(i, $"Item {i}", i * 3m)).ToList();
+    static readonly List<TableFilterOption> _scrollYFilterOptions =
+    [
+        new("Item 1", "Item 1"),
+        new("Item 5", "Item 5"),
+        new("Item 10", "Item 10"),
+        new("Item 15", "Item 15"),
+        new("Item 20", "Item 20"),
+        new("Item 25", "Item 25"),
+    ];
+    bool _scrollYLoadingDemo;
+
+    // --- Table: text + custom filters (FilterText / FilterDropdown) demo ---
+    readonly List<Widget> _widgetRows =
+    [
+        new(1, "Alpha gasket", "AX-100", 12),
+        new(2, "Alpha sprocket", "BX-110", 40),
+        new(3, "Bravo gasket", "AX-200", 8),
+        new(4, "Bravo flange", "CX-210", 55),
+        new(5, "Charlie flange", "BX-300", 21),
+        new(6, "Delta sprocket", "CX-310", 3),
+    ];
+    string _widgetFilterSummary = "(no filters)";
+    bool _widgetCustomOpen;
+
+    // The custom panel stages ONE string key (AntD's selectedKeys are strings for every kind of
+    // filterDropdown) -- or none at all, which is what "this column filters nothing" looks like for
+    // every keyed kind, so an emptied box behaves exactly like Reset once confirmed.
+    static void StageMinQuantity(TableFilterContext<Widget> ctx, string? text)
+    {
+        IReadOnlyList<string> staged = string.IsNullOrWhiteSpace(text) ? [] : [text.Trim()];
+        ctx.SetSelectedValues(staged);
+    }
+
+    // One formatter for both OnFiltersChanged summaries below: the aggregate snapshot already carries
+    // a human-readable Description per active column, so a consumer's own "active filters" line is a
+    // join rather than a per-kind switch of its own.
+    static string DescribeFilters<T>(IReadOnlyList<TableColumnFilterSnapshot<T>> snapshots) =>
+        snapshots.Count == 0
+            ? "(no filters)"
+            : string.Join("; ", snapshots.Select(s => $"{s.Column.HeaderText}: {s.Description}"));
+
+    // --- Table: filter row (FilterPlacement.Row) + filter row under ScrollY demos ---
+    static readonly string[] ProductBaseNames = ["Mixer", "Blender", "Slicer", "Griddle", "Fryer"];
+    static readonly string[] ProductSuppliers = ["Acme Supply", "Bay State Foods", "Cascade Equipment"];
+
+    readonly List<Product> _products = Enumerable.Range(1, 30)
+        .Select(i => new Product(
+            i,
+            $"{ProductBaseNames[(i - 1) % ProductBaseNames.Length]} {i:00}",
+            5m * i,
+            new DateTime(2026, 1, 1).AddDays(7 * i),
+            i % 3 != 0,
+            (ProductCategory)((i - 1) % 4),
+            ProductSuppliers[(i - 1) % ProductSuppliers.Length]))
+        .ToList();
+
+    Table<Product>? _filterRowTable;
+    string _filterRowSummary = "(no filters)";
+
+    async Task ClearFilterRowAsync()
+    {
+        if (_filterRowTable is not null) await _filterRowTable.ClearFiltersAsync();
+    }
+
+    // --- Table: dropdown extras (FilterSearch / FilterCheckAll / DefaultFilterValues) demo ---
+    readonly List<Ticket> _tickets =
+    [
+        new(1, "Atlanta", "Open", "Gold"),
+        new(2, "Boston", "Open", "Silver"),
+        new(3, "Chicago", "Closed", "Bronze"),
+        new(4, "Denver", "Open", "Bronze"),
+        new(5, "Detroit", "Pending", "Gold"),
+        new(6, "Houston", "Open", "Gold"),
+        new(7, "Miami", "Closed", "Silver"),
+        new(8, "Newark", "Pending", "Bronze"),
+        new(9, "Omaha", "Open", "Silver"),
+        new(10, "Phoenix", "Closed", "Gold"),
+        new(11, "Portland", "Open", "Bronze"),
+        new(12, "Seattle", "Pending", "Silver"),
+    ];
+    static readonly List<TableFilterOption> _regionFilterOptions =
+    [
+        new("Atlanta", "Atlanta"),
+        new("Boston", "Boston"),
+        new("Chicago", "Chicago"),
+        new("Denver", "Denver"),
+        new("Detroit", "Detroit"),
+        new("Houston", "Houston"),
+        new("Miami", "Miami"),
+        new("Newark", "Newark"),
+        new("Omaha", "Omaha"),
+        new("Phoenix", "Phoenix"),
+        new("Portland", "Portland"),
+        new("Seattle", "Seattle"),
+    ];
+    static readonly List<TableFilterOption> _statusFilterOptions =
+    [
+        new("Open", "Open"),
+        new("Closed", "Closed"),
+        new("Pending", "Pending"),
+    ];
+    static readonly string[] _statusDefaultFilterValues = ["Open"];
+    static readonly List<TableFilterOption> _tierFilterOptions =
+    [
+        new("Gold", "Gold"),
+        new("Silver", "Silver"),
+        new("Bronze", "Bronze"),
+    ];
+}

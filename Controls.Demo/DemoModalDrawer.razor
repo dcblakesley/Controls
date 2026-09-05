@@ -1,0 +1,61 @@
+@if (Standalone)
+{
+    <h1>Modal &amp; Drawer Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>Modal &amp; Drawer</h3>
+        <div style="display:flex; gap:1rem;">
+            <button class="wss-dialog-btn wss-dialog-btn-primary" @onclick="@(() => _modalVisible = true)">Open Modal</button>
+            <button class="wss-dialog-btn" @onclick="@(() => _drawerVisible = true)">Open Drawer</button>
+        </div>
+
+        <Modal @bind-Visible="_modalVisible" Title="A modal" OnOk="@(() => _modalVisible = false)">
+            <p>Modal body content. Click OK or Cancel.</p>
+        </Modal>
+
+        <Drawer @bind-Visible="_drawerVisible" Title="A drawer" Placement="DrawerPlacement.Right">
+            <p>Drawer body content.</p>
+        </Drawer>
+    </section>
+
+    <section class="demo-section">
+        <h3>Modal &amp; Drawer — Centered, Keyboard, Extra</h3>
+        <p style="margin:0; color:#666;">
+            <code>Centered</code> vertically centers the dialog. <code>Keyboard</code> (default
+            true) independently governs Escape-to-close — here it's off, so Escape does nothing
+            while <code>Closable</code> still shows the header X. <code>Drawer.Extra</code> adds a
+            header-right slot beside the close button.
+        </p>
+        <div style="display:flex; gap:1rem;">
+            <button class="wss-dialog-btn" data-test-id="open-centered-modal" @onclick="@(() => _centeredModalVisible = true)">
+                Open Centered Modal (Keyboard off)
+            </button>
+            <button class="wss-dialog-btn" data-test-id="open-extra-drawer" @onclick="@(() => _extraDrawerVisible = true)">
+                Open Extra-slot Drawer
+            </button>
+        </div>
+
+        <Modal @bind-Visible="_centeredModalVisible" Title="Centered modal" Centered="true" Keyboard="false">
+            <p data-test-id="centered-modal-body">Escape does nothing here — try it.</p>
+        </Modal>
+
+        <Drawer @bind-Visible="_extraDrawerVisible" Title="Drawer with Extra">
+            <Extra><button class="wss-dialog-btn wss-dialog-btn-sm" data-test-id="drawer-extra-btn">Save</button></Extra>
+            <ChildContent><p>Drawer body content.</p></ChildContent>
+        </Drawer>
+    </section>
+
+</div>
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    bool _modalVisible;
+    bool _drawerVisible;
+    bool _centeredModalVisible;
+    bool _extraDrawerVisible;
+}

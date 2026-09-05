@@ -1,0 +1,32 @@
+@if (Standalone)
+{
+    <h1>SearchInput Demo</h1>
+}
+
+<div class="wss-demo-gallery">
+
+    <section class="demo-section">
+        <h3>SearchInput — AllowClear, EnterButtonText</h3>
+        <p style="margin:0; color:#666;">
+            <code>AllowClear</code> shows a × between the input and the search button whenever
+            there's text; <code>EnterButtonText</code> swaps the icon-only button for a labeled
+            primary button (AntD's <code>enterButton="Search"</code>).
+        </p>
+        <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+            <SearchInput @bind-Value="_clearableSearch" AllowClear="true" Placeholder="Clearable..."
+                         Id="demo-search-clearable" Width="220px" />
+            <SearchInput @bind-Value="_enterButtonSearch" EnterButtonText="Search" AllowClear="true"
+                         Id="demo-search-enter-button" Width="240px" />
+        </div>
+    </section>
+
+</div>
+
+@code {
+    /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
+    [Parameter] public bool Standalone { get; set; } = true;
+
+    // --- SearchInput AllowClear/EnterButtonText demo ---
+    string? _clearableSearch = "pre-filled";
+    string? _enterButtonSearch;
+}
