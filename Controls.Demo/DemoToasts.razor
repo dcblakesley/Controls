@@ -40,6 +40,9 @@
                 instead. Everything else on this page works the same either way.
             </p>
         }
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_toastsExample</code></pre>
     </section>
 
 </div>
@@ -56,6 +59,20 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _toastsExample = @"@* WASM / static hosting *@
+<button @onclick=""@(() => WasmMessageService.Success(""Saved!""))"">Message</button>
+<button @onclick=""@(() => WasmNotificationService.Info(""Notification"", ""With a description.""))"">Notification</button>
+
+<WasmMessageContainer />
+<WasmNotificationContainer />
+
+@* Blazor Server: register scoped services, inject, and use the DI containers instead --
+   builder.Services.AddWssControlsToasts();
+   @inject IMessageService MessageService
+   @inject INotificationService NotificationService
+   <MessageContainer />
+   <NotificationContainer /> *@";
 
     // WasmMessageContainer/WasmNotificationContainer throw on the Blazor Server renderer, where their
     // process-static state is shared by every circuit. This gallery ships in a published package, so

@@ -30,6 +30,9 @@
             <Tab Key="other" Title="Other Active" Count="5" />
         </Tabs>
         <p data-test-id="tabs-result">Active: @_activeTab · Last search: @_lastSearch</p>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_tabsSearchExample</code></pre>
     </section>
 
     <section class="demo-section">
@@ -57,6 +60,9 @@
                 <Tab Key="three" Title="Tab 3"><p>Pane three.</p></Tab>
             </ChildContent>
         </Tabs>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_tabsCardExample</code></pre>
     </section>
 
 </div>
@@ -64,6 +70,29 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _tabsSearchExample = @"<SearchInput @bind-Value=""_poSearch"" AddonLabel=""POs"" OnSearch=""@(v => _lastSearch = $""POs: {v}"")"" />
+<SearchInput @bind-Value=""_skuSearch"" AddonLabel=""SKUs"" OnSearch=""@(v => _lastSearch = $""SKUs: {v}"")""
+             Loading=""@_skuSearchLoading"" />
+
+<Tabs @bind-ActiveKey=""_activeTab"" TablistLabel=""Shipment filters"">
+    <Tab Key=""overdue"" Title=""Overdue"" Count=""12"" />
+    <Tab Key=""missing"" Title=""Missing Estimations"" Count=""12"" />
+    <Tab Key=""other"" Title=""Other Active"" Count=""5"" />
+</Tabs>";
+
+    readonly string _tabsCardExample = @"<Tabs @bind-ActiveKey=""_cardTab"" Type=""TabsType.Card"" Centered=""true"">
+    <TabBarExtraContent><button>+ Add</button></TabBarExtraContent>
+    <ChildContent>
+        @if (_showPriorityTab)
+        {
+            <Tab Key=""priority"" Title=""Priority""><p>Pane priority.</p></Tab>
+        }
+        <Tab Key=""one"" Title=""Tab 1""><p>Pane one.</p></Tab>
+        <Tab Key=""two"" Title=""Tab 2""><p>Pane two.</p></Tab>
+        <Tab Key=""three"" Title=""Tab 3""><p>Pane three.</p></Tab>
+    </ChildContent>
+</Tabs>";
 
     // --- Tabs + SearchInput demo ---
     string? _activeTab = "missing";

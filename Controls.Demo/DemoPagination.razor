@@ -9,6 +9,9 @@
         <h3>Pagination</h3>
         <Pagination Total="95" PageSize="10" Current="_page" CurrentChanged="@(p => _page = p)" />
         <p>Current page: @_page</p>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_paginationBasicExample</code></pre>
     </section>
 
     <section class="demo-section">
@@ -27,6 +30,9 @@
 
         <p style="margin:0; color:#666;"><code>Small</code> -- the AntD compact size (CSS-only).</p>
         <Pagination Total="30" PageSize="10" @bind-Current="_smallPaginationPage" Small="true" />
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_paginationAdvancedExample</code></pre>
     </section>
 
 </div>
@@ -34,6 +40,14 @@
 @code {
     /// <summary> False inside <see cref="UiKitGallery"/>, whose own heading covers the whole page. </summary>
     [Parameter] public bool Standalone { get; set; } = true;
+
+    readonly string _paginationBasicExample = @"<Pagination Total=""95"" PageSize=""10"" Current=""_page"" CurrentChanged=""@(p => _page = p)"" />";
+
+    readonly string _paginationAdvancedExample = @"<Pagination Total=""95"" @bind-PageSize=""_pageSize"" @bind-Current=""_page""
+            PageSizeOptions=""@(new[] { 10, 20, 50 })"" ShowQuickJumper=""true""
+            ShowTotal=""@(w => $""{w.Start}-{w.End} of {w.Total} items"")"" />
+
+<Pagination Total=""30"" PageSize=""10"" @bind-Current=""_page"" Small=""true"" />";
 
     int _page = 1;
 
