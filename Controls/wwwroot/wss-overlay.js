@@ -421,6 +421,10 @@ export function placeFixedBelow(trigger, panel, gap) {
     // relative to other overlays for no reason). Repositioning-only calls go through
     // repositionFixedBelow directly instead.
     panel.style.position = 'fixed';
+    // The stylesheet anchors this panel with `right: 0`; leaving it set alongside the `left` written
+    // below makes a width:auto box stretch to `viewport - left`, which the next reposition then
+    // re-measures and compounds. Same neutralization placeAnchoredPanel's clearRightAnchor performs.
+    panel.style.right = 'auto';
     panel.style.zIndex = nextZ();
     repositionFixedBelow(trigger, panel, gap);
 }

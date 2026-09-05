@@ -744,6 +744,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         // wss-overlay.js's placeFixedBelow) -- confirms the escape path actually ran, not just that
         // the dropdown "happened to fit" within the 160px wrapper.
         await Expect(dropdown).ToHaveCSSAsync("position", "fixed");
+        await AssertDropdownHugsTheTriggerAsync(dropdown, filterButton, "right after open");
 
         // The dropdown (6 options + footer) is taller than the 160px ScrollY wrapper -- if it were
         // still clipped by the wrapper's overflow instead of escaping, checking/clicking an option
@@ -815,7 +816,9 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         // wss-overlay.js) partway through a subsequent scroll, which changes the trigger-to-dropdown
         // gap relationship for a reason that has nothing to do with this fix. A small scroll amount
         // below keeps the trigger comfortably on-screen throughout, so the flip state can't change.
-        await filterButton.EvaluateAsync("el => el.scrollIntoView({ block: 'center' })");
+        // behavior: 'instant' -- the host's reboot CSS sets scroll-behavior: smooth on :root, so a
+        // default-behavior scrollIntoView animates and everything below reads a mid-flight layout.
+        await ScrollIntoViewAsync(filterButton);
         await filterButton.ClickAsync();
         var dropdown = section.Locator(".wss-table-filter-dropdown");
         await Expect(dropdown).ToBeVisibleAsync();
@@ -857,7 +860,28 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
             await Task.Delay(50);
         }
         Assert.Equal(triggerDelta, dropdownDelta, 1); // tracked the trigger instead of staying stuck
+
+        // A reposition re-measures offsetWidth: leaving the stylesheet's `right: 0` in place alongside
+        // the written `left` made the used width `viewport - left`, which each scroll then compounded.
+        await AssertDropdownHugsTheTriggerAsync(dropdown, filterButton, "after a page scroll");
     }
+
+    // The fixed-positioned filter panel is right-aligned under its funnel (AntD's default) and sized
+    // by its own content -- never stretched to the viewport edge.
+    static async Task AssertDropdownHugsTheTriggerAsync(ILocator dropdown, ILocator trigger, string when)
+    {
+        var panelBox = await dropdown.BoundingBoxAsync();
+        var triggerBox = await trigger.BoundingBoxAsync();
+        Assert.NotNull(panelBox);
+        Assert.NotNull(triggerBox);
+        Assert.True(panelBox!.Width < 400,
+            $"{when}: panel width={panelBox.Width} (viewport 1280) -- it stretched to the viewport edge");
+        var panelRight = panelBox.X + panelBox.Width;
+        var triggerRight = triggerBox!.X + triggerBox.Width;
+        Assert.True(Math.Abs(panelRight - triggerRight) <= 4,
+            $"{when}: panel right={panelRight} trigger right={triggerRight}");
+    }
+
 
     [Fact]
     public async Task Table_sortable_filterable_header_keeps_the_filter_button_inside_a_narrow_th()
