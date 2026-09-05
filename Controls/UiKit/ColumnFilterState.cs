@@ -205,6 +205,21 @@ internal sealed class OptionsFilterState<TItem> : KeyedFilterState<TItem>
 
     protected override bool Accepts(string value) => Options.Any(o => o.Value == value);
 
+    /// <summary>Radios (<see cref="Multiple"/> false) hold at most one key however many the caller
+    /// offers, so a two-key <see cref="Column{TItem}.DefaultFilterValues"/> keeps its first accepted
+    /// one rather than lighting two radios in the same group.</summary>
+    public override bool TryRestore(IReadOnlyList<string> values)
+    {
+        base.TryRestore(values);
+        if (!Multiple && Pending.Count > 1)
+        {
+            var first = values.First(Pending.Contains);
+            Pending.Clear();
+            Pending.Add(first);
+        }
+        return true;
+    }
+
     /// <summary>
     /// Drops applied (and pending) keys the current <see cref="Options"/> no longer offer; returns
     /// whether an APPLIED key was dropped. Called by the column after an options change (data-derived

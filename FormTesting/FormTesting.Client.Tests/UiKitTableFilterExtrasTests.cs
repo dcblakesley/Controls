@@ -472,6 +472,20 @@ public class UiKitTableFilterExtrasTests : BunitContext
     }
 
     [Fact]
+    public void DefaultFilterValues_keeps_only_the_first_key_on_a_single_select_column()
+    {
+        var cut = RenderTable(NameOptionsCol(filterMultiple: false, defaults: ["Alice", "Bob"]));
+
+        Assert.Equal(["Alice"], RowNames(cut));
+        Assert.Equal(["Alice"], AppliedValues(cut));
+
+        cut.Find(".wss-table-filter-trigger").Click();
+        var radios = cut.FindAll(".wss-table-filter-radio");
+        Assert.Equal(4, radios.Count);
+        Assert.Equal([true, false, false, false], radios.Select(r => r.HasAttribute("checked")).ToArray());
+    }
+
+    [Fact]
     public void DefaultFilterValues_works_for_a_data_derived_options_column()
     {
         // The option list is built while the state is being created, which is before the column has
