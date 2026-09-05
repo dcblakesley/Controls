@@ -414,8 +414,10 @@ public class Column<TItem> : ComponentBase, IDisposable
             switch (Filter)
             {
                 case OptionsFilterState<TItem> options:
-                    options.Update(_lastFilterOptions!, FilterMultiple, OnFilter!);
-                    return optionsChanged && options.Prune();
+                    // Two independent losses of an applied key, and both have to run: a FilterMultiple
+                    // flip trims with the options unchanged, an options change prunes with no flip.
+                    var trimmed = options.Update(_lastFilterOptions!, FilterMultiple, OnFilter!);
+                    return (optionsChanged && options.Prune()) || trimmed;
                 case CustomFilterState<TItem> custom:
                     custom.Update(_lastFilterOptions, OnFilter);
                     return false;

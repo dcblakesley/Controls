@@ -273,8 +273,10 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
                 // is false on the pass right after OnTableDataChanged already pushed and pruned.
                 var current = DerivedOptions;
                 var changed = !ReferenceEquals(options.Options, current);
-                options.Update(current, FilterMultiple, DerivedOptionPredicate);
-                return changed && options.Prune();
+                // The single-select trim rides alongside, not on, that comparison -- a FilterMultiple
+                // flip leaves the options identical.
+                var trimmed = options.Update(current, FilterMultiple, DerivedOptionPredicate);
+                return (changed && options.Prune()) || trimmed;
             case TextFilterState<TItem> text:
                 text.Update(StringAccessor, TextFilterMatch);
                 return false;
@@ -303,10 +305,10 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
         // The new list has to reach the live state (the editor renders from it, and AppliedValues
         // orders by it) before anything is pruned against it.
         if (Filter is not OptionsFilterState<TItem> options) return;
-        options.Update(_dataOptions!, FilterMultiple, DerivedOptionPredicate);
+        var trimmed = options.Update(_dataOptions!, FilterMultiple, DerivedOptionPredicate);
         // Same prune contract as a consumer-swapped FilterOptions: the Table re-derives the rows and
         // raises OnFilterChanged with whatever survived.
-        if (options.Prune()) Table?.NotifyColumnFilterPruned(this);
+        if (options.Prune() || trimmed) Table?.NotifyColumnFilterPruned(this);
     }
 
     // The option list a derived Options state renders from: an enum's fixed per-type list, or the

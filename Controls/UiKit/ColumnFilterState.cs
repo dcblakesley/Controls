@@ -190,12 +190,16 @@ internal sealed class OptionsFilterState<TItem> : KeyedFilterState<TItem>
     }
 
     /// <summary>Refresh from the column's current parameters -- called on every parameter pass while
-    /// the kind is unchanged, so the applied selection survives while the inputs stay current.</summary>
-    public void Update(IReadOnlyList<TableFilterOption> options, bool multiple, Func<TItem, string, bool> onFilter)
+    /// the kind is unchanged, so the applied selection survives while the inputs stay current.
+    /// Returns whether an APPLIED key was lost to <see cref="TrimToSingle"/>, the same signal
+    /// <see cref="Prune"/> reports and independent of it: a <see cref="Multiple"/> flip changes no
+    /// options, so the caller cannot gate this on an options comparison.</summary>
+    public bool Update(IReadOnlyList<TableFilterOption> options, bool multiple, Func<TItem, string, bool> onFilter)
     {
         Options = options;
         Multiple = multiple;
         SetOnFilter(onFilter);
+        return TrimToSingle();
     }
 
     /// <summary>The keys in <see cref="Options"/>' declared order (every applied key has an option:
@@ -217,6 +221,32 @@ internal sealed class OptionsFilterState<TItem> : KeyedFilterState<TItem>
             Pending.Clear();
             Pending.Add(first);
         }
+        return true;
+    }
+
+    /// <summary>
+    /// Keeps at most one key in each set once <see cref="Multiple"/> is false -- the first in
+    /// <see cref="Options"/> order, which is the order <see cref="ColumnFilterState{TItem}.AppliedValues"/>
+    /// publishes. Without it a runtime <c>FilterMultiple</c> true -&gt; false flip left the earlier
+    /// multi-key selection applied: two radios checked in one name group, and in Row placement a
+    /// single-value <c>Select</c> showing one key while the rows still matched every applied one.
+    /// Returns whether the APPLIED set changed.
+    /// </summary>
+    bool TrimToSingle()
+    {
+        if (Multiple) return false;
+        var appliedTrimmed = TrimToFirst(Applied);
+        TrimToFirst(Pending);
+        return appliedTrimmed;
+    }
+
+    bool TrimToFirst(HashSet<string> keys)
+    {
+        if (keys.Count <= 1) return false;
+        // Null only when no key has an option any more, which Prune would drop anyway.
+        var first = Order(keys).FirstOrDefault();
+        keys.Clear();
+        if (first is not null) keys.Add(first);
         return true;
     }
 

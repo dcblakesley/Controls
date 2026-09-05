@@ -968,4 +968,93 @@ public class UiKitTableTypedFilterTests : BunitContext
         Assert.All(NumberInputs(cut, ".wss-table-filter-dropdown"), i => Assert.False(i.HasAttribute("disabled")));
         Assert.True(cut.FindAll(".wss-table-filter-trigger")[0].HasAttribute("disabled"));
     }
+
+    // =====================================================================================
+    // A runtime FilterMultiple true -> false flip
+    // =====================================================================================
+
+    [Fact]
+    public void A_runtime_FilterMultiple_flip_to_false_trims_the_applied_selection_to_one_key()
+    {
+        // Radios hold at most one key, so the multi-key selection the flip inherits has to go the same
+        // way a multi-key DefaultFilterValues does -- otherwise two radios in one name group render
+        // checked while the rows still match either.
+        var raised = new List<IReadOnlyList<string>>();
+        var snapshots = new List<IReadOnlyList<TableColumnFilterSnapshot<Product>>>();
+        RenderFragment columns(bool multiple) => Columns(NameCol(), Col("Category", x => x.Category,
+            filterMultiple: multiple,
+            options: [new("A", "a"), new("B", "b")], onFilter: (x, v) => x.Category == v));
+        var cut = RenderTable(columns(true),
+            p => p.Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Product>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2)))
+                  .Add(t => t.OnFiltersChanged, EventCallback.Factory.Create<IReadOnlyList<TableColumnFilterSnapshot<Product>>>(this, s => snapshots.Add(s))));
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        foreach (var text in (string[])["A", "B"])
+            cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Trim() == text).QuerySelector("input")!.Change(true);
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Widget", "Doodad", "Sprocket"], RowNames(cut));
+        raised.Clear();
+        snapshots.Clear();
+
+        cut.Render(p => p.Add(t => t.ChildContent, columns(false)));
+
+        Assert.Equal(["a"], Get<IReadOnlyList<string>>(FilterOf<string>(cut, 1)!, "AppliedValues"));
+        Assert.Equal(["Doodad", "Sprocket"], RowNames(cut));
+        Assert.Equal([["a"]], raised);
+        Assert.Single(snapshots);
+        Assert.Equal(["a"], snapshots[0].Single().Values);
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        var radios = cut.FindAll(".wss-table-filter-radio");
+        Assert.Equal(2, radios.Count);
+        Assert.Equal([true, false], radios.Select(r => r.HasAttribute("checked")).ToArray());
+    }
+
+    [Fact]
+    public void A_runtime_FilterMultiple_flip_to_false_trims_a_data_derived_column_too()
+    {
+        // The derived route reports the trim through UpdateDerivedFilterState, where the options
+        // themselves are unchanged -- so the signal cannot ride on the options comparison.
+        var raised = new List<IReadOnlyList<string>>();
+        RenderFragment columns(bool multiple) => Columns(NameCol(),
+            Col("Category", x => x.Category, valuesFromData: true, filterMultiple: multiple));
+        var cut = RenderTable(columns(true),
+            p => p.Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Product>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        foreach (var text in (string[])["a", "b"])
+            cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Trim() == text).QuerySelector("input")!.Change(true);
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Widget", "Doodad", "Sprocket"], RowNames(cut));
+        raised.Clear();
+
+        cut.Render(p => p.Add(t => t.ChildContent, columns(false)));
+
+        Assert.Equal(["a"], Get<IReadOnlyList<string>>(FilterOf<string>(cut, 1)!, "AppliedValues"));
+        Assert.Equal(["Doodad", "Sprocket"], RowNames(cut));
+        Assert.Equal([["a"]], raised);
+    }
+
+    [Fact]
+    public void A_runtime_FilterMultiple_flip_to_false_in_Row_placement_shows_only_the_kept_key()
+    {
+        // The single Select can only display one key, so a selection it can't show must not be one the
+        // rows are still narrowed by.
+        RenderFragment columns(bool multiple) => Columns(NameCol(), Col("Category", x => x.Category,
+            filterMultiple: multiple,
+            options: [new("A", "a"), new("B", "b")], onFilter: (x, v) => x.Category == v));
+        var cut = RenderRow(columns(true));
+
+        cut.Find("thead tr.wss-table-filter-row td:nth-child(2) .wss-select").Click();
+        foreach (var text in (string[])["A", "B"])
+            cut.FindAll(".wss-select-item-option").First(o => o.TextContent.Trim() == text).Click();
+        Assert.Equal(["Widget", "Doodad", "Sprocket"], RowNames(cut));
+
+        cut.Render(p => p.Add(t => t.ChildContent, columns(false)));
+
+        var select = cut.Find("thead tr.wss-table-filter-row td:nth-child(2) .wss-select");
+        Assert.Contains("wss-select-single", select.ClassList);
+        Assert.Equal("A", select.QuerySelector(".wss-select-selection-item")!.TextContent.Trim());
+        Assert.Equal(["Doodad", "Sprocket"], RowNames(cut));
+    }
 }
