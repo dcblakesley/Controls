@@ -2895,6 +2895,9 @@
     justify-content: center;
     width: 20px;
     height: 20px;
+    /* Consuming apps reset buttons with max-height: fit-content, which collapses a fixed height --
+       the same floor .wss-table-filter-reset/-ok and .wss-search-clear already carry. */
+    min-height: 20px;
     padding: 0;
     transform: translateY(-50%);
     color: var(--wss-color-text-secondary);
