@@ -52,26 +52,20 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>blazor;controls;forms;validation;accessibility;ui;components;webassembly;server</PackageTags>
     <PackageReleaseNotes>
-10.8.3 -- an additive, non-breaking release: two new form-level helpers, focus on every control, two new field parameters, a two-way-bindable EditRadioEnum "Other" field, and two attribute-handling contracts widened to cover every control that can use them.
+10.8.5 -- Table column filtering gains more filter kinds, row-placed editors, and a server-side mode; data-tooltip restyled to match LabelTooltip. Additive for typical usage, with two narrow compatibility notes below for consumers using TableColumnFilter/PropertyColumn directly.
 
 NEW
-- FormAutoSave: one component replacing per-field @bind-Value:after wiring for a whole form. Subscribes once to the EditContext, debounces changes (DebounceMilliseconds, default 500ms trailing) into one OnSave call carrying the changed fields. SaveWhenInvalid/Concurrency/ShouldSave/TimeProvider round out the configuration. OnSaveFailed hands back the fields a failed save was carrying -- they return to the front of the pending set and retry on the next flush instead of being lost; unwired, the exception re-dispatches for an ErrorBoundary.
-- FormDefaults.FocusFirstField (bool?, default off): focuses a form's first rendered field once, after the scope's first render -- the form-level counterpart to the new FocusOnFirstRender below. Skips disabled/readonly/hidden fields, yields to an explicit FocusOnFirstRender on a specific control, retries up to 10 render batches for async-loaded forms, and needs no IJSRuntime registration to safely no-op.
-- Public FocusAsync() and FocusOnFirstRender (bool, default false) on every Edit* control -- programmatic and declarative focus of whichever element a Tab into the control would land on. Never focuses a disabled/read-only/hidden control. Named FocusOnFirstRender, not AutoFocus, so a native autofocus attribute still splats through untouched.
-- Suggestions (IEnumerable&lt;string&gt;?) on EditString/EditNumber: renders an open-vocabulary &lt;datalist&gt; hint, distinct from a Select control's closed vocabulary.
-- LabelContent (RenderFragment?) on every control: rich-markup label content (icon plus text, etc.) in place of a plain Label string.
-- EditRadioEnum&lt;TEnum&gt;: bind the "Other" free-text box two-way with @bind-OtherValue -- gives it a real FieldIdentifier, EditContext registration, and validation-summary participation.
+- Table filtering: Column.FilterText/TextFilterMatch (search box), Column.FilterDropdown (your own panel via TableFilterContext), FilterIcon, OnFilterDropdownOpenChange, FilterOnClose.
+- PropertyColumn.Filterable/FilterValuesFromData: derive a filter from the property type, or from DataSource's distinct values, instead of declaring one by hand.
+- Table.FilterPlacement = TableFilterPlacement.Row: always-visible per-column editors in a second header row, instead of funnel dropdowns.
+- Table.OnFiltersChanged/ClearFiltersAsync(): the every-column counterpart to OnFilterChanged. Dropdown extras: FilterSearch, FilterCheckAll, DefaultFilterValues/FilterResetToDefault.
+- Table.ClientSideFiltering = false: keeps the filter UI/events, stops the built-in row narrowing, for server-side filtering.
+- Every filter label/format (FilterRowLabelFormat, FilterResultAnnouncementFormat, FilterClearLabel, FilterMinLabel/FilterMaxLabel, FilterBoolAnyText/FilterBoolTrueText/FilterBoolFalseText, FilterSelectPlaceholder, FilterSearchPlaceholder, FilterEmptyText, FilterCheckAllLabel, FilterSelectedCountFormat, FilterContainsFormat/FilterStartsWithFormat/FilterEqualsFormat, FilterDateStartLabel/FilterDateEndLabel) is a Table parameter. FilterResultAnnouncementFormat is new: a role="status" region announces it after every filter change, so an existing FilterOptions/OnFilter column gains an announcement it didn't have before -- set it to "" to silence (a null value throws).
 
 CHANGED
-- Event-handler chaining: a splatted onclick/onkeydown/onmousedown on EditRange, both date pickers, Modal/Drawer, and Select now chains with the control's own same-named handler instead of one discarding the other.
-- The null-attribute-erasure fix (a splatted attribute surviving when the control has no opinion on it) now covers EditTextArea, EditDateNative, the EditSelect family, EditBool, and EditRange -- previously only EditString/EditNumber had it.
-
-FIXED
-- Every control's read-only rendered value now carries aria-describedby (description/tooltip/error text), previously reachable only in edit mode.
-- EditCheckedEnumList/EditCheckedStringList's read-only fieldset and EditColor's read-only row are now correctly nameable to assistive tech.
-- ToastQueue: an intermittent ObjectDisposedException race in Pause/Resume/Remove/Clear.
-- FormDefaults no longer requires an IJSRuntime registration, fixing a crash under HtmlRenderer/out-of-band rendering (email templates, PDF export).
-- AttributeSplat.RestExcept: a case-variant withheld attribute (e.g. aria-Label) is now actually removed instead of leaking a duplicate.
+- data-tooltip now matches LabelTooltip's dark chip (#262626/white, 6px radius) instead of a lighter bordered card.
+- TableColumnFilter&lt;TItem&gt; lost its own FilterButtonLabelFormat/FilterAppliedButtonLabelFormat/FilterAppliedLabel/FilterLabel parameters -- the accessible name now comes from Table's parameters of the same names. Only affects code that instantiates TableColumnFilter directly.
+- PropertyColumn&lt;TItem,TProp&gt; now annotates TProp with [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]. Concrete TProp="..." markup is unaffected; a consumer generic forwarding its own unannotated TProp into PropertyColumn needs the same annotation to avoid IL2091 under trim analysis.
 
 Full changelog: https://github.com/dcblakesley/Controls#changelog
     </PackageReleaseNotes>
