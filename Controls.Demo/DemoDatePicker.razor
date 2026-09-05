@@ -143,10 +143,16 @@
 <DatePicker @bind-Value=""_twelveHourValue"" Mode=""DatePickerMode.Time""
             Use12Hours=""true"" MinuteStep=""15"" ShowSeconds=""false"" />";
 
-    readonly string _datePickerModel = @"static readonly DatePickerPreset[] _presets =
+    readonly string _datePickerModel = @"// Resolved at click time, so they stay correct however long the page lives.
+static readonly DatePickerPreset[] _datePresets =
 [
     new(""Today"", static () => DateTime.Today),
-    new(""Next Monday"", static () => /* ... */),
+    new(""Next Monday"", static () =>
+    {
+        var today = DateTime.Today;
+        var daysUntilMonday = ((int)DayOfWeek.Monday - (int)today.DayOfWeek + 7) % 7;
+        return today.AddDays(daysUntilMonday == 0 ? 7 : daysUntilMonday);
+    }),
 ];";
 
     // --- DatePicker demo --- (pinned for the same baseline-determinism reason)

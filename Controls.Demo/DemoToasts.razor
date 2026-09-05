@@ -67,12 +67,16 @@
 <WasmMessageContainer />
 <WasmNotificationContainer />
 
-@* Blazor Server: register scoped services, inject, and use the DI containers instead --
-   builder.Services.AddWssControlsToasts();
-   @inject IMessageService MessageService
-   @inject INotificationService NotificationService
-   <MessageContainer />
-   <NotificationContainer /> *@";
+@* Placement is set on the CONTAINER, not the service: add one container per corner you need *@
+<WasmNotificationContainer Placement=""NotificationPlacement.BottomLeft"" />
+
+@* Blazor Server: register the scoped services (builder.Services.AddWssControlsToasts()), inject
+   them, and use the DI containers instead *@
+@inject IMessageService MessageService
+@inject INotificationService NotificationService
+
+<MessageContainer />
+<NotificationContainer />";
 
     // WasmMessageContainer/WasmNotificationContainer throw on the Blazor Server renderer, where their
     // process-static state is shared by every circuit. This gallery ships in a published package, so

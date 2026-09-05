@@ -594,7 +594,7 @@
         <PropertyColumn TItem=""PoRow"" TProp=""string"" Title=""PO #"" Property=""@(r => r.Number)"" />
         <Column TItem=""PoRow"" Title=""ESD"">
             <TitleContent>
-                ESD <LabelTooltip Tooltip=""Estimated ship date for the full PO."" />
+                ESD <LabelTooltip Id=""esd-info"" Tooltip=""Estimated ship date for the full PO."" />
             </TitleContent>
             <ChildContent Context=""r"">@(r.Esd?.ToString(""MM/dd/yyyy"") ?? ""--"")</ChildContent>
         </Column>
@@ -616,7 +616,11 @@
     readonly string _serverPagingModel = @"async Task LoadServerPageAsync(int page)
 {
     _serverPage = page;
-    _serverRows = _serverBackingStore.Skip((page - 1) * ServerPageSize).Take(ServerPageSize).ToList();
+    await Task.Delay(150); // simulate a server round-trip
+    _serverRows = _serverBackingStore
+        .Skip((page - 1) * ServerPageSize)
+        .Take(ServerPageSize)
+        .ToList(); // a new reference so the Table re-copies its DataSource
     _serverTotal = _serverBackingStore.Count;
 }";
 
@@ -638,18 +642,20 @@
     </RowDetail>
 </Table>";
 
-    readonly string _ellipsisExample = @"<Table TItem=""Row"" DataSource=""_ellipsisRows"">
-    <ChildContent>
-        <PropertyColumn TItem=""Row"" TProp=""string"" Title=""Name"" Property=""@(r => r.Name)"" Ellipsis=""true"" />
-        <PropertyColumn TItem=""Row"" TProp=""decimal"" Title=""Price"" Property=""@(r => r.Price)"" Format=""C2"" />
-    </ChildContent>
-    <FooterContent>
-        <tr>
-            <td class=""wss-table-cell"">Total</td>
-            <td class=""wss-table-cell"">@_ellipsisRows.Sum(r => r.Price).ToString(""C2"")</td>
-        </tr>
-    </FooterContent>
-</Table>
+    readonly string _ellipsisExample = @"<div style=""max-width: 320px;"">
+    <Table TItem=""Row"" DataSource=""_ellipsisRows"">
+        <ChildContent>
+            <PropertyColumn TItem=""Row"" TProp=""string"" Title=""Name"" Property=""@(r => r.Name)"" Ellipsis=""true"" />
+            <PropertyColumn TItem=""Row"" TProp=""decimal"" Title=""Price"" Property=""@(r => r.Price)"" Format=""C2"" />
+        </ChildContent>
+        <FooterContent>
+            <tr>
+                <td class=""wss-table-cell"">Total</td>
+                <td class=""wss-table-cell"">@_ellipsisRows.Sum(r => r.Price).ToString(""C2"")</td>
+            </tr>
+        </FooterContent>
+    </Table>
+</div>
 
 <Table TItem=""Row"" DataSource=""@(new List<Row>())"">
     <ChildContent>
@@ -688,10 +694,11 @@
                 <span data-applied=""@(applied ? ""true"" : ""false"")"">@(applied ? ""≥"" : ""#"")</span>
             </FilterIcon>
             <FilterDropdown Context=""ctx"">
-                <input value=""@(ctx.SelectedValues.Count > 0 ? ctx.SelectedValues[0] : """")""
+                <input type=""search"" aria-label=""Minimum quantity""
+                       value=""@(ctx.SelectedValues.Count > 0 ? ctx.SelectedValues[0] : """")""
                        @oninput=""@(e => StageMinQuantity(ctx, e.Value as string))"" />
-                <button @onclick=""@(() => ctx.ResetAsync())"">Reset</button>
-                <button @onclick=""@(() => ctx.ConfirmAsync())"">Filter</button>
+                <button type=""button"" @onclick=""@(() => ctx.ResetAsync())"">Reset</button>
+                <button type=""button"" @onclick=""@(() => ctx.ConfirmAsync())"">Filter</button>
             </FilterDropdown>
         </PropertyColumn>
     </ChildContent>
@@ -765,20 +772,22 @@
     </ChildContent>
 </Table>";
 
-    readonly string _narrowSortFilterExample = @"<Table TItem=""Row"" DataSource=""_narrowSortFilterRows"">
-    <ChildContent>
-        <PropertyColumn TItem=""Row"" TProp=""string"" Title=""Name"" Property=""@(r => r.Name)""
-                        Sortable=""true"" Ellipsis=""true""
-                        FilterOptions=""_nameFilterOptions"" OnFilter=""@((Row r, string v) => r.Name == v)"" />
-    </ChildContent>
-</Table>";
+    readonly string _narrowSortFilterExample = @"<div style=""max-width: 180px;"">
+    <Table TItem=""Row"" DataSource=""_narrowSortFilterRows"">
+        <ChildContent>
+            <PropertyColumn TItem=""Row"" TProp=""string"" Title=""Name"" Property=""@(r => r.Name)""
+                            Sortable=""true"" Ellipsis=""true""
+                            FilterOptions=""_nameFilterOptions"" OnFilter=""@((Row r, string v) => r.Name == v)"" />
+        </ChildContent>
+    </Table>
+</div>";
 
     readonly string _parityExample = @"<Table TItem=""Row"" DataSource=""_parityRows"" RowKey=""@(r => r.Id)""
        OnRowClick=""@(_ => _parityRowActivations++)"">
     <ChildContent>
         <PropertyColumn TItem=""Row"" TProp=""string"" Title=""Name"" Property=""@(r => r.Name)"" />
         <Column TItem=""Row"" Title=""Action"">
-            <button @onclick=""@(() => _parityButtonClicks++)"">Edit @context.Name</button>
+            <button type=""button"" @onclick=""@(() => _parityButtonClicks++)"">Edit @context.Name</button>
         </Column>
     </ChildContent>
 </Table>";

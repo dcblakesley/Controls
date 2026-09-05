@@ -166,11 +166,19 @@
     readonly string _dateRangePickerModel = @"static bool IsWeekend(DateTime date) =>
     date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
 
-static readonly DateRangePreset[] _presets =
+// Resolved at click time, so they stay correct however long the page lives.
+static readonly DateRangePreset[] _rangePresets =
 [
-    new(""This Week"", static () => (weekStart, DateTime.Today)),
-    new(""This Month"", static () => (monthStart, DateTime.Today)),
-    // ...resolved at click time
+    new(""This Week"", static () =>
+    {
+        var today = DateTime.Today;
+        return (today.AddDays(-(((int)today.DayOfWeek - (int)DayOfWeek.Sunday + 7) % 7)), today);
+    }),
+    new(""This Month"", static () =>
+    {
+        var today = DateTime.Today;
+        return (new DateTime(today.Year, today.Month, 1), today);
+    }),
 ];";
 
     // --- DateRangePicker demo ---

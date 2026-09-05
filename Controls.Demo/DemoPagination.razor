@@ -43,11 +43,12 @@
 
     readonly string _paginationBasicExample = @"<Pagination Total=""95"" PageSize=""10"" Current=""_page"" CurrentChanged=""@(p => _page = p)"" />";
 
-    readonly string _paginationAdvancedExample = @"<Pagination Total=""95"" @bind-PageSize=""_pageSize"" @bind-Current=""_page""
+    readonly string _paginationAdvancedExample = @"<Pagination Total=""95"" @bind-PageSize=""_paginationDemoPageSize"" @bind-Current=""_paginationDemoPage""
             PageSizeOptions=""@(new[] { 10, 20, 50 })"" ShowQuickJumper=""true""
             ShowTotal=""@(w => $""{w.Start}-{w.End} of {w.Total} items"")"" />
 
-<Pagination Total=""30"" PageSize=""10"" @bind-Current=""_page"" Small=""true"" />";
+@* Its own Current field -- two pagers sharing one would move in lockstep *@
+<Pagination Total=""30"" PageSize=""10"" @bind-Current=""_smallPaginationPage"" Small=""true"" />";
 
     int _page = 1;
 

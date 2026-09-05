@@ -68,7 +68,8 @@
     </Content>
 </Popover>";
 
-    readonly string _popoverSwapExample = @"<Popover Title=""Swapped trigger"">
+    readonly string _popoverSwapExample = @"<button @onclick=""@(() => _triggerBusy = !_triggerBusy)"">Toggle trigger</button>
+<Popover Title=""Swapped trigger"">
     <ChildContent>
         @if (_triggerBusy)
         {

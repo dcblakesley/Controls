@@ -25,6 +25,9 @@
 
         <h3>Markup</h3>
         <pre class="code-block"><code>@_popconfirmExample</code></pre>
+
+        <h3>Model</h3>
+        <pre class="code-block code-block-model"><code>@_popconfirmModel</code></pre>
     </section>
 
     <section class="demo-section">
@@ -73,11 +76,13 @@
 <Popconfirm Title=""Permanently delete this record?"" OkDanger=""true"" OkText=""Delete""
             OnConfirm=""SimulateAsyncConfirmAsync"">
     <button>Delete (async)</button>
-</Popconfirm>
+</Popconfirm>";
+
+    readonly string _popconfirmModel = @"string _asyncConfirmResult = ""(none)"";
 
 async Task SimulateAsyncConfirmAsync()
 {
-    await Task.Delay(1000);
+    await Task.Delay(1000); // stands in for a real API call
     _asyncConfirmResult = ""deleted"";
 }";
 
@@ -86,6 +91,7 @@ async Task SimulateAsyncConfirmAsync()
     <button>Trigger</button>
 </Popconfirm>
 
+<button @onclick=""@(() => _popoverVisible = !_popoverVisible)"">Toggle Popover</button>
 <Popover Title=""Controlled from outside"" @bind-Visible=""_popoverVisible"">
     <ChildContent><button>Trigger</button></ChildContent>
     <Content><div>Popover body.</div></Content>

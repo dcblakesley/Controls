@@ -72,6 +72,7 @@
 </Drawer>";
 
     readonly string _modalDrawerCenteredExample = @"<button @onclick=""@(() => _centeredModalVisible = true)"">Open Centered Modal</button>
+<button @onclick=""@(() => _extraDrawerVisible = true)"">Open Extra-slot Drawer</button>
 
 <Modal @bind-Visible=""_centeredModalVisible"" Title=""Centered modal"" Centered=""true"" Keyboard=""false"">
     <p>Escape does nothing here.</p>
