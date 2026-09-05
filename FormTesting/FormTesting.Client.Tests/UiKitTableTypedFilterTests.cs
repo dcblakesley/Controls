@@ -789,6 +789,37 @@ public class UiKitTableTypedFilterTests : BunitContext
     }
 
     [Fact]
+    public void FilterValuesFromData_re_derives_its_options_after_a_culture_change()
+    {
+        // The option keys ARE formatted cell text, so they follow CurrentCulture -- and so does the
+        // live predicate. A cache keyed on Format alone left the two in different cultures, and
+        // nothing matched.
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("en-US");
+            var cut = RenderTable(Columns(NameCol(), Col("Price", x => x.Price, valuesFromData: true)));
+            cut.FindAll(".wss-table-filter-trigger")[0].Click();
+            Assert.Equal(["5", "9.99", "19.5"], cut.FindAll(".wss-table-filter-item").Select(li => li.TextContent.Trim()));
+            cut.Find(".wss-table-filter-ok").Click();
+
+            CultureInfo.CurrentCulture = new CultureInfo("de-DE");
+            cut.Render(p => p.Add(t => t.Bordered, true));
+
+            cut.FindAll(".wss-table-filter-trigger")[0].Click();
+            Assert.Equal(["5", "9,99", "19,5"], cut.FindAll(".wss-table-filter-item").Select(li => li.TextContent.Trim()));
+            cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Trim() == "9,99")
+                .QuerySelector("input")!.Change(true);
+            cut.Find(".wss-table-filter-ok").Click();
+            Assert.Equal(["Widget"], RowNames(cut));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
+    }
+
+    [Fact]
     public void FilterValuesFromData_re_renders_stably_across_an_unrelated_parameter_pass()
     {
         // The data-derived options live outside the FilterOptions parameter the base compares, so a

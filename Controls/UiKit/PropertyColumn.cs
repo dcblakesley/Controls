@@ -232,6 +232,11 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
     // queues, an infinite render loop.
     IReadOnlyList<TableFilterOption>? _dataOptions;
     string? _dataOptionsFormat;
+    // FormatValue is CurrentCulture-dependent, so the culture is part of the cache key: without it a
+    // runtime culture switch left the option keys in the old culture while the live predicate
+    // formatted rows in the new one, and nothing matched. The keys themselves stay culture-formatted
+    // (they are the text the cells show, and the shipped OnFilterChanged payload).
+    string? _dataOptionsCulture;
 
     // FilterValuesFromData declares no kind until the data actually yields an option: with none
     // (DataSource null/empty, or every value null) the funnel would open an empty panel, and a
@@ -310,7 +315,8 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
         get
         {
             if (!FilterValuesFromData) return TPropEnumOptions ?? [];
-            if (_dataOptions is null || _dataOptionsFormat != Format) RebuildDataOptions(Table?.Items ?? []);
+            if (_dataOptions is null || _dataOptionsFormat != Format || _dataOptionsCulture != CultureInfo.CurrentCulture.Name)
+                RebuildDataOptions(Table?.Items ?? []);
             return _dataOptions!;
         }
     }
@@ -322,6 +328,7 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
     {
         var next = BuildDataOptions(items);
         _dataOptionsFormat = Format;
+        _dataOptionsCulture = CultureInfo.CurrentCulture.Name;
         if (_dataOptions is not null && OptionsEqual(_dataOptions, next)) return false;
         _dataOptions = next;
         return true;
