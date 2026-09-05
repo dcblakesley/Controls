@@ -762,6 +762,48 @@ public class UiKitTableFilterExtrasTests : BunitContext
     }
 
     // =====================================================================================
+    // Enter-submit suppression (wss-table.js)
+    // =====================================================================================
+
+    // Row placement so the editor lives as long as the table, and a NumberRange column so one pass
+    // has two elements to wire.
+    IRenderedComponent<Table<Person>> RenderRowRangeTable() =>
+        RenderTable(Columns(NameCol(), Col("Age", x => x.Age, filterable: true)),
+            p => p.Add(t => t.FilterPlacement, TableFilterPlacement.Row));
+
+    string[] SuppressedIds() =>
+        [.. JSInterop.Invocations
+            .Where(i => i.Identifier == "suppressEnterSubmit")
+            .Select(i => ((ElementReference)i.Arguments[0]!).Id)
+            .Distinct()];
+
+    [Fact]
+    public void Enter_suppression_wires_both_number_range_bounds()
+    {
+        var cut = RenderRowRangeTable();
+
+        Assert.Equal(2, cut.FindAll(".wss-table-filter-range input[type=number]").Count);
+        Assert.Equal(2, SuppressedIds().Length);
+    }
+
+    [Fact]
+    public void Enter_suppression_retries_every_bound_after_a_failed_module_import()
+    {
+        // Strict mode makes the first render's `import` throw -- what a transient import failure (a
+        // circuit blip) looks like to JsModule.GetAsync: null, with the failed import uncached so the
+        // next render retries. An element must not be recorded as wired on a pass that never wired it.
+        JSInterop.Mode = JSRuntimeMode.Strict;
+        var cut = RenderRowRangeTable();
+        Assert.Empty(SuppressedIds());
+
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        cut.Render();
+        cut.Render();
+
+        Assert.Equal(2, SuppressedIds().Length);
+    }
+
+    // =====================================================================================
     // Localizable summary formats
     // =====================================================================================
 

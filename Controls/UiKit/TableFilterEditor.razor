@@ -385,12 +385,13 @@ else
         await MirrorCheckAllIndeterminateAsync();
     }
 
-    // Every raw <input> above applies its filter from OnEditorKeyDown, but Blazor has no per-key
-    // preventDefault, so inside an <EditForm> Enter would ALSO implicitly submit the form. Only JS can
-    // stop that (wss-table.js's suppressEnterSubmit); with no JS runtime the filter still applies and
-    // the form still submits with it. Ids of the elements already wired -- an ElementReference's id
-    // lives as long as its element, so a re-render costs nothing and a replaced element (a kind
-    // switch, a first render that had no box yet) wires itself on its next pass.
+    // Blazor has no per-key preventDefault, so inside an <EditForm> Enter in any raw <input> above
+    // ALSO implicitly submits the form -- on top of applying the filter (OnEditorKeyDown), or for the
+    // search box, which has no keydown handler of its own, instead of nothing. Only JS can stop that
+    // (wss-table.js's suppressEnterSubmit); with no JS runtime the filter still applies and the form
+    // still submits with it. Ids of the elements already wired -- an ElementReference's id lives as
+    // long as its element, so a re-render costs nothing and a replaced element (a kind switch, a
+    // first render that had no box yet) wires itself on its next pass.
     readonly HashSet<string> _enterSuppressed = [];
 
     async Task SuppressEnterSubmitAsync()
@@ -409,17 +410,19 @@ else
         IJSObjectReference? module = null;
         foreach (var element in refs)
         {
-            if (string.IsNullOrEmpty(element.Id) || !_enterSuppressed.Add(element.Id)) continue;
+            if (string.IsNullOrEmpty(element.Id) || _enterSuppressed.Contains(element.Id)) continue;
             module ??= await _module.GetAsync(JS, FormDefaults);
             if (module is null) return;
             try
             {
                 await module.InvokeVoidAsync("suppressEnterSubmit", element);
+                // Recorded only once the call has landed: a failed import (uncached, so the next
+                // render retries) must not leave an element marked wired that never was.
+                _enterSuppressed.Add(element.Id);
             }
             catch
             {
                 // Element gone / circuit dropped mid-call -- retry on the next render.
-                _enterSuppressed.Remove(element.Id);
             }
         }
     }
