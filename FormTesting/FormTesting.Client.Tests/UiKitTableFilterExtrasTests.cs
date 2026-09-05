@@ -54,7 +54,8 @@ public class UiKitTableFilterExtrasTests : BunitContext
         Func<Person, string, bool>? onFilter = null,
         Func<Person, string?>? filterText = null,
         IEnumerable<string>? defaults = null,
-        bool resetToDefault = false) => builder =>
+        bool resetToDefault = false,
+        TextFilterMatch textFilterMatch = TextFilterMatch.Contains) => builder =>
     {
         builder.OpenComponent<PropertyColumn<Person, TProp>>(0);
         builder.AddAttribute(1, "Title", title);
@@ -69,6 +70,7 @@ public class UiKitTableFilterExtrasTests : BunitContext
         builder.AddAttribute(10, "FilterText", filterText);
         builder.AddAttribute(11, "DefaultFilterValues", defaults);
         builder.AddAttribute(12, "FilterResetToDefault", resetToDefault);
+        builder.AddAttribute(13, "TextFilterMatch", textFilterMatch);
         builder.CloseComponent();
     };
 
@@ -757,6 +759,44 @@ public class UiKitTableFilterExtrasTests : BunitContext
 
         Assert.Single(cut.FindAll("tr.wss-table-filter-row"));
         Assert.Contains("wss-table-has-filter-row", cut.Find("table.wss-table").ClassList);
+    }
+
+    // =====================================================================================
+    // Localizable summary formats
+    // =====================================================================================
+
+    [Fact]
+    public void The_filter_summary_formats_are_overridable()
+    {
+        var snapshots = new List<IReadOnlyList<TableColumnFilterSnapshot<Person>>>();
+        void Configure(ComponentParameterCollectionBuilder<Table<Person>> p) => p
+            .Add(t => t.FilterSelectedCountFormat, "{0} gewaehlt")
+            .Add(t => t.FilterContainsFormat, "enthaelt \"{0}\"")
+            .Add(t => t.FilterStartsWithFormat, "beginnt mit \"{0}\"")
+            .Add(t => t.FilterEqualsFormat, "ist \"{0}\"")
+            .Add(t => t.OnFiltersChanged, EventCallback.Factory.Create<IReadOnlyList<TableColumnFilterSnapshot<Person>>>(
+                this, s => snapshots.Add(s)));
+
+        var options = RenderTable(NameOptionsCol(), Configure);
+        options.Find(".wss-table-filter-trigger").Click();
+        TickOption(options, "Alice");
+        TickOption(options, "Bob");
+        options.Find(".wss-table-filter-ok").Click();
+        Assert.Equal("2 gewaehlt", Assert.Single(snapshots[^1]).Description);
+
+        foreach (var (match, expected) in new[]
+                 {
+                     (TextFilterMatch.Contains, "enthaelt \"o\""),
+                     (TextFilterMatch.StartsWith, "beginnt mit \"o\""),
+                     (TextFilterMatch.Equals, "ist \"o\""),
+                 })
+        {
+            var text = RenderTable(Col<string>("Name", x => x.Name, filterable: true, textFilterMatch: match), Configure);
+            text.Find(".wss-table-filter-trigger").Click();
+            text.Find(".wss-table-filter-text input").Input("o");
+            text.Find(".wss-table-filter-ok").Click();
+            Assert.Equal(expected, Assert.Single(snapshots[^1]).Description);
+        }
     }
 
     // =====================================================================================

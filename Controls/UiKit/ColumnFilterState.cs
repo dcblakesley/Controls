@@ -142,7 +142,7 @@ internal abstract class KeyedFilterState<TItem> : ColumnFilterState<TItem>
     protected virtual bool Accepts(string value) => true;
 
     public override string? Describe(Table<TItem> table) =>
-        Applied.Count == 0 ? null : $"{Applied.Count} selected";
+        Applied.Count == 0 ? null : string.Format(table.FilterSelectedCountFormat, Applied.Count);
 
     // ----- Pending edits, for the editor component (the dropdown edits PENDING only). -----
 
@@ -379,12 +379,12 @@ internal sealed class TextFilterState<TItem> : ColumnFilterState<TItem>
     public override string? Describe(Table<TItem> table) =>
         _applied is null
             ? null
-            : Match switch
+            : string.Format(Match switch
             {
-                TextFilterMatch.StartsWith => $"starts with \"{_applied}\"",
-                TextFilterMatch.Equals => $"equals \"{_applied}\"",
-                _ => $"contains \"{_applied}\""
-            };
+                TextFilterMatch.StartsWith => table.FilterStartsWithFormat,
+                TextFilterMatch.Equals => table.FilterEqualsFormat,
+                _ => table.FilterContainsFormat
+            }, _applied);
 }
 
 /// <summary>

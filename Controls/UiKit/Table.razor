@@ -786,6 +786,23 @@
     /// at the top of its dropdown option list. Override to localize.</summary>
     [Parameter] public string FilterCheckAllLabel { get; set; } = "Select all";
 
+    /// <summary>How an <see cref="TableFilterKind.Options"/> or <see cref="TableFilterKind.Custom"/>
+    /// column summarizes itself in its <see cref="TableColumnFilterSnapshot{TItem}"/>; <c>{0}</c> is
+    /// the number of selected keys. Override to localize.</summary>
+    [Parameter] public string FilterSelectedCountFormat { get; set; } = "{0} selected";
+
+    /// <summary>How a <see cref="Column{TItem}.FilterText"/> column summarizes itself in its
+    /// <see cref="TableColumnFilterSnapshot{TItem}"/> under
+    /// <see cref="Controls.TextFilterMatch.Contains"/>; <c>{0}</c> is the applied text. Override to
+    /// localize.</summary>
+    [Parameter] public string FilterContainsFormat { get; set; } = "contains \"{0}\"";
+
+    /// <summary><see cref="FilterContainsFormat"/> for <see cref="Controls.TextFilterMatch.StartsWith"/>.</summary>
+    [Parameter] public string FilterStartsWithFormat { get; set; } = "starts with \"{0}\"";
+
+    /// <summary><see cref="FilterContainsFormat"/> for <see cref="Controls.TextFilterMatch.Equals"/>.</summary>
+    [Parameter] public string FilterEqualsFormat { get; set; } = "equals \"{0}\"";
+
     /// <summary>
     /// Whether the applied column filters actually narrow the rendered rows. True (default): this
     /// Table filters <see cref="DataSource"/> itself. False: <see cref="DataSource"/> renders whole
