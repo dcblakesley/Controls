@@ -26,6 +26,15 @@ public class UiKitTableTypedFilterTests : BunitContext
         Discontinued
     }
 
+    // Two names for value 0: Enum.GetValues yields one entry per declared field, so the option list
+    // has to de-duplicate by value.
+    enum Priority
+    {
+        Normal = 0,
+        Default = Normal,
+        Urgent = 1
+    }
+
     // A property type with no derived editor: not comparable, not formattable, nothing to build a
     // range or an option list from.
     sealed class Tag
@@ -601,6 +610,20 @@ public class UiKitTableTypedFilterTests : BunitContext
 
         Assert.Equal(["Widget", "Doodad"], RowNames(cut));
         Assert.Equal([["InStock"]], raised); // the member name, not the label
+    }
+
+    [Fact]
+    public void An_enum_column_offers_one_option_per_distinct_value_not_per_alias()
+    {
+        var cut = RenderTable(Columns(NameCol(), Col("Priority", x => x.Qty > 20 ? Priority.Urgent : Priority.Normal, filterable: true)));
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        Assert.Equal(["Normal", "Urgent"], cut.FindAll(".wss-table-filter-item").Select(li => li.TextContent.Trim()));
+
+        cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Trim() == "Normal")
+            .QuerySelector("input")!.Change(true);
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Widget"], RowNames(cut));
     }
 
     [Fact]

@@ -78,8 +78,11 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
         // EnumHelpers.GetValues<T>(underlying) rather than Enum.GetValues(Type): the latter is
         // RequiresDynamicCode (IL3050). The values are re-boxed as the enum type, so they unbox to
         // both TProp and TProp? -- which is why one call covers MyEnum and MyEnum? alike.
+        // DistinctBy: GetValues yields one entry per declared FIELD, so an alias (enum E { None = 0,
+        // Default = None }) would offer two options with the same key.
         return EnumHelpers.GetValues<TProp>(type)
             .Select(v => new TableFilterOption(EnumHelpers.GetName(v), v!.ToString()!))
+            .DistinctBy(o => o.Value)
             .ToList();
     }
 
