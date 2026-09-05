@@ -922,6 +922,9 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     ILocator DropdownExtrasSection =>
         _page.Locator("section.demo-section", new() { HasTextString = "dropdown extras" });
 
+    ILocator ShortDropdownFilterSection =>
+        _page.Locator("section.demo-section", new() { HasTextString = "short dropdown-filter table" });
+
     // A row-placement editor is a kit control named after its column ("Filter by {header}"), so the
     // accessible name is the stable handle onto a specific cell's Select/box — no positional
     // nth-child into a header row whose column order a later demo edit could change.
@@ -1406,6 +1409,102 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
         await Expect(rows).ToHaveCountAsync(2);
         await Expect(section.Locator("tbody")).ToContainTextAsync("Atlanta");
         await Expect(section.Locator("tbody")).ToContainTextAsync("Houston");
+    }
+
+    // ---- The fixed-position escape is no longer gated on Table.ScrollY. .wss-table-wrapper sets
+    // overflow-x: auto, which computes overflow-y to auto as well (CSS Overflow 3), so an
+    // absolutely-positioned panel is clipped at the wrapper's bottom on any short table -- measured
+    // on this 3-row demo, 0 of the 84 day cells of a DateRange editor's picker were reachable and
+    // elementFromPoint at the last one returned the picker's own backdrop. ----
+
+    [Fact]
+    public async Task Table_short_table_date_filter_escapes_the_wrapper_clip_without_ScrollY()
+    {
+        await GotoAsync();
+        await WaitForStablePageHeightAsync();
+        var section = ShortDropdownFilterSection;
+        await ScrollIntoViewAsync(section);
+        await Expect(section.Locator(".wss-table-wrapper-scroll-y")).ToHaveCountAsync(0);
+
+        await section.Locator(".wss-table-filter-trigger[aria-label^='Filter Due']").ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown).ToBeVisibleAsync();
+        await Expect(dropdown).ToHaveCSSAsync("position", "fixed");
+
+        // The DateRange editor focuses its picker on open, which opens the picker's own panel.
+        var picker = section.Locator(".wss-picker-dropdown");
+        await Expect(picker).ToBeVisibleAsync();
+
+        var geo = await section.EvaluateAsync<JsonElement>(@"section => {
+            const wrapper = section.querySelector('.wss-table-wrapper');
+            const picker = section.querySelector('.wss-picker-dropdown');
+            const w = wrapper.getBoundingClientRect();
+            const p = picker.getBoundingClientRect();
+            const days = [...picker.querySelectorAll('.wss-picker-day')];
+            const inViewport = r =>
+                r.top >= 0 && r.bottom <= window.innerHeight && r.left >= 0 && r.right <= window.innerWidth;
+            return {
+                overhangsWrapper: p.bottom - w.bottom,
+                pickerInViewport: inViewport(p),
+                dayCount: days.length,
+                daysInViewport: days.filter(d => inViewport(d.getBoundingClientRect())).length,
+            };
+        }");
+
+        // Still far taller than the wrapper -- it escaped the clip rather than merely fitting.
+        Assert.True(geo.GetProperty("overhangsWrapper").GetDouble() > 0);
+        Assert.True(geo.GetProperty("pickerInViewport").GetBoolean(), "the picker panel left the viewport");
+        Assert.Equal(geo.GetProperty("dayCount").GetInt32(), geo.GetProperty("daysInViewport").GetInt32());
+
+        // A day near the panel's bottom is genuinely clickable: Playwright hit-tests before clicking,
+        // so a clipped-away cell fails actionability here rather than silently doing nothing.
+        await picker.Locator(".wss-picker-day:not(.wss-picker-day-outside)").Last.ClickAsync();
+        await Expect(dropdown.Locator("input[aria-label='Start date']")).Not.ToHaveValueAsync("");
+    }
+
+    [Fact]
+    public async Task Table_short_table_number_filter_bounds_are_actionable()
+    {
+        await GotoAsync();
+        await WaitForStablePageHeightAsync();
+        var section = ShortDropdownFilterSection;
+        await ScrollIntoViewAsync(section);
+        var rows = section.Locator("tbody .wss-table-row");
+        await Expect(rows).ToHaveCountAsync(3);
+
+        await section.Locator(".wss-table-filter-trigger[aria-label^='Filter Count']").ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown).ToHaveCSSAsync("position", "fixed");
+
+        await dropdown.Locator("input[aria-label$='Minimum']").FillAsync("10");
+        await dropdown.Locator("input[aria-label$='Maximum']").FillAsync("20");
+        await dropdown.Locator(".wss-table-filter-ok").ClickAsync();
+
+        await Expect(rows).ToHaveCountAsync(1); // counts are 3 / 12 / 40
+        await Expect(rows.First).ToContainTextAsync("Bellows");
+    }
+
+    [Fact]
+    public async Task Table_short_table_bool_filter_select_opens_clear_of_the_wrapper()
+    {
+        await GotoAsync();
+        await WaitForStablePageHeightAsync();
+        var section = ShortDropdownFilterSection;
+        await ScrollIntoViewAsync(section);
+        var rows = section.Locator("tbody .wss-table-row");
+
+        await section.Locator(".wss-table-filter-trigger[aria-label^='Filter Active']").ClickAsync();
+        var dropdown = section.Locator(".wss-table-filter-dropdown");
+        await Expect(dropdown).ToHaveCSSAsync("position", "fixed");
+
+        await dropdown.Locator(".wss-select-selector").ClickAsync();
+        var options = dropdown.Locator(".wss-select-dropdown .wss-select-item-option");
+        await Expect(options).ToHaveCountAsync(2);
+        await options.Nth(1).ClickAsync(); // "No"
+        await dropdown.Locator(".wss-table-filter-ok").ClickAsync();
+
+        await Expect(rows).ToHaveCountAsync(1);
+        await Expect(rows.First).ToContainTextAsync("Bellows");
     }
 
     [Fact]

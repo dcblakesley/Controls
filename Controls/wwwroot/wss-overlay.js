@@ -402,15 +402,14 @@ export function clearZ(el) {
     }
 }
 
-// --- Table column filter dropdown (ScrollY overflow-clip escape) ------------------------------
-// A Table.ScrollY wrapper sets overflow-y so its header can stick while the body scrolls -- but
-// that same overflow clips a filter dropdown that's position: absolute relative to its header
-// cell, once the dropdown would extend past the wrapper's bounds. Switching the dropdown to
-// position: fixed (viewport coordinates, computed from the trigger button's own rect) escapes that
-// clip entirely, the same way Modal/Drawer content is never clipped by an ancestor's overflow.
-// Only called under Table.ScrollY (see TableColumnFilter.razor) -- the far more common non-ScrollY
-// case never touches this, staying on the plain CSS-anchored absolute position (also this
-// function's no-JS fallback when the import/invoke itself fails).
+// --- Table column filter dropdown (overflow-clip escape) --------------------------------------
+// .wss-table-wrapper sets overflow-x: auto, which per CSS Overflow 3 computes overflow-y to auto as
+// well -- so it clips a filter dropdown that's position: absolute relative to its header cell in
+// BOTH axes, once the dropdown would extend past the wrapper's bounds. Table.ScrollY only makes
+// that shorter and more obvious; a 3-row table clips just as hard. Switching the dropdown to
+// position: fixed (viewport coordinates, computed from the trigger button's own rect) escapes the
+// clip entirely, the same way Modal/Drawer content is never clipped by an ancestor's overflow. The
+// plain CSS-anchored absolute position stays as the no-JS fallback (import/invoke failure).
 export function placeFixedBelow(trigger, panel, gap) {
     if (!trigger || !panel) {
         return;

@@ -975,6 +975,30 @@
     </section>
 
     <section class="demo-section">
+        <h3>Table — short dropdown-filter table (typed kinds, no ScrollY)</h3>
+        <p style="margin:0; color:#666;">
+            <code>Filterable</code> in the default Dropdown placement: a date column opens a
+            <code>DateRangePicker</code> panel, a numeric column a min/max pair, a bool column a
+            yes/no select — each popup far taller than these three rows.
+            <code>.wss-table-wrapper</code>'s <code>overflow-x: auto</code> makes
+            <code>overflow-y</code> compute to <code>auto</code> too, so the panel escapes the
+            wrapper's clip with fixed positioning (JS) here as well, not only under
+            <code>ScrollY</code>.
+        </p>
+        <Table TItem="ShortRow" DataSource="_shortRows" Size="TableSize.Small">
+            <ChildContent>
+                <PropertyColumn TItem="ShortRow" TProp="string" Title="Item" Property="@(r => r.Name)" />
+                <PropertyColumn TItem="ShortRow" TProp="DateTime" Title="Due" Property="@(r => r.Due)"
+                                Format="d" Filterable="true" />
+                <PropertyColumn TItem="ShortRow" TProp="int" Title="Count" Property="@(r => r.Count)"
+                                Filterable="true" />
+                <PropertyColumn TItem="ShortRow" TProp="bool" Title="Active" Property="@(r => r.Active)"
+                                Filterable="true" />
+            </ChildContent>
+        </Table>
+    </section>
+
+    <section class="demo-section">
         <h3>Table — Sortable + Filterable header in a narrow fixed-width column</h3>
         <p style="margin:0; color:#666;">
             Regression coverage for a header that combines a sort trigger AND a filter button in a
@@ -1369,6 +1393,14 @@
             ? $"{e.Column.HeaderText}: cleared"
             : $"{e.Column.HeaderText}: {string.Join(", ", e.SelectedValues)}";
 
+    // --- Table: short dropdown-filter table (typed kinds, no ScrollY) demo ---
+    readonly List<ShortRow> _shortRows =
+    [
+        new(1, "Anvil", new DateTime(2026, 3, 4), 3, true),
+        new(2, "Bellows", new DateTime(2026, 5, 19), 12, false),
+        new(3, "Crucible", new DateTime(2026, 8, 27), 40, true),
+    ];
+
     // --- Table: Sortable + Filterable header in a narrow fixed-width column demo ---
     readonly List<Row> _narrowSortFilterRows =
     [
@@ -1510,6 +1542,8 @@
         string Supplier);
 
     public record Ticket(int Id, string Region, string Status, string Tier);
+
+    public record ShortRow(int Id, string Name, DateTime Due, int Count, bool Active);
 
     // Two of the four members carry an explicit label, so PropertyColumn.Filterable's derived option
     // list shows off both attribute routes (and the camel-case auto-split for the two that don't).

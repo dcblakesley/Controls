@@ -2669,9 +2669,9 @@
    backdrop rule in the Popover section. */
 
 /* Right-aligned under the funnel icon (AntD default), anchored to the header cell. JS
-   (wss-overlay.js's placeFixedBelow) switches this to position: fixed in viewport coordinates when
-   Table.ScrollY's wrapper overflow would otherwise clip it -- this absolute position is also that
-   path's no-JS fallback. */
+   (wss-overlay.js's placeFixedBelow) switches this to position: fixed in viewport coordinates on
+   every open, escaping .wss-table-wrapper's overflow clip -- this absolute position is that path's
+   no-JS fallback. */
 .wss-table-filter-dropdown {
     position: absolute;
     top: 100%;

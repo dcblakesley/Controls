@@ -6,10 +6,10 @@
 @* Column filtering (Column.FilterOptions/OnFilter, FilterText, FilterDropdown): a funnel-icon button
    in the header cell that opens a dropdown panel. Outside-click-to-close is a full-screen invisible
    backdrop -- the same JS-free pattern Popover/Select already use -- so open/close/apply/reset all
-   work with no JS runtime at all (server prerender, unit tests). JS is opt-in and only ever used to
-   escape a ScrollY wrapper's overflow clip and keep the escaped dropdown tracking its trigger across
-   page scroll/resize while it stays open (see OnAfterRenderAsync), and to move focus into/out of
-   the panel. *@
+   work with no JS runtime at all (server prerender, unit tests). JS is only ever used to escape
+   .wss-table-wrapper's overflow clip and keep the escaped dropdown tracking its trigger across page
+   scroll/resize while it stays open (see OnAfterRenderAsync), and to move focus into/out of the
+   panel. *@
 @if (Column.Filter is { } filter)
 {
     @* aria-haspopup="dialog" matches what this button actually opens (the panel below is a
@@ -179,8 +179,10 @@
 
     // Focus management (mirrors Popover): move focus into the panel once it opens, and back to the
     // trigger once it closes -- unless another column's filter is what closed this one, see the close
-    // branch. The fixed-positioning escape only runs under Table.ScrollY -- the default (unset) case
-    // never touches JS, matching the "JS-free by default" contract above.
+    // branch. The fixed-positioning escape runs on every open, ScrollY or not: .wss-table-wrapper
+    // sets overflow-x: auto, which per CSS Overflow 3 computes overflow-y to auto as well, so an
+    // absolutely-positioned panel is clipped at the wrapper's bottom on ANY table short enough --
+    // measured on a 3-row table, all 84 day cells of a DateRange editor's picker fell outside it.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_disposed) return;
@@ -200,7 +202,7 @@
                 }
             }
 
-            if (Table.ScrollY is not null && !_fixedPositioned)
+            if (!_fixedPositioned)
             {
                 // Null = no JS runtime / module, or disposed while the import was in flight (the
                 // holder cleaned up its own late-arriving reference). Nothing to escape the overflow
@@ -213,9 +215,9 @@
                 // keeps it visually pinned within the wrapper) -- see that function's own comment in
                 // wss-overlay.js. False = no JS runtime/module, or the dropdown closed (or closed and
                 // reopened, or this component was disposed) while the call was in flight: JsHandle
-                // released the late-arriving handle, the CSS-anchored absolute position stays (it may
-                // clip under a ScrollY wrapper's overflow -- the documented no-JS fallback), and
-                // leaving _fixedPositioned false lets a later render retry while still open.
+                // released the late-arriving handle, the CSS-anchored absolute position stays (the
+                // documented no-JS fallback -- it may clip at the wrapper's bottom), and leaving
+                // _fixedPositioned false lets a later render retry while still open.
                 _fixedPositioned = await _scrollHandle.ActivateAsync(
                     module, "activateFixedDropdown", [_buttonRef, _panelRef, 4], () => IsOpen);
             }
