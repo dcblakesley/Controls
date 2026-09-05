@@ -287,6 +287,11 @@ public class PropertyColumn<TItem, [DynamicallyAccessedMembers(DynamicallyAccess
     {
         if (!FilterValuesFromData || Property is null) return;
         if (!RebuildDataOptions(items)) return;
+        // An explicitly declared filter owns the live state; pushing the data-derived options into it
+        // would replace the consumer's own list and predicate and prune their applied selection on
+        // every DataSource swap. The snapshot above is still refreshed, so dropping the explicit
+        // declaration later finds current options.
+        if (ExplicitFilterKind is not null) return;
         // The new list has to reach the live state (the editor renders from it, and AppliedValues
         // orders by it) before anything is pruned against it.
         if (Filter is not OptionsFilterState<TItem> options) return;

@@ -707,6 +707,36 @@ public class UiKitTableTypedFilterTests : BunitContext
     }
 
     [Fact]
+    public void FilterValuesFromData_leaves_an_explicitly_declared_filter_alone_on_a_DataSource_swap()
+    {
+        // Both declared at once: the explicit FilterOptions+OnFilter wins the kind, so the data-derived
+        // options must not replace the consumer's list, swap in the derived predicate, or prune the
+        // applied selection behind their back.
+        var raised = new List<IReadOnlyList<string>>();
+        var cut = RenderTable(
+            Columns(NameCol(), Col("Category", x => x.Category, valuesFromData: true,
+                options: [new("A", "a"), new("B", "b")], onFilter: (x, v) => x.Category == v)),
+            p => p.Add(t => t.OnFilterChanged, EventCallback.Factory.Create<(Column<Product>, IReadOnlyList<string>)>(this, v => raised.Add(v.Item2))));
+
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        Assert.Equal(["A", "B"], cut.FindAll(".wss-table-filter-item").Select(li => li.TextContent.Trim()));
+        cut.FindAll(".wss-table-filter-item").First(li => li.TextContent.Trim() == "B")
+            .QuerySelector("input")!.Change(true);
+        cut.Find(".wss-table-filter-ok").Click();
+        Assert.Equal(["Widget"], RowNames(cut));
+        raised.Clear();
+
+        // New rows with no "b" in them at all -- what used to prune the declared key.
+        cut.Render(p => p.Add(t => t.DataSource, new List<Product> { Products()[2], Products()[3] }));
+
+        Assert.Empty(raised);
+        Assert.Equal(["b"], Get<IReadOnlyList<string>>(FilterOf<string>(cut, 1)!, "AppliedValues"));
+        AssertNoDataRows(cut); // the declared filter still narrows by "b", which the new page has none of
+        cut.FindAll(".wss-table-filter-trigger")[0].Click();
+        Assert.Equal(["A", "B"], cut.FindAll(".wss-table-filter-item").Select(li => li.TextContent.Trim()));
+    }
+
+    [Fact]
     public void FilterValuesFromData_offers_no_filter_until_the_data_yields_an_option()
     {
         // A funnel that opens an empty panel is worse than no funnel: there is nothing to select, and

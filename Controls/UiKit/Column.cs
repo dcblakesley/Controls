@@ -340,7 +340,7 @@ public class Column<TItem> : ComponentBase, IDisposable
     // Kept separate from the derived kinds because SyncFilterState has to know which route built the
     // state: only an explicit declaration carries the FilterOptions/OnFilter/FilterText inputs its
     // switches refresh from.
-    TableFilterKind? ExplicitFilterKind =>
+    private protected TableFilterKind? ExplicitFilterKind =>
         FilterDropdown is not null ? TableFilterKind.Custom
         : FilterOptions is { Count: > 0 } && OnFilter is not null ? TableFilterKind.Options
         : FilterText is not null ? TableFilterKind.Text
