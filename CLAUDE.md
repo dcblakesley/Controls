@@ -43,7 +43,7 @@ FORMTESTING_E2E_APP=<dir>/FormTesting.dll dotnet test FormTesting/FormTesting.Cl
 ## Layout
 
 - **Controls/** — the library. Form `Edit*` controls at the root; `Controls/Select/` (the `Select<T>` engine + searchable form selects); `Controls/UiKit/` (non-form widgets); `Controls/Helpers/`.
-- **Controls.Demo/** — demo components (`WssBlazorControls.Demo` package), one `DemoXxx.razor` per control. `EditControlsDemo.razor` is the host's shell at `/`: two tabs (`?tab=uikit`, else the form controls) each with a sidebar over `CurrentView`/`UiKitView` (`?view=`). `UiKitGallery.razor` composes the UI-kit demos with `Standalone="false"` (which drops each one's own `<h1>`) and serves `/uikit` on its own.
+- **Controls.Demo/** — the demo components (`WssBlazorControls.Demo` package); `EditControlsDemo.razor` is the host's shell at `/`, with Form Controls / UI Kit tabs and a sidebar each over `CurrentView`/`UiKitView` (`?tab=`/`?view=`). `UiKitGallery.razor` composes the `DemoXxx` UI-kit demos with `Standalone="false"` (which drops each one's own `<h1>`) and serves `/uikit`.
 - **FormTesting/** — Blazor Server host + WASM client + the two test projects.
 
 ## Design constraint: consumers are often micro-frontends (MFEs)
