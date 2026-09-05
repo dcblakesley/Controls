@@ -2638,6 +2638,9 @@
     flex: none;
     width: 24px;
     height: 24px;
+    /* Floor as well as height, like the pager buttons: a consumer `button { max-height: fit-content }`
+       reset would otherwise collapse the funnel to its icon. */
+    min-height: 24px;
     padding: 0;
     margin-inline-start: 4px;
     /* Secondary, not disabled, text: an operable button's icon needs WCAG 1.4.11's 3:1 (3.33:1 on

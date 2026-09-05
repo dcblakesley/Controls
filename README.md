@@ -1487,6 +1487,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Under `ScrollY`, the fixed-positioned filter dropdown stretched to the viewport's right edge — the stylesheet's `right: 0` anchor was never cleared.
 - The filter dropdown was clipped by `.wss-table-wrapper` on a table short enough with no `ScrollY`; it escapes on every open now, not only under `ScrollY`.
 - A runtime `Column.FilterMultiple` true → false flip left the earlier multi-key selection applied (two checked radios in one group); it trims to the first key.
+- The header funnel button had no `min-height` floor, so a consumer `button { max-height: fit-content }` reset collapsed its fixed 24px height to the icon.
 
 See [Table parity features](#table-parity-features-tabletitem) for the filtering details, including the one known rough edge.
 
