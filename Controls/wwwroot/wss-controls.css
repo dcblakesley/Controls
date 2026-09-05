@@ -2730,6 +2730,12 @@
     border-bottom: 1px solid var(--wss-color-split);
 }
 
+/* The 28px the shared input rule reserves at the end is for the Text kind's clear button; the search
+   box has none (and its native cancel button is hidden), so it gets symmetric padding instead. */
+.wss-table-filter-search > .wss-table-filter-input {
+    padding-inline-end: 8px;
+}
+
 /* The list with every option hidden by that query. Padded like an option row
    (.wss-table-filter-option-label) so the panel keeps its rhythm as the query narrows, and secondary
    text because it is a status, not something to pick. */
