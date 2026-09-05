@@ -533,6 +533,25 @@ public class UiKitTableFilterExtrasTests : BunitContext
         Assert.Empty(cut.FindAll(".wss-table-filter-active"));
     }
 
+    [Fact]
+    public void A_deferred_DefaultFilterValues_pulls_the_reader_back_onto_a_page_that_exists()
+    {
+        // The default lands one pass after the column appears, against a page number chosen while the
+        // unfiltered set was still wider -- unclamped, the body shows the empty placeholder over a row
+        // that is right there.
+        RenderFragment columns(bool withFilter) => Columns(
+            NameCol(),
+            withFilter ? Col<int>("Age", x => x.Age, options: [new("25", "25")], onFilter: (x, v) => x.Age.ToString() == v, defaults: ["25"]) : (b => { }));
+        var cut = RenderTable(columns(false), p => p.Add(t => t.PageSize, 2));
+        cut.FindAll(".wss-pagination-item")[^1].Click(); // page 2 of 2
+        Assert.Equal(["Carol", "Dave"], RowNames(cut));
+
+        cut.Render(p => p.Add(t => t.ChildContent, columns(true)));
+
+        Assert.Equal(["Bob"], RowNames(cut));
+        Assert.Empty(cut.FindAll("tbody .wss-table-placeholder"));
+    }
+
     // =====================================================================================
     // Column.FilterResetToDefault
     // =====================================================================================

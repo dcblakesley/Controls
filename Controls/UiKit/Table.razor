@@ -1119,6 +1119,19 @@
         RebuildPageItems();
     }
 
+    // _filtered, not _items: clamp against the currently-visible (post-filter) row count, so a
+    // narrowing that the user did not ask for -- a DataSource swap under an applied filter, or a
+    // column's DefaultFilterValues landing a pass late -- can't strand _page past its own last page
+    // and show the empty placeholder over rows that exist. Every path that resets to page 1 on a real
+    // filter change (RecomputeAfterFilterChange) is upstream of this and unaffected.
+    void ClampPage()
+    {
+        if (!IsPaged) return;
+        var pageCount = Math.Max(1, (int)Math.Ceiling((double)_filtered.Count / _pageSize));
+        if (_page > pageCount) _page = pageCount;
+        if (_page < 1) _page = 1;
+    }
+
     protected override void OnParametersSet()
     {
         // See _pageSize's remarks: resync only when the PARAMETER itself changed, so a size-changer
@@ -1174,16 +1187,7 @@
             ApplySort();
         }
 
-        if (IsPaged)
-        {
-            // _filtered, not _items: clamp against the currently-visible (post-filter) row count, so
-            // an active filter that narrows the data can't strand _page beyond its own last page --
-            // RecomputeAfterFilterChangeAsync already resets to page 1 on every filter change, so
-            // this clamp only matters for a DataSource swap while a filter from before it stays applied.
-            var pageCount = Math.Max(1, (int)Math.Ceiling((double)_filtered.Count / _pageSize));
-            if (_page > pageCount) _page = pageCount;
-            if (_page < 1) _page = 1;
-        }
+        ClampPage();
 
         if (SelectedItems is not null && !ReferenceEquals(SelectedItems, _lastSelectedItems))
         {
@@ -1339,6 +1343,7 @@
                 _pendingFilterDefaults = false;
                 ApplyFilters();
                 ApplySort();
+                ClampPage();
                 RebuildPageItems();
             }
         }
