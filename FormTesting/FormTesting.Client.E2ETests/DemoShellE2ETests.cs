@@ -74,7 +74,7 @@ public class DemoShellE2ETests : IAsyncLifetime
         await UiKitTab.ClickAsync();
 
         await Expect(UiKitTab).ToHaveAttributeAsync("aria-selected", "true");
-        await Expect(_page.GetByRole(AriaRole.Button, new() { Name = "All", Exact = true })).ToBeVisibleAsync();
+        await Expect(_page.GetByRole(AriaRole.Button, new() { Name = "Alert", Exact = true })).ToBeVisibleAsync();
         await Expect(_page.GetByRole(AriaRole.Button, new() { Name = "Table", Exact = true })).ToBeVisibleAsync();
         Assert.Contains("tab=uikit", _page.Url);
         // Switching tabs drops `view`: it names a member of the outgoing tab's enum.
@@ -137,7 +137,7 @@ public class DemoShellE2ETests : IAsyncLifetime
 
         await Expect(UiKitTab).ToHaveAttributeAsync("aria-selected", "true");
         await Expect(UiKitTab).ToBeFocusedAsync();
-        await Expect(_page.GetByRole(AriaRole.Button, new() { Name = "All", Exact = true })).ToBeVisibleAsync();
+        await Expect(_page.GetByRole(AriaRole.Button, new() { Name = "Alert", Exact = true })).ToBeVisibleAsync();
         Assert.Contains("tab=uikit", _page.Url);
     }
 }

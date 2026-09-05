@@ -22,7 +22,7 @@ public partial class EditControlsDemo : IDisposable
 
     string _activeTab = FormsTabKey;
     CurrentView _currentView = CurrentView.AllControls;
-    UiKitView _uiKitView = UiKitView.All;
+    UiKitView _uiKitView = UiKitView.Alert;
 
     readonly DemoModelForEditControls _allControlsModel = new();
 
@@ -47,7 +47,7 @@ public partial class EditControlsDemo : IDisposable
             // No `view` means the default view, so a tab switch (which drops the parameter) can't
             // leave the outgoing tab's selection showing.
             _currentView = CurrentView.AllControls;
-            _uiKitView = UiKitView.All;
+            _uiKitView = UiKitView.Alert;
         }
         else if (_activeTab == UiKitTabKey)
         {
@@ -130,7 +130,6 @@ public enum CurrentView
 
 public enum UiKitView
 {
-    All,
     Alert,
     Skeleton,
     Popover,
