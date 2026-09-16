@@ -1466,6 +1466,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.6
+
+Small, non-breaking release: a design-system heading fix for dialog titles, a Popconfirm width fix, dependency bumps, and a demo-gallery reorganization.
+
+**Changed**
+- **`Modal`/`Drawer` titles now render inside an `<h2>`** (`wss-modal-title`/`wss-drawer-title`), not a `<div>` — the design system's fixed heading level for dialog titles, regardless of where the dialog is mounted in the host page's own outline. Class-based selectors are unaffected; an element-based selector (`div.wss-modal-title`) needs updating. CSS gains `margin: 0` on both classes to offset the browser's default heading margin.
+- **`Popconfirm`'s max-width raised from 280px to 500px** — the panel already shrink-wraps to its content, and 280px was clamping longer titles into unnecessary wraps.
+- Dependency and test-infra bumps: ASP.NET Core Components 10.0.10 → 10.0.12, Test SDK 18.8.1 → 18.10.1, xunit.runner.visualstudio 3.1.5 → 4.0.0, Microsoft.Playwright 1.61.0 → 1.62.0, bUnit 2.8.6 → 2.11.3.
+
+**Demo** (`WssBlazorControls.Demo`)
+- The UI Kit gallery split into per-component demo pages under top-level Form Controls / UI Kit tabs with a UI-kit sidebar, replacing the single long-scroll gallery; each UI-kit demo page gained a "Markup" example block showing the snippet it renders.
+- The toasts demo no longer duplicates a notification into two corners at once (it now moves one container's `Placement` before adding, instead of mounting a second container against the same static service).
+- Removed the UI Kit sidebar's "All" tab.
+
 ### 10.8.5
 
 `Table` column filtering gains more filter kinds, row-placed editors, and a server-side mode; `data-tooltip` restyled to match `LabelTooltip`. Additive for typical usage, with two narrow compatibility notes below for consumers who use `TableColumnFilter`/`PropertyColumn` directly.
