@@ -126,13 +126,13 @@ public class DialogBackgroundA11yE2ETests : IAsyncLifetime
         // The toast containers deliberately paint ABOVE the dialog mask (z-index 5000) and are ARIA
         // live regions, so they are excluded from the inert sweep: inert would silence a message
         // raised while a dialog is open and make a notification's close button unclickable. The
-        // gallery has three containers, one of them nested inside an otherwise-inert demo section --
-        // which is also the regression guard for the "descend past a live branch" path.
+        // notification container is nested inside an otherwise-inert demo section -- which is also
+        // the regression guard for the "descend past a live branch" path.
         await GotoAsync();
         // Guard the "0 inert" assertions below against silently passing on an empty set: the static
         // toast hosts only render on the WebAssembly renderer (see UiKitGallery.StaticToastsSupported).
         await Expect(_page.Locator(".wss-msg-container")).ToHaveCountAsync(1);
-        await Expect(_page.Locator(".wss-notification-container")).ToHaveCountAsync(2);
+        await Expect(_page.Locator(".wss-notification-container")).ToHaveCountAsync(1);
 
         await _page.Locator("button", new() { HasTextString = "Open Modal" }).ClickAsync();
         await Expect(_page.Locator(".wss-modal[role=dialog]")).ToBeVisibleAsync();

@@ -25,6 +25,11 @@
                     @onclick="@(() => { _notificationPlacement = NotificationPlacement.BottomLeft; WasmNotificationService.Warning("Bottom-left", "Anchored via Placement.", 4); })">
                 Show it bottom-left
             </button>
+            @* Nested here (not alongside WasmMessageContainer below) so this container sits inside an
+               otherwise-inert demo section while a dialog is open elsewhere -- the e2e regression guard
+               for the inert sweep descending past a live branch. Position:fixed, so nesting doesn't
+               change where it renders. *@
+            <WasmNotificationContainer Placement="_notificationPlacement" />
         }
         else
         {
@@ -47,13 +52,13 @@
 
 </div>
 
-@* Static-state toast hosts. WssBlazorControls.Demo is a published package, so <UiKitGallery /> can be
-   dropped onto a Blazor Server page -- where these two throw by design (see WasmToastHost). Gated so
-   the rest of the gallery still renders there instead of the whole page dying with them. *@
+@* Static-state message host (its notification counterpart is nested in the section above, see the
+   comment there). WssBlazorControls.Demo is a published package, so <UiKitGallery /> can be dropped
+   onto a Blazor Server page -- where both throw by design (see WasmToastHost). Gated so the rest of
+   the gallery still renders there instead of the whole page dying with them. *@
 @if (StaticToastsSupported)
 {
     <WasmMessageContainer />
-    <WasmNotificationContainer Placement="_notificationPlacement" />
 }
 
 @code {
