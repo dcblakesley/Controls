@@ -27,6 +27,8 @@ CI (`.github/workflows/ci.yml`) runs the Release build, bUnit suite, pack, and t
 
 Baseline PNGs in `FormTesting/FormTesting.Client.E2ETests/Snapshots/` are committed. After an intentional UI change, regenerate with `UPDATE_SNAPSHOTS=1 dotnet test ...E2ETests.csproj` and commit the PNGs. On failure, gitignored `*-actual.png` / `*-diff.png` land next to the baseline. First-time setup: `pwsh FormTesting/FormTesting.Client.E2ETests/bin/Debug/net10.0/playwright.ps1 install chromium` (the MSBuild target attempts this automatically after first build).
 
+Pixel diffing uses `SixLabors.ImageSharp`, pinned to `3.1.12`. **Do not update past 3.x** — 4.0+ requires a paid Six Labors commercial license and fails/warns at build without one (`sixlabors.com/pricing`).
+
 ### Trimming / AOT
 
 `Controls.csproj` sets `IsAotCompatible`, so the trim/AOT/single-file analyzers run on every build and any new IL2xxx/IL3xxx is a build break. When adding code: no `Enum.GetValues(Type)` (use `EnumHelpers.GetValues<T>`), no `MakeGenericType`/`MakeGenericMethod`, and by-name reflection needs `[DynamicallyAccessedMembers]` or a named method with a justified `[UnconditionalSuppressMessage]` (pattern: `FieldValidationDisplay.GetPropertyTypeName` — the justification must say why the target is rooted and what the graceful fallback is). Generic parameters flowing into `BindConverter.TryConvertTo` or framework `Input*` components need `[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]`. Controls.Demo is intentionally *not* trimmable (its demo models hit a consumer-side non-issue IL2026).
