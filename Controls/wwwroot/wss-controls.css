@@ -1958,6 +1958,7 @@
 }
 
 .wss-modal-title {
+    margin: 0;
     font-size: 16px;
     font-weight: 600;
     color: var(--wss-color-text);
@@ -2053,6 +2054,7 @@
 }
 
 .wss-drawer-title {
+    margin: 0;
     font-size: 16px;
     font-weight: 600;
     color: var(--wss-color-text);

@@ -22,7 +22,7 @@
             @if (HasTitle || Closable)
             {
                 <div class="wss-modal-header">
-                    <div class="wss-modal-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                    <h2 class="wss-modal-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</h2>
                     @if (Closable)
                     {
                         <button type="button" class="wss-modal-close" aria-label="Close" @onclick="CancelAsync">

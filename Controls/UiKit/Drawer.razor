@@ -18,7 +18,7 @@
             @if (HasTitle || Closable || Extra is not null)
             {
                 <div class="wss-drawer-header">
-                    <div class="wss-drawer-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                    <h2 class="wss-drawer-title" id="@_titleId">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</h2>
                     @if (Extra is not null)
                     {
                         <div class="wss-drawer-header-actions">
