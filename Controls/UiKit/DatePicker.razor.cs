@@ -866,10 +866,11 @@ public partial class DatePicker : PickerBase
     bool IsFocusStop(DateTime day) =>
         day.Month == _viewMonth.Month && day.Year == _viewMonth.Year && day == EffectiveFocusDay;
 
-    // Maps a keydown's Key to the day it should move focus to, or null when the key isn't a
-    // navigation key -- see PickerMath.NextFocusDay for the arrow/Home/End/PageUp/PageDown map and
-    // its edge-of-range try/catch.
-    DateTime? NextFocusDay(DateTime current, string key) => PickerMath.NextFocusDay(current, key, EffectiveFirstDayOfWeek);
+    // Maps a keydown to the day it should move focus to, or null when the key isn't a navigation
+    // key -- see PickerMath.NextFocusDay for the arrow/Home/End/PageUp/PageDown (plus Ctrl/Shift
+    // variants) map and its edge-of-range try/catch.
+    DateTime? NextFocusDay(DateTime current, KeyboardEventArgs e) =>
+        PickerMath.NextFocusDay(current, e.Key, EffectiveFirstDayOfWeek, e.CtrlKey, e.ShiftKey);
 
     // Grid keydown: moves the roving-tabindex day, retargeting the displayed month when navigation
     // crosses out of it (clamped exactly like the month/year selects). A day that lands disabled
@@ -886,7 +887,7 @@ public partial class DatePicker : PickerBase
     // scroll suppression.
     void OnGridKeyDown(KeyboardEventArgs e)
     {
-        var next = NextFocusDay(EffectiveFocusDay, e.Key);
+        var next = NextFocusDay(EffectiveFocusDay, e);
         if (next is null) return;
 
         _focusDay = next.Value;

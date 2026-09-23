@@ -367,6 +367,38 @@ public class DatePickerTests : BunitContext
     }
 
     [Fact]
+    public void Ctrl_home_and_end_move_to_the_start_and_end_of_the_month()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "Home", CtrlKey = true });
+        Assert.Equal("0", Day(cut, 1).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "End", CtrlKey = true });
+        Assert.Equal("0", Day(cut, 28).GetAttribute("tabindex")); // Feb 2026 isn't a leap year
+    }
+
+    [Fact]
+    public void Shift_pageup_and_pagedown_step_a_year_and_keep_the_same_month_and_day()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Value, Feb14));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown", ShiftKey = true });
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("2", selects[0].QuerySelector("option[selected]")!.GetAttribute("value")); // still Feb
+        Assert.Equal("2027", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageUp", ShiftKey = true });
+        selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("2026", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", Day(cut, 14).GetAttribute("tabindex"));
+    }
+
+    [Fact]
     public void Default_focus_day_skips_a_disabled_candidate_and_lands_on_the_first_enabled_day()
     {
         // Aug 14 (the bound value) is disabled by Min = Aug 20 — the naive default (bound value,

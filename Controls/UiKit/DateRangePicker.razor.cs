@@ -1155,10 +1155,11 @@ public partial class DateRangePicker : PickerBase
     bool IsFocusStop(DateTime day, DateTime month) =>
         day.Month == month.Month && day.Year == month.Year && day == EffectiveFocusDay;
 
-    // Maps a keydown's Key to the day it should move focus to, or null when the key isn't a
-    // navigation key -- see PickerMath.NextFocusDay for the arrow/Home/End/PageUp/PageDown map and
-    // its edge-of-range try/catch.
-    DateTime? NextFocusDay(DateTime current, string key) => PickerMath.NextFocusDay(current, key, EffectiveFirstDayOfWeek);
+    // Maps a keydown to the day it should move focus to, or null when the key isn't a navigation
+    // key -- see PickerMath.NextFocusDay for the arrow/Home/End/PageUp/PageDown (plus Ctrl/Shift
+    // variants) map and its edge-of-range try/catch.
+    DateTime? NextFocusDay(DateTime current, KeyboardEventArgs e) =>
+        PickerMath.NextFocusDay(current, e.Key, EffectiveFirstDayOfWeek, e.CtrlKey, e.ShiftKey);
 
     // Grid keydown (wired to both panels' grids): moves the roving-tabindex day, retargeting
     // _viewMonth (the left panel — the right is always _viewMonth + 1) only when navigation lands
@@ -1177,18 +1178,24 @@ public partial class DateRangePicker : PickerBase
     // without it this state still updates, just without the DOM focus follow or scroll suppression.
     void OnGridKeyDown(KeyboardEventArgs e)
     {
-        var next = NextFocusDay(EffectiveFocusDay, e.Key);
+        var current = EffectiveFocusDay;
+        var next = NextFocusDay(current, e);
         if (next is null) return;
 
         _focusDay = next.Value;
         if (!IsVisible(next.Value))
         {
-            // A crossing that lands past the right panel should anchor the RIGHT panel on the new
-            // month (offset -1, the same trick CommitEndTextAsync uses), so a one-day move past the
-            // end of the right panel is a one-month view shift — not two. A crossing that lands
-            // before the left panel anchors the left panel directly, as before (offset 0).
-            var forward = FirstOfMonth(next.Value) > _viewMonth.AddMonths(1);
-            _viewMonth = forward
+            // Anchor the new month on whichever panel `current` (the pre-move focus day) already
+            // occupied -- the right panel (offset -1) if it was showing there, the left panel
+            // (offset 0) otherwise. That keeps a crossing a same-panel slide regardless of how far
+            // the move travels: a one-month PageDown/ArrowRight crossing the right edge lands back
+            // in the right panel (a one-month view shift, not two), and a whole-year Shift+PageDown/
+            // PageUp keeps the focus day in the same panel it started in instead of always preferring
+            // the "forward" panel -- which, for a same-panel year jump, used to shift the view by one
+            // extra month for no reason (Ctrl+Home/Ctrl+End never reach here: they stay within the
+            // currently visible month).
+            var wasRightPanel = FirstOfMonth(current) == _viewMonth.AddMonths(1);
+            _viewMonth = wasRightPanel
                 ? ClampView(FirstOfMonth(next.Value), -1)
                 : ClampView(FirstOfMonth(next.Value));
         }
@@ -1259,7 +1266,7 @@ public partial class DateRangePicker : PickerBase
 
     void OnSessionGridKeyDown(KeyboardEventArgs e)
     {
-        var next = NextFocusDay(SessionEffectiveFocusDay, e.Key);
+        var next = NextFocusDay(SessionEffectiveFocusDay, e);
         if (next is null) return;
 
         _focusDay = next.Value;

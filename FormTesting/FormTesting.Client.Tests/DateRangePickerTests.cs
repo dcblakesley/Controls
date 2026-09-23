@@ -634,6 +634,38 @@ public class DateRangePickerTests : BunitContext
     }
 
     [Fact]
+    public void Ctrl_home_and_end_move_to_the_start_and_end_of_the_month()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "Home", CtrlKey = true });
+        Assert.Equal("0", Day(cut, 0, 1).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "End", CtrlKey = true });
+        Assert.Equal("0", Day(cut, 0, 31).GetAttribute("tabindex"));
+    }
+
+    [Fact]
+    public void Shift_pageup_and_pagedown_step_a_year_and_keep_the_same_month_and_day()
+    {
+        var cut = RenderPicker(p => p.Add(c => c.Start, Jan15));
+        Open(cut);
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageDown", ShiftKey = true });
+
+        var selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("1", selects[0].QuerySelector("option[selected]")!.GetAttribute("value")); // left = Jan
+        Assert.Equal("2026", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", Day(cut, 0, 15).GetAttribute("tabindex"));
+
+        cut.Find(".wss-picker-grid").KeyDown(new KeyboardEventArgs { Key = "PageUp", ShiftKey = true });
+        selects = cut.FindAll(".wss-picker-month-header select");
+        Assert.Equal("2025", selects[1].QuerySelector("option[selected]")!.GetAttribute("value"));
+        Assert.Equal("0", Day(cut, 0, 15).GetAttribute("tabindex"));
+    }
+
+    [Fact]
     public void Arrow_right_crossing_out_of_the_right_panel_shifts_the_view_by_one_month_not_two()
     {
         // Aug 31 (already the right panel, having paged there from Jul 31) + ArrowRight crosses into

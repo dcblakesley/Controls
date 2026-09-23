@@ -15,6 +15,8 @@ internal static class PickerMath
 {
     public static DateTime FirstOfMonth(DateTime value) => new(value.Year, value.Month, 1);
 
+    public static DateTime LastOfMonth(DateTime value) => new(value.Year, value.Month, DateTime.DaysInMonth(value.Year, value.Month));
+
     public static DateTime FirstOfYear(DateTime value) => new(value.Year, 1, 1);
 
     // The quarter (1-4) `value`'s month falls in.
@@ -264,10 +266,14 @@ internal static class PickerMath
 
     // Maps a keydown's Key to the day it should move focus to, or null when the key isn't a
     // navigation key. Left/Right below are the LOGICAL directions -- LogicalKey has already swapped
-    // the physical pair under an RTL culture. AddDays/AddMonths throws at the DateTime.MinValue/
-    // MaxValue edge — the caller treats that as the key being a no-op there rather than letting the
-    // exception escape.
-    public static DateTime? NextFocusDay(DateTime current, string key, DayOfWeek firstDayOfWeek)
+    // the physical pair under an RTL culture. AddDays/AddMonths/AddYears throws at the
+    // DateTime.MinValue/MaxValue edge — the caller treats that as the key being a no-op there rather
+    // than letting the exception escape. Ctrl+Home/Ctrl+End (first/last day of the month) and
+    // Shift+PageUp/Shift+PageDown (a year, keeping month+day) are the APG datepicker-dialog pattern's
+    // modified variants of the plain keys below -- the `when` guards must stay ahead of their
+    // unmodified counterparts so the modified move wins.
+    public static DateTime? NextFocusDay(DateTime current, string key, DayOfWeek firstDayOfWeek,
+        bool ctrlKey = false, bool shiftKey = false)
     {
         try
         {
@@ -277,11 +283,15 @@ internal static class PickerMath
                 "ArrowRight" => current.AddDays(1),
                 "ArrowUp" => current.AddDays(-7),
                 "ArrowDown" => current.AddDays(7),
+                "Home" when ctrlKey => FirstOfMonth(current),
+                "End" when ctrlKey => LastOfMonth(current),
                 "Home" => WeekStart(current, firstDayOfWeek),
                 // WeekEnd, not a bare AddDays(6): one named week-end concept, clamped the same way
                 // WeekStart clamps its own edge (unreachable from a grid, whose month is clamped well
                 // inside the range, but the two halves of Home/End shouldn't disagree about it).
                 "End" => WeekEnd(WeekStart(current, firstDayOfWeek)),
+                "PageUp" when shiftKey => current.AddYears(-1),
+                "PageDown" when shiftKey => current.AddYears(1),
                 "PageUp" => current.AddMonths(-1),
                 "PageDown" => current.AddMonths(1),
                 _ => (DateTime?)null,
