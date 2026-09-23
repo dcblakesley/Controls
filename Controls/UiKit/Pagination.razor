@@ -177,7 +177,7 @@
     // The prev/next chevrons come straight from PickerIcons (identical wrapper), but the
     // size-changer's caret needs its own class instead of the picker's, so it wraps the shared path.
     static readonly MarkupString SizeArrow = new(
-        $"<svg class=\"wss-pagination-size-arrow\" viewBox=\"64 64 896 896\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"{PickerIcons.DownPath}\"/></svg>");
+        $"<svg class=\"wss-pagination-size-arrow\" viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"{PickerIcons.DownPath}\"/></svg>");
 
     int PageCount => Math.Max(1, (int)Math.Ceiling((double)Total / Math.Max(1, PageSize)));
 
