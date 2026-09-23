@@ -1205,6 +1205,8 @@
 .wss-popover-inner { }
 
 .wss-popover-title {
+    display: flex;
+    align-items: center;
     padding: 5px 16px 4px;
     min-height: var(--wss-control-height);
     border-bottom: 1px solid var(--wss-color-split);
