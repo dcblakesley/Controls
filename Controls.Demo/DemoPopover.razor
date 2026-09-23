@@ -55,9 +55,16 @@
 
     <section class="demo-section">
         <h3>Popover — footer</h3>
-        <Popover Title="Custom Date">
+        <p style="margin:0; color:#666;">
+            <code>TitleContent</code> mixes plain text with an element (a count badge) — the title
+            stays a single flex item so the space between them survives (a flex CONTAINER splits
+            mixed text/element children into separate anonymous flex items, trimming the whitespace
+            between them).
+        </p>
+        <Popover>
+            <TitleContent>Custom Date <span data-test-id="footer-title-badge">(30 days)</span></TitleContent>
             <ChildContent>
-                <button class="wss-dialog-btn">Custom Date</button>
+                <button class="wss-dialog-btn" data-test-id="footer-trigger">Custom Date</button>
             </ChildContent>
             <Content>
                 <div>Date range picker goes here.</div>
@@ -113,7 +120,8 @@
     // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.
     bool _triggerBusy;
 
-    readonly string _popoverFooterExample = @"<Popover Title=""Custom Date"">
+    readonly string _popoverFooterExample = @"<Popover>
+    <TitleContent>Custom Date <span>(30 days)</span></TitleContent>
     <ChildContent>
         <button>Custom Date</button>
     </ChildContent>

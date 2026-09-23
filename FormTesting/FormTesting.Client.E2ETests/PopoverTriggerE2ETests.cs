@@ -83,6 +83,21 @@ public class PopoverTriggerE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TitleContent_preserves_whitespace_between_text_and_an_element()
+    {
+        await GotoAsync();
+
+        // .wss-popover-title is a flex container (for vertical centering); without a single wrapping
+        // flex item, "Custom Date <span>...</span>" splits into two anonymous flex items and the
+        // space between them is trimmed by the browser's layout, not just dropped from the DOM.
+        await _page.Locator("[data-test-id=footer-trigger]").ClickAsync();
+        var title = _page.Locator(".wss-popover-title");
+        await Expect(title).ToBeVisibleAsync();
+        var text = await title.InnerTextAsync();
+        Assert.Contains("Custom Date (30 days)", text);
+    }
+
+    [Fact]
     public async Task Disabled_popconfirm_marks_its_interactive_child_aria_disabled()
     {
         await GotoAsync();

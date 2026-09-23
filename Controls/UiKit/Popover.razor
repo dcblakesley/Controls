@@ -29,7 +29,9 @@
             <div class="wss-popover-inner">
                 @if (HasTitle)
                 {
-                    <div class="wss-popover-title" id="@($"{_id}-title")">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
+                    <div class="wss-popover-title" id="@($"{_id}-title")">
+                        <span class="wss-popover-title-text">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</span>
+                    </div>
                 }
                 <div class="wss-popover-content" id="@($"{_id}-content")">@Content</div>
                 @if (Footer != null)

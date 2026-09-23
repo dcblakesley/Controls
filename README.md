@@ -420,6 +420,7 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
 - **`Popover`** — Click-triggered popover (4 placements); controlled `Visible`/`VisibleChanged` (`@bind-Visible`) mirrors `Select`'s controlled `Open` design.
   - `AriaLabel` (default **"Popover"**) names the `role="dialog"` panel whenever no `Title`/`TitleContent` is set — a dialog must never be nameless (axe `aria-dialog-name`); ignored once a title is present.
   - While open, the trigger's `aria-controls` mirrors the panel's own id.
+  - `Footer` (`RenderFragment?`) is an optional slot rendered below `Content` behind a divider (e.g. Reset/Apply buttons on a filter popover) — omit it and nothing renders. Unlike `Modal`'s `Footer` there's no default content to override, since `Popover` has no built-in OK/Cancel concept; supply buttons with `wss-dialog-btn`/`wss-dialog-btn-primary` to match `Modal`/`Drawer`/`Popconfirm`.
 - **`ColorPicker`** — The swatch-trigger color popup behind `EditColor`; usable standalone, binding a plain `string?` via `@bind-Value` (see [Color picking](#color-picking-editcolor--colorpicker)).
   - A saturation/brightness area, a hue slider, an optional alpha slider (`ShowAlpha`), a HEX/RGB input row, and an optional `Presets` swatch row; `ShowText`, `AllowClear`, `Disabled`, and `Placement` round out the surface.
   - Every track is a `role="slider"` the arrow keys step (Shift or PageUp/PageDown for the larger step); the popup is a `role="dialog"` whose id the trigger mirrors as `aria-controls` while open.
@@ -1465,6 +1466,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.8.7
+
+Small, non-breaking release: an optional `Popover` footer slot, a thinner shared chevron glyph, and two `Popover` title layout fixes.
+
+**New**
+- **`Popover.Footer`** (`RenderFragment?`) — an optional slot rendered below `Content` behind a divider (e.g. Reset/Apply buttons on a filter popover). No default content, unlike `Modal`'s footer, since `Popover` has no built-in OK/Cancel concept.
+
+**Changed**
+- **Shared down-caret replaced with a thinner chevron** (`PickerIcons.DownPath`) across `Select`'s arrow, `Pagination`'s size-changer, and the date/time picker carets — AntD's bold `DownOutlined` read as a solid filled triangle at 12–16px.
+
+**Fixed**
+- `Popover`'s title row top-aligned its text, leaving dead space below whenever `min-height` exceeded the line box — now vertically centered.
+- `TitleContent` mixing text and an element (e.g. `Custom Date <span>(30 days)</span>`) lost the space between them — the title row is a flex container, which splits mixed text/element children into separate anonymous flex items and trims the whitespace between them; both now render inside a single wrapping flex item.
 
 ### 10.8.6
 

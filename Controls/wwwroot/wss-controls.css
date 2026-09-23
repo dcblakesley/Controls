@@ -1214,6 +1214,15 @@
     font-weight: 600;
 }
 
+/* A single flex item wrapping the title content -- keeps TitleContent's own inline/block layout
+   (and inline text's whitespace) intact, since a flex CONTAINER wraps mixed text+element children
+   in separate anonymous flex items each, trimming the whitespace between them (e.g. "Filter <span>
+   (3)</span>" loses its space). min-width: 0 lets it shrink instead of overflowing the panel. */
+.wss-popover-title-text {
+    flex: 1;
+    min-width: 0;
+}
+
 /* Popconfirm title sits beside the confirm icon — match the popover title weight. */
 .wss-popconfirm-title {
     color: var(--wss-color-text);
@@ -1237,8 +1246,8 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
-    padding: 8px 16px;
+    gap: 8px;
+    padding: 10px 16px;
     border-top: 1px solid var(--wss-color-split);
 }
 
