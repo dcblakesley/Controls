@@ -32,6 +32,10 @@
                     <div class="wss-popover-title" id="@($"{_id}-title")">@(TitleContent ?? (RenderFragment)(b => b.AddContent(0, Title)))</div>
                 }
                 <div class="wss-popover-content" id="@($"{_id}-content")">@Content</div>
+                @if (Footer != null)
+                {
+                    <div class="wss-popover-footer">@Footer</div>
+                }
             </div>
             <span class="wss-popover-arrow"></span>
         </div>
@@ -45,6 +49,14 @@
     [Parameter] public RenderFragment? TitleContent { get; set; }
     /// <summary>The popover body.</summary>
     [Parameter] public RenderFragment? Content { get; set; }
+    /// <summary>
+    /// Optional footer, rendered below <see cref="Content"/> behind a divider (e.g. Reset/Apply
+    /// buttons for a filter popover). Unlike <see cref="Modal"/>'s <c>Footer</c>, there is no default
+    /// content to override — Popover has no built-in OK/Cancel concept, so this is a plain slot: omit
+    /// it and nothing renders. Supply buttons with the kit's own <c>wss-dialog-btn</c>/
+    /// <c>wss-dialog-btn-primary</c> classes to match Modal/Drawer/Popconfirm's action-button styling.
+    /// </summary>
+    [Parameter] public RenderFragment? Footer { get; set; }
     /// <summary>The trigger element.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
     /// <summary>Preferred side of the trigger for the panel; flips/shifts to stay within the viewport. Defaults to <see cref="PopupPlacement.Top"/>.</summary>

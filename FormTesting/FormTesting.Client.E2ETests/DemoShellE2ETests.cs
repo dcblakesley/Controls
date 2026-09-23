@@ -11,7 +11,7 @@ public class DemoShellE2ETests : IAsyncLifetime
 {
     // Every section the /uikit composition renders. Pinned so splitting or dropping one of the
     // per-component demos it composes can't silently shrink the standalone gallery.
-    const int UiKitSectionCount = 35;
+    const int UiKitSectionCount = 36;
 
     readonly AppFixture _app;
     readonly BrowserFixture _browser;

@@ -1233,6 +1233,15 @@
     overflow-wrap: anywhere;
 }
 
+.wss-popover-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--wss-color-split);
+}
+
 .wss-popover-arrow, .wss-popconfirm-arrow {
     position: absolute;
     width: 8px;

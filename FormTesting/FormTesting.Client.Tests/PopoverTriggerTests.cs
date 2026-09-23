@@ -78,6 +78,27 @@ public class PopoverTriggerTests : BunitContext
     }
 
     [Fact]
+    public void Popover_renders_no_footer_by_default_and_renders_one_when_supplied()
+    {
+        JSInterop.Mode = Bunit.JSRuntimeMode.Loose; // tolerate the overlay module import
+
+        var cut = Render<Popover>(p => p
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .AddChildContent("<button type=\"button\">Open</button>"));
+
+        cut.Find(".wss-popover-trigger button").Click();
+        Assert.Empty(cut.FindAll(".wss-popover-footer"));
+
+        cut.Render(p => p
+            .Add(pv => pv.Content, (RenderFragment)(b => b.AddContent(0, "details")))
+            .Add(pv => pv.Footer, (RenderFragment)(b => b.AddMarkupContent(0, "<button>Apply</button>")))
+            .AddChildContent("<button type=\"button\">Open</button>"));
+
+        var footer = cut.Find(".wss-popover-footer");
+        Assert.Contains("Apply", footer.TextContent);
+    }
+
+    [Fact]
     public void Popconfirm_disposes_cleanly_after_render()
     {
         JSInterop.Mode = Bunit.JSRuntimeMode.Loose;

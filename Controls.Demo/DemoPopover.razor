@@ -53,6 +53,25 @@
         <pre class="code-block"><code>@_popoverSwapExample</code></pre>
     </section>
 
+    <section class="demo-section">
+        <h3>Popover — footer</h3>
+        <Popover Title="Custom Date">
+            <ChildContent>
+                <button class="wss-dialog-btn">Custom Date</button>
+            </ChildContent>
+            <Content>
+                <div>Date range picker goes here.</div>
+            </Content>
+            <Footer>
+                <button class="wss-dialog-btn">Reset</button>
+                <button class="wss-dialog-btn wss-dialog-btn-primary">Apply</button>
+            </Footer>
+        </Popover>
+
+        <h3>Markup</h3>
+        <pre class="code-block"><code>@_popoverFooterExample</code></pre>
+    </section>
+
 </div>
 
 @code {
@@ -93,4 +112,17 @@
     // Swapped-trigger demo: flips the Popover's ChildContent between a non-focusable <span> and a
     // <button>, exercising syncTrigger's re-resolution / reversible-promotion / focusin repair.
     bool _triggerBusy;
+
+    readonly string _popoverFooterExample = @"<Popover Title=""Custom Date"">
+    <ChildContent>
+        <button>Custom Date</button>
+    </ChildContent>
+    <Content>
+        <div>Date range picker goes here.</div>
+    </Content>
+    <Footer>
+        <button class=""wss-dialog-btn"">Reset</button>
+        <button class=""wss-dialog-btn wss-dialog-btn-primary"">Apply</button>
+    </Footer>
+</Popover>";
 }
