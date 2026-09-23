@@ -1467,6 +1467,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.8
+
+Small, non-breaking release: completes the APG datepicker-dialog keyboard set on `DatePicker`/`DateRangePicker`'s day grid, plus a `DateRangePicker` view-anchoring fix.
+
+**New**
+- **`Ctrl+Home`/`Ctrl+End`** jump the day grid's roving focus to the first/last day of the month; **`Shift+PageUp`/`Shift+PageDown`** step a year, keeping the same month/day — the two APG datepicker-dialog keys the grid was missing alongside its existing Arrow/Home/End/PageUp/PageDown support.
+
+**Fixed**
+- `DateRangePicker`'s dual-panel view anchor picked which panel absorbed an out-of-view focus day by travel direction, so a same-panel jump that lands more than a month away (only reachable now, via `Shift+PageUp`/`Shift+PageDown`) shifted the view by an extra month. It now anchors on whichever panel the day already occupied.
+
 ### 10.8.7
 
 Small, non-breaking release: an optional `Popover` footer slot, a thinner shared chevron glyph, and two `Popover` title layout fixes.
