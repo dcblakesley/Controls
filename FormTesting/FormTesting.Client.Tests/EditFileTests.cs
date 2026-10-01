@@ -185,7 +185,7 @@ public class EditFileTests : BunitContext
     [Fact]
     public void Input_and_drop_zone_carry_no_aria_label_so_the_FormLabel_for_wiring_supplies_the_name()
     {
-        // Finding 62: aria-label wins by accname precedence over an associated <label for>, so a
+        // aria-label wins by accname precedence over an associated <label for>, so a
         // literal "Choose files"/"File upload area" aria-label meant the field's own label text (and
         // required/description state FormLabel wires up) was never actually announced. The <label for>
         // is the whole reason FormLabel's IsForLabelable wiring exists -- let it supply the name.
@@ -277,7 +277,7 @@ public class EditFileTests : BunitContext
     [Fact]
     public void Files_within_the_per_file_cap_but_over_the_total_cap_stop_buffering_at_the_cap()
     {
-        // M12: each file passes MaxFileSizeBytes (4 KB) individually, but the aggregate cap (2 KB) admits
+        // each file passes MaxFileSizeBytes (4 KB) individually, but the aggregate cap (2 KB) admits
         // only the first two 1 KB files; the third would push the running total to 3 KB and is skipped.
         var model = new FileModel { Files = [] };
         List<IBrowserFile>? changed = null;
@@ -427,7 +427,7 @@ public class EditFileTests : BunitContext
     [Fact]
     public void Drop_zone_has_no_managed_dragover_handler()
     {
-        // Finding 64: dragover fires continuously (~60/s) while a file is dragged over the zone; on
+        // dragover fires continuously (~60/s) while a file is dragged over the zone; on
         // Blazor Server each one used to ship a serialized DataTransfer payload over SignalR for a
         // no-op re-render. dragenter/dragleave alone drive the hover highlight now -- dragover keeps
         // only the (handler-less) :preventDefault directive HTML5 drag-and-drop needs for the drop

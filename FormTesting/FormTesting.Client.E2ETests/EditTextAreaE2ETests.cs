@@ -137,7 +137,7 @@ public class EditTextAreaE2ETests(AppFixture app, BrowserFixture browser) : Demo
     [Fact]
     public async Task AutoSize_re_measures_when_the_value_changes_programmatically_not_by_typing()
     {
-        // Finding 60: DemoEditTextArea's "AutoSize -- programmatic value change" section (AutoSize
+        // DemoEditTextArea's "AutoSize -- programmatic value change" section (AutoSize
         // already on). "Load long text" sets the bound model property directly (a button click, not
         // typing into the textarea) -- before the fix, measurement only ran on first render and on
         // the textarea's own bound DOM event, so a parent-driven value change left the box clipped at

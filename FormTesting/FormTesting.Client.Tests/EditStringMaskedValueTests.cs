@@ -54,7 +54,7 @@ public class EditStringMaskedValueTests : BunitContext
         Assert.Equal("****-fgh", span.TextContent);
 
         var button = cut.Find(".edit-masked-value button");
-        // TXT-4: the toggle's name folds in the field's own label ("Full Name" -- PersonModel.Name's
+        // the toggle's name folds in the field's own label ("Full Name" -- PersonModel.Name's
         // [DisplayName]) so two masked fields on one form don't render two identically-named toggles.
         Assert.Equal("Show Full Name value", button.GetAttribute("aria-label"));
         Assert.Equal("false", button.GetAttribute("aria-pressed"));
@@ -259,7 +259,7 @@ public class EditStringMaskedValueTests : BunitContext
 
         var readOnly = cut.Find("div.edit-readonly-value");
         Assert.Equal("Name", readOnly.GetAttribute("id"));
-        // ReadOnlyValue's own empty case (LST-2): real, visible fallback text -- not aria-hidden --
+        // ReadOnlyValue's own empty case: real, visible fallback text -- not aria-hidden --
         // holding the line's height open while still reaching assistive technology.
         var placeholder = readOnly.QuerySelector("span");
         Assert.False(placeholder!.HasAttribute("aria-hidden"));

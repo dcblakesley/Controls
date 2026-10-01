@@ -10,13 +10,13 @@ namespace FormTesting.Client.Tests;
 /// The shared label/naming pipeline — <see cref="AttributesHelper.GetLabelText"/>, the camel-case
 /// splitter behind it and <see cref="EnumHelpers.GetName"/>, <c>FormLabel</c> and <c>LabelTooltip</c> —
 /// which feeds every Edit* control's visible label, its <c>aria-describedby</c> targets and the
-/// validation messages that name the field. Covers the 2026-08-13 audit's INF-1 (the auto-generated
-/// label shredded every acronym), INF-5 (a hidden label deleted the tooltip text outright) and INF-6
-/// (every tooltip trigger was accessibly named "More information"), plus LST-1's grouped-required cue.
+/// validation messages that name the field. Covers the auto-generated
+/// label shredding every acronym, a hidden label deleting the tooltip text outright, every tooltip
+/// trigger being accessibly named "More information", and the grouped-required cue.
 /// </summary>
 public class A11yLabelPipelineTests : BunitContext
 {
-    // ---------- INF-1: the auto-generated label must not shred acronyms ----------
+    // ---------- the auto-generated label must not shred acronyms ----------
 
     // Property names only — no [DisplayName]/[Display] — so every one of these takes tier 1 of the
     // labelling contract: auto-generate from the property name.
@@ -126,7 +126,7 @@ public class A11yLabelPipelineTests : BunitContext
         Assert.Equal(AcronymStatus.HTTPStatus.GetName(), LabelFor(() => _acronyms.HTTPStatus));
     }
 
-    // ---------- INF-6: the tooltip trigger's accessible name ----------
+    // ---------- the tooltip trigger's accessible name ----------
 
     static void AddEditString(RenderTreeBuilder b, PersonModel model, Expression<Func<string>> field,
         params (string Name, object Value)[] extra)
@@ -218,7 +218,7 @@ public class A11yLabelPipelineTests : BunitContext
         Assert.Equal("More information", unnamed.Find("button.edit-tooltip-container").GetAttribute("aria-label"));
     }
 
-    // ---------- INF-5: a hidden label must not delete the tooltip text ----------
+    // ---------- a hidden label must not delete the tooltip text ----------
 
     [Fact]
     public void Hidden_label_folds_a_tooltip_only_field_into_the_sr_only_description()
@@ -275,7 +275,7 @@ public class A11yLabelPipelineTests : BunitContext
         Assert.Contains("tooltip-Name", cut.Find("input.edit-string-input").GetAttribute("aria-describedby")!);
     }
 
-    // ---------- LST-1: a required group needs a cue assistive tech can actually reach ----------
+    // ---------- a required group needs a cue assistive tech can actually reach ----------
 
     // FormLabel inside a real <fieldset>, the shape the checked-list controls render — the legend has
     // to be parsed in its proper parent for the assertions below to mean anything.
@@ -449,7 +449,7 @@ public class A11yLabelPipelineTests : BunitContext
     [Fact]
     public void The_grouped_required_cue_lives_INSIDE_the_naming_anchor()
     {
-        // The one that would silently un-fix LST-1. A role="group" fieldset cannot carry
+        // The one that would silently un-fix the grouped-required cue. A role="group" fieldset cannot carry
         // aria-required (ARIA 1.2), so the sr-only "(required)" being part of the accessible NAME is
         // the entire mechanism. If a refactor ever moves it out of lbltext- — or retargets
         // aria-labelledby past it — the markup still looks correct in the legend while assistive tech

@@ -28,7 +28,7 @@ public class SelectHighlightAndFocusTests : BunitContext
 
     static KeyboardEventArgs Key(string key) => new() { Key = key };
 
-    // ----- finding 3: RebuildFiltered lands the highlight on a selectable row --------------------
+    // ----- RebuildFiltered lands the highlight on a selectable row --------------------
 
     [Fact]
     public void Reassigning_Options_while_open_moves_the_highlight_off_a_group_header()
@@ -152,7 +152,7 @@ public class SelectHighlightAndFocusTests : BunitContext
         Assert.Contains("Ax", captured[^1]);
     }
 
-    // ----- finding 19: DefaultOpen runs the same initial-highlight pass as a user-driven open -----
+    // ----- DefaultOpen runs the same initial-highlight pass as a user-driven open -----
 
     [Fact]
     public void DefaultOpen_highlights_the_bound_value_not_the_first_option()
@@ -249,7 +249,7 @@ public class SelectHighlightAndFocusTests : BunitContext
         Assert.Null(selected);
     }
 
-    // ----- finding 4: tag-remove x / clear restore focus ----------------------------------------
+    // ----- tag-remove x / clear restore focus ----------------------------------------
 
     [Fact]
     public void Removing_a_tag_puts_focus_back_on_the_search_input()
@@ -315,7 +315,7 @@ public class SelectHighlightAndFocusTests : BunitContext
         JSInterop.VerifyFocusAsyncInvoke(1);
     }
 
-    // ----- finding 20: the multiple-select and clear paths cancel the in-flight debounce ---------
+    // ----- the multiple-select and clear paths cancel the in-flight debounce ---------
 
     // Long enough that the timer is unambiguously still in flight when the next interaction happens;
     // a cancelled Task.Delay unwinds immediately, so a passing run never waits for it.

@@ -388,7 +388,7 @@
     height: 30px;
 }
 
-/* SEL-1 (WCAG 4.1.2): a closed single-mode combobox now carries the selected label as its `value`, so
+/* (WCAG 4.1.2): a closed single-mode combobox now carries the selected label as its `value`, so
    the control reports a VALUE to assistive tech -- before this, a screen reader hit a completed field
    and announced "combo box, blank" because the label lived only in the sibling span below.
    That span is still what PAINTS the label (it owns the ellipsis truncation, the arrow gutter, and the

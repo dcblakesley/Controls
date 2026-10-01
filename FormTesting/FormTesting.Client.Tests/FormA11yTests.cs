@@ -128,7 +128,7 @@ public class FormA11yTests : BunitContext
         }));
 
         // Description/Tooltip belong to the control as a whole and are rendered once by the
-        // Start-anchored FormLabel. DTE-5: the End input now REFERENCES that same element rather than
+        // Start-anchored FormLabel. The End input now REFERENCES that same element rather than
         // going without -- a description like "Both dates must fall in the current fiscal year" was
         // previously announced on Start and silently absent on End, which is the half of a date range
         // where a constraint is most likely to be violated. aria-describedby is a reference, not an

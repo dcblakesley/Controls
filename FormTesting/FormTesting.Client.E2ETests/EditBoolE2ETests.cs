@@ -118,7 +118,7 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
     [Fact]
     public async Task A_real_user_click_does_not_permanently_desync_the_indeterminate_mirror()
     {
-        // Finding 61: the browser's pre-click activation steps set the DOM `indeterminate` property to
+        // the browser's pre-click activation steps set the DOM `indeterminate` property to
         // false the instant the user clicks -- but here Indeterminate (the C# parameter) never changes
         // (it stays bound to the same true value throughout), so the control's internal mirror used to
         // go stale and skip re-applying it forever (see EditBool.razor.cs's HandleCheckboxChange /

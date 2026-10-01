@@ -785,7 +785,7 @@ public partial class DateRangePicker : PickerBase
     // What a day/month/quarter/year gridcell renders aria-selected="true" for. The whole range is
     // selected, not just its two ends: an interior day used to have a color band and NO ARIA state at
     // all, so a screen-reader user walking the grid could hear both endpoints but nothing about the 27
-    // days between them. (The audit's PKR-8.) Endpoints keep their filled look via
+    // days between them. Endpoints keep their filled look via
     // wss-picker-day-selected / wss-picker-month-btn-selected, which stay class-driven.
     bool IsUnitAriaSelected(DateTime unit) => IsEndpoint(unit) || IsInRange(unit);
 

@@ -82,7 +82,7 @@ public class ModelMinMaxDateRangeTests : BunitContext
     }
 
     // Both fields declare a bound of the SAME kind, with conflicting tightness -- the "true union"
-    // case finding 16 exists for. A fallback that blindly prefers one field over the other (the old
+    // case the union fallback exists for. A fallback that blindly prefers one field over the other (the old
     // first-non-null behavior, which always checked Start first for Min and End first for Max) would
     // pick the TIGHTER bound whenever the "natural" field happened to be the tighter one, blocking a
     // value the OTHER (looser) field's own validation would still accept. Split by direction so each

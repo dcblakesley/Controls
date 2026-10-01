@@ -5,9 +5,9 @@ namespace FormTesting.Client.E2ETests;
 /// <summary>
 /// E2E coverage for the two JS-only accessibility behaviors of the overlay stack, both of which bUnit
 /// cannot observe (no JS runtime): the <c>inert</c> background a Modal/Drawer applies while it is open
-/// (audit M7 — <c>aria-modal</c> alone leaves a screen reader's virtual cursor free to read and
+/// (<c>aria-modal</c> alone leaves a screen reader's virtual cursor free to read and
 /// activate the page behind the dialog), and the <c>aria-controls</c> a Popover/Popconfirm trigger
-/// gains while its panel is open (audit OVR-7). Drives the /uikit gallery, plus two direct
+/// gains while its panel is open. Drives the /uikit gallery, plus two direct
 /// <c>wss-overlay.js</c> module calls for the stacked case the gallery has no demo for.
 /// </summary>
 [Collection(PlaywrightCollection.Name)]

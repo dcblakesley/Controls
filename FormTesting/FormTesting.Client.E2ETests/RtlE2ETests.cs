@@ -3,22 +3,20 @@ using Controls.Demo;
 namespace FormTesting.Client.E2ETests;
 
 /// <summary>
-/// E2E coverage for the RTL CSS fixes from AUDIT-2026-07-30.md findings 9 (pagination's and the
+/// E2E coverage for the RTL CSS fixes: pagination's and the
 /// UiKit pickers' native page-size / month-year <c>&lt;select&gt;</c>s pairing a physical padding
-/// split with a logical <c>inset-inline-end</c> arrow) and 27 (<c>.edit-tooltip-container</c>'s last
-/// physical <c>margin-left</c>). Both were previously verified only by reading
+/// split with a logical <c>inset-inline-end</c> arrow, and <c>.edit-tooltip-container</c>'s last
+/// physical <c>margin-left</c>. Both were previously verified only by reading
 /// <c>wss-controls.css</c> / <c>edit-controls.css</c> and reasoning about what
-/// <c>padding-inline</c>/<c>margin-inline-start</c> resolve to under <c>dir="rtl"</c> (see the audit
-/// doc's "Still open" follow-up (d)) -- nothing ever actually flipped the document direction and read
-/// a value back. This suite does: it sets <c>document.documentElement.dir = 'rtl'</c> after
+/// <c>padding-inline</c>/<c>margin-inline-start</c> resolve to under <c>dir="rtl"</c> -- nothing ever actually flipped the document direction
+/// and read a value back. This suite does: it sets <c>document.documentElement.dir = 'rtl'</c> after
 /// navigating (every demo page renders LTR by default; none offers a direction toggle) and asserts
 /// the *physical* left/right padding/margin/inset on the fixed elements swap sides relative to the
 /// LTR baseline captured on those same elements moments earlier -- a regression back to a physical
 /// declaration would leave the reading unchanged instead of flipping.
 ///
 /// Cross-cutting (spans Pagination, the UiKit pickers, and EditString's label tooltip), so it gets
-/// its own class per the audit's "two classes are fine" allowance for follow-up (d) rather than
-/// living inside any one control's per-control suite. Builds its own harness directly against
+/// its own class rather than living inside any one control's per-control suite. Builds its own harness directly against
 /// <see cref="IPage"/> (like <see cref="UiKitGalleryE2ETests"/> and <see cref="DatePickerE2ETests"/>)
 /// rather than <see cref="PageTestBase"/>, since it needs both the standalone <c>/uikit</c> route and
 /// the form-demo view switcher's <c>?view=String</c> route in the same class.
@@ -119,7 +117,7 @@ public class RtlE2ETests : IAsyncLifetime
         var arrow = section.Locator(".wss-pagination-size-arrow").First;
         await Expect(select).ToBeVisibleAsync();
 
-        // LTR baseline: finding 9's documented split (8px on the text side, 28px on the arrow side),
+        // LTR baseline: the documented split (8px on the text side, 28px on the arrow side),
         // and the arrow itself sits at inset-inline-end -- physically `right` under LTR.
         var (leftBefore, rightBefore) = await ReadPaddingAsync(select);
         Assert.Equal("8px", leftBefore);
@@ -129,7 +127,7 @@ public class RtlE2ETests : IAsyncLifetime
         await SetRtlAsync();
 
         // RTL: both the padding split and the arrow's inset must flip sides -- a regression to the
-        // physical `padding: 0 28px 0 8px` finding 9 replaced would leave these readings unchanged
+        // physical `padding: 0 28px 0 8px` it replaced would leave these readings unchanged
         // instead of swapping.
         var (leftAfter, rightAfter) = await ReadPaddingAsync(select);
         Assert.Equal("28px", leftAfter);
@@ -165,7 +163,7 @@ public class RtlE2ETests : IAsyncLifetime
         var monthSelect = dropdown.Locator(".wss-picker-select select").First;
         var monthArrow = dropdown.Locator(".wss-picker-select-arrow").First;
 
-        // LTR baseline: the same 8px/28px split finding 9 gave the pagination select, reused here.
+        // LTR baseline: the same 8px/28px split the pagination select has, reused here.
         var (leftBefore, rightBefore) = await ReadPaddingAsync(monthSelect);
         Assert.Equal("8px", leftBefore);
         Assert.Equal("28px", rightBefore);
@@ -186,7 +184,7 @@ public class RtlE2ETests : IAsyncLifetime
         var trigger = _page.Locator(".edit-tooltip-container").First;
         await Expect(trigger).ToBeVisibleAsync();
 
-        // LTR baseline: finding 27's documented margin-inline-start resolves to a physical
+        // LTR baseline: the documented margin-inline-start resolves to a physical
         // margin-left: 4px (margin-inline-end is never set, so the trailing side stays at 0).
         var (leftBefore, rightBefore) = await ReadMarginAsync(trigger);
         Assert.Equal("4px", leftBefore);
@@ -195,7 +193,7 @@ public class RtlE2ETests : IAsyncLifetime
         await SetRtlAsync();
 
         // RTL: the gap must follow to the other side of the trigger icon -- a regression to the
-        // physical `margin-left: 4px` finding 27 replaced would leave the gap on the LTR side.
+        // physical `margin-left: 4px` it replaced would leave the gap on the LTR side.
         var (leftAfter, rightAfter) = await ReadMarginAsync(trigger);
         Assert.Equal("0px", leftAfter);
         Assert.Equal("4px", rightAfter);

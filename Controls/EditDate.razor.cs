@@ -586,10 +586,10 @@ public partial class EditDate<T> : EditControlBase<T>
     string GetDisplayValue()
     {
         if (CurrentValue is null) return string.Empty;
-        // DTE-15: a default value on a non-nullable binding reads as "no value" in edit mode, so it has
+        // a default value on a non-nullable binding reads as "no value" in edit mode, so it has
         // to read that way here too -- otherwise the same model renders "Not Set" in the editor and a
         // date in read-only. This early return is also what keeps the two in step mechanically: the
-        // Week/Quarter branch below is driven by PickerValue, which DTE-15 already nulls for a default,
+        // Week/Quarter branch below is driven by PickerValue, which is already nulled for a default,
         // and falling through with that null lands on the verbatim ToString path ("0001") rather than
         // on either intended answer. TimeOnly is exempt for the same reason PickerValue exempts it --
         // default(TimeOnly) is midnight, a legitimate time.

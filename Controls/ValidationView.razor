@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components.Forms
 @implements IDisposable
 
-@* INF-3: role="status" (not "alert") tells assistive technology that this section's content just
+@* role="status" (not "alert") tells assistive technology that this section's content just
    changed, without the interruption "alert" carries -- a submit can populate this with several
    messages at once, and alert's assertive announcement would barge in and read the whole batch over
    whatever the user was already doing. status is polite: it waits for a pause, which is the right
@@ -57,7 +57,7 @@
     }
 
     /// <summary>
-    /// INF-4: rewrites a raw DataAnnotations <paramref name="message"/> through the same label as the
+    /// rewrites a raw DataAnnotations <paramref name="message"/> through the same label as the
     /// field's own <see cref="FieldValidationDisplay"/>
     /// (<see cref="ValidationHelper.GetValidationMessage(string, string, string?, string, string?, int?, int?, bool)"/>),
     /// instead of leaving DataAnnotations' own text verbatim -- which names the field by its raw C#

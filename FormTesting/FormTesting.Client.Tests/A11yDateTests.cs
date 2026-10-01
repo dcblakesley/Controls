@@ -115,7 +115,7 @@ public class A11yDateTests : BunitContext
         });
     }
 
-    // ----- R1/DTE-4: the trigger is a combobox, so aria-expanded is legal on it ------------------
+    // ----- the trigger is a combobox, so aria-expanded is legal on it ------------------
 
     [Fact]
     public void The_single_date_trigger_is_a_combobox()
@@ -151,7 +151,7 @@ public class A11yDateTests : BunitContext
         }
     }
 
-    // ----- DTE-1: an out-of-range typed date is no longer refused in silence ---------------------
+    // ----- an out-of-range typed date is no longer refused in silence ---------------------
 
     [Fact]
     public void A_refused_but_well_formed_typed_date_raises_the_range_callback_not_the_parse_one()
@@ -195,7 +195,7 @@ public class A11yDateTests : BunitContext
     [Fact]
     public void EditDate_surfaces_a_refused_typed_date_as_a_validation_message_and_aria_invalid()
     {
-        // The whole point of DTE-1: before this, CurrentValue never changed, NotifyFieldChanged never
+        // The whole point: before this, CurrentValue never changed, NotifyFieldChanged never
         // fired and no validator ran, so the field silently reverted and nothing anywhere said why.
         var model = new BirthdayModel { Birthday = Feb14 };
         var cut = Render(RenderEditDate(model, (b, i) =>
@@ -252,7 +252,7 @@ public class A11yDateTests : BunitContext
         Assert.Equal(new DateTime(2026, 2, 20), model.End);
     }
 
-    // ----- DTE-2: clearing must not strand focus on <body> ---------------------------------------
+    // ----- clearing must not strand focus on <body> ---------------------------------------
 
     // Every ElementReference.FocusAsync lands here in bUnit's loose JS-interop mode.
     int FocusCalls() => JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus");
@@ -293,7 +293,7 @@ public class A11yDateTests : BunitContext
         Assert.Empty(cut.FindAll(".wss-picker-clear"));
     }
 
-    // ----- DTE-5: the End input keeps the control's shared description -------------------------
+    // ----- the End input keeps the control's shared description -------------------------
 
     [Fact]
     public void The_range_end_input_references_the_shared_description_element()
@@ -321,7 +321,7 @@ public class A11yDateTests : BunitContext
         Assert.NotNull(cut.Find($"#tooltip-{startId}"));
     }
 
-    // ----- DTE-6: the two inputs are one named group -------------------------------------------
+    // ----- the two inputs are one named group -------------------------------------------
 
     [Fact]
     public void EditDateRange_wraps_both_inputs_in_a_group_named_from_the_label_text_anchor()
@@ -352,7 +352,7 @@ public class A11yDateTests : BunitContext
         Assert.Equal("Reporting period", named.Find(".wss-picker-input").GetAttribute("aria-label"));
     }
 
-    // ----- DTE-7: each popup names itself after its own field -----------------------------------
+    // ----- each popup names itself after its own field -----------------------------------
 
     [Fact]
     public void The_single_date_dialog_is_named_from_the_resolved_field_label()
@@ -385,7 +385,7 @@ public class A11yDateTests : BunitContext
         Assert.Equal("Choose Stay Dates", cut.Find(".wss-picker-dropdown").GetAttribute("aria-label"));
     }
 
-    // ----- DTE-8: Min/Max reach someone TYPING, not just someone clicking cells ------------------
+    // ----- Min/Max reach someone TYPING, not just someone clicking cells ------------------
 
     [Fact]
     public void The_bounds_are_described_as_text_alongside_the_format()
@@ -515,7 +515,7 @@ public class A11yDateTests : BunitContext
     [Fact]
     public void EditDateRange_forwards_the_resolved_bounds_into_the_shared_hint()
     {
-        // Composes with DTE-5: End's chain is its OWN error message, then the shared description, then
+        // Composes with the shared description: End's chain is its OWN error message, then the shared description, then
         // the shared hint -- so the bounds reach the endpoint that has no label association of its own.
         var model = new StayModel();
         var cut = Render(RenderRange(model, (b, i) =>
@@ -536,7 +536,7 @@ public class A11yDateTests : BunitContext
         Assert.Contains("Latest date: 02/28/2026", hint);
     }
 
-    // ----- DTE-9: the native month input's fallback needs a format hint --------------------------
+    // ----- the native month input's fallback needs a format hint --------------------------
 
     [Fact]
     public void EditDateNative_month_describes_its_strict_parse_format()
@@ -578,7 +578,7 @@ public class A11yDateTests : BunitContext
         Assert.DoesNotContain("format-", cut.Find("input").GetAttribute("aria-describedby")!, StringComparison.Ordinal);
     }
 
-    // ----- DTE-10: autocomplete is reachable (WCAG 1.3.5) ---------------------------------------
+    // ----- autocomplete is reachable (WCAG 1.3.5) ---------------------------------------
 
     [Fact]
     public void The_picker_input_takes_an_autocomplete_token_instead_of_a_hardcoded_off()
@@ -624,7 +624,7 @@ public class A11yDateTests : BunitContext
         Assert.Equal("cc-exp-year", cut.Find(EndInput).GetAttribute("autocomplete"));
     }
 
-    // ----- DTE-11: the two panels' selects are told apart ---------------------------------------
+    // ----- the two panels' selects are told apart ---------------------------------------
 
     [Fact]
     public void Each_range_panel_names_its_month_and_year_selects_after_its_own_view()
@@ -662,7 +662,7 @@ public class A11yDateTests : BunitContext
         Assert.Equal(new[] { "Year, 2026", "Year, 2027" }, names);
     }
 
-    // ----- DTE-13: the star and aria-required must agree ----------------------------------------
+    // ----- the star and aria-required must agree ----------------------------------------
 
     [Fact]
     public void Required_on_the_End_field_alone_still_raises_the_shared_star()
@@ -688,7 +688,7 @@ public class A11yDateTests : BunitContext
         Assert.Equal("true", cut.Find(EndInput).GetAttribute("aria-required"));
     }
 
-    // ----- DTE-14: the End summary anchor has to exist ------------------------------------------
+    // ----- the End summary anchor has to exist ------------------------------------------
 
     [Fact]
     public void Read_only_mode_anchors_the_End_field_on_an_element_that_actually_renders()
@@ -739,7 +739,7 @@ public class A11yDateTests : BunitContext
         Assert.Equal(endAnchor, cut.Find(EndInput).GetAttribute("id"));
     }
 
-    // ----- DTE-15: a default date on a non-nullable binding is empty, not 01/01/0001 -------------
+    // ----- a default date on a non-nullable binding is empty, not 01/01/0001 -------------
 
     [Fact]
     public void A_default_date_on_a_non_nullable_binding_reads_as_empty_and_offers_no_clear()
@@ -790,7 +790,7 @@ public class A11yDateTests : BunitContext
 
     class TimeModel { public TimeOnly ShipTime { get; set; } }
 
-    // ----- DTE-16: Week mode exposes the number the field displays -------------------------------
+    // ----- Week mode exposes the number the field displays -------------------------------
 
     [Fact]
     public void Week_mode_exposes_each_rows_week_number_as_a_row_header()

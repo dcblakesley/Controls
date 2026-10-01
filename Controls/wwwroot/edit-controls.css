@@ -632,7 +632,7 @@
     color: var(--edit-color-primary-strong);
 }
 
-/* RAD-6 (WCAG 1.4.1 Use of Color): Outline mode signalled "checked" with color/border-color alone, so
+/* (WCAG 1.4.1 Use of Color): Outline mode signalled "checked" with color/border-color alone, so
    a user who can't reliably separate the gray border+text from the primary-colored one had no cue as
    to which segment was selected. The inset shadow doubles the border's apparent weight -- a
    non-hue-dependent affordance -- and is deliberately NOT font-weight: these segments are joined
@@ -1537,7 +1537,7 @@
     font-size: 0.85em;
 }
 
-/* LST-5 (WCAG 3.3.2): the size/count caps, stated up front rather than only in the rejection message
+/* (WCAG 3.3.2): the size/count caps, stated up front rather than only in the rejection message
    a user gets after already picking a too-large file. Same text grade as the formats line above, so
    the same -strong secondary token. */
 .edit-file-limits {
@@ -1545,7 +1545,7 @@
     font-size: 0.85em;
 }
 
-/* LST-8: the read-only checked-list rows are a real list, so a screen reader can report "list, 3
+/* the read-only checked-list rows are a real list, so a screen reader can report "list, 3
    items" and position within it -- EditFile's read-only view already did this and the checkbox lists
    rendered bare divs. Unstyled: display:block keeps each row stacking exactly as those divs did, so
    the change is semantic only and moves no pixels. */

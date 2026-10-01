@@ -527,7 +527,7 @@ public class UiKitTableTests : BunitContext
         Assert.Equal(["Name", "Age", "City"], Headers());
     }
 
-    // ----- Declaration order across parameter-skipped siblings (AUDIT-2026-07-30 finding 6, Table analog) -----
+    // ----- Declaration order across parameter-skipped siblings (Table analog) -----
     //
     // Modeled on TabsAndSearchInputTests.A_tab_shown_before_parameter_skipped_siblings_lands_in_its_declared_position
     // (the Tabs repro for the same defect class, fixed in c5cab30 before Tabs was later redesigned so each Tab

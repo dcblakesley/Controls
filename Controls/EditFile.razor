@@ -48,7 +48,7 @@
 
         @if (ShowEditor)
         {
-            @* LST-3/LST-4: the only other observable effect while a batch is validated/buffered is the
+            @* the only other observable effect while a batch is validated/buffered is the
                <input> going disabled -- nothing announces that a batch is running, nor its outcome
                (successful additions/removals, including a partial success where some files were
                deduped/capped alongside others that succeeded -- the rejections already have their own
@@ -70,7 +70,7 @@
                         <span>@ButtonText</span>
                         @inputFile
                     </span>
-                    @* LST-5 (Button variant): the compact button has no instructional-text block the
+                    @* Button variant: the compact button has no instructional-text block the
                        way the dropzone does, so the caps hint gets its own line right below it instead
                        -- same text, same edit-file-limits class (the button is inline-flex, so this
                        block-level div wraps onto its own line without disturbing the button's own
@@ -94,7 +94,7 @@
                             {
                                 <div class="edit-file-formats">Supported formats: @string.Join(", ", EffectiveAllowedExtensions)</div>
                             }
-                            @* LST-5: the resolved caps were previously discoverable only by triggering a
+                            @* the resolved caps were previously discoverable only by triggering a
                                rejection. EffectiveMaxFileSizeBytes/EffectiveMaxTotalBytes always resolve
                                to a real, finite default (10 MB/100 MB), so this line always renders; the
                                file-count clause is appended only when EffectiveMaxFiles is actually

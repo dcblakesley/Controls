@@ -151,7 +151,7 @@ public abstract class EditControlListBase<TItem> : EditControlParametersBase, ID
     /// <see cref="EditControlParametersBase.Description"/> by default (byte-identical to before this
     /// existed). A derived control overrides this to supply a fallback when the consumer leaves
     /// <see cref="EditControlParametersBase.Description"/> unset — e.g. <c>CheckedListControlBase</c>
-    /// deriving an up-front hint from the bound list's <c>[MinLength]</c>/<c>[MaxLength]</c> (LST-6).
+    /// deriving an up-front hint from the bound list's <c>[MinLength]</c>/<c>[MaxLength]</c>.
     /// Virtual rather than a field so <see cref="EditFile"/> and <c>EditMultiSelect</c> (the other two
     /// <see cref="EditControlListBase{TItem}"/> descendants) need no changes at all to keep today's
     /// resolution.

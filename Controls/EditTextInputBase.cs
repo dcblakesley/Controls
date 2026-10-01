@@ -66,7 +66,7 @@ public abstract class EditTextInputBase : EditTextControlBase<string?>
     /// Overrides the clear button's accessible name (default: <c>"Clear {ResolvedLabel}"</c>, e.g.
     /// "Clear Email") -- see <see cref="EffectiveClearButtonLabel"/>. A form with two
     /// <see cref="AllowClear"/> fields otherwise renders two buttons both named "Clear", which a
-    /// screen-reader user browsing a button list can't tell apart (TXT-4). Same per-instance
+    /// screen-reader user browsing a button list can't tell apart. Same per-instance
     /// localization convention as the toast containers' <c>CloseButtonLabel</c>.
     /// </summary>
     [Parameter] public string? ClearButtonLabel { get; set; }

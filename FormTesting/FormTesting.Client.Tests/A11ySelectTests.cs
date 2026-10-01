@@ -5,22 +5,22 @@ namespace FormTesting.Client.Tests;
 
 /// <summary>
 /// Accessibility contracts of the <see cref="Select{TValue}"/> engine and the four select form
-/// controls built on or beside it, from the 2026-08-13 audit's SEL findings:
+/// controls built on or beside it, from the 2026-08-13 audit:
 /// <list type="bullet">
-/// <item>SEL-1 — the <c>role="combobox"</c> input exposes a VALUE: the selected label in single mode,
+/// <item>the <c>role="combobox"</c> input exposes a VALUE: the selected label in single mode,
 /// the joined selection through <c>aria-describedby</c> in multiple/tags mode.</item>
-/// <item>SEL-2/SEL-9 — one persistent <c>role="status"</c> region, empty on first render, driving
+/// <item>one persistent <c>role="status"</c> region, empty on first render, driving
 /// filter/selection/clear/loading announcements from localizable templates.</item>
-/// <item>SEL-3 — group runs reach assistive tech through per-run hidden names referenced by every
+/// <item>group runs reach assistive tech through per-run hidden names referenced by every
 /// option in the run (a <c>role="group"</c> is impossible in a flat virtualized list).</item>
-/// <item>SEL-4 — a standalone <c>&lt;Select&gt;</c> can be named (<c>InputLabel</c>, or a bare
+/// <item>a standalone <c>&lt;Select&gt;</c> can be named (<c>InputLabel</c>, or a bare
 /// <c>aria-label</c> lifted off the roleless wrapper); the form wrappers name it from
 /// <c>FormLabel</c>'s <c>lbltext-{id}</c> anchor.</item>
-/// <item>SEL-6 — every option reports <c>aria-setsize</c>/<c>aria-posinset</c> against the whole
+/// <item>every option reports <c>aria-setsize</c>/<c>aria-posinset</c> against the whole
 /// filtered list, not the ~8 rows virtualization keeps in the DOM.</item>
-/// <item>SEL-7/SEL-10/SEL-12 — the select-only combobox's keyboard model and the ARIA it advertises.</item>
-/// <item>SEL-8 — the outside-click backdrop does not strand keyboard focus on <c>&lt;body&gt;</c>.</item>
-/// <item>SEL-11/SEL-13 — no per-option repetition of the field tooltip; the MaxTagCount overflow chip
+/// <item>the select-only combobox's keyboard model and the ARIA it advertises.</item>
+/// <item>the outside-click backdrop does not strand keyboard focus on <c>&lt;body&gt;</c>.</item>
+/// <item>no per-option repetition of the field tooltip; the MaxTagCount overflow chip
 /// has a localizable name instead of "plus 3 dot dot dot".</item>
 /// </list>
 /// </summary>
@@ -38,7 +38,7 @@ public class A11ySelectTests : BunitContext
     static SelectOption<string> Opt(string value, string? group = null, bool disabled = false) =>
         new(value, value, disabled) { Group = group };
 
-    // A model whose fields carry a field-level tooltip, for SEL-11.
+    // A model whose fields carry a field-level tooltip.
     sealed class TooltipModel
     {
         [ToolTip("Pick the ticket's urgency")]
@@ -48,7 +48,7 @@ public class A11ySelectTests : BunitContext
         public string Colour { get; set; } = "Red";
     }
 
-    // ---------------------------------------------------------------- SEL-1: the combobox's value
+    // ---------------------------------------------------------------- the combobox's value
 
     [Fact]
     public void Single_mode_combobox_reports_the_selected_label_as_its_value_while_closed()
@@ -145,7 +145,7 @@ public class A11ySelectTests : BunitContext
         Assert.Equal("desc-sel", cut.Find(InputSelector).GetAttribute("aria-describedby"));
     }
 
-    // ------------------------------------------------------------------- SEL-4: naming the trigger
+    // ------------------------------------------------------------------- naming the trigger
 
     [Fact]
     public void InputLabel_names_the_combobox_not_the_roleless_wrapper()
@@ -282,7 +282,7 @@ public class A11ySelectTests : BunitContext
         Assert.Equal("Priority", cut.Find("label.edit-label").GetAttribute("for"));
     }
 
-    // ---------------------------------------------------- SEL-2 / SEL-9: the status live region
+    // ---------------------------------------------------- the status live region
 
     [Fact]
     public void The_status_region_renders_from_the_first_pass_with_no_content()
@@ -439,7 +439,7 @@ public class A11ySelectTests : BunitContext
         Assert.DoesNotContain("sel-status", cut.Find(InputSelector).GetAttribute("aria-describedby")!);
     }
 
-    // ----------------------------------------------------------------------- SEL-3: group runs
+    // ----------------------------------------------------------------------- group runs
 
     [Fact]
     public void Every_option_is_described_by_its_group_and_the_reference_resolves()
@@ -519,7 +519,7 @@ public class A11ySelectTests : BunitContext
         Assert.Empty(cut.FindAll("#sel-grp-1"));
     }
 
-    // ------------------------------------------------------------- SEL-6: set size / position
+    // ------------------------------------------------------------- set size / position
 
     [Fact]
     public void Options_report_their_position_in_the_whole_filtered_list()
@@ -565,7 +565,7 @@ public class A11ySelectTests : BunitContext
         Assert.Equal("1", filtered[0].GetAttribute("aria-posinset"));
     }
 
-    // ------------------------------------------- SEL-10: what the select-only combobox advertises
+    // ------------------------------------------- what the select-only combobox advertises
 
     [Fact]
     public void A_searchable_combobox_advertises_list_autocomplete_and_is_not_readonly()
@@ -594,7 +594,7 @@ public class A11ySelectTests : BunitContext
         Assert.Equal("false", input.GetAttribute("aria-readonly"));
     }
 
-    // ---------------------------------------------------------- SEL-7: Space on an open select
+    // ---------------------------------------------------------- Space on an open select
 
     [Fact]
     public void Space_selects_the_active_option_on_an_open_select_only_combobox()
@@ -632,7 +632,7 @@ public class A11ySelectTests : BunitContext
         Assert.Single(cut.FindAll("[role=listbox]"));
     }
 
-    // ------------------------------------------------------------------- SEL-8: backdrop focus
+    // ------------------------------------------------------------------- backdrop focus
 
     [Fact]
     public void Dismissing_by_outside_click_puts_focus_back_on_the_combobox()
@@ -651,7 +651,7 @@ public class A11ySelectTests : BunitContext
         Assert.Equal(1, JSInterop.Invocations.Count(i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase)));
     }
 
-    // ------------------------------------------------- SEL-12: modifiers and the APG Alt+Arrows
+    // ------------------------------------------------- modifiers and the APG Alt+Arrows
 
     [Fact]
     public void Ctrl_F_reaches_the_browser_instead_of_the_type_ahead()
@@ -721,7 +721,7 @@ public class A11ySelectTests : BunitContext
         Assert.Empty(cut.FindAll("[role=listbox]"));
     }
 
-    // ------------------------------------------------------------- SEL-13: the overflow chip
+    // ------------------------------------------------------------- the overflow chip
 
     [Fact]
     public void The_MaxTagCount_chip_reads_a_sentence_instead_of_plus_n_dot_dot_dot()
@@ -754,7 +754,7 @@ public class A11ySelectTests : BunitContext
             cut.Find(".wss-select-selection-item-rest .wss-sr-only").TextContent);
     }
 
-    // ------------------------------------------- SEL-11: no per-option repetition of the tooltip
+    // ------------------------------------------- no per-option repetition of the tooltip
 
     [Fact]
     public void EditSelectEnum_options_do_not_repeat_the_field_tooltip()

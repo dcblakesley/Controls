@@ -334,7 +334,7 @@ public class SelectEngineTests : BunitContext
 
         cut.Find("input.wss-select-selection-search-input").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" }); // open
         // Scoped to the dropdown rather than the whole markup: the engine's status live region
-        // legitimately still holds "typo-tag deselected" from the Backspace above (SEL-2), which is
+        // legitimately still holds "typo-tag deselected" from the Backspace above, which is
         // the announcement, not a zombie option.
         Assert.DoesNotContain("typo-tag", cut.Find(".wss-select-dropdown").InnerHtml);
         Assert.Empty(cut.FindAll(".wss-select-selection-item")); // and no zombie tag on the trigger

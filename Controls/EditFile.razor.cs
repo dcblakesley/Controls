@@ -157,7 +157,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     [Parameter] public string BeforeAddRejectedMessageFormat { get; set; } = "{0} was rejected.";
 
     /// <summary>
-    /// LST-3: live-region text (announced via a polite <c>role="status"</c> region) while a picked/
+    /// live-region text (announced via a polite <c>role="status"</c> region) while a picked/
     /// dropped batch is being validated and buffered. Until this existed, the only observable effect
     /// during that window was the <c>&lt;input&gt;</c> going <c>disabled</c> -- nothing a screen-reader
     /// user could notice on their own, which matters most for a large multi-file drop against the
@@ -167,7 +167,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     [Parameter] public string LoadingStatusText { get; set; } = "Loading files…";
 
     /// <summary>
-    /// LST-4: live-region status announced after each add/remove commit, when at least one file is
+    /// live-region status announced after each add/remove commit, when at least one file is
     /// selected -- the successful half of an upload gesture was previously never announced at all
     /// (only a rejection, via <see cref="_uploadErrors"/>'s own <c>role="alert"</c> block). {0} = file
     /// count, {1} = comma-joined file names, {2} = "file"/"files" (English plural of {0} — ignore when
@@ -175,7 +175,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     /// </summary>
     [Parameter] public string FilesSelectedStatusFormat { get; set; } = "{0} {2} selected: {1}.";
 
-    /// <summary> Live-region status (LST-4) announced when the selection becomes -- or starts -- empty.</summary>
+    /// <summary> Live-region status announced when the selection becomes -- or starts -- empty.</summary>
     [Parameter] public string NoFilesSelectedStatusText { get; set; } = "No files selected.";
 
     [Inject] IJSRuntime JS { get; set; } = default!;
@@ -335,7 +335,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
     string BoundValueText => Value?.Count == 0 ? "(none)" : string.Join(", ", (Value ?? []).Select(f => f.Name));
 
     /// <summary>
-    /// LST-4: the text the status region reads once a batch finishes (<see cref="_isLoadingFiles"/> is
+    /// the text the status region reads once a batch finishes (<see cref="_isLoadingFiles"/> is
     /// false) -- reflects the CURRENT <c>Value</c>, so it announces additions, removals, and a partial
     /// success (some files added, others deduped/capped/rejected) uniformly: whatever survived is what
     /// gets read. Reactive rather than a one-shot flag set at commit time -- the live region's content
@@ -348,7 +348,7 @@ public partial class EditFile : EditControlListBase<IBrowserFile>
             Value.Count, string.Join(", ", Value.Select(f => f.Name)), Value.Count == 1 ? "file" : "files");
 
     /// <summary>
-    /// LST-5: the resolved per-file/aggregate/count caps, rendered as a second static instruction line
+    /// the resolved per-file/aggregate/count caps, rendered as a second static instruction line
     /// alongside "Supported formats" so they're discoverable up front instead of only after a
     /// rejection. Not a <c>*Format</c> parameter like the message strings above -- matches "Click or
     /// drag files..."/"Supported formats: ..." right next to it in the markup, neither of which is

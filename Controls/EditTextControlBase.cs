@@ -86,7 +86,7 @@ public abstract class EditTextControlBase<TValue> : EditControlBase<TValue>
     /// model-attribute chain, which always falls through to the auto-generated property name) --
     /// computed independently here because <see cref="FormLabel"/> keeps its resolved label private.
     /// Used to fold the field's identity into a control's generic icon-only button names so they
-    /// don't collide across fields (TXT-4): <see cref="EditTextInputBase.EffectiveClearButtonLabel"/>
+    /// don't collide across fields: <see cref="EditTextInputBase.EffectiveClearButtonLabel"/>
     /// and <see cref="EditString"/>'s password/masked-value toggles, plus
     /// <see cref="EditNumber{T}"/>'s stepper buttons -- which is why this sits here rather than one
     /// level down on <see cref="EditTextInputBase"/> (where it used to live, before the numeric

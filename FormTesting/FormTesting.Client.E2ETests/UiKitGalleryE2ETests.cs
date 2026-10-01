@@ -160,7 +160,7 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     {
         await GotoAsync();
 
-        // M7: the consumer's button is the trigger — the popup ARIA is mirrored onto it by JS and
+        // The consumer's button is the trigger — the popup ARIA is mirrored onto it by JS and
         // the wrapper span carries no button semantics (it used to nest a button inside role="button").
         // .First: the swapped-trigger demo section adds a second Popover to the page.
         var wrapper = _page.Locator(".wss-popover-trigger").First;

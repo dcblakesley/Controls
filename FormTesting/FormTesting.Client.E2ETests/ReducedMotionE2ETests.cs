@@ -3,22 +3,20 @@ using Controls.Demo;
 namespace FormTesting.Client.E2ETests;
 
 /// <summary>
-/// E2E coverage for the <c>prefers-reduced-motion</c> gap-closing fixes from AUDIT-2026-07-30.md
-/// findings 10 (<c>wss-controls.css</c>'s reduced-motion block was missing the <c>[data-tooltip]</c>
-/// hover tooltip's arrow/body transitions and <c>.wss-table-expand-btn</c>'s color transition) and 28
-/// (<c>edit-controls.css</c>'s reduced-motion block stopped at the label tooltip bubble, missing the
+/// E2E coverage for the <c>prefers-reduced-motion</c> gaps:
+/// <c>wss-controls.css</c>'s reduced-motion block was missing the <c>[data-tooltip]</c>
+/// hover tooltip's arrow/body transitions and <c>.wss-table-expand-btn</c>'s color transition, and
+/// <c>edit-controls.css</c>'s reduced-motion block stopped at the label tooltip bubble, missing the
 /// <c>.edit-theme</c> input chrome and the button-mode radio / <c>EditFile</c> button-variant color
-/// transitions). Both were previously verified only by reading the two stylesheets' <c>@media
-/// (prefers-reduced-motion: reduce)</c> blocks and reasoning about which selectors were listed -- see
-/// the audit doc's "Still open" follow-up (d). This suite instead forces the OS preference via
+/// transitions. Both were previously verified only by reading the two stylesheets' <c>@media
+/// (prefers-reduced-motion: reduce)</c> blocks and reasoning about which selectors were listed. This suite instead forces the OS preference via
 /// <see cref="IPage.EmulateMediaAsync"/> and reads <c>getComputedStyle(...).transitionDuration</c>
 /// back, first confirming a genuine (non-zero) transition exists without the emulation so the
 /// post-emulation assertion isn't vacuous.
 ///
 /// Cross-cutting (spans the UiKit hover tooltip, Table's expand button, and four different
 /// <c>edit-controls.css</c> selectors reached from four different demo views), so it gets its own
-/// class per the audit's "two classes are fine" allowance for follow-up (d) rather than living inside
-/// any one control's per-control suite. Builds its own harness directly against <see cref="IPage"/>
+/// class rather than living inside any one control's per-control suite. Builds its own harness directly against <see cref="IPage"/>
 /// (like <see cref="UiKitGalleryE2ETests"/>/<see cref="RtlE2ETests"/>) since it navigates both the
 /// standalone <c>/uikit</c> route and several of the form-demo view switcher's routes.
 /// </summary>
@@ -102,7 +100,7 @@ public class ReducedMotionE2ETests : IAsyncLifetime
 
         await _page.EmulateMediaAsync(new PageEmulateMediaOptions { ReducedMotion = ReducedMotion.Reduce });
 
-        // Finding 10: these four selectors were the ones missing from wss-controls.css's
+        // these four selectors were the ones missing from wss-controls.css's
         // reduced-motion block (the tooltip's arrow/body and the table expand button/its chevron).
         Assert.Equal("0s", await TransitionDurationAsync(tooltipTrigger, "::before"));
         Assert.Equal("0s", await TransitionDurationAsync(tooltipTrigger, "::after"));
@@ -115,7 +113,7 @@ public class ReducedMotionE2ETests : IAsyncLifetime
     {
         await GotoViewAsync(CurrentView.Theme);
         // The legacy-mode editor itself (BasicString -- carries edit-input but never edit-affix-input)
-        // and an affix-mode wrapper (PrefixSuffixString) -- the exact selector pair finding 28 added.
+        // and an affix-mode wrapper (PrefixSuffixString) -- the exact selector pair the fix added.
         var legacyInput = _page.Locator(".edit-theme input.edit-input:not(.edit-affix-input)").First;
         var affixWrapper = _page.Locator(".edit-theme .edit-input-affix-wrapper").First;
         await Expect(legacyInput).ToBeVisibleAsync();

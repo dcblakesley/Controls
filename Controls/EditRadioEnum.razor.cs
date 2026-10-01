@@ -28,7 +28,7 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// (default) disables nothing beyond <c>IsDisabled</c>.
     /// </summary>
     /// <remarks>
-    /// RAD-2 hazard: per native radio-group semantics, roving tabindex hands the group's one native
+    /// Hazard: per native radio-group semantics, roving tabindex hands the group's one native
     /// Tab stop to whichever radio is currently checked. If this predicate names exactly the
     /// currently-selected value (a realistic "this choice is now locked" scenario), naively
     /// rendering that option's native <c>disabled</c> strands the <i>entire group</i> out of the Tab
@@ -101,7 +101,7 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     /// <summary>
     /// Overrides the "Other" free-text box's accessible name
     /// (<see cref="Controls.RadioOtherInput.AriaLabel"/>). Null (default) uses
-    /// <see cref="Controls.RadioOtherInput.DefaultAriaLabel"/> ("Custom text value input") -- RAD-4:
+    /// <see cref="Controls.RadioOtherInput.DefaultAriaLabel"/> ("Custom text value input") --
     /// that generic literal used to be hard-coded with no parameter, no localization, and no tie back
     /// to this field or its "Other" option. Set this to something field-specific ("Other priority
     /// reason", etc.) or a localized string.
@@ -341,7 +341,7 @@ public partial class EditRadioEnum<[DynamicallyAccessedMembers(DynamicallyAccess
     bool IsOptionDisabledFor(TEnum? option) =>
         IsDisabled || (option is TEnum concrete && IsOptionDisabled?.Invoke(concrete) == true);
 
-    // RAD-2: the whole-group IsDisabled always natively disables every option, selected or not (that
+    // the whole-group IsDisabled always natively disables every option, selected or not (that
     // strands the WHOLE group out of the Tab sequence, same as any other disabled control -- expected,
     // not a hazard). Only the per-option predicate exempts the currently-selected option from native
     // `disabled` -- see the IsOptionDisabled remarks. Split from IsOptionDisabledFor above (which

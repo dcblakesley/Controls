@@ -379,7 +379,7 @@ public abstract class PickerBase : ComponentBase, IAsyncDisposable
     /// <remarks>
     /// <para>
     /// The panel deliberately opens with focus left on the field (the combobox-like model — see each
-    /// picker's <c>role="dialog"</c> comment and the a11y audit's PKR-5), which left Tab as the only
+    /// picker's <c>role="dialog"</c> comment), which left Tab as the only
     /// way in. This is the APG's own affordance for that model, and it changes nothing about where
     /// focus starts: it is a move the user asks for.
     /// </para>

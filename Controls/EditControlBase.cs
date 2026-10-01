@@ -344,7 +344,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
             EditControlInit.SyncResolvedId(ref _id, this, FormOptions, FormGroupOptions, FormDefaults, _fieldIdentifier);
         RefreshAriaState();
 
-        // TXT-1: only these two modes can unmount a focused editor mid-edit (see ShouldShowComponent)
+        // only these two modes can unmount a focused editor mid-edit (see ShouldShowComponent)
         // — gating the injected focus-tracking handlers to just that case keeps every
         // HidingMode.None control (the overwhelming common case) exactly as cheap as before, with no
         // extra per-keystroke dictionary allocation or focus/blur round trip.
@@ -370,7 +370,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         if (_attributes is null) return;
         (_isRequired, _errorMsgId, _describedBy) =
             EditControlInit.ResolveAriaState(this, FormOptions, _id, _attributes, _fieldIdentifier, HasCharacterCount);
-        // INF-4: keep the validation summary's label-resolution inputs current too (see
+        // keep the validation summary's label-resolution inputs current too (see
         // FormOptions.FieldMetadata), so a runtime Label change is reflected in ValidationView's
         // rewritten message the same way it already is in this control's own FieldValidationDisplay.
         FormOptions?.RegisterFieldMetadata(_fieldIdentifier, _attributes, Label);
@@ -531,7 +531,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         var shouldShow = EditControlInit.ShouldShow(IsHidden, Hiding, FormOptions, ShowEditor, isNull, isNull || IsValueDefault());
         if (shouldShow || IsHidden || !ShowEditor)
             return shouldShow;
-        // TXT-1: reached only for a VALUE-driven hide (HidingMode.WhenNull/WhenNullOrDefault) while the
+        // reached only for a VALUE-driven hide (HidingMode.WhenNull/WhenNullOrDefault) while the
         // editor is showing — defer it while the editor holds focus (_editorFocused, tracked by the
         // onfocus/onblur handlers OnParametersSet injects below) instead of unmounting the element the
         // user is currently typing into, which used to drop focus to <body> with no warning to a
@@ -542,7 +542,7 @@ public abstract class EditControlBase<TValue> : InputBase<TValue>, IEditControl
         return _editorFocused;
     }
 
-    // ───────────────────────── TXT-1: focus preservation under value-driven hiding ─────────────────────────
+    // ───────────────────────── focus preservation under value-driven hiding ─────────────────────────
 
     // Whether this control's own editor currently holds DOM focus. Known only from the synthetic
     // onfocus/onblur handlers below — InputBase's CurrentValue commit path doesn't distinguish the

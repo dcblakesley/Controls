@@ -60,7 +60,7 @@ public abstract class CheckedListControlBase<TItem> : EditControlListBase<TItem>
     protected bool EffectiveUseStyledCheckbox => EditControlInit.UseStyledCheckbox(UseStyledCheckbox, FormOptions, FormDefaults);
 
     /// <summary>
-    /// LST-6: a default up-front instruction derived from the bound list's <c>[MinLength]</c>/
+    /// a default up-front instruction derived from the bound list's <c>[MinLength]</c>/
     /// <c>[MaxLength]</c> — the same <see cref="AttributesHelper.GetMinAndMaxLengths"/>
     /// <c>FieldValidationDisplay</c> already extracts for its post-validation message — rendered only
     /// when the consumer supplies neither an explicit <see cref="EditControlParametersBase.Description"/>

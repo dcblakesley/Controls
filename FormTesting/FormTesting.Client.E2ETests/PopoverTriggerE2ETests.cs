@@ -1,8 +1,8 @@
 namespace FormTesting.Client.E2ETests;
 
 /// <summary>
-/// E2E coverage for the round-3 Popover/Popconfirm trigger rework (M9 re-resolution, M11 render
-/// guard, focusin repair, and L14 disabled-child aria). Drives the swapped-trigger demo section on
+/// E2E coverage for the round-3 Popover/Popconfirm trigger rework (trigger re-resolution, render
+/// guard, focusin repair, and disabled-child aria). Drives the swapped-trigger demo section on
 /// the /uikit gallery. Everything is scoped by <c>data-test-id</c> so these assertions target the
 /// new section, not the page's other Popover/Popconfirm instances.
 /// </summary>
@@ -58,7 +58,7 @@ public class PopoverTriggerE2ETests : IAsyncLifetime
 
         // Swap the trigger child span -> button. Each toggle re-creates the element; the C# render
         // guard skips syncTrigger while (open, disabled) is unchanged, so the fresh button starts
-        // without popup ARIA — exactly the M9 "stale/detached child" scenario.
+        // without popup ARIA — exactly the "stale/detached child" scenario.
         await toggle.ClickAsync(); // -> loading <span>
         await toggle.ClickAsync(); // -> a brand-new <button>
         await Expect(child).ToHaveTextAsync("Open popover"); // wait for the swap render to settle
@@ -102,7 +102,7 @@ public class PopoverTriggerE2ETests : IAsyncLifetime
     {
         await GotoAsync();
 
-        // L14: a disabled Popconfirm with a <button> child must mark the child aria-disabled and drop
+        // A disabled Popconfirm with a <button> child must mark the child aria-disabled and drop
         // the popup ARIA, so assistive tech announces it as inert (it used to look live but do nothing).
         var button = _page.Locator("[data-test-id=disabled-popconfirm-child]");
         await Expect(button).ToHaveAttributeAsync("aria-disabled", "true");

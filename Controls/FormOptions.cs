@@ -21,7 +21,7 @@ public class FormOptions
     /// parameter -- keyed the same as <see cref="FieldIds"/>, so <see cref="ValidationView"/> can
     /// rewrite each DataAnnotations message through the same label
     /// <see cref="FieldValidationDisplay"/> uses for that field's own inline message, instead of
-    /// the framework's raw member-name text (INF-4). Populated by
+    /// the framework's raw member-name text. Populated by
     /// <see cref="EditControlBase{TValue}"/> (see its <c>RefreshAriaState</c>) -- list-bound controls,
     /// <c>EditRadio</c> and <c>EditDateRange</c> don't register here yet, so a field with no entry
     /// falls back to the unresolved message rather than guessing at a label.

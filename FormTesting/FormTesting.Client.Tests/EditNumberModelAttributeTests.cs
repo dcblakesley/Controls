@@ -89,7 +89,7 @@ public class EditNumberModelAttributeTests : BunitContext
     [Fact]
     public void Non_integral_T_renders_step_any_when_neither_parameter_nor_model_attribute_is_set()
     {
-        // Finding 63: the old unconditional 1.0m default made every fractional value natively invalid
+        // the old unconditional 1.0m default made every fractional value natively invalid
         // on arrival (step="1.0" rejects 12.34), silently blocking a native form submit since EditForm
         // emits no novalidate. step="any" (the framework InputNumber<T> convention for a fractional
         // type) removes the native step-mismatch entirely.

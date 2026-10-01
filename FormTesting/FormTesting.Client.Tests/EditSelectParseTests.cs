@@ -369,7 +369,7 @@ public class EditSelectParseTests : BunitContext
                 b.CloseComponent();
             }));
 
-            // Before M13 the value formatted as the invariant display "06/15/2026", matched no ISO
+            // Previously the value formatted as the invariant display "06/15/2026", matched no ISO
             // <option value>, and the select showed unselected. FormatInvariant now emits "2026-06-15".
             Assert.True(cut.Find("option[value='2026-06-15']").HasAttribute("selected"));
             Assert.False(cut.Find("option[value='2026-07-01']").HasAttribute("selected"));

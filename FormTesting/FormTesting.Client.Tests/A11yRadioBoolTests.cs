@@ -7,12 +7,12 @@ namespace FormTesting.Client.Tests;
 /// <summary>
 /// Accessibility-audit coverage for the radio/boolean family (<see cref="EditRadio{TValue}"/>,
 /// <see cref="EditRadioEnum{TEnum}"/>, <see cref="EditRadioString"/>, <see cref="EditBool"/>,
-/// <see cref="EditBoolNullRadio"/>) -- the RAD-1 through RAD-8 findings from the 2026-08 audit wave.
-/// RAD-6 (checked segmented button distinguished by color alone) is CSS-only and has no test here.
+/// <see cref="EditBoolNullRadio"/>) -- the 2026-08 audit wave's findings.
+/// The checked segmented button no longer being distinguished by color alone is CSS-only and has no test here.
 /// </summary>
 public class A11yRadioBoolTests : BunitContext
 {
-    // ----- RAD-1: a null/empty EditRadioString option must still get a real accessible name --------
+    // ----- a null/empty EditRadioString option must still get a real accessible name --------
 
     [Fact]
     public void EditRadioString_blank_option_gets_a_visible_accessible_placeholder()
@@ -56,7 +56,7 @@ public class A11yRadioBoolTests : BunitContext
         Assert.DoesNotContain("(blank)", labels[1].TextContent);
     }
 
-    // ----- RAD-2: IsOptionDisabled targeting the selected option must not strand the whole group ----
+    // ----- IsOptionDisabled targeting the selected option must not strand the whole group ----
 
     [Fact]
     public void EditRadioEnum_IsOptionDisabled_on_the_selected_value_keeps_it_natively_focusable()
@@ -73,7 +73,7 @@ public class A11yRadioBoolTests : BunitContext
         }));
 
         var high = cut.FindAll("input[type=radio]").First(r => r.GetAttribute("value") == "High");
-        // RAD-2: a native `disabled` on the checked radio would strand the WHOLE group out of the Tab
+        // a native `disabled` on the checked radio would strand the WHOLE group out of the Tab
         // sequence (roving tabindex gives the group's one native stop to the checked radio, and no
         // other radio takes over). It must stay natively focusable, communicating "locked" via
         // aria-disabled instead.
@@ -126,7 +126,7 @@ public class A11yRadioBoolTests : BunitContext
         Assert.False(notSelected.HasAttribute("aria-disabled"));
     }
 
-    // ----- RAD-3: horizontal groups must announce their orientation ---------------------------------
+    // ----- horizontal groups must announce their orientation ---------------------------------
 
     [Fact]
     public void EditRadioEnum_IsHorizontal_emits_aria_orientation_horizontal()
@@ -303,7 +303,7 @@ public class A11yRadioBoolTests : BunitContext
         Assert.DoesNotContain("More info", anchor.TextContent);
     }
 
-    // ----- RAD-4: the "Other" box's accessible name must be overridable -----------------------------
+    // ----- the "Other" box's accessible name must be overridable -----------------------------
 
     [Fact]
     public void EditRadioEnum_OtherAriaLabel_overrides_the_default()
@@ -342,7 +342,7 @@ public class A11yRadioBoolTests : BunitContext
         Assert.Equal("Custom name reason", cut.Find("input.edit-radio-other-input").GetAttribute("aria-label"));
     }
 
-    // ----- RAD-5: EditRadio's inner disable-scope fieldset must not be a second unnamed group -------
+    // ----- EditRadio's inner disable-scope fieldset must not be a second unnamed group -------
 
     [Fact]
     public void EditRadio_disable_scope_fieldset_carries_role_presentation()
@@ -366,7 +366,7 @@ public class A11yRadioBoolTests : BunitContext
         Assert.Equal("presentation", cut.Find("fieldset.edit-radio-disable-scope").GetAttribute("role"));
     }
 
-    // ----- RAD-7: an empty EditRadioString with nothing to own must not claim role="radiogroup" -----
+    // ----- an empty EditRadioString with nothing to own must not claim role="radiogroup" -----
 
     [Fact]
     public void EditRadioString_empty_options_and_no_other_omits_the_radiogroup_role()
@@ -420,7 +420,7 @@ public class A11yRadioBoolTests : BunitContext
         Assert.Equal("radiogroup", cut.Find("fieldset.edit-radio-fieldset").GetAttribute("role"));
     }
 
-    // ----- RAD-8: a focused "Other" box must not be force-blurred by an external disable -------------
+    // ----- a focused "Other" box must not be force-blurred by an external disable -------------
 
     [Fact]
     public void RadioOtherInput_focused_when_IsDisabled_flips_true_stays_natively_focusable()

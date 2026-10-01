@@ -12,9 +12,9 @@ namespace FormTesting.Client.Tests;
 /// element, and the retargeted masked-row/link <c>aria-labelledby</c> references;</item>
 /// <item><see cref="ReadOnlyValue"/>'s <c>aria-describedby</c> pass-through from EditNumber/EditTextArea/
 /// EditString's plain read-only branch;</item>
-/// <item>TXT-2: <see cref="EditString"/>'s autocomplete purpose inference, which stops the bare
+/// <item><see cref="EditString"/>'s autocomplete purpose inference, which stops the bare
 /// "one-time-code" default from misidentifying an ordinary Email/FirstName/Phone/… field;</item>
-/// <item>TXT-4: the label-folded names on the shell's clear/password-toggle buttons and EditString's
+/// <item>the label-folded names on the shell's clear/password-toggle buttons and EditString's
 /// own masked-value-reveal toggle, so two same-purpose fields on one form don't render two
 /// identically-named icon-only buttons.</item>
 /// </list>
@@ -167,7 +167,7 @@ public class A11yTextInputTests : BunitContext
         Assert.Equal("error-msg-Username", cut.Find(".edit-readonly-value").GetAttribute("aria-describedby"));
     }
 
-    // ───────────────────────── TXT-2: autocomplete purpose inference ─────────────────────────
+    // ───────────────────────── autocomplete purpose inference ─────────────────────────
 
     class ContactModel
     {
@@ -239,7 +239,7 @@ public class A11yTextInputTests : BunitContext
     [Fact]
     public void An_unrecognized_property_name_still_falls_back_to_one_time_code()
     {
-        // The locked-down last resort (TXT-2's remarks): a field this small mapping doesn't
+        // The locked-down last resort (see the inference remarks): a field this small mapping doesn't
         // recognize keeps today's autofill-suppressing default rather than guessing wrong.
         var model = new ContactModel { Nickname = "Al" };
         Assert.Equal("one-time-code", RenderedAutocomplete(model, () => model.Nickname, model.Nickname));
@@ -268,7 +268,7 @@ public class A11yTextInputTests : BunitContext
         Assert.Equal("new-password", RenderedAutocomplete(model, () => model.Email, model.Email));
     }
 
-    // ───────────────────────── TXT-4: label-folded icon-only button names ─────────────────────────
+    // ───────────────────────── label-folded icon-only button names ─────────────────────────
 
     [Fact]
     public void Clear_button_name_folds_in_the_fields_label()
@@ -307,7 +307,7 @@ public class A11yTextInputTests : BunitContext
     [Fact]
     public void Two_AllowClear_fields_on_one_form_render_distinct_clear_button_names()
     {
-        // The regression TXT-4 fixes: two same-purpose fields used to render two buttons both named
+        // The regression fixed here: two same-purpose fields used to render two buttons both named
         // "Clear", indistinguishable to a screen-reader user browsing a button list.
         var model = new PersonModel { Name = "Alice", Username = "alice" };
         Expression<Func<string>> nameField = () => model.Name;
@@ -372,7 +372,7 @@ public class A11yTextInputTests : BunitContext
     [Fact]
     public void Two_password_fields_on_one_form_render_distinct_toggle_names()
     {
-        // The Password/Confirm-Password scenario TXT-4 calls out by name.
+        // The Password/Confirm-Password scenario the label-folded names exist for.
         var model = new PersonModel { Name = "secret", Username = "confirm" };
         Expression<Func<string>> nameField = () => model.Name;
         Expression<Func<string>> userField = () => model.Username;

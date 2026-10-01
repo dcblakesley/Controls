@@ -34,7 +34,7 @@
                    ValueExpression is forwarded so the inner group notifies/styles the real model
                    field rather than a bogus FieldIdentifier("CurrentValue"). *@
                 <InputRadioGroup TValue="TValue" Value=@CurrentValue ValueChanged=@OnGroupValueChanged ValueExpression=@ValueExpression>
-                    @* RAD-5: a <fieldset> maps to role="group" per HTML-AAM regardless of its (absent)
+                    @* a <fieldset> maps to role="group" per HTML-AAM regardless of its (absent)
                        legend, so without this every render inserted a second, unnamed ARIA group
                        between the named radiogroup above and its radios. role="presentation" removes
                        it from the accessibility tree without touching the native `disabled` cascade

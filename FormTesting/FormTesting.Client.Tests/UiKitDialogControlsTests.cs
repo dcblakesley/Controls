@@ -84,7 +84,7 @@ public class UiKitDialogControlsTests : BunitContext
     {
         // "Changed my mind": press on the mask, drag into the dialog, release inside. The panel stops
         // mouseup propagation so the wrap never records an up; the composed click reaches the wrap but,
-        // with only a mask-down recorded, must NOT close. (This is the M5 direction the old fix missed.)
+        // with only a mask-down recorded, must NOT close. (The old fix missed this direction.)
         var closes = 0;
         var cut = Render<Modal>(p => p
             .Add(m => m.Visible, true)
@@ -136,7 +136,7 @@ public class UiKitDialogControlsTests : BunitContext
     [Fact]
     public void Modal_disposes_cleanly_after_being_shown()
     {
-        // Exercises the DisposeAsync path (M1): the _disposed guard + activation-seq bump release any
+        // Exercises the DisposeAsync path: the _disposed guard + activation-seq bump release any
         // in-flight focus-trap/scroll-lock handle instead of orphaning it. The leak itself isn't
         // observable in bUnit (no real JS module), but disposal must not throw.
         JSInterop.Mode = Bunit.JSRuntimeMode.Loose; // tolerate the overlay module import
@@ -379,7 +379,7 @@ public class UiKitDialogControlsTests : BunitContext
     [Fact]
     public void Popover_trigger_wrapper_is_not_a_button_and_a_child_buttons_click_bubbles_to_toggle()
     {
-        // M7: the wrapper span used to be role="button" tabindex="0" around arbitrary content —
+        // the wrapper span used to be role="button" tabindex="0" around arbitrary content —
         // a consumer's <button> child made it nested-interactive (two tab stops, invalid ARIA).
         // The child is the trigger now; the popup ARIA lands on it via JS (covered by e2e), so the
         // server-rendered wrapper must carry no button semantics at all.
@@ -435,7 +435,7 @@ public class UiKitDialogControlsTests : BunitContext
     [Fact]
     public void Popup_panels_carry_a_stable_id_for_the_trigger_to_reference()
     {
-        // OVR-7: wss-overlay.js mirrors aria-controls="{panel id}" onto the resolved trigger while
+        // wss-overlay.js mirrors aria-controls="{panel id}" onto the resolved trigger while
         // the popup is open (JS, so e2e covers the mirroring itself) — this guards the C# half: the
         // panel actually renders an id, and it's the same one across re-opens.
         var popover = Render<Popover>(p => p
@@ -505,7 +505,7 @@ public class UiKitDialogControlsTests : BunitContext
     public void Popconfirm_disabled_never_opens_and_the_wrapper_is_not_a_button()
     {
         // Trigger ARIA (aria-disabled, dropped aria-haspopup) lives on the child via JS now —
-        // covered by e2e. Server-side, the wrapper must carry no button semantics (M7) and the
+        // covered by e2e. Server-side, the wrapper must carry no button semantics and the
         // Disabled guard must hold.
         var cut = Render<Popconfirm>(p => p
             .Add(pc => pc.Title, "Delete?")

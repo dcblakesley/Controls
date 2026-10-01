@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// Byte-identical-markup coverage for EditBoolNullRadio's three radio options (finding 69 of the
-/// 2026-07-30 audit): the false/true/null-option blocks used to be near-identical 11-line copies,
+/// Byte-identical-markup coverage for EditBoolNullRadio's three radio options: the false/true/null-option blocks used to be near-identical 11-line copies,
 /// collapsed here into a local <c>RadioOption(bool? value, string idSuffix, string text)</c> fragment.
 /// Pins down the exact attributes (id/data-test-id/name/value/checked/class/disabled) each option
 /// renders, so the collapse can't silently drop or reorder one.

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// Covers finding 60: <c>EditTextArea</c>'s <see cref="EditTextArea.AutoSize"/> re-measure gating in
+/// Covers <c>EditTextArea</c>'s <see cref="EditTextArea.AutoSize"/> re-measure gating in
 /// <c>OnAfterRenderAsync</c> (see <c>EditTextArea.razor.cs</c>) for the two paths that don't go through
 /// <c>@bind-value:after</c>/the extra <c>oninput</c> handler at all: a parent setting
 /// the bound value directly (not the user typing), and <see cref="EditTextArea.AutoSize"/> flipping

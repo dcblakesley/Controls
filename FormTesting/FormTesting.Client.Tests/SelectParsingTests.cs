@@ -181,7 +181,7 @@ public class SelectParsingTests
     {
         // Round-tripping through the parse isn't enough — the formatted string must EQUAL the option
         // value an author naturally writes, or the browser shows the select as unselected while the
-        // model holds the value (the M13/M14 desync). One canonical authored form per type:
+        // model holds the value (the desync). One canonical authored form per type:
         Assert.Equal("2026-06-15", SelectParsing.FormatInvariant(new DateOnly(2026, 6, 15)));
         Assert.Equal("2026-06-15T14:30:45", SelectParsing.FormatInvariant(new DateTime(2026, 6, 15, 14, 30, 45)));
         Assert.Equal("2026-06-15T14:30:45-05:00", SelectParsing.FormatInvariant(new DateTimeOffset(2026, 6, 15, 14, 30, 45, TimeSpan.FromHours(-5))));

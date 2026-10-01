@@ -236,7 +236,7 @@ public class WasmToastTests : BunitContext
         }
     }
 
-    // ---- M1: message close button (WASM static facade) ----
+    // ---- message close button (WASM static facade) ----
 
     [Fact]
     public void Message_service_items_render_and_close_removes_from_the_service()

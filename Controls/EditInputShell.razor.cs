@@ -39,7 +39,7 @@ public partial class EditInputShell
     /// The clear button's <c>aria-label</c>. Null (the default) renders the generic <c>"Clear"</c> --
     /// fine for a single instance, but a form with two <see cref="AllowClear"/> fields then renders two
     /// buttons with an identical accessible name, which a screen-reader user browsing a button list
-    /// can't tell apart (TXT-4). A host that can resolve its own field's label passes a field-specific
+    /// can't tell apart. A host that can resolve its own field's label passes a field-specific
     /// name instead -- see <see cref="EditTextInputBase.EffectiveClearButtonLabel"/>, which folds it
     /// into <c>"Clear {label}"</c>.
     /// </summary>

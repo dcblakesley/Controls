@@ -86,7 +86,7 @@ export function focusDay(root, dateStr) {
 // Moves real DOM focus onto whichever cell within `root` (the dropdown panel) currently carries the
 // grid's roving tabindex="0" -- the ArrowDown-from-the-input affordance (see PickerBase's
 // OnInputKeyDownAsync). The panel deliberately opens with focus still on the text field (the
-// combobox-like model -- see PKR-5), so this is the keyboard route INTO the calendar that isn't Tab.
+// combobox-like model), so this is the keyboard route INTO the calendar that isn't Tab.
 // There is exactly one such cell across every grid the panel renders, C# picks which one, and it is
 // always focusable (a rejected cell is aria-disabled, never natively `disabled`).
 //

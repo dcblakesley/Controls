@@ -150,7 +150,7 @@ public class EditDateTests : BunitContext
     public void PickerAttributes_class_merge_is_byte_identical_after_the_shared_builder_extraction()
     {
         // Pins the exact wrapper class string (not just Contains) across the
-        // EditControlInit.BuildPickerAttributes extraction (finding 35) -- CssClass (InputBase's own
+        // EditControlInit.BuildPickerAttributes extraction -- CssClass (InputBase's own
         // "{consumerClass} {fieldClass}" merge) must still overwrite the raw consumer "class", landing
         // in the same "wss-picker wss-picker-single consumerClass fieldClass" composition DatePicker's
         // own markup produces.
@@ -1219,7 +1219,7 @@ public class EditDateTests : BunitContext
         }));
 
         // Still the point of this test: rendering must not throw on the year-1 week walk. What is
-        // DISPLAYED changed with DTE-15 -- a default value on a non-nullable binding now reads as "no
+        // DISPLAYED changed -- a default value on a non-nullable binding now reads as "no
         // value" in edit mode (it used to sit there as 01/01/0001 with a Clear button offered), so
         // read-only has to agree or the same model shows a date in one mode and "Not Set" in the other.
         Assert.Equal("Not Set", cut.Find(".edit-readonly-value").TextContent.Trim());

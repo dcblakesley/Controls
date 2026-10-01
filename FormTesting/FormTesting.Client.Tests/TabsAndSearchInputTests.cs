@@ -1474,7 +1474,7 @@ public class TabsAndSearchInputTests : BunitContext
     [Fact]
     public void Tabpanel_carries_a_tabindex_so_text_only_panes_are_keyboard_reachable()
     {
-        // CMP-1: a pane with no focusable content of its own (plain text, like the demo panes here)
+        // a pane with no focusable content of its own (plain text, like the demo panes here)
         // was otherwise a dead end for keyboard users -- Tab skips straight over role=tabpanel
         // without a tabindex.
         var cut = RenderTabs(activeKey: "missing", withPanes: true);
@@ -1529,7 +1529,7 @@ public class TabsAndSearchInputTests : BunitContext
     [Fact]
     public void SearchInput_renders_a_native_search_input_type()
     {
-        // M10: type="search" (not "text") gets the native search semantics/affordances (e.g. a
+        // type="search" (not "text") gets the native search semantics/affordances (e.g. a
         // Escape-to-clear on some platforms) on top of the kit's own AllowClear button.
         var cut = Render<SearchInput>();
         Assert.Equal("search", cut.Find(".wss-search-input").GetAttribute("type"));
@@ -1550,7 +1550,7 @@ public class TabsAndSearchInputTests : BunitContext
     [Fact]
     public void SearchInput_addon_template_generates_a_stable_id_when_Id_is_unset()
     {
-        // M10: AddonLabelledBy used to require Id to be set at all -- an AddonContent-only consumer
+        // AddonLabelledBy used to require Id to be set at all -- an AddonContent-only consumer
         // that never set Id got neither aria-label nor a working aria-labelledby, i.e. no accessible
         // name whatsoever. A generated per-instance id (Tabs.BaseId's pattern) now backs it either way.
         var cut = Render<SearchInput>(p => p.Add(s => s.AddonContent, b => b.AddContent(0, "POs")));
@@ -1603,7 +1603,7 @@ public class TabsAndSearchInputTests : BunitContext
     [Fact]
     public void SearchInput_falls_back_to_Placeholder_for_its_accessible_name_when_nothing_else_names_it()
     {
-        // M10: a SearchInput with only a Placeholder (no InputLabel/AddonLabel/AddonContent) used to
+        // a SearchInput with only a Placeholder (no InputLabel/AddonLabel/AddonContent) used to
         // render with no accessible name at all -- placeholder text is not read as a name by AT.
         var cut = Render<SearchInput>(p => p.Add(s => s.Placeholder, "Search orders..."));
 
@@ -1673,7 +1673,7 @@ public class TabsAndSearchInputTests : BunitContext
         Assert.Null(btn.GetAttribute("aria-label")); // visible text is the accessible name instead
     }
 
-    // M3: aria-label matrix across EnterButtonText x Loading. While Loading, the button's visible
+    // aria-label matrix across EnterButtonText x Loading. While Loading, the button's visible
     // content (icon or enter-button text) is replaced by an aria-hidden spinner, so a button that
     // was relying on EnterButtonText for its accessible name would otherwise go nameless -- suppress
     // aria-label only when the enter-button text is what's actually rendered (HasEnterButtonText &&
@@ -1724,7 +1724,7 @@ public class TabsAndSearchInputTests : BunitContext
     [Fact]
     public void SearchInput_with_no_labeling_source_falls_back_to_SearchButtonLabel_for_its_own_name()
     {
-        // M10 floor: a bare <SearchInput /> (no InputLabel/AddonLabel/AddonContent/Placeholder) was
+        // Floor: a bare <SearchInput /> (no InputLabel/AddonLabel/AddonContent/Placeholder) was
         // the only part of the component with no guaranteed accessible name -- SearchButtonLabel
         // ("Search" by default) is the last resort, mirroring the buttons' own guaranteed-name floor.
         var cut = Render<SearchInput>();

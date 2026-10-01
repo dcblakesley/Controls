@@ -4,7 +4,7 @@ namespace FormTesting.Client.E2ETests;
 
 /// <summary>
 /// E2E coverage for the accessibility layer <c>wss-tooltip.js</c> adds to the CSS-only
-/// <c>data-tooltip</c> convention (UIKIT-A11Y-AUDIT-2026-08-11, findings S1 and S2 prong b): while a
+/// <c>data-tooltip</c> convention: while a
 /// trigger is showing, its text is mirrored into one shared visually-hidden <c>role="tooltip"</c>
 /// node that the trigger's <c>aria-describedby</c> points at (WCAG 4.1.2 / 1.1.1), and Escape marks
 /// the trigger <c>wss-tooltip-dismissed</c> without moving the pointer or focus (WCAG 1.4.13).
@@ -77,7 +77,7 @@ public class HoverTooltipA11yE2ETests : IAsyncLifetime
     /// delay (display flips through <c>transition: display allow-discrete</c>), so it has to be
     /// polled rather than asserted once — and the only handle on it is the <c>::after</c>
     /// pseudo-element's computed display, because the bubble is CSS generated content with no node
-    /// for a locator to see. That absence is precisely what finding S1 is about.
+    /// for a locator to see. That absence is precisely the problem the layer addresses.
     /// </summary>
     Task WaitForBubbleAsync(string testId) => _page.WaitForFunctionAsync(
         $"() => getComputedStyle(document.querySelector('[data-test-id={testId}]'), '::after').display === 'block'");

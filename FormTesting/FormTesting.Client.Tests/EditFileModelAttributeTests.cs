@@ -29,7 +29,7 @@ public class EditFileModelAttributeTests : BunitContext
         public List<IBrowserFile> Files { get; set; } = [];
     }
 
-    // Regression coverage (audit finding 70 / cc691f4): a negative [FileConstraints] value is a
+    // Regression coverage (cc691f4): a negative [FileConstraints] value is a
     // plausible consumer mistake -- "-1 means unlimited" is a widespread convention -- and must fall
     // back to the built-in default exactly like 0/unset does, not be taken literally as a real bound.
     class NegativeFileConstraintsModel

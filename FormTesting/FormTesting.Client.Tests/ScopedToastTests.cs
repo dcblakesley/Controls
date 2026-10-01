@@ -486,7 +486,7 @@ public class ScopedToastTests : BunitContext
         Assert.Empty(svc.Items);
     }
 
-    // ---- M1: message close button ----
+    // ---- message close button ----
 
     [Fact]
     public void MessageListView_close_button_has_an_aria_label_and_invokes_OnRemove()
@@ -532,7 +532,7 @@ public class ScopedToastTests : BunitContext
         Assert.NotNull(cut.Find(".wss-msg-close"));
     }
 
-    // ---- M2: severity announced to assistive tech ----
+    // ---- severity announced to assistive tech ----
 
     [Theory]
     [InlineData(MessageType.Success, "Success: ")]

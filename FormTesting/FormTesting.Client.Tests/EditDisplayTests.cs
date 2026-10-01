@@ -142,7 +142,7 @@ public class EditDisplayTests : BunitContext
     public void EditDisplay_with_no_text_renders_an_accessible_fallback_that_still_reserves_a_line()
     {
         // EditDisplay hand-builds its read-only div instead of using ReadOnlyValue, and shares that
-        // component's fallback-placeholder contract (LST-2): the old placeholder was BOTH aria-hidden
+        // component's fallback-placeholder contract: the old placeholder was BOTH aria-hidden
         // AND visibility:hidden, reaching neither sighted users nor assistive technology -- a
         // screen-reader user heard the label and then silence. EmptyText is now real, visible text
         // (reaching everyone) that reserves the row's line-height simply by being a real text node, with

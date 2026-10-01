@@ -10,7 +10,7 @@
         @* id/data-test-id/role/aria-* come from RadioAria, shared with EditRadio/EditRadioEnum;
            splatted first so the explicit class below wins, and merged with the consumer's own
            unmatched attributes (RadioAria's keys win; one element, one @attributes).
-           RAD-7: the explicit role below drops it when the group would own no radios. It stays off in
+           the explicit role below drops it when the group would own no radios. It stays off in
            read-only mode too -- RadioAria.Fieldset already emits nothing there, and re-adding the role
            here would recreate the very aria-required-children violation this prevents (a radiogroup
            whose children are ReadOnlyValue divs). NOTE both comments live OUT here: a Razor comment

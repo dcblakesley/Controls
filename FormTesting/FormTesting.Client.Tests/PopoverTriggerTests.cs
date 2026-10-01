@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// bUnit coverage for the Popover/Popconfirm trigger contract after the round-3 rework (M9/M11).
+/// bUnit coverage for the Popover/Popconfirm trigger contract after the round-3 rework.
 /// Only the server-rendered, JS-independent behaviour is observable here: the wrapper carries no
 /// button semantics of its own, and the C# render guard limits how often the <c>syncTrigger</c>
 /// interop fires. The JS half (ARIA re-resolution, reversible promotion, focus restoration) is

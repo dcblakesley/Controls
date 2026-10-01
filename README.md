@@ -1579,7 +1579,7 @@ An additive, non-breaking release: a new slider control and a stepper mode for t
 
 ### 10.8.1
 
-A full accessibility audit of the `Edit*` form controls and the shared label/validation/stylesheet layers they render through (~75 findings — see `A11Y-AUDIT-2026-08-13.md` at the repo root for the complete report and remediation status), the counterpart to the 2026-08-11 UI-kit audit below. The form controls had never been audited before this pass. Landed in two waves — shared label/validation/stylesheet infrastructure first, then per-control fixes across select, date, radio/bool, checked-lists/file, and text — so the entries below span both. Alongside it, unrelated to the audit: a **new color control** (`EditColor` plus the UI-kit `ColorPicker` it wraps), the first addition to the `Edit*` family since `EditDate`'s rename.
+A full accessibility audit of the `Edit*` form controls and the shared label/validation/stylesheet layers they render through (~75 findings), the counterpart to the 2026-08-11 UI-kit audit below. The form controls had never been audited before this pass. Landed in two waves — shared label/validation/stylesheet infrastructure first, then per-control fixes across select, date, radio/bool, checked-lists/file, and text — so the entries below span both. Alongside it, unrelated to the audit: a **new color control** (`EditColor` plus the UI-kit `ColorPicker` it wraps), the first addition to the `Edit*` family since `EditDate`'s rename.
 
 **New** (Edit Controls)
 - **New control: `EditColor`** — an AntDesign-5-style color field binding a plain `string?`. A swatch trigger over a transparency checkerboard opens a popup with a saturation/brightness area, a hue slider, an optional alpha slider, a HEX/RGB input row, and an optional preset row.
@@ -1638,7 +1638,7 @@ A full accessibility audit of the `Edit*` form controls and the shared label/val
 
 ### 10.8.0
 
-A full accessibility audit of `Controls/UiKit/` (58 findings, adversarially verified — see `UIKIT-A11Y-AUDIT-2026-08-11.md` at the repo root for the complete report and remediation status) drove most of this release, alongside an unrelated `EditFile` addition.
+A full accessibility audit of `Controls/UiKit/` (58 findings, adversarially verified) drove most of this release, alongside an unrelated `EditFile` addition.
 
 **Breaking**
 - **`IMessageService`/`INotificationService` gain `Pause(Guid id)`/`Resume(Guid id)`.** `Pause` cancels a toast's auto-dismiss countdown without removing it; `Resume` restarts it from a fresh full duration, not the time remaining when paused (WCAG 2.2.1 — a user hovering or focused inside a toast shouldn't have it vanish underneath them). A source break only for a hand-written `IMessageService`/`INotificationService` implementation — `MessageService`/`NotificationService` and the static `WasmMessageService`/`WasmNotificationService` already implement both, and `MessageContainer`/`NotificationContainer` (scoped and Wasm) already wire them from hover/focus automatically, so no markup changes are needed. See [UI Kit (non-form) controls](#ui-kit-non-form-controls).

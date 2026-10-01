@@ -84,7 +84,7 @@
            focus would swallow the user's keystrokes. The contract the combobox-like model needs is
            already honored -- the panel is in the tab order right after the field, Escape closes it
            from anywhere inside the wrapper, and every panel-originated close hands focus back to the
-           input (see PickerBase's _pendingInputFocus). See the a11y audit's PKR-5. *@
+           input (see PickerBase's _pendingInputFocus). *@
         <div class="wss-picker-dropdown wss-picker-dropdown-single @(_positioned ? null : "wss-measuring")" @ref="_panelRef"
              id="@PanelId" role="dialog" aria-label="@DialogLabel" tabindex="-1">
             @* The month/year (or decade) the panel currently shows, announced on every navigation --

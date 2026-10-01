@@ -441,7 +441,7 @@ public class DateRangePickerTests : BunitContext
         Assert.Equal("Quick ranges", cut.Find(".wss-picker-presets").GetAttribute("aria-label"));
         // Each panel's selects are suffixed with that panel's own view label: both panels render an
         // otherwise character-identical "Month"/"Year" pair, and the panels themselves carry no role
-        // or name, so four combo boxes shared two names between them. See A11yDateTests' DTE-11
+        // or name, so four combo boxes shared two names between them. See A11yDateTests'
         // coverage for the full four-way distinctness check.
         Assert.Equal("Month, January 2025", cut.FindAll(".wss-picker-month select")[0].GetAttribute("aria-label"));
         Assert.Equal("Year, January 2025", cut.FindAll(".wss-picker-month select")[1].GetAttribute("aria-label"));

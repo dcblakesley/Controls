@@ -28,7 +28,7 @@ public partial class RadioOptionItem<[DynamicallyAccessedMembers(DynamicallyAcce
     [Parameter] public bool IsDisabled { get; set; }
 
     /// <summary>
-    /// RAD-2: true when this option is logically disabled by the host's <c>IsOptionDisabled</c>
+    /// true when this option is logically disabled by the host's <c>IsOptionDisabled</c>
     /// predicate but is ALSO the currently-selected option, so it must stay natively focusable --
     /// native <c>disabled</c> here would strip the radiogroup's one native Tab stop (roving
     /// tabindex hands it to whichever radio is checked) and strand the whole group out of the Tab
@@ -67,7 +67,7 @@ public partial class RadioOptionItem<[DynamicallyAccessedMembers(DynamicallyAcce
     string OptionId => $"rb-{Id}-{IdSuffix ?? Value.ToId()}";
 
     /// <summary>
-    /// RAD-1: <see cref="Display"/> falls back to a visible placeholder when null/empty --
+    /// <see cref="Display"/> falls back to a visible placeholder when null/empty --
     /// <see cref="EditRadioString.Options"/> is a plain <c>required List&lt;string&gt;</c> with no
     /// non-empty constraint, so a blank entry used to render a radio with an empty accessible name
     /// (a screen reader announcing a bare "radio button, not checked" with nothing identifying it).

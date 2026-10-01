@@ -29,7 +29,7 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
     /// built-in "Other" radio (<see cref="HasOther"/>), which has no corresponding options entry.
     /// </summary>
     /// <remarks>
-    /// RAD-2 hazard: per native radio-group semantics, roving tabindex hands the group's one native
+    /// Hazard: per native radio-group semantics, roving tabindex hands the group's one native
     /// Tab stop to whichever radio is currently checked. If this predicate names exactly the
     /// currently-selected option (a realistic "this choice is now locked" scenario), naively
     /// rendering that option's native <c>disabled</c> strands the <i>entire group</i> out of the Tab
@@ -46,7 +46,7 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
     /// <summary>
     /// Overrides the "Other" free-text box's accessible name
     /// (<see cref="Controls.RadioOtherInput.AriaLabel"/>). Null (default) uses
-    /// <see cref="Controls.RadioOtherInput.DefaultAriaLabel"/> ("Custom text value input") -- RAD-4:
+    /// <see cref="Controls.RadioOtherInput.DefaultAriaLabel"/> ("Custom text value input") --
     /// that generic literal used to be hard-coded with no parameter, no localization, and no tie back
     /// to this field or its "Other" option. Set this to something field-specific ("Other reason for
     /// return", etc.) or a localized string.
@@ -123,7 +123,7 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
         }
     }
 
-    // RAD-2: the whole-group IsDisabled always natively disables every option, selected or not (that
+    // the whole-group IsDisabled always natively disables every option, selected or not (that
     // strands the WHOLE group out of the Tab sequence, same as any other disabled control -- expected,
     // not a hazard). Only the per-option predicate exempts the currently-selected option from native
     // `disabled` -- see the IsOptionDisabled remarks. Mirrors EditRadioEnum's identically-named pair
@@ -142,7 +142,7 @@ public partial class EditRadioString : RadioGroupControlBase<string?>
 
     bool IsSelectedOption(string option) => string.Equals(_selectedOption, option, StringComparison.Ordinal);
 
-    // RAD-7: an empty Options list (e.g. before an async load, with no "Other" option either) has
+    // an empty Options list (e.g. before an async load, with no "Other" option either) has
     // nothing for role="radiogroup" to own -- ARIA's required-owned-elements forbids a radiogroup
     // with zero radio descendants, and a screen reader user hears "radio group" for a control that
     // contains nothing at all. The markup overrides RadioAria's role onto null in that case only;

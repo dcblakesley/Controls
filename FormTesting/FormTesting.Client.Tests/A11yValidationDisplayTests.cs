@@ -6,21 +6,21 @@ namespace FormTesting.Client.Tests;
 
 /// <summary>
 /// Covers the validation-summary and read-only-display accessibility fixes from the follow-up audit
-/// wave (INF-3, INF-4, LST-2, R5, TXT-5, TXT-1):
+/// wave:
 /// <list type="bullet">
-///   <item><description>INF-3: <c>ValidationView</c>'s summary section is a <c>role="status"</c> live
+///   <item><description><c>ValidationView</c>'s summary section is a <c>role="status"</c> live
 ///   region, so a failed submit is announced without needing the user to already know to navigate
 ///   there.</description></item>
-///   <item><description>INF-4: <c>ValidationView</c> rewrites each summary message through the same
+///   <item><description><c>ValidationView</c> rewrites each summary message through the same
 ///   label-resolution path <c>FieldValidationDisplay</c> uses, instead of leaving DataAnnotations' raw
 ///   member-name text (which never reads <c>[DisplayName]</c>) disagreeing with the control's own
 ///   label.</description></item>
-///   <item><description>LST-2 / R5 / TXT-5: <c>ReadOnlyValue</c>'s empty-value fallback is real, visible,
+///   <item><description><c>ReadOnlyValue</c>'s empty-value fallback is real, visible,
 ///   assistive-technology-reachable text (not <c>aria-hidden</c> + <c>visibility:hidden</c>),
 ///   configurable via <c>EmptyText</c>, and the component now accepts an <c>AriaDescribedBy</c>
 ///   parameter. <c>EditDisplay</c>'s equivalent copy is covered by <c>EditDisplayTests</c> instead,
 ///   since it hand-builds its own read-only div rather than reusing this component.</description></item>
-///   <item><description>TXT-1: <see cref="EditControlBase{TValue}"/> defers a
+///   <item><description><see cref="EditControlBase{TValue}"/> defers a
 ///   <see cref="HidingMode.WhenNull"/>/<see cref="HidingMode.WhenNullOrDefault"/> hide while the
 ///   editor holds focus (tracked via onfocus/onblur handlers injected into
 ///   <c>AdditionalAttributes</c> -- no JS involved), instead of unmounting the focused element out
@@ -33,7 +33,7 @@ namespace FormTesting.Client.Tests;
 /// </summary>
 public class A11yValidationDisplayTests : BunitContext
 {
-    // ───────────────────────── INF-3 / INF-4: ValidationView's summary ─────────────────────────
+    // ───────────────────────── ValidationView's summary ─────────────────────────
 
     [Fact]
     public void ValidationView_summary_section_is_a_status_live_region()
@@ -121,7 +121,7 @@ public class A11yValidationDisplayTests : BunitContext
         Assert.Equal("The Name field is required.", cut.Find("a.validation-summary-message").TextContent);
     }
 
-    // ───────────────────────────── LST-2 / TXT-5: ReadOnlyValue ─────────────────────────────
+    // ───────────────────────────── ReadOnlyValue ─────────────────────────────
 
     [Fact]
     public void ReadOnlyValue_empty_fallback_is_real_visible_text_reachable_by_assistive_technology()
@@ -174,7 +174,7 @@ public class A11yValidationDisplayTests : BunitContext
         Assert.False(cut.Find(".edit-readonly-value").HasAttribute("aria-describedby"));
     }
 
-    // ───────────────────────────── TXT-1: focus preservation under value-driven hiding ─────────────────────────────
+    // ───────────────────────────── focus preservation under value-driven hiding ─────────────────────────────
 
     class OptionalTextModel
     {

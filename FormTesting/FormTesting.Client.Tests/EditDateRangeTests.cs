@@ -272,7 +272,7 @@ public class EditDateRangeTests : BunitContext
     public void PickerAttributes_class_merge_is_byte_identical_after_the_shared_builder_extraction()
     {
         // Pins the exact wrapper class string (not just Contains) now that this control's splat
-        // actually routes through EditControlInit.BuildPickerAttributes -- finding 35's hoist claimed
+        // actually routes through EditControlInit.BuildPickerAttributes -- an earlier hoist claimed
         // it did, but the inline copy stayed until this test's own comment was corrected.
         // FieldCssClass must still overwrite the raw consumer "class", landing in the same
         // "wss-picker consumerClass fieldClass" composition DateRangePicker's own markup produces,
@@ -897,7 +897,7 @@ public class EditDateRangeTests : BunitContext
     {
         // Min/Max rejecting a well-formed value is not a parse failure (see
         // DateRangePicker.OnStartParseError's doc comment) -- ParsingErrorMessage must not appear for
-        // it. Previously NOTHING appeared either (DTE-1), so the typed value silently reverted with no
+        // it. Previously NOTHING appeared either, so the typed value silently reverted with no
         // way to find out why. A distinct range error is now raised, and -- the part worth pinning --
         // it lands on the endpoint that was actually rejected, not on both.
         var model = new RangeModel { Start = Jan15, End = Feb3 };

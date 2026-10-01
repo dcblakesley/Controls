@@ -6,8 +6,7 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// Round-trip regression coverage for EditNumber's unified <c>FormatNumber</c> helper (finding 72 of
-/// the 2026-07-30 audit). <c>FormatValueAsString</c> (edit-mode, always InvariantCulture) and
+/// Round-trip regression coverage for EditNumber's unified <c>FormatNumber</c> helper. <c>FormatValueAsString</c> (edit-mode, always InvariantCulture) and
 /// <c>GetFormattedNumber</c> (read-only, CurrentCulture plus an optional custom Format) used to be two
 /// hand-synced 11-case switches over the same eleven numeric types; a type added to one and not the
 /// other silently degraded to the naked <c>value.ToString()</c> fallback (losing InvariantCulture in

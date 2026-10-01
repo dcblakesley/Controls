@@ -5,8 +5,7 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// EditString/EditTextArea/EditNumber's legacy-mode trailing padding (finding 71 of the 2026-07-30
-/// audit): the inline <c>style="padding-inline-end: 2rem"</c> these three used to hand-duplicate is
+/// EditString/EditTextArea/EditNumber's legacy-mode trailing padding: the inline <c>style="padding-inline-end: 2rem"</c> these three used to hand-duplicate is
 /// now the <c>edit-input-legacy-padding</c> class (edit-controls.css), carried in legacy mode and
 /// dropped in favor of <c>edit-affix-input</c> once any affix parameter switches the shell into affix
 /// mode -- the two are mutually exclusive on the editor element in both directions.

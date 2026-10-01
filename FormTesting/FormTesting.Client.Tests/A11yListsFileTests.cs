@@ -9,13 +9,12 @@ using Microsoft.AspNetCore.Components.Forms;
 namespace FormTesting.Client.Tests;
 
 /// <summary>
-/// Coverage for the 2026-08-13 checked-list/file-upload/read-only-display accessibility audit
-/// (LST-1/LST-3/LST-4/LST-5/LST-6/LST-8/LST-9, TXT-5's <c>AriaDescribedBy</c> wiring, CSS-10's
-/// markup half). Each section below is named for the finding it covers.
+/// Coverage for the 2026-08-13 checked-list/file-upload/read-only-display accessibility audit.
+/// Each section below is named for the behavior it covers.
 /// </summary>
 public class A11yListsFileTests : BunitContext
 {
-    // ----- LST-1: the checked-list fieldset is named by the anchor and carries the required cue ----
+    // ----- the checked-list fieldset is named by the anchor and carries the required cue ----
 
     class RequiredTagsModel
     {
@@ -112,7 +111,7 @@ public class A11yListsFileTests : BunitContext
         Assert.Equal("lbltext-Tags", cut.Find("fieldset.edit-checkedList-fieldset").GetAttribute("aria-labelledby"));
     }
 
-    // ----- TXT-5 / point (c): ReadOnlyValue.AriaDescribedBy wired at the checked-list/EditFile call sites --
+    // ----- ReadOnlyValue.AriaDescribedBy wired at the checked-list/EditFile call sites --
 
     [Fact]
     public void Read_only_checked_list_rows_carry_aria_describedby_matching_the_description()
@@ -156,7 +155,7 @@ public class A11yListsFileTests : BunitContext
         Assert.Contains("desc-Files", describedBy);
     }
 
-    // ----- LST-6: a default hint derived from [MinLength]/[MaxLength] on the bound list -------------
+    // ----- a default hint derived from [MinLength]/[MaxLength] on the bound list -------------
 
     class LengthModel
     {
@@ -266,7 +265,7 @@ public class A11yListsFileTests : BunitContext
         Assert.Equal("Select at least 2 options.", cut.Find("#desc-MinOnly").TextContent.Trim());
     }
 
-    // ----- LST-8: the read-only checked list wraps its selections in a real list --------------------
+    // ----- the read-only checked list wraps its selections in a real list --------------------
 
     [Fact]
     public void Read_only_checked_list_wraps_selected_options_in_a_real_list()
@@ -308,7 +307,7 @@ public class A11yListsFileTests : BunitContext
         Assert.Single(cut.FindAll(".edit-readonly-value"));
     }
 
-    // ----- LST-9: an empty-string option gets a placeholder display label ---------------------------
+    // ----- an empty-string option gets a placeholder display label ---------------------------
 
     [Fact]
     public void Empty_string_option_gets_a_placeholder_checkbox_label()
@@ -347,7 +346,7 @@ public class A11yListsFileTests : BunitContext
         Assert.Contains("(blank)", cut.Find(".edit-readonly-value").TextContent);
     }
 
-    // ----- EditFile fixtures shared by LST-3/LST-4/LST-5/CSS-10 --------------------------------------
+    // ----- EditFile fixtures shared by the tests below --------------------------------------
 
     class FileModel
     {
@@ -364,7 +363,7 @@ public class A11yListsFileTests : BunitContext
             new MemoryStream(new byte[size]);
     }
 
-    // ----- LST-3/LST-4: the polite live-status region ------------------------------------------------
+    // ----- the polite live-status region ------------------------------------------------
 
     [Fact]
     public async Task Loading_status_is_announced_while_a_batch_is_buffered_and_clears_on_completion()
@@ -458,7 +457,7 @@ public class A11yListsFileTests : BunitContext
         Assert.Equal("No files selected.", cut.Find("[role=status]").TextContent);
     }
 
-    // ----- LST-5: the resolved caps are stated up front, alongside "Supported formats" --------------
+    // ----- the resolved caps are stated up front, alongside "Supported formats" --------------
 
     [Fact]
     public void Dropzone_renders_resolved_size_and_count_caps_alongside_supported_formats()
@@ -573,7 +572,7 @@ public class A11yListsFileTests : BunitContext
         Assert.Empty(cut.FindAll(".edit-file-limits"));
     }
 
-    // ----- CSS-10: the plain file-name span keeps the full name recoverable via title ---------------
+    // ----- the plain file-name span keeps the full name recoverable via title ---------------
 
     [Fact]
     public void Plain_file_name_span_carries_a_title_with_the_full_name()

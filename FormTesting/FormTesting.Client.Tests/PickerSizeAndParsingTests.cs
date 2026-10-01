@@ -330,7 +330,7 @@ public class PickerSizeAndParsingTests : BunitContext
     {
         // Min/Max rejecting a well-formed date is not a parse failure (see DatePicker.OnParseError's
         // doc comment) -- ParsingErrorMessage must not appear for it. It used to surface NOTHING at
-        // all, though (DTE-1): the commit guard returned false without raising anything, so the value
+        // all, though: the commit guard returned false without raising anything, so the value
         // silently reverted and a keyboard-only user had no way to discover why. It now raises a
         // distinct range error, which is what this asserts -- the "not a parse error" half of the
         // original intent still holds.

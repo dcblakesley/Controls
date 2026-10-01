@@ -155,7 +155,7 @@ public class EditStringSecretDisclosureTests : BunitContext
         Assert.DoesNotContain("hunter2", cut.Markup);
 
         var toggle = cut.Find(".edit-masked-value button");
-        // TXT-4: folds in the field's own auto-generated label ("Password" -- SecretModel.Password
+        // folds in the field's own auto-generated label ("Password" -- SecretModel.Password
         // has no [DisplayName]) so two masked fields on one form aren't both named "Show value".
         Assert.Equal("Show Password value", toggle.GetAttribute("aria-label"));
         Assert.Equal("false", toggle.GetAttribute("aria-pressed"));

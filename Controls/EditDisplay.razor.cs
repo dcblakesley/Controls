@@ -28,7 +28,7 @@ public partial class EditDisplay : EditControlParametersBase
     [Parameter] public string Text { get; set; } = "";
 
     /// <summary>
-    /// The fallback text rendered in place of <see cref="Text"/> when it's empty (LST-2) -- mirrors
+    /// The fallback text rendered in place of <see cref="Text"/> when it's empty -- mirrors
     /// <see cref="ReadOnlyValue.EmptyText"/> (this control hand-builds its own read-only div rather
     /// than reusing that component -- see the markup's remarks). A parameter so a consumer can
     /// localize it. Defaults to "Not Set".

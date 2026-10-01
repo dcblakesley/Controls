@@ -116,7 +116,7 @@
            needs is already honored -- the panel is in the tab order right after the fields, Escape
            closes it from anywhere inside the wrapper (discarding the in-progress pick), and every
            panel-originated close hands focus back to the active input (see PickerBase's
-           _pendingInputFocus). See the a11y audit's PKR-5. *@
+           _pendingInputFocus). *@
         <div class="wss-picker-dropdown @(IsSessionMode ? "wss-picker-dropdown-single" : null) @(_positioned ? null : "wss-measuring")" @ref="_panelRef"
              id="@PanelId" role="dialog" aria-label="@DialogLabel" tabindex="-1">
             @* What the panel currently shows -- both months/years/decades in the dual-panel modes, the

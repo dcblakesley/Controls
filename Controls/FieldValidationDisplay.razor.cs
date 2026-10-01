@@ -66,7 +66,7 @@ public partial class FieldValidationDisplay
     /// The bound property's CLR type name (e.g. <c>"System.String"</c>), memoized per (model type,
     /// field name) pair in <see cref="_valueTypeCache"/>. Exposed <c>internal</c> (rather than kept a
     /// private implementation detail of this component) so <see cref="ValidationView"/> can resolve the
-    /// same value type for its own message rewrite (INF-4:
+    /// same value type for its own message rewrite (
     /// <see cref="ValidationHelper.GetValidationMessage(string, string, string?, string, string?, int?, int?, bool)"/>'s
     /// numeric-range wording depends on it) without a second reflection-plus-cache of its own.
     /// </summary>

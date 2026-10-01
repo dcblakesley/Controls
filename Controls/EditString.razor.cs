@@ -52,7 +52,7 @@ public partial class EditString : EditTextInputBase
     /// <c>"new-password"</c> is the standard token for exactly this case -- it suppresses filling a
     /// stored credential without claiming the field is something it isn't.
     /// <para>
-    /// TXT-2: applying <c>"one-time-code"</c> to every OTHER field went a step further than merely
+    /// applying <c>"one-time-code"</c> to every OTHER field went a step further than merely
     /// failing to identify the field's purpose (WCAG 1.3.5) -- it actively misidentified it, since that
     /// token is reserved for OTP/2FA entry. An ordinary <c>Email</c>/<c>FirstName</c>/<c>Phone</c> field
     /// got a token that can make a mobile browser offer OTP-style autofill over the field's real
@@ -283,7 +283,7 @@ public partial class EditString : EditTextInputBase
     /// <summary>
     /// Overrides the password show/hide toggle's accessible name (default:
     /// <c>"Show {ResolvedLabel} password"</c>, e.g. "Show Password password") -- see
-    /// <see cref="EditTextInputBase.ClearButtonLabel"/>'s remarks (TXT-4): a Password/Confirm-Password
+    /// <see cref="EditTextInputBase.ClearButtonLabel"/>'s remarks: a Password/Confirm-Password
     /// pair otherwise renders two toggles both named "Show password", which a screen-reader user
     /// browsing a button list can't tell apart. The name stays CONSTANT across both reveal states
     /// either way -- only <c>aria-pressed</c> moves (see the markup's remarks).
@@ -299,7 +299,7 @@ public partial class EditString : EditTextInputBase
     /// <summary>
     /// Overrides the read-only masked row's reveal-toggle accessible name (default:
     /// <c>"Show {ResolvedLabel} value"</c>) -- the same collision <see cref="ShowPasswordButtonLabel"/>
-    /// fixes (TXT-4): two masked fields on one form otherwise both render a toggle named "Show value".
+    /// fixes: two masked fields on one form otherwise both render a toggle named "Show value".
     /// </summary>
     [Parameter] public string? ShowValueButtonLabel { get; set; }
 
