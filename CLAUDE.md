@@ -65,7 +65,7 @@ Read an existing control before writing one — the pattern is uniform and the s
 - **Every control declares an inert `Field` parameter marked `[Obsolete(error: true)]`** — a compile-time guard so stale `Field="..."` markup fails the build instead of throwing at first render. Copy the stub verbatim into new controls; `@bind-Value` alone supplies `ValueExpression`.
 - **Global usings:** `Controls/GlobalUsings.cs` for the library; Controls.Demo uses `_Imports.razor` plus explicit `using`s in `.cs` files (`_Imports.razor` doesn't apply to code-behind).
 - **UI-kit conventions:** namespace `Controls` (pin `@namespace Controls` on each `.razor`); new components capture unmatched attributes via the internal `AttributeSplat` helper (`class`/`style` hand-merged, splat first so explicit attributes win) onto the root element — never onto an element whose inline style is JS-owned. `Icon`, `Button`, `Checkbox`, `Tag` are intentionally excluded from the kit — dialog footers use native `<button>` + `wss-dialog-btn`.
-- **JS interop must degrade gracefully.** The RCL modules (`wss-select.js`, `wss-overlay.js`, `wss-table.js`, `wss-picker.js`, `edit-controls.js`) import lazily and every JS-dependent behavior needs a no-JS fallback (prerender/tests) — CSS-default placement, plain checkbox, etc.
+- **JS interop must degrade gracefully.** The RCL modules (`Controls/wwwroot/*.js`) import lazily and every JS-dependent behavior needs a no-JS fallback (prerender/tests) — CSS-default placement, plain checkbox, etc.
 
 ## CSS
 
@@ -88,10 +88,10 @@ Theming contract (documented in README "Styling and Customization"): `--wss-*`/`
 
 ### `edit-controls` skill is part of the deliverable
 
-`~/.claude/skills/edit-controls/` is the usage reference other repos' agents read instead of this source. Whenever a change touches a control's public API, parameters, behavior, or a documented convention, update the matching skill file(s) in the same commit — do not defer to a cleanup pass. (The old non-Claude export at the workspace root's `.github/skills/` was deleted 2026-07 — the Claude skill is the only external copy to maintain.)
+`~/.claude/skills/edit-controls/` is the usage reference other repos' agents read instead of this source. Whenever a change touches a control's public API, parameters, behavior, or a documented convention, update the matching skill file(s) in the same commit — do not defer to a cleanup pass. It is the only external copy of these docs.
 
 ## Key Conventions
 
 - Label preference: (1) let it auto-generate from the property name (camel-case split: `BirthDate` → "Birth Date"); (2) `[DisplayName]` on the model for constant labels the auto-name gets wrong; (3) the `Label` parameter only for dynamic/runtime text. Precedence (highest wins): `Label` param → `[DisplayName]` → `[EnumDisplayName]` → `[Display(Name)]` → auto-generated.
 - All controls carry ARIA wiring (`aria-required`, `aria-invalid`, `aria-describedby`, fieldset/legend for groups) — preserve it when touching markup.
-- **Comments and documentation: only when necessary, and concise.** This applies to code comments, README prose (including changelog entries), and the `edit-controls` skill alike. Say only what the reader couldn't infer from the code/parameter names, and stop — a non-obvious WHY for comments, the contract/behavior/example for docs. Much of this repo's existing comments and changelog entries run long; don't match that density in new or edited material, and feel free to trim one you're already touching if it's over-explaining.
+- **Comments and documentation: only when necessary, and concise.** This applies to code comments, README prose (including changelog entries), and the `edit-controls` skill alike. Say only what the reader couldn't infer from the code/parameter names — a non-obvious WHY for comments, the contract/behavior/example for docs. Many existing comments and changelog entries run long; write new material tighter, and trim one you're already touching if it over-explains.
