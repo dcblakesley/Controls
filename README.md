@@ -1467,6 +1467,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.9
+
+Small, non-breaking release.
+
+**New**
+- **`Table.DefaultSortColumn`/`DefaultSortDirection`** seed an initial sort by a sortable column's `Title` (case-insensitive), applied once when the column first renders; header clicks take over afterwards.
+
 ### 10.8.8
 
 Small, non-breaking release: completes the APG datepicker-dialog keyboard set on `DatePicker`/`DateRangePicker`'s day grid, plus a `DateRangePicker` view-anchoring fix.
