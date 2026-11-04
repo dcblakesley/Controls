@@ -584,6 +584,14 @@
     /// Override to localize.</summary>
     [Parameter] public string BottomPaginationLabel { get; set; } = "Pagination (bottom)";
 
+    /// <summary><see cref="Column{TItem}.Title"/> (case-insensitive) of the sortable column to sort by
+    /// initially, in <see cref="DefaultSortDirection"/>. Applied once, when that column first renders;
+    /// later changes are ignored and header clicks take over.</summary>
+    [Parameter] public string? DefaultSortColumn { get; set; }
+
+    /// <summary>Direction of the initial sort named by <see cref="DefaultSortColumn"/>.</summary>
+    [Parameter] public SortDirection DefaultSortDirection { get; set; } = SortDirection.Ascending;
+
     /// <summary>Accessible-name fallback for a column's sort button when the column has no header
     /// text to name it (and for a <c>TitleContent</c> header, whose template renders outside the
     /// button). Override to localize.</summary>
@@ -879,6 +887,7 @@
 
     Column<TItem>? _sortColumn;
     SortDirection _sortDirection = SortDirection.None;
+    bool _defaultSortApplied;
     ElementReference _selectAllRef;
     // JsModule owns the once-only import, the dispose-raced-the-import guard, and the no-JS degrade
     // (a null return, which reads the same as the import throwing did).
@@ -1360,9 +1369,23 @@
                     _sortDirection = SortDirection.None;
                 }
 
+                // One-shot initial sort: the first promotion containing the named sortable column
+                // seeds it (columns aren't known to the table before they register).
+                var defaultSortSeeded = false;
+                if (!_defaultSortApplied && !string.IsNullOrEmpty(DefaultSortColumn)
+                    && DefaultSortDirection != SortDirection.None
+                    && _columns.FirstOrDefault(c => c.CanSort
+                        && string.Equals(c.Title, DefaultSortColumn, StringComparison.OrdinalIgnoreCase)) is { } seed)
+                {
+                    _defaultSortApplied = true;
+                    _sortColumn = seed;
+                    _sortDirection = DefaultSortDirection;
+                    defaultSortSeeded = true;
+                }
+
                 // Re-derive the view before the body renders whenever either of the above actually
                 // changed something it depends on.
-                if (filterCleared.Count > 0 || sortColumnRemoved)
+                if (filterCleared.Count > 0 || sortColumnRemoved || defaultSortSeeded)
                 {
                     if (filterCleared.Count > 0) ApplyFilters();
                     ApplySort();

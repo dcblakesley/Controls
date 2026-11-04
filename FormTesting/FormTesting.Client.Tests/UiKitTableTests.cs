@@ -332,6 +332,36 @@ public class UiKitTableTests : BunitContext
         Assert.Equal("none", AgeAriaSort());
     }
 
+    [Theory]
+    [InlineData(SortDirection.Ascending, "ascending", "Bob,Alice")]
+    [InlineData(SortDirection.Descending, "descending", "Alice,Bob")]
+    public void Table_default_sort_applies_on_first_render_then_header_clicks_take_over(
+        SortDirection direction, string ariaSort, string order)
+    {
+        var cut = Render<Table<Person>>(p => p
+            .Add(t => t.DataSource, Sample()) // Alice(30), Bob(25)
+            .Add(t => t.DefaultSortColumn, "age")
+            .Add(t => t.DefaultSortDirection, direction)
+            .AddChildContent<PropertyColumn<Person, string>>(cp => cp
+                .Add(c => c.Title, "Name")
+                .Add(c => c.Property, x => x.Name))
+            .AddChildContent<PropertyColumn<Person, int>>(cp => cp
+                .Add(c => c.Title, "Age")
+                .Add(c => c.Property, x => x.Age)
+                .Add(c => c.Sortable, true)));
+
+        string Names() => string.Join(",", cut.FindAll("tbody .wss-table-row td.wss-table-cell:first-child")
+            .Select(td => td.TextContent.Trim()));
+
+        Assert.Equal(order, Names());
+        Assert.Equal(ariaSort, cut.FindAll("thead th")[1].GetAttribute("aria-sort"));
+
+        // A header click continues the normal cycle from the seeded state.
+        cut.FindAll("thead th")[1].QuerySelector("button.wss-table-sort-trigger")!.Click();
+        Assert.Equal(direction == SortDirection.Ascending ? "descending" : "none",
+            cut.FindAll("thead th")[1].GetAttribute("aria-sort"));
+    }
+
     [Fact]
     public void Table_pager_alignment_renders_the_modifier_class()
     {
