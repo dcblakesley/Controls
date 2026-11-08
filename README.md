@@ -1467,6 +1467,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.10
+
+Small, non-breaking release.
+
+**Fixed**
+- **Tooltip** bubble no longer paints a faint ghost rectangle between the trigger and the bubble. The shadow is now a `filter: drop-shadow()` list via `--wss-tooltip-shadow` (override it with another `drop-shadow()` list, or `none`).
+
 ### 10.8.9
 
 Small, non-breaking release.
