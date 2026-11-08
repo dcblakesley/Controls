@@ -105,6 +105,27 @@ public class HoverTooltipA11yE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task The_bubble_shadow_follows_painted_pixels_not_the_transparent_bridge_border()
+    {
+        await GotoAsync();
+        var trigger = Trigger("tooltip-auto");
+
+        await ScrollIntoViewAsync(trigger);
+        await trigger.HoverAsync();
+        await WaitForBubbleAsync("tooltip-auto");
+
+        // The ::after body carries a transparent hover-bridge border, and a box-shadow is cast from
+        // the whole border box -- it would outline the invisible bridge and paint a ghost rectangle
+        // between trigger and bubble. The shadow must come from a filter drop-shadow instead.
+        var style = await _page.EvaluateAsync<string[]>(
+            @"() => { const s = getComputedStyle(document.querySelector('[data-test-id=tooltip-auto]'), '::after');
+                      return [s.boxShadow, s.filter]; }");
+
+        Assert.Equal("none", style[0]);
+        Assert.Contains("drop-shadow", style[1]);
+    }
+
+    [Fact]
     public async Task Escape_dismisses_a_hovered_tooltip_and_leaving_the_trigger_re_arms_it()
     {
         await GotoAsync();

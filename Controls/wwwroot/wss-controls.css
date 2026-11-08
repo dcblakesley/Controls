@@ -198,6 +198,11 @@
     --wss-tooltip-gap: 24px;
     --wss-tooltip-gap-tight: 3px;
     --wss-tooltip-z-index: 10000;
+    /* Tooltip bubble shadow, as a filter drop-shadow() list (not a box-shadow value, so it does NOT
+       follow --wss-shadow): the bubble's transparent hover-bridge border is part of its border box,
+       and a box-shadow outlines that whole box, painting a faint ghost rectangle across the gap.
+       drop-shadow follows painted pixels only. Override with another drop-shadow() list, or `none`. */
+    --wss-tooltip-shadow: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.12)) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.08));
 }
 
 /*
@@ -1335,9 +1340,11 @@
        not chrome, and must not count against the cap -- under a consumer's global
        `*, *::after { box-sizing: border-box }` reset it otherwise would, silently narrowing
        side-placed tooltips by the whole gap.
-   The outer drop shadow needs no compensation: CSS clips an outer box-shadow to OUTSIDE the border
-   box, so the enlarged (transparent) border box keeps the shadow out of the gap rather than smearing
-   it across. */
+   The shadow DOES need handling: a box-shadow is cast from the whole border box, so with the bridge
+   border it outlines the invisible gap too and paints a faint ghost rectangle between trigger and
+   bubble (clipping only removes the shadow from under the box, not from around the bigger one). The
+   bubble therefore uses `filter: var(--wss-tooltip-shadow)` (drop-shadow), which follows painted
+   pixels only. */
 [data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
@@ -1367,7 +1374,9 @@
     display: none;
     z-index: var(--wss-tooltip-z-index);
     border: 0;
-    box-shadow: var(--wss-shadow);
+    /* filter, not box-shadow: a box-shadow is cast from the full border box, transparent bridge
+       border included, so it painted a visible ghost rectangle between trigger and bubble. */
+    filter: var(--wss-tooltip-shadow);
     line-height: 1.5;
     transition: opacity 0.15s ease, transform 0.15s ease, display 0.15s allow-discrete;
 }
