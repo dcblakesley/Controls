@@ -190,12 +190,14 @@
        (see the brand/interactive comment above). */
 
     /* Hover tooltip (data-tooltip). --wss-tooltip-gap is the resting distance from the trigger to
-       the pointer tip — wide enough that the cursor (which sits below-and-right of the pointer
-       hotspot) never covers the bubble; --wss-tooltip-gap-tight applies instead for placements the
-       cursor can't cover anyway (above the element, or directly to its left). --wss-tooltip-z-index
+       the bubble, wide enough that the cursor (which sits below-and-right of the pointer
+       hotspot) never covers it; --wss-tooltip-gap-tight applies instead for placements the cursor
+       can't cover anyway (above the element, or directly to its left). The tail always stretches
+       across the gap, stopping --wss-tooltip-tail-clearance short of the element. --wss-tooltip-z-index
        matches --edit-tooltip-z-index's default (10000) so a hover tooltip clears any consumer
        drawer/modal stacking context. */
     --wss-tooltip-gap: 24px;
+    --wss-tooltip-tail-clearance: 2px;
     --wss-tooltip-gap-tight: 3px;
     --wss-tooltip-z-index: 10000;
     /* Tooltip bubble shadow, as a filter drop-shadow() list (not a box-shadow value, so it does NOT
@@ -1310,9 +1312,11 @@
 [data-tooltip]::before {
     content: '';
     position: absolute;
-    width: 10px;
-    height: 10px;
+    width: 16px;
+    height: calc(var(--wss-tooltip-gap) + 4px);
     background: var(--color-tooltip-bg, #262626);
+    clip-path: polygon(0 100%, 100% 100%, 50% 0);
+    transform-origin: 50% 100%;
     pointer-events: none;
     opacity: 0;
     display: none;
@@ -1383,11 +1387,9 @@
 
 /* ── Default placement: below ── */
 [data-tooltip]::before {
-    top: calc(100% + var(--wss-tooltip-gap));
+    top: calc(100% + var(--wss-tooltip-tail-clearance));
     left: 50%;
-    transform: translateX(-50%) rotate(45deg) scale(0.8);
-    border-right: none;
-    border-bottom: none;
+    transform: translateX(-50%) scale(0.8);
 }
 
 /* top: 100% - 4px with a (gap + 5px + 4px) transparent top border puts the painted bubble back at
@@ -1399,6 +1401,10 @@
     top: calc(100% - 4px);
     left: 50%;
     border-top: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
+    /* A border shrinks the padding-box's inner radius by its width; the outer radius is raised by
+       the same amount so the painted corners stay 6px. */
+    border-top-left-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
+    border-top-right-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
     transform: translateX(-50%) translateY(4px);
 }
 
@@ -1424,7 +1430,7 @@
     [data-tooltip]:hover::before,
     [data-tooltip]:focus-visible::before {
         opacity: 0;
-        transform: translateX(-50%) rotate(45deg) scale(0.8);
+        transform: translateX(-50%) scale(0.8);
     }
 
     [data-tooltip]:hover::after,
@@ -1436,7 +1442,7 @@
 
 [data-tooltip]:hover::before,
 [data-tooltip]:focus-visible::before {
-    transform: translateX(-50%) rotate(45deg) scale(1);
+    transform: translateX(-50%) scale(1);
     transition-delay: 0.35s;
 }
 
@@ -1449,11 +1455,11 @@
 /* ── Placement: above ── */
 [data-tooltip].wss-tooltip-top::before {
     top: auto;
-    bottom: calc(100% + var(--wss-tooltip-gap));
+    bottom: calc(100% + var(--wss-tooltip-tail-clearance));
     left: 50%;
-    transform: translateX(-50%) rotate(225deg) scale(0.8);
-    border-right: none;
-    border-bottom: none;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    transform-origin: 50% 0;
+    transform: translateX(-50%) scale(0.8);
 }
 
 /* Mirror of the default placement's bridge: the gap is below the bubble now, so the transparent
@@ -1464,12 +1470,15 @@
     left: 50%;
     border-top: 0;
     border-bottom: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
+    border-radius: 6px;
+    border-bottom-left-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
+    border-bottom-right-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
     transform: translateX(-50%) translateY(-4px);
 }
 
 [data-tooltip].wss-tooltip-top:hover::before,
 [data-tooltip].wss-tooltip-top:focus-visible::before {
-    transform: translateX(-50%) rotate(225deg) scale(1);
+    transform: translateX(-50%) scale(1);
 }
 
 [data-tooltip].wss-tooltip-top:hover::after,
@@ -1481,7 +1490,7 @@
     [data-tooltip].wss-tooltip-top:hover::before,
     [data-tooltip].wss-tooltip-top:focus-visible::before {
         opacity: 0;
-        transform: translateX(-50%) rotate(225deg) scale(0.8);
+        transform: translateX(-50%) scale(0.8);
     }
 
     [data-tooltip].wss-tooltip-top:hover::after,
@@ -1578,8 +1587,12 @@
 [data-tooltip].wss-tooltip-side-left::before {
     top: 50%;
     left: auto;
-    right: calc(100% + var(--wss-tooltip-gap));
-    transform: translateY(-50%) rotate(135deg) scale(0.8);
+    right: calc(100% + var(--wss-tooltip-tail-clearance));
+    width: calc(var(--wss-tooltip-gap) + 4px);
+    height: 16px;
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+    transform-origin: 0 50%;
+    transform: translateY(-50%) scale(0.8);
 }
 
 /* Same bridge, rotated a quarter turn: the gap sits to the bubble's right, so the transparent
@@ -1590,12 +1603,15 @@
     right: calc(100% - 4px);
     border-top: 0;
     border-right: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
+    border-radius: 6px;
+    border-top-right-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
+    border-bottom-right-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
     transform: translateY(-50%) translateX(-4px);
 }
 
 [data-tooltip].wss-tooltip-side-left:hover::before,
 [data-tooltip].wss-tooltip-side-left:focus-visible::before {
-    transform: translateY(-50%) rotate(135deg) scale(1);
+    transform: translateY(-50%) scale(1);
 }
 
 [data-tooltip].wss-tooltip-side-left:hover::after,
@@ -1607,7 +1623,7 @@
     [data-tooltip].wss-tooltip-side-left:hover::before,
     [data-tooltip].wss-tooltip-side-left:focus-visible::before {
         opacity: 0;
-        transform: translateY(-50%) rotate(135deg) scale(0.8);
+        transform: translateY(-50%) scale(0.8);
     }
 
     [data-tooltip].wss-tooltip-side-left:hover::after,
@@ -1621,8 +1637,12 @@
 [data-tooltip].wss-tooltip-side-right::before {
     top: 50%;
     right: auto;
-    left: calc(100% + var(--wss-tooltip-gap));
-    transform: translateY(-50%) rotate(-45deg) scale(0.8);
+    left: calc(100% + var(--wss-tooltip-tail-clearance));
+    width: calc(var(--wss-tooltip-gap) + 4px);
+    height: 16px;
+    clip-path: polygon(100% 0, 0 50%, 100% 100%);
+    transform-origin: 100% 50%;
+    transform: translateY(-50%) scale(0.8);
 }
 
 /* Mirror of side-left: gap (and therefore the transparent bridge border) on the bubble's left. */
@@ -1632,12 +1652,15 @@
     left: calc(100% - 4px);
     border-top: 0;
     border-left: calc(var(--wss-tooltip-gap) + 9px) solid transparent;
+    border-radius: 6px;
+    border-top-left-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
+    border-bottom-left-radius: calc(6px + var(--wss-tooltip-gap) + 9px);
     transform: translateY(-50%) translateX(4px);
 }
 
 [data-tooltip].wss-tooltip-side-right:hover::before,
 [data-tooltip].wss-tooltip-side-right:focus-visible::before {
-    transform: translateY(-50%) rotate(-45deg) scale(1);
+    transform: translateY(-50%) scale(1);
 }
 
 [data-tooltip].wss-tooltip-side-right:hover::after,
@@ -1649,7 +1672,7 @@
     [data-tooltip].wss-tooltip-side-right:hover::before,
     [data-tooltip].wss-tooltip-side-right:focus-visible::before {
         opacity: 0;
-        transform: translateY(-50%) rotate(-45deg) scale(0.8);
+        transform: translateY(-50%) scale(0.8);
     }
 
     [data-tooltip].wss-tooltip-side-right:hover::after,
