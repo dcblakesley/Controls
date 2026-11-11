@@ -2001,6 +2001,17 @@
     cursor: auto;
 }
 
+/* AntD zoom animation: mask fades, panel scales from 0.2. Exit leaves the wrap in the DOM for
+   200ms (Modal.razor ExitMs) and blocks pointer input meanwhile. */
+.wss-modal-enter { animation: wss-modal-mask-in 0.2s linear; }
+.wss-modal-enter .wss-modal { animation: wss-modal-zoom-in 0.2s cubic-bezier(0.08, 0.82, 0.17, 1); }
+.wss-modal-leave { animation: wss-modal-mask-out 0.2s linear forwards; pointer-events: none; }
+.wss-modal-leave .wss-modal { animation: wss-modal-zoom-out 0.2s cubic-bezier(0.78, 0.14, 0.15, 0.86) forwards; }
+@keyframes wss-modal-mask-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wss-modal-mask-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes wss-modal-zoom-in { from { opacity: 0; transform: scale(0.2); } to { opacity: 1; transform: scale(1); } }
+@keyframes wss-modal-zoom-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.2); } }
+
 .wss-modal-header {
     display: flex;
     align-items: center;
@@ -5002,6 +5013,10 @@
     .wss-drawer-left,
     .wss-drawer-top,
     .wss-drawer-bottom,
+    .wss-modal-enter,
+    .wss-modal-enter .wss-modal,
+    .wss-modal-leave,
+    .wss-modal-leave .wss-modal,
     .wss-msg,
     .wss-notification,
     .wss-skeleton-active .wss-skeleton-title,

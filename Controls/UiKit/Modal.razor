@@ -1,12 +1,12 @@
 @namespace Controls
 @inherits OverlayActivationBase
 
-@if (Visible)
+@if (_render)
 {
     @* tabindex="-1": iOS-class WebKit only synthesizes a click from a tap on a focusable/interactive
        target chain, so without it a mask tap never reaches @onclick (mask-close dead on touch). The
        JS focus trap preventDefaults outside mousedown, so the wrap can't actually steal focus. *@
-    <div class="wss-modal-wrap @(Centered ? "wss-modal-wrap-centered" : null)" tabindex="-1" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
+    <div class="wss-modal-wrap @(Centered ? "wss-modal-wrap-centered" : null) @(Animated ? (_closing ? "wss-modal-leave" : "wss-modal-enter") : null)" tabindex="-1" @onmousedown="OnMaskMouseDown" @onmouseup="OnMaskMouseUp" @onclick="OnMaskClickAsync">
         @* onkeydown/onmousedown are withheld from the splat and CHAINED from the two handlers below:
            they collide with this element's own, and a duplicate attribute name deletes the consumer's
            outright rather than merging (see PanelAttributes / ConsumerEvent). onmouseup/onclick carry
@@ -90,6 +90,8 @@
     [Parameter] public bool Centered { get; set; }
     /// <summary>Disables the default OK button while true (e.g. during async confirm work).</summary>
     [Parameter] public bool ConfirmLoading { get; set; }
+    /// <summary>Plays the AntD zoom/fade open and close animation. Defaults to true; set false for an instant show/hide.</summary>
+    [Parameter] public bool Animated { get; set; } = true;
     /// <summary>Accessible name used when no <see cref="Title"/>/<see cref="TitleContent"/> is supplied.</summary>
     [Parameter] public string? AriaLabel { get; set; }
     /// <summary>
@@ -114,6 +116,39 @@
     readonly string _titleId = $"wss-modal-title-{Guid.NewGuid():N}";
 
     protected override bool IsVisible => Visible;
+
+    // _render outlives Visible by the exit animation so the leave keyframes can play; _exitVersion
+    // voids a pending removal when the modal reopens (or is re-closed) mid-animation.
+    const int ExitMs = 200;
+    bool _render;
+    bool _closing;
+    int _exitVersion;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible)
+        {
+            _exitVersion++;
+            _render = true;
+            _closing = false;
+        }
+        else if (_render && !_closing)
+        {
+            if (!Animated) { _render = false; return; }
+            _closing = true;
+            var version = ++_exitVersion;
+            _ = RemoveAfterExitAsync(version);
+        }
+    }
+
+    async Task RemoveAfterExitAsync(int version)
+    {
+        await Task.Delay(ExitMs);
+        if (version != _exitVersion) return;
+        _render = false;
+        _closing = false;
+        await InvokeAsync(StateHasChanged);
+    }
 
     bool HasTitle => TitleContent != null || !string.IsNullOrEmpty(Title);
 

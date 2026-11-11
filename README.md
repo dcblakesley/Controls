@@ -431,6 +431,7 @@ A set of dependency-free, AntDesign-style general UI widgets (ported from `Stand
   - `ShowTotal`, a `PageSizeOptions` size-changer (`@bind-PageSize`), `ShowQuickJumper`, and `Small` round out AntD 4.x parity (see [Pagination parity features](#pagination-parity-features-pagination)).
   - `Disabled` makes the whole pager inert (buttons, size-changer, quick-jumper) — `Table.Loading` uses it to give its own masked pagers keyboard, not just pointer, inertness.
 - **`Modal`** — Dialog with `@bind-Visible`, footer, mask-close.
+  - `Animated` (default true) plays AntD's zoom/fade open and close; set false for instant show/hide.
   - `Centered` vertically centers it; `Keyboard` (default true) independently governs Escape-to-close (`Closable` only shows/hides the header X).
   - `AriaLabel` (default **"Dialog"**) names the panel when untitled.
   - While open, everything behind the dialog — outside the toast layers, `#components-reconnect-modal`/`#blazor-error-ui`, and anything marked `data-wss-keep-interactive` (an escape hatch for shell chrome you don't own, e.g. an MFE host header) — is made `inert` (out of the a11y tree, tab order, and hit-testing), not just focus-trapped; stacked dialogs let only the topmost own the background, restoring on the last close.

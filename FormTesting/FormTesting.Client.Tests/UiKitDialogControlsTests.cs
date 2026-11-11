@@ -18,6 +18,29 @@ public class UiKitDialogControlsTests : BunitContext
     }
 
     [Fact]
+    public async Task Modal_animated_close_keeps_leave_class_then_removes()
+    {
+        var cut = Render<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Title, "T"));
+        Assert.Contains("wss-modal-enter", cut.Find(".wss-modal-wrap").ClassName);
+
+        cut.Render(p => p.Add(m => m.Visible, false).Add(m => m.Title, "T"));
+        Assert.Contains("wss-modal-leave", cut.Find(".wss-modal-wrap").ClassName);
+
+        await Task.Delay(400);
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".wss-modal-wrap")));
+    }
+
+    [Fact]
+    public void Modal_not_animated_has_no_animation_class_and_removes_immediately()
+    {
+        var cut = Render<Modal>(p => p.Add(m => m.Visible, true).Add(m => m.Animated, false));
+        Assert.DoesNotContain("wss-modal-enter", cut.Find(".wss-modal-wrap").ClassName);
+
+        cut.Render(p => p.Add(m => m.Visible, false).Add(m => m.Animated, false));
+        Assert.Empty(cut.FindAll(".wss-modal-wrap"));
+    }
+
+    [Fact]
     public void Modal_visible_renders_title_body_and_two_footer_buttons()
     {
         var cut = Render<Modal>(p => p
