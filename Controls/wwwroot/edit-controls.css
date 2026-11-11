@@ -216,15 +216,13 @@
 /* Text-type editors (input/select/textarea and the affix wrapper) show AntD's focus glow plus a primary
    border (the border carries the 3:1 contrast the 20% glow can't). Plain :focus, like AntD; this applies
    with or without .edit-theme, which re-states it with its own tokens at higher specificity. */
-.edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
-.edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
+.edit-input:not([type="checkbox"]):not(:disabled):focus {
     outline: none;
     border-color: var(--edit-color-primary);
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
-.edit-input:not(.edit-affix-input):not([type="checkbox"]).invalid:focus,
-.edit-input-affix-wrapper.edit-input-affix-invalid:focus-within {
+.edit-input:not([type="checkbox"]).invalid:focus {
     border-color: var(--edit-color-danger);
     box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
 }
@@ -1913,6 +1911,11 @@
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
+.edit-theme .edit-input.edit-affix-input:not(:disabled):focus {
+    border-color: transparent;
+    box-shadow: none;
+}
+
 .edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
     border-color: var(--edit-color-primary);
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
@@ -2142,8 +2145,7 @@
         outline-offset: 1px;
     }
 
-    .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
-    .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within,
+    .edit-input:not([type="checkbox"]):not(:disabled):focus,
     .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
     .edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
         outline: 2px solid Highlight;
