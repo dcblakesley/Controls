@@ -187,12 +187,11 @@
 }
 
 /* Native checkbox/radio take AntD's focus glow too (radio 3px, checkbox 2px), on plain :focus.
-   The native checkbox reports border-radius 0 but paints ~2px corners, so the glow gets the same
-   radius or it reads as a square. EditRadio's children are consumer-owned <InputRadio>s with no
+   A native checkbox ignores author border-radius (computed 0), but Chromium shapes the glow to the
+   box it paints; UseStyledCheckbox is the fully rounded variant. EditRadio's children are consumer-owned <InputRadio>s with no
    library class, so its radios are matched through the library's fieldset. */
 .edit-input[type="checkbox"]:focus,
 .edit-checkedList-checkbox:focus {
-    border-radius: 2px;
     outline: none;
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
