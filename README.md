@@ -1468,6 +1468,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Changelog
 
+### 10.8.11
+
+Small, non-breaking release.
+
+**New**
+- **`Modal`** plays AntD's zoom/fade open and close animation. `Animated="false"` restores instant show/hide. `prefers-reduced-motion` hides it instantly on close.
+
 ### 10.8.10
 
 Small, non-breaking release.
