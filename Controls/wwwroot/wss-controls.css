@@ -1876,6 +1876,29 @@
     text-align: center;
 }
 
+/* Native table checkbox/radio: AntD glow (radio 3px, checkbox 2px) instead of the outline ring. */
+.wss-table-checkbox:focus,
+.wss-table-filter-checkbox:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
+}
+
+.wss-table-radio:focus,
+.wss-table-filter-radio:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
+}
+
+/* Focus glow (not the kit's outline ring) -- these are text-type inputs, like .wss-search-input. */
+.wss-pagination-size-select:focus,
+.wss-pagination-jumper-input:focus,
+.wss-color-picker-hex:focus,
+.wss-color-picker-channel:focus {
+    outline: none;
+    border-color: var(--wss-color-primary);
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
+}
+
 /* AntD's compact pagination size: smaller buttons, tighter footprint. CSS-only (Small="true"). */
 .wss-pagination-sm .wss-pagination-item,
 .wss-pagination-sm .wss-pagination-prev,
@@ -2460,9 +2483,9 @@
     mask: none;
 }
 
-.wss-table-checkbox-input-styled:focus-visible + .wss-table-checkbox-box {
-    outline: 2px solid var(--wss-color-primary);
-    outline-offset: 2px;
+.wss-table-checkbox-input-styled:focus + .wss-table-checkbox-box {
+    border-color: var(--wss-color-primary);
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
 .wss-table-tbody .wss-table-row-selected .wss-table-cell {
@@ -3345,17 +3368,16 @@
     border-color: var(--wss-color-primary-hover, var(--color-primary-hover, color-mix(in srgb, var(--wss-color-primary) 82%, #fff)));
 }
 
-/* The open/focused field shows a solid accent border (no glow — per the Figma mock) plus the
-   active-side underline below. */
+/* The open/focused field shows a solid accent border plus the active-side underline below; the
+   focus glow is the next rule. */
 .wss-picker-open .wss-picker-input,
 .wss-picker:not(.wss-picker-disabled) .wss-picker-input:focus-within {
     border-color: var(--wss-color-primary);
 }
 
-/* Single-date variant (DatePicker): its Figma spec adds the focusPrimary ring to the open/focused
-   field (the range field is border-only per its own mock). */
-.wss-picker-single.wss-picker-open .wss-picker-input,
-.wss-picker-single:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+/* AntD focus glow on the open/focused field, single and range. */
+.wss-picker.wss-picker-open .wss-picker-input,
+.wss-picker:not(.wss-picker-disabled) .wss-picker-input:focus-within {
     box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
@@ -3493,13 +3515,12 @@
     border-color: var(--wss-color-error);
 }
 
-/* Single-date variant only (the range field stays border-only per its own mock, even when
-   invalid -- see the primary box-shadow rule above). Re-assert BOTH the border-color AND the
+/* Invalid glow. Re-assert BOTH the border-color AND the
    box-shadow together in this one rule: a shadow-only override would leave the border to whichever
    same-specificity primary rule happens to win the tie-break, pairing a red glow with a blue
    border (.wss-select.invalid's focus rule had exactly this bug once). */
-.wss-picker-single.invalid.wss-picker-open .wss-picker-input,
-.wss-picker-single.invalid:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+.wss-picker.invalid.wss-picker-open .wss-picker-input,
+.wss-picker.invalid:not(.wss-picker-disabled) .wss-picker-input:focus-within {
     border-color: var(--wss-color-error);
     box-shadow: 0 0 0 2px var(--wss-error-shadow, color-mix(in srgb, var(--wss-color-error) 20%, transparent));
 }
@@ -4327,6 +4348,7 @@
     position: relative;
     z-index: 1;
     border-color: var(--wss-color-primary);
+    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
 /* SearchInput.AllowClear: a flex sibling between the input and the search button (only rendered
@@ -4822,12 +4844,9 @@
    (the UseStyledCheckbox opt-in) already has its own :focus-visible ring on its drawn box (Table
    section, near the checkbox styling); these are the plain, unstyled <input> variants, which
    otherwise fall back to the (frequently reset) UA outline.
-   Two members of the list each override an `outline: none` declared earlier in this file, and win on
-   ordering plus specificity rather than by luck: .wss-tabs-panel is now a tab stop (a text-only panel
-   was otherwise keyboard-unreachable) and its own rule sets outline: none, and .wss-search-input's
-   rule does the same, leaving that input with only a border-color change on :focus -- no indicator at
-   all for a consumer who themes the border. Both base rules are (0,1,0) and appear above this (0,2,0)
-   block, so this ring lands. */
+   .wss-tabs-panel is a tab stop (a text-only panel was otherwise keyboard-unreachable) and its base
+   rule sets outline: none; that (0,1,0) rule sits above this (0,2,0) block, so the ring lands.
+   Text-type inputs (search/jumper/page-size) use the focus glow instead -- see their own :focus rules. */
 .wss-dialog-btn:focus-visible,
 .wss-pagination-item:focus-visible,
 .wss-pagination-prev:focus-visible,
@@ -4842,10 +4861,6 @@
 .wss-popover-trigger:focus-visible,
 .wss-popconfirm-trigger:focus-visible,
 .wss-table-expand-btn:focus-visible,
-.wss-table-checkbox:focus-visible,
-.wss-table-radio:focus-visible,
-.wss-table-filter-checkbox:focus-visible,
-.wss-table-filter-radio:focus-visible,
 .wss-table-filter-reset:focus-visible,
 .wss-table-filter-ok:focus-visible,
 .wss-table-filter-input-clear:focus-visible,
@@ -4853,12 +4868,9 @@
 .wss-tabs-panel:focus-visible,
 .wss-search-btn:focus-visible,
 .wss-search-clear:focus-visible,
-.wss-search-input:focus-visible,
 .wss-picker-clear:focus-visible,
 .wss-color-picker-trigger:focus-visible,
-.wss-color-picker-clear:focus-visible,
-.wss-pagination-size-select:focus-visible,
-.wss-pagination-jumper-input:focus-visible {
+.wss-color-picker-clear:focus-visible {
     outline: 2px solid var(--wss-color-primary);
     outline-offset: 2px;
 }
@@ -4916,7 +4928,17 @@
     .wss-select-focused:not(.wss-select-disabled) .wss-select-selector,
     .wss-select:not(.wss-select-disabled) .wss-select-selector:focus-within,
     .wss-picker-open .wss-picker-input,
-    .wss-picker:not(.wss-picker-disabled) .wss-picker-input:focus-within {
+    .wss-picker:not(.wss-picker-disabled) .wss-picker-input:focus-within,
+    .wss-table-checkbox:focus,
+    .wss-table-filter-checkbox:focus,
+    .wss-table-radio:focus,
+    .wss-table-filter-radio:focus,
+    .wss-table-checkbox-input-styled:focus + .wss-table-checkbox-box,
+    .wss-search-input:focus,
+    .wss-pagination-size-select:focus,
+    .wss-pagination-jumper-input:focus,
+    .wss-color-picker-hex:focus,
+    .wss-color-picker-channel:focus {
         outline: 2px solid Highlight;
         outline-offset: 1px;
     }

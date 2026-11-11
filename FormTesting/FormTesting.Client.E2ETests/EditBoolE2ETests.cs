@@ -49,7 +49,7 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
     }
 
     [Fact]
-    public async Task Tabbing_to_styled_checkbox_shows_focus_visible_outline_and_Space_toggles_it()
+    public async Task Tabbing_to_styled_checkbox_shows_focus_glow_and_Space_toggles_it()
     {
         await NavigateAsync();
         var checkbox = Page.Locator("section.demo-section").Nth(4).Locator("input.edit-checkbox-input-styled").First;
@@ -63,8 +63,8 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         await Page.Keyboard.PressAsync("Tab");
         await Expect(checkbox).ToBeFocusedAsync();
 
-        var outline = await box.EvaluateAsync<string>("el => getComputedStyle(el).outlineStyle");
-        Assert.NotEqual("none", outline);
+        var glow = await box.EvaluateAsync<string>("el => getComputedStyle(el).boxShadow");
+        Assert.NotEqual("none", glow);
 
         await Expect(checkbox).Not.ToBeCheckedAsync();
         await Page.Keyboard.PressAsync("Space");

@@ -164,9 +164,6 @@
    LabelTooltip trigger's own :focus-visible ring stays local to the Tooltip section -- it sits between
    a plain :focus reset and an @supports override at equal specificity, so merging it in here would
    flip which one wins.) */
-.edit-input:focus-visible,
-.edit-radio-input:focus-visible,
-.edit-checkedList-checkbox:focus-visible,
 .edit-icon-eye:focus-visible,
 .edit-icon-eye-invisible:focus-visible,
 .edit-input-clear:focus-visible,
@@ -180,6 +177,42 @@
     border-radius: 2px;
 }
 
+/* The glow replaces the UA outline on every focus (forced-colors restores an outline, below). */
+.edit-input:focus,
+.edit-radio-input:focus,
+.edit-radio-fieldset input[type="radio"]:not(.edit-radio-button-input):focus,
+.edit-checkedList-checkbox:focus,
+.edit-radio-button-input:focus {
+    outline: none;
+}
+
+/* Native checkbox/radio take AntD's focus glow too (radio 3px, checkbox 2px), on plain :focus.
+   The native checkbox reports border-radius 0 but paints ~2px corners, so the glow gets the same
+   radius or it reads as a square. EditRadio's children are consumer-owned <InputRadio>s with no
+   library class, so its radios are matched through the library's fieldset. */
+.edit-input[type="checkbox"]:focus,
+.edit-checkedList-checkbox:focus {
+    border-radius: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+}
+
+.edit-radio-input:focus,
+.edit-radio-fieldset input[type="radio"]:not(.edit-radio-button-input):focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+}
+
+.edit-input[type="checkbox"].invalid:focus,
+.edit-checkedList-checkbox.invalid:focus {
+    box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
+}
+
+.edit-radio-input.invalid:focus,
+.edit-radio-fieldset.invalid input[type="radio"]:not(.edit-radio-button-input):focus {
+    box-shadow: 0 0 0 3px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
+}
+
 /* Invalid state. Blazor's InputBase appends "invalid" to the element class on validation failure.
    Native inputs/selects/textareas carry a default border, so coloring it makes the error state
    visible out of the box — consumers no longer have to define ".invalid" themselves. */
@@ -191,8 +224,19 @@
     border-color: var(--edit-color-danger);
     accent-color: var(--edit-color-danger);
 }
-.edit-input.invalid:focus-visible {
-    outline-color: var(--edit-color-danger);
+
+/* Text-type editors (input/select/textarea and the affix wrapper) show AntD's focus glow instead of the
+   outline ring above; checkbox/radio keep the ring. Plain :focus, like AntD. The .edit-theme rules
+   further down add the border tint and win by specificity. */
+.edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
+.edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+}
+
+.edit-input:not(.edit-affix-input):not([type="checkbox"]).invalid:focus,
+.edit-input-affix-wrapper.edit-input-affix-invalid:focus-within {
+    box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
 }
 
 /************************************************ EditBool ***********************************************/
@@ -321,12 +365,20 @@
     mask: none;
 }
 
-/* Same ring recipe as the file's other focus-visible rings (General section, near the top) but
-   without border-radius: 2px -- each of these three elements already carries its own border-radius
-   on the box the outline wraps (this checkbox's own box further up, the file drop zone, the file
-   select button, both further down this file), so restating a generic corner radius here would
-   fight it. Grouped since all three share this exact 2-property body. */
-.edit-checkbox-input-styled:focus-visible + .edit-checkbox-box,
+/* Styled checkbox: AntD's focus -- primary border plus glow, on plain :focus. */
+.edit-checkbox-input-styled:focus + .edit-checkbox-box {
+    outline: none;
+    border-color: var(--edit-color-primary);
+    box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+}
+
+.edit-checkbox-input-styled.invalid:focus + .edit-checkbox-box {
+    border-color: var(--edit-color-danger);
+    box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
+}
+
+/* File drop zone / select button (not inputs) keep the ring, without border-radius: 2px -- each
+   already carries its own radius, so a generic one would fight it. */
 .edit-file-drop-zone:focus-within,
 .edit-file-select-btn:focus-within {
     outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
@@ -659,10 +711,9 @@
     color: var(--color-on-primary, #fff);
 }
 
-.edit-radio-button-input:focus-visible + .edit-radio-button {
+.edit-radio-button-input:focus + .edit-radio-button {
     z-index: 2;
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: 1px;
+    box-shadow: 0 0 0 3px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
 .edit-radio-button-input:disabled + .edit-radio-button {
@@ -757,10 +808,8 @@
     inset: -5px 0;
 }
 
-.edit-range-track:focus-visible {
-    outline: 2px solid var(--edit-focus-ring, var(--edit-color-primary));
-    outline-offset: var(--edit-focus-offset);
-    border-radius: 2px;
+.edit-range-track:focus {
+    outline: none;
 }
 
 .edit-range-rail,
@@ -826,11 +875,15 @@
 }
 
 .edit-range-track:hover .edit-range-handle,
-.edit-range-track:focus-visible .edit-range-handle {
+.edit-range-track:focus .edit-range-handle {
     width: 16px;
     height: 16px;
     margin: -8px 0 0 -8px;
     box-shadow: 0 0 0 5px color-mix(in srgb, var(--edit-color-primary) 12%, transparent);
+}
+
+.edit-range-track:focus .edit-range-handle {
+    border-color: var(--edit-color-primary);
 }
 
 /* Invalid: the EditContext's own "invalid" class lands on the track through CssClass, so the handle
@@ -884,7 +937,7 @@
 /* Revealed on hover, on keyboard focus, and -- through the C#-owned class -- for the whole of a drag,
    including the part that happens off the track where :hover has stopped applying. */
 .edit-range-track:hover .edit-range-tooltip,
-.edit-range-track:focus-visible .edit-range-tooltip,
+.edit-range-track:focus .edit-range-tooltip,
 .edit-range-tooltip-visible {
     opacity: 1;
     visibility: visible;
@@ -2078,6 +2131,19 @@
         color (CanvasText / Highlight) is the one paint the mode keeps; forced-color-adjust: none
         stops the engine re-forcing the values we are setting here deliberately. */
 @media (forced-colors: active) {
+    .edit-input[type="checkbox"]:focus,
+    .edit-checkedList-checkbox:focus,
+    .edit-radio-input:focus,
+    .edit-radio-fieldset input[type="radio"]:not(.edit-radio-button-input):focus,
+    .edit-radio-button-input:focus + .edit-radio-button,
+    .edit-checkbox-input-styled:focus + .edit-checkbox-box,
+    .edit-range-track:focus {
+        outline: 2px solid Highlight;
+        outline-offset: 1px;
+    }
+
+    .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
+    .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within,
     .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
     .edit-theme .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
         outline: 2px solid Highlight;
