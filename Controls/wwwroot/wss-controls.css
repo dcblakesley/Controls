@@ -131,6 +131,7 @@
        derived from --wss-color-primary at the usage site (see the brand/interactive comment
        above). */
     --wss-picker-radius: 6px;
+    --wss-select-radius: 6px;
     --wss-picker-radius-sm: 4px;
     --wss-picker-radius-lg: 8px;
     --wss-picker-split: #e6e6e6;
@@ -273,7 +274,7 @@
     align-items: center;
     background-color: var(--wss-color-bg);
     border: 1px solid var(--wss-color-border);
-    border-radius: var(--wss-radius);
+    border-radius: var(--wss-select-radius);
     transition: all 0.3s var(--wss-ease-standard);
 }
 
@@ -1836,7 +1837,7 @@
     font-family: inherit;
     background: var(--wss-color-bg);
     border: 1px solid var(--wss-color-border);
-    border-radius: var(--wss-radius);
+    border-radius: var(--wss-select-radius);
 }
 
 .wss-pagination-size-select {
