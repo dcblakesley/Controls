@@ -149,21 +149,9 @@
    available for fine-tuning. */
 .edit-input { }
 
-/* Keyboard-focus indicator for the editable elements. The library can't rely on the browser default
-   outline — consumers commonly reset it — so a visible :focus-visible ring is shipped as a baseline
-   a11y guarantee (WCAG 2.4.7). Appearance is otherwise still consumer-controlled. Grouped with the
-   icon-button family (EditString's mask toggles, EditInputShell's affix clear/password-toggle
-   buttons, EditNumber's opt-in stepper buttons -- all further down this file) -- they share this
-   exact 3-property ring; mirrors how
-   wss-controls.css's own Accessibility section groups its focus rings. Also grouped here:
-   .edit-string-link (the read-only URL view -- an <a>, so it has no other focus indicator once a
-   consumer resets the UA default), .edit-file-delete-btn (its own :focus-visible{opacity:1} rule,
-   further down in the EditFile section, only reveals the button -- it still needs this ring once
-   visible), and .edit-file-name-link (AllowDownload's filename-as-link button, same reasoning as
-   .edit-string-link -- its own :focus-visible rule further down only adds the underline). (The
-   LabelTooltip trigger's own :focus-visible ring stays local to the Tooltip section -- it sits between
-   a plain :focus reset and an @supports override at equal specificity, so merging it in here would
-   flip which one wins.) */
+/* Keyboard-focus ring for the non-input editable elements (icon buttons, links, file buttons), shipped
+   as a baseline a11y guarantee (WCAG 2.4.7) because consumers commonly reset the UA outline. Input-type
+   controls (text, select, checkbox, radio, range) use the focus glow below instead. */
 .edit-icon-eye:focus-visible,
 .edit-icon-eye-invisible:focus-visible,
 .edit-input-clear:focus-visible,
@@ -178,10 +166,6 @@
 }
 
 /* The glow replaces the UA outline on every focus (forced-colors restores an outline, below). */
-.edit-input:focus,
-.edit-radio-input:focus,
-.edit-radio-fieldset input[type="radio"]:not(.edit-radio-button-input):focus,
-.edit-checkedList-checkbox:focus,
 .edit-radio-button-input:focus {
     outline: none;
 }
@@ -192,24 +176,28 @@
    library class, so its radios are matched through the library's fieldset. */
 .edit-input[type="checkbox"]:focus,
 .edit-checkedList-checkbox:focus {
-    outline: none;
+    outline: 1px solid var(--edit-color-primary);
+    outline-offset: 0;
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
 .edit-radio-input:focus,
 .edit-radio-fieldset input[type="radio"]:not(.edit-radio-button-input):focus {
-    outline: none;
+    outline: 1px solid var(--edit-color-primary);
+    outline-offset: 0;
     box-shadow: 0 0 0 3px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
 .edit-input[type="checkbox"].invalid:focus,
 .edit-checkedList-checkbox.invalid:focus {
+    outline-color: var(--edit-color-danger);
     box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
 }
 
 .edit-radio-input.invalid:focus,
 .edit-radio-fieldset input[type="radio"].invalid:not(.edit-radio-button-input):focus,
 .edit-radio-fieldset.invalid input[type="radio"]:not(.edit-radio-button-input):focus {
+    outline-color: var(--edit-color-danger);
     box-shadow: 0 0 0 3px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
 }
 
@@ -225,17 +213,19 @@
     accent-color: var(--edit-color-danger);
 }
 
-/* Text-type editors (input/select/textarea and the affix wrapper) show AntD's focus glow instead of the
-   outline ring above; checkbox/radio keep the ring. Plain :focus, like AntD. The .edit-theme rules
-   further down add the border tint and win by specificity. */
+/* Text-type editors (input/select/textarea and the affix wrapper) show AntD's focus glow plus a primary
+   border (the border carries the 3:1 contrast the 20% glow can't). Plain :focus, like AntD; this applies
+   with or without .edit-theme, which re-states it with its own tokens at higher specificity. */
 .edit-input:not(.edit-affix-input):not([type="checkbox"]):not(:disabled):focus,
 .edit-input-affix-wrapper:not(.edit-input-affix-disabled):focus-within {
     outline: none;
+    border-color: var(--edit-color-primary);
     box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
 .edit-input:not(.edit-affix-input):not([type="checkbox"]).invalid:focus,
 .edit-input-affix-wrapper.edit-input-affix-invalid:focus-within {
+    border-color: var(--edit-color-danger);
     box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
 }
 
@@ -941,7 +931,7 @@
 /* Revealed on hover, on keyboard focus, and -- through the C#-owned class -- for the whole of a drag,
    including the part that happens off the track where :hover has stopped applying. */
 .edit-range-track:hover .edit-range-tooltip,
-.edit-range-track:focus .edit-range-tooltip,
+.edit-range-track:focus-visible .edit-range-tooltip,
 .edit-range-tooltip-visible {
     opacity: 1;
     visibility: visible;
@@ -1871,7 +1861,7 @@
        fallback those same selectors use (see --color-text-secondary-strong there), so themed and
        unthemed count text read as the same color. */
     --edit-color-text-secondary-strong: rgba(0, 0, 0, 0.65);
-    --edit-radius: 2px;
+    --edit-radius: 6px;
     --edit-control-height: 32px;
     --edit-control-height-sm: 24px;
     --edit-control-height-lg: 40px;
@@ -1931,7 +1921,7 @@
 /* This glow is the theme's WCAG 2.4.7 indicator for text editors -- suppress the library's plain
    outline ring here so the two don't double up (the naked inner editor gets its own rule too, or
    it'd show a ring redundant with the wrapper's glow). Radio/checkbox are untouched -- they still
-   just get the plain `.edit-input:focus-visible`-family ring declared outside this section. */
+   get the unthemed focus glow declared near the top of this file. */
 .edit-theme .edit-input:not(.edit-affix-input):not([type="checkbox"]):focus-visible,
 .edit-theme .edit-affix-input:focus-visible {
     outline: none;

@@ -1341,7 +1341,7 @@ Two `edit-`-prefixed tokens are declared at `:root` rather than only under `.edi
 
 ### Opt-in AntD theme for the classic edit inputs (`.edit-theme`)
 
-`EditString`, `EditNumber`, `EditTextArea`, `EditDateNative`, and `EditSelect`'s native `<select>` render completely unstyled by default (a consumer-owned `.edit-input` class, no border/background/radius) — every existing consumer already styles that class itself, and that behavior **never changes**. Wrap any element you own in `class="edit-theme"` to opt everything beneath it into the same AntD 4.x box chrome (border, radius, height, hover tint, focus glow) that the `--wss-*`-themed UI kit already uses for `Select`:
+`EditString`, `EditNumber`, `EditTextArea`, `EditDateNative`, and `EditSelect`'s native `<select>` render completely unstyled by default (a consumer-owned `.edit-input` class, no border/background/radius) — every existing consumer already styles that class itself, and the box chrome **never changes** (focus is the exception: text-type editors always show AntD's focus glow plus a primary border, themed or not; checkboxes and radios glow with a thin primary edge). Wrap any element you own in `class="edit-theme"` to opt everything beneath it into the same AntD 4.x box chrome (border, radius, height, hover tint, focus glow) that the `--wss-*`-themed UI kit already uses for `Select`:
 
 ```razor
 <div class="edit-theme">
@@ -1353,7 +1353,7 @@ Two `edit-`-prefixed tokens are declared at `:root` rather than only under `.edi
 - **Opt-in and render-tree-scoped, not global** — only descendants of a `.edit-theme` ancestor are affected; nothing outside it changes, and you can nest a second `.edit-theme` with its own overridden tokens (each scope resolves independently). This is the deliberate design for micro-frontends: wrap an MFE's own root, not `:root`, if it needs its own theme independent of the host page.
 - **Radio/checkbox/`EditFile` are untouched** — `EditRadio`/`EditCheckedStringList`/`EditCheckedEnumList` carry their own `edit-radio-input`/`edit-checkedList-checkbox` classes (never `.edit-input`), `EditBool`'s checkbox is excluded by `type="checkbox"`, and `EditFile` carries no `.edit-input`-family class at all — none of them get boxed like a text field. Native `<select>` keeps its default `appearance: auto` (its own dropdown arrow); `EditNumber` keeps native spinner buttons unless you opt into its own `ShowStepper` group (whose chrome is ungated by `.edit-theme`, like the button-mode radio's — the theme only adds the palette) — both documented deviations from a literal AntD port.
 - **Tokens** (declare/override on `.edit-theme` or any nested scope):
-  - `--edit-color-primary` (default `#1890ff`, bridging to your `--color-primary`), `--edit-color-primary-strong` (default `#0958d9` here — see the TEXT-vs-chrome split above), `--edit-color-border` (bridges to `--border-color`, default `#8c8c8c`), `--edit-radius` (`2px`), `--edit-control-height`/`-sm`/`-lg` (`32px`/`24px`/`40px` — used as `min-height`, so a multi-row `EditTextArea` or `AutoSize` is never clipped).
+  - `--edit-color-primary` (default `#1890ff`, bridging to your `--color-primary`), `--edit-color-primary-strong` (default `#0958d9` here — see the TEXT-vs-chrome split above), `--edit-color-border` (bridges to `--border-color`, default `#8c8c8c`), `--edit-radius` (`6px`), `--edit-control-height`/`-sm`/`-lg` (`32px`/`24px`/`40px` — used as `min-height`, so a multi-row `EditTextArea` or `AutoSize` is never clipped).
   - `--edit-color-bg-disabled` (bridges to `--color-bg-disabled`), `--edit-color-placeholder` (default `rgba(0, 0, 0, 0.55)`), `--edit-color-text-disabled`, `--edit-color-text-secondary` (the affix suffix's clear/password-toggle **icons**), `--edit-color-text-secondary-strong` (default `rgba(0, 0, 0, 0.65)` — the darker shade `.edit-input-count`/`.edit-textarea-count` need: count is text, held to WCAG 1.4.3's 4.5:1, not an icon's 3:1).
   - Derived hover/focus colors are pure override knobs, computed at each usage site rather than baked into a token (same rule as the `--wss-*` tokens above) — override `--edit-color-primary-hover`, `--edit-primary-shadow`, or `--edit-error-shadow` directly if the computed `color-mix` isn't what you want.
 - **Size** — see `Size` on `EditString`/`EditNumber`/`EditTextArea`/`EditDateNative` above; the size classes are inert hooks unthemed, and `.edit-theme` is what actually sizes them.
@@ -1467,6 +1467,22 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.9.0
+
+Minor release: input-type focus indicators and input radii change for every consumer.
+
+**Breaking**
+- **Input-type controls show AntD's focus glow instead of the outline ring**, on plain `:focus` (any way focus arrives), themed or not: text, number, date, native select and the affix wrapper (glow plus a primary border); native checkbox and radio (glow plus a 1px primary edge); radio buttons; the `EditRange` handle; the `Table` row-selection/filter checkbox and radio; `SearchInput`, the pagination size select and jumper, and the ColorPicker hex/channel inputs. Invalid fields glow red. `outline: none` now applies to these on focus, so a consumer's own `.edit-input:focus` outline no longer wins; override `--edit-primary-shadow`/`--edit-error-shadow` instead. Forced-colors falls back to a `Highlight` outline. Buttons, tabs, close icons and the file drop zone keep the ring.
+- **Input radius is 6px** (Figma): `--edit-radius` defaults to `6px` under `.edit-theme`, and the new `--wss-select-radius` (`6px`) applies to `Select` and the pagination size select. Override either to restore `2px`.
+
+**New**
+- `DateRangePicker` glows on focus/open like `DatePicker` (it was border-only), red when invalid.
+- Native `EditSelect` shows `cursor: pointer` (`not-allowed` when disabled).
+
+**Fixed**
+- `EditRadio`'s consumer-supplied `InputRadio`s now get the focus glow.
+- The `EditRange` value bubble shows for keyboard focus only, not after a click.
 
 ### 10.8.11
 

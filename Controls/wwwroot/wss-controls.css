@@ -1880,13 +1880,15 @@
 /* Native table checkbox/radio: AntD glow (radio 3px, checkbox 2px) instead of the outline ring. */
 .wss-table-checkbox:focus,
 .wss-table-filter-checkbox:focus {
-    outline: none;
+    outline: 1px solid var(--wss-color-primary);
+    outline-offset: 0;
     box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
 .wss-table-radio:focus,
 .wss-table-filter-radio:focus {
-    outline: none;
+    outline: 1px solid var(--wss-color-primary);
+    outline-offset: 0;
     box-shadow: 0 0 0 3px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
@@ -4840,11 +4842,8 @@
 
 /* Keyboard focus ring for every interactive UI-kit control. :focus-visible means a
    mouse click does not paint it, only keyboard focus (and programmatic focus on
-   buttons), matching native expectations. Also covers the row-selection/column-filter native
-   checkbox/radio inputs and the filter dropdown's footer buttons -- .wss-table-checkbox-input-styled
-   (the UseStyledCheckbox opt-in) already has its own :focus-visible ring on its drawn box (Table
-   section, near the checkbox styling); these are the plain, unstyled <input> variants, which
-   otherwise fall back to the (frequently reset) UA outline.
+   buttons), matching native expectations. Covers the non-input controls plus the filter dropdown's
+   footer buttons; the table's checkbox/radio inputs use the focus glow (Table section).
    .wss-tabs-panel is a tab stop (a text-only panel was otherwise keyboard-unreachable) and its base
    rule sets outline: none; that (0,1,0) rule sits above this (0,2,0) block, so the ring lands.
    Text-type inputs (search/jumper/page-size) use the focus glow instead -- see their own :focus rules. */
