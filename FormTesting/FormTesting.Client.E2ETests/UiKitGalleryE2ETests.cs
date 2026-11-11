@@ -89,6 +89,24 @@ public class UiKitGalleryE2ETests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Modal_plays_enter_and_leave_animations_then_removes_the_wrap()
+    {
+        await GotoAsync();
+        await _page.Locator("button", new() { HasTextString = "Open Modal" }).ClickAsync();
+        var wrap = _page.Locator(".wss-modal-wrap");
+        await Expect(wrap).ToHaveClassAsync(new Regex("wss-modal-enter"));
+        Assert.Equal("wss-modal-zoom-in",
+            await _page.EvaluateAsync<string>("() => getComputedStyle(document.querySelector('.wss-modal')).animationName"));
+        await _page.WaitForFunctionAsync("() => document.querySelector('.wss-modal-wrap').getAnimations({ subtree: true }).length === 0");
+
+        await _page.Keyboard.PressAsync("Escape");
+        await Expect(wrap).ToHaveClassAsync(new Regex("wss-modal-leave"));
+        Assert.Equal("wss-modal-zoom-out",
+            await _page.EvaluateAsync<string>("() => getComputedStyle(document.querySelector('.wss-modal')).animationName"));
+        await Expect(wrap).ToHaveCountAsync(0);
+    }
+
+    [Fact]
     public async Task Modal_escape_still_closes_after_the_focused_footer_button_is_disabled()
     {
         await GotoAsync();

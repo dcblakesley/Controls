@@ -119,7 +119,8 @@
 
     // _render outlives Visible by the exit animation so the leave keyframes can play; _exitVersion
     // voids a pending removal when the modal reopens (or is re-closed) mid-animation.
-    const int ExitMs = 200;
+    // 200ms animation + margin: the timer starts at the C# render, the CSS animation a frame or two later.
+    const int ExitMs = 300;
     bool _render;
     bool _closing;
     int _exitVersion;
@@ -132,13 +133,24 @@
             _render = true;
             _closing = false;
         }
+        else if (_render && !Animated)
+        {
+            _exitVersion++;
+            _render = false;
+            _closing = false;
+        }
         else if (_render && !_closing)
         {
-            if (!Animated) { _render = false; return; }
             _closing = true;
             var version = ++_exitVersion;
             _ = RemoveAfterExitAsync(version);
         }
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        _exitVersion++;
+        await base.DisposeAsync();
     }
 
     async Task RemoveAfterExitAsync(int version)

@@ -2002,7 +2002,7 @@
 }
 
 /* AntD zoom animation: mask fades, panel scales from 0.2. Exit leaves the wrap in the DOM for
-   200ms (Modal.razor ExitMs) and blocks pointer input meanwhile. */
+   ExitMs (Modal.razor, 200ms + margin) and blocks pointer input meanwhile. */
 .wss-modal-enter { animation: wss-modal-mask-in 0.2s linear; }
 .wss-modal-enter .wss-modal { animation: wss-modal-zoom-in 0.2s cubic-bezier(0.08, 0.82, 0.17, 1); }
 .wss-modal-leave { animation: wss-modal-mask-out 0.2s linear forwards; pointer-events: none; }
@@ -5026,6 +5026,11 @@
     .wss-msg-icon-loading,
     .wss-icon-spin {
         animation: none;
+    }
+
+    /* No exit animation: hide at once rather than hold a frozen modal for ExitMs. */
+    .wss-modal-leave {
+        opacity: 0;
     }
 
     /* Halting the shimmer alone freezes the gradient mid-sweep; restore the flat base fill so
