@@ -31,6 +31,8 @@
                     </option>
                 }
             </EditSelect>
+            <EditSelectSearch @bind-Value=_model.EditSelectSearch Options="_searchOptions" Placeholder="Search..." />
+            <EditMultiSelect @bind-Value=_model.EditMultiSelect Options="_multiOptions" Placeholder="Pick colors..." />
             <EditTextArea @bind-Value=_model.EditTextArea />
             <button class=@(_isHorizontal ? "wss-demo-nav-active" : "wss-demo-nav-inactive") @onclick=@(() => _isHorizontal = !_isHorizontal) type="button">Horizontal</button>
             <button>Submit</button>

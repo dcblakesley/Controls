@@ -17,17 +17,20 @@
                an explicit frame wins outright over an earlier same-named one even when its own value is
                null, so writing them here would DELETE a consumer's splatted value rather than merely
                decline to override it. *@
-            <select @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorStateAttributes)"
-                    @bind=@CurrentValueAsString
-                    @ref="_editorRef"
-                    class=@($"edit-input edit-select-select {CssClass}")
-                    id=@_id
-                    data-test-id=@_id
-                    aria-labelledby=@($"lbltext-{_id}")
-                    aria-describedby=@_describedBy>
+            <span class="edit-select-wrap">
+                <select @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorStateAttributes)"
+                        @bind=@CurrentValueAsString
+                        @ref="_editorRef"
+                        class=@($"edit-input edit-select-select {CssClass}")
+                        id=@_id
+                        data-test-id=@_id
+                        aria-labelledby=@($"lbltext-{_id}")
+                        aria-describedby=@_describedBy>
 
-                @ChildContent
-            </select>
+                    @ChildContent
+                </select>
+                <span class="edit-select-arrow">@EditIcons.ChevronDown</span>
+            </span>
         }
         else
         {

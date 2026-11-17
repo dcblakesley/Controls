@@ -17,36 +17,39 @@
                an explicit frame wins outright over an earlier same-named one even when its own value is
                null, so writing them here would DELETE a consumer's splatted value rather than merely
                decline to override it. *@
-            <select @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorStateAttributes)"
-                    @bind=@CurrentValueAsString
-                    @ref="_editorRef"
-                    id=@_id
-                    data-test-id=@_id
-                    class=@($"edit-input edit-select-select {CssClass}")
-                    aria-labelledby=@($"lbltext-{_id}")
-                    aria-describedby=@_describedBy>
+            <span class="edit-select-wrap">
+                <select @attributes="AttributeSplat.RestWith(AdditionalAttributes, EditorStateAttributes)"
+                        @bind=@CurrentValueAsString
+                        @ref="_editorRef"
+                        id=@_id
+                        data-test-id=@_id
+                        class=@($"edit-input edit-select-select {CssClass}")
+                        aria-labelledby=@($"lbltext-{_id}")
+                        aria-describedby=@_describedBy>
 
-                @* Options rendered by the shared SelectOptionList (see its source for why the leading
-                   null option / unmatched-value placeholder exist): the leading null option is
-                   suppressed when the consumer opts out (NullOptionText=null) or TValue can't be null
-                   (non-nullable value type). The placeholder covers an unmatched current value (an
-                   untouched default like 0, or a stale model value not in Options) when the null
-                   option above isn't already showing blank. Coalesce to "" so the non-nullable
-                   Options.Contains stays warning-clean; a value-type CurrentValueAsString is never
-                   null, and a null on an opt-out reference type matches "" only if the consumer
-                   authored a "" option, which correctly needs no placeholder. *@
-                <SelectOptionList TItem="string"
-                                  Options=@Options
-                                  Id=@_id
-                                  CssClass=@CssClass
-                                  CurrentValueAsString=@CurrentValueAsString
-                                  ShowNullOption=@ShowNullOption
-                                  NullOptionText=@EffectiveNullOptionText
-                                  ShowPlaceholder=@(!ShowNullOption && !Options.Contains(CurrentValueAsString ?? ""))
-                                  PlaceholderText=@_attributes.Placeholder()
-                                  DisplayText="@(o => o)"
-                                  ValueString="@(o => o)" />
-            </select>
+                    @* Options rendered by the shared SelectOptionList (see its source for why the leading
+                       null option / unmatched-value placeholder exist): the leading null option is
+                       suppressed when the consumer opts out (NullOptionText=null) or TValue can't be null
+                       (non-nullable value type). The placeholder covers an unmatched current value (an
+                       untouched default like 0, or a stale model value not in Options) when the null
+                       option above isn't already showing blank. Coalesce to "" so the non-nullable
+                       Options.Contains stays warning-clean; a value-type CurrentValueAsString is never
+                       null, and a null on an opt-out reference type matches "" only if the consumer
+                       authored a "" option, which correctly needs no placeholder. *@
+                    <SelectOptionList TItem="string"
+                                      Options=@Options
+                                      Id=@_id
+                                      CssClass=@CssClass
+                                      CurrentValueAsString=@CurrentValueAsString
+                                      ShowNullOption=@ShowNullOption
+                                      NullOptionText=@EffectiveNullOptionText
+                                      ShowPlaceholder=@(!ShowNullOption && !Options.Contains(CurrentValueAsString ?? ""))
+                                      PlaceholderText=@_attributes.Placeholder()
+                                      DisplayText="@(o => o)"
+                                      ValueString="@(o => o)" />
+                </select>
+                <span class="edit-select-arrow">@EditIcons.ChevronDown</span>
+            </span>
         }
         else
         {

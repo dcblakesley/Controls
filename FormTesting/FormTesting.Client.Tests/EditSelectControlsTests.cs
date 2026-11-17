@@ -349,4 +349,25 @@ public class EditSelectControlsTests : BunitContext
         wrapper.Click(); // open, so the backdrop renders
         Assert.Equal("-1", cut.Find(".wss-select-backdrop").GetAttribute("tabindex"));
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void EditSelectString_renders_chevron_slot_only_in_edit_mode(bool isEditMode)
+    {
+        var model = new PersonModel { Name = "a" };
+        Expression<Func<string>> field = () => model.Name;
+        var cut = Render(WithForm(model, b =>
+        {
+            b.OpenComponent<EditSelectString<string>>(0);
+            b.AddAttribute(1, "Value", model.Name);
+            b.AddAttribute(2, "ValueExpression", field);
+            b.AddAttribute(3, "Options", new List<string> { "a", "b" });
+            b.AddAttribute(4, "IsEditMode", isEditMode);
+            b.CloseComponent();
+        }));
+
+        var arrows = cut.FindAll(".edit-select-wrap > select.edit-select-select + .edit-select-arrow svg[aria-hidden='true']");
+        Assert.Equal(isEditMode ? 1 : 0, arrows.Count);
+    }
 }

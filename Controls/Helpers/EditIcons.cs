@@ -64,4 +64,8 @@ internal static class EditIcons
     /// <see cref="LoadingSpinner"/> inside their own markup.)</summary>
     public static readonly MarkupString SpinningLoadingSpinner = new(
         $"<span class=\"wss-icon-spin\">{LoadingSpinner}</span>");
+
+    /// <summary>Down chevron shared by <c>Select</c> and the native-select Edit controls.</summary>
+    public static readonly MarkupString ChevronDown = new(
+        $"<svg viewBox=\"0 0 16 16\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\"><path d=\"{PickerIcons.DownPath}\"/></svg>");
 }

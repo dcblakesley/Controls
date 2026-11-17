@@ -170,7 +170,8 @@
     outline: none;
 }
 
-/* Native checkbox/radio take AntD's focus glow too (radio 3px, checkbox 2px), on plain :focus.
+/* Native checkbox/radio follow AntD on plain :focus: checkbox = primary border (a 1px edge here, since a
+   native box has no border to tint), radio = border plus a 3px 12% glow.
    A native checkbox ignores author border-radius (computed 0), but Chromium shapes the glow to the
    box it paints; UseStyledCheckbox is the fully rounded variant. EditRadio's children are consumer-owned <InputRadio>s with no
    library class, so its radios are matched through the library's fieldset. */
@@ -178,27 +179,25 @@
 .edit-checkedList-checkbox:focus {
     outline: 1px solid var(--edit-color-primary);
     outline-offset: 0;
-    box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
 .edit-radio-input:focus,
 .edit-radio-fieldset input[type="radio"]:not(.edit-radio-button-input):focus {
     outline: 1px solid var(--edit-color-primary);
     outline-offset: 0;
-    box-shadow: 0 0 0 3px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+    box-shadow: 0 0 0 3px var(--edit-radio-shadow, color-mix(in srgb, var(--edit-color-primary) 12%, transparent));
 }
 
 .edit-input[type="checkbox"].invalid:focus,
 .edit-checkedList-checkbox.invalid:focus {
     outline-color: var(--edit-color-danger);
-    box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
 }
 
 .edit-radio-input.invalid:focus,
 .edit-radio-fieldset input[type="radio"].invalid:not(.edit-radio-button-input):focus,
 .edit-radio-fieldset.invalid input[type="radio"]:not(.edit-radio-button-input):focus {
     outline-color: var(--edit-color-danger);
-    box-shadow: 0 0 0 3px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
+    box-shadow: 0 0 0 3px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 12%, transparent));
 }
 
 /* Invalid state. Blazor's InputBase appends "invalid" to the element class on validation failure.
@@ -353,16 +352,14 @@
     mask: none;
 }
 
-/* Styled checkbox: AntD's focus -- primary border plus glow, on plain :focus. */
+/* Styled checkbox: AntD's checkbox focus is a primary border (no glow), on plain :focus. */
 .edit-checkbox-input-styled:focus + .edit-checkbox-box {
     outline: none;
     border-color: var(--edit-color-primary);
-    box-shadow: 0 0 0 2px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
 }
 
 .edit-checkbox-input-styled.invalid:focus + .edit-checkbox-box {
     border-color: var(--edit-color-danger);
-    box-shadow: 0 0 0 2px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
 }
 
 /* File drop zone / select button (not inputs) keep the ring, without border-radius: 2px -- each
@@ -701,11 +698,11 @@
 
 .edit-radio-button-input:focus + .edit-radio-button {
     z-index: 2;
-    box-shadow: 0 0 0 3px var(--edit-primary-shadow, color-mix(in srgb, var(--edit-color-primary) 20%, transparent));
+    box-shadow: 0 0 0 3px var(--edit-radio-shadow, color-mix(in srgb, var(--edit-color-primary) 12%, transparent));
 }
 
 .edit-radio-button-input.invalid:focus + .edit-radio-button {
-    box-shadow: 0 0 0 3px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 20%, transparent));
+    box-shadow: 0 0 0 3px var(--edit-error-shadow, color-mix(in srgb, var(--edit-color-danger) 12%, transparent));
 }
 
 .edit-radio-button-input:disabled + .edit-radio-button {
@@ -984,6 +981,46 @@
 }
 
 /************************************************ EditSelect(String and Enum) *********************************************/
+/* Native <select> with the Select chevron: the browser arrow is dropped and the shared glyph sits in an
+   absolutely positioned slot (same geometry as .wss-select-arrow). */
+.edit-select-wrap {
+    position: relative;
+    display: block;
+}
+
+.edit-select-select {
+    appearance: none;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* appearance: none drops the native start inset; restore it at zero specificity so a host's own
+   input/select padding (and .edit-theme's) wins. */
+:where(.edit-select-select) {
+    padding-inline-start: 4px;
+}
+
+/* Room for the chevron. Specificity (0,5,0) beats the themed (0,4,0) and -sm/-lg padding shorthands
+   whatever the file order; width/appearance stay at (0,1,0) so a consumer's own rule still wins. */
+.edit-select-wrap > .edit-input.edit-select-select:not(.edit-affix-input):not([type="checkbox"]) {
+    padding-inline-end: 28px;
+}
+
+.edit-select-arrow {
+    position: absolute;
+    top: 50%;
+    inset-inline-end: 11px;
+    display: inline-flex;
+    align-items: center;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+    font-size: 12px;
+    line-height: 1;
+    color: var(--edit-color-text-secondary, var(--color-text-secondary, #8c8c8c));
+    pointer-events: none;
+}
+
 .edit-select-select:not(:disabled) {
     cursor: pointer;
 }
@@ -1821,9 +1858,7 @@
  * `:not([type="checkbox"])`. EditRadio/EditCheckedStringList/EditCheckedEnumList's inputs carry
  * their own `.edit-radio-input`/`.edit-checkedList-checkbox` classes, never `.edit-input` (verified
  * against the current markup), so they're untouched without any extra exclusion. EditFile's
- * buttons carry no `.edit-input`-family class at all. Native <select> keeps its default
- * `appearance: auto` -- this section never sets `appearance`, so the browser's own dropdown arrow
- * is untouched; replacing it is out of scope. Number inputs keep their native spinner buttons
+ * buttons carry no `.edit-input`-family class at all. EditSelect*'s native arrow is replaced by `.edit-select-arrow` (EditSelect section). Number inputs keep their native spinner buttons
  * (documented deviation -- no custom handler buttons here) unless the consumer opts into
  * EditNumber's own `ShowStepper` group, whose chrome lives in the EditNumber stepper block above
  * (ungated, like the button-mode radio) and only picks up this section's palette.

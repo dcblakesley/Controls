@@ -63,8 +63,9 @@ public class EditBoolE2ETests(AppFixture app, BrowserFixture browser) : DemoPage
         await Page.Keyboard.PressAsync("Tab");
         await Expect(checkbox).ToBeFocusedAsync();
 
-        var glow = await box.EvaluateAsync<string>("el => getComputedStyle(el).boxShadow");
-        Assert.NotEqual("none", glow);
+        // AntD's checkbox focus is a primary border (no glow); the unfocused border is neutral grey.
+        var border = await box.EvaluateAsync<string>("el => getComputedStyle(el).borderColor");
+        Assert.NotEqual("rgb(217, 217, 217)", border);
 
         await Expect(checkbox).Not.ToBeCheckedAsync();
         await Page.Keyboard.PressAsync("Space");

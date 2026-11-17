@@ -59,6 +59,12 @@ internal class DemoModelForEditControls
     [DisplayName("EditSelect")] 
     public int EditSelect { get; set; }
 
+    [DisplayName("EditSelectSearch")]
+    public string? EditSelectSearch { get; set; }
+
+    [DisplayName("EditMultiSelect")]
+    public List<string> EditMultiSelect { get; set; } = [];
+
     [Required]
     [DisplayName("EditSelectString")]
     public string? EditSelectString { get; set; } = "";

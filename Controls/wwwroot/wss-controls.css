@@ -551,6 +551,8 @@
 }
 
 .wss-select-arrow {
+    /* Same grey as the native-select chevron (.edit-select-arrow). */
+    color: var(--wss-color-text-secondary);
     display: inline-flex;
     align-items: center;
     transition: transform 0.3s;
@@ -1877,19 +1879,19 @@
     text-align: center;
 }
 
-/* Native table checkbox/radio: AntD glow (radio 3px, checkbox 2px) instead of the outline ring. */
+/* Native table checkbox/radio follow AntD: checkbox = primary border (a 1px edge, since a native box
+   has no border to tint), radio = border plus a 3px 12% glow. */
 .wss-table-checkbox:focus,
 .wss-table-filter-checkbox:focus {
     outline: 1px solid var(--wss-color-primary);
     outline-offset: 0;
-    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
 .wss-table-radio:focus,
 .wss-table-filter-radio:focus {
     outline: 1px solid var(--wss-color-primary);
     outline-offset: 0;
-    box-shadow: 0 0 0 3px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
+    box-shadow: 0 0 0 3px var(--wss-radio-shadow, color-mix(in srgb, var(--wss-color-primary) 12%, transparent));
 }
 
 /* Focus glow (not the kit's outline ring) -- these are text-type inputs, like .wss-search-input. */
@@ -2488,7 +2490,6 @@
 
 .wss-table-checkbox-input-styled:focus + .wss-table-checkbox-box {
     border-color: var(--wss-color-primary);
-    box-shadow: 0 0 0 2px var(--wss-primary-shadow, color-mix(in srgb, var(--wss-color-primary) 20%, transparent));
 }
 
 .wss-table-tbody .wss-table-row-selected .wss-table-cell {

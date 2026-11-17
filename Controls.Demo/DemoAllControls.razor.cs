@@ -17,6 +17,12 @@ public partial class DemoAllControls
     readonly List<string> _colorOptions =
         ["None", "Red", "Green", "Blue", "Yellow", "Orange", "Purple", "Black", "White"];
 
+    readonly List<SelectOption<string?>> _searchOptions =
+        [new("us", "United States"), new("ca", "Canada"), new("mx", "Mexico"), new("gb", "United Kingdom")];
+
+    readonly List<SelectOption<string>> _multiOptions =
+        [new("red", "Red"), new("green", "Green"), new("blue", "Blue"), new("yellow", "Yellow")];
+
     readonly List<string> _editCheckedStringListOptions =
     [
         "Azathoth", "Yog-Sothoth", "Shub-Niggurath", "Nyarlathotep",
