@@ -1351,7 +1351,7 @@ Two `edit-`-prefixed tokens are declared at `:root` rather than only under `.edi
 ```
 
 - **Opt-in and render-tree-scoped, not global** — only descendants of a `.edit-theme` ancestor are affected; nothing outside it changes, and you can nest a second `.edit-theme` with its own overridden tokens (each scope resolves independently). This is the deliberate design for micro-frontends: wrap an MFE's own root, not `:root`, if it needs its own theme independent of the host page.
-- **Radio/checkbox/`EditFile` are untouched** — `EditRadio`/`EditCheckedStringList`/`EditCheckedEnumList` carry their own `edit-radio-input`/`edit-checkedList-checkbox` classes (never `.edit-input`), `EditBool`'s checkbox is excluded by `type="checkbox"`, and `EditFile` carries no `.edit-input`-family class at all — none of them get boxed like a text field. Native `<select>` keeps its default `appearance: auto` (its own dropdown arrow); `EditNumber` keeps native spinner buttons unless you opt into its own `ShowStepper` group (whose chrome is ungated by `.edit-theme`, like the button-mode radio's — the theme only adds the palette) — both documented deviations from a literal AntD port.
+- **Radio/checkbox/`EditFile` are untouched** — `EditRadio`/`EditCheckedStringList`/`EditCheckedEnumList` carry their own `edit-radio-input`/`edit-checkedList-checkbox` classes (never `.edit-input`), `EditBool`'s checkbox is excluded by `type="checkbox"`, and `EditFile` carries no `.edit-input`-family class at all — none of them get boxed like a text field. `EditNumber` keeps native spinner buttons unless you opt into its own `ShowStepper` group (whose chrome is ungated by `.edit-theme`, like the button-mode radio's — the theme only adds the palette) — a documented deviation from a literal AntD port.
 - **Tokens** (declare/override on `.edit-theme` or any nested scope):
   - `--edit-color-primary` (default `#1890ff`, bridging to your `--color-primary`), `--edit-color-primary-strong` (default `#0958d9` here — see the TEXT-vs-chrome split above), `--edit-color-border` (bridges to `--border-color`, default `#8c8c8c`), `--edit-radius` (`6px`), `--edit-control-height`/`-sm`/`-lg` (`32px`/`24px`/`40px` — used as `min-height`, so a multi-row `EditTextArea` or `AutoSize` is never clipped).
   - `--edit-color-bg-disabled` (bridges to `--color-bg-disabled`), `--edit-color-placeholder` (default `rgba(0, 0, 0, 0.55)`), `--edit-color-text-disabled`, `--edit-color-text-secondary` (the affix suffix's clear/password-toggle **icons**), `--edit-color-text-secondary-strong` (default `rgba(0, 0, 0, 0.65)` — the darker shade `.edit-input-count`/`.edit-textarea-count` need: count is text, held to WCAG 1.4.3's 4.5:1, not an icon's 3:1).
@@ -1467,6 +1467,18 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Feature Requests**: Submit enhancement requests via GitHub Issues
 
 ## Changelog
+
+### 10.10.0
+
+Minor release: native selects get the `Select` chevron; checkbox focus follows AntD.
+
+**Breaking**
+- **`EditSelect`/`EditSelectEnum`/`EditSelectString` markup and appearance changed.** The `<select>` is wrapped in `<span class="edit-select-wrap">` with an `.edit-select-arrow` chevron (the same glyph and grey as `Select`); the browser arrow is gone (`appearance: none`) and the select is `width: 100%` with 28px end padding. Size via `style` (lands on the wrapper) or `.edit-select-wrap`. A `CssClass="form-select"`-style background arrow will now show twice.
+- **Native/styled checkbox focus is a primary border, no glow** (AntD); radio and radio-button glow is 12% (was 20%). Override `--edit-radio-shadow`/`--wss-radio-shadow` for the radio glow.
+
+**New**
+- Chevrons on every select (native, `EditSelectSearch`, `EditMultiSelect`) share one icon, size and grey.
+- The demo's AllControls tab includes `EditSelectSearch` and `EditMultiSelect`.
 
 ### 10.9.0
 
